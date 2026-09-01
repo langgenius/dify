@@ -127,6 +127,24 @@ describe('OAuthAuthorize', () => {
     )
   })
 
+  it('preserves an encoded redirect URI when requesting the OAuth app', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'client-1',
+      redirect_uri: 'https://client.example.com/callback?next=%2Fplugins',
+      state: 'state-1',
+    })
+
+    renderPage()
+
+    expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    const providerRequest = findRequest('/oauth/provider')
+    const providerTransportRequest = providerRequest?.[2]?.request as Request
+    await expect(providerTransportRequest.clone().json()).resolves.toEqual({
+      client_id: 'client-1',
+      redirect_uri: 'https://client.example.com/callback?next=%2Fplugins',
+    })
+  })
+
   it('silently authorizes an app flagged with auto_authorize without rendering consent', async () => {
     mocks.searchParams = new URLSearchParams({
       client_id: 'marketplace-client',
@@ -177,6 +195,56 @@ describe('OAuthAuthorize', () => {
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
+  it('does not auto-authorize with incomplete OAuth parameters', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+    })
+    mockProviderResponses({ autoAuthorize: true })
+
+    renderPage()
+
+    expect(await screen.findByText('oauth.error.invalidParams')).toBeInTheDocument()
+    expect(findRequest('/oauth/provider')).toBeUndefined()
+    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
+  })
+
+  it('retries app info loading and resumes auto-authorization', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+    })
+    let providerAttempts = 0
+    mocks.request.mockImplementation(async (url: string) => {
+      if (url.endsWith('/oauth/provider/authorize')) return jsonResponse({ code: 'oauth-code' })
+      if (url.endsWith('/oauth/provider')) {
+        providerAttempts += 1
+        if (providerAttempts === 1) throw new Error('Failed to load OAuth app')
+        return jsonResponse({
+          app_icon: '',
+          app_label: { en_US: 'Test OAuth App' },
+          auto_authorize: true,
+          scope: '',
+        })
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText('oauth.error.authAppInfoFetchFailed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(findRequest('/oauth/provider/authorize')).toBeDefined())
+    await waitFor(() =>
+      expect(globalThis.location.href).toBe(
+        'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
+      ),
+    )
+  })
+
   it('falls back to manual confirmation when silent authorization fails', async () => {
     mocks.searchParams = new URLSearchParams({
       client_id: 'marketplace-client',
@@ -214,5 +282,39 @@ describe('OAuthAuthorize', () => {
         'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
       ),
     )
+  })
+
+  it('renders an unknown OAuth scope without crashing', async () => {
+    mocks.request.mockImplementation(async (url: string) => {
+      if (url.endsWith('/oauth/provider')) {
+        return jsonResponse({
+          app_icon: '',
+          app_label: { en_US: 'Test OAuth App' },
+          scope: 'read:custom_profile',
+        })
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    renderPage()
+
+    expect(await screen.findByText('read:custom_profile')).toBeInTheDocument()
+  })
+
+  it('supports OAuth app labels that use a hyphenated locale key', async () => {
+    mocks.request.mockImplementation(async (url: string) => {
+      if (url.endsWith('/oauth/provider')) {
+        return jsonResponse({
+          app_icon: '',
+          app_label: { 'en-US': 'Hyphenated OAuth App' },
+          scope: '',
+        })
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    renderPage()
+
+    expect((await screen.findAllByText('Hyphenated OAuth App')).length).toBeGreaterThan(0)
   })
 })

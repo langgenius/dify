@@ -8,10 +8,12 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 
 export function PublisherEnvironmentActionsSection({
   appId,
+  canAccessPoint = false,
   deployment,
   environmentId,
 }: {
   appId?: string
+  canAccessPoint?: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
 }) {
@@ -22,14 +24,16 @@ export function PublisherEnvironmentActionsSection({
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      <SuggestedAction
-        disabled={actionsDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={accessPointHref}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
+      {canAccessPoint && (
+        <SuggestedAction
+          disabled={actionsDisabled}
+          description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
+          link={accessPointHref}
+          icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
+        >
+          {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
+        </SuggestedAction>
+      )}
       <SuggestedAction
         disabled={actionsDisabled}
         description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}

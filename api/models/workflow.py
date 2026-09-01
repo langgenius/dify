@@ -297,18 +297,16 @@ class Workflow(Base):  # bug
         workflow.updated_at = workflow.created_at
         return workflow
 
-    @property
-    def created_by_account(self) -> Account | None:
-        return self.get_created_by_account(session=db.session())
+    def created_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_created_by_account(session=session)
 
-    def get_created_by_account(self, *, session: orm.Session) -> Account | None:
+    def get_created_by_account(self, session: orm.Session) -> Account | None:
         return session.get(Account, self.created_by)
 
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self.get_updated_by_account(session=db.session())
+    def updated_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_updated_by_account(session=session)
 
-    def get_updated_by_account(self, *, session: orm.Session) -> Account | None:
+    def get_updated_by_account(self, session: orm.Session) -> Account | None:
         return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
@@ -564,18 +562,17 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
-    @property
     @deprecated(
-        "This property is not accurate for determining if a workflow is published as a tool."
+        "This method is not accurate for determining if a workflow is published as a tool."
         "It only checks if there's a WorkflowToolProvider for the app, "
         "not if this specific workflow version is the one being used by the tool."
     )
-    def tool_published(self) -> bool:
-        return self.get_tool_published(session=db.session())
+    def tool_published(self, session: orm.Session) -> bool:
+        return self.get_tool_published(session=session)
 
-    def get_tool_published(self, *, session: orm.Session) -> bool:
+    def get_tool_published(self, session: orm.Session) -> bool:
         """
-        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        DEPRECATED: This method is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
         is the one being used by the tool.
 

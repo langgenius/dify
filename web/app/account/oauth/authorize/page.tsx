@@ -13,7 +13,6 @@ import {
 } from '@remixicon/react'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -57,10 +56,10 @@ export default function OAuthAuthorize() {
   const router = useRouter()
   const language = useLanguage()
   const searchParams = useSearchParams()
-  const client_id = decodeURIComponent(searchParams.get('client_id') || '')
-  const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') || ''
   const state = searchParams.get('state')
-  const hasOAuthParams = Boolean(client_id && redirect_uri)
+  const hasOAuthParams = Boolean(clientId && redirectUri)
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -77,10 +76,14 @@ export default function OAuthAuthorize() {
   const {
     data: authAppInfo,
     isLoading: isOAuthLoading,
-    isError,
+    isFetching: isOAuthFetching,
+    isError: isOAuthError,
+    refetch: refetchOAuthApp,
   } = useQuery(
     consoleQuery.oauth.provider.post.queryOptions({
-      input: hasOAuthParams ? { body: { client_id, redirect_uri } } : skipToken,
+      input: hasOAuthParams
+        ? { body: { client_id: clientId, redirect_uri: redirectUri } }
+        : skipToken,
       context: { silent: true },
     }),
   )
@@ -91,17 +94,17 @@ export default function OAuthAuthorize() {
   const { isAutoAuthorizing } = useSilentAuthorize({
     authAppInfo,
     authorize,
-    clientId: client_id,
+    clientId,
     hasOAuthParams,
     isLoggedIn,
     isProfileLoading,
-    redirectUri: redirect_uri,
+    redirectUri,
     searchParams,
     state,
   })
-  const hasNotifiedRef = useRef(false)
-  const localizedAppLabel = authAppInfo?.app_label[language]
-  const englishAppLabel = authAppInfo?.app_label.en_US
+  const localizedAppLabel =
+    authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
+  const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']
   const appLabel =
     (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
     (typeof englishAppLabel === 'string' && englishAppLabel) ||
@@ -112,7 +115,6 @@ export default function OAuthAuthorize() {
       : t(($) => $.connect, { ns: 'oauth' }),
   )
 
-  const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
@@ -124,30 +126,39 @@ export default function OAuthAuthorize() {
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri) return
+    if (!clientId || !redirectUri) return
     try {
-      const { code } = await authorize({ body: { client_id } })
-      globalThis.location.href = buildOAuthCallbackUrl(redirect_uri, code, state)
+      const { code } = await authorize({ body: { client_id: clientId } })
+      globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }
   }
 
-  useEffect(() => {
-    const invalidParams = !client_id || !redirect_uri
-    if ((invalidParams || isError) && !hasNotifiedRef.current) {
-      hasNotifiedRef.current = true
-      toast.error(
-        invalidParams
-          ? t(($) => $['error.invalidParams'], { ns: 'oauth' })
-          : t(($) => $['error.authAppInfoFetchFailed'], { ns: 'oauth' }),
-        { timeout: 0 },
-      )
-    }
-  }, [client_id, redirect_uri, isError])
+  if (!hasOAuthParams || isOAuthError) {
+    return (
+      <div className="flex flex-col gap-4 bg-background-default-subtle text-text-secondary">
+        <div className="body-md-regular">
+          {t(($) => $[hasOAuthParams ? 'error.authAppInfoFetchFailed' : 'error.invalidParams'], {
+            ns: 'oauth',
+          })}
+        </div>
+        {isOAuthError && (
+          <Button
+            variant="secondary"
+            size="large"
+            onClick={() => void refetchOAuthApp()}
+            loading={isOAuthFetching}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        )}
+      </div>
+    )
+  }
 
-  if (isLoading || isAutoAuthorizing) {
+  if (isProfileLoading || isOAuthLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />
@@ -203,18 +214,15 @@ export default function OAuthAuthorize() {
             .split(/\s+/)
             .filter(Boolean)
             .map((scope: string) => {
-              const Icon = SCOPE_INFO_MAP[scope]
+              const scopeInfo = SCOPE_INFO_MAP[scope]
+              const ScopeIcon = scopeInfo?.icon ?? RiAccountCircleLine
               return (
                 <div
                   key={scope}
                   className="flex items-center gap-2 body-sm-medium text-text-secondary"
                 >
-                  {Icon ? (
-                    <Icon.icon className="size-4" />
-                  ) : (
-                    <RiAccountCircleLine className="size-4" />
-                  )}
-                  {Icon!.label}
+                  <ScopeIcon className="size-4" />
+                  {scopeInfo?.label ?? scope}
                 </div>
               )
             })}
@@ -238,7 +246,7 @@ export default function OAuthAuthorize() {
               size="large"
               className="w-full"
               onClick={onAuthorize}
-              disabled={!client_id || !redirect_uri || isError || authorizing}
+              disabled={!clientId || !redirectUri || isOAuthError || authorizing}
               loading={authorizing}
             >
               {t(($) => $.continue, { ns: 'oauth' })}

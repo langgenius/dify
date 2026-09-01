@@ -1,0 +1,437 @@
+'use client'
+
+import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
+import {
+  Autocomplete,
+  AutocompleteClear,
+  AutocompleteCollection,
+  AutocompleteEmpty,
+  AutocompleteGroup,
+  AutocompleteGroupLabel,
+  AutocompleteInput,
+  AutocompleteInputGroup,
+  AutocompleteItem,
+  AutocompleteItemText,
+  AutocompleteList,
+  AutocompletePortal,
+  AutocompletePositioner,
+  AutocompleteSeparator,
+  AutocompleteStatus,
+  useAutocompleteFilteredItems,
+} from '@langgenius/dify-ui/autocomplete'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from '#i18n'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { renderI18nObject } from '@/i18n-config/index'
+import { marketplaceQuery } from '@/service/client'
+import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
+import { getPluginIconInMarketplace } from '../utils'
+
+export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+
+export type MarketplaceSearchSelection =
+  | { kind: 'plugin'; plugin: MarketplacePlugin }
+  | { kind: 'template'; template: MarketplaceTemplate }
+
+type MarketplaceSuggestion = {
+  description: string
+  iconUrl?: string
+  id: string
+  kind: 'plugin' | 'template'
+  label: string
+  meta: string
+  selection: MarketplaceSearchSelection
+}
+
+type MarketplaceSuggestionGroup = {
+  id: MarketplaceSuggestion['kind']
+  items: MarketplaceSuggestion[]
+  label: string
+}
+
+type MarketplaceSearchAutocompleteProps = {
+  category?: string
+  inputName?: string
+  locale: string
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
+  onValueChange: (value: string) => void
+  placeholder: string
+  scope: MarketplaceSearchScope
+  value: string
+}
+
+const getPluginText = (
+  value: MarketplacePlugin['brief'] | MarketplacePlugin['label'],
+  locale: string,
+) => {
+  if (typeof value === 'string') return value
+  return renderI18nObject((value ?? {}) as Record<string, string>, locale)
+}
+
+const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggestion => ({
+  description: template.overview,
+  iconUrl: template.icon_file_key
+    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+    : undefined,
+  id: `template:${template.id}`,
+  kind: 'template',
+  label: template.template_name,
+  meta: template.publisher_handle || template.publisher_unique_handle || '',
+  selection: { kind: 'template', template },
+})
+
+const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): MarketplaceSuggestion => ({
+  description: getPluginText(plugin.brief, locale),
+  iconUrl: getPluginIconInMarketplace(plugin),
+  id: `plugin:${plugin.org}/${plugin.name}`,
+  kind: 'plugin',
+  label: getPluginText(plugin.label, locale) || plugin.name,
+  meta: plugin.org,
+  selection: { kind: 'plugin', plugin },
+})
+
+type MarketplaceSuggestionListProps = {
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
+  onValueChange: (value: string) => void
+  setIsOpen: (isOpen: boolean) => void
+}
+
+function MarketplaceSuggestionList({
+  onSuggestionSelect,
+  onValueChange,
+  setIsOpen,
+}: MarketplaceSuggestionListProps) {
+  const groups = useAutocompleteFilteredItems<MarketplaceSuggestionGroup>()
+
+  return (
+    <AutocompleteList className="max-h-none overflow-visible p-0 data-empty:p-0">
+      {groups.map((group, groupIndex) => (
+        <AutocompleteGroup key={group.id} items={group.items} className="p-1">
+          {groupIndex > 0 && <AutocompleteSeparator className="-mx-1 mb-1" />}
+          <AutocompleteGroupLabel className="px-3 pt-3 pb-2 system-xs-semibold-uppercase text-text-primary">
+            {group.label}
+          </AutocompleteGroupLabel>
+          <AutocompleteCollection<MarketplaceSuggestion>>
+            {(item) => (
+              <AutocompleteItem
+                key={item.id}
+                value={item}
+                className="mx-0 items-start gap-1 rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
+                onClick={
+                  onSuggestionSelect
+                    ? () => {
+                        onSuggestionSelect(item.selection)
+                        queueMicrotask(() => {
+                          onValueChange('')
+                          setIsOpen(false)
+                        })
+                      }
+                    : undefined
+                }
+              >
+                <span className="flex shrink-0 items-start py-1">
+                  {item.iconUrl ? (
+                    <img
+                      alt=""
+                      className={cn(
+                        'shrink-0 object-contain',
+                        item.kind === 'template'
+                          ? 'size-8 rounded-lg border-[0.5px] border-divider-regular'
+                          : 'size-7 rounded-lg',
+                      )}
+                      src={item.iconUrl}
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'flex shrink-0 items-center justify-center text-text-tertiary',
+                        item.kind === 'template'
+                          ? 'i-ri-layout-grid-line size-8 rounded-lg border-[0.5px] border-divider-regular text-base'
+                          : 'i-ri-puzzle-2-line size-7 rounded-lg text-base',
+                      )}
+                    />
+                  )}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5 p-1">
+                  <AutocompleteItemText className="px-0 system-md-medium text-text-primary">
+                    {item.label}
+                  </AutocompleteItemText>
+                  {!!item.description && (
+                    <span className="line-clamp-2 system-xs-regular text-text-tertiary">
+                      {item.description}
+                    </span>
+                  )}
+                  {!!item.meta && (
+                    <span className="truncate pt-1 system-xs-regular text-text-tertiary">
+                      {item.meta}
+                    </span>
+                  )}
+                </span>
+              </AutocompleteItem>
+            )}
+          </AutocompleteCollection>
+        </AutocompleteGroup>
+      ))}
+    </AutocompleteList>
+  )
+}
+
+export function MarketplaceSearchAutocomplete({
+  category = 'all',
+  inputName,
+  locale,
+  onSuggestionSelect,
+  onValueChange,
+  placeholder,
+  scope,
+  value,
+}: MarketplaceSearchAutocompleteProps) {
+  const { t } = useTranslation()
+  const [isOpen, setIsOpen] = useState(false)
+  const searchRootRef = useRef<HTMLDivElement>(null)
+  const resultsPanelRef = useRef<HTMLDivElement>(null)
+  const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
+  const hasQuery = Boolean(debouncedSearch)
+  const searchesPlugins = scope === 'all' || scope === 'plugins'
+  const searchesTemplates = scope === 'all' || scope === 'templates'
+  const isBundleSearch = category === 'bundle'
+  const pluginQuery = useQuery({
+    ...marketplaceQuery.searchAdvanced.queryOptions({
+      input: {
+        params: { kind: isBundleSearch ? 'bundles' : 'plugins' },
+        body: {
+          page: 1,
+          page_size: 5,
+          query: debouncedSearch,
+          sort_by: 'install_count',
+          sort_order: 'DESC',
+          category: category !== 'all' && !isBundleSearch ? category : '',
+        },
+      },
+      retry: false,
+    }),
+    // No placeholderData here: showing the previous term's suggestions would
+    // leave stale items keyboard-selectable while the new request is pending.
+    enabled: hasQuery && searchesPlugins,
+    staleTime: 60_000,
+  })
+  const templateQuery = useQuery({
+    ...marketplaceQuery.templateSearch.queryOptions({
+      input: {
+        body: {
+          page: 1,
+          page_size: 5,
+          query: debouncedSearch,
+          sort_by: 'usage_count',
+          sort_order: 'DESC',
+          ...(category !== 'all' ? { categories: [category] } : {}),
+        },
+      },
+      retry: false,
+    }),
+    enabled: hasQuery && searchesTemplates,
+    staleTime: 60_000,
+  })
+  // While the edited value is still debouncing, the queries above still hold
+  // the previous term's data; gate the suggestions until both agree so stale
+  // options are never visible or keyboard-selectable.
+  const isDebouncing = value.trim() !== debouncedSearch
+  const pluginSuggestions =
+    !isDebouncing && searchesPlugins
+      ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
+          toPluginSuggestion(plugin, locale),
+        )
+      : []
+  const templateSuggestions =
+    !isDebouncing && searchesTemplates
+      ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
+      : []
+  const suggestions = [...templateSuggestions, ...pluginSuggestions]
+  const suggestionGroups: MarketplaceSuggestionGroup[] = [
+    ...(templateSuggestions.length
+      ? [
+          {
+            id: 'template' as const,
+            items: templateSuggestions,
+            label: t(($) => $['marketplace.home.templates'], { ns: 'plugin' }),
+          },
+        ]
+      : []),
+    ...(pluginSuggestions.length
+      ? [
+          {
+            id: 'plugin' as const,
+            items: pluginSuggestions,
+            label: t(($) => $['marketplace.home.plugins'], { ns: 'plugin' }),
+          },
+        ]
+      : []),
+  ]
+  const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
+  // Keep open tied to the typing session so outside-press can dismiss during
+  // debounce/fetch. Pending, empty, and error copy live inside the popup.
+  const hasTypedQuery = Boolean(value.trim())
+  const isPopupOpen = isOpen && hasTypedQuery
+  // A failed request must not read as "nothing matched"; when every source in
+  // scope errored and nothing is displayable, surface a load failure instead.
+  const hasLoadError =
+    !isDebouncing &&
+    suggestions.length === 0 &&
+    ((searchesPlugins && pluginQuery.isError) || (searchesTemplates && templateQuery.isError))
+  const emptyText = hasLoadError
+    ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+    : scope === 'templates'
+      ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
+      : t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
+
+  useEffect(() => {
+    if (!isPopupOpen) return
+
+    const handleOutsidePress = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (searchRootRef.current?.contains(target) || resultsPanelRef.current?.contains(target))
+        return
+      setIsOpen(false)
+    }
+
+    document.addEventListener('click', handleOutsidePress)
+    return () => document.removeEventListener('click', handleOutsidePress)
+  }, [isPopupOpen])
+
+  return (
+    <div ref={searchRootRef} className="relative">
+      <Autocomplete
+        filter={null}
+        itemToStringValue={(item) => item.label}
+        items={suggestionGroups}
+        mode="list"
+        name={inputName}
+        onOpenChange={setIsOpen}
+        onValueChange={(nextValue) => {
+          onValueChange(nextValue)
+          setIsOpen(Boolean(nextValue.trim()))
+        }}
+        open={isPopupOpen}
+        openOnInputClick
+        submitOnItemClick={Boolean(inputName)}
+        value={value}
+      >
+        <AutocompleteInputGroup size="large">
+          <span
+            aria-hidden
+            className="ml-3 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          />
+          <AutocompleteInput
+            aria-label={placeholder}
+            className="px-2 text-sm"
+            placeholder={placeholder}
+            size="large"
+            type="text"
+          />
+          {!!value && (
+            <AutocompleteClear
+              aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
+              size="large"
+            />
+          )}
+        </AutocompleteInputGroup>
+        <AutocompletePortal hidden={!isPopupOpen}>
+          <AutocompletePositioner sideOffset={8}>
+            <div
+              ref={resultsPanelRef}
+              className="max-h-[min(710px,var(--available-height))] w-[472px] max-w-[min(calc(100vw-32px),var(--available-width))] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
+              aria-busy={isSearching || undefined}
+            >
+              <MarketplaceSuggestionList
+                onSuggestionSelect={onSuggestionSelect}
+                onValueChange={onValueChange}
+                setIsOpen={setIsOpen}
+              />
+              <AutocompleteEmpty>
+                {!isSearching && suggestions.length === 0 ? emptyText : null}
+              </AutocompleteEmpty>
+              <AutocompleteStatus className="empty:h-0 empty:p-0">
+                {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
+              </AutocompleteStatus>
+              {Boolean(inputName) && suggestions.length > 0 && !isSearching && (
+                <div className="border-t border-divider-subtle p-1">
+                  <button
+                    type="button"
+                    className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                    onClick={() => {
+                      const form = searchRootRef.current?.closest('form')
+                      if (form instanceof HTMLFormElement) form.requestSubmit()
+                    }}
+                  >
+                    <span className="system-sm-medium text-text-accent">
+                      {t(($) => $['marketplace.viewMore'], { ns: 'plugin' })}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="rounded-[5px] border border-divider-deep px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-hover:hidden"
+                    >
+                      Enter
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </AutocompletePositioner>
+        </AutocompletePortal>
+      </Autocomplete>
+    </div>
+  )
+}
+
+type MarketplaceSearchFormProps = {
+  action: string
+  category?: string
+  className?: string
+  language?: string
+  locale: string
+  placeholder: string
+  query: string
+  scope: MarketplaceSearchScope
+}
+
+export function MarketplaceSearchForm({
+  action,
+  category,
+  className,
+  language,
+  locale,
+  placeholder,
+  query,
+  scope,
+}: MarketplaceSearchFormProps) {
+  const [value, setValue] = useState(query)
+
+  return (
+    <form
+      action={action}
+      className={cn('relative shrink-0', className)}
+      onSubmit={() => {
+        markMarketplaceSiteSearch(value)
+      }}
+    >
+      <MarketplaceSearchAutocomplete
+        category={category}
+        inputName="q"
+        locale={locale}
+        onValueChange={setValue}
+        placeholder={placeholder}
+        scope={scope}
+        value={value}
+      />
+      {language && <input type="hidden" name="language" value={language} />}
+    </form>
+  )
+}

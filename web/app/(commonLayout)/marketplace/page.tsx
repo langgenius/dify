@@ -1,19 +1,25 @@
-import type { SearchParams } from 'nuqs'
-import Marketplace from '@/app/components/plugins/marketplace'
+import AccountSection from '@/app/components/main-nav/components/account-section'
+import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/constants'
+import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
 
-type MarketplacePageProps = {
-  searchParams?: Promise<SearchParams>
-}
-
-const MarketplacePage = ({ searchParams }: MarketplacePageProps) => {
+// Sync route: async pages under this client shell Flight-double-resolve.
+const MarketplacePage = () => {
   return (
     <div
-      id="marketplace-container"
-      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default-subtle pr-1"
+      id={MARKETPLACE_CONTAINER_ID}
+      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
       <MarketplaceInstallPermissionProvider>
-        <Marketplace searchParams={searchParams} isMarketplacePlatform showInstallButton />
+        <EmbeddedMarketplace
+          showInstallButton
+          variant="home"
+          homeHeaderActions={
+            <div className="p-0.5">
+              <AccountSection compact />
+            </div>
+          }
+        />
       </MarketplaceInstallPermissionProvider>
     </div>
   )

@@ -45,6 +45,7 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfi
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -485,7 +486,7 @@ class TestCustomConfigWorkspaceApi:
 
         with (
             app.test_request_context("/workspaces/custom-config"),
-            patch("controllers.console.workspace.workspace.dify_config.FILES_URL", "https://files.example.com"),
+            config_overrides_context(FILES_URL="https://files.example.com"),
         ):
             result = method(api, workspace_session, tenant.id)
 

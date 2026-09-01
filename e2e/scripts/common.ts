@@ -47,6 +47,12 @@ export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
   NEXT_PUBLIC_ENABLE_AGENT_V2: 'true',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
+  // NEXT_PUBLIC_* values are inlined into the client bundle at build time, so the
+  // marketplace prefix (e.g. the frozen fixture stub started by run-cucumber.ts)
+  // must reach both the build environment and the build stamp hash.
+  ...(process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
+    ? { NEXT_PUBLIC_MARKETPLACE_API_PREFIX: process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX }
+    : {}),
 } satisfies Record<string, string>
 
 const formatCommand = (command: string, args: string[]) => [command, ...args].join(' ')

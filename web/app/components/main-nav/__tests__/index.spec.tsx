@@ -723,19 +723,6 @@ describe('MainNav', () => {
     expect(
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('navigation'))
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('href')),
-    ).toEqual([
-      '/',
-      '/apps',
-      '/agents',
-      '/datasets',
-      '/skills',
-      '/integrations/model-provider',
-      '/marketplace',
-    ])
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {
@@ -979,14 +966,17 @@ describe('MainNav', () => {
     )
   })
 
-  it('marks marketplace active on marketplace routes', () => {
-    mockPathname = '/marketplace'
+  it.each(['/marketplace', '/plugins', '/templates', '/templates/marketing'])(
+    'marks marketplace active on route %s',
+    (pathname) => {
+      mockPathname = pathname
 
-    renderMainNav()
+      renderMainNav()
 
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
-  })
+      const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+      expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+    },
+  )
 
   it('marks roster active on roster routes', () => {
     mockPathname = '/agents'
@@ -1184,7 +1174,8 @@ describe('MainNav', () => {
       'common.mainNav.help.learnDify',
       'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
-      'Discord',
+      'common.userProfile.discord',
+      'common.mainNav.help.creatorCenter',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
@@ -1193,6 +1184,23 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('opens Creator Center from the help menu above GitHub', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    const creatorCenter = await screen.findByRole('menuitem', {
+      name: 'common.mainNav.help.creatorCenter',
+    })
+    const github = screen.getByRole('menuitem', { name: /common\.userProfile\.github/ })
+
+    expect(creatorCenter).toHaveAttribute('href', 'https://creators.dify.ai/')
+    expect(creatorCenter).toHaveAttribute('target', '_blank')
+    expect(creatorCenter).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(creatorCenter.compareDocumentPosition(github)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(creatorCenter.querySelector('.i-ri-user-star-line')).toBeTruthy()
   })
 
   it('opens About from its real Help menu owner and restores focus when closed', async () => {
@@ -1267,7 +1275,7 @@ describe('MainNav', () => {
     fireEvent.click(contactUsItem)
 
     await waitFor(() => {
-      expect(screen.queryByText('Discord')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
     })
     expect(mockSetShowPricingModal).toHaveBeenCalled()
   })

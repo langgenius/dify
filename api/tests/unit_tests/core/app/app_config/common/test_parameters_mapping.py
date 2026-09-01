@@ -1,26 +1,24 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 # Module under test
 from core.app.app_config.common import parameters_mapping
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestGetParametersFromFeatureDict:
     """Test suite for get_parameters_from_feature_dict"""
 
     @pytest.fixture
-    def mock_config(self, monkeypatch: pytest.MonkeyPatch):
-        """Mock dify_config values"""
-        mock = MagicMock()
-        mock.UPLOAD_IMAGE_FILE_SIZE_LIMIT = 1
-        mock.UPLOAD_VIDEO_FILE_SIZE_LIMIT = 2
-        mock.UPLOAD_AUDIO_FILE_SIZE_LIMIT = 3
-        mock.UPLOAD_FILE_SIZE_LIMIT = 4
-        mock.WORKFLOW_FILE_UPLOAD_LIMIT = 5
-
-        monkeypatch.setattr(parameters_mapping, "dify_config", mock)
-        return mock
+    def mock_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Override file limits on the shared typed config."""
+        apply_config_overrides(
+            monkeypatch,
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=1,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=2,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=3,
+            UPLOAD_FILE_SIZE_LIMIT=4,
+            WORKFLOW_FILE_UPLOAD_LIMIT=5,
+        )
 
     @pytest.fixture
     def mock_default_file_limits(self, monkeypatch: pytest.MonkeyPatch):

@@ -73,6 +73,12 @@ export const createAgentBuilderWorldState = () => ({
 
 export type AgentBuilderWorldState = ReturnType<typeof createAgentBuilderWorldState>
 
+export type MarketplacePerformanceMetrics = {
+  firstCardVisibleMs: number
+  documentElementCount: number
+  longestTaskMs: number
+}
+
 export class DifyWorld extends World {
   context: BrowserContext | undefined
   consoleRequestContext: APIRequestContext | undefined
@@ -97,6 +103,7 @@ export class DifyWorld extends World {
   capturedDownloads: Download[] = []
   shareURL: string | undefined
   sharedAppPage: Page | undefined
+  marketplacePerformanceMetrics: MarketplacePerformanceMetrics | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -121,6 +128,7 @@ export class DifyWorld extends World {
     this.capturedDownloads = []
     this.shareURL = undefined
     this.sharedAppPage = undefined
+    this.marketplacePerformanceMetrics = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {

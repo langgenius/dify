@@ -221,7 +221,9 @@ def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypat
 
 
 def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module.dify_config, "UPLOAD_SKILL_FILE_SIZE_LIMIT", 1)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"x" * (1024 * 1024 + 1), filename="skill.zip")

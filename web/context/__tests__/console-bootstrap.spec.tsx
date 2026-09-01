@@ -186,6 +186,8 @@ vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
 
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
+  subscribeRegistrationSuccess: () => () => {},
+  getRegistrationSuccessSnapshot: () => 0,
 }))
 
 vi.mock('@/app/components/base/zendesk/utils', () => ({

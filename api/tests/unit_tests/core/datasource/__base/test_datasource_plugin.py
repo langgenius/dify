@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
+from unittest.mock import MagicMock
 
-from configs import dify_config
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceProviderType
@@ -69,7 +69,8 @@ class TestDatasourcePlugin:
         assert new_plugin.icon == icon
         mock_entity.model_copy.assert_called_once()
 
-    def test_get_icon_url(self):
+    def test_get_icon_url(self, config_overrides: Callable[..., None]):
+        config_overrides(CONSOLE_API_URL="https://api.dify.ai")
         # Arrange
         entity = MagicMock(spec=DatasourceEntity)
         runtime = MagicMock(spec=DatasourceRuntime)
@@ -78,13 +79,9 @@ class TestDatasourcePlugin:
 
         plugin = ConcreteDatasourcePlugin(entity=entity, runtime=runtime, icon=icon)
 
-        # Mocking dify_config.CONSOLE_API_URL
-        with patch.object(dify_config, "CONSOLE_API_URL", "https://api.dify.ai"):
-            # Act
-            icon_url = plugin.get_icon_url(tenant_id)
+        icon_url = plugin.get_icon_url(tenant_id)
 
-            # Assert
-            expected_url = (
-                f"https://api.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id={tenant_id}&filename={icon}"
-            )
-            assert icon_url == expected_url
+        expected_url = (
+            f"https://api.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id={tenant_id}&filename={icon}"
+        )
+        assert icon_url == expected_url

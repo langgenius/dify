@@ -1187,7 +1187,7 @@
   },
   "web/app/components/base/icons/src/vender/plugin/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/base/icons/src/vender/solid/FinanceAndECommerce/index.ts": {
@@ -2604,14 +2604,6 @@
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/list/list-with-collection.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },

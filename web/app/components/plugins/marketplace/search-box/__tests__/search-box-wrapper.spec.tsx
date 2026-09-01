@@ -19,7 +19,7 @@ vi.mock('../index', () => ({
 
 describe('SearchBoxWrapper', () => {
   it('passes marketplace search state into SearchBox', () => {
-    render(<SearchBoxWrapper />)
+    render(<SearchBoxWrapper searchIconName="i-ri-search-line" />)
 
     expect(screen.getByTestId('search-box')).toBeInTheDocument()
     expect(mockSearchBox).toHaveBeenCalledWith(
@@ -31,6 +31,7 @@ describe('SearchBoxWrapper', () => {
         tags: ['agent', 'rag'],
         onTagsChange: mockHandleFilterPluginTagsChange,
         placeholder: 'plugin.searchPlugins',
+        searchIconName: 'i-ri-search-line',
         usedInMarketplace: true,
       }),
     )

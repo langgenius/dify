@@ -27,7 +27,7 @@ from services.account_service import (
     RegisterService,
     TenantService,
 )
-from services.enterprise.rbac_service import MembersInRole, Paginated
+from services.enterprise.rbac_service import MemberRolesResponse, MembersInRole, Paginated, RBACRole
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountEmailAlreadyInUseError,
@@ -37,6 +37,7 @@ from services.errors.account import (
     EmailDomainSuspendedError,
     NoPermissionError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -391,7 +392,7 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
                 AccountService.create_account(
                     email="user@suspended.example",
@@ -408,7 +409,7 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
                 AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
 
@@ -417,9 +418,9 @@ class TestAccountService:
     ) -> None:
         mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
             assert AccountService.get_account_freeze_type("frozen@example.com") is None
 
         mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
@@ -797,6 +798,14 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
+    def _db_role_of(self, sqlite_session: Session, tenant: Tenant, account_id: str) -> str | None:
+        return sqlite_session.scalar(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        )
+
     def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session) -> None:
         tenant_id = "00000000-0000-0000-0000-000000000001"
         account_ids = [
@@ -979,7 +988,7 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                config_overrides_context(RBAC_ENABLED=True),
                 patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
             ):
                 TenantService.create_tenant_member(
@@ -1012,7 +1021,7 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                config_overrides_context(RBAC_ENABLED=True),
                 patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
             ):
                 TenantService.create_tenant_member(
@@ -1330,6 +1339,69 @@ class TestTenantService:
             persisted_target_join = assertion_session.get(TenantAccountJoin, target_join_id)
             assert persisted_target_join is not None
             assert persisted_target_join.role == TenantAccountRole.ADMIN
+
+    @pytest.mark.parametrize(
+        ("outgoing_owner_role_tags", "expected_demoted_role_ids"),
+        [(["owner", "editor"], ["editor-role-id"]), (["owner"], ["no-access-role-id"])],
+    )
+    def test_update_member_role_to_owner_rbac_enabled(
+        self,
+        sqlite_session: Session,
+        outgoing_owner_role_tags: list[str],
+        expected_demoted_role_ids: list[str],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        tenant = Tenant(name="Test Workspace")
+        sqlite_session.add(tenant)
+        sqlite_session.flush()
+
+        operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-1")
+        candidate = TestAccountAssociatedDataFactory.create_account_mock(account_id="candidate-1")
+        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.EDITOR)
+        self._add_tenant_account_join(sqlite_session, tenant, candidate.id, TenantAccountRole.EDITOR)
+        self._add_tenant_account_join(sqlite_session, tenant, "stale-db-owner", TenantAccountRole.OWNER)
+        sqlite_session.commit()
+
+        outgoing_owner_roles = MemberRolesResponse(
+            account_id="real-rbac-owner",
+            roles=[
+                RBACRole(id=f"{tag}-role-id", type="workspace", name=tag, role_tag=tag)
+                for tag in outgoing_owner_role_tags
+            ],
+        )
+
+        with (
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.role.manage"},
+            ),
+            patch(
+                "services.account_service.AccountService.get_rbac_workspace_owner_account_id",
+                return_value="real-rbac-owner",
+            ),
+            patch(
+                "services.account_service.AccountService._resolve_legacy_role_id",
+                side_effect=lambda *, role, **_kwargs: f"{role.value}-role-id",
+            ),
+            patch(
+                "services.account_service.AccountService._resolve_role_id_by_tag",
+                return_value="no-access-role-id",
+            ),
+            patch("services.account_service.RBACService.MemberRoles.get", return_value=outgoing_owner_roles),
+            patch("services.account_service.RBACService.MemberRoles.replace") as mock_replace,
+        ):
+            TenantService.update_member_role(tenant, candidate, "owner", operator, session=sqlite_session)
+
+        mock_replace.assert_any_call(
+            tenant_id=tenant.id,
+            account_id=operator.id,
+            member_account_id="real-rbac-owner",
+            role_ids=expected_demoted_role_ids,
+            session=sqlite_session,
+        )
+        assert self._db_role_of(sqlite_session, tenant, "stale-db-owner") == TenantAccountRole.NORMAL
+        assert self._db_role_of(sqlite_session, tenant, candidate.id) == TenantAccountRole.OWNER
 
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
         self,

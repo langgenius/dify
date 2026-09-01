@@ -22,6 +22,7 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_workflow(**overrides):
@@ -77,6 +78,9 @@ def _make_workflow(**overrides):
     )
     for key, value in overrides.items():
         setattr(workflow, key, value)
+    workflow.get_created_by_account = Mock(return_value=workflow.created_by_account)
+    workflow.get_updated_by_account = Mock(return_value=workflow.updated_by_account)
+    workflow.get_tool_published = Mock(return_value=workflow.tool_published)
     return workflow
 
 
@@ -616,6 +620,25 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     ]
 
 
+def test_published_workflow_get_uses_session_aware_response_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow()
+    session = Mock(spec=Session)
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(session=Mock(return_value=session)))
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(get_published_workflow=lambda **_kwargs: workflow)
+    )
+
+    api = workflow_module.PublishedWorkflowApi()
+    handler = inspect.unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["id"] == "workflow-1"
+    workflow.get_created_by_account.assert_called_once_with(session=session)
+    workflow.get_updated_by_account.assert_called_once_with(session=session)
+    workflow.get_tool_published.assert_called_once_with(session=session)
+
+
 def test_pipeline_variable_response_accepts_legacy_file_field_names() -> None:
     response = workflow_module.PipelineVariableResponse.model_validate(
         {
@@ -875,7 +898,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
     resolve_access = Mock(return_value=access_filter)
     monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
-    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
     short_session = Mock()
     monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
@@ -966,7 +989,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         "WorkflowService",
         lambda: SimpleNamespace(get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)),
     )
-    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
     first_pipeline = Mock()

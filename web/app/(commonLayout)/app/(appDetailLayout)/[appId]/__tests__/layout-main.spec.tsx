@@ -275,6 +275,25 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail).toBeUndefined()
   })
 
+  it('should keep access point content hidden while redirecting cached app data without permission', async () => {
+    mockPathname = '/app/app-1/access-point'
+    useStore
+      .getState()
+      .setAppDetail(createAppDetail({ permission_keys: [AppACLPermission.Monitor] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
+    })
+    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+  })
+
   it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
     mockPathname = '/app/app-1/deploy'
     mockFetchAppDetailDirect.mockResolvedValue(

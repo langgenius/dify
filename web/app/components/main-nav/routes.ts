@@ -43,7 +43,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
+    active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home-v2',
     activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
@@ -71,15 +71,6 @@ export const MAIN_NAV_ROUTES = [
     feature: 'agentV2',
   },
   {
-    key: 'datasets',
-    href: '/datasets',
-    labelKey: 'menus.datasets',
-    active: (path: string) => isPathUnderRoute(path, '/datasets'),
-    icon: 'i-custom-vender-main-nav-knowledge-v2',
-    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
-    visibility: VISIBLE_TO_ALL,
-  },
-  {
     key: 'skills',
     href: '/skills',
     labelKey: 'mainNav.skills',
@@ -87,6 +78,15 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-skill',
     activeIcon: 'i-custom-vender-main-nav-skill-active',
     visibility: SKILL_ENABLED_FOR_WORKSPACE,
+  },
+  {
+    key: 'datasets',
+    href: '/datasets',
+    labelKey: 'menus.datasets',
+    active: (path: string) => isPathUnderRoute(path, '/datasets'),
+    icon: 'i-custom-vender-main-nav-knowledge-v2',
+    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'integrations',
@@ -103,7 +103,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
     icon: 'i-custom-vender-main-nav-marketplace-v2',
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
