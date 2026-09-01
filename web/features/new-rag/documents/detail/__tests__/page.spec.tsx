@@ -344,6 +344,42 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
 
   return {
     ...original,
+    atomWithInfiniteQuery: (
+      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
+        queryKind?: string
+      },
+    ) =>
+      atom((get) => {
+        get(versionAtom)
+        const options = getOptions(get)
+        if (options.queryKind === 'revisions')
+          return {
+            ...revisionsQuery,
+            data: revisionsQuery.data
+              ? {
+                  pages: revisionsQuery.data.pages.map((page) => ({
+                    data: page.items.flatMap((revision) =>
+                      revision ? [revisionApiResponse(revision)] : [],
+                    ),
+                    next_cursor: page.nextCursor ?? null,
+                  })),
+                }
+              : undefined,
+          }
+        if (options.queryKind === 'chunks')
+          return {
+            ...chunksQuery,
+            data: chunksQuery.data
+              ? {
+                  pages: chunksQuery.data.pages.map((page) => ({
+                    data: page.items.map(chunkApiResponse),
+                    next_cursor: page.nextCursor ?? null,
+                  })),
+                }
+              : undefined,
+          }
+        throw new Error(`Unexpected infinite query atom: ${options.queryKind ?? 'unknown'}`)
+      }),
     atomWithQuery: (
       getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
         queryKind?: string
@@ -353,6 +389,8 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
         get(versionAtom)
         const options = getOptions(get)
         if (options.queryKind === 'document') return { ...documentQuery }
+        if (options.queryKind === 'outline') return { ...outlineQuery }
+        if (options.queryKind === 'multimodal') return { ...multimodalQuery }
         throw new Error(`Unexpected query atom: ${options.queryKind ?? 'unknown'}`)
       }),
   }

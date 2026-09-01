@@ -1,6 +1,3 @@
-import type { KnowledgeFsDocumentMultimodalItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { DocumentRevisionChunk, LogicalDocument, LogicalDocumentRevision } from '../models'
-import type { DocumentContentBlock } from './model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,12 +9,23 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { DocumentMetadataCard } from '../metadata/card'
 import { chunkCharacterCount, placeDocumentMultimodalItems } from './model'
 import { DocumentMultimodalAsset } from './multimodal-asset'
+import {
+  documentChunksQueryIsFetchingNextPageAtom,
+  documentDetailChunksCompleteAtom,
+  documentDetailModelAtom,
+  documentDetailMultimodalItemsAtom,
+  documentDetailSelectedChunkIdAtom,
+} from './state/content'
+import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
+import { documentDetailDocumentAtom } from './state/queries'
+import { documentDetailRevisionAtom } from './state/revisions'
 import { useDocumentWriteAccess } from './workflow-context'
 
 const SELECTED_CHUNK_TOP_OFFSET = 8
@@ -115,19 +123,13 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function DocumentReadingPane({
-  contentBlocks,
-  isLoadingMore,
-  multimodalItems,
-  selectedChunkId,
-}: {
-  contentBlocks: DocumentContentBlock[]
-  isLoadingMore: boolean
-  multimodalItems: KnowledgeFsDocumentMultimodalItemResponse[]
-  selectedChunkId?: string
-}) {
+export function DocumentReadingPane() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const contentBlocks = useAtomValue(documentDetailModelAtom).contentBlocks
+  const isLoadingMore = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
+  const multimodalItems = useAtomValue(documentDetailMultimodalItemsAtom)
+  const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const contentChunks = useMemo(() => contentBlocks.map((block) => block.chunk), [contentBlocks])
   const multimodalPlacement = useMemo(
@@ -271,24 +273,16 @@ export function DocumentReadingPane({
   )
 }
 
-export function DocumentFactsSidebar({
-  chunksComplete,
-  controlSpaceId,
-  document,
-  indexChunks,
-  locale,
-  revision,
-}: {
-  chunksComplete: boolean
-  controlSpaceId: string
-  document: LogicalDocument
-  indexChunks: DocumentRevisionChunk[]
-  locale: string
-  revision?: Exclude<LogicalDocumentRevision, null>
-}) {
-  const { t } = useTranslation('dataset')
+export function DocumentFactsSidebar() {
+  const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { canEdit } = useDocumentWriteAccess()
+  const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
+  const controlSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
+  const document = useAtomValue(documentDetailDocumentAtom)
+  const indexChunks = useAtomValue(documentDetailModelAtom).indexChunks
+  const revision = useAtomValue(documentDetailRevisionAtom)
+  const locale = i18n.resolvedLanguage ?? i18n.language
   const characterCount = useMemo(
     () => indexChunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
     [indexChunks],

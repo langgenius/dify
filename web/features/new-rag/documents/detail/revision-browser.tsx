@@ -1,27 +1,23 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { createParser, parseAsString, useQueryStates } from 'nuqs'
-import { useEffect, useMemo } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
-import { documentRevisionListFromApi } from '../models'
-import { initialDocumentRevision } from './model'
 import { DocumentRevisionData } from './revision-content'
-import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
-import { documentDetailDocumentAtom } from './state/queries'
-
-const documentRevisionParser = createParser<number>({
-  parse: (value) => {
-    const revision = Number(value)
-    return Number.isInteger(revision) && revision > 0 ? revision : null
-  },
-  serialize: String,
-}).withOptions({ history: 'push' })
-const documentChunkParser = parseAsString.withOptions({ history: 'replace' })
+import { documentDetailRequestedRevisionAtom } from './state/inputs'
+import {
+  documentDetailEffectiveRevisionAtom,
+  documentDetailRevisionAtom,
+  documentRevisionsQueryErrorAtom,
+  documentRevisionsQueryHasNextPageAtom,
+  documentRevisionsQueryIsFetchingNextPageAtom,
+  documentRevisionsQueryIsFetchNextPageErrorAtom,
+  documentRevisionsQueryIsPendingAtom,
+  loadNextDocumentRevisionPageAtom,
+  retryDocumentRevisionsAtom,
+} from './state/revisions'
 
 function RevisionLoadingState() {
   const { t: tCommon } = useTranslation('common')
@@ -60,88 +56,51 @@ function RevisionErrorState({
 }
 
 export function DocumentRevisionBrowser() {
-  const { i18n, t } = useTranslation('dataset')
+  const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const document = useAtomValue(documentDetailDocumentAtom)
-  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const locale = i18n.resolvedLanguage ?? i18n.language
-  const [documentLocation, setDocumentLocation] = useQueryStates({
-    chunk: documentChunkParser,
-    revision: documentRevisionParser,
-  })
-  const { chunk: selectedChunkId, revision: selectedRevision } = documentLocation
-  const revisionsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.infiniteOptions(
-      {
-        input: (pageParam) => ({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            document_id: document.id,
-          },
-          query: {
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-        getNextPageParam: (lastPage) => lastPage.next_cursor,
-        initialPageParam: null as string | null,
-      },
-    ),
-  )
-  const { fetchNextPage, hasNextPage, isFetchNextPageError, isFetchingNextPage } = revisionsQuery
-  const revisions = useMemo(
-    () =>
-      revisionsQuery.data?.pages.flatMap((page) => documentRevisionListFromApi(page).items) ?? [],
-    [revisionsQuery.data],
-  )
-  const availableRevisions = useMemo(() => {
-    const byRevision = new Map(revisions.map((revision) => [revision.revision, revision]))
-    if (document.active) byRevision.set(document.active.revision, document.active)
-    return [...byRevision.values()].sort((left, right) => right.revision - left.revision)
-  }, [document.active, revisions])
-  const requestedRevision =
-    selectedRevision ?? initialDocumentRevision(document, availableRevisions)
-  const revision = availableRevisions.find((candidate) => candidate.revision === requestedRevision)
-  const effectiveRevision = revision?.revision
+  const requestedRevision = useAtomValue(documentDetailRequestedRevisionAtom)
+  const revision = useAtomValue(documentDetailRevisionAtom)
+  const effectiveRevision = useAtomValue(documentDetailEffectiveRevisionAtom)
+  const error = useAtomValue(documentRevisionsQueryErrorAtom)
+  const hasNextPage = useAtomValue(documentRevisionsQueryHasNextPageAtom)
+  const isFetchNextPageError = useAtomValue(documentRevisionsQueryIsFetchNextPageErrorAtom)
+  const isFetchingNextPage = useAtomValue(documentRevisionsQueryIsFetchingNextPageAtom)
+  const isPending = useAtomValue(documentRevisionsQueryIsPendingAtom)
+  const loadNextPage = useSetAtom(loadNextDocumentRevisionPageAtom)
+  const retryRevisions = useSetAtom(retryDocumentRevisionsAtom)
 
   useEffect(() => {
     if (
-      selectedRevision === null ||
+      requestedRevision === null ||
       revision ||
       !hasNextPage ||
       isFetchingNextPage ||
       isFetchNextPageError
     )
       return
-    void fetchNextPage()
+    void loadNextPage()
   }, [
-    fetchNextPage,
     hasNextPage,
     isFetchNextPageError,
     isFetchingNextPage,
+    loadNextPage,
+    requestedRevision,
     revision,
-    selectedRevision,
   ])
 
-  if (
-    selectedRevision !== null &&
-    !revision &&
-    (revisionsQuery.isPending || isFetchingNextPage || hasNextPage)
-  )
+  if (requestedRevision !== null && !revision && (isPending || isFetchingNextPage || hasNextPage))
     return <RevisionLoadingState />
 
-  if (selectedRevision !== null && !revision && revisionsQuery.error)
+  if (requestedRevision !== null && !revision && error)
     return (
       <RevisionErrorState
         description={t(($) => $['newKnowledge.documentRevisionsLoadError'])}
-        onRetry={() => {
-          if (isFetchNextPageError) void fetchNextPage()
-          else void revisionsQuery.refetch()
-        }}
+        onRetry={() => void retryRevisions()}
         title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
       />
     )
 
-  if (selectedRevision !== null && !revision)
+  if (requestedRevision !== null && !revision)
     return (
       <RevisionErrorState
         description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
@@ -149,13 +108,13 @@ export function DocumentRevisionBrowser() {
       />
     )
 
-  if (effectiveRevision === undefined && revisionsQuery.isPending) return <RevisionLoadingState />
+  if (effectiveRevision === undefined && isPending) return <RevisionLoadingState />
 
-  if (effectiveRevision === undefined && revisionsQuery.error)
+  if (effectiveRevision === undefined && error)
     return (
       <RevisionErrorState
         description={t(($) => $['newKnowledge.documentLoadErrorDescription'])}
-        onRetry={() => void revisionsQuery.refetch()}
+        onRetry={() => void retryRevisions()}
         title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
       />
     )
@@ -175,26 +134,18 @@ export function DocumentRevisionBrowser() {
 
   return (
     <>
-      {revisionsQuery.error && !revisionsQuery.isFetchNextPageError && (
+      {error && !isFetchNextPageError && (
         <div
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
         >
           <span>{t(($) => $['newKnowledge.documentRevisionsLoadError'])}</span>
-          <Button onClick={() => void revisionsQuery.refetch()}>
+          <Button onClick={() => void retryRevisions()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
       )}
-      <DocumentRevisionData
-        document={document}
-        effectiveRevision={effectiveRevision}
-        knowledgeSpaceId={knowledgeSpaceId}
-        locale={locale}
-        onSelectChunk={(chunkId) => void setDocumentLocation({ chunk: chunkId })}
-        revision={revision}
-        selectedChunkId={selectedChunkId ?? undefined}
-      />
+      <DocumentRevisionData />
     </>
   )
 }

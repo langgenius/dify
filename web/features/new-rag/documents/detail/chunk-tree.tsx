@@ -1,13 +1,26 @@
 'use client'
 
-import type { DocumentChunkTree } from './model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './model'
+import {
+  documentChunksQueryErrorAtom,
+  documentChunksQueryHasNextPageAtom,
+  documentChunksQueryIsFetchingNextPageAtom,
+  documentChunksQueryIsFetchNextPageErrorAtom,
+  documentChunksQueryIsPendingAtom,
+  documentDetailChunksAtom,
+  documentDetailModelAtom,
+  documentDetailSelectedChunkIdAtom,
+  loadNextDocumentChunkPageAtom,
+  retryDocumentChunksAtom,
+} from './state/content'
+import { selectDocumentChunkAtom } from './state/runtime'
 
 const VIRTUALIZATION_THRESHOLD = 80
 const TREE_ROW_SIZE = 30
@@ -51,33 +64,20 @@ function AutomaticChunkPageLoader({
   return <div ref={sentinelRef} aria-hidden className="h-px" />
 }
 
-export function DocumentChunkTreePanel({
-  chunkCount,
-  error,
-  fetchNextPage,
-  hasNextPage,
-  isFetchNextPageError,
-  isFetchingNextPage,
-  isPending,
-  onRetry,
-  onSelectChunk,
-  selectedChunkId,
-  tree,
-}: {
-  chunkCount: number
-  error: boolean
-  fetchNextPage: () => Promise<unknown>
-  hasNextPage: boolean
-  isFetchNextPageError: boolean
-  isFetchingNextPage: boolean
-  isPending: boolean
-  onRetry: () => void
-  onSelectChunk: (chunkId: string) => void
-  selectedChunkId?: string
-  tree: DocumentChunkTree
-}) {
+export function DocumentChunkTreePanel() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const chunkCount = useAtomValue(documentDetailChunksAtom).length
+  const error = Boolean(useAtomValue(documentChunksQueryErrorAtom))
+  const hasNextPage = useAtomValue(documentChunksQueryHasNextPageAtom)
+  const isFetchNextPageError = useAtomValue(documentChunksQueryIsFetchNextPageErrorAtom)
+  const isFetchingNextPage = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
+  const isPending = useAtomValue(documentChunksQueryIsPendingAtom)
+  const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
+  const tree = useAtomValue(documentDetailModelAtom).tree
+  const fetchNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
+  const retryChunks = useSetAtom(retryDocumentChunksAtom)
+  const selectChunk = useSetAtom(selectDocumentChunkAtom)
   const [expansionOverrides, setExpansionOverrides] = useState<{
     collapsed: Set<string>
     expanded: Set<string>
@@ -156,7 +156,7 @@ export function DocumentChunkTreePanel({
 
   const selectNode = (node: (typeof visibleNodes)[number]['node']) => {
     setSelectedNodeId(node.id)
-    onSelectChunk(node.targetChunkId)
+    void selectChunk(node.targetChunkId)
   }
 
   const handleTreeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -241,7 +241,7 @@ export function DocumentChunkTreePanel({
           role="alert"
         >
           <span>{t(($) => $['newKnowledge.documentChunksLoadError'])}</span>
-          <Button onClick={onRetry}>{tCommon(($) => $['operation.retry'])}</Button>
+          <Button onClick={() => void retryChunks()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
       {isPending ? (
@@ -254,7 +254,7 @@ export function DocumentChunkTreePanel({
           <p className="system-xs-regular text-text-destructive">
             {t(($) => $['newKnowledge.documentChunksLoadError'])}
           </p>
-          <Button className="mt-3" onClick={onRetry}>
+          <Button className="mt-3" onClick={() => void retryChunks()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
