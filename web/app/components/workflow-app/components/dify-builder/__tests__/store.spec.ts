@@ -1,5 +1,5 @@
 import type { DifyBuilderRuntime } from '../store'
-import type { SessionView } from '@/app/components/dify-builder/contract/types'
+import type { SessionView } from '@dify/contracts/dify-builder'
 import { createStore } from 'jotai'
 import {
   difyBuilderSessionBusyAtom,

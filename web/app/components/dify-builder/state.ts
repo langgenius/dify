@@ -1,4 +1,4 @@
-import type { SessionView } from './contract/types'
+import type { SessionView } from '@dify/contracts/dify-builder'
 import type { ProgressEntry } from './types'
 import { atom } from 'jotai'
 
