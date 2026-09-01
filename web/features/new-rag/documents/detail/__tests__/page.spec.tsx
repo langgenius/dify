@@ -1925,6 +1925,17 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('loads task document titles only while the task drawer is open', async () => {
+    const user = userEvent.setup()
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: false }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.viewTask' }))
+    expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: true }))
+  })
+
   it('cancels the active re-index task from the document header', async () => {
     const user = userEvent.setup()
     tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }

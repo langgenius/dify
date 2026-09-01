@@ -1,8 +1,8 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -12,14 +12,12 @@ import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setu
 import { newKnowledgeDocumentsPath } from '../../routes'
 import { useKnowledgeSpace } from '../../space/context'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
-import { logicalDocumentFromApi, logicalDocumentListFromApi } from '../models'
-import { ProcessingTasksDrawer } from '../tasks/drawer'
-import { createTaskProgressStore } from '../tasks/progress-store'
+import { logicalDocumentFromApi } from '../models'
 import { useDocumentReindex } from '../tasks/use-reindex'
 import { DocumentDetailHeader } from './header'
 import { responseStatus } from './model'
 import { DocumentRevisionBrowser } from './revision-browser'
-import { DocumentDetailStatus } from './status'
+import { DocumentTasksSurface } from './tasks-surface'
 
 const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 
@@ -57,11 +55,7 @@ export function DocumentDetailPage({
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
-  const [tasksDrawerOpen, setTasksDrawerOpen] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
-  const taskProgressStore = taskProgressStoreRef.current
   const {
     configureModelSetup,
     ensureModelReady,
@@ -99,19 +93,6 @@ export function DocumentDetailPage({
   const knowledgeSpaceTitle =
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
-  const taskDocumentsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
-      enabled: tasksDrawerOpen,
-      input: (pageParam) => ({
-        params: { control_space_id: knowledgeSpaceId },
-        query: {
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
-      }),
-      getNextPageParam: (lastPage) => lastPage.next_cursor,
-      initialPageParam: null as string | null,
-    }),
-  )
   const chunksQueryKey =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const documentActiveRevision =
@@ -165,20 +146,6 @@ export function DocumentDetailPage({
     reindexInProgress &&
     (submissionPending || latestTask?.canCancel !== false) &&
     !tasksError
-  const taskDocuments = useMemo(() => {
-    const documents =
-      taskDocumentsQuery.data?.pages.flatMap((page) => logicalDocumentListFromApi(page).items) ?? []
-    if (documentQuery.data && !documents.some((document) => document.id === documentQuery.data?.id))
-      return [documentQuery.data, ...documents]
-    return documents
-  }, [documentQuery.data, taskDocumentsQuery.data])
-  const taskDocumentIds = useMemo(
-    () => new Set(taskDocuments.map((document) => document.id)),
-    [taskDocuments],
-  )
-  const hasUnresolvedTaskDocuments = tasks.some(
-    (task) => task.documentId && !taskDocumentIds.has(task.documentId),
-  )
   const backPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const locale = i18n.resolvedLanguage ?? i18n.language
 
@@ -248,63 +215,30 @@ export function DocumentDetailPage({
         </p>
       )}
 
-      <DocumentDetailStatus
+      <DocumentTasksSurface
+        actionResultsValid={!documentMissing}
+        canEdit={canEdit}
         continueLookup={continueLookup}
+        currentDocument={document}
+        fetchNextTaskPage={fetchNextTaskPage}
+        hasNextTaskPage={Boolean(hasNextTaskPage)}
+        isFetchNextTaskPageError={isFetchNextTaskPageError}
+        isFetchingNextTaskPage={isFetchingNextTaskPage}
         isLookingUpTask={isLookingUpTask}
+        knowledgeSpaceId={knowledgeSpaceId}
         latestTask={latestTask}
         lookupExhausted={lookupExhausted}
         permissionRecoveryBusy={permissionRecoveryBusy}
         permissionRecoveryNeeded={permissionRecoveryNeeded}
-        refetchTasks={() => void refetchTasks()}
-        retryWritePermission={retryWritePermission}
+        refetchDocument={documentQuery.refetch}
+        refetchTasks={refetchTasks}
         reindexInProgress={reindexInProgress}
-        tasksError={Boolean(tasksError)}
-        titleRef={titleRef}
-        onViewTasks={() => setTasksDrawerOpen(true)}
-      />
-
-      <ProcessingTasksDrawer
-        actionResultsValid={!documentMissing}
-        canEdit={canEdit}
-        documentQueryError={Boolean(taskDocumentsQuery.error)}
-        documentQueryFetching={taskDocumentsQuery.isFetching}
-        documents={taskDocuments}
-        documentsPending={Boolean(taskDocumentsQuery.isPending || taskDocumentsQuery.hasNextPage)}
-        hasNextDocumentPage={Boolean(taskDocumentsQuery.hasNextPage)}
-        hasNextTaskPage={Boolean(hasNextTaskPage)}
-        hasUnresolvedTaskDocuments={hasUnresolvedTaskDocuments}
-        isFetchingNextDocumentPage={taskDocumentsQuery.isFetchingNextPage}
-        isFetchingNextTaskPage={isFetchingNextTaskPage}
-        knowledgeSpaceId={knowledgeSpaceId}
-        onLoadMoreDocuments={() => void taskDocumentsQuery.fetchNextPage()}
-        onLoadMoreTasks={() => void fetchNextTaskPage()}
-        onOpenChange={setTasksDrawerOpen}
-        onRefreshDocumentsAndTasks={() => {
-          void Promise.all([documentQuery.refetch(), taskDocumentsQuery.refetch(), refetchTasks()])
-        }}
-        onRetryDocumentQuery={() => {
-          if (taskDocumentsQuery.isFetchNextPageError) void taskDocumentsQuery.fetchNextPage()
-          else void taskDocumentsQuery.refetch()
-        }}
-        onRetryPermissionQuery={() => void retryWritePermission()}
-        onRetryTaskQuery={() => {
-          if (isFetchNextTaskPageError) void fetchNextTaskPage()
-          else void refetchTasks()
-        }}
-        onTaskUpdated={() => void refetchTasks()}
-        onWritePermissionDenied={() => void retryWritePermission()}
-        open={tasksDrawerOpen}
-        permissionQueryError={false}
-        permissionQueryFetching={permissionRecoveryBusy}
-        permissionQueryPending={false}
-        readOnlyReason={
-          canEdit ? undefined : t(($) => $['newKnowledge.documentPermissionRestricted'])
-        }
-        taskProgressStore={taskProgressStore}
-        taskQueryError={Boolean(tasksError)}
+        retryWritePermission={retryWritePermission}
         taskQueryFetching={tasksFetching}
         taskQueryPending={tasksPending}
         tasks={tasks}
+        tasksError={tasksError}
+        titleRef={titleRef}
       />
 
       <DocumentRevisionBrowser
