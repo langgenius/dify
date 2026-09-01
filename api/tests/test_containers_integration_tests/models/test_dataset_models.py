@@ -49,7 +49,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.total_documents == 3
+        assert dataset.get_total_documents(session=db_session_with_containers) == 3
 
     def test_dataset_available_documents_count(self, db_session_with_containers: Session) -> None:
         """Test dataset can count available documents."""
@@ -104,7 +104,7 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.add_all([doc_available, doc_pending, doc_disabled])
         db_session_with_containers.flush()
 
-        assert dataset.total_available_documents == 1
+        assert dataset.get_total_available_documents(session=db_session_with_containers) == 1
 
     def test_dataset_word_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test dataset can aggregate word count from documents."""
