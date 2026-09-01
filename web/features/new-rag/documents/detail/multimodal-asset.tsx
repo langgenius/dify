@@ -86,13 +86,13 @@ export function DocumentMultimodalAsset({
 
   return (
     <figure
-      className="overflow-hidden rounded-xl border border-divider-subtle bg-background-section"
+      className="w-fit max-w-full overflow-hidden rounded-xl border border-divider-subtle bg-background-section"
       data-testid={`document-multimodal-${item.id}`}
     >
       {source ? (
         <img
           alt={label || t(($) => $['newKnowledge.documentImageAlt'])}
-          className="max-h-[36rem] w-full bg-background-default object-contain"
+          className="block h-auto max-h-[36rem] max-w-full bg-background-default object-contain"
           decoding="async"
           loading="lazy"
           onError={handleError}
@@ -106,7 +106,7 @@ export function DocumentMultimodalAsset({
           <span aria-hidden className="i-ri-loader-4-line size-5 animate-spin" />
         </div>
       ) : (
-        <div className="flex min-h-32 flex-col items-center justify-center gap-2 px-4 py-6 text-center text-text-tertiary">
+        <div className="flex min-h-20 w-56 max-w-full flex-col items-center justify-center gap-1 px-3 py-4 text-center text-text-tertiary">
           <span aria-hidden className="i-ri-image-line size-6" />
           <span className="system-xs-regular">
             {t(($) => $['newKnowledge.documentImageUnavailable'])}
