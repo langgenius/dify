@@ -40,6 +40,7 @@ import {
   retryDocumentTasksAtom,
   retryDocumentWritePermissionAtom,
 } from '../detail/state/workflow'
+import { useRefreshDocumentWritePermission } from '../detail/write-permission'
 import { taskCanCancel, taskCanRetry, taskIsActive, taskVersionIsAfter } from '../model'
 import { backgroundTaskFromApi, logicalDocumentListFromApi } from '../models'
 import {
@@ -90,6 +91,7 @@ export function DocumentDetailTasksDrawer({
   const refreshTasks = useSetAtom(refreshDocumentTasksAtom)
   const retryTasks = useSetAtom(retryDocumentTasksAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
+  const refreshWritePermission = useRefreshDocumentWritePermission()
   const documentsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
       enabled: open,
@@ -319,7 +321,7 @@ export function DocumentDetailTasksDrawer({
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
       const permissionDenied = responseStatus(error) === 403
-      if (permissionDenied) void retryWritePermission()
+      if (permissionDenied) void retryWritePermission(refreshWritePermission)
       if (
         !permissionDenied &&
         openRef.current &&

@@ -1,10 +1,12 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useHydrateAtoms } from 'jotai/utils'
+import { useEffect } from 'react'
 import { useKnowledgeSpace } from '../../space/context'
 import {
+  documentHasEditPermissionAtom,
   documentLatestTaskAtom,
   documentSubmissionPendingAtom,
   documentSubmittedJobMissingAtom,
@@ -14,7 +16,6 @@ import {
   documentTasksQueryIsFetchingNextPageAtom,
   documentTasksQueryIsPendingAtom,
   documentWorkflowInitializedAtom,
-  documentWorkflowRuntimeAtom,
   initializeDocumentWorkflowAtom,
   loadNextDocumentTaskPageAtom,
   persistDocumentWorkflowAtom,
@@ -22,28 +23,11 @@ import {
   reconcileSubmittedDocumentJobAtom,
 } from './state/workflow'
 
-export function DocumentWorkflowController() {
-  const { t } = useTranslation('dataset')
-  const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
-  const runtime = useMemo(
-    () => ({
-      hasEditPermission: space.permission_keys.includes('knowledge_space_document_write'),
-      messages: {
-        actionFailed: t(($) => $['newKnowledge.taskActionFailed']),
-        documentMissing: t(($) => $['newKnowledge.documentNotFoundTitle']),
-        reindexFailed: t(($) => $['newKnowledge.documentsReindexFailed']),
-        reindexStarted: t(($) => $['newKnowledge.documentsReindexStarted']),
-      },
-      refreshWritePermission: async () =>
-        Boolean(
-          (await refetchKnowledgeSpace())?.permission_keys.includes(
-            'knowledge_space_document_write',
-          ),
-        ),
-    }),
-    [refetchKnowledgeSpace, space.permission_keys, t],
-  )
-  const setWorkflowRuntime = useSetAtom(documentWorkflowRuntimeAtom)
+export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) {
+  const { space } = useKnowledgeSpace()
+  const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
+  useHydrateAtoms([[documentHasEditPermissionAtom, hasEditPermission]])
+  const setHasEditPermission = useSetAtom(documentHasEditPermissionAtom)
 
   const initialized = useAtomValue(documentWorkflowInitializedAtom)
   const latestTask = useAtomValue(documentLatestTaskAtom)
@@ -61,8 +45,8 @@ export function DocumentWorkflowController() {
   const reconcileSubmittedJob = useSetAtom(reconcileSubmittedDocumentJobAtom)
 
   useEffect(() => {
-    setWorkflowRuntime(runtime)
-  }, [runtime, setWorkflowRuntime])
+    setHasEditPermission(hasEditPermission)
+  }, [hasEditPermission, setHasEditPermission])
 
   useEffect(() => {
     initializeWorkflow()
@@ -93,5 +77,5 @@ export function DocumentWorkflowController() {
     taskIsPending,
   ])
 
-  return null
+  return children
 }

@@ -15,6 +15,7 @@ import {
   retryDocumentTasksAtom,
   retryDocumentWritePermissionAtom,
 } from './state/workflow'
+import { useRefreshDocumentWritePermission } from './write-permission'
 
 function focusDocumentDetailTitle() {
   document.getElementById(DOCUMENT_DETAIL_TITLE_ID)?.focus()
@@ -113,6 +114,7 @@ export function DocumentPermissionRecoveryNotice() {
   const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
   const permissionRecoveryNeeded = useAtomValue(documentPermissionRecoveryNeededAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
+  const refreshWritePermission = useRefreshDocumentWritePermission()
   const permissionRetryRef = useRef<HTMLButtonElement>(null)
   const permissionRecoveryWasNeededRef = useRef(false)
 
@@ -135,7 +137,7 @@ export function DocumentPermissionRecoveryNotice() {
         disabled={permissionRecoveryBusy}
         loading={permissionRecoveryBusy}
         onClick={() =>
-          void retryWritePermission().then((recovered) => {
+          void retryWritePermission(refreshWritePermission).then((recovered) => {
             if (recovered) focusDocumentDetailTitle()
             else permissionRetryRef.current?.focus()
           })

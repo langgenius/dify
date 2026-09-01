@@ -1,5 +1,5 @@
 import type { Getter, Setter } from 'jotai'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { RefreshDocumentWritePermission } from '../write-permission'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import {
@@ -45,31 +45,7 @@ type DocumentWorkflowState = {
   writePermissionRevoked: boolean
 }
 
-type DocumentWorkflowRuntime = {
-  hasEditPermission: boolean
-  messages: {
-    actionFailed: string
-    documentMissing: string
-    reindexFailed: string
-    reindexStarted: string
-  }
-  refreshWritePermission: () => Promise<boolean>
-}
-
-function unavailableRuntime(): never {
-  throw new Error('Document workflow runtime is unavailable')
-}
-
-export const documentWorkflowRuntimeAtom = atom<DocumentWorkflowRuntime>({
-  hasEditPermission: false,
-  messages: {
-    actionFailed: '',
-    documentMissing: '',
-    reindexFailed: '',
-    reindexStarted: '',
-  },
-  refreshWritePermission: async () => unavailableRuntime(),
-})
+export const documentHasEditPermissionAtom = atom(false)
 
 function workflowIdentity(get: Getter) {
   return `${get(documentDetailKnowledgeSpaceIdAtom)}:${get(documentDetailDocumentIdAtom)}`
@@ -349,11 +325,15 @@ async function invalidateDocumentWorkflow(get: Getter) {
   ])
 }
 
-async function retryWritePermission(get: Getter, set: Setter) {
+async function retryWritePermission(
+  get: Getter,
+  set: Setter,
+  refreshWritePermission: RefreshDocumentWritePermission,
+) {
   if (workflowState(get).permissionRecoveryBusy) return false
   updateWorkflowState(get, set, (state) => ({ ...state, permissionRecoveryBusy: true }))
   try {
-    const granted = await get(documentWorkflowRuntimeAtom).refreshWritePermission()
+    const granted = await refreshWritePermission()
     updateWorkflowState(get, set, (state) => ({
       ...state,
       permissionRecoveryNeeded: !granted,
@@ -464,90 +444,97 @@ export const retryDocumentTasksAtom = atom(null, (get) => {
 
 export const refreshDocumentTasksAtom = atom(null, (get) => get(documentTasksQueryAtom).refetch())
 
-export const retryDocumentWritePermissionAtom = atom(null, retryWritePermission)
+export const retryDocumentWritePermissionAtom = atom(
+  null,
+  (get, set, refreshWritePermission: RefreshDocumentWritePermission) =>
+    retryWritePermission(get, set, refreshWritePermission),
+)
 
-export const reindexDocumentAtom = atom(null, async (get, set) => {
-  const state = workflowState(get)
-  if (state.reindexBusy) return
-  updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: true }))
-  const document = get(documentDetailDocumentAtom)
-  const activeRevision = document.activeRevision ?? document.active?.revision ?? 0
-  try {
-    const result = await get(reindexDocumentMutationAtom).mutateAsync({
-      body: { documentIds: [get(documentDetailDocumentIdAtom)] },
-      params: { control_space_id: get(documentDetailKnowledgeSpaceIdAtom) },
-    })
-    const item = result.items[0]
-    if (!item || item.status === 'not_found') {
-      updateWorkflowState(get, set, (current) => ({ ...current, documentMissing: true }))
-      const queryClient = get(queryClientAtom)
-      const documentQueryKey = workflowQueryKeys(get).document
-      queryClient.removeQueries({ queryKey: documentQueryKey })
-      await queryClient.invalidateQueries({ queryKey: documentQueryKey })
-      toast.error(get(documentWorkflowRuntimeAtom).messages.documentMissing)
-      return
+export const reindexDocumentAtom = atom(
+  null,
+  async (get, set, refreshWritePermission: RefreshDocumentWritePermission) => {
+    const state = workflowState(get)
+    if (state.reindexBusy) return 'unavailable' as const
+    updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: true }))
+    const document = get(documentDetailDocumentAtom)
+    const activeRevision = document.activeRevision ?? document.active?.revision ?? 0
+    try {
+      const result = await get(reindexDocumentMutationAtom).mutateAsync({
+        body: { documentIds: [get(documentDetailDocumentIdAtom)] },
+        params: { control_space_id: get(documentDetailKnowledgeSpaceIdAtom) },
+      })
+      const item = result.items[0]
+      if (!item || item.status === 'not_found') {
+        updateWorkflowState(get, set, (current) => ({ ...current, documentMissing: true }))
+        const queryClient = get(queryClientAtom)
+        const documentQueryKey = workflowQueryKeys(get).document
+        queryClient.removeQueries({ queryKey: documentQueryKey })
+        await queryClient.invalidateQueries({ queryKey: documentQueryKey })
+        return 'document-missing' as const
+      }
+      const taskId =
+        typeof item.compilation_job?.id === 'string' ? item.compilation_job.id : undefined
+      if (!taskId) throw new Error('Re-index response did not include a compilation task id')
+      const latestTask = get(documentLatestTaskAtom)
+      updateWorkflowState(get, set, (current) => ({
+        ...current,
+        submittedReindex: {
+          baselineRevision: Math.max(
+            activeRevision,
+            latestTask?.documentRevision ?? activeRevision,
+          ),
+          taskId,
+        },
+      }))
+      await invalidateDocumentWorkflow(get)
+      return 'started' as const
+    } catch (error) {
+      if (responseStatus(error) === 403) {
+        updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
+        await retryWritePermission(get, set, refreshWritePermission)
+      }
+      return 'failed' as const
+    } finally {
+      updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: false }))
     }
-    const taskId =
-      typeof item.compilation_job?.id === 'string' ? item.compilation_job.id : undefined
-    if (!taskId) throw new Error('Re-index response did not include a compilation task id')
-    const latestTask = get(documentLatestTaskAtom)
-    updateWorkflowState(get, set, (current) => ({
-      ...current,
-      submittedReindex: {
-        baselineRevision: Math.max(activeRevision, latestTask?.documentRevision ?? activeRevision),
-        taskId,
-      },
-    }))
-    await invalidateDocumentWorkflow(get)
-    toast.success(get(documentWorkflowRuntimeAtom).messages.reindexStarted)
-  } catch (error) {
-    if (responseStatus(error) === 403) {
-      updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
-      await retryWritePermission(get, set)
-    }
-    toast.error(get(documentWorkflowRuntimeAtom).messages.reindexFailed)
-  } finally {
-    updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: false }))
-  }
-})
+  },
+)
 
-export const cancelDocumentReindexAtom = atom(null, async (get, set) => {
-  const state = workflowState(get)
-  const task = get(documentLatestTaskAtom)
-  const taskId = state.submittedReindex?.taskId ?? task?.id
-  if (
-    state.cancelBusy ||
-    !taskId ||
-    (!state.submittedReindex &&
-      (!task || !documentTaskIsActive(task.state) || task.canCancel === false))
-  )
-    return false
-  updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: true }))
-  try {
-    await get(cancelTaskMutationAtom).mutateAsync({
-      params: {
-        control_space_id: get(documentDetailKnowledgeSpaceIdAtom),
-        task_id: taskId,
-        task_kind: task?.id === taskId ? (task.taskKind ?? 'document') : 'document',
-      },
-    })
-    updateWorkflowState(get, set, (current) => ({ ...current, submittedReindex: undefined }))
-    await invalidateDocumentWorkflow(get)
-    return true
-  } catch (error) {
-    if (responseStatus(error) === 403) {
-      updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
-      await retryWritePermission(get, set)
+export const cancelDocumentReindexAtom = atom(
+  null,
+  async (get, set, refreshWritePermission: RefreshDocumentWritePermission) => {
+    const state = workflowState(get)
+    const task = get(documentLatestTaskAtom)
+    const taskId = state.submittedReindex?.taskId ?? task?.id
+    if (
+      state.cancelBusy ||
+      !taskId ||
+      (!state.submittedReindex &&
+        (!task || !documentTaskIsActive(task.state) || task.canCancel === false))
+    )
+      return 'unavailable' as const
+    updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: true }))
+    try {
+      await get(cancelTaskMutationAtom).mutateAsync({
+        params: {
+          control_space_id: get(documentDetailKnowledgeSpaceIdAtom),
+          task_id: taskId,
+          task_kind: task?.id === taskId ? (task.taskKind ?? 'document') : 'document',
+        },
+      })
+      updateWorkflowState(get, set, (current) => ({ ...current, submittedReindex: undefined }))
+      await invalidateDocumentWorkflow(get)
+      return 'canceled' as const
+    } catch (error) {
+      if (responseStatus(error) === 403) {
+        updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
+        await retryWritePermission(get, set, refreshWritePermission)
+      }
+      return 'failed' as const
+    } finally {
+      updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: false }))
     }
-    toast.error(get(documentWorkflowRuntimeAtom).messages.actionFailed)
-    return false
-  } finally {
-    updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: false }))
-  }
-})
-
-export const documentHasEditPermissionAtom = atom(
-  (get) => get(documentWorkflowRuntimeAtom).hasEditPermission,
+  },
 )
 export const documentCanEditAtom = atom(
   (get) => get(documentHasEditPermissionAtom) && !workflowState(get).writePermissionRevoked,
