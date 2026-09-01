@@ -15,7 +15,7 @@ from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, 
 from core.dify_builder.models import Action, Actor
 from extensions.ext_database import db
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from services.dify_builder import session_lock
+from services.dify_builder import progress_bus, session_lock
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService, SessionView
 from tasks.dify_builder_advance_task import advance_session
@@ -39,7 +39,7 @@ def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
 
 def build_service() -> DifyBuilderService:
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
-    return DifyBuilderService(repo, session_lock, _enqueue)
+    return DifyBuilderService(repo, session_lock, _enqueue, subscribe_fn=progress_bus.subscribe)
 
 
 def session_view_to_dict(view: SessionView) -> dict:
