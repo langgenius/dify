@@ -9,7 +9,7 @@ import { consoleQuery } from '@/service/client'
 import { logicalDocumentListFromApi } from '../models'
 import { ProcessingTasksDrawer } from '../tasks/drawer'
 import { createTaskProgressStore } from '../tasks/progress-store'
-import { DocumentDetailStatus } from './status'
+import { DocumentPermissionRecoveryNotice, DocumentTaskNotices } from './status'
 import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
 
 export function DocumentTasksSurface({
@@ -25,23 +25,17 @@ export function DocumentTasksSurface({
 }) {
   const { t } = useTranslation('dataset')
   const {
-    continueLookup,
     fetchNextPage,
     hasNextPage,
     isFetchNextPageError,
     isFetching,
     isFetchingNextPage,
-    isLookingUp,
     isPending,
-    latestTask,
-    lookupExhausted,
     refetch,
-    reindexInProgress,
     tasks,
     tasksError,
   } = useDocumentTaskWorkflow()
-  const { canEdit, permissionRecoveryBusy, permissionRecoveryNeeded, retryWritePermission } =
-    useDocumentWriteAccess()
+  const { canEdit, permissionRecoveryBusy, retryWritePermission } = useDocumentWriteAccess()
   const [open, setOpen] = useState(false)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
@@ -72,20 +66,8 @@ export function DocumentTasksSurface({
 
   return (
     <>
-      <DocumentDetailStatus
-        continueLookup={continueLookup}
-        isLookingUpTask={isLookingUp}
-        latestTask={latestTask}
-        lookupExhausted={lookupExhausted}
-        permissionRecoveryBusy={permissionRecoveryBusy}
-        permissionRecoveryNeeded={permissionRecoveryNeeded}
-        refetchTasks={() => void refetch()}
-        reindexInProgress={reindexInProgress}
-        retryWritePermission={retryWritePermission}
-        tasksError={Boolean(tasksError)}
-        titleRef={titleRef}
-        onViewTasks={() => setOpen(true)}
-      />
+      <DocumentTaskNotices titleRef={titleRef} onViewTasks={() => setOpen(true)} />
+      <DocumentPermissionRecoveryNotice titleRef={titleRef} />
       <ProcessingTasksDrawer
         actionResultsValid
         canEdit={canEdit}

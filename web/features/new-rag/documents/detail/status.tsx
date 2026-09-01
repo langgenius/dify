@@ -1,46 +1,27 @@
 import type { RefObject } from 'react'
-import type { DocumentProcessingTask } from '../models'
 import { Button } from '@langgenius/dify-ui/button'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
 
-export function DocumentDetailStatus({
-  continueLookup,
-  isLookingUpTask,
-  latestTask,
-  lookupExhausted,
-  permissionRecoveryBusy,
-  permissionRecoveryNeeded,
-  refetchTasks,
-  retryWritePermission,
-  reindexInProgress,
-  tasksError,
+export function DocumentTaskNotices({
   titleRef,
   onViewTasks,
 }: {
-  continueLookup: () => void
-  isLookingUpTask: boolean
-  latestTask?: DocumentProcessingTask
-  lookupExhausted: boolean
-  permissionRecoveryBusy: boolean
-  permissionRecoveryNeeded: boolean
-  refetchTasks: () => void
-  retryWritePermission: () => Promise<boolean>
-  reindexInProgress: boolean
-  tasksError: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
   onViewTasks: () => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const permissionRetryRef = useRef<HTMLButtonElement>(null)
-  const permissionRecoveryWasNeededRef = useRef(false)
-
-  useEffect(() => {
-    if (permissionRecoveryNeeded && !permissionRecoveryWasNeededRef.current)
-      requestAnimationFrame(() => permissionRetryRef.current?.focus())
-    permissionRecoveryWasNeededRef.current = permissionRecoveryNeeded
-  }, [permissionRecoveryNeeded])
+  const {
+    continueLookup,
+    isLookingUp: isLookingUpTask,
+    latestTask,
+    lookupExhausted,
+    refetch,
+    reindexInProgress,
+    tasksError,
+  } = useDocumentTaskWorkflow()
 
   return (
     <>
@@ -82,29 +63,7 @@ export function DocumentDetailStatus({
           role="alert"
         >
           <span>{t(($) => $['newKnowledge.tasksErrorDescription'])}</span>
-          <Button onClick={refetchTasks}>{tCommon(($) => $['operation.retry'])}</Button>
-        </div>
-      )}
-
-      {permissionRecoveryNeeded && (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-          role="alert"
-        >
-          <span>{t(($) => $['newKnowledge.documentPermissionRestricted'])}</span>
-          <Button
-            ref={permissionRetryRef}
-            disabled={permissionRecoveryBusy}
-            loading={permissionRecoveryBusy}
-            onClick={() =>
-              void retryWritePermission().then((recovered) => {
-                if (recovered) titleRef.current?.focus()
-                else permissionRetryRef.current?.focus()
-              })
-            }
-          >
-            {tCommon(($) => $['operation.retry'])}
-          </Button>
+          <Button onClick={() => void refetch()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
 
@@ -137,5 +96,48 @@ export function DocumentDetailStatus({
         </div>
       )}
     </>
+  )
+}
+
+export function DocumentPermissionRecoveryNotice({
+  titleRef,
+}: {
+  titleRef: RefObject<HTMLHeadingElement | null>
+}) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const { permissionRecoveryBusy, permissionRecoveryNeeded, retryWritePermission } =
+    useDocumentWriteAccess()
+  const permissionRetryRef = useRef<HTMLButtonElement>(null)
+  const permissionRecoveryWasNeededRef = useRef(false)
+
+  useEffect(() => {
+    if (permissionRecoveryNeeded && !permissionRecoveryWasNeededRef.current)
+      requestAnimationFrame(() => permissionRetryRef.current?.focus())
+    permissionRecoveryWasNeededRef.current = permissionRecoveryNeeded
+  }, [permissionRecoveryNeeded])
+
+  if (!permissionRecoveryNeeded) return null
+
+  return (
+    <div
+      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
+      role="alert"
+    >
+      <span>{t(($) => $['newKnowledge.documentPermissionRestricted'])}</span>
+      <Button
+        ref={permissionRetryRef}
+        disabled={permissionRecoveryBusy}
+        loading={permissionRecoveryBusy}
+        onClick={() =>
+          void retryWritePermission().then((recovered) => {
+            if (recovered) titleRef.current?.focus()
+            else permissionRetryRef.current?.focus()
+          })
+        }
+      >
+        {tCommon(($) => $['operation.retry'])}
+      </Button>
+    </div>
   )
 }
