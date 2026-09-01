@@ -348,7 +348,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
+                "controllers.console.workspace.members.SystemFeatureService.get_license",
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
@@ -382,7 +382,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 0)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
+                "controllers.console.workspace.members.SystemFeatureService.get_license",
                 return_value=license_info,
             ) as mock_get_license,
             patch(
@@ -419,7 +419,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
+                "controllers.console.workspace.members.SystemFeatureService.get_license",
                 return_value=license_info,
             ) as mock_get_license,
             patch(
@@ -455,7 +455,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
+                "controllers.console.workspace.members.SystemFeatureService.get_license",
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
@@ -489,7 +489,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
+                "controllers.console.workspace.members.SystemFeatureService.get_license",
                 return_value=license_info,
             ),
             patch(
