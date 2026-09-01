@@ -219,11 +219,13 @@ def mock_app_model():
 
 
 @pytest.fixture
-def mock_end_user():
+def mock_end_user(mock_app_model):
     from models import EndUser
 
     user = EndUser(
         id=str(uuid.uuid4()),
+        tenant_id=mock_app_model.tenant_id,
+        app_id=mock_app_model.id,
     )
     return user
 
@@ -262,7 +264,7 @@ class TestFileApiPost:
         mock_upload.original_url = None
         mock_upload.reference = None
         mock_upload.user_id = None
-        mock_upload.tenant_id = mock_app_model.tenant_id
+        mock_upload.tenant_id = mock_end_user.tenant_id
         mock_upload.conversation_id = None
         mock_upload.file_key = None
         file_service = mock_application_services.return_value.files
@@ -286,13 +288,12 @@ class TestFileApiPost:
         assert status == 201
         assert response["id"] == mock_upload.id
         assert response["name"] == "test.pdf"
-        assert response["tenant_id"] == mock_app_model.tenant_id
+        assert response["tenant_id"] == mock_end_user.tenant_id
         file_service.upload_file.assert_called_once_with(
             filename="test.pdf",
             content=b"file content",
             mimetype="application/pdf",
             user=mock_end_user,
-            tenant_id=mock_app_model.tenant_id,
         )
 
     def test_upload_no_file(self, app: Flask, mock_app_model, mock_end_user):

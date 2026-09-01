@@ -83,7 +83,6 @@ class FileApi(Resource):
                 content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=end_user,
-                tenant_id=app_model.tenant_id,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
