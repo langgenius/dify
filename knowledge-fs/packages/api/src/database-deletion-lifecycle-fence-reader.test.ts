@@ -78,6 +78,7 @@ describe.each(["postgres", "tidb"] as const)(
         expect(calls[0]?.sql).toContain("$3::uuid IS NOT NULL");
         expect(calls[0]?.sql).toContain("$4::uuid IS NOT NULL");
         expect(calls[0]?.sql).toContain("$5::uuid IS NOT NULL");
+        expect(calls[0]?.sql.match(/\(/gu)).toHaveLength(calls[0]?.sql.match(/\)/gu)?.length ?? 0);
       }
       expect(calls[0]?.sql).toContain("'knowledge_space'");
       expect(calls[0]?.sql).toContain("'source'");
