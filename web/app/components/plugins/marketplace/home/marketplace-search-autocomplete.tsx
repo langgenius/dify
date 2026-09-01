@@ -321,7 +321,7 @@ export function MarketplaceSearchAutocomplete({
         }}
         open={isPopupOpen}
         openOnInputClick
-        submitOnItemClick={Boolean(inputName)}
+        submitOnItemClick={Boolean(inputName) && !onSuggestionSelect}
         value={value}
       >
         <AutocompleteInputGroup size="large">

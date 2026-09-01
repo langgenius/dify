@@ -18,7 +18,6 @@ import HomeHero from '../home/home-hero'
 import HomeSearch from '../home/home-search'
 import { HomeShell } from '../home/home-shell'
 import styles from '../home/home-sticky.module.css'
-import MarketplaceLiveSearch from '../home/marketplace-live-search'
 import { GRID_CLASS } from '../list/collection-constants'
 import TemplateCard from './template-card'
 import TemplateCategoryNavigation from './template-category-navigation'
@@ -217,17 +216,7 @@ export async function EmbeddedTemplatesMarketplace({
           subtitle={tExplore(($) => $['apps.description'], { ns: 'explore' })}
         />
       }
-      search={
-        <HomeSearch enableSearchShortcut={false}>
-          <MarketplaceLiveSearch
-            action={category === 'all' ? '/templates' : `/templates/${category}`}
-            className="w-full"
-            placeholder={tApp(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
-            preserveParams={selectedLanguages.length ? { languages: selectedLanguages } : undefined}
-            query={query}
-          />
-        </HomeSearch>
-      }
+      search={<HomeSearch enableSearchShortcut={false} />}
       navigation={
         <HomeCatalogNavigation
           isMarketplacePlatform={false}
