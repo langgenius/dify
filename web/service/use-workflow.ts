@@ -1,3 +1,4 @@
+import type { WorkflowPublishResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -136,7 +137,7 @@ export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
-      post<CommonResponse & { created_at: number }>(params.url, {
+      post<WorkflowPublishResponse>(params.url, {
         body: {
           marked_name: params.title,
           marked_comment: params.releaseNotes,

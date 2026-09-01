@@ -722,11 +722,22 @@ export const zPublishWorkflowPayload = z.object({
 })
 
 /**
+ * WorkflowVariableReferenceWarningResponse
+ */
+export const zWorkflowVariableReferenceWarningResponse = z.object({
+  node_id: z.string(),
+  node_title: z.string(),
+  referenced_node_id: z.string(),
+  referenced_node_title: z.string(),
+})
+
+/**
  * WorkflowPublishResponse
  */
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
+  variable_reference_warnings: z.array(zWorkflowVariableReferenceWarningResponse).nullish(),
 })
 
 /**

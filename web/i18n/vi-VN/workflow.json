@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "Chia sẻ ứng dụng này với cộng đồng",
   "common.publishToMarketplaceFailed": "Xuất bản lên Marketplace thất bại",
   "common.publishUpdate": "Cập nhật xuất bản",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "Đã xuất bản",
   "common.publishedAt": "Đã xuất bản lúc",
   "common.publishedBy": "Đã xuất bản {{time}} bởi {{author}}",

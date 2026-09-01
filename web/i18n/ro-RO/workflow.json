@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "Distribuie această aplicație comunității",
   "common.publishToMarketplaceFailed": "Eroare la publicarea pe Marketplace",
   "common.publishUpdate": "Publicați actualizarea",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "Publicat",
   "common.publishedAt": "Publicat la",
   "common.publishedBy": "Publicat {{time}} de {{author}}",

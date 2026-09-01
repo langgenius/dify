@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "Bu uygulamayı toplulukla paylaş",
   "common.publishToMarketplaceFailed": "Pazar Yeri'nde yayınlanamadı",
   "common.publishUpdate": "Güncellemeyi Yayınla",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "Yayınlandı",
   "common.publishedAt": "Yayınlandı",
   "common.publishedBy": "{{author}} tarafından {{time}} yayınlandı",

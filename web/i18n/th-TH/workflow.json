@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "แชร์แอปนี้กับชุมชน",
   "common.publishToMarketplaceFailed": "เผยแพร่ไปยัง Marketplace ล้มเหลว",
   "common.publishUpdate": "เผยแพร่การอัปเดต",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "เผย แพร่",
   "common.publishedAt": "เผย แพร่",
   "common.publishedBy": "เผยแพร่เมื่อ {{time}} โดย {{author}}",

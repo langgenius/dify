@@ -34,6 +34,7 @@ import {
   usePublishWorkflow,
   useResetWorkflowVersionHistory,
 } from '@/service/use-workflow'
+import { formatVariableReferenceWarningPairs } from './format-variable-reference-warning'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -173,6 +174,20 @@ const FeaturesTrigger = () => {
         })
         if (res) {
           toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          if (res.variable_reference_warnings?.length) {
+            toast.warning(
+              t(($) => $['common.publishUnsafeVariableReference'], {
+                ns: 'workflow',
+                count: res.variable_reference_warnings.length,
+                pairs: formatVariableReferenceWarningPairs(res.variable_reference_warnings, (overflow) =>
+                  t(($) => $['common.publishUnsafeVariableReferenceMore'], {
+                    ns: 'workflow',
+                    count: overflow,
+                  }),
+                ),
+              }),
+            )
+          }
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)

@@ -574,12 +574,49 @@ describe('FeaturesTrigger', () => {
           type: 'success',
           message: 'common.api.actionSuccess',
         })
+        expect(toastMocks.call).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'warning',
+          }),
+        )
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',
           }),
         )
+      })
+    })
+
+    it('should toast unsafe variable references after a successful publish', async () => {
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([{ id: 'start', data: { type: BlockEnum.Start } }])
+      mockUseEdges.mockReturnValue([{ source: 'start' }])
+      mockPublishWorkflow.mockResolvedValue({
+        created_at: '2024-01-01T00:00:00Z',
+        variable_reference_warnings: [
+          {
+            node_id: 'b',
+            node_title: 'Consumer',
+            referenced_node_id: 'a',
+            referenced_node_title: 'Producer',
+          },
+        ],
+      })
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(toastMocks.call).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'common.api.actionSuccess',
+        })
+        expect(toastMocks.call).toHaveBeenCalledWith({
+          type: 'warning',
+          message:
+            'workflow.common.publishUnsafeVariableReference:{"count":1,"pairs":"\\"Consumer\\" ← \\"Producer\\""}',
+        })
       })
     })
 

@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "شارك هذا التطبيق مع المجتمع",
   "common.publishToMarketplaceFailed": "فشل النشر على Marketplace",
   "common.publishUpdate": "نشر التحديث",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "منشور",
   "common.publishedAt": "تم النشر في",
   "common.publishedBy": "تم النشر {{time}} بواسطة {{author}}",

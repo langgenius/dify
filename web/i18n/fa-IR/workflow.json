@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "این برنامه را با جامعه به اشتراک بگذارید",
   "common.publishToMarketplaceFailed": "انتشار در Marketplace ناموفق بود",
   "common.publishUpdate": "انتشار به‌روزرسانی",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "منتشر شده",
   "common.publishedAt": "منتشر شده در",
   "common.publishedBy": "منتشرشده {{time}} توسط {{author}}",

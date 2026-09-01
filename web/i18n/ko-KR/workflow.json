@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "이 앱을 커뮤니티와 공유합니다",
   "common.publishToMarketplaceFailed": "마켓플레이스 게시 실패",
   "common.publishUpdate": "업데이트 게시",
+  "common.publishUnsafeVariableReference": "{{count}}개의 변수 참조가 건너뛴 분기 출력을 읽을 수 있습니다. 변수 집계기 또는 기본값을 사용하세요 — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}}개",
   "common.published": "게시됨",
   "common.publishedAt": "발행일",
   "common.publishedBy": "{{author}}님이 {{time}}에 게시",

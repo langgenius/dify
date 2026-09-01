@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "ລົງລາຍການແອັບນີ້ເປັນແມ່ແບບ",
   "common.publishToMarketplaceFailed": "ເຜີຍແຜ່ໄປ Marketplace ບໍ່ສຳເລັດ",
   "common.publishUpdate": "ເຜີຍແຜ່ການອັບເດດ",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "ເຜີຍແຜ່ແລ້ວ",
   "common.publishedAt": "ເຜີຍແຜ່ເມື່ອ",
   "common.publishedBy": "ເຜີຍແຜ່ {{time}} ໂດຍ {{author}}",

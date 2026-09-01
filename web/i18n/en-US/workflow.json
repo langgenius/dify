@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "List this app as a template",
   "common.publishToMarketplaceFailed": "Failed to publish to Marketplace",
   "common.publishUpdate": "Publish Update",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "Published",
   "common.publishedAt": "Published",
   "common.publishedBy": "Published {{time}} by {{author}}",
