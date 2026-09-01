@@ -118,6 +118,8 @@ def agent_manage_required_for_agent_app[**P, R](
         @wraps(view_func)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             if scene is not None:
+                if not dify_config.RBAC_ENABLED:
+                    return view_func(*args, **kwargs)
                 current_user, current_tenant_id = current_account_with_tenant()
                 enforce_agent_manage_or_app_scene(
                     tenant_id=current_tenant_id,
