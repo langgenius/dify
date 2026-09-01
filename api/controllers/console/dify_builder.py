@@ -83,9 +83,52 @@ def _respond(fn: Callable[[], object]) -> tuple[dict, int]:
         return mapped
 
 
-def _create(body, actor: Actor) -> tuple[dict, int]:
+_SSE_HEADERS = {"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+
+
+def _stream_response(make_generator: Callable[[], object]) -> Response | tuple[dict, int]:
+    """Call make_generator() (which runs the service's eager validate+subscribe+dispatch
+    and returns an SSE generator); map pre-flight errors to an HTTP tuple; else return
+    the stream. Unknown exceptions propagate to Flask's error handler."""
+    try:
+        generator = make_generator()
+    except Exception as exc:  # re-raised below if not a known dify_builder error
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return Response(generator, mimetype="text/event-stream", headers=_SSE_HEADERS)
+
+
+def _is_streaming(body: object) -> bool:
+    return isinstance(body, dict) and body.get("response_mode") == "streaming"
+
+
+def _create(body, actor: Actor) -> Response | tuple[dict, int]:
     if not isinstance(body, dict):
         return {"code": "bad_request"}, 400
+    if _is_streaming(body):
+        if body.get("scenario") == "build":
+            return _stream_response(
+                lambda: build_service().create_build_session_stream(
+                    body.get("app_id", ""), actor, body.get("goal_text", ""), body.get("model_config")
+                )
+            )
+        if body.get("scenario") == "edit":
+            return _stream_response(
+                lambda: build_service().create_edit_session_stream(
+                    body.get("app_id", ""), actor, body.get("model_config")
+                )
+            )
+        return _stream_response(
+            lambda: build_service().create_fix_session_stream(
+                body.get("app_id", ""),
+                actor,
+                body.get("failed_run_id") or None,
+                body.get("checklist_errors") or None,
+                body.get("model_config"),
+            )
+        )
     if body.get("scenario") == "build":
         result, status = _respond(
             lambda: build_service().create_build_session(
@@ -121,7 +164,7 @@ def _view(session_id: str, actor: Actor) -> tuple[dict, int]:
     return _respond(lambda: build_service().get_session_view(session_id, actor))
 
 
-def _action(session_id: str, body, actor: Actor) -> tuple[dict, int]:
+def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
     if not isinstance(body, dict):
         return {"code": "bad_request"}, 400
     raw = body.get("action_id") or body.get("kind", "")
@@ -130,12 +173,20 @@ def _action(session_id: str, body, actor: Actor) -> tuple[dict, int]:
         payload=body.get("payload") or {},
         base_version=int(body.get("base_version", 0)),
     )
+    if _is_streaming(body):
+        return _stream_response(lambda: build_service().submit_action_stream(session_id, actor, action))
     return _respond(lambda: build_service().submit_action(session_id, actor, action))
 
 
-def _message(session_id: str, body, actor: Actor) -> tuple[dict, int]:
+def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
     if not isinstance(body, dict):
         return {"code": "bad_request"}, 400
+    if _is_streaming(body):
+        return _stream_response(
+            lambda: build_service().submit_message_stream(
+                session_id, actor, body.get("text", ""), int(body.get("base_version", 0))
+            )
+        )
     return _respond(
         lambda: build_service().submit_message(
             session_id, actor, body.get("text", ""), int(body.get("base_version", 0))
