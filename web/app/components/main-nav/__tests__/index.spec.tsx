@@ -8,7 +8,7 @@ import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
@@ -392,10 +392,20 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/next/dynamic', async () => {
-  const { default: WebAppsSection } = await import('../components/web-apps-section')
+  const { lazy, Suspense } = await import('react')
 
   return {
-    default: () => WebAppsSection,
+    default: <Props extends object>(loader: () => Promise<{ default: ComponentType<Props> }>) => {
+      const LazyComponent = lazy(loader)
+
+      return function DynamicComponent(props: Props) {
+        return (
+          <Suspense fallback={null}>
+            <LazyComponent {...props} />
+          </Suspense>
+        )
+      }
+    },
   }
 })
 
@@ -544,6 +554,25 @@ const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   branding: { enabled: false },
   enable_marketplace: true,
   enable_step_by_step_tour: true,
+}
+
+const stubMobileViewport = () => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(
+      (query: string): MediaQueryList =>
+        ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as MediaQueryList,
+    ),
+  )
 }
 
 const renderMainNav = (
@@ -743,19 +772,38 @@ describe('MainNav', () => {
   })
 
   it('opens the named mobile navigation drawer', async () => {
+    stubMobileViewport()
     const user = userEvent.setup()
     renderMainNav()
+    const trigger = screen.getByRole('button', {
+      name: 'common.operation.moreActionsFor:{"name":"Dify"}',
+    })
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
-      }),
-    )
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
     const drawer = await screen.findByRole('dialog', { name: 'Dify' })
 
     expect(drawer).toBeInTheDocument()
     expect(within(drawer).getByRole('navigation')).toBeInTheDocument()
+  })
+
+  it('restores focus to the mobile navigation trigger when the drawer closes', async () => {
+    stubMobileViewport()
+    const user = userEvent.setup()
+    renderMainNav()
+    const trigger = screen.getByRole('button', {
+      name: 'common.operation.moreActionsFor:{"name":"Dify"}',
+    })
+
+    await user.click(trigger)
+    const drawer = await screen.findByRole('dialog', { name: 'Dify' })
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Dify' })).not.toBeInTheDocument()
+      expect(trigger).toHaveFocus()
+    })
   })
 
   it('closes the mobile navigation drawer when the viewport enters the desktop breakpoint', async () => {

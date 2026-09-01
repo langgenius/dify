@@ -2,20 +2,10 @@
 
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerPopup,
-  DrawerPortal,
-  DrawerTitle,
-  DrawerTrigger,
-  DrawerViewport,
-} from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -38,12 +28,16 @@ import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
 import {
   MAIN_NAV_DESKTOP_CLASS_NAME,
-  MAIN_NAV_DESKTOP_MEDIA_QUERY,
   MAIN_NAV_MOBILE_HEADER_CLASS_NAME,
 } from './responsive-classes'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
+const MobileNavDrawer = dynamic(() => import('./components/mobile-nav-drawer'), { ssr: false })
+
+function preloadMobileNavDrawer() {
+  void import('./components/mobile-nav-drawer')
+}
 
 export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
@@ -61,25 +55,13 @@ export function MainNav({ className }: MainNavProps) {
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
   const desktopHelpMenuTriggerRef = useRef<HTMLButtonElement>(null)
   const mobileHelpMenuTriggerRef = useRef<HTMLButtonElement>(null)
+  const mobileNavTriggerRef = useRef<HTMLButtonElement>(null)
+  const [hasActivatedMobileNav, setHasActivatedMobileNav] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const appTitle =
     systemFeatures.branding.enabled && systemFeatures.branding.application_title
       ? systemFeatures.branding.application_title
       : 'Dify'
-
-  useEffect(() => {
-    if (!isMobileNavOpen) return
-
-    const desktopMediaQuery = window.matchMedia(MAIN_NAV_DESKTOP_MEDIA_QUERY)
-    const closeMobileNavAtDesktopBreakpoint = (event: MediaQueryListEvent) => {
-      if (event.matches) setIsMobileNavOpen(false)
-    }
-    desktopMediaQuery.addEventListener('change', closeMobileNavAtDesktopBreakpoint)
-
-    return () => {
-      desktopMediaQuery.removeEventListener('change', closeMobileNavAtDesktopBreakpoint)
-    }
-  }, [isMobileNavOpen])
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -146,10 +128,13 @@ export function MainNav({ className }: MainNavProps) {
             <div className="flex items-center gap-1">
               <MainNavSearchButton />
               {mobile && (
-                <DrawerCloseButton
+                <IconButton
+                  size="lg"
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-8 rounded-[10px]"
-                />
+                  onClick={() => setIsMobileNavOpen(false)}
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
               )}
             </div>
           </div>
@@ -198,41 +183,37 @@ export function MainNav({ className }: MainNavProps) {
   return (
     <>
       {renderNavigationPanel()}
-      <Drawer open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen} swipeDirection="left">
-        <header className={MAIN_NAV_MOBILE_HEADER_CLASS_NAME}>
-          {renderLogo()}
-          <DrawerTrigger
-            render={
-              <button
-                type="button"
-                aria-label={t(($) => $['operation.moreActionsFor'], {
-                  ns: 'common',
-                  name: appTitle,
-                })}
-                className="flex size-8 items-center justify-center rounded-[10px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              />
-            }
-          >
-            <span aria-hidden className="i-ri-menu-line size-5" />
-          </DrawerTrigger>
-        </header>
-        <DrawerPortal>
-          <DrawerBackdrop />
-          <DrawerViewport>
-            <DrawerPopup className="data-[swipe-direction=left]:w-62 data-[swipe-direction=left]:max-w-[calc(100vw-1rem)]">
-              <DrawerTitle className="sr-only">{appTitle}</DrawerTitle>
-              <DrawerContent
-                className="flex min-h-0 flex-1 flex-col p-0 pb-0"
-                onClick={(event) => {
-                  if ((event.target as Element).closest('a')) setIsMobileNavOpen(false)
-                }}
-              >
-                {renderNavigationPanel(true)}
-              </DrawerContent>
-            </DrawerPopup>
-          </DrawerViewport>
-        </DrawerPortal>
-      </Drawer>
+      <header className={MAIN_NAV_MOBILE_HEADER_CLASS_NAME}>
+        {renderLogo()}
+        <IconButton
+          ref={mobileNavTriggerRef}
+          size="lg"
+          aria-label={t(($) => $['operation.moreActionsFor'], {
+            ns: 'common',
+            name: appTitle,
+          })}
+          aria-expanded={isMobileNavOpen}
+          aria-haspopup="dialog"
+          onClick={() => {
+            setHasActivatedMobileNav(true)
+            setIsMobileNavOpen(true)
+          }}
+          onFocus={preloadMobileNavDrawer}
+          onMouseEnter={preloadMobileNavDrawer}
+        >
+          <span aria-hidden className="i-ri-menu-line size-5" />
+        </IconButton>
+      </header>
+      {hasActivatedMobileNav && (
+        <MobileNavDrawer
+          finalFocusRef={mobileNavTriggerRef}
+          open={isMobileNavOpen}
+          onOpenChange={setIsMobileNavOpen}
+          title={appTitle}
+        >
+          {renderNavigationPanel(true)}
+        </MobileNavDrawer>
+      )}
     </>
   )
 }
