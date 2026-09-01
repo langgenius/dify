@@ -1,8 +1,7 @@
 'use client'
 
-import { useAtomValue } from 'jotai'
-import { useHydrateAtoms } from 'jotai/utils'
-import { useMemo, useRef } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { newKnowledgeDocumentsPath } from '../../routes'
@@ -27,9 +26,11 @@ export function DocumentDetailWorkspace() {
   const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
   const titleRef = useRef<HTMLHeadingElement>(null)
   const titleRuntime = useMemo(() => ({ focusTitle: () => titleRef.current?.focus() }), [])
-  useHydrateAtoms([[documentDetailTitleRuntimeAtom, titleRuntime]], {
-    dangerouslyForceHydrate: true,
-  })
+  const setTitleRuntime = useSetAtom(documentDetailTitleRuntimeAtom)
+
+  useEffect(() => {
+    setTitleRuntime(titleRuntime)
+  }, [setTitleRuntime, titleRuntime])
 
   if (documentMissing)
     return (

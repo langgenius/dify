@@ -1,7 +1,6 @@
 'use client'
 
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useHydrateAtoms } from 'jotai/utils'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeSpace } from '../../space/context'
@@ -44,7 +43,7 @@ export function DocumentWorkflowController() {
     }),
     [refetchKnowledgeSpace, space.permission_keys, t],
   )
-  useHydrateAtoms([[documentWorkflowRuntimeAtom, runtime]], { dangerouslyForceHydrate: true })
+  const setWorkflowRuntime = useSetAtom(documentWorkflowRuntimeAtom)
 
   const initialized = useAtomValue(documentWorkflowInitializedAtom)
   const latestTask = useAtomValue(documentLatestTaskAtom)
@@ -60,6 +59,10 @@ export function DocumentWorkflowController() {
   const persistWorkflow = useSetAtom(persistDocumentWorkflowAtom)
   const reconcileTask = useSetAtom(reconcileDocumentTaskAtom)
   const reconcileSubmittedJob = useSetAtom(reconcileSubmittedDocumentJobAtom)
+
+  useEffect(() => {
+    setWorkflowRuntime(runtime)
+  }, [runtime, setWorkflowRuntime])
 
   useEffect(() => {
     initializeWorkflow()
