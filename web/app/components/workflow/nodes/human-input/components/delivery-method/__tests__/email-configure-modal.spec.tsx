@@ -115,9 +115,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Budget alert' },
       },
@@ -151,9 +151,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Subject ready' },
       },
