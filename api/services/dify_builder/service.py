@@ -8,8 +8,8 @@ Redis-backed ``session_lock`` module or Celery -- those are wired in by the
 caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 """
 
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterator
+from dataclasses import asdict, dataclass, field
 from typing import Protocol
 from uuid import uuid4
 
@@ -416,10 +416,12 @@ class DifyBuilderService:
         repo: Repository,
         session_lock: SessionLock,
         enqueue_fn: Callable[[str, Action, Actor, str], None],
+        subscribe_fn: Callable[[str], object] | None = None,
     ) -> None:
         self._repo = repo
         self._session_lock = session_lock
         self._enqueue_fn = enqueue_fn
+        self._subscribe_fn = subscribe_fn or (lambda _sid: None)
 
     def create_fix_session(
         self,
@@ -558,8 +560,12 @@ class DifyBuilderService:
             ),
         )
 
-    def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
-        """Port of Go ``SubmitAction``."""
+    def _prepare_action(self, session_id: str, actor: Actor, action: Action) -> tuple[SessionView, bool]:
+        """Shared synchronous validation + settle for ``submit_action`` and the
+        streaming submit methods. Returns ``(view, expect_advance)``:
+        ``expect_advance`` is ``True`` only when the caller must still call
+        ``dispatch`` (this method never dispatches itself, so a streaming
+        caller can subscribe before the advance is enqueued)."""
         s, fc = self._repo.get_session(session_id)
         if s.owner_account_id != actor.account_id:
             raise NotFoundError("session not found")
@@ -567,7 +573,7 @@ class DifyBuilderService:
             # Client-side-only actions (e.g. view_changes toggles a card locally) never
             # reach the engine — dispatching would hit handle_await_decision's keep_draft
             # default and silently terminate the session. Return the current view unchanged.
-            return self.get_session_view(session_id, actor)
+            return self.get_session_view(session_id, actor), False
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
         if action.kind == "update_model":
@@ -584,8 +590,14 @@ class DifyBuilderService:
             )
             fc.next_seq += 1
             self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, [item])
-            return self.get_session_view(session_id, actor)
-        self.dispatch(session_id, action, actor)
+            return self.get_session_view(session_id, actor), False
+        return self.get_session_view(session_id, actor), True
+
+    def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
+        """Port of Go ``SubmitAction``."""
+        view, expect_advance = self._prepare_action(session_id, actor, action)
+        if expect_advance:
+            self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
 
     def submit_message(self, session_id: str, actor: Actor, text: str, base_version: int) -> SessionView:
@@ -594,6 +606,33 @@ class DifyBuilderService:
         if not text:
             raise BadRequestError("message text is required")
         return self.submit_action(
+            session_id, actor, Action(kind="message", payload={"text": text}, base_version=base_version)
+        )
+
+    def submit_action_stream(self, session_id: str, actor: Actor, action: Action) -> Iterator[str]:
+        """Streaming counterpart of ``submit_action``: performs the same eager
+        validation via ``_prepare_action`` (raising before any streaming begins),
+        then -- for the dispatch case -- subscribes BEFORE enqueuing the advance
+        so no progress frames are lost, and returns the frame generator."""
+        from services.dify_builder.wiring import stream_advance_frames
+
+        view, expect_advance = self._prepare_action(session_id, actor, action)
+        if not expect_advance:
+            return stream_advance_frames(asdict(view), None, expect_advance=False)
+        subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
+        try:
+            self.dispatch(session_id, action, actor)
+        except Exception:
+            if subscription is not None:
+                subscription.close()
+            raise
+        return stream_advance_frames(asdict(view), subscription, expect_advance=True)
+
+    def submit_message_stream(self, session_id: str, actor: Actor, text: str, base_version: int) -> Iterator[str]:
+        text = text.strip()
+        if not text:
+            raise BadRequestError("message text is required")
+        return self.submit_action_stream(
             session_id, actor, Action(kind="message", payload={"text": text}, base_version=base_version)
         )
 
