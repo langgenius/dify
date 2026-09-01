@@ -19,7 +19,6 @@ const expectedAppACLPermissionKeys = [
   'app.acl.tracing_config',
   'app.acl.log_and_annotation',
   'app.acl.access_config',
-  'app.acl.access_point_manage',
 ]
 
 const getPermissionKeyMatcher = (permissionKey: string) =>
