@@ -728,7 +728,9 @@ class TestAnnotationService:
         result = AppAnnotationService.enable_app_annotation(enable_args, app.id)
 
         # Verify cached result
-        assert cached_job_id == result["job_id"].decode("utf-8")
+        # `AnnotationJobStatusDict` declares `job_id: str`, and the controller feeds this dict
+        # straight into `dump_response(AnnotationJobStatusResponse, ...)`, so it has to be a str.
+        assert cached_job_id == result["job_id"]
         assert result["job_status"] == "processing"
 
         # Verify task was not called again
