@@ -426,7 +426,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        prev_seg = segment.previous_segment
+        prev_seg = segment.previous_segment(session=db_session_with_containers)
 
         # Assert
         assert prev_seg is not None
@@ -483,7 +483,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        next_seg = segment.next_segment
+        next_seg = segment.next_segment(session=db_session_with_containers)
 
         # Assert
         assert next_seg is not None
