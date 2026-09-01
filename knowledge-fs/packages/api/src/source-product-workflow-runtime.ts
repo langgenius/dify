@@ -18,6 +18,7 @@ import type {
 } from "./logical-document-repository";
 import type { OnlineDocumentConnector, OnlineDocumentPage } from "./online-document-connector";
 import type { OnlineDriveConnector, OnlineDriveFile } from "./online-drive-connector";
+import { updateSourceWithRetry } from "./source-cas-update";
 import type { SourceConnectionService } from "./source-connection";
 import type { SourceCredentialService } from "./source-credential-service";
 import type {
@@ -193,6 +194,12 @@ export function createSourceProductWorkflowRuntime(input: {
   readonly logicalRevisions: SourceLogicalRevisionPublisher;
   readonly materializer: SourceDocumentMaterializer;
   readonly now?: (() => number) | undefined;
+  readonly onError?:
+    | ((input: {
+        readonly error: unknown;
+        readonly run: SourceWorkflowRun;
+      }) => void)
+    | undefined;
   readonly onlineDocuments?: OnlineDocumentConnector | undefined;
   readonly onlineDrive?: OnlineDriveConnector | undefined;
   readonly repository: SourceProductWorkflowRepository;
@@ -289,6 +296,11 @@ export function createSourceProductWorkflowRuntime(input: {
       });
       return "completed";
     } catch (error) {
+      try {
+        input.onError?.({ error, run: execution?.run() ?? run });
+      } catch {
+        // Observability must never change workflow failure persistence.
+      }
       const safe = safeSourceOperationError("sourceWorkflow", error);
       const persistedError =
         error instanceof SourceProductWorkflowRuntimeError
@@ -1104,39 +1116,58 @@ async function freezeProviderSelection(
   }
   const coordinateHashes = selections.map(({ coordinateHash }) => coordinateHash).sort();
 
+  const frozenSelection = {
+    coordinateHashes,
+    identityHashes,
+    kind,
+    version: 1,
+  } satisfies FrozenProviderSelection;
   const existing = readFrozenProviderSelection(source.metadata);
   if (existing) {
-    if (
-      existing.kind !== kind ||
-      identityHashes.some((identityHash) => !existing.identityHashes.includes(identityHash)) ||
-      coordinateHashes.some((coordinateHash) => !existing.coordinateHashes.includes(coordinateHash))
-    ) {
-      throw runtimeError(
-        "SOURCE_PROVIDER_SELECTION_FROZEN",
-        "Connected-source selection is frozen and cannot be expanded",
-      );
-    }
+    assertCompatibleFrozenProviderSelection(existing, frozenSelection);
     return source;
   }
 
   await execution.assertActive();
-  const updated = await input.sources.update({
-    expectedVersion: source.version,
+  const updated = await updateSourceWithRetry({
     id: source.id,
     knowledgeSpaceId: source.knowledgeSpaceId,
-    metadata: {
-      ...source.metadata,
-      [PROVIDER_SELECTION_METADATA_KEY]: {
-        coordinateHashes,
-        identityHashes,
-        kind,
-        version: 1,
-      } satisfies FrozenProviderSelection,
+    merge: (fresh) => {
+      const freshSelection = readFrozenProviderSelection(fresh.metadata);
+      if (freshSelection) {
+        assertCompatibleFrozenProviderSelection(freshSelection, frozenSelection);
+        return fresh.metadata;
+      }
+      return {
+        ...fresh.metadata,
+        [PROVIDER_SELECTION_METADATA_KEY]: frozenSelection,
+      };
     },
+    sources: input.sources,
   });
   if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
   await execution.assertActive();
   return updated;
+}
+
+function assertCompatibleFrozenProviderSelection(
+  existing: FrozenProviderSelection,
+  requested: FrozenProviderSelection,
+): void {
+  if (
+    existing.kind !== requested.kind ||
+    requested.identityHashes.some(
+      (identityHash) => !existing.identityHashes.includes(identityHash),
+    ) ||
+    requested.coordinateHashes.some(
+      (coordinateHash) => !existing.coordinateHashes.includes(coordinateHash),
+    )
+  ) {
+    throw runtimeError(
+      "SOURCE_PROVIDER_SELECTION_FROZEN",
+      "Connected-source selection is frozen and cannot be expanded",
+    );
+  }
 }
 
 function readFrozenProviderSelection(

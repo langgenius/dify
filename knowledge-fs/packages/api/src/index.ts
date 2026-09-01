@@ -2155,6 +2155,27 @@ export function createKnowledgeGateway({
       logicalInventory: logicalDocuments,
       logicalRevisions: sourceProduct.logicalRevisions,
       materializer: sourceDocumentMaterializer,
+      onError: ({ error, run }) => {
+        process.stderr.write(
+          `${JSON.stringify({
+            checkpoint: run.checkpoint,
+            errorClass: error instanceof Error ? error.name : typeof error,
+            errorCode:
+              error && typeof error === "object" && "code" in error
+                ? String(error.code)
+                : undefined,
+            errorMessage:
+              error instanceof Error ? error.message : "Unknown source workflow runtime error",
+            event: "knowledge_fs.source_workflow.error",
+            executionAttempts: run.executionAttempts,
+            kind: run.kind,
+            knowledgeSpaceId: run.knowledgeSpaceId,
+            sourceId: run.sourceId,
+            tenantId: run.tenantId,
+            workflowId: run.id,
+          })}\n`,
+        );
+      },
       ...(onlineDocumentConnector ? { onlineDocuments: onlineDocumentConnector } : {}),
       ...(onlineDriveConnector ? { onlineDrive: onlineDriveConnector } : {}),
       repository: sourceProduct.repository,

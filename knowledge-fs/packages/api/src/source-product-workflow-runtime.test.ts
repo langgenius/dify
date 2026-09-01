@@ -23,6 +23,7 @@ import {
   createObjectStorageSourceWorkflowContentStore,
   createSourceProductWorkflowRuntime,
 } from "./source-product-workflow-runtime";
+import { SourceVersionConflictError } from "./source-repository";
 
 const tenantId = "tenant-source-runtime";
 const knowledgeSpaceId = "space-source-runtime";
@@ -483,6 +484,102 @@ describe("source-product workflow provider imports", () => {
       expect.objectContaining({ mimeType: "application/octet-stream" }),
       expect.any(Object),
     );
+  });
+
+  it("retries the frozen-selection CAS and preserves a concurrent source metadata update", async () => {
+    const source = sourceRecord("online-drive-import-cas-source", { type: "connector" });
+    let current = source;
+    let interfered = false;
+    const get = vi.fn(async () => current);
+    const update = vi.fn(
+      async (request: { expectedVersion?: number; metadata?: Source["metadata"] }) => {
+        if (!interfered) {
+          interfered = true;
+          current = {
+            ...current,
+            metadata: {
+              ...current.metadata,
+              pendingImport: { workflowId: "run-online-drive-cas" },
+            },
+            status: "syncing",
+            version: current.version + 1,
+          };
+        }
+        if (request.expectedVersion !== current.version) {
+          throw new SourceVersionConflictError(current.id, request.expectedVersion ?? -1);
+        }
+        current = {
+          ...current,
+          ...(request.metadata ? { metadata: request.metadata } : {}),
+          version: current.version + 1,
+        };
+        return current;
+      },
+    );
+    const download = vi.fn(async () => ({ body: new TextEncoder().encode("file") }));
+    const fixture = await createFixture({
+      inventory: [],
+      onlineDrive: { download },
+      run: {
+        ...runRecord(source.id),
+        id: "run-online-drive-cas",
+        idempotencyKey: "online-drive-cas",
+        kind: "online-drive-import",
+        payload: {
+          items: [{ id: "file-a", name: "A.txt", providerItemId: "provider-file-a" }],
+        },
+        progressTotal: 1,
+      },
+      source,
+      sources: { get, update } as never,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(current.metadata).toMatchObject({
+      __knowledgeFsProviderSelection: { kind: "online-drive", version: 1 },
+      pendingImport: { workflowId: "run-online-drive-cas" },
+    });
+    expect(current.status).toBe("syncing");
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(download).toHaveBeenCalledOnce();
+  });
+
+  it("reports the original source workflow runtime error without changing its safe failure", async () => {
+    const source = sourceRecord("online-drive-import-error-log", { type: "connector" });
+    const cause = new Error("provider detail for internal logs");
+    const onError = vi.fn();
+    const fixture = await createFixture({
+      inventory: [],
+      onError,
+      onlineDrive: { download: vi.fn(async () => Promise.reject(cause)) },
+      run: {
+        ...runRecord(source.id),
+        id: "run-online-drive-error-log",
+        idempotencyKey: "online-drive-error-log",
+        kind: "online-drive-import",
+        payload: {
+          items: [{ id: "file-a", name: "A.txt", providerItemId: "provider-file-a" }],
+        },
+        progressTotal: 1,
+      },
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    expect(onError).toHaveBeenCalledWith({
+      error: cause,
+      run: expect.objectContaining({
+        checkpoint: "queued",
+        id: "run-online-drive-error-log",
+        kind: "online-drive-import",
+        sourceId: source.id,
+      }),
+    });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_WORKFLOW_FAILED",
+      lastErrorMessage: "Source workflow failed",
+      state: "failed",
+    });
   });
 
   it("rejects a later durable import that expands the first frozen provider selection", async () => {
@@ -2827,6 +2924,7 @@ async function createFixture(input: {
   readonly maxSyncItems?: number | undefined;
   readonly onlineDocuments?: object | undefined;
   readonly onlineDrive?: object | undefined;
+  readonly onError?: Parameters<typeof createSourceProductWorkflowRuntime>[0]["onError"];
   readonly omitMarkRemoteMissing?: boolean | undefined;
   readonly permissionRevision?: number | undefined;
   readonly permissionRole?: "owner" | "editor" | "viewer" | undefined;
@@ -2965,6 +3063,7 @@ async function createFixture(input: {
     ...(input.useSystemClock ? {} : { now: input.clock ?? (() => nowMs) }),
     ...(input.onlineDocuments ? { onlineDocuments: input.onlineDocuments as never } : {}),
     ...(input.onlineDrive ? { onlineDrive: input.onlineDrive as never } : {}),
+    ...(input.onError ? { onError: input.onError } : {}),
     repository,
     ...(input.sourceConnections ? { sourceConnections: input.sourceConnections as never } : {}),
     ...(input.sourceCredentials ? { sourceCredentials: input.sourceCredentials as never } : {}),
