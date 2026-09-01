@@ -1,30 +1,93 @@
 'use client'
 
 import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { MouseEvent, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  datasetDefaultPermissionKeysAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath, newKnowledgeDocumentsPath } from '../routes'
+import {
+  overviewEmptyAtom,
+  overviewFailedFirstSourceTaskAtom,
+  overviewIndexingSourceNameAtom,
+  overviewIndexingTaskAtom,
+  overviewKnowledgeSpaceIdAtom,
+  overviewShowIndexingAtom,
+  refreshOverviewBackgroundTasksAtom,
+} from './state'
 
-export function Onboarding({
-  canConnectSource,
-  canUpload,
-  indexingTask,
-  indexingSourceName,
-  knowledgeSpaceId,
-}: {
-  canConnectSource: boolean
-  canUpload: boolean
-  indexingTask?: KnowledgeFsBackgroundTaskResponse
-  indexingSourceName?: string
-  knowledgeSpaceId: string
-}) {
+export function OverviewOnboarding() {
+  const empty = useAtomValue(overviewEmptyAtom)
+  const showIndexing = useAtomValue(overviewShowIndexingAtom)
+  let content: ReactNode = null
+  if (showIndexing) content = <IndexingProgress />
+  else if (empty) content = <EmptyKnowledgeOnboarding />
+  return content ? <div className="mt-3">{content}</div> : null
+}
+
+function IndexingProgress() {
   const { t } = useTranslation('dataset')
+  const indexingTask = useAtomValue(overviewIndexingTaskAtom)
+  const indexingSourceName = useAtomValue(overviewIndexingSourceNameAtom)
+  if (!indexingTask) return null
+
+  const progressKnown = indexingTask.progress_total > 0
+  return (
+    <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
+      <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
+        {indexingSourceName
+          ? t(($) => $['newKnowledge.overview.indexingSource'], { source: indexingSourceName })
+          : t(($) => $['newKnowledge.overview.indexing'])}
+      </h2>
+      <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
+        {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
+      </p>
+      <div className="mt-3">
+        <div
+          role="progressbar"
+          aria-label={t(($) => $['newKnowledge.overview.indexing'])}
+          aria-valuemin={0}
+          aria-valuemax={progressKnown ? indexingTask.progress_total : undefined}
+          aria-valuenow={progressKnown ? indexingTask.progress_completed : undefined}
+          className="h-2 overflow-hidden rounded-full bg-util-colors-gray-gray-200"
+        >
+          <div
+            className="h-full rounded-full bg-components-progress-bar-progress-solid"
+            style={{ width: `${indexingTask.progress_percent}%` }}
+          />
+        </div>
+        <p className="mt-2.5 system-xs-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.overview.indexedDocuments'], {
+            indexed: indexingTask.progress_completed,
+            total: indexingTask.progress_total,
+          })}
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function EmptyKnowledgeOnboarding() {
+  const { t } = useTranslation('dataset')
+  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const [pendingAction, setPendingAction] = useState<'source' | 'upload'>()
+  const canConnectSource = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
+  const canUpload =
+    uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload
@@ -33,43 +96,22 @@ export function Onboarding({
     : canUpload
       ? t(($) => $['newKnowledge.uploadFilesDescription'])
       : t(($) => $['newKnowledge.overview.readOnlyDescription'])
-  if (indexingTask) {
-    const progressKnown = indexingTask.progress_total > 0
-    return (
-      <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
-        <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
-          {indexingSourceName
-            ? t(($) => $['newKnowledge.overview.indexingSource'], {
-                source: indexingSourceName,
-              })
-            : t(($) => $['newKnowledge.overview.indexing'])}
-        </h2>
-        <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
-          {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
-        </p>
-        <div className="mt-3">
-          <div
-            role="progressbar"
-            aria-label={t(($) => $['newKnowledge.overview.indexing'])}
-            aria-valuemin={0}
-            aria-valuemax={progressKnown ? indexingTask.progress_total : undefined}
-            aria-valuenow={progressKnown ? indexingTask.progress_completed : undefined}
-            className="h-2 overflow-hidden rounded-full bg-util-colors-gray-gray-200"
-          >
-            <div
-              className="h-full rounded-full bg-components-progress-bar-progress-solid"
-              style={{ width: `${indexingTask.progress_percent}%` }}
-            />
-          </div>
-          <p className="mt-2.5 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.overview.indexedDocuments'], {
-              indexed: indexingTask.progress_completed,
-              total: indexingTask.progress_total,
-            })}
-          </p>
-        </div>
-      </section>
+
+  const beginNavigation = (action: 'source' | 'upload', event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
     )
+      return
+    if (pendingAction !== undefined) {
+      event.preventDefault()
+      return
+    }
+    setPendingAction(action)
   }
 
   return (
@@ -108,22 +150,7 @@ export function Onboarding({
               )}
               href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
               tabIndex={pendingAction === undefined ? undefined : -1}
-              onClick={(event) => {
-                if (
-                  event.defaultPrevented ||
-                  event.button !== 0 ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                )
-                  return
-                if (pendingAction !== undefined) {
-                  event.preventDefault()
-                  return
-                }
-                setPendingAction('source')
-              }}
+              onClick={(event) => beginNavigation('source', event)}
             >
               <span
                 aria-hidden
@@ -153,22 +180,7 @@ export function Onboarding({
               )}
               href={`${newKnowledgeDocumentsPath(knowledgeSpaceId)}?upload=1`}
               tabIndex={pendingAction === undefined ? undefined : -1}
-              onClick={(event) => {
-                if (
-                  event.defaultPrevented ||
-                  event.button !== 0 ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                )
-                  return
-                if (pendingAction !== undefined) {
-                  event.preventDefault()
-                  return
-                }
-                setPendingAction('upload')
-              }}
+              onClick={(event) => beginNavigation('upload', event)}
             >
               <span
                 aria-hidden
@@ -193,16 +205,21 @@ export function Onboarding({
   )
 }
 
-export function FirstSourceTaskFailureBanner({
+export function FirstSourceTaskFailureBanner() {
+  const empty = useAtomValue(overviewEmptyAtom)
+  const failedTask = useAtomValue(overviewFailedFirstSourceTaskAtom)
+  if (!empty || !failedTask) return null
+  return <FirstSourceTaskFailureSession key={failedTask.id} failedTask={failedTask} />
+}
+
+function FirstSourceTaskFailureSession({
   failedTask,
-  knowledgeSpaceId,
-  onRetryTask,
 }: {
   failedTask: KnowledgeFsBackgroundTaskResponse
-  knowledgeSpaceId: string
-  onRetryTask: () => Promise<unknown>
 }) {
   const { t } = useTranslation('dataset')
+  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const refreshBackgroundTasks = useSetAtom(refreshOverviewBackgroundTasksAtom)
   const retryTaskMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),
   )
@@ -212,7 +229,6 @@ export function FirstSourceTaskFailureBanner({
       : t(($) => $['newKnowledge.addSourceFailed'])
   const retryFailedTask = async () => {
     if (!failedTask.can_retry || retryTaskMutation.isPending) return
-
     try {
       await retryTaskMutation.mutateAsync({
         params: {
@@ -221,7 +237,7 @@ export function FirstSourceTaskFailureBanner({
           task_kind: failedTask.task_kind,
         },
       })
-      await onRetryTask()
+      await refreshBackgroundTasks()
     } catch {
       // Mutation state keeps the retry feedback visible.
     }

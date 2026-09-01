@@ -1,36 +1,27 @@
 'use client'
 
+import type { KnowledgeFsOverviewInventoryResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { compactNumber } from './overview-format'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
+import {
+  overviewInventoryDataAtom,
+  overviewInventoryErrorAtom,
+  overviewInventoryPendingAtom,
+  overviewShowEmptyModulesAtom,
+  overviewShowIndexingAtom,
+} from './state'
 
-export function InventoryPanel({
-  empty,
-  error,
-  indexing = false,
-  inventory,
-  loading,
-}: {
-  empty: boolean
-  error: boolean
-  indexing?: boolean
-  inventory:
-    | {
-        graph_entities: { added_last_7d: number; total: number }
-        graph_relations: { added_last_7d: number; total: number }
-        index_coverage: { indexed: number; percentage: number; total: number }
-        source_categories: {
-          crawl: number
-          online_documents: number
-          online_drives: number
-          uploads: number
-        }
-      }
-    | undefined
-  loading: boolean
-}) {
+export function InventoryPanel() {
   const { t } = useTranslation('dataset')
+  const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const error = useAtomValue(overviewInventoryErrorAtom)
+  const indexing = useAtomValue(overviewShowIndexingAtom)
+  const inventory: KnowledgeFsOverviewInventoryResponse | undefined =
+    useAtomValue(overviewInventoryDataAtom)
+  const loading = useAtomValue(overviewInventoryPendingAtom)
   const categories = inventory
     ? [
         {

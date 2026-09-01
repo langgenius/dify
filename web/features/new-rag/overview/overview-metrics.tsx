@@ -1,13 +1,22 @@
 'use client'
 
-import type { KnowledgeFsOverviewQueryOutcomeBucketResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import ReactECharts from 'echarts-for-react'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
+import { changeLabel, compactNumber, formatDuration } from './overview-format'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
 import { buildQueryOutcomesChartOptions } from './query-outcomes-chart-options'
+import {
+  overviewOutcomesDataAtom,
+  overviewOutcomesErrorAtom,
+  overviewOutcomesPendingAtom,
+  overviewShowEmptyModulesAtom,
+  overviewStatsDataAtom,
+  overviewStatsPendingAtom,
+} from './state'
 
 export function MetricCard({
   change,
@@ -83,22 +92,70 @@ export function MetricCard({
   )
 }
 
-export function QueryOutcomesChart({
-  buckets,
-  empty,
-  error,
-  loading,
-}: {
-  buckets: KnowledgeFsOverviewQueryOutcomeBucketResponse[]
-  empty: boolean
-  error: boolean
-  loading: boolean
-}) {
+export function OverviewMetrics() {
+  const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const loading = useAtomValue(overviewStatsPendingAtom)
+  const stats = useAtomValue(overviewStatsDataAtom)
+  const { t } = useTranslation('dataset')
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <MetricCard
+        empty={empty}
+        loading={loading}
+        title={t(($) => $['newKnowledge.overview.queries'])}
+        help={t(($) => $['newKnowledge.overview.queriesHelp'])}
+        value={stats ? compactNumber(stats.queries.value) : '—'}
+        change={
+          stats
+            ? changeLabel(
+                stats.queries.change_rate === null ? null : stats.queries.change_rate * 100,
+              )
+            : undefined
+        }
+      />
+      <MetricCard
+        empty={empty}
+        loading={loading}
+        title={t(($) => $['newKnowledge.overview.answerRate'])}
+        help={t(($) => $['newKnowledge.overview.answerRateHelp'])}
+        value={stats ? `${Math.round(stats.answer_rate.value * 100)}%` : '—'}
+        change={stats ? changeLabel(stats.answer_rate.change_percentage_points, 'pp') : undefined}
+      />
+      <MetricCard
+        empty={empty}
+        loading={loading}
+        title={t(($) => $['newKnowledge.overview.documents'])}
+        value={stats ? compactNumber(stats.documents) : '—'}
+      />
+      <MetricCard
+        empty={empty}
+        loading={loading}
+        title={t(($) => $['newKnowledge.overview.linkedApps'])}
+        value={stats ? compactNumber(stats.linked_apps) : '—'}
+      />
+      <MetricCard
+        empty={empty}
+        loading={loading}
+        title={t(($) => $['newKnowledge.overview.freshness'])}
+        help={t(($) => $['newKnowledge.overview.freshnessHelp'])}
+        value={formatDuration(stats?.freshness_seconds)}
+      />
+    </div>
+  )
+}
+
+export function QueryOutcomesChart() {
+  const outcomes = useAtomValue(overviewOutcomesDataAtom)
+  const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const error = useAtomValue(overviewOutcomesErrorAtom)
+  const loading = useAtomValue(overviewOutcomesPendingAtom)
+  const buckets = outcomes?.buckets
   const { t, i18n } = useTranslation('dataset')
   const chartOptions = useMemo(
     () =>
       buildQueryOutcomesChartOptions({
-        buckets,
+        buckets: buckets ?? [],
         labels: {
           answered: t(($) => $['newKnowledge.overview.answered']),
           lowConfidence: t(($) => $['newKnowledge.overview.lowConfidence']),
@@ -175,7 +232,7 @@ export function QueryOutcomesChart({
               <Skeleton key={key} className="h-3" style={{ width: `${width}%` }} />
             ))}
           </div>
-        ) : buckets.length ? (
+        ) : buckets?.length ? (
           <>
             <p className="sr-only">
               {t(($) => $['newKnowledge.overview.queryOutcomes'])}: {buckets.length}

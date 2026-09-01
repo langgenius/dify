@@ -25,16 +25,26 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { consoleQuery } from '@/service/client'
 import { useMembers } from '@/service/use-common'
 import { activityDatesForRange } from './overview-activity-types'
-import { OVERVIEW_REFRESH_INTERVAL } from './overview-format'
 import { EmptyInline, Panel, Skeleton } from './overview-panel'
+import {
+  overviewActivityPreviewDataAtom,
+  overviewActivityPreviewErrorAtom,
+  overviewActivityPreviewPendingAtom,
+  overviewActivityPreviewRefetchingAtom,
+  overviewKnowledgeSpaceIdAtom,
+  overviewShowEmptyModulesAtom,
+  overviewShowIndexingAtom,
+  retryOverviewActivityPreviewAtom,
+} from './state'
 
 const ACTIVITY_RANGES: ActivityRange[] = ['today', '7d', '30d', '90d', 'all', 'custom']
 const ACTIVITY_PAGE_SIZE = 20
@@ -150,29 +160,17 @@ function ActivityActor({
   )
 }
 
-function RecentActivity({
-  activities,
-  empty,
-  error,
-  indexing = false,
-  loading,
-  members,
-  onOpenAll,
-  onRetry,
-  retrying,
-}: {
-  activities: KnowledgeFsOverviewActivityResponse[]
-  empty: boolean
-  error: boolean
-  indexing?: boolean
-  loading: boolean
-  onOpenAll: () => void
-  onRetry: () => void
-  retrying: boolean
-  members: Member[]
-}) {
+function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const activities = useAtomValue(overviewActivityPreviewDataAtom)
+  const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const error = useAtomValue(overviewActivityPreviewErrorAtom)
+  const indexing = useAtomValue(overviewShowIndexingAtom)
+  const loading = useAtomValue(overviewActivityPreviewPendingAtom)
+  const retrying = useAtomValue(overviewActivityPreviewRefetchingAtom)
+  const retry = useSetAtom(retryOverviewActivityPreviewAtom)
+  const members = useMembers().data?.accounts ?? []
   const formatWhen = (value: string) => {
     const timestamp = new Date(value)
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp.getTime()) / 60_000))
@@ -207,7 +205,7 @@ function RecentActivity({
               loading={retrying}
               size="small"
               variant="secondary"
-              onClick={onRetry}
+              onClick={retry}
             >
               {tCommon(($) => $['operation.retry'])}
             </Button>
@@ -315,51 +313,15 @@ function RecentActivity({
   )
 }
 
-export function OverviewActivity({
-  empty,
-  hasActiveTasks,
-  indexing,
-  knowledgeSpaceId,
-}: {
-  empty: boolean
-  hasActiveTasks: boolean
-  indexing: boolean
-  knowledgeSpaceId: string
-}) {
+export function OverviewActivity() {
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const membersQuery = useMembers()
-  const previewQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
-      input: {
-        params: { control_space_id: knowledgeSpaceId },
-        query: { limit: 5 },
-      },
-      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
-    }),
-  )
-  const members = membersQuery.data?.accounts ?? []
 
   return (
     <>
       <div className="mt-3">
-        <RecentActivity
-          activities={previewQuery.data?.data ?? []}
-          empty={empty}
-          error={previewQuery.isError}
-          indexing={indexing}
-          loading={previewQuery.isPending}
-          members={members}
-          retrying={previewQuery.isRefetching}
-          onOpenAll={() => setDrawerOpen(true)}
-          onRetry={() => void previewQuery.refetch()}
-        />
+        <RecentActivity onOpenAll={() => setDrawerOpen(true)} />
       </div>
-      <ActivityDrawer
-        knowledgeSpaceId={knowledgeSpaceId}
-        members={members}
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-      />
+      <ActivityDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
     </>
   )
 }
@@ -440,19 +402,17 @@ function ActivityDateRangePicker({
 }
 
 function ActivityDrawer({
-  knowledgeSpaceId,
-  members,
   onOpenChange,
   open,
 }: {
-  knowledgeSpaceId: string
-  members: Member[]
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { t: tActivityLog } = useTranslation('appLog')
+  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const members = useMembers().data?.accounts ?? []
   const [range, setRange] = useState<ActivityRange>('today')
   const [dates, setDates] = useState<ActivityDateRange>(() => activityDatesForRange('today'))
   const [operator, setOperator] = useState<ActivityOperator>('all')

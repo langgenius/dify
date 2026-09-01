@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import type { Getter } from 'jotai'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -172,6 +173,11 @@ const systemFeaturesState = vi.hoisted(() => ({
   uploadAvailableAtom: Symbol('knowledgeFsUploadEnabledAtom'),
 }))
 
+const jotaiQueryMocks = vi.hoisted(() => ({
+  bump: undefined as undefined | (() => void),
+  refetchActivity: vi.fn(),
+}))
+
 vi.mock('echarts-for-react', () => ({
   default: ({ option }: { option: unknown }) => {
     chartOptions.current = option
@@ -199,6 +205,45 @@ vi.mock('jotai', async (importOriginal) => {
         return systemFeaturesState.uploadAvailable
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
+  }
+})
+
+vi.mock('jotai-tanstack-query', async () => {
+  const { atom, getDefaultStore } = await import('jotai/vanilla')
+  const revisionAtom = atom(0)
+  jotaiQueryMocks.bump = () =>
+    getDefaultStore().set(revisionAtom, (revision: number) => revision + 1)
+
+  return {
+    atomWithInfiniteQuery: (getOptions: (get: Getter) => { queryKey: string[] }) =>
+      atom((get) => {
+        get(revisionAtom)
+        getOptions(get)
+        return {
+          data: { pages: [{ data: queryData.tasks, next_cursor: null }] },
+          fetchNextPage: vi.fn(),
+          hasNextPage: false,
+          isError: tasksQueryState.isError,
+          isFetchingNextPage: false,
+          isPending: tasksQueryState.isPending,
+          isRefetching: tasksQueryState.isRefetching,
+          refetch: tasksQueryState.refetch,
+        }
+      }),
+    atomWithQuery: (getOptions: (get: Getter) => { input?: unknown; queryKey: string[] }) =>
+      atom((get) => {
+        get(revisionAtom)
+        const options = getOptions(get)
+        const name = options.queryKey[0] as keyof typeof overviewQueryState
+        const state = overviewQueryState[name]
+        const skipped = typeof options.input === 'symbol'
+        return {
+          data: state.isError || skipped ? undefined : queryData[name],
+          ...state,
+          isRefetching: state.isFetching,
+          refetch: name === 'activity' ? jotaiQueryMocks.refetchActivity : vi.fn(),
+        }
+      }),
   }
 })
 
@@ -307,6 +352,18 @@ vi.mock('@/service/client', () => {
   }
 })
 
+function renderOverviewWithNuqs(...args: Parameters<typeof renderWithNuqs>) {
+  jotaiQueryMocks.bump?.()
+  const rendered = renderWithNuqs(...args)
+  return {
+    ...rendered,
+    rerender: (ui: Parameters<typeof rendered.rerender>[0]) => {
+      act(() => jotaiQueryMocks.bump?.())
+      rendered.rerender(ui)
+    },
+  }
+}
+
 describe('KnowledgeOverviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -357,7 +414,9 @@ describe('KnowledgeOverviewPage', () => {
 
   it('refreshes the metrics query when a user switches the overview range', async () => {
     const user = userEvent.setup()
-    const { onUrlUpdate } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const { onUrlUpdate } = renderOverviewWithNuqs(
+      <KnowledgeOverviewPage knowledgeSpaceId="space-1" />,
+    )
 
     const sevenDayRadio = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.overview.sevenDays',
@@ -387,7 +446,7 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('restores the selected overview range from the URL', () => {
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />, {
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />, {
       searchParams: '?window=30d',
     })
 
@@ -411,7 +470,7 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('renders ratio fields from the API contract as percentages', () => {
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('84%')).toBeInTheDocument()
     expect(screen.getByText('+100%')).toBeInTheDocument()
@@ -426,7 +485,7 @@ describe('KnowledgeOverviewPage', () => {
       uploads: 1,
     }
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const inventoryBar = screen.getByLabelText('dataset.newKnowledge.overview.sources')
     expect(inventoryBar.children).toHaveLength(1)
@@ -445,7 +504,7 @@ describe('KnowledgeOverviewPage', () => {
       },
     ]
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('84%')).toBeInTheDocument()
     expect(screen.getByLabelText('query outcomes chart')).toBeInTheDocument()
@@ -461,7 +520,7 @@ describe('KnowledgeOverviewPage', () => {
       },
     ]
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const options = chartOptions.current as {
       series: Array<{ smooth: boolean }>
@@ -475,7 +534,7 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('shows the member who performed an activity instead of a system placeholder', () => {
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('Ada')).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.overview.system')).not.toBeInTheDocument()
@@ -486,7 +545,9 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.documents = 0
     for (const state of Object.values(overviewQueryState)) state.isPending = true
 
-    const { rerender } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const { rerender } = renderOverviewWithNuqs(
+      <KnowledgeOverviewPage knowledgeSpaceId="space-1" />,
+    )
 
     expect(
       screen.getByRole('radiogroup', { name: 'dataset.newKnowledge.overview.timeRange' }),
@@ -525,7 +586,7 @@ describe('KnowledgeOverviewPage', () => {
     const user = userEvent.setup()
     overviewQueryState.activity.isError = true
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.tasksErrorDescription')).toBeInTheDocument()
     const activitySection = screen
@@ -559,7 +620,7 @@ describe('KnowledgeOverviewPage', () => {
       title: `Source ${index} has not synced in 7 days`,
       updated_at: '2026-07-29T08:00:00Z',
     }))
-    const rendered = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getAllByText('dataset.newKnowledge.overview.attention.staleSource.title'),
@@ -614,7 +675,7 @@ describe('KnowledgeOverviewPage', () => {
       },
     ]
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByText('dataset.newKnowledge.overview.attention.modelReadiness.title'),
@@ -635,7 +696,7 @@ describe('KnowledgeOverviewPage', () => {
 
   it('opens the complete activity view from recent activity', async () => {
     const user = userEvent.setup()
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
     const whenHeader = screen.getByRole('columnheader', {
       name: 'dataset.newKnowledge.overview.when',
     })
@@ -664,7 +725,7 @@ describe('KnowledgeOverviewPage', () => {
 
   it('enables the complete activity query only while its drawer is open', async () => {
     const user = userEvent.setup()
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(infiniteOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({ enabled: false })
 
@@ -677,7 +738,7 @@ describe('KnowledgeOverviewPage', () => {
 
   it('restarts activity pagination when the date or operator filter changes', async () => {
     const user = userEvent.setup()
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
     )
@@ -741,7 +802,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.activity.data[0]!.occurred_at = new Date(Date.now() - 2 * 60 * 60_000).toISOString()
     queryData.activity.data[0]!.result = 'failure'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
     )
@@ -763,7 +824,7 @@ describe('KnowledgeOverviewPage', () => {
     }
     queryData.activity.data[0]!.result = 'success'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const label = 'dataset.newKnowledge.qualityPage.question: How do permissions work? — research'
     expect(within(screen.getByRole('table')).getByText(label)).toBeInTheDocument()
@@ -780,7 +841,7 @@ describe('KnowledgeOverviewPage', () => {
   it('refreshes overview snapshots until they catch up with a completed background task', () => {
     queryData.tasks[0]!.state = 'running'
     queryData.tasks[0]!.updated_at = '2026-07-29T10:00:00Z'
-    const rendered = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
     const statsRefreshInterval = () => {
       const options = queryOptionsMocks.stats.mock.lastCall?.[0] as {
         refetchInterval: (query: { state: { data: typeof queryData.stats } }) => false | number
@@ -803,7 +864,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
@@ -835,7 +896,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const connectSource = screen.getByRole('link', {
       name: 'dataset.newKnowledge.overview.connectSource',
@@ -858,7 +919,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.operation = 'document_upload'
     queryData.tasks[0]!.state = 'failed'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const overviewTitle = screen.getByRole('heading', {
       name: 'dataset.newKnowledge.overviewTitle',
@@ -915,7 +976,7 @@ describe('KnowledgeOverviewPage', () => {
       },
     ]
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(
@@ -932,7 +993,7 @@ describe('KnowledgeOverviewPage', () => {
     permissionState.datasetKeys = ['dataset.acl.readonly']
     permissionState.workspaceKeys = ['dataset.acl.readonly']
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.queryByRole('link', { name: 'dataset.newKnowledge.overview.connectSource' }),
@@ -950,7 +1011,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.documents = 0
     permissionState.datasetKeys = ['dataset.acl.readonly']
     permissionState.workspaceKeys = ['dataset.external.connect']
-    const rendered = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.overview.connectSource' }),
@@ -975,7 +1036,7 @@ describe('KnowledgeOverviewPage', () => {
     overviewQueryState.attention.isError = true
     overviewQueryState.inventory.isError = true
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const healthSection = screen
       .getByRole('heading', { name: 'dataset.newKnowledge.overview.needsAttention' })
@@ -1005,7 +1066,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 1
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.recentActivity' }),
@@ -1016,7 +1077,7 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('labels index coverage as slices rather than documents', () => {
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByText('dataset.newKnowledge.overview.indexedSlices:{"indexed":4,"total":5}'),
@@ -1037,7 +1098,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.source_id = 'source-1'
     queryData.tasks[0]!.state = 'running'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', {
@@ -1065,7 +1126,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.progress_total = 0
     queryData.tasks[0]!.state = 'queued'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const progressbar = screen.getByRole('progressbar', {
       name: 'dataset.newKnowledge.overview.indexing',
@@ -1082,7 +1143,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.source_id = null
     queryData.tasks[0]!.state = 'running'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.indexing' }),
@@ -1094,7 +1155,7 @@ describe('KnowledgeOverviewPage', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now)
     queryData.activity.data[0]!.occurred_at = '2026-07-29T08:05:00Z'
 
-    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('59 minutes ago')).toBeInTheDocument()
   })

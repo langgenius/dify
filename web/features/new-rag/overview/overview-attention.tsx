@@ -3,6 +3,7 @@
 import type { KnowledgeFsOverviewAttentionResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -13,6 +14,13 @@ import {
   newKnowledgeSettingsPath,
 } from '../routes'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
+import {
+  overviewAttentionDataAtom,
+  overviewAttentionErrorAtom,
+  overviewAttentionPendingAtom,
+  overviewKnowledgeSpaceIdAtom,
+  overviewShowEmptyModulesAtom,
+} from './state'
 
 const ATTENTION_PAGE_SIZE = 4
 
@@ -56,21 +64,14 @@ function attentionPresentation(
   return { title: issue.title }
 }
 
-export function AttentionPanel({
-  attention,
-  empty,
-  error,
-  knowledgeSpaceId,
-  loading,
-}: {
-  attention: KnowledgeFsOverviewAttentionResponse[]
-  empty: boolean
-  error: boolean
-  knowledgeSpaceId: string
-  loading: boolean
-}) {
+export function AttentionPanel() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const attention = useAtomValue(overviewAttentionDataAtom)
+  const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const error = useAtomValue(overviewAttentionErrorAtom)
+  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const loading = useAtomValue(overviewAttentionPendingAtom)
   const [issuePage, setIssuePage] = useState(0)
   // Dify owns product authorization; ignore responses cached or served by an older backend that
   // still contain the retired KnowledgeFS-local permission readiness rule.
