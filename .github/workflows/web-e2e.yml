@@ -51,7 +51,8 @@ jobs:
           name: core-e2e-web-build
           path: e2e-web-build.tar
           if-no-files-found: error
-          retention-days: 1
+          overwrite: true
+          retention-days: 7
 
   chromium-full:
     name: Chromium Full (${{ matrix.shard }}/3)
@@ -112,6 +113,7 @@ jobs:
           name: cucumber-report-chromium-${{ matrix.shard }}
           path: e2e/cucumber-report
           if-no-files-found: ignore
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E logs
@@ -122,6 +124,7 @@ jobs:
           path: e2e/.logs/*.log
           if-no-files-found: ignore
           include-hidden-files: true
+          overwrite: true
           retention-days: 7
 
   webkit-smoke:
@@ -180,6 +183,7 @@ jobs:
           name: cucumber-report-webkit
           path: e2e/cucumber-report
           if-no-files-found: ignore
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E logs
@@ -190,6 +194,7 @@ jobs:
           path: e2e/.logs/*.log
           if-no-files-found: ignore
           include-hidden-files: true
+          overwrite: true
           retention-days: 7
 
   external-runtime:
@@ -258,6 +263,7 @@ jobs:
         with:
           name: cucumber-report
           path: e2e/cucumber-report
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E logs
@@ -267,6 +273,7 @@ jobs:
           name: e2e-logs
           path: e2e/.logs/*.log
           include-hidden-files: true
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E seed report
@@ -276,4 +283,5 @@ jobs:
           name: e2e-seed-report
           path: e2e/seed-report
           if-no-files-found: ignore
+          overwrite: true
           retention-days: 7
