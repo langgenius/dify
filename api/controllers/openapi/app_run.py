@@ -35,6 +35,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -57,6 +58,9 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -70,6 +74,8 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise NotFound(str(ex))
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
         raise BadRequest(str(ex))
+    except TriggerWorkflowServiceModeUnavailableServiceError:
+        raise TriggerWorkflowServiceModeUnavailableError()
     except services.errors.conversation.ConversationNotExistsError:
         raise NotFound("Conversation Not Exists.")
     except services.errors.conversation.ConversationCompletedError:
