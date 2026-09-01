@@ -1,0 +1,19 @@
+{
+  "connect": "Anslut till",
+  "continue": "Fortsätt",
+  "error.authAppInfoFetchFailed": "Det gick inte att hämta programinformation för auktorisering",
+  "error.authorizeFailed": "Auktoriseringen misslyckades",
+  "error.invalidParams": "Ogiltiga parametrar",
+  "login": "Logga in",
+  "scopes.avatar": "Profilbild",
+  "scopes.email": "E-postadress",
+  "scopes.languagePreference": "Språkinställning",
+  "scopes.name": "Namn",
+  "scopes.timezone": "Tidszon",
+  "switchAccount": "Byt konto",
+  "tips.common": "Vi respekterar din integritet och använder endast denna information för att förbättra din upplevelse av våra utvecklarverktyg.",
+  "tips.loggedIn": "Det här programmet vill få åtkomst till följande information från ditt Dify Cloud-konto.",
+  "tips.needLogin": "Logga in för att auktorisera",
+  "tips.notLoggedIn": "Det här programmet vill få åtkomst till ditt Dify Cloud-konto",
+  "unknownApp": "Okänt program"
+}

@@ -1,0 +1,23 @@
+{
+  "allTags": "Alla taggar",
+  "clearSelectedTags": "Rensa valda taggar: {{tags}}",
+  "searchTags": "Sök taggar",
+  "tags.agent": "Agent",
+  "tags.business": "Företag",
+  "tags.design": "Design",
+  "tags.education": "Utbildning",
+  "tags.entertainment": "Underhållning",
+  "tags.finance": "Ekonomi",
+  "tags.image": "Bild",
+  "tags.medical": "Medicin",
+  "tags.news": "Nyheter",
+  "tags.other": "Övrigt",
+  "tags.productivity": "Produktivitet",
+  "tags.rag": "RAG",
+  "tags.search": "Sökning",
+  "tags.social": "Socialt",
+  "tags.travel": "Resor",
+  "tags.utilities": "Verktyg",
+  "tags.videos": "Videor",
+  "tags.weather": "Väder"
+}
