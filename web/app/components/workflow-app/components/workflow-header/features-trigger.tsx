@@ -1,4 +1,5 @@
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
@@ -93,11 +94,20 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
-  const endVariables = useMemo(
+  const endVariables = useMemo<WorkflowToolOutputVariable[]>(
     () =>
-      nodes.flatMap((node) =>
-        node.data.type === BlockEnum.End ? (node as Node<EndNodeType>).data.outputs || [] : [],
-      ),
+      nodes.flatMap((node) => {
+        if (node.data.type !== BlockEnum.End) return []
+
+        return ((node as Node<EndNodeType>).data.outputs || []).map((output, outputIndex) => ({
+          ...output,
+          source: {
+            nodeId: node.id,
+            nodeTitle: node.data.title,
+            outputIndex,
+          },
+        }))
+      }),
     [nodes],
   )
 

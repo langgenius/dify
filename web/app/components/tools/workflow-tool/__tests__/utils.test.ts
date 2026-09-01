@@ -1,9 +1,67 @@
 import type {
+  WorkflowToolOutputSource,
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderOutputSchema,
 } from '../../types'
 import { VarType } from '@/app/components/workflow/types'
-import { buildWorkflowOutputParameters } from '../utils'
+import {
+  buildWorkflowOutputParameters,
+  getDuplicateWorkflowOutputGroups,
+  getSourceNodeDisplayName,
+  getUniqueWorkflowOutputSources,
+} from '../utils'
+
+describe('workflow output sources', () => {
+  const duplicateSources: WorkflowToolOutputSource[] = [
+    { nodeId: 'end-success', nodeTitle: 'Output', outputIndex: 0 },
+    { nodeId: 'end-fallback', nodeTitle: 'Output', outputIndex: 0 },
+  ]
+
+  it('deduplicates source nodes while preserving their order', () => {
+    const outputs: WorkflowToolProviderOutputParameter[] = [
+      { name: 'result', description: '', source: duplicateSources[0] },
+      { name: 'result', description: '', source: duplicateSources[0] },
+      { name: 'result', description: '', source: duplicateSources[1] },
+    ]
+
+    expect(getUniqueWorkflowOutputSources(outputs)).toEqual(duplicateSources)
+  })
+
+  it('numbers sources with the same title without exposing their node IDs', () => {
+    expect(getSourceNodeDisplayName(duplicateSources[0]!, duplicateSources)).toBe('Output (1/2)')
+    expect(getSourceNodeDisplayName(duplicateSources[1]!, duplicateSources)).toBe('Output (2/2)')
+  })
+})
+
+describe('getDuplicateWorkflowOutputGroups', () => {
+  it('groups trimmed duplicate names while preserving their End node sources', () => {
+    const params: WorkflowToolProviderOutputParameter[] = [
+      {
+        name: ' result ',
+        description: 'Success output',
+        source: { nodeId: 'end-success', nodeTitle: 'Success End', outputIndex: 0 },
+      },
+      {
+        name: 'result',
+        description: 'Fallback output',
+        source: { nodeId: 'end-fallback', nodeTitle: 'Fallback End', outputIndex: 0 },
+      },
+      {
+        name: 'unique',
+        description: 'Unique output',
+        source: { nodeId: 'end-unique', nodeTitle: 'Unique End', outputIndex: 0 },
+      },
+    ]
+
+    const result = getDuplicateWorkflowOutputGroups(params)
+
+    expect([...result.keys()]).toEqual(['result'])
+    expect(result.get('result')?.map((item) => item.source?.nodeTitle)).toEqual([
+      'Success End',
+      'Fallback End',
+    ])
+  })
+})
 
 describe('buildWorkflowOutputParameters', () => {
   it('returns provided output parameters when array input exists', () => {
@@ -14,35 +72,6 @@ describe('buildWorkflowOutputParameters', () => {
     const result = buildWorkflowOutputParameters(params, null)
 
     expect(result).toEqual(params)
-  })
-
-  it('merges duplicate output names when their types match', () => {
-    const params: WorkflowToolProviderOutputParameter[] = [
-      { name: 'result', description: 'First branch', type: VarType.string },
-      { name: 'result', description: 'Second branch', type: VarType.string },
-    ]
-
-    const result = buildWorkflowOutputParameters(params, null)
-
-    expect(result).toEqual([{ name: 'result', description: 'Second branch', type: VarType.string }])
-  })
-
-  it('marks duplicate output names with different types and keeps the last type', () => {
-    const params: WorkflowToolProviderOutputParameter[] = [
-      { name: 'result', description: 'First branch', type: VarType.string },
-      { name: 'result', description: 'Second branch', type: VarType.number },
-    ]
-
-    const result = buildWorkflowOutputParameters(params, null)
-
-    expect(result).toEqual([
-      {
-        name: 'result',
-        description: 'Second branch',
-        type: VarType.number,
-        typeConflict: true,
-      },
-    ])
   })
 
   it('fills missing output description and type from schema when array input exists', () => {

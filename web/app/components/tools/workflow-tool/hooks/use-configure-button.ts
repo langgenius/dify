@@ -1,11 +1,12 @@
 import type {
   Emoji,
+  WorkflowToolOutputVariable,
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
@@ -67,16 +68,19 @@ function buildExistingParameters(
   })
 }
 
-function buildNewOutputParameters(outputs?: Variable[]): WorkflowToolProviderOutputParameter[] {
+function buildNewOutputParameters(
+  outputs?: WorkflowToolOutputVariable[],
+): WorkflowToolProviderOutputParameter[] {
   return (outputs || []).map((item) => ({
     name: item.variable,
     description: '',
     type: item.value_type,
+    source: item.source,
   }))
 }
 
 function buildExistingOutputParameters(
-  outputs: Variable[] | undefined,
+  outputs: WorkflowToolOutputVariable[] | undefined,
   detail: WorkflowToolProviderResponse,
 ): WorkflowToolProviderOutputParameter[] {
   return (outputs || []).map((item) => {
@@ -85,6 +89,7 @@ function buildExistingOutputParameters(
       name: item.variable,
       description: found ? found.description : '',
       type: item.value_type,
+      source: item.source,
     }
   })
 }
@@ -100,7 +105,7 @@ type UseConfigureButtonOptions = {
   name: string
   description: string
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
   onConfigured?: () => void

@@ -2,6 +2,7 @@
 import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type {
   Emoji,
+  WorkflowToolOutputSource,
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderOutputSchema,
   WorkflowToolProviderParameter,
@@ -21,7 +22,6 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -33,6 +33,7 @@ import Input from '@/app/components/base/input'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
+import { normalizeWorkflowOutputName } from '@/app/components/workflow/utils/variable'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -40,6 +41,11 @@ import {
   hasReservedWorkflowOutputConflict,
   isWorkflowToolNameValid,
 } from './helpers'
+import {
+  getDuplicateWorkflowOutputGroups,
+  getSourceNodeDisplayName,
+  getUniqueWorkflowOutputSources,
+} from './utils'
 
 export type WorkflowToolDrawerPayload = {
   icon: Emoji
@@ -47,7 +53,7 @@ export type WorkflowToolDrawerPayload = {
   name: string
   description: string
   parameters: WorkflowToolProviderParameter[]
-  outputParameters: WorkflowToolProviderOutputParameter[]
+  outputParameters?: WorkflowToolProviderOutputParameter[]
   labels: string[]
   privacy_policy: string
   tool?: {
@@ -135,6 +141,88 @@ const WorkflowToolDrawerFrame = ({
   )
 }
 
+const WorkflowToolOutputName = React.memo(
+  ({
+    duplicateSources,
+    item,
+    reservedOutputParameters,
+  }: {
+    duplicateSources?: WorkflowToolOutputSource[]
+    item: WorkflowToolProviderOutputParameter
+    reservedOutputParameters: WorkflowToolProviderOutputParameter[]
+  }) => {
+    const { t } = useTranslation()
+    const reservedOutputDuplicateTip = t(
+      ($) => $['createTool.toolOutput.reservedParameterDuplicateTip'],
+      { ns: 'tools' },
+    )
+    const sourceNodeLabel = t(($) => $['createTool.toolOutput.sourceNode'], { ns: 'tools' })
+    const duplicateOutputTip = t(($) => $['errorMsg.duplicateOutputVariable'], {
+      ns: 'workflow',
+      variable: normalizeWorkflowOutputName(item.name),
+    })
+    const hasReservedNameConflict =
+      !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
+    const hasDuplicateNameConflict = !item.reserved && !!duplicateSources
+    const issueLabel = hasReservedNameConflict
+      ? hasDuplicateNameConflict
+        ? `${reservedOutputDuplicateTip} ${duplicateOutputTip}`
+        : reservedOutputDuplicateTip
+      : duplicateOutputTip
+    const sources = duplicateSources || []
+
+    return (
+      <div className="text-[13px] leading-4.5">
+        <div className="flex min-w-0 items-center gap-x-1">
+          <span className="truncate font-medium text-text-primary">{item.name}</span>
+          {item.reserved && (
+            <span className="shrink-0 text-xs leading-4.5 text-[#ec4a0a]">
+              {t(($) => $['createTool.toolOutput.reserved'], { ns: 'tools' })}
+            </span>
+          )}
+          {hasReservedNameConflict || hasDuplicateNameConflict ? (
+            <Infotip
+              aria-label={issueLabel}
+              className="text-text-warning-secondary"
+              iconSize="small"
+              iconVariant="warning"
+              popupClassName={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
+            >
+              <div className="space-y-2">
+                {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
+                {hasDuplicateNameConflict ? (
+                  <div className="space-y-1.5">
+                    <p>{duplicateOutputTip}</p>
+                    {sources.length > 0 ? (
+                      <ul className="space-y-1">
+                        {sources.map((source) => {
+                          const sourceTitle = getSourceNodeDisplayName(source, sources)
+                          return (
+                            <li key={source.nodeId} className="wrap-break-word">
+                              {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </Infotip>
+          ) : null}
+        </div>
+        <div className="text-text-tertiary">{item.type}</div>
+        {hasDuplicateNameConflict && item.source ? (
+          <div className="system-xs-regular wrap-break-word text-text-tertiary">
+            {sourceNodeLabel} ·{' '}
+            <span translate="no">{getSourceNodeDisplayName(item.source, sources)}</span>
+          </div>
+        ) : null}
+      </div>
+    )
+  },
+)
+
 export function WorkflowToolDrawer({
   isAdd,
   payload,
@@ -158,6 +246,15 @@ export function WorkflowToolDrawer({
     [rawOutputParameters, outputSchema],
   )
   const reservedOutputParameters = useMemo(() => getReservedWorkflowOutputParameters(t), [t])
+  const duplicateOutputSourceGroups = useMemo(() => {
+    const groups = getDuplicateWorkflowOutputGroups(outputParameters)
+    const sourceGroups = new Map<string, WorkflowToolOutputSource[]>()
+
+    for (const [name, outputs] of groups)
+      sourceGroups.set(name, getUniqueWorkflowOutputSources(outputs))
+
+    return sourceGroups
+  }, [outputParameters])
 
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
@@ -392,65 +489,24 @@ export function WorkflowToolDrawer({
                   </thead>
                   <tbody>
                     {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
-                      <tr key={index} className="border-b border-divider-regular last:border-0">
+                      <tr
+                        key={
+                          item.reserved
+                            ? `reserved-${item.name}`
+                            : item.source
+                              ? `${item.source.nodeId}-${item.source.outputIndex}`
+                              : `output-${item.name}-${index}`
+                        }
+                        className="border-b border-divider-regular last:border-0"
+                      >
                         <td className="max-w-39 p-2 pl-3">
-                          <div className="text-[13px] leading-4.5">
-                            <div className="flex items-center">
-                              <span className="truncate font-medium text-text-primary">
-                                {item.name}
-                              </span>
-                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
-                                {item.reserved
-                                  ? t(($) => $['createTool.toolOutput.reserved'], { ns: 'tools' })
-                                  : ''}
-                              </span>
-                              {!item.reserved &&
-                              hasReservedWorkflowOutputConflict(
-                                reservedOutputParameters,
-                                item.name,
-                              ) ? (
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <span
-                                        data-testid="reserved-output-warning"
-                                        className="i-ri-error-warning-line size-3 text-text-warning-secondary"
-                                      />
-                                    }
-                                  />
-                                  <TooltipContent>
-                                    <div className="w-45">
-                                      {t(
-                                        ($) =>
-                                          $['createTool.toolOutput.reservedParameterDuplicateTip'],
-                                        { ns: 'tools' },
-                                      )}
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : null}
-                              {item.typeConflict ? (
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <span
-                                        data-testid="output-type-conflict-warning"
-                                        className="i-ri-error-warning-line size-3 text-text-warning-secondary"
-                                      />
-                                    }
-                                  />
-                                  <TooltipContent>
-                                    <div className="w-45">
-                                      {t(($) => $['createTool.toolOutput.typeConflictTip'], {
-                                        ns: 'tools',
-                                      })}
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : null}
-                            </div>
-                            <div className="text-text-tertiary">{item.type}</div>
-                          </div>
+                          <WorkflowToolOutputName
+                            duplicateSources={duplicateOutputSourceGroups.get(
+                              normalizeWorkflowOutputName(item.name),
+                            )}
+                            item={item}
+                            reservedOutputParameters={reservedOutputParameters}
+                          />
                         </td>
                         <td className="w-59 p-2 pl-3 text-text-tertiary">
                           <span className="text-[13px] leading-4.5 font-normal text-text-secondary">

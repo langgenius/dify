@@ -1,8 +1,9 @@
 import type {
+  WorkflowToolOutputVariable,
   WorkflowToolProviderRequest,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
@@ -46,12 +47,15 @@ const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar =>
     ...overrides,
   }) as InputVar
 
-const createMockVariable = (overrides: Partial<Variable> = {}): Variable =>
+const createMockVariable = (
+  overrides: Partial<WorkflowToolOutputVariable> = {},
+): WorkflowToolOutputVariable =>
   ({
     variable: 'output_var',
     value_type: 'string',
+    source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
     ...overrides,
-  }) as Variable
+  }) as WorkflowToolOutputVariable
 
 const createMockDetail = (
   overrides: Partial<WorkflowToolProviderResponse> = {},
@@ -292,6 +296,10 @@ describe('useConfigureButton', () => {
         name: 'test_var',
         form: 'llm',
         description: '',
+      })
+      expect(result.current.payload.outputParameters[0]).toMatchObject({
+        name: 'output_var',
+        source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
       })
     })
 

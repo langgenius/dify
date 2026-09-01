@@ -1,5 +1,5 @@
 import type { WorkflowToolDrawerPayload } from '../index'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowToolDrawer } from '../index'
@@ -112,6 +112,7 @@ describe('WorkflowToolDrawer', () => {
         labels: ['label1', 'new-label'],
       }),
     )
+    expect(onCreate.mock.calls[0]![0]).not.toHaveProperty('outputParameters')
   })
 
   it('should block invalid tool-call names before saving', async () => {
@@ -158,19 +159,56 @@ describe('WorkflowToolDrawer', () => {
     })
   })
 
-  it('should show duplicate reserved output warnings', () => {
+  it('should not show output warnings when names are valid and unique', () => {
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({
+          outputParameters: [{ name: 'answer', description: 'Valid output' }],
+        })}
+        onHide={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', {
+        name: /reservedParameterDuplicateTip|duplicateOutputVariable/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should show one reserved-name warning on the user output only', () => {
     render(
       <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={vi.fn()} />,
     )
 
-    expect(screen.getAllByTestId('reserved-output-warning').length).toBeGreaterThan(0)
+    const userOutputRow = screen.getByRole('row', { name: /text.*Reserved output duplicate/ })
+    expect(
+      within(userOutputRow).getByRole('button', {
+        name: 'tools.createTool.toolOutput.reservedParameterDuplicateTip',
+      }),
+    ).toBeInTheDocument()
+
+    const reservedOutputRow = screen.getByRole('row', {
+      name: /text.*tools\.createTool\.toolOutput\.reserved.*string/,
+    })
+    expect(within(reservedOutputRow).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('should show output type conflict warnings without blocking save', async () => {
+  it('should identify the End node sources for duplicate outputs', async () => {
     const user = userEvent.setup()
-    const onCreate = vi.fn()
     const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
-      { name: 'result', description: 'Conflicting output', typeConflict: true },
+      {
+        name: 'result',
+        description: 'Success output',
+        source: { nodeId: 'end-success', nodeTitle: 'Success End', outputIndex: 0 },
+      },
+      {
+        name: 'result',
+        description: 'Fallback output',
+        source: { nodeId: 'end-fallback', nodeTitle: 'Fallback End', outputIndex: 0 },
+      },
     ]
 
     render(
@@ -178,21 +216,108 @@ describe('WorkflowToolDrawer', () => {
         isAdd
         payload={createPayload({ outputParameters })}
         onHide={vi.fn()}
-        onCreate={onCreate}
+        onCreate={vi.fn()}
       />,
     )
 
-    const warning = screen.getByTestId('output-type-conflict-warning')
-    expect(warning).toBeInTheDocument()
-
-    await user.hover(warning)
-
     expect(
-      await screen.findByText('tools.createTool.toolOutput.typeConflictTip'),
+      screen.getByRole('row', { name: /result.*Success End.*Success output/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('row', { name: /result.*Fallback End.*Fallback output/ }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    const duplicateWarnings = screen.getAllByRole('button', {
+      name: /workflow\.errorMsg\.duplicateOutputVariable/,
+    })
+    expect(duplicateWarnings).toHaveLength(2)
 
-    expect(onCreate).toHaveBeenCalledOnce()
+    await user.click(duplicateWarnings[0]!)
+
+    const duplicateDetails = (await screen.findAllByRole('dialog')).find((dialog) =>
+      within(dialog).queryByText(/workflow\.errorMsg\.duplicateOutputVariable/),
+    )!
+    expect(duplicateDetails).toHaveTextContent('Success End')
+    expect(duplicateDetails).toHaveTextContent('Fallback End')
+  })
+
+  it('should combine reserved-name and duplicate-name issues into one warning per user output', async () => {
+    const user = userEvent.setup()
+    const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
+      {
+        name: 'text',
+        description: 'Success output',
+        source: { nodeId: 'end-success', nodeTitle: 'Output', outputIndex: 0 },
+      },
+      {
+        name: 'text',
+        description: 'Fallback output',
+        source: { nodeId: 'end-fallback', nodeTitle: 'Output', outputIndex: 0 },
+      },
+    ]
+
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({ outputParameters })}
+        onHide={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    )
+
+    const issueWarnings = screen.getAllByRole('button', {
+      name: /tools\.createTool\.toolOutput\.reservedParameterDuplicateTip.*workflow\.errorMsg\.duplicateOutputVariable/,
+    })
+    expect(issueWarnings).toHaveLength(2)
+
+    await user.click(issueWarnings[0]!)
+
+    const issueDetails = (await screen.findAllByRole('dialog')).find((dialog) =>
+      within(dialog).queryByText('tools.createTool.toolOutput.reservedParameterDuplicateTip'),
+    )!
+    expect(issueDetails).toHaveTextContent(
+      'tools.createTool.toolOutput.reservedParameterDuplicateTip',
+    )
+    expect(issueDetails).toHaveTextContent('workflow.errorMsg.duplicateOutputVariable')
+    expect(issueDetails).toHaveTextContent('Output (1/2)')
+    expect(issueDetails).toHaveTextContent('Output (2/2)')
+    expect(issueDetails).not.toHaveTextContent('end-succ')
+    expect(issueDetails).not.toHaveTextContent('end-fall')
+
+    expect(screen.getByRole('row', { name: /Output \(1\/2\).*Success output/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('row', { name: /Output \(2\/2\).*Fallback output/ }),
+    ).toBeInTheDocument()
+
+    const reservedOutputRow = screen.getByRole('row', {
+      name: /text.*tools\.createTool\.toolOutput\.reserved.*string/,
+    })
+    expect(within(reservedOutputRow).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('should keep schema-derived outputs compact when source metadata is unavailable', () => {
+    render(
+      <WorkflowToolDrawer
+        payload={createPayload({
+          outputParameters: undefined,
+          tool: {
+            output_schema: {
+              type: 'object',
+              properties: {
+                answer: {
+                  type: 'string',
+                  description: 'Published answer',
+                },
+              },
+            },
+          },
+        })}
+        onHide={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('row', { name: /answer string Published answer/ })).toBeInTheDocument()
+    expect(screen.queryByText('tools.createTool.toolOutput.sourceNode')).not.toBeInTheDocument()
   })
 })

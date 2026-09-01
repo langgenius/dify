@@ -400,8 +400,8 @@ describe('FeaturesTrigger', () => {
         value_selector: ['source-2', 'value'],
       }
       mockUseNodes.mockReturnValue([
-        { id: 'end-1', data: { type: BlockEnum.End, outputs: [aaa] } },
-        { id: 'end-2', data: { type: BlockEnum.End, outputs: [bbb] } },
+        { id: 'end-1', data: { type: BlockEnum.End, title: 'Success End', outputs: [aaa] } },
+        { id: 'end-2', data: { type: BlockEnum.End, title: 'Fallback End', outputs: [bbb] } },
       ])
 
       renderWithToast(<FeaturesTrigger />)
@@ -409,7 +409,16 @@ describe('FeaturesTrigger', () => {
       const outputs = JSON.parse(
         screen.getByTestId('app-publisher').getAttribute('data-outputs') ?? '[]',
       )
-      expect(outputs).toEqual([aaa, bbb])
+      expect(outputs).toEqual([
+        {
+          ...aaa,
+          source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
+        },
+        {
+          ...bbb,
+          source: { nodeId: 'end-2', nodeTitle: 'Fallback End', outputIndex: 0 },
+        },
+      ])
     })
 
     it('should append image input when file image upload is enabled', () => {
