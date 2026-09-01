@@ -28,7 +28,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
-from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -86,10 +90,18 @@ class _RealSessionTest:
         self.session = unbound_session
 
 
-def _make_workflow(*, workflow_id: str = "workflow-id", created_by: str = "owner-id") -> MagicMock:
+def _make_workflow(
+    *,
+    workflow_id: str = "workflow-id",
+    created_by: str = "owner-id",
+    node_types: tuple[str, ...] = (),
+) -> MagicMock:
     workflow = MagicMock()
     workflow.id = workflow_id
     workflow.created_by = created_by
+    workflow.walk_nodes.return_value = [
+        (f"node-{index}", {"type": node_type}) for index, node_type in enumerate(node_types)
+    ]
     return workflow
 
 
@@ -473,6 +485,84 @@ class TestGenerate(_RealSessionTest):
         call_kwargs = gen_spy.call_args.kwargs
         assert call_kwargs.get("pause_state_config") is not None
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
+
+    @pytest.mark.parametrize(
+        "invoke_from",
+        [InvokeFrom.OPENAPI, InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP],
+    )
+    @pytest.mark.parametrize("node_type", ["trigger-plugin", "trigger-schedule", "trigger-webhook"])
+    def test_trigger_workflow_rejects_manual_service_surfaces(
+        self,
+        invoke_from: InvokeFrom,
+        node_type: str,
+        mocker: MockerFixture,
+    ) -> None:
+        workflow = _make_workflow(node_types=(node_type,))
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        generate = mocker.patch("services.app_generate_service.WorkflowAppGenerator.generate")
+
+        with pytest.raises(TriggerWorkflowServiceModeUnavailableError):
+            AppGenerateService.generate(
+                app_model=_make_app(AppMode.WORKFLOW),
+                user=_make_user(),
+                args={"inputs": {}},
+                invoke_from=invoke_from,
+                streaming=False,
+                session=MagicMock(),
+            )
+
+        generate.assert_not_called()
+
+    def test_trigger_workflow_allows_trigger_execution(self, mocker: MockerFixture) -> None:
+        workflow = _make_workflow(node_types=("trigger-webhook",))
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        generate = mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.generate",
+            return_value={"result": "trigger"},
+        )
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+            side_effect=lambda value: value,
+        )
+
+        result = AppGenerateService.generate(
+            app_model=_make_app(AppMode.WORKFLOW),
+            user=_make_user(),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.TRIGGER,
+            streaming=False,
+            session=MagicMock(),
+        )
+
+        assert result == {"result": "trigger"}
+        generate.assert_called_once()
+
+    def test_specific_start_workflow_version_remains_runnable(self, mocker: MockerFixture) -> None:
+        workflow_id = str(uuid.uuid4())
+        workflow = _make_workflow(workflow_id=workflow_id, node_types=("start",))
+        get_workflow = mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.generate",
+            return_value={"result": "version"},
+        )
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+            side_effect=lambda value: value,
+        )
+        app = _make_app(AppMode.WORKFLOW)
+        session = MagicMock()
+
+        result = AppGenerateService.generate(
+            app_model=app,
+            user=_make_user(),
+            args={"inputs": {}, "workflow_id": workflow_id},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=False,
+            session=session,
+        )
+
+        assert result == {"result": "version"}
+        get_workflow.assert_called_once_with(app, InvokeFrom.SERVICE_API, workflow_id, session=session)
 
     # -- WORKFLOW streaming -------------------------------------------------
     def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):

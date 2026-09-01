@@ -59,6 +59,7 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 
 - Drive state transitions through props, user interaction, URL changes, or public APIs.
 - Assert rendered UI, ARIA state, navigation, persistence, network-boundary calls, or another observable result.
+- For a reset-or-persistence regression in a hidden surface, exercise the public transition: open, modify, close and wait for the surface to disappear, then reopen. Assert the intended behavior without coupling the test to hook placement, component names, keys, or private mount structure.
 - Do not inspect React state, refs, hook call order, effect dependencies, or private DOM structure.
 - Test referential identity only when identity is itself a documented public contract.
 - One test should describe one behavior. It may contain multiple assertions when they jointly prove that behavior.
