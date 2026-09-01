@@ -24,6 +24,7 @@ from repositories.account_integration_repository import SQLAlchemyAccountIntegra
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -88,6 +89,7 @@ from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
+from services.app_statistic_query import AppStatisticQuery
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -180,6 +182,7 @@ class ApplicationServices:
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     app_sites: AppSiteService
+    app_statistics: AppStatisticQuery
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
@@ -387,6 +390,7 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         billing_portal=BillingPortalService(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
