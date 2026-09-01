@@ -38,6 +38,7 @@ from controllers.inner_api.plugin.plugin import (
 )
 from core.workflow.file_reference import build_file_reference
 from models import Account, Tenant
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _tenant() -> Tenant:
@@ -362,7 +363,7 @@ class TestPluginUploadFileRequestApi:
         """Test that post() generates a signed URL and returns it"""
         # Arrange
         mock_get_uri.return_value = "/files/upload/for-plugin?sign=1"
-        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
+        apply_config_overrides(monkeypatch, INTERNAL_FILES_URL="http://api:5001")
         tenant = _tenant()
         user = _user()
         mock_payload = MagicMock()
@@ -432,8 +433,11 @@ class TestPluginDownloadFileRequestApi:
             size=123,
             download_uri="/files/tools/report.pdf?sign=1",
         )
-        monkeypatch.setattr(plugin_module.dify_config, "FILES_URL", "https://files.example.com")
-        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
+        apply_config_overrides(
+            monkeypatch,
+            FILES_URL="https://files.example.com",
+            INTERNAL_FILES_URL="http://api:5001",
+        )
         mock_payload = MagicMock()
         mock_payload.tenant_id = tenant.id
         mock_payload.user_id = "user-id"

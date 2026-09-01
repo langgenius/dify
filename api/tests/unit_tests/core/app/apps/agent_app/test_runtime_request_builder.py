@@ -6,6 +6,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
+from agenton.layers import LifecycleState
 from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
@@ -20,6 +22,7 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequestBuilder,
@@ -27,6 +30,7 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -163,6 +167,7 @@ def _ctx(
     *,
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
+    session_snapshot: CompositorSessionSnapshot | None = None,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -183,6 +188,7 @@ def _ctx(
         binding_id="binding-1",
         backend_binding_ref="binding-ref-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
+        session_snapshot=session_snapshot,
     )
 
 
@@ -196,6 +202,15 @@ def _soul_with_model() -> AgentSoulConfig:
             },
             "prompt": {"system_prompt": "You are Iris."},
         }
+    )
+
+
+def _snapshot_for_layer_names(layer_names: list[str]) -> CompositorSessionSnapshot:
+    return CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            for name in layer_names
+        ]
     )
 
 
@@ -237,6 +252,57 @@ class TestAgentAppRuntimeRequestBuilder:
         # LLM credentials are resolved by API and never enter the Agent request.
         assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
         assert result.metadata["conversation_id"] == "conv-1"
+
+    @pytest.mark.parametrize(
+        ("previous_prompt", "current_prompt"),
+        [("", "You are Iris."), ("You are Iris.", "")],
+    )
+    def test_build_rejects_session_snapshot_after_layer_topology_changes(
+        self,
+        previous_prompt: str,
+        current_prompt: str,
+    ) -> None:
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        previous_soul = _soul_with_model()
+        previous_soul.prompt.system_prompt = previous_prompt
+        previous_request = builder.build(_ctx(previous_soul, agent_config_version_kind="draft")).request
+        snapshot = _snapshot_for_layer_names([layer.name for layer in previous_request.composition.layers])
+        current_soul = _soul_with_model()
+        current_soul.prompt.system_prompt = current_prompt
+
+        with pytest.raises(AgentSessionSnapshotIncompatibleError) as exc_info:
+            builder.build(
+                _ctx(
+                    current_soul,
+                    agent_config_version_kind="draft",
+                    session_snapshot=snapshot,
+                )
+            )
+
+        assert exc_info.value.error_code == "agent_session_configuration_changed"
+        assert exc_info.value.status_code == 409
+        assert "Start a new conversation" in str(exc_info.value)
+
+    def test_build_reuses_session_snapshot_when_config_changes_without_changing_layers(self) -> None:
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        previous_request = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft")).request
+        snapshot = _snapshot_for_layer_names([layer.name for layer in previous_request.composition.layers])
+        current_soul = _soul_with_model()
+        current_soul.prompt.system_prompt = "You are Ada."
+
+        result = builder.build(
+            _ctx(
+                current_soul,
+                agent_config_version_kind="draft",
+                session_snapshot=snapshot,
+            )
+        )
+
+        assert result.request.session_snapshot is snapshot
 
     def test_build_wraps_agent_soul_prompt_for_build_draft(self):
         builder = AgentAppRuntimeRequestBuilder(
@@ -405,7 +471,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exc.value.error_code == "agent_model_not_configured"
 
     def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -484,7 +550,7 @@ class TestAgentAppConfigLayer:
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )

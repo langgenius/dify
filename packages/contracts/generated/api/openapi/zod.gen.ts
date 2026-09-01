@@ -738,6 +738,7 @@ export const zOpenApiErrorCode = z.enum([
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
+  'trigger_workflow_service_mode_unavailable',
   'unauthorized',
   'unknown',
   'unsupported_file_type',

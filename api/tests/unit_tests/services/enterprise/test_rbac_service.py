@@ -1000,7 +1000,7 @@ class TestMemberRoles:
         }
         assert persisted_joins == {
             "acct-2": svc.TenantAccountRole.OWNER,
-            "acct-owner": svc.TenantAccountRole.ADMIN,
+            "acct-owner": svc.TenantAccountRole.NORMAL,
         }
         assert out.roles[0].id == "owner"
 
@@ -1306,3 +1306,16 @@ class TestListOption:
             "page_number": 1,
             "resource_type": "app",
         }
+
+
+class TestLegacyAgentManageKey:
+    def test_legacy_agent_manage_key_membership(self):
+        # Preserve Agent access for every legacy role while external RBAC is disabled.
+        for keys in (
+            svc._LEGACY_WORKSPACE_OWNER_KEYS,
+            svc._LEGACY_WORKSPACE_ADMIN_KEYS,
+            svc._LEGACY_WORKSPACE_EDITOR_KEYS,
+            svc._LEGACY_WORKSPACE_NORMAL_KEYS,
+            svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        ):
+            assert "agent.manage" in keys

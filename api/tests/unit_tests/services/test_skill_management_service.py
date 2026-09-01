@@ -64,6 +64,7 @@ from services.skill_management_service import (
     validate_skill_description,
     validate_skill_name,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"
@@ -2682,7 +2683,7 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
 
 
 def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.skill_management_service.dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT", 0)
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 

@@ -7,6 +7,7 @@ from flask import Flask
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import Account, AccountStatus, Tenant
+from tests.unit_tests.config_override import config_overrides_context
 
 REDIRECT_URL = "/apps?category=workflow"
 CONSOLE_WEB_URL = "https://console.example.com"
@@ -74,7 +75,7 @@ def test_oauth_callback_validates_redirect_url_and_appends_new_user_flag(
 
     with (
         patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
-        patch("controllers.console.auth.oauth.dify_config.CONSOLE_WEB_URL", CONSOLE_WEB_URL),
+        config_overrides_context(CONSOLE_WEB_URL=CONSOLE_WEB_URL),
         patch("controllers.console.auth.oauth._generate_account", return_value=(account, oauth_new_user)),
         patch("controllers.console.auth.oauth.TenantService.create_owner_tenant_if_not_exist"),
         patch("controllers.console.auth.oauth.AccountService.login", return_value=token_pair),
@@ -109,7 +110,7 @@ def test_oauth_callback_with_invitation_establishes_console_session(app: Flask) 
 
     with (
         patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
-        patch("controllers.console.auth.oauth.dify_config.CONSOLE_WEB_URL", CONSOLE_WEB_URL),
+        config_overrides_context(CONSOLE_WEB_URL=CONSOLE_WEB_URL),
         patch("controllers.console.auth.oauth.RegisterService") as register_service,
         patch("controllers.console.auth.oauth.AccountService.link_account_integrate") as link_account,
         patch("controllers.console.auth.oauth.AccountService.login", return_value=token_pair) as login,
@@ -155,7 +156,7 @@ def test_oauth_callback_with_invitation_rejects_another_account(app: Flask) -> N
 
     with (
         patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
-        patch("controllers.console.auth.oauth.dify_config.CONSOLE_WEB_URL", CONSOLE_WEB_URL),
+        config_overrides_context(CONSOLE_WEB_URL=CONSOLE_WEB_URL),
         patch("controllers.console.auth.oauth.RegisterService") as register_service,
         patch("controllers.console.auth.oauth.AccountService.link_account_integrate") as link_account,
         patch("controllers.console.auth.oauth.AccountService.login") as login,

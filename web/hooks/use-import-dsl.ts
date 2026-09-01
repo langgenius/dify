@@ -3,8 +3,9 @@ import type { AppIconType } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { createElement, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -80,7 +81,10 @@ export const useImportDSL = () => {
           )
           const description =
             status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
               : undefined
 
           if (status === DSLImportStatus.COMPLETED) toast.success(message)
@@ -162,7 +166,10 @@ export const useImportDSL = () => {
           )
           const description =
             status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
               : undefined
 
           if (status === DSLImportStatus.COMPLETED) toast.success(message)

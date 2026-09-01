@@ -74,6 +74,7 @@ class OpenApiErrorCode(StrEnum):
     KNOWLEDGE_FS_REQUEST_TOO_LARGE = "knowledge_fs_request_too_large"
     KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
     KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
 
 
 class ErrorDetail(BaseModel):

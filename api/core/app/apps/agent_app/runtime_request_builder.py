@@ -50,6 +50,8 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import expand_prompt_mentions
 
+from .errors import AgentSessionSnapshotIncompatibleError
+
 
 class AgentAppRuntimeRequestBuildError(ValueError):
     """Raised when Agent App state cannot be mapped to a valid run request."""
@@ -192,6 +194,7 @@ class AgentAppRuntimeRequestBuilder:
                 metadata=metadata,
             )
         )
+        self._validate_session_snapshot_layers(request)
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
         return AgentAppRuntimeRequest(
             request=request,
@@ -199,6 +202,24 @@ class AgentAppRuntimeRequestBuilder:
             metadata=metadata,
             binding_id=context.binding_id,
         )
+
+    @staticmethod
+    def _validate_session_snapshot_layers(request: CreateRunRequest) -> None:
+        """Reject stale snapshots before they reach the Agent backend.
+
+        Draft rows are updated in place, so their IDs cannot prove that a
+        retained snapshot still belongs to the current composition. Agenton
+        requires the ordered layer names to match exactly; enforce the same
+        invariant at the API boundary and return a product-level error.
+        """
+
+        snapshot = request.session_snapshot
+        if snapshot is None:
+            return
+        snapshot_layer_names = tuple(layer.name for layer in snapshot.layers)
+        composition_layer_names = tuple(layer.name for layer in request.composition.layers)
+        if snapshot_layer_names != composition_layer_names:
+            raise AgentSessionSnapshotIncompatibleError()
 
     def _build_tool_layers(
         self,

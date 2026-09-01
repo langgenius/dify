@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 
 from enums import DeploymentEdition
@@ -24,34 +26,20 @@ def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
     ],
 )
 def test_get_system_features_reads_knowledge_fs_availability(
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     enabled: bool,
     base_url: str | None,
     capability_enabled: bool,
     signing_ready: bool,
     upload_enabled: bool,
 ) -> None:
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.CLOUD,
-    )
-    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", enabled)
-    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_BASE_URL", base_url)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
-        capability_enabled,
-    )
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID",
-        "signing-key" if signing_ready else None,
-    )
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM",
-        object() if signing_ready else None,
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        KNOWLEDGE_FS_ENABLED=enabled,
+        KNOWLEDGE_FS_BASE_URL=base_url,
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=capability_enabled,
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="signing-key" if signing_ready else None,
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=object() if signing_ready else None,
     )
     result = FeatureService.get_system_features()
 

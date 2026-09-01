@@ -10,6 +10,7 @@ from services.email_code_login_challenge import (
     EmailCodeLoginChallengeStore,
     EmailCodeLoginChallengeUnavailableError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 TOKEN = "00000000-0000-4000-8000-000000000001"
 
@@ -23,8 +24,11 @@ def challenge_redis() -> Iterator[MagicMock]:
 def test_create_stores_only_one_per_email_v2_challenge(
     challenge_redis: MagicMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("services.email_code_login_challenge.dify_config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS", 5)
-    monkeypatch.setattr("services.email_code_login_challenge.dify_config.EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES", 5)
+    apply_config_overrides(
+        monkeypatch,
+        EMAIL_CODE_LOGIN_MAX_ATTEMPTS=5,
+        EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES=5,
+    )
 
     with patch("services.email_code_login_challenge.uuid.uuid4", return_value=TOKEN):
         token = EmailCodeLoginChallengeStore.create(
