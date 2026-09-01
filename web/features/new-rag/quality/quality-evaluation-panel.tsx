@@ -23,9 +23,11 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { consoleQuery } from '@/service/client'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
+import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { formatQualityEvaluationCreatedAt, formatQualityReportCreatedAt } from './quality-model'
 
 type ReplayState = KnowledgeFsQualityReplayResponse['state']
+type ReplayItem = KnowledgeFsQualityReplayResponse['items'][number]
 
 const pageSize = 20
 const activeQuestionCountLimit = 100
@@ -62,19 +64,20 @@ function EvaluationState({ state }: { state: ReplayState }) {
   )
 }
 
-function EvaluationReport({
-  knowledgeSpaceId,
+export function EvaluationReport({
   onBack,
-  onRerun,
+  onRunStarted,
   runId,
 }: {
-  knowledgeSpaceId: string
   onBack: () => void
-  onRerun: () => void
+  onRunStarted: (runId: string) => void
   runId: string
 }) {
   const { t } = useTranslation('dataset')
   const { t: tWorkflow } = useTranslation('workflow')
+  const { space } = useKnowledgeSpace()
+  const knowledgeSpaceId = space.control_space_id
+  const [runDialogOpen, setRunDialogOpen] = useState(false)
   const [selectedEvidenceItemId, setSelectedEvidenceItemId] = useState<string>()
   const detailOptions =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
@@ -84,17 +87,6 @@ function EvaluationReport({
     ...detailOptions,
     refetchInterval: (query) =>
       query.state.data && activeReplayStates.has(query.state.data.state) ? 1500 : false,
-  })
-  const evidenceDetailOptions =
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
-      input: {
-        params: { control_space_id: knowledgeSpaceId, run_id: runId },
-        query: selectedEvidenceItemId ? { evidence_item_id: selectedEvidenceItemId } : {},
-      },
-    })
-  const evidenceDetailQuery = useQuery({
-    ...evidenceDetailOptions,
-    enabled: Boolean(selectedEvidenceItemId),
   })
 
   if (detailQuery.isLoading)
@@ -124,23 +116,6 @@ function EvaluationReport({
 
   const run = detailQuery.data
   const progress = run.summary.total === 0 ? 0 : run.summary.completed / run.summary.total
-  const selectedReportItem = run.items.find((item) => item.id === selectedEvidenceItemId)
-  const selectedEvidenceItem = evidenceDetailQuery.data?.items.find(
-    (item) => item.id === selectedEvidenceItemId,
-  )
-  const evidenceItems = selectedEvidenceItem?.result?.evidence_diff.evidence_items ?? []
-  const evidenceGroups = [
-    {
-      items: evidenceItems.filter((item) => item.matched),
-      matched: true,
-      title: t(($) => $['newKnowledge.qualityPage.evaluation.passed']),
-    },
-    {
-      items: evidenceItems.filter((item) => !item.matched),
-      matched: false,
-      title: t(($) => $['newKnowledge.qualityPage.evaluation.missed']),
-    },
-  ]
   return (
     <section className="min-w-0">
       <div className="flex h-6 items-center">
@@ -166,7 +141,9 @@ function EvaluationReport({
             {formatQualityReportCreatedAt(run.created_at)}
           </p>
         </div>
-        <Button onClick={onRerun}>{tWorkflow(($) => $['singleRun.reRun'])}</Button>
+        <Button onClick={() => setRunDialogOpen(true)}>
+          {tWorkflow(($) => $['singleRun.reRun'])}
+        </Button>
       </div>
 
       {run.error && (
@@ -260,88 +237,140 @@ function EvaluationReport({
         })}
       </div>
 
-      <Dialog
-        open={Boolean(selectedEvidenceItemId)}
+      <EvidenceDetailsDialog
+        item={run.items.find((item) => item.id === selectedEvidenceItemId)}
+        runId={runId}
         onOpenChange={(open) => {
           if (!open) setSelectedEvidenceItemId(undefined)
         }}
-      >
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160! max-w-[calc(100vw-2rem)]! flex-col overflow-hidden! p-0!">
-          <div className="relative px-6 pt-6">
-            <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
-              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsTitle'])}
-            </DialogTitle>
-            <DialogDescription className="mt-3 pr-10 system-sm-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsDescription'])}
-            </DialogDescription>
-            {selectedReportItem && (
-              <p className="mt-3 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-medium text-text-primary">
-                {selectedReportItem.question}
-              </p>
-            )}
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
-                  className="absolute inset-e-6 top-6 z-10"
-                  size="sm"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-          </div>
-
-          <div className="min-h-40 flex-1 overflow-y-auto px-6 pt-5 pb-6">
-            {evidenceDetailQuery.isLoading ? (
-              <div className="flex min-h-40 items-center justify-center" role="status">
-                <Loading />
-              </div>
-            ) : evidenceDetailQuery.isError ? (
-              <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
-                <p role="alert" className="system-sm-medium text-text-primary">
-                  {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError'])}
-                </p>
-                <Button onClick={() => void evidenceDetailQuery.refetch()}>
-                  {t(($) => $['newKnowledge.qualityPage.evaluation.retryLoad'])}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {evidenceGroups.map((group) => (
-                  <section key={String(group.matched)} aria-label={group.title}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <h3 className="system-sm-semibold text-text-primary">{group.title}</h3>
-                      <span
-                        className={cn(
-                          'inline-flex min-w-4 items-center justify-center rounded-[5px] border bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium',
-                          group.matched
-                            ? 'border-state-success-solid text-text-success'
-                            : 'border-state-destructive-solid text-text-destructive',
-                        )}
-                      >
-                        {group.items.length}
-                      </span>
-                    </div>
-                    {group.items.length === 0 ? (
-                      <p className="rounded-lg border border-divider-subtle px-3 py-3 system-sm-regular text-text-tertiary">
-                        {t(($) => $['newKnowledge.qualityPage.evaluation.noEvidenceInGroup'])}
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {group.items.map((evidence) => (
-                          <EvidenceDetailCard key={evidence.ordinal} evidence={evidence} />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      />
+      <RunEvaluationDialog
+        open={runDialogOpen}
+        onOpenChange={setRunDialogOpen}
+        onRunStarted={onRunStarted}
+      />
     </section>
+  )
+}
+
+function EvidenceDetailsDialog({
+  item,
+  onOpenChange,
+  runId,
+}: {
+  item?: ReplayItem
+  onOpenChange: (open: boolean) => void
+  runId: string
+}) {
+  return (
+    <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160! max-w-[calc(100vw-2rem)]! flex-col overflow-hidden! p-0!">
+        {item && <EvidenceDetailsContent item={item} runId={runId} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: string }) {
+  const { t } = useTranslation('dataset')
+  const { space } = useKnowledgeSpace()
+  const evidenceDetailQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
+      input: {
+        params: { control_space_id: space.control_space_id, run_id: runId },
+        query: { evidence_item_id: item.id },
+      },
+    }),
+  )
+  const selectedEvidenceItem = evidenceDetailQuery.data?.items.find(
+    (evidenceItem) => evidenceItem.id === item.id,
+  )
+  const evidenceItems = selectedEvidenceItem?.result?.evidence_diff.evidence_items ?? []
+  const evidenceGroups = [
+    {
+      items: evidenceItems.filter((evidence) => evidence.matched),
+      matched: true,
+      title: t(($) => $['newKnowledge.qualityPage.evaluation.passed']),
+    },
+    {
+      items: evidenceItems.filter((evidence) => !evidence.matched),
+      matched: false,
+      title: t(($) => $['newKnowledge.qualityPage.evaluation.missed']),
+    },
+  ]
+
+  return (
+    <>
+      <div className="relative px-6 pt-6">
+        <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
+          {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsTitle'])}
+        </DialogTitle>
+        <DialogDescription className="mt-3 pr-10 system-sm-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsDescription'])}
+        </DialogDescription>
+        <p className="mt-3 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-medium text-text-primary">
+          {item.question}
+        </p>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+              className="absolute inset-e-6 top-6 z-10"
+              size="sm"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      <div className="min-h-40 flex-1 overflow-y-auto px-6 pt-5 pb-6">
+        {evidenceDetailQuery.isLoading ? (
+          <div className="flex min-h-40 items-center justify-center" role="status">
+            <Loading />
+          </div>
+        ) : evidenceDetailQuery.isError ? (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+            <p role="alert" className="system-sm-medium text-text-primary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError'])}
+            </p>
+            <Button onClick={() => void evidenceDetailQuery.refetch()}>
+              {t(($) => $['newKnowledge.qualityPage.evaluation.retryLoad'])}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {evidenceGroups.map((group) => (
+              <section key={String(group.matched)} aria-label={group.title}>
+                <div className="mb-2 flex items-center gap-2">
+                  <h3 className="system-sm-semibold text-text-primary">{group.title}</h3>
+                  <span
+                    className={cn(
+                      'inline-flex min-w-4 items-center justify-center rounded-[5px] border bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium',
+                      group.matched
+                        ? 'border-state-success-solid text-text-success'
+                        : 'border-state-destructive-solid text-text-destructive',
+                    )}
+                  >
+                    {group.items.length}
+                  </span>
+                </div>
+                {group.items.length === 0 ? (
+                  <p className="rounded-lg border border-divider-subtle px-3 py-3 system-sm-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.qualityPage.evaluation.noEvidenceInGroup'])}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {group.items.map((evidence) => (
+                      <EvidenceDetailCard key={evidence.ordinal} evidence={evidence} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -387,29 +416,151 @@ function RunEvaluationButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-export function QualityEvaluationPanel({
-  actionSlot,
-  canEdit,
-  knowledgeSpaceId,
-  onSelectedRunIdChange,
-  selectedRunId: controlledSelectedRunId,
+function RunEvaluationDialog({
+  onOpenChange,
+  onRunStarted,
+  open,
 }: {
-  actionSlot?: HTMLElement | null
-  canEdit: boolean
-  knowledgeSpaceId: string
-  onSelectedRunIdChange?: (runId: string | undefined) => void
-  selectedRunId?: string
+  onOpenChange: (open: boolean) => void
+  onRunStarted: (runId: string) => void
+  open: boolean
+}) {
+  const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
+
+  return (
+    <Dialog open={canEdit && open} onOpenChange={onOpenChange}>
+      {canEdit && open && (
+        <RunEvaluationDialogContent
+          onClose={() => onOpenChange(false)}
+          onRunStarted={onRunStarted}
+        />
+      )}
+    </Dialog>
+  )
+}
+
+function RunEvaluationDialogContent({
+  onClose,
+  onRunStarted,
+}: {
+  onClose: () => void
+  onRunStarted: (runId: string) => void
 }) {
   const { t } = useTranslation('dataset')
+  const { space } = useKnowledgeSpace()
+  const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
-  const [dialogOpen, setDialogOpen] = useState(false)
   const [mode, setMode] = useState<RetrievalMode>('fast')
-  const [internalSelectedRunId, setInternalSelectedRunId] = useState<string>()
-  const selectedRunId = onSelectedRunIdChange ? controlledSelectedRunId : internalSelectedRunId
-  const setSelectedRunId = (runId: string | undefined) => {
-    setInternalSelectedRunId(runId)
-    onSelectedRunIdChange?.(runId)
+  const goldenQuestionsQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: activeQuestionCountLimit },
+      },
+    }),
+  )
+  const createMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
+  )
+  const activeGoldenQuestionCount =
+    goldenQuestionsQuery.data?.data.filter((question) => question.status === 'active').length ?? 0
+
+  const startEvaluation = async () => {
+    try {
+      const run = await createMutation.mutateAsync({
+        body: {
+          mode,
+          selection: 'all-active',
+        },
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.get.key({
+          input: { params: { control_space_id: knowledgeSpaceId } },
+          type: 'infinite',
+        }),
+      })
+      onClose()
+      onRunStarted(run.id)
+      toast.success(t(($) => $['newKnowledge.qualityPage.evaluation.startedToast']))
+    } catch {
+      toast.error(t(($) => $['newKnowledge.qualityPage.evaluation.startError']))
+    }
   }
+
+  return (
+    <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          void startEvaluation()
+        }}
+      >
+        <div className="relative px-6 pt-6">
+          <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
+            {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
+          </DialogTitle>
+          <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
+            {t(
+              ($) =>
+                $[
+                  activeGoldenQuestionCount === 1
+                    ? 'newKnowledge.qualityPage.evaluation.dialogDescription_one'
+                    : 'newKnowledge.qualityPage.evaluation.dialogDescription_other'
+                ],
+              { count: activeGoldenQuestionCount },
+            )}
+          </DialogDescription>
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+                className="absolute inset-e-6 top-6"
+                size="sm"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
+        </div>
+        <div className="px-6 py-3">
+          <p className="system-xs-medium text-text-secondary">
+            {t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
+          </p>
+          <RetrievalModeSegmentedControl
+            aria-label={t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
+            appearance="composer"
+            className="mt-2 w-full min-w-0"
+            value={mode}
+            onChange={setMode}
+          />
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4">
+          <Button type="button" disabled={createMutation.isPending} onClick={onClose}>
+            {t(($) => $['newKnowledge.qualityPage.cancel'])}
+          </Button>
+          <Button type="submit" variant="primary" loading={createMutation.isPending}>
+            {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  )
+}
+
+export function QualityEvaluationPanel({
+  actionSlot,
+  onOpenReport,
+}: {
+  actionSlot?: HTMLElement | null
+  onOpenReport: (runId: string) => void
+}) {
+  const { t } = useTranslation('dataset')
+  const { space } = useKnowledgeSpace()
+  const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
+  const knowledgeSpaceId = space.control_space_id
+  const [dialogOpen, setDialogOpen] = useState(false)
   const listOptions =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.get.infiniteOptions({
       input: (pageParam) => ({
@@ -431,205 +582,111 @@ export function QualityEvaluationPanel({
         ? 1500
         : false,
   })
-  const goldenQuestionsQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryOptions({
-      input: {
-        params: { control_space_id: knowledgeSpaceId },
-        query: { limit: activeQuestionCountLimit },
-      },
-    }),
-  )
-  const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
-  )
   const runs = listQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const activeGoldenQuestionCount =
-    goldenQuestionsQuery.data?.data.filter((question) => question.status === 'active').length ?? 0
-
-  const startEvaluation = async () => {
-    try {
-      const run = await createMutation.mutateAsync({
-        body: {
-          mode,
-          selection: 'all-active',
-        },
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      setDialogOpen(false)
-      await queryClient.invalidateQueries({ queryKey: listOptions.queryKey })
-      setSelectedRunId(run.id)
-      toast.success(t(($) => $['newKnowledge.qualityPage.evaluation.startedToast']))
-    } catch {
-      toast.error(t(($) => $['newKnowledge.qualityPage.evaluation.startError']))
-    }
-  }
 
   return (
     <>
-      {selectedRunId ? (
-        <EvaluationReport
-          knowledgeSpaceId={knowledgeSpaceId}
-          runId={selectedRunId}
-          onBack={() => setSelectedRunId(undefined)}
-          onRerun={() => setDialogOpen(true)}
-        />
-      ) : (
-        <section className="min-w-0">
-          {canEdit && runs.length > 0 && !actionSlot && (
-            <div className="flex justify-end">
-              <RunEvaluationButton onClick={() => setDialogOpen(true)} />
-            </div>
-          )}
+      <section className="min-w-0">
+        {canEdit && runs.length > 0 && !actionSlot && (
+          <div className="flex justify-end">
+            <RunEvaluationButton onClick={() => setDialogOpen(true)} />
+          </div>
+        )}
 
-          {listQuery.isLoading ? (
-            <div className="flex min-h-105 items-center justify-center">
-              <Loading />
-            </div>
-          ) : listQuery.isError ? (
-            <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
-              <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
-              <p role="alert" className="system-sm-medium text-text-primary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.loadError'])}
-              </p>
-              <Button onClick={() => void listQuery.refetch()}>
-                {t(($) => $['newKnowledge.qualityPage.evaluation.retryLoad'])}
-              </Button>
-            </div>
-          ) : runs.length === 0 ? (
-            <div className="flex h-140 flex-col items-center justify-center text-center">
-              <span aria-hidden className="i-ri-play-circle-line size-7 text-text-tertiary" />
-              <h3 className="mt-3 system-md-semibold text-text-primary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.emptyTitle'])}
-              </h3>
-              <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.emptyDescription'])}
-              </p>
-              {canEdit && (
-                <div className="mt-3">
-                  <RunEvaluationButton onClick={() => setDialogOpen(true)} />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="mt-2.5 overflow-x-auto pt-3">
-              <div className="grid min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] gap-3 py-2.5 system-2xs-medium-uppercase text-text-tertiary">
-                <span>{t(($) => $['newKnowledge.qualityPage.evaluation.createdAt'])}</span>
-                <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
-                <span>{t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}</span>
-                <span>{t(($) => $['newKnowledge.qualityPage.evaluation.hitRate'])}</span>
-                <span>{t(($) => $['newKnowledge.qualityPage.evaluation.progress'])}</span>
-                <span />
+        {listQuery.isLoading ? (
+          <div className="flex min-h-105 items-center justify-center">
+            <Loading />
+          </div>
+        ) : listQuery.isError ? (
+          <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
+            <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
+            <p role="alert" className="system-sm-medium text-text-primary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.loadError'])}
+            </p>
+            <Button onClick={() => void listQuery.refetch()}>
+              {t(($) => $['newKnowledge.qualityPage.evaluation.retryLoad'])}
+            </Button>
+          </div>
+        ) : runs.length === 0 ? (
+          <div className="flex h-140 flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-play-circle-line size-7 text-text-tertiary" />
+            <h3 className="mt-3 system-md-semibold text-text-primary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.emptyTitle'])}
+            </h3>
+            <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.emptyDescription'])}
+            </p>
+            {canEdit && (
+              <div className="mt-3">
+                <RunEvaluationButton onClick={() => setDialogOpen(true)} />
               </div>
-              {runs.map((run) => (
-                <div
-                  key={run.id}
-                  className="grid h-12 min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] items-center gap-3 border-t border-divider-subtle"
-                >
-                  <span className="system-xs-regular text-text-secondary">
-                    {formatQualityEvaluationCreatedAt(
-                      run.created_at,
-                      t(($) => $['newKnowledge.retrievalTest.justNow']),
-                    )}
-                  </span>
-                  <EvaluationState state={run.state} />
-                  <span className="system-xs-regular text-text-secondary">
-                    {t(($) => $[`newKnowledge.qualityPage.evaluation.mode.${run.mode}`])}
-                  </span>
-                  <span className="system-sm-medium text-text-primary">
-                    {run.summary.completed > 0 ? percent(run.summary.hit_rate) : '—'}
-                  </span>
-                  <span className="system-xs-regular text-text-secondary">
-                    {run.summary.completed}/{run.summary.total}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    className="ml-auto"
-                    onClick={() => setSelectedRunId(run.id)}
-                  >
-                    {t(($) => $['newKnowledge.qualityPage.evaluation.viewReport'])}
-                  </Button>
-                </div>
-              ))}
-              {listQuery.hasNextPage && (
-                <div className="flex justify-center border-t border-divider-subtle py-4">
-                  <Button
-                    loading={listQuery.isFetchingNextPage}
-                    disabled={listQuery.isFetchingNextPage}
-                    onClick={() => void listQuery.fetchNextPage()}
-                  >
-                    {t(($) => $['newKnowledge.loadMore'])}
-                  </Button>
-                </div>
-              )}
+            )}
+          </div>
+        ) : (
+          <div className="mt-2.5 overflow-x-auto pt-3">
+            <div className="grid min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] gap-3 py-2.5 system-2xs-medium-uppercase text-text-tertiary">
+              <span>{t(($) => $['newKnowledge.qualityPage.evaluation.createdAt'])}</span>
+              <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
+              <span>{t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}</span>
+              <span>{t(($) => $['newKnowledge.qualityPage.evaluation.hitRate'])}</span>
+              <span>{t(($) => $['newKnowledge.qualityPage.evaluation.progress'])}</span>
+              <span />
             </div>
-          )}
-        </section>
-      )}
+            {runs.map((run) => (
+              <div
+                key={run.id}
+                className="grid h-12 min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] items-center gap-3 border-t border-divider-subtle"
+              >
+                <span className="system-xs-regular text-text-secondary">
+                  {formatQualityEvaluationCreatedAt(
+                    run.created_at,
+                    t(($) => $['newKnowledge.retrievalTest.justNow']),
+                  )}
+                </span>
+                <EvaluationState state={run.state} />
+                <span className="system-xs-regular text-text-secondary">
+                  {t(($) => $[`newKnowledge.qualityPage.evaluation.mode.${run.mode}`])}
+                </span>
+                <span className="system-sm-medium text-text-primary">
+                  {run.summary.completed > 0 ? percent(run.summary.hit_rate) : '—'}
+                </span>
+                <span className="system-xs-regular text-text-secondary">
+                  {run.summary.completed}/{run.summary.total}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  className="ml-auto"
+                  onClick={() => onOpenReport(run.id)}
+                >
+                  {t(($) => $['newKnowledge.qualityPage.evaluation.viewReport'])}
+                </Button>
+              </div>
+            ))}
+            {listQuery.hasNextPage && (
+              <div className="flex justify-center border-t border-divider-subtle py-4">
+                <Button
+                  loading={listQuery.isFetchingNextPage}
+                  disabled={listQuery.isFetchingNextPage}
+                  onClick={() => void listQuery.fetchNextPage()}
+                >
+                  {t(($) => $['newKnowledge.loadMore'])}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
-      {!selectedRunId && canEdit && runs.length > 0 && actionSlot
+      {canEdit && runs.length > 0 && actionSlot
         ? createPortal(<RunEvaluationButton onClick={() => setDialogOpen(true)} />, actionSlot)
         : null}
 
-      <Dialog open={canEdit && dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              void startEvaluation()
-            }}
-          >
-            <div className="relative px-6 pt-6">
-              <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
-              </DialogTitle>
-              <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
-                {t(
-                  ($) =>
-                    $[
-                      activeGoldenQuestionCount === 1
-                        ? 'newKnowledge.qualityPage.evaluation.dialogDescription_one'
-                        : 'newKnowledge.qualityPage.evaluation.dialogDescription_other'
-                    ],
-                  { count: activeGoldenQuestionCount },
-                )}
-              </DialogDescription>
-              <DialogClose
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
-                    className="absolute inset-e-6 top-6"
-                    size="sm"
-                  >
-                    <span aria-hidden className="i-ri-close-line size-4" />
-                  </IconButton>
-                }
-              />
-            </div>
-            <div className="px-6 py-3">
-              <p className="system-xs-medium text-text-secondary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
-              </p>
-              <RetrievalModeSegmentedControl
-                aria-label={t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
-                appearance="composer"
-                className="mt-2 w-full min-w-0"
-                value={mode}
-                onChange={setMode}
-              />
-            </div>
-            <div className="flex justify-end gap-2 px-6 py-4">
-              <Button disabled={createMutation.isPending} onClick={() => setDialogOpen(false)}>
-                {t(($) => $['newKnowledge.qualityPage.cancel'])}
-              </Button>
-              <Button type="submit" variant="primary" loading={createMutation.isPending}>
-                {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <RunEvaluationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onRunStarted={onOpenReport}
+      />
     </>
   )
 }

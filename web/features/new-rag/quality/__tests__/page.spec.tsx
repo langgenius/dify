@@ -5,7 +5,22 @@ import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { QualityPage } from '../page'
 
 vi.mock('../quality-evaluation-panel', () => ({
-  QualityEvaluationPanel: () => <div>Evaluation panel</div>,
+  EvaluationReport: ({ onBack, runId }: { onBack: () => void; runId: string }) => (
+    <div>
+      Report {runId}
+      <button type="button" onClick={onBack}>
+        Back to evaluations
+      </button>
+    </div>
+  ),
+  QualityEvaluationPanel: ({ onOpenReport }: { onOpenReport: (runId: string) => void }) => (
+    <div>
+      Evaluation panel
+      <button type="button" onClick={() => onOpenReport('run-1')}>
+        Open report
+      </button>
+    </div>
+  ),
 }))
 
 const serviceMock = vi.hoisted(() => ({
@@ -27,12 +42,14 @@ const routerMock = vi.hoisted(() => ({
 }))
 
 const navigationMock = vi.hoisted(() => ({
+  run: undefined as string | undefined,
   tab: undefined as string | undefined,
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
   keys: ['knowledge_space_edit'],
 }))
 vi.mock('../../space/context', () => ({
+  useKnowledgeSpace: () => ({ space: { control_space_id: 'space-1' } }),
   useKnowledgeSpacePermission: (permission: string) =>
     knowledgeSpacePermissionState.keys.includes(permission),
 }))
@@ -50,6 +67,9 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          goldenQuestions: {
+            evidenceMatches: { post: serviceMock.matchEvidence },
+          },
           quality: {
             badCases: {
               byBadCaseId: {
@@ -82,6 +102,7 @@ vi.mock('@/service/client', () => ({
               },
             },
             get: {
+              key: () => ['quality', 'golden'],
               infiniteOptions: (options: {
                 getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
                 initialPageParam: string | null
@@ -106,6 +127,7 @@ vi.mock('@/service/client', () => ({
           quality: {
             badCases: {
               get: {
+                key: () => ['quality', 'bad-cases'],
                 infiniteOptions: (options: {
                   getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
                   initialPageParam: string | null
@@ -135,9 +157,14 @@ function renderPage() {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <QualityPage knowledgeSpaceId="space-1" />
+      <QualityPage />
     </QueryClientProvider>,
-    { searchParams: navigationMock.tab ? `?tab=${navigationMock.tab}` : '' },
+    {
+      searchParams: new URLSearchParams({
+        ...(navigationMock.run ? { run: navigationMock.run } : {}),
+        ...(navigationMock.tab ? { tab: navigationMock.tab } : {}),
+      }).toString(),
+    },
   )
 }
 
@@ -145,6 +172,7 @@ describe('QualityPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
+    navigationMock.run = undefined
     navigationMock.tab = undefined
     serviceMock.getGolden.mockResolvedValue({
       data: [
@@ -281,6 +309,34 @@ describe('QualityPage', () => {
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('tab')).toBe('bad-cases')
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('replace')
+  })
+
+  it('owns evaluation report navigation in the URL', async () => {
+    const user = userEvent.setup()
+    navigationMock.tab = 'evaluations'
+    const { onUrlUpdate } = renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Open report' }))
+
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('run')).toBe('run-1'),
+    )
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('push')
+  })
+
+  it('renders a URL-selected evaluation report outside the tab chrome', async () => {
+    const user = userEvent.setup()
+    navigationMock.run = 'run-1'
+    navigationMock.tab = 'evaluations'
+    const { onUrlUpdate } = renderPage()
+
+    expect(await screen.findByText('Report run-1')).toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back to evaluations' }))
+
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('run')).toBeNull(),
+    )
   })
 
   it('renders an empty golden-question annotation without an empty interactive control', async () => {

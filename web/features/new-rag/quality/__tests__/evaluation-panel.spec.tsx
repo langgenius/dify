@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { render } from '@/test/console/render'
-import { QualityEvaluationPanel } from '../quality-evaluation-panel'
+import { EvaluationReport, QualityEvaluationPanel } from '../quality-evaluation-panel'
 
 const serviceMock = vi.hoisted(() => ({
   createReplay: vi.fn(),
@@ -14,6 +15,11 @@ const serviceMock = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
+}))
+
+vi.mock('../../space/context', () => ({
+  useKnowledgeSpace: () => ({ space: { control_space_id: 'space-1' } }),
+  useKnowledgeSpacePermission: () => true,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -40,6 +46,7 @@ vi.mock('@/service/client', () => ({
                 },
               },
               get: {
+                key: () => ['quality', 'evaluation', 'list'],
                 infiniteOptions: (options: {
                   getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
                   initialPageParam: string | null
@@ -148,7 +155,15 @@ function renderPanel() {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<QualityEvaluationPanel canEdit knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
+  function Harness() {
+    const [runId, setRunId] = useState<string>()
+    return runId ? (
+      <EvaluationReport runId={runId} onBack={() => setRunId(undefined)} onRunStarted={setRunId} />
+    ) : (
+      <QualityEvaluationPanel onOpenReport={setRunId} />
+    )
+  }
+  return render(<Harness />, { wrapper: Wrapper })
 }
 
 describe('QualityEvaluationPanel', () => {
@@ -267,6 +282,37 @@ describe('QualityEvaluationPanel', () => {
     ).toHaveAccessibleDescription(
       'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_one:{"count":1}',
     )
+  })
+
+  it('starts each evaluation dialog session with the default retrieval mode', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.deep',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.cancel' }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.fast',
+      }),
+    ).toBeChecked()
   })
 
   it('queues every active golden question and opens the persisted evidence report', async () => {
