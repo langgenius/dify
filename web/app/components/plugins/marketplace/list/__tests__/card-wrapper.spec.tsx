@@ -68,6 +68,10 @@ vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en-US',
+}))
+
 const plugin = {
   type: 'plugin',
   org: 'dify',
@@ -110,6 +114,37 @@ describe('CardWrapper', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(document.querySelector('[data-marketplace-card="plugin-a"]')).toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
+  })
+
+  it('opens marketplace detail from the card surface', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.click(screen.getByRole('button', { name: 'Plugin A' }))
+
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+  })
+
+  it('opens marketplace detail from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Plugin A' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+  })
+
+  it('keeps install as its own action when the card is clicked through the install button', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
+
+    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
   })
 
   it('links the card to its marketplace detail when explicitly enabled', () => {
