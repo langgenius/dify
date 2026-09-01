@@ -7,13 +7,16 @@ import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { useHydrateAtoms } from 'jotai/utils'
 import { render } from '@/test/console/render'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
-import { KnowledgeSettingsForm } from '../form'
+import { KnowledgeSettingsPage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
   deleteSpace: vi.fn(),
   getMigration: vi.fn(),
+  getSpace: vi.fn(),
   patchExternalAccess: vi.fn(),
   patchSettings: vi.fn(),
   patchSpace: vi.fn(),
@@ -30,6 +33,20 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 
+const knowledgeQueryMock = vi.hoisted(() => ({
+  externalAccess: undefined as unknown,
+  permissions: { data: [] } as unknown,
+  settings: undefined as unknown,
+  space: undefined as unknown,
+}))
+
+const membersQueryMock = vi.hoisted(() => ({
+  data: { accounts: [] as Member[] },
+  isError: false,
+  isPending: false,
+  refetch: vi.fn(() => Promise.resolve()),
+}))
+
 const queryKeys = {
   accountProfile: [['console', 'account', 'profile', 'get'], { type: 'query' }],
   externalAccess: ['knowledge-fs', 'external-access'],
@@ -41,6 +58,11 @@ const queryKeys = {
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => membersQueryMock,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -57,12 +79,26 @@ vi.mock('@/service/client', () => ({
             mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
           },
           externalAccess: {
-            get: { key: () => queryKeys.externalAccess },
+            get: {
+              key: () => queryKeys.externalAccess,
+              queryOptions: () => ({
+                queryFn: () => Promise.resolve(knowledgeQueryMock.externalAccess),
+                queryKey: queryKeys.externalAccess,
+                staleTime: Infinity,
+              }),
+            },
             put: {
               mutationOptions: () => ({ mutationFn: serviceMock.patchExternalAccess }),
             },
           },
-          get: { key: () => queryKeys.space },
+          get: {
+            key: () => queryKeys.space,
+            queryOptions: () => ({
+              queryFn: () => serviceMock.getSpace(),
+              queryKey: queryKeys.space,
+              staleTime: Infinity,
+            }),
+          },
           members: {
             put: {
               mutationOptions: () => ({ mutationFn: serviceMock.replaceMembers }),
@@ -72,10 +108,24 @@ vi.mock('@/service/client', () => ({
             mutationOptions: () => ({ mutationFn: serviceMock.patchSpace }),
           },
           permissions: {
-            get: { key: () => queryKeys.permissions },
+            get: {
+              key: () => queryKeys.permissions,
+              queryOptions: () => ({
+                queryFn: () => Promise.resolve(knowledgeQueryMock.permissions),
+                queryKey: queryKeys.permissions,
+                staleTime: Infinity,
+              }),
+            },
           },
           settings: {
-            get: { key: () => queryKeys.settings },
+            get: {
+              key: () => queryKeys.settings,
+              queryOptions: () => ({
+                queryFn: () => Promise.resolve(knowledgeQueryMock.settings),
+                queryKey: queryKeys.settings,
+                staleTime: Infinity,
+              }),
+            },
             migrations: {
               byMigrationId: {
                 get: {
@@ -261,10 +311,7 @@ function renderForm({
   accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
-  onDraftFinish,
-  onDraftStart,
   queryClient: queryClientOverride,
-  serverConflict,
   settings: settingsOverride = settings,
   space: spaceOverride = space,
 }: {
@@ -279,10 +326,7 @@ function renderForm({
   }>
   externalAccess?: typeof externalAccess
   members?: Member[]
-  onDraftFinish?: () => void
-  onDraftStart?: () => void
   queryClient?: QueryClient
-  serverConflict?: boolean
   settings?: KnowledgeFsSettingsResponse
   space?: KnowledgeFsSpaceDetailResponse
 } = {}) {
@@ -308,28 +352,30 @@ function renderForm({
     },
   })
   queryClient.setQueryData(queryKeys.systemFeatures, createSystemFeaturesFixture())
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-  return render(
-    <KnowledgeSettingsForm
-      externalAccess={externalAccessOverride}
-      members={members}
-      permissions={[]}
-      serverConflict={serverConflict}
-      settings={settingsOverride}
-      space={spaceOverride}
-      onDraftFinish={onDraftFinish}
-      onDraftStart={onDraftStart}
-    />,
-    { wrapper: Wrapper },
-  )
+  knowledgeQueryMock.externalAccess = externalAccessOverride
+  knowledgeQueryMock.permissions = { data: [] }
+  knowledgeQueryMock.settings = settingsOverride
+  knowledgeQueryMock.space = spaceOverride
+  membersQueryMock.data = { accounts: members }
+  queryClient.setQueryData(queryKeys.externalAccess, externalAccessOverride)
+  queryClient.setQueryData(queryKeys.permissions, { data: [] })
+  queryClient.setQueryData(queryKeys.settings, settingsOverride)
+  queryClient.setQueryData(queryKeys.space, spaceOverride)
+  const Wrapper = ({ children }: { children: ReactNode }) => {
+    useHydrateAtoms([[queryClientAtom, queryClient]], { dangerouslyForceHydrate: true })
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+  return {
+    queryClient,
+    ...render(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
+  }
 }
 
-describe('KnowledgeSettingsForm', () => {
+describe('KnowledgeSettingsPage workflows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     serviceMock.deleteSpace.mockResolvedValue(undefined)
+    serviceMock.getSpace.mockResolvedValue(space)
     serviceMock.patchExternalAccess.mockResolvedValue(externalAccess)
     serviceMock.patchSettings.mockResolvedValue({ settings })
     serviceMock.patchSpace.mockResolvedValue(space)
@@ -382,9 +428,8 @@ describe('KnowledgeSettingsForm', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
-  it('finishes the basic info draft before refreshing saved server data', async () => {
+  it('keeps basic fields locked while refreshing saved server data', async () => {
     const user = userEvent.setup()
-    const onDraftFinish = vi.fn()
     let finishRefresh!: () => void
     const refreshPromise = new Promise<void>((resolve) => {
       finishRefresh = resolve
@@ -395,8 +440,8 @@ describe('KnowledgeSettingsForm', () => {
         queries: { retry: false },
       },
     })
-    vi.spyOn(queryClient, 'invalidateQueries').mockReturnValue(refreshPromise)
-    renderForm({ onDraftFinish, queryClient })
+    serviceMock.getSpace.mockReturnValueOnce(refreshPromise.then(() => space))
+    renderForm({ queryClient })
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -408,7 +453,6 @@ describe('KnowledgeSettingsForm', () => {
     )
 
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
-    expect(onDraftFinish).toHaveBeenCalledOnce()
     expect(nameInput).toBeDisabled()
     finishRefresh()
     await waitFor(() => expect(nameInput).toBeEnabled())
@@ -1168,8 +1212,6 @@ describe('KnowledgeSettingsForm', () => {
 
   it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
     const user = userEvent.setup()
-    const onDraftFinish = vi.fn()
-    const onDraftStart = vi.fn()
     serviceMock.patchSettings.mockResolvedValueOnce({
       migration: {
         changed_kind: 'retrieval',
@@ -1194,8 +1236,6 @@ describe('KnowledgeSettingsForm', () => {
       updated_at: '2026-07-28T00:01:00Z',
     })
     renderForm({
-      onDraftFinish,
-      onDraftStart,
       settings: {
         ...settings,
         configuration_state: 'setup-required',
@@ -1244,10 +1284,9 @@ describe('KnowledgeSettingsForm', () => {
       },
       expect.anything(),
     )
-    expect(onDraftStart).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.settings.rerankModelRequired')).toBeNull()
     await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
-    await waitFor(() => expect(onDraftFinish).toHaveBeenCalledOnce())
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
   })
 
   it('saves a reasoning model selection immediately without enabling the basic info save', async () => {
@@ -1277,9 +1316,7 @@ describe('KnowledgeSettingsForm', () => {
     serviceMock.patchSettings
       .mockReturnValueOnce(firstSave)
       .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
-    const onDraftFinish = vi.fn()
-    const onDraftStart = vi.fn()
-    renderForm({ onDraftFinish, onDraftStart })
+    renderForm()
 
     const reasoningSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
@@ -1298,10 +1335,6 @@ describe('KnowledgeSettingsForm', () => {
     ).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(rerankSelector)
 
-    expect(onDraftStart).toHaveBeenCalledTimes(2)
-    expect(onDraftStart.mock.invocationCallOrder[0]).toBeLessThan(
-      serviceMock.patchSettings.mock.invocationCallOrder[0]!,
-    )
     expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
     expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
       1,
@@ -1340,7 +1373,7 @@ describe('KnowledgeSettingsForm', () => {
       },
       expect.anything(),
     )
-    await waitFor(() => expect(onDraftFinish).toHaveBeenCalledOnce())
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
   })
 
   it('continues a queued model selection only after its preceding migration succeeds', async () => {
@@ -1496,35 +1529,23 @@ describe('KnowledgeSettingsForm', () => {
 
   it('blocks a stale draft after the server baseline changes and restores the latest value', async () => {
     const user = userEvent.setup()
-    const onDraftFinish = vi.fn()
-    const onDraftStart = vi.fn()
-    const renderWithName = (name: string, serverConflict = false) => (
-      <KnowledgeSettingsForm
-        externalAccess={externalAccess}
-        members={[]}
-        permissions={[]}
-        serverConflict={serverConflict}
-        settings={settings}
-        space={{
-          ...space,
-          technical_summary: {
-            ...space.technical_summary,
-            name,
-          },
-        }}
-        onDraftFinish={onDraftFinish}
-        onDraftStart={onDraftStart}
-      />
-    )
-    const view = renderForm({ onDraftFinish, onDraftStart })
+    const { queryClient } = renderForm()
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Version B')
 
-    expect(onDraftStart).toHaveBeenCalled()
-    view.rerender(renderWithName('Version C', true))
+    act(() => {
+      queryClient.setQueryData(queryKeys.space, {
+        ...space,
+        resource_version: space.resource_version + 1,
+        technical_summary: {
+          ...space.technical_summary,
+          name: 'Version C',
+        },
+      })
+    })
     expect(nameInput).toHaveValue('Version B')
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.settings.serverConflict',
     )
     expect(
@@ -1536,7 +1557,6 @@ describe('KnowledgeSettingsForm', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(nameInput).toHaveValue('Version C')
-    expect(onDraftFinish).toHaveBeenCalledOnce()
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
