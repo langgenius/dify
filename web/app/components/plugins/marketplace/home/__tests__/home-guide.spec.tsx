@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HomeGuide from '../home-guide'
@@ -31,13 +32,22 @@ vi.mock('@/config', () => ({
   },
 }))
 
+const GUIDE_BUTTON_NAME = /marketplace\.home\.guide/
+
+const renderGuide = (isMarketplacePlatform: boolean) =>
+  render(
+    <TooltipProvider delay={0} closeDelay={0}>
+      <HomeGuide isMarketplacePlatform={isMarketplacePlatform} />
+    </TooltipProvider>,
+  )
+
 const openGuideMenu = async (isMarketplacePlatform: boolean) => {
   const user = userEvent.setup()
-  render(<HomeGuide isMarketplacePlatform={isMarketplacePlatform} />)
+  renderGuide(isMarketplacePlatform)
 
   expect(screen.queryByRole('link', { name: 'marketplace.home.guide' })).not.toBeInTheDocument()
 
-  await user.click(screen.getByRole('button', { name: /requestSubmit/ }))
+  await user.click(screen.getByRole('button', { name: GUIDE_BUTTON_NAME }))
   return within(await screen.findByRole('menu'))
 }
 
@@ -82,5 +92,38 @@ describe('HomeGuide', () => {
       'https://docs.dify.ai/console/develop-plugin/publishing/marketplace-listing/release-overview',
     )
     expect(mocks.useDocLink).toHaveBeenCalledOnce()
+  })
+
+  it('labels the in-app Guide icon and shows a matching tooltip on hover and focus', async () => {
+    const user = userEvent.setup()
+    renderGuide(false)
+
+    const trigger = screen.getByRole('button', { name: GUIDE_BUTTON_NAME })
+    expect(trigger).toHaveAccessibleName(/marketplace\.home\.guide/)
+
+    await user.hover(trigger)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+
+    await user.unhover(trigger)
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+  })
+
+  it('keeps the Guide dropdown available after the tooltip is shown', async () => {
+    const user = userEvent.setup()
+    renderGuide(false)
+
+    const trigger = screen.getByRole('button', { name: GUIDE_BUTTON_NAME })
+    await user.hover(trigger)
+    expect(await screen.findByRole('tooltip')).toBeInTheDocument()
+
+    await user.click(trigger)
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })

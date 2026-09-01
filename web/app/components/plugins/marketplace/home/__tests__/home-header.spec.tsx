@@ -43,7 +43,7 @@ describe('HomeHeader', () => {
     render(<HomeHeader isMarketplacePlatform={false} />)
 
     expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /requestSubmit/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /marketplace\.home\.guide/ })).toBeInTheDocument()
     expect(screen.queryByTestId('account-section')).not.toBeInTheDocument()
   })
 
@@ -51,7 +51,7 @@ describe('HomeHeader', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
     const creatorCenterLink = screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })
-    const guideButton = screen.getByRole('button', { name: /requestSubmit/ })
+    const guideButton = screen.getByRole('button', { name: /marketplace\.home\.guide/ })
 
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(creatorCenterLink).toHaveAttribute('target', '_blank')
