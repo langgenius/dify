@@ -27,6 +27,10 @@
     "./knowledge-fs/*": {
       "types": "./generated/knowledge-fs/*.ts",
       "import": "./generated/knowledge-fs/*.ts"
+    },
+    "./dify-builder": {
+      "types": "./generated/dify-builder/types.ts",
+      "import": "./generated/dify-builder/types.ts"
     }
   },
   "scripts": {
@@ -34,6 +38,7 @@
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
     "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts",
     "gen-knowledge-fs-contract": "node scripts/generate-knowledge-fs-contract.mjs",
+    "gen-dify-builder-contract": "uv run --project ../../api python -m core.dify_builder.contract_gen",
     "test": "vp test",
     "type-check": "tsc"
   },
