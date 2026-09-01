@@ -12,10 +12,11 @@ from typing import cast, overload
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.session import with_session
-from controllers.common.wraps import RBACPermission, RBACResourceScope, enforce_rbac_access
+from controllers.common.wraps import RBACPermission, RBACResourceScope, _extract_resource_id, enforce_rbac_access
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -26,6 +27,7 @@ from services.app_service import AppService
 
 __all__ = [
     "agent_manage_required_for_agent_app",
+    "enforce_agent_manage_or_app_scene",
     "get_app_model",
     "get_previewable_app_model",
     "with_session",
@@ -57,43 +59,101 @@ def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
     return AppService.get_normal_app_by_id(app_id, session)
 
 
-def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Gate generic app management routes that target an Agent App.
+def enforce_agent_manage_or_app_scene(
+    *,
+    tenant_id: str,
+    account_id: str,
+    scene: RBACPermission,
+    path_args: dict[str, object],
+) -> None:
+    if not dify_config.RBAC_ENABLED:
+        return
 
-    A hidden workflow-only backing App only reuses the App runtime and is not
-    part of the general app management plane, so generic routes reject it
-    outright. Managing a roster Agent App mutates the roster Agent behind it
-    (rename/icon sync, archive, API enablement), so it additionally requires
-    workspace ``agent.manage`` on top of the route's existing App permission
-    checks when RBAC is enabled. A no-op for non-agent Apps. Must be placed
-    above ``get_app_model`` so the ``app_id`` path parameter is still present.
-    """
+    app_id = _extract_resource_id(RBACResourceScope.APP, tenant_id, path_args)
+    app_model = _load_app_model_from_scoped_session(app_id)
+    binding = (
+        app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
+        if app_model is not None
+        else None
+    )
 
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
-        if raw_app_id is not None:
-            app_model = _load_app_model_from_scoped_session(str(raw_app_id))
-            binding = (
-                app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
-                if app_model is not None
-                else None
+    if binding is not None:
+        if binding.scope == AgentScope.WORKFLOW_ONLY:
+            raise AppNotFoundError()
+        try:
+            enforce_rbac_access(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                resource_type=RBACResourceScope.WORKSPACE,
+                scene=RBACPermission.AGENT_MANAGE,
+                resource_required=False,
             )
-            if binding is not None:
-                if binding.scope == AgentScope.WORKFLOW_ONLY:
-                    raise AppNotFoundError()
-                if dify_config.RBAC_ENABLED:
-                    current_user, current_tenant_id = current_account_with_tenant()
-                    enforce_rbac_access(
-                        tenant_id=current_tenant_id,
-                        account_id=current_user.id,
-                        resource_type=RBACResourceScope.WORKSPACE,
-                        scene=RBACPermission.AGENT_MANAGE,
-                        resource_required=False,
-                    )
-        return view(*args, **kwargs)
+            return
+        except Forbidden:
+            pass  # not an agent.manage holder — fall through to the normal scene check
 
-    return decorated
+    enforce_rbac_access(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        resource_type=RBACResourceScope.APP,
+        scene=scene,
+        path_args=path_args,
+    )
+
+
+@overload
+def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+@overload
+def agent_manage_required_for_agent_app[**P, R](
+    view: None = None, *, scene: RBACPermission | None = None
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def agent_manage_required_for_agent_app[**P, R](
+    view: Callable[P, R] | None = None, *, scene: RBACPermission | None = None
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(view_func)
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+            if scene is not None:
+                current_user, current_tenant_id = current_account_with_tenant()
+                enforce_agent_manage_or_app_scene(
+                    tenant_id=current_tenant_id,
+                    account_id=current_user.id,
+                    scene=scene,
+                    path_args=kwargs,
+                )
+                return view_func(*args, **kwargs)
+
+            raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
+            if raw_app_id is not None:
+                app_model = _load_app_model_from_scoped_session(str(raw_app_id))
+                binding = (
+                    app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
+                    if app_model is not None
+                    else None
+                )
+                if binding is not None:
+                    if binding.scope == AgentScope.WORKFLOW_ONLY:
+                        raise AppNotFoundError()
+                    if dify_config.RBAC_ENABLED:
+                        current_user, current_tenant_id = current_account_with_tenant()
+                        enforce_rbac_access(
+                            tenant_id=current_tenant_id,
+                            account_id=current_user.id,
+                            resource_type=RBACResourceScope.WORKSPACE,
+                            scene=RBACPermission.AGENT_MANAGE,
+                            resource_required=False,
+                        )
+            return view_func(*args, **kwargs)
+
+        return decorated
+
+    if view is None:
+        return decorator
+    return decorator(view)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
