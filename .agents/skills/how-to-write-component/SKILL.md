@@ -9,10 +9,11 @@ Use this skill to route component architecture decisions to its bundled referenc
 
 ## First Decisions
 
-| Question | Default | Promote only when |
+| Question | Default | Choose differently when |
 | --- | --- | --- |
 | Where should code live? | In the product workflow, route, or feature owner. | Several verticals need the same stable contract. |
-| Who owns state and handlers? | The lowest visual owner that consumes them. | A parent coordinates one workflow or consistent snapshot. |
+| Who owns state and handlers? | The lowest owner that consumes them and whose lifetime matches the state. | Another owner coordinates the value or it must survive the local owner's unmount. |
+| Should React control a value? | Leave submit-only DOM fields uncontrolled. | The workflow must own the current value to drive rendering or coordination. |
 | Should state enter Jotai? | Keep component and form state local. | Siblings need one source of truth or scoped workflow persistence. |
 | Who owns URL state? | Next.js route APIs and `nuqs`. | Atoms require a read-only route-identity bridge. |
 | Who owns remote state? | TanStack Query at the lowest consumer. | Atom state drives the query or shared derivations consume it. |
@@ -24,12 +25,12 @@ Use this skill to route component architecture decisions to its bundled referenc
 - Component moves, module boundaries, props, types, or owner placement: read [`references/ownership.md`][ownership].
 - Jotai, form drafts, route identity, URL state, or persistence: read [`references/state.md`][state].
 - Generated contracts, nullable API data, Query, mutations, SSR, auth, or workspace state: read [`references/data.md`][data].
-- Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`][interactions] and the overlay guide it references when applicable.
+- Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`][interactions] and the overlay guide it references when applicable. Also read [`references/state.md`][state] when the surface owns a draft or other local session state.
 - Effects, navigation, memoization, preloading, or render cost: read [`references/runtime.md`][runtime].
 
 ## Workflow
 
-1. Identify the behavior owner and the public contract being changed.
+1. Identify the behavior owner, the required state lifetime, and the public contract being changed.
 2. Read the nearby implementation, tests, and only the routed skill references.
 3. Implement one coherent vertical slice. Do not expand into equivalent patterns elsewhere unless the current contract cannot be completed without them.
 4. Verify observable behavior at the narrowest sufficient boundary, then run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and `packages/dify-ui/docs/testing.md` for Dify UI.

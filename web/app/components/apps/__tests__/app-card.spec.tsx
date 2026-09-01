@@ -1,5 +1,5 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -1290,6 +1290,21 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
       })
+    })
+
+    it('should hide open in explore for SSO-restricted apps', async () => {
+      mockWebappAuthEnabled = true
+      const user = userEvent.setup()
+      const ssoApp = createMockApp({ access_mode: AccessMode.EXTERNAL_MEMBERS })
+
+      render(<AppCard app={ssoApp} />)
+
+      await user.click(getOperationsTrigger())
+      const menu = await screen.findByRole('menu')
+
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'app.openInExplore' }),
+      ).not.toBeInTheDocument()
     })
   })
 

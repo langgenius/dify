@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import {
   ScrollArea,
@@ -38,6 +39,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -59,6 +61,7 @@ const placeholderCardIds = Array.from(
 )
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const SKILLS_PAGE_SIZE = 20
+const SKILL_GRID_CLASS_NAME = cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)
 
 function skillsListQueryKey(type: 'infinite' | 'query') {
   return consoleQuery.workspaces.current.skills.get.key({ type })
@@ -80,7 +83,7 @@ function SkillIcon() {
   )
 }
 
-function SkillCardSkeleton() {
+function SkillCardSkeletonCards() {
   return (
     <>
       {skeletonRows.map((row) => (
@@ -109,38 +112,60 @@ function SkillCardSkeleton() {
   )
 }
 
-function SkillPlaceholderState({
-  canEdit,
-  creating,
-  importing,
-  isEmptySearch,
-  onCreate,
-  onImport,
-  title,
-}: {
-  canEdit?: boolean
-  creating?: boolean
-  importing?: boolean
-  isEmptySearch?: boolean
-  onCreate?: () => void
-  onImport?: () => void
+function SkillCardSkeleton() {
+  const { t } = useTranslation('common')
+
+  return (
+    <>
+      <span role="status" className="sr-only col-span-full">
+        {t(($) => $.loading)}
+      </span>
+      <SkillCardSkeletonCards />
+    </>
+  )
+}
+
+type SkillPlaceholderActions = {
+  creating: boolean
+  importing: boolean
+  onCreate: () => void
+  onImport: () => void
+}
+
+type SkillPlaceholderStateProps = {
+  role?: 'alert' | 'status'
   title: string
-}) {
+} & (
+  | { actions?: SkillPlaceholderActions; isRetrying?: never; onRetry?: never }
+  | { actions?: never; isRetrying: boolean; onRetry: () => void }
+)
+
+function SkillPlaceholderState({
+  actions,
+  isRetrying,
+  onRetry,
+  role,
+  title,
+}: SkillPlaceholderStateProps) {
   const { t } = useTranslation('skill')
+  const { t: tCommon } = useTranslation('common')
 
   return (
     <section
       aria-labelledby="skill-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
+      role={role}
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
+      <div
+        className={cn('pointer-events-none absolute inset-0 grid-rows-4', SKILL_GRID_CLASS_NAME)}
+      >
         {placeholderCardIds.map((id) => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
       </div>
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden px-2 pt-2 pb-16">
-        <div className="flex w-[520px] max-w-full flex-col items-center gap-6">
+        <div className="flex w-130 max-w-full flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-3">
             <div className="flex size-14 items-center justify-center rounded-[10px]">
               <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
@@ -156,21 +181,26 @@ function SkillPlaceholderState({
             >
               {title}
             </h2>
+            {onRetry && (
+              <Button loading={isRetrying} size="small" variant="secondary" onClick={onRetry}>
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            )}
           </div>
-          {!isEmptySearch && canEdit !== false && (
+          {actions && (
             <div className="flex w-full flex-col gap-2">
               <button
                 type="button"
-                disabled={creating || importing}
+                disabled={actions.creating || actions.importing}
                 className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={onCreate}
+                onClick={actions.onCreate}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
                   <span
                     aria-hidden
                     className={cn(
                       'size-4 text-text-tertiary',
-                      creating ? 'i-ri-loader-4-line animate-spin' : 'i-ri-chat-ai-line',
+                      actions.creating ? 'i-ri-loader-4-line animate-spin' : 'i-ri-chat-ai-line',
                     )}
                   />
                 </span>
@@ -185,16 +215,16 @@ function SkillPlaceholderState({
               </button>
               <button
                 type="button"
-                disabled={creating || importing}
+                disabled={actions.creating || actions.importing}
                 className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={onImport}
+                onClick={actions.onImport}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
                   <span
                     aria-hidden
                     className={cn(
                       'size-4 text-text-tertiary',
-                      importing ? 'i-ri-loader-4-line animate-spin' : 'i-ri-upload-line',
+                      actions.importing ? 'i-ri-loader-4-line animate-spin' : 'i-ri-upload-line',
                     )}
                   />
                 </span>
@@ -385,6 +415,8 @@ function SkillCard({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const nameId = useId()
+  const descriptionId = useId()
+  const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
@@ -399,6 +431,7 @@ function SkillCard({
     },
   })
   const isDraft = !skill.latest_published_version_id
+  const accessibleDescriptionIds = isDraft ? `${draftStatusId} ${descriptionId}` : descriptionId
   const updatedAt = formatTimeFromNow(skill.updated_at * 1000)
   const publishedAt = skill.latest_published_at
     ? formatTimeFromNow(skill.latest_published_at * 1000)
@@ -432,54 +465,85 @@ function SkillCard({
   }
 
   return (
-    <article
+    <li
       aria-labelledby={nameId}
-      className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid"
+      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
     >
-      <div className="flex h-full min-w-0 flex-col">
-        <Link
-          href={`/skills/${skill.id}`}
-          aria-labelledby={nameId}
-          className="block min-w-0 shrink-0 cursor-pointer outline-hidden"
-        >
-          <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-            <SkillIcon />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-                {skill.display_name}
-              </h2>
-              {!skill.name.startsWith('untitled-skill-') && (
-                <p className="truncate system-xs-regular text-text-tertiary">{skill.name}</p>
-              )}
-            </div>
-          </div>
-          <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-            <div className="line-clamp-2 min-h-8">
-              {skill.description.trim()
-                ? skill.description
-                : t(($) => $['skillManagement.noDescription'])}
-            </div>
-          </div>
-        </Link>
-        {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-          <div
-            className={cn(
-              'pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
+      <Link
+        href={`/skills/${skill.id}`}
+        aria-labelledby={nameId}
+        aria-describedby={accessibleDescriptionIds}
+        className="flex h-full min-w-0 cursor-pointer touch-manipulation flex-col rounded-xl outline-hidden"
+      >
+        <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+          <SkillIcon />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+            <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+              {skill.display_name}
+            </h2>
+            {!skill.name.startsWith('untitled-skill-') && (
+              <p className="truncate system-xs-regular text-text-tertiary">{skill.name}</p>
             )}
-          >
+          </div>
+        </div>
+        <div className="px-4 py-1 system-xs-regular text-text-tertiary">
+          <div id={descriptionId} className="line-clamp-2 min-h-8">
+            {skill.description.trim()
+              ? skill.description
+              : t(($) => $['skillManagement.noDescription'])}
+          </div>
+        </div>
+        <div className="h-6.5 shrink-0" />
+        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <span className="shrink-0">
+              {t(
+                ($) =>
+                  skill.reference_count === 1
+                    ? $['skillManagement.referenceCount_one']
+                    : $['skillManagement.referenceCount_other'],
+                { count: skill.reference_count ?? 0 },
+              )}
+            </span>
+            <span aria-hidden className="shrink-0 text-text-quaternary">
+              ·
+            </span>
+            <span className="min-w-0 truncate">
+              {isDraft
+                ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
+                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
+            </span>
+          </div>
+        </div>
+      </Link>
+      {isDraft && (
+        <div
+          id={draftStatusId}
+          className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden"
+        >
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['skillManagement.draft'])}
+          </div>
+        </div>
+      )}
+      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
+        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                aria-label={t(($) => $['skillManagement.moreActions'], {
-                  name: skill.display_name,
-                })}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <span className="sr-only">
-                  {t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
-                </span>
-                <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
-              </DropdownMenuTrigger>
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['skillManagement.moreActions'], {
+                      name: skill.display_name,
+                    })}
+                    size="lg"
+                    className="data-popup-open:bg-state-base-hover"
+                  >
+                    <span aria-hidden className="i-ri-more-fill size-4.5" />
+                  </IconButton>
+                }
+              />
               <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
                 {canEdit && (
                   <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
@@ -515,8 +579,10 @@ function SkillCard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        )}
-        <div className="relative flex h-6 shrink-0 items-start px-3">
+        </div>
+      )}
+      <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+        <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
             skillId={skill.id}
             tags={skill.tags ?? []}
@@ -524,38 +590,9 @@ function SkillCard({
             onTagsChange={() => invalidateSkillListQueries(queryClient)}
           />
         </div>
-        <div className="flex min-w-0 shrink-0 items-center px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
-          <div className="flex min-w-0 flex-1 items-center gap-1">
-            <span className="shrink-0">
-              {t(
-                ($) =>
-                  skill.reference_count === 1
-                    ? $['skillManagement.referenceCount_one']
-                    : $['skillManagement.referenceCount_other'],
-                { count: skill.reference_count ?? 0 },
-              )}
-            </span>
-            <span aria-hidden className="shrink-0 text-text-quaternary">
-              ·
-            </span>
-            <span className="min-w-0 truncate">
-              {isDraft
-                ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
-            </span>
-          </div>
-        </div>
       </div>
-      {isDraft && (
-        <div className="absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['skillManagement.draft'])}
-          </div>
-        </div>
-      )}
       <DeleteSkillDialog skill={skill} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
-    </article>
+    </li>
   )
 }
 
@@ -680,74 +717,132 @@ function SkillsToolbar({
   )
 }
 
-function SkillGrid({
-  canDelete,
-  canEdit,
-  creating,
-  importing,
-  isEmptySearch,
-  isError,
-  isFetching,
-  isFetchingNextPage,
-  isPending,
-  onCreate,
-  onImport,
-  onOpenTagManagement,
-  skills,
-}: {
-  canDelete: boolean
-  canEdit: boolean
-  creating: boolean
-  importing: boolean
-  isEmptySearch: boolean
-  isError: boolean
-  isFetching: boolean
-  isFetchingNextPage: boolean
-  isPending: boolean
-  onCreate: () => void
-  onImport: () => void
-  onOpenTagManagement: () => void
-  skills: SkillResponse[]
-}) {
+type SkillGridRetryState = { status: 'error'; isRetrying: boolean; onRetry: () => void }
+
+type SkillGridState =
+  | { status: 'pending' }
+  | SkillGridRetryState
+  | {
+      status: 'ready'
+      content:
+        | {
+            kind: 'empty'
+            emptyState: 'skills' | 'filtered'
+            actions?: SkillPlaceholderActions
+          }
+        | {
+            kind: 'list'
+            skills: SkillResponse[]
+            pagination: { status: 'none' } | { status: 'loading' } | SkillGridRetryState
+            refresh: { status: 'none' } | SkillGridRetryState
+            cardActions: {
+              canDelete: boolean
+              canEdit: boolean
+              onOpenTagManagement: () => void
+            }
+          }
+      isFetching: boolean
+    }
+
+type SkillGridProps = {
+  state: SkillGridState
+}
+
+function SkillGridRetryStatus({ state }: { state: SkillGridRetryState }) {
   const { t } = useTranslation('skill')
+  const { t: tCommon } = useTranslation('common')
 
   return (
-    <section
-      aria-label={t(($) => $['skillManagement.listLabel'])}
-      className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5"
-      aria-busy={isFetching || undefined}
+    <div
+      className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
+      role="alert"
     >
-      {isPending && <SkillCardSkeleton />}
-      {!isPending && isError && (
-        <SkillPlaceholderState title={t(($) => $['skillManagement.loadingError'])} />
+      <span>{t(($) => $['skillManagement.loadingError'])}</span>
+      <Button loading={state.isRetrying} size="small" variant="secondary" onClick={state.onRetry}>
+        {tCommon(($) => $['operation.retry'])}
+      </Button>
+    </div>
+  )
+}
+
+function SkillGridPagination({
+  state,
+}: {
+  state: Extract<
+    Extract<SkillGridState, { status: 'ready' }>['content'],
+    { kind: 'list' }
+  >['pagination']
+}) {
+  const { t } = useTranslation('common')
+
+  if (state.status === 'none') return null
+  if (state.status === 'error') return <SkillGridRetryStatus state={state} />
+
+  return (
+    <div role="status" className={cn('mt-2.5', SKILL_GRID_CLASS_NAME)}>
+      <span className="sr-only col-span-full">{t(($) => $.loading)}</span>
+      <div aria-hidden="true" className="contents">
+        <SkillCardSkeletonCards />
+      </div>
+    </div>
+  )
+}
+
+function SkillGrid({ state }: SkillGridProps) {
+  const { t } = useTranslation('skill')
+  const isBusy =
+    state.status === 'pending' ||
+    (state.status === 'error' && state.isRetrying) ||
+    (state.status === 'ready' && state.isFetching)
+  const readyContent = state.status === 'ready' ? state.content : undefined
+
+  return (
+    <section aria-label={t(($) => $['skillManagement.listLabel'])} aria-busy={isBusy}>
+      {state.status === 'pending' && (
+        <div className={SKILL_GRID_CLASS_NAME}>
+          <SkillCardSkeleton />
+        </div>
       )}
-      {!isPending && !isError && skills.length === 0 && (
+      {state.status === 'error' && (
         <SkillPlaceholderState
-          canEdit={canEdit}
-          creating={creating}
-          importing={importing}
-          isEmptySearch={isEmptySearch}
-          onCreate={onCreate}
-          onImport={onImport}
+          isRetrying={state.isRetrying}
+          onRetry={state.onRetry}
+          role="alert"
+          title={t(($) => $['skillManagement.loadingError'])}
+        />
+      )}
+      {readyContent?.kind === 'empty' && (
+        <SkillPlaceholderState
+          actions={readyContent.actions}
+          role={readyContent.emptyState === 'filtered' ? 'status' : undefined}
           title={
-            isEmptySearch
+            readyContent.emptyState === 'filtered'
               ? t(($) => $['skillManagement.emptySearch'])
               : t(($) => $['skillManagement.empty'])
           }
         />
       )}
-      {!isPending &&
-        !isError &&
-        skills.map((skill) => (
-          <SkillCard
-            key={skill.id}
-            canDelete={canDelete}
-            canEdit={canEdit}
-            skill={skill}
-            onOpenTagManagement={onOpenTagManagement}
-          />
-        ))}
-      {!isPending && !isError && isFetchingNextPage && <SkillCardSkeleton />}
+      {readyContent?.kind === 'list' && (
+        <>
+          {readyContent.refresh.status === 'error' && (
+            <SkillGridRetryStatus state={readyContent.refresh} />
+          )}
+          {/* Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility */}
+          {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers. */}
+          <ul role="list" className={SKILL_GRID_CLASS_NAME}>
+            {readyContent.skills.map((skill) => (
+              <SkillCard
+                key={skill.id}
+                canDelete={readyContent.cardActions.canDelete}
+                canEdit={readyContent.cardActions.canEdit}
+                skill={skill}
+                onOpenTagManagement={readyContent.cardActions.onOpenTagManagement}
+              />
+            ))}
+          </ul>
+          <SkillGridPagination state={readyContent.pagination} />
+        </>
+      )}
     </section>
   )
 }
@@ -864,16 +959,91 @@ export default function SkillsPage() {
   const handleListScroll = (event: UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
     const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight
-    if (scrollBottom < 80 && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+    if (
+      scrollBottom < 80 &&
+      hasNextPage &&
+      !skillsQuery.isFetching &&
+      !skillsQuery.isFetchNextPageError
+    )
+      void fetchNextPage()
   }
 
   useEffect(() => {
     const viewport = listViewportRef.current
-    if (!viewport || viewport.clientHeight === 0 || isPending || isFetchingNextPage || !hasNextPage)
+    if (
+      !viewport ||
+      viewport.clientHeight === 0 ||
+      isPending ||
+      skillsQuery.isFetching ||
+      skillsQuery.isFetchNextPageError ||
+      !hasNextPage
+    )
       return
 
-    if (viewport.scrollHeight - viewport.clientHeight < 80) void fetchNextPage()
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPending, skills.length])
+    if (viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80)
+      void fetchNextPage()
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isPending,
+    skills.length,
+    skillsQuery.isFetching,
+    skillsQuery.isFetchNextPageError,
+  ])
+
+  const isFiltered = !!debouncedKeyword || selectedTags.length > 0
+  const skillGridState: SkillGridState = isPending
+    ? { status: 'pending' }
+    : skillsQuery.isLoadingError || (skills.length === 0 && skillsQuery.isRefetchError)
+      ? {
+          status: 'error',
+          isRetrying: skillsQuery.isFetching,
+          onRetry: () => void skillsQuery.refetch(),
+        }
+      : {
+          status: 'ready',
+          content:
+            skills.length === 0
+              ? {
+                  kind: 'empty',
+                  emptyState: isFiltered ? 'filtered' : 'skills',
+                  actions:
+                    canEdit && !isFiltered
+                      ? {
+                          creating: createMutation.isPending,
+                          importing: importMutation.isPending,
+                          onCreate: handleCreate,
+                          onImport: () => importInputRef.current?.click(),
+                        }
+                      : undefined,
+                }
+              : {
+                  kind: 'list',
+                  skills,
+                  pagination: skillsQuery.isFetchNextPageError
+                    ? {
+                        status: 'error',
+                        isRetrying: isFetchingNextPage,
+                        onRetry: () => void fetchNextPage(),
+                      }
+                    : isFetchingNextPage
+                      ? { status: 'loading' }
+                      : { status: 'none' },
+                  refresh: skillsQuery.isRefetchError
+                    ? {
+                        status: 'error',
+                        isRetrying: skillsQuery.isFetching,
+                        onRetry: () => void skillsQuery.refetch(),
+                      }
+                    : { status: 'none' },
+                  cardActions: {
+                    canDelete,
+                    canEdit,
+                    onOpenTagManagement: () => setShowTagManagementModal(true),
+                  },
+                },
+          isFetching: skillsQuery.isFetching,
+        }
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
@@ -911,21 +1081,7 @@ export default function SkillsPage() {
             onScroll={handleListScroll}
           >
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
-              <SkillGrid
-                canDelete={canDelete}
-                canEdit={canEdit}
-                creating={createMutation.isPending}
-                importing={importMutation.isPending}
-                skills={skills}
-                isEmptySearch={!!debouncedKeyword || selectedTags.length > 0}
-                isError={skillsQuery.isError}
-                isFetching={skillsQuery.isFetching}
-                isFetchingNextPage={skillsQuery.isFetchingNextPage}
-                isPending={skillsQuery.isPending}
-                onCreate={handleCreate}
-                onImport={() => importInputRef.current?.click()}
-                onOpenTagManagement={() => setShowTagManagementModal(true)}
-              />
+              <SkillGrid state={skillGridState} />
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>
