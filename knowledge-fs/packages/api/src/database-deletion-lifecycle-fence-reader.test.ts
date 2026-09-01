@@ -35,6 +35,7 @@ describe.each(["postgres", "tidb"] as const)(
       await expect(
         reader.getActiveFence({
           documentAssetId: "document-1",
+          documentId: "logical-document-1",
           knowledgeSpaceId: "space-1",
           sourceId: "source-1",
           tenantId: "tenant-1",
@@ -51,9 +52,22 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[0]).toMatchObject({
         maxRows: 1,
         operation: "select",
-        params: ["tenant-1", "space-1", "source-1", "document-1"],
         tableName: "deletion_tombstones",
       });
+      if (dialect === "postgres") {
+        expect(calls[0]?.params).toEqual([
+          "tenant-1",
+          "space-1",
+          "source-1",
+          "logical-document-1",
+          "document-1",
+        ]);
+      } else {
+        expect(calls[0]?.params.slice(0, 2)).toEqual(["tenant-1", "space-1"]);
+        expect(calls[0]?.params).toEqual(
+          expect.arrayContaining(["source-1", "logical-document-1", "document-1"]),
+        );
+      }
       expect(calls[0]?.sql).toContain(
         dialect === "postgres" ? '"tenant_id" = $1' : "`tenant_id` = ?",
       );
@@ -63,6 +77,7 @@ describe.each(["postgres", "tidb"] as const)(
       if (dialect === "postgres") {
         expect(calls[0]?.sql).toContain("$3::uuid IS NOT NULL");
         expect(calls[0]?.sql).toContain("$4::uuid IS NOT NULL");
+        expect(calls[0]?.sql).toContain("$5::uuid IS NOT NULL");
       }
       expect(calls[0]?.sql).toContain("'knowledge_space'");
       expect(calls[0]?.sql).toContain("'source'");
@@ -76,12 +91,11 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[0]?.sql).not.toContain("state");
       expect(calls[0]?.sql).toContain("deletion_jobs");
       expect(calls[0]?.sql).toContain("active_slot");
-      expect(calls[0]?.sql).toContain(
-        dialect === "postgres"
-          ? `"target_type" <> 'source' OR "target_id" = COALESCE($3::uuid, "target_id")`
-          : "`target_type` <> 'source' OR `target_id` = COALESCE(?, `target_id`)",
-      );
+      expect(calls[0]?.sql).not.toContain("<> 'source'");
+      expect(calls[0]?.sql).toContain("logical_documents");
+      expect(calls[0]?.sql).toContain("document_revisions");
       expect(calls[0]?.sql).toContain("CASE");
+      assertSqlPlaceholderArity(calls[0], dialect);
     });
 
     it("keeps active Source deletion fences scoped to the requested Source", async () => {
@@ -90,8 +104,7 @@ describe.each(["postgres", "tidb"] as const)(
       const database = createSchemaDatabaseAdapter({
         executor: async (input): Promise<DatabaseExecuteResult> => {
           calls.push({ ...input, params: [...input.params] });
-          const requestedSourceId = input.params[2];
-          return requestedSourceId === deletingSourceId
+          return input.params.includes(deletingSourceId)
             ? {
                 rows: [
                   {
@@ -127,6 +140,7 @@ describe.each(["postgres", "tidb"] as const)(
         }),
       ).resolves.toMatchObject({ targetId: deletingSourceId, targetType: "source" });
       expect(calls).toHaveLength(2);
+      for (const call of calls) assertSqlPlaceholderArity(call, dialect);
     });
 
     it("binds absent child targets as null and maps source/document tombstones", async () => {
@@ -173,15 +187,60 @@ describe.each(["postgres", "tidb"] as const)(
           tenantId: "tenant-1",
         }),
       ).resolves.toMatchObject({ targetId: "document-1", targetType: "document" });
-      expect(calls.map((call) => call.params)).toEqual([
-        ["tenant-1", "space-1", "source-1", null],
-        ["tenant-1", "space-1", null, "document-1"],
-      ]);
+      if (dialect === "postgres") {
+        expect(calls.map((call) => call.params)).toEqual([
+          ["tenant-1", "space-1", "source-1", null, null],
+          ["tenant-1", "space-1", null, null, "document-1"],
+        ]);
+      } else {
+        expect(calls[0]?.params).toContain("source-1");
+        expect(calls[1]?.params).toContain("document-1");
+        for (const call of calls) assertSqlPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("scopes active logical-document and asset deletion fences to matching targets", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input): Promise<DatabaseExecuteResult> => {
+          calls.push({ ...input, params: [...input.params] });
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: dialect,
+        transaction: async (callback) =>
+          callback({ execute: async () => ({ rows: [], rowsAffected: 0 }) }),
+      });
+      const reader = createDatabaseDeletionLifecycleFenceReader(database);
+
+      await expect(
+        reader.getActiveFence({
+          documentAssetId: "asset-b",
+          documentId: "document-b",
+          knowledgeSpaceId: "space-1",
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBeNull();
+      const sql = calls[0]?.sql ?? "";
+      if (dialect === "postgres") {
+        expect(calls[0]?.params).toEqual(["tenant-1", "space-1", null, "document-b", "asset-b"]);
+      } else {
+        expect(calls[0]?.params.slice(0, 2)).toEqual(["tenant-1", "space-1"]);
+        expect(calls[0]?.params).toEqual(expect.arrayContaining(["document-b", "asset-b"]));
+      }
+      expect(sql).toContain("'logical_document'");
+      expect(sql).toContain("'document_asset'");
+      expect(sql).toContain(dialect === "postgres" ? "$4::uuid" : "?");
+      expect(sql).toContain(dialect === "postgres" ? "$5::uuid" : "?");
+      assertSqlPlaceholderArity(calls[0], dialect);
     });
 
     it("returns null without a matching exact tombstone", async () => {
+      const calls: DatabaseExecuteInput[] = [];
       const database = createSchemaDatabaseAdapter({
-        executor: async () => ({ rows: [], rowsAffected: 0 }),
+        executor: async (input) => {
+          calls.push(input);
+          return { rows: [], rowsAffected: 0 };
+        },
         kind: dialect,
         transaction: async (callback) =>
           callback({ execute: async () => ({ rows: [], rowsAffected: 0 }) }),
@@ -190,6 +249,34 @@ describe.each(["postgres", "tidb"] as const)(
       await expect(
         reader.getActiveFence({ knowledgeSpaceId: "space-1", tenantId: "tenant-1" }),
       ).resolves.toBeNull();
+      if (dialect === "postgres") {
+        expect(calls[0]?.params).toEqual(["tenant-1", "space-1", null, null, null]);
+      } else {
+        expect(calls[0]?.params.slice(0, 2)).toEqual(["tenant-1", "space-1"]);
+        expect(calls[0]?.params).toContain(null);
+      }
+      expect(calls[0]?.sql).toContain("'knowledge_space'");
+      expect(calls[0]?.sql).toContain("'source'");
+      expect(calls[0]?.sql).toContain("'logical_document'");
+      expect(calls[0]?.sql).toContain("'document_asset'");
+      expect(calls[0]?.sql).toContain(
+        dialect === "postgres" ? "$3::uuid IS NOT NULL" : "? IS NOT NULL",
+      );
+      assertSqlPlaceholderArity(calls[0], dialect);
     });
   },
 );
+
+function assertSqlPlaceholderArity(
+  call: DatabaseExecuteInput | undefined,
+  dialect: "postgres" | "tidb",
+): void {
+  expect(call).toBeDefined();
+  if (!call) return;
+  if (dialect === "tidb") {
+    expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+    return;
+  }
+  const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(call.params.length);
+}

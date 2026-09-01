@@ -8,6 +8,7 @@ import {
 
 const scope = {
   documentAssetId: "document-1",
+  documentId: "logical-document-1",
   knowledgeSpaceId: "space-1",
   sourceId: "source-1",
   tenantId: "tenant-1",
@@ -37,6 +38,7 @@ describe("deletion lifecycle fence", () => {
     ["space", "space-1"],
     ["source", "source-1"],
     ["document", "document-1"],
+    ["document", "logical-document-1"],
   ] as const)("fails capture closed for an active %s tombstone", async (targetType, targetId) => {
     const reader = createInMemoryDeletionLifecycleFenceReader([
       {
@@ -74,6 +76,49 @@ describe("deletion lifecycle fence", () => {
 
     const token = await guard.captureDeletionFence(scope);
     await expect(guard.assertDeletionFenceUnchanged(token)).resolves.toBeUndefined();
+  });
+
+  it("allows an unrelated local document and Source while matching targets stay fenced", async () => {
+    const reader = createInMemoryDeletionLifecycleFenceReader([
+      {
+        id: "deleting-document-a",
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        targetId: "logical-document-a",
+        targetType: "document",
+        tenantId: scope.tenantId,
+      },
+      {
+        id: "deleting-source-a",
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        targetId: "source-a",
+        targetType: "source",
+        tenantId: scope.tenantId,
+      },
+    ]);
+    const guard = createDeletionLifecycleFenceGuard(reader);
+
+    await expect(
+      guard.captureDeletionFence({
+        documentId: "logical-document-b",
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        sourceId: "source-b",
+        tenantId: scope.tenantId,
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      guard.captureDeletionFence({
+        documentId: "logical-document-a",
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        tenantId: scope.tenantId,
+      }),
+    ).rejects.toBeInstanceOf(DeletionLifecycleFenceActiveError);
+    await expect(
+      guard.captureDeletionFence({
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        sourceId: "source-a",
+        tenantId: scope.tenantId,
+      }),
+    ).rejects.toBeInstanceOf(DeletionLifecycleFenceActiveError);
   });
 
   it("rejects malformed scopes and inconsistent space fences", async () => {

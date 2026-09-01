@@ -1234,7 +1234,11 @@ describe("createDocumentCompilationWorker lease integration", () => {
     ).rejects.toBeInstanceOf(DeletionLifecycleFenceActiveError);
     expect(latePutCount).toBe(1);
     expect(admittedScopes).toEqual([
-      { knowledgeSpaceId: asset.knowledgeSpaceId, tenantId: "tenant-1" },
+      {
+        documentAssetId: asset.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+      },
     ]);
     await expect(
       adapter.objectStorage.listObjects({

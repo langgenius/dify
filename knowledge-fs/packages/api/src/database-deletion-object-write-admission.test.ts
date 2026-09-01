@@ -13,6 +13,8 @@ const tenantId = "tenant-a";
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const sourceId = "20000000-0000-4000-8000-000000000001";
 const deletingSourceId = "20000000-0000-4000-8000-000000000002";
+const documentId = "30000000-0000-4000-8000-000000000001";
+const documentAssetId = "40000000-0000-4000-8000-000000000001";
 
 describe("database deletion object-write admission", () => {
   for (const dialect of ["postgres", "tidb"] as const) {
@@ -45,10 +47,14 @@ describe("database deletion object-write admission", () => {
       expect(calls[0]?.sql).not.toContain("lifecycle_state =");
       expect(calls[1]?.tableName).toBe("deletion_jobs");
       expect(calls[1]?.sql).toContain("active_slot");
+      expect(calls[1]?.sql).toContain("'knowledge_space'");
+      expect(calls[1]?.sql).not.toContain("'source'");
+      expect(calls[1]?.sql).not.toContain("'logical_document'");
+      expect(calls[1]?.sql).not.toContain("'document_asset'");
       expect(calls[1]?.sql).toContain(dialect === "postgres" ? "FOR SHARE" : "FOR UPDATE");
     });
 
-    it(`allows an object put while a different Source is being deleted (${dialect})`, async () => {
+    it(`scopes object puts to the matching Source/document hierarchy (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
         calls.push(input);
@@ -58,8 +64,7 @@ describe("database deletion object-write admission", () => {
             rowsAffected: 0,
           };
         }
-        const admittedSourceId = input.params[2];
-        return admittedSourceId === deletingSourceId || admittedSourceId === undefined
+        return input.params.includes(deletingSourceId)
           ? { rows: [{ id: "active-source-deletion" }], rowsAffected: 1 }
           : { rows: [], rowsAffected: 0 };
       };
@@ -77,12 +82,18 @@ describe("database deletion object-write admission", () => {
         ),
       ).resolves.toBe("stored");
       const scopedDeletionRead = calls.find((call) => call.tableName === "deletion_jobs");
-      expect(scopedDeletionRead?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
-      expect(scopedDeletionRead?.sql).toContain(
-        dialect === "postgres"
-          ? `"target_type" <> 'source' OR "target_id" = $3`
-          : "`target_type` <> 'source' OR `target_id` = ?",
-      );
+      if (dialect === "postgres") {
+        expect(scopedDeletionRead?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
+      } else {
+        expect(scopedDeletionRead?.params.slice(0, 2)).toEqual([tenantId, knowledgeSpaceId]);
+        expect(scopedDeletionRead?.params).toContain(sourceId);
+      }
+      expect(scopedDeletionRead?.sql).toContain("'knowledge_space'");
+      expect(scopedDeletionRead?.sql).toContain("'source'");
+      expect(scopedDeletionRead?.sql).toContain("logical_documents");
+      expect(scopedDeletionRead?.sql).toContain("document_assets");
+      expect(scopedDeletionRead?.sql).not.toContain("<> 'source'");
+      assertSqlPlaceholderArity(scopedDeletionRead, dialect);
 
       await expect(
         admission.withSpaceWriteAdmission(
@@ -91,7 +102,78 @@ describe("database deletion object-write admission", () => {
         ),
       ).rejects.toBeInstanceOf(DeletionObjectWriteAdmissionError);
       await expect(
-        admission.withSpaceWriteAdmission({ knowledgeSpaceId, tenantId }, async () => "blocked"),
+        admission.withSpaceWriteAdmission({ knowledgeSpaceId, tenantId }, async () => "stored"),
+      ).resolves.toBe("stored");
+    });
+
+    it(`propagates logical-document and asset identity into object admission (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        return input.tableName === "knowledge_spaces"
+          ? {
+              rows: [{ deletion_job_id: null, id: knowledgeSpaceId, lifecycle_state: "active" }],
+              rowsAffected: 0,
+            }
+          : { rows: [], rowsAffected: 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+
+      await expect(
+        createDatabaseDeletionObjectWriteAdmission(database).withSpaceWriteAdmission(
+          { documentAssetId, documentId, knowledgeSpaceId, sourceId, tenantId },
+          async () => "stored",
+        ),
+      ).resolves.toBe("stored");
+
+      const deletionRead = calls.find((call) => call.tableName === "deletion_jobs");
+      if (dialect === "postgres") {
+        expect(deletionRead?.params).toEqual([
+          tenantId,
+          knowledgeSpaceId,
+          sourceId,
+          documentId,
+          documentAssetId,
+        ]);
+      } else {
+        expect(deletionRead?.params.slice(0, 2)).toEqual([tenantId, knowledgeSpaceId]);
+        expect(deletionRead?.params).toEqual(
+          expect.arrayContaining([sourceId, documentId, documentAssetId]),
+        );
+      }
+      expect(deletionRead?.sql).toContain("'knowledge_space'");
+      expect(deletionRead?.sql).toContain("'source'");
+      expect(deletionRead?.sql).toContain("'logical_document'");
+      expect(deletionRead?.sql).toContain("'document_asset'");
+      expect(deletionRead?.sql).toContain("logical_documents");
+      expect(deletionRead?.sql).toContain("document_revisions");
+      expect(deletionRead?.sql).toContain("document_assets");
+      assertSqlPlaceholderArity(deletionRead, dialect);
+    });
+
+    it(`keeps a knowledge-space deletion as a hard object-write blocker (${dialect})`, async () => {
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> =>
+        input.tableName === "knowledge_spaces"
+          ? {
+              rows: [{ deletion_job_id: null, id: knowledgeSpaceId, lifecycle_state: "active" }],
+              rowsAffected: 0,
+            }
+          : { rows: [{ id: "active-space-deletion" }], rowsAffected: 1 };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+
+      await expect(
+        createDatabaseDeletionObjectWriteAdmission(database).withSpaceWriteAdmission(
+          { documentAssetId, knowledgeSpaceId, tenantId },
+          async () => "blocked",
+        ),
       ).rejects.toBeInstanceOf(DeletionObjectWriteAdmissionError);
     });
 
@@ -175,6 +257,20 @@ function deferred<T>(): {
     promise,
     resolve: (value) => resolvePromise?.(value as T),
   };
+}
+
+function assertSqlPlaceholderArity(
+  call: DatabaseExecuteInput | undefined,
+  dialect: "postgres" | "tidb",
+): void {
+  expect(call).toBeDefined();
+  if (!call) return;
+  if (dialect === "tidb") {
+    expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+    return;
+  }
+  const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(call.params.length);
 }
 
 class SharedExclusiveGate {

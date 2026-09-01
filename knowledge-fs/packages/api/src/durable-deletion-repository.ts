@@ -20,7 +20,11 @@ import {
   optionalStringColumn,
   stringColumn,
 } from "./database-row-utils";
-import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
+import {
+  createReusableDatabaseParameter,
+  databasePlaceholder,
+  quoteDatabaseIdentifier,
+} from "./database-sql-utils";
 import type { DurableDeletionFingerprinter } from "./durable-deletion-fingerprinter";
 import { jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
 import { assertDatabaseKnowledgeSpacePermissionFence } from "./knowledge-space-access-control";
@@ -156,6 +160,10 @@ export interface DurableDeletionJob {
   readonly runState: DurableDeletionRunState;
   readonly scanCursor?: string | undefined;
   readonly scanPhase?: string | undefined;
+  /**
+   * Immutable database admission fence captured from current reads while the knowledge-space lock
+   * is held. New jobs always persist it; optionality remains only for pre-fence legacy rows.
+   */
   readonly startedAt?: string | undefined;
   readonly targetId: string;
   readonly targetRevision: number;
@@ -690,6 +698,13 @@ export function createDatabaseDurableDeletionRepository({
         return existingRequestResult(database, transaction, replayAfterLock);
       }
 
+      const admissionStartedAt = await readDeletionAdmissionStartedAt(
+        database,
+        transaction,
+        common.tenantId,
+        common.knowledgeSpaceId,
+      );
+
       // Source and logical-document final acts reuse the immutable durable permission issued to
       // the request/workflow. Lock authorization before their mutable targets so revocation and
       // source-scope changes cannot win a check-to-act race or invert the global lock order.
@@ -867,6 +882,7 @@ export function createDatabaseDurableDeletionRepository({
           ? { nameChallengeDigest: requestIdentity.nameChallengeDigest }
           : {}),
         requestFingerprint,
+        startedAt: admissionStartedAt,
         targetId,
         targetRevision,
         targetType: target.type,
@@ -2179,6 +2195,57 @@ async function lockSpace(
     : null;
 }
 
+async function readDeletionAdmissionStartedAt(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  tenantId: string,
+  knowledgeSpaceId: string,
+): Promise<string> {
+  const leaseAlias = "active_retrieval";
+  const acquiredAt = `${leaseAlias}.${q(database, "acquired_at")}`;
+  // PostgreSQL stores microseconds while TiDB's DATETIME(3) and the admission protocol use
+  // millisecond ticks. Round a legacy PostgreSQL lease upward so the application-side max can
+  // never truncate a pre-fence lease below its actual database timestamp.
+  const admissionAcquiredAt =
+    database.dialect === "postgres"
+      ? `CASE WHEN ${acquiredAt} = date_trunc('milliseconds', ${acquiredAt}) THEN ${acquiredAt} ELSE date_trunc('milliseconds', ${acquiredAt}) + INTERVAL '1 millisecond' END`
+      : acquiredAt;
+  const activeLease = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [tenantId, knowledgeSpaceId],
+    // lockSpace already prevents new retrieval admission. This separate locking read is current
+    // in both dialects, and acquired_at is immutable, so no snapshot aggregate can hide a lease
+    // that committed before the space lock was granted.
+    sql: `SELECT ${admissionAcquiredAt} AS ${q(database, "admission_acquired_at")} FROM ${q(database, "retrieval_execution_leases")} ${leaseAlias} WHERE ${leaseAlias}.${q(database, "tenant_id")} = ${p(database, 1)} AND ${leaseAlias}.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${leaseAlias}.${q(database, "status")} = 'active' ORDER BY ${acquiredAt} DESC, ${leaseAlias}.${q(database, "id")} DESC LIMIT 1 FOR UPDATE;`,
+    tableName: "retrieval_execution_leases",
+  });
+  const currentTime =
+    database.dialect === "postgres"
+      ? "date_trunc('milliseconds', clock_timestamp())"
+      : "CURRENT_TIMESTAMP(3)";
+  const databaseClock = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [],
+    // Read the clock only after the possibly-waiting space lock and the current lease read.
+    sql: `SELECT ${currentTime} AS ${q(database, "database_now")};`,
+    tableName: "knowledge_spaces",
+  });
+  const clockRow = databaseClock.rows[0];
+  if (!clockRow) throw new Error("Durable deletion admission-fence clock was not readable");
+  const databaseNow = isoDate(stringColumn(clockRow, "database_now"), "database admission time");
+  const leaseRow = activeLease.rows[0];
+  if (!leaseRow) return databaseNow;
+  const activeLeaseAcquiredAt = isoDate(
+    stringColumn(leaseRow, "admission_acquired_at"),
+    "active retrieval admission time",
+  );
+  return Date.parse(activeLeaseAcquiredAt) > Date.parse(databaseNow)
+    ? activeLeaseAcquiredAt
+    : databaseNow;
+}
+
 async function lockSource(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
@@ -2371,20 +2438,32 @@ async function assertNoActiveChildDeletion(
         readonly tenantId: string;
       },
 ): Promise<void> {
-  const params: DatabaseQueryValue[] = [input.tenantId, input.knowledgeSpaceId];
-  let predicate = `child_tombstone.${q(database, "target_type")} IN ('source', 'document_asset', 'logical_document')`;
-  if (input.targetType === "source") {
-    params.push(input.sourceId);
-    predicate = `((child_tombstone.${q(database, "target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q(database, "document_assets")} child_document WHERE child_document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND child_document.${q(database, "id")} = child_tombstone.${q(database, "target_id")} AND child_document.${q(database, "source_id")} = ${p(database, 3)})) OR (child_tombstone.${q(database, "target_type")} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q(database, "logical_documents")} child_logical WHERE child_logical.${q(database, "tenant_id")} = ${p(database, 1)} AND child_logical.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND child_logical.${q(database, "id")} = child_tombstone.${q(database, "target_id")} AND child_logical.${q(database, "source_id")} = ${p(database, 3)})))`;
-  } else if (input.targetType === "logical_document") {
-    params.push(input.documentId);
-    predicate = `child_tombstone.${q(database, "target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q(database, "document_revisions")} child_revision WHERE child_revision.${q(database, "tenant_id")} = ${p(database, 1)} AND child_revision.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND child_revision.${q(database, "document_id")} = ${p(database, 3)} AND child_revision.${q(database, "document_asset_id")} = child_tombstone.${q(database, "target_id")})`;
-  }
+  const params: DatabaseQueryValue[] = [];
+  const tenant = createReusableDatabaseParameter(database, params, input.tenantId);
+  const knowledgeSpace = createReusableDatabaseParameter(database, params, input.knowledgeSpaceId);
+  const target =
+    input.targetType === "knowledge_space"
+      ? undefined
+      : createReusableDatabaseParameter(
+          database,
+          params,
+          input.targetType === "source" ? input.sourceId : input.documentId,
+        );
+  const childPredicate = (): string => {
+    if (input.targetType === "knowledge_space") {
+      return `child_tombstone.${q(database, "target_type")} IN ('source', 'document_asset', 'logical_document')`;
+    }
+    if (!target) throw new Error("Durable deletion child target binder was not created");
+    if (input.targetType === "source") {
+      return `((child_tombstone.${q(database, "target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q(database, "document_assets")} child_document WHERE child_document.${q(database, "knowledge_space_id")} = ${knowledgeSpace()} AND child_document.${q(database, "id")} = child_tombstone.${q(database, "target_id")} AND child_document.${q(database, "source_id")} = ${target()})) OR (child_tombstone.${q(database, "target_type")} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q(database, "logical_documents")} child_logical WHERE child_logical.${q(database, "tenant_id")} = ${tenant()} AND child_logical.${q(database, "knowledge_space_id")} = ${knowledgeSpace()} AND child_logical.${q(database, "id")} = child_tombstone.${q(database, "target_id")} AND child_logical.${q(database, "source_id")} = ${target()})))`;
+    }
+    return `((child_tombstone.${q(database, "target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q(database, "document_revisions")} child_asset_revision WHERE child_asset_revision.${q(database, "tenant_id")} = ${tenant()} AND child_asset_revision.${q(database, "knowledge_space_id")} = ${knowledgeSpace()} AND child_asset_revision.${q(database, "document_id")} = ${target()} AND child_asset_revision.${q(database, "document_asset_id")} = child_tombstone.${q(database, "target_id")})) OR (child_tombstone.${q(database, "target_type")} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q(database, "document_revisions")} requested_revision INNER JOIN ${q(database, "document_revisions")} child_logical_revision ON child_logical_revision.${q(database, "tenant_id")} = requested_revision.${q(database, "tenant_id")} AND child_logical_revision.${q(database, "knowledge_space_id")} = requested_revision.${q(database, "knowledge_space_id")} AND child_logical_revision.${q(database, "document_asset_id")} = requested_revision.${q(database, "document_asset_id")} WHERE requested_revision.${q(database, "tenant_id")} = ${tenant()} AND requested_revision.${q(database, "knowledge_space_id")} = ${knowledgeSpace()} AND requested_revision.${q(database, "document_id")} = ${target()} AND child_logical_revision.${q(database, "document_id")} = child_tombstone.${q(database, "target_id")})))`;
+  };
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
     params,
-    sql: `SELECT child_tombstone.${q(database, "deletion_job_id")} FROM ${q(database, tombstoneTable)} child_tombstone WHERE child_tombstone.${q(database, "tenant_id")} = ${p(database, 1)} AND child_tombstone.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND child_tombstone.${q(database, "state")} = 'active' AND ${predicate} ORDER BY child_tombstone.${q(database, "id")} ASC LIMIT 1 FOR UPDATE;`,
+    sql: `SELECT child_tombstone.${q(database, "deletion_job_id")} FROM ${q(database, tombstoneTable)} child_tombstone WHERE child_tombstone.${q(database, "tenant_id")} = ${tenant()} AND child_tombstone.${q(database, "knowledge_space_id")} = ${knowledgeSpace()} AND child_tombstone.${q(database, "state")} = 'active' AND ${childPredicate()} ORDER BY child_tombstone.${q(database, "id")} ASC LIMIT 1 FOR UPDATE;`,
     tableName: tombstoneTable,
   });
   const blocker = result.rows[0] ? stringColumn(result.rows[0], "deletion_job_id") : undefined;
@@ -2534,6 +2613,7 @@ function initialJob(
     readonly maxExecutionAttempts: number;
     readonly nameChallengeDigest?: string | undefined;
     readonly requestFingerprint: string;
+    readonly startedAt: string;
     readonly targetId: string;
     readonly targetRevision: number;
     readonly targetType: DurableDeletionTargetType;
@@ -2565,6 +2645,7 @@ function initialJob(
     requestFingerprint: input.requestFingerprint,
     rowVersion: 1,
     runState: "dispatch_pending",
+    startedAt: input.startedAt,
     targetId: input.targetId,
     targetRevision: input.targetRevision,
     targetType: input.targetType,

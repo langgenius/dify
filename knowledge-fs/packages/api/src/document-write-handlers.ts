@@ -549,12 +549,6 @@ export function registerDocumentWriteHandlers({
         tenantId: subject.tenantId,
       });
       const assertWritable = () => assertDeletionWritable(deletionFence, deletionToken);
-      const admittedObjectStorage = createDeletionAdmittedObjectStorage({
-        admission: objectWriteAdmission,
-        objectStorage: adapter.objectStorage,
-        scope: { knowledgeSpaceId, tenantId: subject.tenantId },
-      });
-
       try {
         await documentMutationAdmissionGuard?.assertDocumentMutationAdmission({
           knowledgeSpaceId,
@@ -670,9 +664,26 @@ export function registerDocumentWriteHandlers({
           let asset: DocumentAsset | undefined;
           let logicalRevision: DocumentRevision | undefined;
           let compilationJobId: string | undefined;
+          const itemDeletionToken = await deletionFence?.captureDeletionFence({
+            documentAssetId: id,
+            ...(upload.documentId ? { documentId: upload.documentId } : {}),
+            knowledgeSpaceId,
+            tenantId: subject.tenantId,
+          });
+          const assertItemWritable = () => assertDeletionWritable(deletionFence, itemDeletionToken);
+          const admittedObjectStorage = createDeletionAdmittedObjectStorage({
+            admission: objectWriteAdmission,
+            objectStorage: adapter.objectStorage,
+            scope: {
+              documentAssetId: id,
+              ...(upload.documentId ? { documentId: upload.documentId } : {}),
+              knowledgeSpaceId,
+              tenantId: subject.tenantId,
+            },
+          });
 
           try {
-            await assertWritable();
+            await assertItemWritable();
             await traceAsync(traces, traceId, "ingestion.bulk_object_put", () =>
               admittedObjectStorage.putObject({
                 body: upload.body,
@@ -688,7 +699,7 @@ export function registerDocumentWriteHandlers({
                 },
               }),
             );
-            await assertWritable();
+            await assertItemWritable();
 
             const createdAsset = await traceAsync(
               traces,
@@ -757,7 +768,7 @@ export function registerDocumentWriteHandlers({
             asset = scopedAsset;
             createdLogicalRevisions.push(logicalRevision);
 
-            await assertWritable();
+            await assertItemWritable();
             const compilationJob = await traceAsync(
               traces,
               traceId,
@@ -790,7 +801,7 @@ export function registerDocumentWriteHandlers({
                 .catch(() => undefined);
               throw error;
             }
-            await assertWritable();
+            await assertItemWritable();
             const assetStatusUrl = createDocumentAssetStatusUrl({
               documentAssetId: asset.id,
               knowledgeSpaceId,
@@ -825,7 +836,10 @@ export function registerDocumentWriteHandlers({
               status: "queued",
             });
           } catch (error) {
-            const effectiveError = await resolveDeletionFenceAfterFailure(error, assertWritable);
+            const effectiveError = await resolveDeletionFenceAfterFailure(
+              error,
+              assertItemWritable,
+            );
             if (isDeletionWriteBlocked(effectiveError)) throw effectiveError;
 
             if (compilationJobId) {
@@ -1158,6 +1172,7 @@ export function registerDocumentWriteHandlers({
       };
       const deletionToken = await deletionFence?.captureDeletionFence({
         documentAssetId: id,
+        ...(upload.documentId ? { documentId: upload.documentId } : {}),
         knowledgeSpaceId,
         ...(upload.sourceId ? { sourceId: upload.sourceId } : {}),
         tenantId: subject.tenantId,
@@ -1168,6 +1183,8 @@ export function registerDocumentWriteHandlers({
         admission: objectWriteAdmission,
         objectStorage: adapter.objectStorage,
         scope: {
+          documentAssetId: id,
+          ...(upload.documentId ? { documentId: upload.documentId } : {}),
           knowledgeSpaceId,
           ...(upload.sourceId ? { sourceId: upload.sourceId } : {}),
           tenantId: subject.tenantId,

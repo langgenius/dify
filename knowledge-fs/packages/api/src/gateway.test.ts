@@ -112,6 +112,7 @@ import {
   normalizeMixedLanguageFtsText,
 } from "./index";
 import { KnowledgeSpaceAccessError } from "./knowledge-space-access-control";
+import { ResearchTaskPartialResultListResponseSchema } from "./research-task-response-schemas";
 import {
   createInitializedTestDocumentAssets,
   rollbackInitializedTestDocumentAsset,
@@ -4797,23 +4798,39 @@ describe("createKnowledgeGateway", () => {
       { headers: bearer(readToken) },
     );
     expect(hiddenPartials.status).toBe(200);
-    await expect(hiddenPartials.json()).resolves.toMatchObject({ items: [] });
-
+    const unavailablePartials = ResearchTaskPartialResultListResponseSchema.parse(
+      await hiddenPartials.json(),
+    );
+    expect(
+      unavailablePartials.items.map((partial) => [partial.sequence, partial.evidenceBundle.id]),
+    ).toEqual([
+      [1, "018f0d60-7a49-7cc2-9c1b-5b36f18f6a01"],
+      [2, "018f0d60-7a49-7cc2-9c1b-5b36f18f6a02"],
+    ]);
+    for (const partial of unavailablePartials.items) {
+      expect(partial.evidenceBundle.items[0]).toMatchObject({
+        metadata: {
+          traceEvidenceAvailability: {
+            reason: "document-deleted-or-unavailable",
+            status: "unavailable",
+          },
+        },
+        text: "Evidence deleted or unavailable",
+      });
+    }
+    expect(JSON.stringify(unavailablePartials)).not.toMatch(/"text":"(?:first|second)"/u);
     const writeOnly = await app.request("/research-tasks/research-task-job-1/partials?limit=1", {
       headers: bearer(writeOnlyToken),
     });
     expect(writeOnly.status).toBe(403);
-
     const crossTenant = await app.request("/research-tasks/research-task-job-1/partials?limit=1", {
       headers: bearer(otherTenantToken),
     });
     expect(crossTenant.status).toBe(404);
-
     const missing = await app.request("/research-tasks/missing/partials?limit=1", {
       headers: bearer(readToken),
     });
     expect(missing.status).toBe(404);
-
     const openapi = await app.request("/openapi.json");
     const spec = (await openapi.json()) as {
       paths: Record<string, Record<string, unknown>>;

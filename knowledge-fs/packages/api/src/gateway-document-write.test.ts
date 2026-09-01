@@ -292,6 +292,8 @@ describe("document write gateway integration", () => {
       maxManifests: 10,
     });
     const admittedScopes: Array<{
+      documentAssetId?: string | undefined;
+      documentId?: string | undefined;
       knowledgeSpaceId: string;
       sourceId?: string | undefined;
       tenantId: string;
@@ -382,6 +384,7 @@ describe("document write gateway integration", () => {
     });
     expect(admittedScopes).toEqual([
       {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         sourceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
         tenantId: "tenant-1",
@@ -823,7 +826,11 @@ describe("document write gateway integration", () => {
 
   it("extracts embedded multimodal data URI assets during ingestion", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
-    const admittedScopes: { knowledgeSpaceId: string; tenantId: string }[] = [];
+    const admittedScopes: Array<{
+      documentAssetId?: string | undefined;
+      knowledgeSpaceId: string;
+      tenantId: string;
+    }> = [];
     const parser = createRecordingParser({
       contentType: "mixed",
       elements: [
@@ -885,10 +892,12 @@ describe("document write gateway integration", () => {
     expect(uploaded.status).toBe(201);
     expect(admittedScopes).toEqual([
       {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         tenantId: "tenant-1",
       },
       {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         tenantId: "tenant-1",
       },
@@ -1397,6 +1406,95 @@ describe("document write gateway integration", () => {
         prefix: `tenant-1/spaces/${knowledgeSpaceId}/documents/${documentAssetId}/`,
       }),
     ).resolves.toMatchObject({ objects: [] });
+  });
+
+  it("keeps unrelated local and Source uploads writable during target-scoped deletion", async () => {
+    const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const deletingSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
+    const sourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
+    const ids = ["018f0d60-7a49-7cc2-9c1b-5b36f18f2c46", "018f0d60-7a49-7cc2-9c1b-5b36f18f2c47"];
+    const fences = createInMemoryDeletionLifecycleFenceReader([
+      {
+        id: "deleting-unrelated-document",
+        knowledgeSpaceId,
+        targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+        targetType: "document",
+        tenantId: "tenant-1",
+      },
+      {
+        id: "deleting-unrelated-source",
+        knowledgeSpaceId,
+        targetId: deletingSourceId,
+        targetType: "source",
+        tenantId: "tenant-1",
+      },
+    ]);
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: createTestAuthVerifier(),
+      deletionLifecycleFence: createDeletionLifecycleFenceGuard(fences),
+      documentAssets: createInMemoryDocumentAssetRepository({ maxAssets: 10 }),
+      generateDocumentAssetId: () => {
+        const id = ids.shift();
+        if (!id) throw new Error("unexpected document asset id request");
+        return id;
+      },
+      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+        generateId: () => knowledgeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+      parser: createRecordingParser().parser,
+    });
+    await app.request("/knowledge-spaces", {
+      body: JSON.stringify({ name: "Uploads", slug: "uploads" }),
+      headers: { ...bearer(writeToken), "content-type": "application/json" },
+      method: "POST",
+    });
+
+    const local = new FormData();
+    local.set("file", new File([new Uint8Array([1])], "local-b.md", { type: "text/markdown" }));
+    const localResponse = await app.request(`/knowledge-spaces/${knowledgeSpaceId}/documents`, {
+      body: local,
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+    expect(localResponse.status).toBe(201);
+
+    const sourceApp = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: createTestAuthVerifier(),
+      deletionLifecycleFence: createDeletionLifecycleFenceGuard(fences),
+      documentAssets: createInMemoryDocumentAssetRepository({ maxAssets: 10 }),
+      generateDocumentAssetId: () => {
+        const id = ids.shift();
+        if (!id) throw new Error("unexpected document asset id request");
+        return id;
+      },
+      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+        generateId: () => knowledgeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+      parser: createRecordingParser().parser,
+    });
+    await sourceApp.request("/knowledge-spaces", {
+      body: JSON.stringify({ name: "Source uploads", slug: "source-uploads" }),
+      headers: { ...bearer(writeToken), "content-type": "application/json" },
+      method: "POST",
+    });
+    const source = new FormData();
+    source.set("sourceId", sourceId);
+    source.set("file", new File([new Uint8Array([2])], "source-b.md", { type: "text/markdown" }));
+    const sourceResponse = await sourceApp.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/documents`,
+      {
+        body: source,
+        headers: bearer(writeToken),
+        method: "POST",
+      },
+    );
+    expect(sourceResponse.status).toBe(201);
   });
 
   it("verifies staged upload objects before document asset visibility", async () => {
@@ -2251,7 +2349,12 @@ describe("document write gateway integration", () => {
   it("accepts bounded bulk document uploads as durable compilation jobs", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const bufferedUploadReservations: number[] = [];
-    const admittedScopes: { knowledgeSpaceId: string; tenantId: string }[] = [];
+    const admittedScopes: Array<{
+      documentAssetId?: string | undefined;
+      documentId?: string | undefined;
+      knowledgeSpaceId: string;
+      tenantId: string;
+    }> = [];
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 10,
       now: () => "2026-05-12T15:00:00.000Z",
@@ -2338,10 +2441,12 @@ describe("document write gateway integration", () => {
     expect(accepted.status).toBe(202);
     expect(admittedScopes).toEqual([
       {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e01",
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         tenantId: "tenant-1",
       },
       {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e02",
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         tenantId: "tenant-1",
       },
@@ -2870,6 +2975,12 @@ describe("document write gateway integration", () => {
     const targetDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f5d01";
     const newDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f5d02";
     const adapter = createNodePlatformAdapter({ env: {} });
+    const admittedScopes: Array<{
+      readonly documentAssetId?: string | undefined;
+      readonly documentId?: string | undefined;
+      readonly knowledgeSpaceId: string;
+      readonly tenantId: string;
+    }> = [];
     const fences = createInMemoryDeletionLifecycleFenceReader();
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
     let compilationSequence = 0;
@@ -2923,6 +3034,12 @@ describe("document write gateway integration", () => {
     const app = createKnowledgeGateway({
       adapter,
       auth: createTestAuthVerifier(),
+      deletionObjectWriteAdmission: {
+        withSpaceWriteAdmission: async (scope, write) => {
+          admittedScopes.push({ ...scope });
+          return write();
+        },
+      },
       deletionLifecycleFence: createDeletionLifecycleFenceGuard(fences),
       documentAssets: assets,
       documentCompilationJobs: compilationJobs,
@@ -3032,6 +3149,19 @@ describe("document write gateway integration", () => {
       ],
       total: 2,
     });
+    expect(admittedScopes).toEqual([
+      {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f5b01",
+        documentId: targetDocumentId,
+        knowledgeSpaceId,
+        tenantId: "tenant-1",
+      },
+      {
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f5b02",
+        knowledgeSpaceId,
+        tenantId: "tenant-1",
+      },
+    ]);
     await expect(
       logicalDocuments.listRevisions({
         candidateGrants: ["document:read"],

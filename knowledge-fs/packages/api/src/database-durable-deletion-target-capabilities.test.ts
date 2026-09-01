@@ -29,6 +29,128 @@ const oldPublicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d07";
 const newPublicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d08";
 
 describe("database durable deletion target capabilities", () => {
+  it("binds every TiDB durable-deletion capability query with one value per anonymous placeholder", async () => {
+    const mismatches: string[] = [];
+    const calls: Array<{
+      readonly deleteMode: DurableDeletionJob["deleteMode"];
+      readonly input: DatabaseExecuteInput;
+      readonly targetType: DurableDeletionJob["targetType"];
+    }> = [];
+    let activeJob = job();
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+      calls.push({ deleteMode: activeJob.deleteMode, input, targetType: activeJob.targetType });
+      const placeholderCount = input.sql.match(/\?/gu)?.length ?? 0;
+      if (placeholderCount !== input.params.length) {
+        mismatches.push(
+          `${input.operation}:${input.tableName}: placeholders=${placeholderCount}, params=${input.params.length}`,
+        );
+      }
+      if (input.operation === "select" && input.tableName === "deletion_jobs") {
+        return result([{ id: activeJob.id }]);
+      }
+      if (input.operation === "select" && input.tableName === "knowledge_space_manifests") {
+        return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+      }
+      return result([]);
+    };
+    const capabilities = capabilitiesFor("tidb", execute);
+    const signal = new AbortController().signal;
+    const jobs = [
+      job({ targetId: spaceId, targetType: "knowledge_space" }),
+      job({ targetId: targetDocumentId, targetType: "document_asset" }),
+      job({ targetId: targetDocumentId, targetType: "logical_document" }),
+      job({ deleteMode: "cascade", targetId: targetDocumentId, targetType: "source" }),
+      job({ deleteMode: "keep", targetId: targetDocumentId, targetType: "source" }),
+    ];
+
+    for (const targetJob of jobs) {
+      activeJob = targetJob;
+      await capabilities.inventory({ job: targetJob, limit: 7, signal });
+      await capabilities.excludeTargetFromPublishedHead({ job: targetJob, signal });
+      await capabilities.quiesce({ job: targetJob, signal });
+      await capabilities.deleteDerivedDataPage({ job: targetJob, limit: 7, signal });
+      await capabilities.deletePrimaryData({
+        job: targetJob,
+        leaseFence: {
+          deletionJobId: targetJob.id,
+          expectedRowVersion: targetJob.rowVersion,
+          leaseToken: targetJob.leaseToken as string,
+        },
+        signal,
+        transaction: { execute },
+      });
+    }
+
+    expect([...new Set(mismatches)]).toEqual([]);
+    const sourceSecretLifecycle = calls.find(
+      (call) =>
+        call.targetType === "source" &&
+        call.input.operation === "select" &&
+        call.input.tableName === "source_secret_lifecycle_refs" &&
+        call.input.sql.includes("state") &&
+        call.input.sql.includes("deleted"),
+    );
+    expect(sourceSecretLifecycle?.input.params).toEqual([
+      activeJob.tenantId,
+      activeJob.knowledgeSpaceId,
+      targetDocumentId,
+      7,
+    ]);
+    const sourceCascadeOverview = calls.find(
+      (call) =>
+        call.targetType === "source" &&
+        call.deleteMode === "cascade" &&
+        call.input.operation === "select" &&
+        call.input.tableName === "knowledge_space_attention_states",
+    );
+    expect(sourceCascadeOverview?.input.params).toEqual([
+      activeJob.tenantId,
+      activeJob.knowledgeSpaceId,
+      targetDocumentId,
+      activeJob.tenantId,
+      activeJob.knowledgeSpaceId,
+      targetDocumentId,
+      7,
+    ]);
+    const leaseCancellation = calls.find(
+      (call) =>
+        call.targetType === "knowledge_space" &&
+        call.input.operation === "update" &&
+        call.input.tableName === "knowledge_fs_leases",
+    );
+    expect(leaseCancellation?.input.params).toEqual([
+      expect.any(String),
+      activeJob.tenantId,
+      activeJob.knowledgeSpaceId,
+      expect.any(String),
+    ]);
+    expect(leaseCancellation?.input.params[0]).toBe(leaseCancellation?.input.params[3]);
+    const wholeSpaceOrphanBundle = calls.find(
+      (call) =>
+        call.targetType === "knowledge_space" &&
+        call.input.operation === "select" &&
+        call.input.tableName === "evidence_bundles" &&
+        call.input.sql.includes("linked_trace"),
+    );
+    expect(wholeSpaceOrphanBundle?.input.sql).toContain("target_space_document");
+    expect(wholeSpaceOrphanBundle?.input.params).toEqual([
+      activeJob.knowledgeSpaceId,
+      activeJob.knowledgeSpaceId,
+      activeJob.knowledgeSpaceId,
+      7,
+    ]);
+    const wholeSpaceResearchPartial = calls.find(
+      (call) =>
+        call.targetType === "knowledge_space" &&
+        call.input.operation === "select" &&
+        call.input.tableName === "research_task_partial_results" &&
+        call.input.sql.includes("target_research_partial") &&
+        call.input.sql.includes("ORDER BY"),
+    );
+    expect(wholeSpaceResearchPartial?.input.sql).toContain("1 = 1");
+    expect(wholeSpaceResearchPartial?.input.params).toEqual([activeJob.knowledgeSpaceId, 7]);
+  });
+
   for (const dialect of ["postgres", "tidb"] as const) {
     it(`rejects a stale deletion worker before quiesce or derived cleanup can mutate (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
@@ -283,7 +405,11 @@ describe("database durable deletion target capabilities", () => {
         (call) => call.tableName === "document_multimodal_manifests",
       );
       expect(manifestDatabaseCalls).toHaveLength(3);
-      expect(manifestDatabaseCalls[0]?.params).toEqual(["tenant-a", spaceId, targetDocumentId]);
+      expect(manifestDatabaseCalls[0]?.params).toEqual(
+        dialect === "postgres"
+          ? ["tenant-a", spaceId, targetDocumentId]
+          : [spaceId, targetDocumentId, "tenant-a", spaceId],
+      );
       expect(manifestDatabaseCalls[0]?.sql).not.toContain(
         dialect === "postgres" ? 'manifest."id" >' : "manifest.`id` >",
       );
@@ -448,7 +574,11 @@ describe("database durable deletion target capabilities", () => {
       ).toEqual(["tenant-a", spaceId, null, 2]);
       expect(
         calls.find((call) => call.operation === "select" && call.tableName === "sources")?.params,
-      ).toEqual(["tenant-a", spaceId, null, 2]);
+      ).toEqual(
+        dialect === "postgres"
+          ? ["tenant-a", spaceId, null, 2]
+          : [spaceId, null, "tenant-a", spaceId, "tenant-a", spaceId, 2],
+      );
 
       await capabilities.executeExternalItem({
         item: deletionItem("object", { objectKey: firstObjectKey }),
@@ -575,7 +705,7 @@ describe("database durable deletion target capabilities", () => {
       );
       expect(memberInserts).toHaveLength(3);
       expect(memberInserts.every((call) => call.params[0] === newPublicationId)).toBe(true);
-      expect(memberInserts.every((call) => call.params[1] === oldPublicationId)).toBe(true);
+      expect(memberInserts.every((call) => call.params.includes(oldPublicationId))).toBe(true);
       expect(memberInserts[0]?.sql).toContain("NOT IN ('graph-entity', 'graph-relation')");
       expect(memberInserts[0]?.sql).toContain("document_asset_id");
       const profileBindingInsert = calls.find(
@@ -584,14 +714,27 @@ describe("database durable deletion target capabilities", () => {
           call.tableName === "knowledge_space_profile_publication_bindings",
       );
       expect(profileBindingInsert?.sql).toContain("content-publication");
-      expect(profileBindingInsert?.params).toEqual([
-        newPublicationId,
-        expect.stringMatching(/^projection-set-sha256:/u),
-        expect.any(String),
-        job().tenantId,
-        job().knowledgeSpaceId,
-        oldPublicationId,
-      ]);
+      expect(profileBindingInsert?.params).toEqual(
+        dialect === "postgres"
+          ? [
+              newPublicationId,
+              expect.stringMatching(/^projection-set-sha256:/u),
+              expect.any(String),
+              job().tenantId,
+              job().knowledgeSpaceId,
+              oldPublicationId,
+            ]
+          : [
+              newPublicationId,
+              newPublicationId,
+              expect.stringMatching(/^projection-set-sha256:/u),
+              expect.any(String),
+              expect.any(String),
+              job().tenantId,
+              job().knowledgeSpaceId,
+              oldPublicationId,
+            ],
+      );
 
       const entityCopy = memberInserts[1]?.sql ?? "";
       expect(entityCopy).toContain("graph-entity");
@@ -787,63 +930,27 @@ describe("database durable deletion target capabilities", () => {
       ).toBe(false);
     });
 
-    it(`retains unrelated answer traces during document cleanup (${dialect})`, async () => {
-      const remainingTraceIds = new Set([targetTraceId, unrelatedTraceId]);
-      const calls: DatabaseExecuteInput[] = [];
-      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
-        calls.push(input);
-        if (input.operation === "select" && input.tableName === "answer_traces") {
-          expect(input.params).toEqual([spaceId, targetDocumentId, 10]);
-          expect(input.sql).toContain("evidence_bundles");
-          expect(input.sql).toContain("documentAssetId");
-          expect(input.sql).toContain(
-            dialect === "postgres" ? "jsonb_array_elements" : "JSON_TABLE",
-          );
-          return result([{ evidence_bundle_id: targetBundleId, id: targetTraceId }]);
-        }
-        if (input.operation === "select" && input.tableName === "evidence_bundles") {
-          return result([{ id: targetBundleId }]);
-        }
-        if (input.operation === "delete" && input.tableName === "answer_traces") {
-          for (const id of input.params) {
-            if (typeof id === "string") remainingTraceIds.delete(id);
-          }
-        }
-        return result([]);
-      };
-      const capabilities = capabilitiesFor(dialect, execute);
-
-      await expect(
-        capabilities.deleteDerivedDataPage({
-          job: job(),
-          limit: 10,
-          signal: new AbortController().signal,
-        }),
-      ).resolves.toEqual({ complete: false, deleted: 1 });
-
-      expect(remainingTraceIds).toEqual(new Set([unrelatedTraceId]));
-      expect(
-        calls.filter((call) => call.operation === "delete").map((call) => call.tableName),
-      ).toEqual(["failed_queries", "answer_trace_steps", "answer_traces", "evidence_bundles"]);
-      const traceDelete = calls.find(
-        (call) => call.operation === "delete" && call.tableName === "answer_traces",
-      );
-      expect(traceDelete?.params).toEqual([targetTraceId]);
-    });
-
-    it(`deletes inline-only AnswerTrace evidence for document and Source targets (${dialect})`, async () => {
+    it(`preserves AnswerTrace evidence history for every subresource target (${dialect})`, async () => {
       for (const deletionJob of [
         job(),
-        job({
-          targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10",
-          targetType: "source",
-        }),
+        job({ targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10", targetType: "source" }),
+        job({ targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11", targetType: "logical_document" }),
       ]) {
         const calls: DatabaseExecuteInput[] = [];
         const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
           calls.push(input);
+          if (input.operation === "select" && input.tableName === "deletion_jobs") {
+            return result([{ id: deletionJob.id }]);
+          }
           if (input.operation === "select" && input.tableName === "answer_traces") {
             return result([{ evidence_bundle_id: null, id: targetTraceId }]);
+          }
+          if (
+            input.operation === "select" &&
+            (input.tableName === "research_task_jobs" ||
+              input.tableName === "research_task_partial_results")
+          ) {
+            return result([{ id: "retained-research-history" }]);
           }
           return result([]);
         };
@@ -855,42 +962,46 @@ describe("database durable deletion target capabilities", () => {
             limit: 10,
             signal: new AbortController().signal,
           }),
-        ).resolves.toEqual({ complete: false, deleted: 1 });
+        ).resolves.toEqual({ complete: true, deleted: 0 });
 
-        const traceSelect = calls.find(
-          (call) => call.operation === "select" && call.tableName === "answer_traces",
-        );
-        expect(traceSelect?.sql).toContain("answer_trace_steps");
-        expect(traceSelect?.sql).toContain("target_inline_evidence_step");
-        expect(traceSelect?.sql).toContain("evidenceBundle");
-        expect(traceSelect?.sql).toContain("documentAssetId");
-        expect(traceSelect?.sql).toContain("nodeId");
-        expect(traceSelect?.sql).toContain("knowledge_nodes");
-        expect(traceSelect?.sql).toContain(
-          dialect === "postgres" ? "jsonb_array_elements" : "JSON_TABLE",
-        );
-        if (deletionJob.targetType === "source") {
-          expect(traceSelect?.sql).toContain("source_id");
-        }
-        expect(
-          calls.filter((call) => call.operation === "delete").map((call) => call.tableName),
-        ).toEqual(["failed_queries", "answer_trace_steps", "answer_traces"]);
+        expect(calls.some((call) => call.tableName === "answer_traces")).toBe(false);
+        expect(calls.some((call) => call.tableName === "answer_trace_steps")).toBe(false);
+        expect(calls.some((call) => call.tableName === "evidence_bundles")).toBe(false);
+        expect(calls.some((call) => call.tableName.startsWith("research_task_"))).toBe(false);
+        expect(calls.some((call) => call.tableName === "retrieval_execution_leases")).toBe(false);
       }
     });
 
-    it(`fails the primary residue proof for inline-only AnswerTrace evidence (${dialect})`, async () => {
+    it(`does not treat retained subresource AnswerTrace or Research history as deletion residue (${dialect})`, async () => {
       for (const deletionJob of [
         job(),
         job({
           targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10",
           targetType: "source",
         }),
+        job({
+          targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11",
+          targetType: "logical_document",
+        }),
       ]) {
         const calls: DatabaseExecuteInput[] = [];
         const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
           calls.push(input);
+          if (input.operation === "select" && input.tableName === "deletion_jobs") {
+            return result([{ id: deletionJob.id }]);
+          }
+          if (input.operation === "select" && input.tableName === "knowledge_space_manifests") {
+            return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+          }
           if (input.operation === "select" && input.tableName === "answer_traces") {
             return result([{ id: targetTraceId }]);
+          }
+          if (
+            input.operation === "select" &&
+            (input.tableName === "research_task_jobs" ||
+              input.tableName === "research_task_partial_results")
+          ) {
+            return result([{ id: "retained-research-history" }]);
           }
           return result([]);
         };
@@ -907,26 +1018,52 @@ describe("database durable deletion target capabilities", () => {
             signal: new AbortController().signal,
             transaction: { execute },
           }),
-        ).resolves.toEqual({ clean: false });
+        ).resolves.toEqual({ clean: true });
 
-        const traceProbe = calls.find(
-          (call) => call.operation === "select" && call.tableName === "answer_traces",
-        );
-        expect(traceProbe?.sql).toContain("answer_trace_steps");
-        expect(traceProbe?.sql).toContain("evidenceBundle");
-        expect(traceProbe?.sql).toContain("documentAssetId");
-        expect(traceProbe?.sql).toContain("knowledge_nodes");
-        expect(
-          calls.some(
-            (call) =>
-              call.operation === "delete" &&
-              (call.tableName === "document_assets" || call.tableName === "sources"),
-          ),
-        ).toBe(false);
+        expect(calls.some((call) => call.tableName === "answer_traces")).toBe(false);
+        expect(calls.some((call) => call.tableName === "evidence_bundles")).toBe(false);
+        expect(calls.some((call) => call.tableName.startsWith("research_task_"))).toBe(false);
+        expect(calls.some((call) => call.tableName === "retrieval_execution_leases")).toBe(false);
       }
     });
 
-    it(`uses source-scoped evidence membership and conservatively scrubs opaque source-keep history (${dialect})`, async () => {
+    it(`physically removes AnswerTrace history only for knowledge-space deletion (${dialect})`, async () => {
+      const remainingTraceIds = new Set([targetTraceId, unrelatedTraceId]);
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "answer_traces") {
+          return result([
+            { evidence_bundle_id: targetBundleId, id: targetTraceId },
+            { evidence_bundle_id: null, id: unrelatedTraceId },
+          ]);
+        }
+        if (input.operation === "select" && input.tableName === "evidence_bundles") {
+          return result([{ id: targetBundleId }]);
+        }
+        if (input.operation === "delete" && input.tableName === "answer_traces") {
+          for (const id of input.params) {
+            if (typeof id === "string") remainingTraceIds.delete(id);
+          }
+        }
+        return result([]);
+      };
+
+      await expect(
+        capabilitiesFor(dialect, execute).deleteDerivedDataPage({
+          job: job({ targetId: spaceId, targetType: "knowledge_space" }),
+          limit: 10,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ complete: false, deleted: 2 });
+
+      expect(remainingTraceIds).toEqual(new Set());
+      expect(
+        calls.filter((call) => call.operation === "delete").map((call) => call.tableName),
+      ).toEqual(["failed_queries", "answer_trace_steps", "answer_traces", "evidence_bundles"]);
+    });
+
+    it(`keeps source deletion from inspecting retained Research or AnswerTrace history (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
         calls.push(input);
@@ -943,11 +1080,8 @@ describe("database durable deletion target capabilities", () => {
         limit: 7,
         signal: new AbortController().signal,
       });
-      const traceSelect = calls.find(
-        (call) => call.operation === "select" && call.tableName === "answer_traces",
-      );
-      expect(traceSelect?.params).toEqual([spaceId, sourceId, 7]);
-      expect(traceSelect?.sql).toContain("source_id");
+      expect(calls.some((call) => call.tableName === "answer_traces")).toBe(false);
+      expect(calls.some((call) => call.tableName.startsWith("research_task_"))).toBe(false);
 
       calls.length = 0;
       await expect(
@@ -961,25 +1095,21 @@ describe("database durable deletion target capabilities", () => {
         calls.some(
           (call) => call.operation === "select" && call.tableName === "agent_workspace_snapshots",
         ),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         calls.some(
           (call) => call.operation === "select" && call.tableName === "knowledge_fs_sessions",
         ),
-      ).toBe(true);
-      const goldenQuestionSelect = calls.find(
-        (call) => call.operation === "select" && call.tableName === "golden_questions",
-      );
-      expect(goldenQuestionSelect?.params).toEqual([spaceId, 7]);
-      expect(goldenQuestionSelect?.sql).toContain("1 = 1");
+      ).toBe(false);
+      expect(calls.some((call) => call.tableName === "golden_questions")).toBe(false);
       expect(
         calls.some(
           (call) => call.operation === "select" && call.tableName === "research_task_jobs",
         ),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         calls.some((call) => call.operation === "select" && call.tableName === "resource_mounts"),
-      ).toBe(true);
+      ).toBe(false);
       const sourcePath = calls.find(
         (call) =>
           call.operation === "select" &&
@@ -987,7 +1117,9 @@ describe("database durable deletion target capabilities", () => {
           call.sql.includes("resource_type") &&
           call.sql.includes("source"),
       );
-      expect(sourcePath?.params).toEqual([spaceId, sourceId, 7]);
+      expect(sourcePath?.params).toEqual(
+        dialect === "postgres" ? [spaceId, sourceId, 7] : [spaceId, sourceId, sourceId, 7],
+      );
       const retainedMetadata = calls.find(
         (call) =>
           call.operation === "select" &&
@@ -1029,7 +1161,7 @@ describe("database durable deletion target capabilities", () => {
 
       await expect(
         capabilities.deleteDerivedDataPage({
-          job: job({ deleteMode: "keep", targetType: "source" }),
+          job: job({ targetId: spaceId, targetType: "knowledge_space" }),
           limit: 7,
           signal: new AbortController().signal,
         }),
@@ -1037,7 +1169,7 @@ describe("database durable deletion target capabilities", () => {
       expect(fenceChecks).toBe(1);
     });
 
-    it(`source keep still drains live whole-space Research writers (${dialect})`, async () => {
+    it(`source keep does not cancel or drain whole-space Research writers (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
         calls.push(input);
@@ -1064,18 +1196,18 @@ describe("database durable deletion target capabilities", () => {
           job: deletionJob,
           signal: new AbortController().signal,
         }),
-      ).resolves.toEqual({ drained: false });
+      ).resolves.toEqual({ drained: true });
 
       expect(
         calls.some(
           (call) => call.operation === "update" && call.tableName === "research_task_jobs",
         ),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         calls.some(
           (call) => call.operation === "select" && call.tableName === "research_task_jobs",
         ),
-      ).toBe(true);
+      ).toBe(false);
       expect(calls.some((call) => call.tableName === "document_compilation_attempts")).toBe(false);
     });
 
@@ -1139,12 +1271,11 @@ describe("database durable deletion target capabilities", () => {
         (call) => call.operation === "update" && call.tableName === "document_assets",
       );
       expect(childUpdates).toHaveLength(2);
-      expect(childUpdates[0]?.params).toEqual([
-        spaceId,
-        sourceKeepJob.targetId,
-        sourceKeepJob.id,
-        sourceKeepJob.updatedAt,
-      ]);
+      expect(childUpdates[0]?.params).toEqual(
+        dialect === "postgres"
+          ? [spaceId, sourceKeepJob.targetId, sourceKeepJob.id, sourceKeepJob.updatedAt]
+          : [sourceKeepJob.updatedAt, spaceId, sourceKeepJob.targetId, sourceKeepJob.id],
+      );
       expect(childUpdates[0]?.sql).toContain("lifecycle_state");
       expect(childUpdates[0]?.sql).toContain("active");
       expect(childUpdates[0]?.sql).toContain("deletion_job_id");
@@ -1163,9 +1294,33 @@ describe("database durable deletion target capabilities", () => {
       expect(childResidue?.sql).toContain("source_id");
     });
 
-    it(`deletes opaque Research history for the whole space before target evidence cleanup (${dialect})`, async () => {
-      const calls: DatabaseExecuteInput[] = [];
+    it(`deletes Research history only for the whole knowledge space (${dialect})`, async () => {
       const partialId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d12";
+      for (const deletionJob of [
+        job(),
+        job({ targetId: "source-a", targetType: "source" }),
+        job({ targetId: "logical-document-a", targetType: "logical_document" }),
+      ]) {
+        const calls: DatabaseExecuteInput[] = [];
+        const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+          calls.push(input);
+          if (input.operation === "select" && input.tableName === "research_task_partial_results") {
+            return result([{ id: partialId }]);
+          }
+          return result([]);
+        };
+
+        await expect(
+          capabilitiesFor(dialect, execute).deleteDerivedDataPage({
+            job: deletionJob,
+            limit: 10,
+            signal: new AbortController().signal,
+          }),
+        ).resolves.toEqual({ complete: true, deleted: 0 });
+        expect(calls.some((call) => call.tableName.startsWith("research_task_"))).toBe(false);
+      }
+
+      const calls: DatabaseExecuteInput[] = [];
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
         calls.push(input);
         if (input.operation === "select" && input.tableName === "research_task_partial_results") {
@@ -1173,11 +1328,9 @@ describe("database durable deletion target capabilities", () => {
         }
         return result([]);
       };
-      const capabilities = capabilitiesFor(dialect, execute);
-
       await expect(
-        capabilities.deleteDerivedDataPage({
-          job: job(),
+        capabilitiesFor(dialect, execute).deleteDerivedDataPage({
+          job: job({ targetId: spaceId, targetType: "knowledge_space" }),
           limit: 10,
           signal: new AbortController().signal,
         }),
@@ -1219,10 +1372,14 @@ describe("database durable deletion target capabilities", () => {
       );
       expect(select?.sql).toContain("expected_evidence_ids");
       expect(select?.sql).toContain("evidenceContext");
+      expect(select?.sql).toContain("evidenceMatch");
       expect(select?.sql).toContain("missingEvidence");
       expect(select?.sql).toContain("answer_traces");
       expect(select?.sql).toContain("knowledge_nodes");
       expect(select?.sql).toContain(dialect === "postgres" ? "jsonb_array_elements" : "JSON_TABLE");
+      if (dialect === "tidb" && select) {
+        expect((select.sql.match(/\?/g) ?? []).length).toBe(select.params.length);
+      }
       expect(
         calls.find((call) => call.operation === "delete" && call.tableName === "golden_questions")
           ?.params,
@@ -1259,7 +1416,10 @@ describe("database durable deletion target capabilities", () => {
           call.tableName === "knowledge_fs_leases" &&
           call.sql.includes("target_lease"),
       );
-      expect(select?.params).toEqual(["tenant-a", spaceId, targetDocumentId, 4]);
+      expect(select?.params).toContain("tenant-a");
+      expect(select?.params).toContain(spaceId);
+      expect(select?.params).toContain(targetDocumentId);
+      expect(select?.params.at(-1)).toBe(4);
       expect(select?.sql).toContain("target_type");
       expect(select?.sql).toContain("target_id");
       expect(select?.sql).toContain("virtual_path");
@@ -1270,11 +1430,14 @@ describe("database durable deletion target capabilities", () => {
       expect(select?.sql).not.toContain('target_lease."document_asset_id"');
       expect(select?.sql).not.toContain("target_lease.`document_asset_id`");
       if (dialect === "postgres") {
+        expect(select?.params).toEqual(["tenant-a", spaceId, targetDocumentId, 4]);
         expect(select?.sql).toContain('target_lease."target_id" = CAST(CAST($2 AS UUID) AS TEXT)');
         expect(select?.sql).toContain('target_lease."target_id" = CAST(CAST($3 AS UUID) AS TEXT)');
         expect(select?.sql).toContain(
           "semantic_document_ref.document_asset_id = CAST(CAST($3 AS UUID) AS TEXT)",
         );
+      } else if (select) {
+        expect((select.sql.match(/\?/g) ?? []).length).toBe(select.params.length);
       }
       expect(
         calls.find(
@@ -1820,7 +1983,7 @@ describe("database durable deletion target capabilities", () => {
 
       await expect(
         capabilities.deleteDerivedDataPage({
-          job: job(),
+          job: job({ targetId: spaceId, targetType: "knowledge_space" }),
           limit: 5,
           signal: new AbortController().signal,
         }),
@@ -1866,7 +2029,7 @@ describe("database durable deletion target capabilities", () => {
         };
 
         const quiescence = await capabilitiesFor(dialect, execute).quiesce({
-          job: job(),
+          job: job({ targetId: spaceId, targetType: "knowledge_space" }),
           signal: new AbortController().signal,
         });
         return { calls, quiescence };
@@ -1933,6 +2096,59 @@ describe("database durable deletion target capabilities", () => {
       ).toHaveLength(1);
     });
 
+    it(`drains only retrieval leases acquired before the immutable first-claim fence (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        return result([]);
+      };
+      const firstClaimAt = "2026-07-14T12:00:05.000Z";
+
+      await expect(
+        capabilitiesFor(dialect, execute).quiesce({
+          job: job({
+            checkpoint: "quiescing",
+            createdAt: "2026-07-14T12:00:00.000Z",
+            startedAt: firstClaimAt,
+            targetType: "logical_document",
+          }),
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ drained: true });
+
+      const retrievalLeaseReads = calls.filter(
+        (call) => call.operation === "select" && call.tableName === "retrieval_execution_leases",
+      );
+      expect(retrievalLeaseReads).toHaveLength(3);
+      for (const read of retrievalLeaseReads) {
+        expect(read.params).toContain(firstClaimAt);
+        expect(read.params).not.toContain("2026-07-14T12:00:00.000Z");
+        expect(read.sql).toContain(dialect === "postgres" ? '"acquired_at"' : "`acquired_at`");
+      }
+      // Queries admitted after first claim are already protected by target visibility and remain
+      // outside this fixed set, so a busy space cannot starve target deletion indefinitely.
+    });
+
+    it(`falls back to the immutable request time for a legacy unstarted deletion (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        return result([]);
+      };
+      const createdAt = "2026-07-14T12:00:00.000Z";
+
+      await capabilitiesFor(dialect, execute).quiesce({
+        job: job({ checkpoint: "quiescing", createdAt, startedAt: undefined }),
+        signal: new AbortController().signal,
+      });
+
+      const retrievalLeaseReads = calls.filter(
+        (call) => call.operation === "select" && call.tableName === "retrieval_execution_leases",
+      );
+      expect(retrievalLeaseReads).toHaveLength(3);
+      for (const read of retrievalLeaseReads) expect(read.params).toContain(createdAt);
+    });
+
     it(`removes only the logical-document Overview rows and never inventories source secrets (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       let overviewReturned = false;
@@ -1962,12 +2178,11 @@ describe("database durable deletion target capabilities", () => {
         (call) =>
           call.operation === "select" && call.tableName === "knowledge_space_attention_states",
       );
-      expect(overview?.params).toEqual([
-        logicalJob.tenantId,
-        logicalJob.knowledgeSpaceId,
-        7,
-        logicalJob.targetId,
-      ]);
+      expect(overview?.params).toEqual(
+        dialect === "postgres"
+          ? [logicalJob.tenantId, logicalJob.knowledgeSpaceId, 7, logicalJob.targetId]
+          : [logicalJob.tenantId, logicalJob.knowledgeSpaceId, logicalJob.targetId, 7],
+      );
       expect(overview?.sql).toContain("resource_type");
       expect(overview?.sql).toContain("document");
       expect(overview?.sql).toContain("resource_id");
@@ -2065,11 +2280,20 @@ describe("database durable deletion target capabilities", () => {
       const aggregateDelete = calls.find(
         (call) => call.operation === "delete" && call.tableName === "logical_documents",
       );
-      expect(aggregateDelete?.params).toEqual([
-        documentJob.tenantId,
-        documentJob.knowledgeSpaceId,
-        documentJob.targetId,
-      ]);
+      expect(aggregateDelete?.params).toEqual(
+        dialect === "postgres"
+          ? [documentJob.tenantId, documentJob.knowledgeSpaceId, documentJob.targetId]
+          : [
+              documentJob.tenantId,
+              documentJob.knowledgeSpaceId,
+              documentJob.tenantId,
+              documentJob.knowledgeSpaceId,
+              documentJob.targetId,
+              documentJob.tenantId,
+              documentJob.knowledgeSpaceId,
+              documentJob.targetId,
+            ],
+      );
       expect(aggregateDelete?.sql).toContain("target_revision");
       expect(aggregateDelete?.sql).toContain("retained_revision");
       expect(aggregateDelete?.sql).toContain("NOT IN ('candidate', 'failed')");
@@ -2393,7 +2617,11 @@ describe("database durable deletion target capability edge branches", () => {
   });
 
   it.each([
-    { label: "retrieval lease history", mode: "table", table: "retrieval_execution_leases" },
+    {
+      label: "retrieval lease history",
+      mode: "space-table",
+      table: "retrieval_execution_leases",
+    },
     { label: "failed queries", mode: "table", table: "failed_queries" },
     { label: "quality history", mode: "table", table: "quality_resource_history" },
     { label: "active agent snapshots", mode: "table", table: "agent_workspace_snapshots" },
@@ -2418,7 +2646,12 @@ describe("database durable deletion target capability edge branches", () => {
         ? job({ targetType: "source" })
         : mode === "metadata"
           ? job({ deleteMode: "keep", targetType: "source" })
-          : job();
+          : mode === "space-table" ||
+              mode === "history-lease" ||
+              table === "failed_queries" ||
+              table === "agent_workspace_snapshots"
+            ? job({ targetId: spaceId, targetType: "knowledge_space" })
+            : job();
 
     await expect(
       capabilitiesFor("postgres", execute).deleteDerivedDataPage({
@@ -2430,14 +2663,12 @@ describe("database durable deletion target capability edge branches", () => {
   });
 
   it.each([
-    "retrieval_execution_leases",
     "resource_mounts",
     "failed_queries",
     "agent_workspace_snapshots",
     "quality_resource_history",
     "knowledge_fs_leases",
     "golden_questions",
-    "research_task_jobs",
     "knowledge_space_activity_events",
     "knowledge_paths",
     "knowledge_nodes",
@@ -2447,7 +2678,14 @@ describe("database durable deletion target capability edge branches", () => {
       input.operation === "select" && input.tableName === residueTable
         ? result([{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2f20" }])
         : result([]);
-    const targetJob = job();
+    const targetJob = [
+      "resource_mounts",
+      "failed_queries",
+      "agent_workspace_snapshots",
+      "knowledge_fs_leases",
+    ].includes(residueTable)
+      ? job({ targetId: spaceId, targetType: "knowledge_space" })
+      : job();
 
     await expect(
       capabilitiesFor("postgres", execute).deletePrimaryData({
@@ -2462,6 +2700,450 @@ describe("database durable deletion target capability edge branches", () => {
       }),
     ).resolves.toEqual({ clean: false });
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "treats Research residue as forbidden only for knowledge-space deletion (%s)",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: job().id }]);
+        }
+        if (input.operation === "select" && input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        return input.operation === "select" && input.tableName === "research_task_jobs"
+          ? result([{ id: "retained-research-history" }])
+          : result([]);
+      };
+      for (const childJob of [
+        job(),
+        job({ targetId: "source-a", targetType: "source" }),
+        job({ targetId: "logical-document-a", targetType: "logical_document" }),
+      ]) {
+        await expect(
+          capabilitiesFor(dialect, execute).deletePrimaryData({
+            job: childJob,
+            leaseFence: {
+              deletionJobId: childJob.id,
+              expectedRowVersion: childJob.rowVersion,
+              leaseToken: childJob.leaseToken as string,
+            },
+            signal,
+            transaction: { execute },
+          }),
+        ).resolves.toEqual({ clean: true });
+        expect(calls.some((call) => call.tableName.startsWith("research_task_"))).toBe(false);
+        calls.length = 0;
+      }
+
+      const spaceJob = job({ targetId: spaceId, targetType: "knowledge_space" });
+      await expect(
+        capabilitiesFor(dialect, execute).deletePrimaryData({
+          job: spaceJob,
+          leaseFence: {
+            deletionJobId: spaceJob.id,
+            expectedRowVersion: spaceJob.rowVersion,
+            leaseToken: spaceJob.leaseToken as string,
+          },
+          signal,
+          transaction: { execute },
+        }),
+      ).resolves.toEqual({ clean: false });
+      expect(calls.some((call) => call.tableName === "research_task_jobs")).toBe(true);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "treats retrieval lease history as residue only for knowledge-space deletion (%s)",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: job().id }]);
+        }
+        if (input.operation === "select" && input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        return input.operation === "select" && input.tableName === "retrieval_execution_leases"
+          ? result([{ id: "retained-retrieval-lease-history" }])
+          : result([]);
+      };
+      for (const childJob of [
+        job(),
+        job({ targetId: "source-a", targetType: "source" }),
+        job({ targetId: "logical-document-a", targetType: "logical_document" }),
+      ]) {
+        await expect(
+          capabilitiesFor(dialect, execute).deletePrimaryData({
+            job: childJob,
+            leaseFence: {
+              deletionJobId: childJob.id,
+              expectedRowVersion: childJob.rowVersion,
+              leaseToken: childJob.leaseToken as string,
+            },
+            signal,
+            transaction: { execute },
+          }),
+        ).resolves.toEqual({ clean: true });
+        expect(calls.some((call) => call.tableName === "retrieval_execution_leases")).toBe(false);
+        calls.length = 0;
+      }
+
+      const spaceJob = job({ targetId: spaceId, targetType: "knowledge_space" });
+      await expect(
+        capabilitiesFor(dialect, execute).deletePrimaryData({
+          job: spaceJob,
+          leaseFence: {
+            deletionJobId: spaceJob.id,
+            expectedRowVersion: spaceJob.rowVersion,
+            leaseToken: spaceJob.leaseToken as string,
+          },
+          signal,
+          transaction: { execute },
+        }),
+      ).resolves.toEqual({ clean: false });
+      expect(calls.some((call) => call.tableName === "retrieval_execution_leases")).toBe(true);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "tombstones only child-target quality evidence and keeps replay history (%s)",
+    async (dialect) => {
+      const childJob = job();
+      const itemId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f30";
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (
+          input.operation === "select" &&
+          input.tableName === "quality_replay_items" &&
+          input.sql.includes("target_replay_item")
+        ) {
+          return result([{ id: itemId }]);
+        }
+        return result([]);
+      };
+
+      await expect(
+        capabilitiesFor(dialect, execute).deleteDerivedDataPage({
+          job: childJob,
+          limit: 7,
+          signal,
+        }),
+      ).resolves.toEqual({ complete: false, deleted: 1 });
+
+      expect(calls.some((call) => call.tableName === "quality_replay_runs")).toBe(false);
+      expect(calls.some((call) => call.tableName === "quality_replay_outbox")).toBe(false);
+      const tombstone = calls.find(
+        (call) => call.operation === "update" && call.tableName === "quality_replay_items",
+      );
+      expect(tombstone?.params).toEqual([itemId]);
+      expect(tombstone?.sql).toContain("'canceled'");
+      expect(tombstone?.sql).toContain("result");
+      expect(tombstone?.sql).toContain("trace_id");
+      expect(tombstone?.sql).toContain("expected_evidence_ids");
+      for (const call of calls.filter(
+        (candidate) =>
+          candidate.operation === "select" && candidate.tableName.startsWith("quality_"),
+      )) {
+        expect(call.params).toContain(childJob.targetId);
+        if (dialect === "tidb") {
+          expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+        }
+      }
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "does not treat unrelated child quality history as deletion residue (%s)",
+    async (dialect) => {
+      const childJob = job();
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: childJob.id }]);
+        }
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        if (
+          input.operation === "select" &&
+          ["quality_replay_runs", "quality_replay_outbox"].includes(input.tableName)
+        ) {
+          return result([{ id: "unrelated-quality-history" }]);
+        }
+        return result([]);
+      };
+
+      await expect(
+        capabilitiesFor(dialect, execute).deletePrimaryData({
+          job: childJob,
+          leaseFence: {
+            deletionJobId: childJob.id,
+            expectedRowVersion: childJob.rowVersion,
+            leaseToken: childJob.leaseToken as string,
+          },
+          signal,
+          transaction: { execute },
+        }),
+      ).resolves.toEqual({ clean: true });
+      expect(calls.some((call) => call.tableName === "quality_replay_runs")).toBe(false);
+      expect(calls.some((call) => call.tableName === "quality_replay_outbox")).toBe(false);
+      if (dialect === "tidb") {
+        for (const call of calls.filter(
+          (candidate) =>
+            candidate.operation === "select" && candidate.tableName.startsWith("quality_"),
+        )) {
+          expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+        }
+      }
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "keeps space-wide product history out of child-target cleanup and residue proof (%s)",
+    async (dialect) => {
+      const childJob = job({
+        targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10",
+        targetType: "source",
+      });
+      const cleanupCalls: DatabaseExecuteInput[] = [];
+      await expect(
+        capabilitiesFor(dialect, async (input) => {
+          cleanupCalls.push(input);
+          return result([]);
+        }).deleteDerivedDataPage({
+          job: childJob,
+          limit: 7,
+          signal,
+        }),
+      ).resolves.toEqual({ complete: true, deleted: 0 });
+
+      for (const retainedTable of [
+        "resource_mounts",
+        "failed_queries",
+        "agent_workspace_snapshots",
+        "knowledge_fs_sessions",
+      ]) {
+        expect(
+          cleanupCalls.some((call) => call.tableName === retainedTable),
+          `${retainedTable} is space history and must survive child deletion`,
+        ).toBe(false);
+      }
+      const targetLeaseRead = cleanupCalls.find(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "knowledge_fs_leases" &&
+          call.sql.includes("target_lease"),
+      );
+      expect(targetLeaseRead?.params).toContain(childJob.targetId);
+      if (dialect === "tidb" && targetLeaseRead) {
+        expect(targetLeaseRead.sql.match(/\?/gu) ?? []).toHaveLength(targetLeaseRead.params.length);
+      }
+
+      const proofCalls: DatabaseExecuteInput[] = [];
+      const executeProof = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        proofCalls.push(input);
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: childJob.id }]);
+        }
+        if (
+          input.operation === "select" &&
+          [
+            "resource_mounts",
+            "failed_queries",
+            "agent_workspace_snapshots",
+            "knowledge_fs_sessions",
+          ].includes(input.tableName)
+        ) {
+          return result([{ id: "retained-space-history" }]);
+        }
+        if (
+          input.operation === "select" &&
+          input.tableName === "knowledge_fs_leases" &&
+          !input.sql.includes("target_lease")
+        ) {
+          return result([{ id: "unrelated-document-lease" }]);
+        }
+        return result([]);
+      };
+      await expect(
+        capabilitiesFor(dialect, executeProof).deletePrimaryData({
+          job: childJob,
+          leaseFence: {
+            deletionJobId: childJob.id,
+            expectedRowVersion: childJob.rowVersion,
+            leaseToken: childJob.leaseToken as string,
+          },
+          signal,
+          transaction: { execute: executeProof },
+        }),
+      ).resolves.toEqual({ clean: true });
+      expect(proofCalls.some((call) => call.tableName === "knowledge_fs_sessions")).toBe(false);
+      const targetLeaseProof = proofCalls.find(
+        (call) => call.tableName === "knowledge_fs_leases" && call.sql.includes("target_lease"),
+      );
+      if (dialect === "tidb" && targetLeaseProof) {
+        expect(targetLeaseProof.sql.match(/\?/gu) ?? []).toHaveLength(
+          targetLeaseProof.params.length,
+        );
+      }
+      expect(
+        proofCalls.some(
+          (call) =>
+            call.operation === "select" &&
+            call.tableName === "knowledge_fs_leases" &&
+            !call.sql.includes("target_lease"),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "keeps unrelated leases scoped but waits for pre-fence whole-space backfills (%s)",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (
+          input.operation === "select" &&
+          input.tableName === "knowledge_fs_leases" &&
+          !input.sql.includes("target_lease")
+        ) {
+          return result([{ id: "unrelated-live-lease" }]);
+        }
+        if (
+          input.operation === "select" &&
+          [
+            "knowledge_space_mutation_leases",
+            "legacy_space_publication_bootstraps",
+            "page_index_upgrade_backfills",
+            "tidb_fts_posting_backfills",
+          ].includes(input.tableName)
+        ) {
+          return result([{ id: "unrelated-global-worker" }]);
+        }
+        return result([]);
+      };
+      const childJob = job({ targetType: "logical_document" });
+
+      await expect(
+        capabilitiesFor(dialect, execute).quiesce({
+          job: childJob,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ drained: false });
+
+      expect(
+        calls.some(
+          (call) =>
+            call.operation === "select" &&
+            call.tableName === "knowledge_fs_leases" &&
+            !call.sql.includes("target_lease"),
+        ),
+      ).toBe(false);
+      const targetLeaseProbe = calls.find(
+        (call) => call.tableName === "knowledge_fs_leases" && call.sql.includes("target_lease"),
+      );
+      if (dialect === "tidb" && targetLeaseProbe) {
+        expect(targetLeaseProbe.sql.match(/\?/gu) ?? []).toHaveLength(
+          targetLeaseProbe.params.length,
+        );
+      }
+      for (const globalWorker of [
+        "legacy_space_publication_bootstraps",
+        "page_index_upgrade_backfills",
+        "tidb_fts_posting_backfills",
+      ]) {
+        expect(calls.some((call) => call.tableName === globalWorker)).toBe(true);
+      }
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "cancels only staged commits owned by the child deletion target (%s)",
+    async (dialect) => {
+      for (const childJob of [
+        job({ targetId: targetDocumentId, targetType: "document_asset" }),
+        job({ targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10", targetType: "source" }),
+        job({
+          targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11",
+          targetType: "logical_document",
+        }),
+      ]) {
+        const calls: DatabaseExecuteInput[] = [];
+        await capabilitiesFor(dialect, async (input) => {
+          calls.push(input);
+          return result([]);
+        }).quiesce({ job: childJob, signal: new AbortController().signal });
+
+        const cancellation = calls.find(
+          (call) =>
+            call.operation === "update" && call.tableName === "knowledge_space_staged_commits",
+        );
+        expect(cancellation?.params).toContain(childJob.targetId);
+        expect(cancellation?.sql).toContain("document_asset_id");
+        if (dialect === "tidb" && cancellation) {
+          expect((cancellation.sql.match(/\?/g) ?? []).length).toBe(cancellation.params.length);
+        }
+        if (childJob.targetType === "source") expect(cancellation?.sql).toContain("source_id");
+        if (childJob.targetType === "logical_document") {
+          expect(cancellation?.sql).toContain("document_revisions");
+          expect(cancellation?.sql).toContain("document_id");
+        }
+      }
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "preserves every golden question when a source is detached with documents kept (%s)",
+    async (dialect) => {
+      const sourceKeepJob = job({
+        deleteMode: "keep",
+        targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10",
+        targetType: "source",
+      });
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: sourceKeepJob.id }]);
+        }
+        if (input.operation === "select" && input.tableName === "golden_questions") {
+          return result([{ id: "unrelated-golden-question" }]);
+        }
+        return result([]);
+      };
+      const capabilities = capabilitiesFor(dialect, execute);
+
+      await expect(
+        capabilities.deleteDerivedDataPage({ job: sourceKeepJob, limit: 7, signal }),
+      ).resolves.toEqual({ complete: true, deleted: 0 });
+      await expect(
+        capabilities.deletePrimaryData({
+          job: sourceKeepJob,
+          leaseFence: {
+            deletionJobId: sourceKeepJob.id,
+            expectedRowVersion: sourceKeepJob.rowVersion,
+            leaseToken: sourceKeepJob.leaseToken as string,
+          },
+          signal,
+          transaction: { execute },
+        }),
+      ).resolves.toEqual({ clean: true });
+      expect(calls.some((call) => call.tableName === "golden_questions")).toBe(false);
+    },
+  );
 
   it.each([
     { deleted: -1, label: "negative count" },
@@ -2502,6 +3184,9 @@ function capabilitiesFor(
   generatePublicationId?: string,
 ) {
   const fencedExecute: DatabaseExecutor["execute"] = async (input) => {
+    if (dialect === "tidb") {
+      expect(input.sql.match(/\?/gu) ?? []).toHaveLength(input.params.length);
+    }
     if (
       input.operation === "select" &&
       input.tableName === "deletion_jobs" &&

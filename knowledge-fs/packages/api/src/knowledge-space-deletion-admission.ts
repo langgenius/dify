@@ -1,6 +1,10 @@
-import type { DatabaseAdapter, DatabaseExecutor } from "@knowledge/core";
+import type { DatabaseAdapter, DatabaseExecutor, DatabaseQueryValue } from "@knowledge/core";
 
-import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
+import {
+  createReusableDatabaseParameter,
+  databasePlaceholder,
+  quoteDatabaseIdentifier,
+} from "./database-sql-utils";
 
 export interface KnowledgeSpaceDeletionAdmissionInput {
   readonly knowledgeSpaceId: string;
@@ -9,6 +13,11 @@ export interface KnowledgeSpaceDeletionAdmissionInput {
 
 export interface SourceWorkflowDeletionAdmissionInput extends KnowledgeSpaceDeletionAdmissionInput {
   readonly sourceId?: string | undefined;
+}
+
+export interface SourceWorkflowBulkDeletionAdmissionInput
+  extends KnowledgeSpaceDeletionAdmissionInput {
+  readonly sourceIds: readonly string[];
 }
 
 export interface DocumentWriteDeletionAdmissionInput extends KnowledgeSpaceDeletionAdmissionInput {
@@ -23,9 +32,19 @@ type DeletionAdmissionScope =
       readonly value: DocumentWriteDeletionAdmissionInput;
     }
   | {
+      readonly kind: "retrieval";
+    }
+  | {
       readonly kind: "source_workflow";
-      readonly sourceId?: string | undefined;
+      readonly sourceIds: readonly string[];
     };
+
+export interface DocumentWriteDeletionScopeQuery {
+  readonly knowledgeSpaceParameter: string;
+  readonly params: DatabaseQueryValue[];
+  readonly scopeSql: string;
+  readonly tenantParameter: string;
+}
 
 /**
  * Serializes writers with durable-deletion request creation. The deletion repository uses the
@@ -41,6 +60,32 @@ export async function lockKnowledgeSpaceForDeletionAdmission(
 }
 
 /**
+ * Serializes retrieval admission with deletion request creation. Target-scoped deletions publish
+ * their lifecycle fence while holding the same space-row lock, so retrieval can continue and rely
+ * on the normal visibility predicates to exclude those targets. Only whole-space deletion fences
+ * every retrieval path.
+ */
+export async function lockKnowledgeSpaceForRetrievalAdmission(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: KnowledgeSpaceDeletionAdmissionInput,
+): Promise<boolean> {
+  return lockForDeletionAdmission(database, executor, input, { kind: "retrieval" });
+}
+
+/**
+ * Admits mutations of space-owned state that has no child-resource overlap. A child deletion must
+ * not turn settings, manifests, connections, or sessions into a space-wide outage.
+ */
+export async function lockKnowledgeSpaceForWholeSpaceDeletionAdmission(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: KnowledgeSpaceDeletionAdmissionInput,
+): Promise<boolean> {
+  return lockForDeletionAdmission(database, executor, input, { kind: "retrieval" });
+}
+
+/**
  * Keeps Source workflow admission scoped to its Source while preserving the space-row ordering
  * used by durable deletion. An active deletion for a different Source cannot overlap this
  * workflow's rows, while space, document, and matching-Source deletions must still fence it.
@@ -52,7 +97,22 @@ export async function lockKnowledgeSpaceForSourceWorkflowAdmission(
 ): Promise<boolean> {
   return lockForDeletionAdmission(database, executor, input, {
     kind: "source_workflow",
-    sourceId: input.sourceId,
+    sourceIds: input.sourceId ? [input.sourceId] : [],
+  });
+}
+
+/**
+ * Performs one scoped locking read for a frozen bulk Source selection. The caller must pass only
+ * Sources whose workflow can mutate rows; skipped items do not need a deletion fence.
+ */
+export async function lockKnowledgeSpaceForSourceWorkflowBulkAdmission(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: SourceWorkflowBulkDeletionAdmissionInput,
+): Promise<boolean> {
+  return lockForDeletionAdmission(database, executor, input, {
+    kind: "source_workflow",
+    sourceIds: input.sourceIds,
   });
 }
 
@@ -90,13 +150,28 @@ async function lockForDeletionAdmission(
   const row = space.rows[0];
   if (!row || row.lifecycle_state !== "active" || row.deletion_job_id != null) return false;
 
-  const activeDeletionParams = [input.tenantId, input.knowledgeSpaceId];
+  let activeDeletionParams: DatabaseQueryValue[] = [input.tenantId, input.knowledgeSpaceId];
+  let tenantParameter = p(1);
+  let knowledgeSpaceParameter = p(2);
   let deletionScope = "";
-  if (scope?.kind === "source_workflow" && scope.sourceId) {
-    activeDeletionParams.push(scope.sourceId);
-    deletionScope = ` AND (active_deletion.${q("target_type")} <> 'source' OR active_deletion.${q("target_id")} = ${p(3)})`;
+  if (scope?.kind === "source_workflow") {
+    const query = deletionAdmissionScopeQuery(database, input, scope.sourceIds);
+    activeDeletionParams = query.params;
+    tenantParameter = query.tenantParameter;
+    knowledgeSpaceParameter = query.knowledgeSpaceParameter;
+    deletionScope = query.scopeSql;
+  } else if (scope?.kind === "retrieval") {
+    const query = deletionAdmissionScopeQuery(database, input, []);
+    activeDeletionParams = query.params;
+    tenantParameter = query.tenantParameter;
+    knowledgeSpaceParameter = query.knowledgeSpaceParameter;
+    deletionScope = query.scopeSql;
   } else if (scope?.kind === "document_write") {
-    deletionScope = documentWriteDeletionScopeSql(database, activeDeletionParams, scope.value);
+    const query = documentWriteDeletionScopeQuery(database, scope.value);
+    activeDeletionParams = query.params;
+    tenantParameter = query.tenantParameter;
+    knowledgeSpaceParameter = query.knowledgeSpaceParameter;
+    deletionScope = query.scopeSql;
   }
   const activeDeletion = await executor.execute({
     maxRows: 1,
@@ -104,50 +179,75 @@ async function lockForDeletionAdmission(
     params: activeDeletionParams,
     // Keep this a current locking read. In TiDB repeatable-read mode the transaction snapshot can
     // predate a deletion transaction that the space-row lock just waited for.
-    sql: `SELECT active_deletion.${q("id")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${p(1)} AND active_deletion.${q("knowledge_space_id")} = ${p(2)} AND active_deletion.${q("active_slot")} = 1${deletionScope} LIMIT 1 FOR UPDATE;`,
+    sql: `SELECT active_deletion.${q("id")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${tenantParameter} AND active_deletion.${q("knowledge_space_id")} = ${knowledgeSpaceParameter} AND active_deletion.${q("active_slot")} = 1${deletionScope} LIMIT 1 FOR UPDATE;`,
     tableName: "deletion_jobs",
   });
   return activeDeletion.rows.length === 0;
 }
 
-function documentWriteDeletionScopeSql(
+export function documentWriteDeletionScopeQuery(
   database: DatabaseAdapter,
-  params: string[],
   input: DocumentWriteDeletionAdmissionInput,
-): string {
+): DocumentWriteDeletionScopeQuery {
+  return deletionAdmissionScopeQuery(database, input, input.sourceId ? [input.sourceId] : []);
+}
+
+function deletionAdmissionScopeQuery(
+  database: DatabaseAdapter,
+  input: KnowledgeSpaceDeletionAdmissionInput & {
+    readonly documentAssetId?: string | undefined;
+    readonly documentId?: string | undefined;
+  },
+  sourceIds: readonly string[],
+): DocumentWriteDeletionScopeQuery {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
+  const params: DatabaseQueryValue[] = [];
+  const tenant = createReusableDatabaseParameter(database, params, input.tenantId);
+  const knowledgeSpace = createReusableDatabaseParameter(database, params, input.knowledgeSpaceId);
+  // Render the outer predicates first so TiDB's anonymous parameters remain in lexical order.
+  const tenantParameter = tenant();
+  const knowledgeSpaceParameter = knowledgeSpace();
   const targetType = `active_deletion.${q("target_type")}`;
   const targetId = `active_deletion.${q("target_id")}`;
-  const conditions = [`${targetType} = 'knowledge_space'`];
-  const addParam = (value: string): string => {
-    params.push(value);
-    return p(params.length);
-  };
+  const conditions = [`(${targetType} = 'knowledge_space' AND ${targetId} = ${knowledgeSpace()})`];
 
-  if (input.sourceId) {
-    const source = addParam(input.sourceId);
-    conditions.push(`(${targetType} = 'source' AND ${targetId} = ${source})`);
-  }
-  if (input.documentId) {
-    const document = addParam(input.documentId);
-    conditions.push(`(${targetType} = 'logical_document' AND ${targetId} = ${document})`);
+  if (sourceIds.length > 0) {
+    const sources = sourceIds.map((sourceId) =>
+      createReusableDatabaseParameter(database, params, sourceId),
+    );
+    const sourceList = () => sources.map((source) => source()).join(", ");
+    conditions.push(`(${targetType} = 'source' AND ${targetId} IN (${sourceList()}))`);
     conditions.push(
-      `(${targetType} = 'source' AND EXISTS (SELECT 1 FROM ${q("logical_documents")} admission_document WHERE admission_document.${q("tenant_id")} = ${p(1)} AND admission_document.${q("knowledge_space_id")} = ${p(2)} AND admission_document.${q("id")} = ${document} AND admission_document.${q("source_id")} = ${targetId}))`,
+      `(${targetType} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q("logical_documents")} admission_document WHERE admission_document.${q("tenant_id")} = ${tenant()} AND admission_document.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_document.${q("id")} = ${targetId} AND admission_document.${q("source_id")} IN (${sourceList()})))`,
     );
     conditions.push(
-      `(${targetType} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} admission_revision WHERE admission_revision.${q("tenant_id")} = ${p(1)} AND admission_revision.${q("knowledge_space_id")} = ${p(2)} AND admission_revision.${q("document_id")} = ${document} AND admission_revision.${q("document_asset_id")} = ${targetId}))`,
+      `(${targetType} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q("document_assets")} admission_asset WHERE admission_asset.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_asset.${q("id")} = ${targetId} AND admission_asset.${q("source_id")} IN (${sourceList()})))`,
+    );
+  }
+  if (input.documentId) {
+    const document = createReusableDatabaseParameter(database, params, input.documentId);
+    conditions.push(`(${targetType} = 'logical_document' AND ${targetId} = ${document()})`);
+    conditions.push(
+      `(${targetType} = 'source' AND EXISTS (SELECT 1 FROM ${q("logical_documents")} admission_document WHERE admission_document.${q("tenant_id")} = ${tenant()} AND admission_document.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_document.${q("id")} = ${document()} AND admission_document.${q("source_id")} = ${targetId}))`,
+    );
+    conditions.push(
+      `(${targetType} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} admission_revision WHERE admission_revision.${q("tenant_id")} = ${tenant()} AND admission_revision.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_revision.${q("document_id")} = ${document()} AND admission_revision.${q("document_asset_id")} = ${targetId}))`,
     );
   }
   if (input.documentAssetId) {
-    const asset = addParam(input.documentAssetId);
-    conditions.push(`(${targetType} = 'document_asset' AND ${targetId} = ${asset})`);
+    const asset = createReusableDatabaseParameter(database, params, input.documentAssetId);
+    conditions.push(`(${targetType} = 'document_asset' AND ${targetId} = ${asset()})`);
     conditions.push(
-      `(${targetType} = 'source' AND EXISTS (SELECT 1 FROM ${q("document_assets")} admission_asset WHERE admission_asset.${q("knowledge_space_id")} = ${p(2)} AND admission_asset.${q("id")} = ${asset} AND admission_asset.${q("source_id")} = ${targetId}))`,
+      `(${targetType} = 'source' AND EXISTS (SELECT 1 FROM ${q("document_assets")} admission_asset WHERE admission_asset.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_asset.${q("id")} = ${asset()} AND admission_asset.${q("source_id")} = ${targetId}))`,
     );
     conditions.push(
-      `(${targetType} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} admission_revision WHERE admission_revision.${q("tenant_id")} = ${p(1)} AND admission_revision.${q("knowledge_space_id")} = ${p(2)} AND admission_revision.${q("document_asset_id")} = ${asset} AND admission_revision.${q("document_id")} = ${targetId}))`,
+      `(${targetType} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} admission_revision WHERE admission_revision.${q("tenant_id")} = ${tenant()} AND admission_revision.${q("knowledge_space_id")} = ${knowledgeSpace()} AND admission_revision.${q("document_asset_id")} = ${asset()} AND admission_revision.${q("document_id")} = ${targetId}))`,
     );
   }
-  return ` AND (${conditions.join(" OR ")})`;
+  return {
+    knowledgeSpaceParameter,
+    params,
+    scopeSql: ` AND (${conditions.join(" OR ")})`,
+    tenantParameter,
+  };
 }

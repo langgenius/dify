@@ -184,8 +184,9 @@ describe("createInMemoryKnowledgeFsSessionRepository", () => {
 describe.each(["postgres", "tidb"] as const)(
   "createDatabaseKnowledgeFsSessionRepository (%s)",
   (dialect) => {
-    it("atomically rejects active deletion and hides reads while a deletion is active", async () => {
+    it("allows sessions during child deletion and fences only whole-space deletion", async () => {
       const calls: DatabaseExecuteInput[] = [];
+      let activeTargetType: "knowledge_space" | "logical_document" = "logical_document";
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
         calls.push(input);
         if (input.operation === "select" && input.tableName === "knowledge_spaces") {
@@ -195,7 +196,13 @@ describe.each(["postgres", "tidb"] as const)(
           };
         }
         if (input.operation === "select" && input.tableName === "deletion_jobs") {
-          return { rows: [], rowsAffected: 0 };
+          const exactWholeSpace =
+            input.sql.includes("target_type") &&
+            input.sql.includes("'knowledge_space'") &&
+            input.sql.includes("target_id");
+          return activeTargetType === "knowledge_space" || !exactWholeSpace
+            ? { rows: [{ id: "active-deletion" }], rowsAffected: 1 }
+            : { rows: [], rowsAffected: 0 };
         }
         return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
       };
@@ -220,11 +227,24 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls.find((call) => call.tableName === "deletion_jobs")?.sql).toContain(
         "active_slot",
       );
+      expect(calls.find((call) => call.tableName === "deletion_jobs")?.sql).toContain(
+        "target_type",
+      );
+      expect(calls.find((call) => call.tableName === "deletion_jobs")?.sql).toContain(
+        "knowledge_space",
+      );
       const read = calls.find(
         (call) => call.operation === "select" && call.tableName === "knowledge_fs_sessions",
       );
       expect(read?.sql).toContain("NOT EXISTS");
       expect(read?.sql).toContain("active_slot");
+      expect(read?.sql).toContain("target_type");
+      expect(read?.sql).toContain("knowledge_space");
+
+      activeTargetType = "knowledge_space";
+      await expect(
+        repository.create(session("018f0d60-7a49-7cc2-9c1b-5b36f18f3b02")),
+      ).rejects.toBeInstanceOf(KnowledgeFsSessionDeletionFenceActiveError);
 
       const blocked = createDatabaseKnowledgeFsSessionRepository({
         database: createSchemaDatabaseAdapter({

@@ -1,8 +1,12 @@
 import { EvidenceBundleSchema } from "@knowledge/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { traceEvidenceAvailabilityFromMetadata } from "./answer-trace-evidence-availability";
 import { createInMemoryDocumentAssetRepository } from "./document-asset-repository";
-import { evidenceBundlesHaveActiveDocuments } from "./evidence-bundle-visibility";
+import {
+  evidenceBundlesHaveActiveDocuments,
+  projectEvidenceBundlesToActiveDocuments,
+} from "./evidence-bundle-visibility";
 
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f6b01";
@@ -70,5 +74,54 @@ describe("evidenceBundlesHaveActiveDocuments", () => {
         maxDocumentAssets: 1,
       }),
     ).resolves.toBe(false);
+  });
+
+  it("bulk-projects only deleted-document items to content-free tombstones", async () => {
+    const secondDocumentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f6b02";
+    const getManyByIds = vi.fn(async () => [
+      { id: documentAssetId, knowledgeSpaceId, metadata: {} },
+    ]);
+
+    const projected = await projectEvidenceBundlesToActiveDocuments({
+      assets: { getManyByIds } as never,
+      bundles: [evidenceBundle(documentAssetId, secondDocumentAssetId)],
+      knowledgeSpaceId,
+    });
+
+    expect(projected[0]?.items[0]).toMatchObject({
+      metadata: {},
+      text: "evidence-1",
+    });
+    expect(projected[0]?.items[1]).toMatchObject({
+      citations: [{ documentAssetId: secondDocumentAssetId, sectionPath: [] }],
+      conflicts: [],
+      freshness: { status: "unknown" },
+      text: "Evidence deleted or unavailable",
+    });
+    expect(traceEvidenceAvailabilityFromMetadata(projected[0]?.items[1]?.metadata ?? {})).toEqual({
+      reason: "document-deleted-or-unavailable",
+      status: "unavailable",
+    });
+    expect(getManyByIds).toHaveBeenCalledOnce();
+    expect(getManyByIds).toHaveBeenCalledWith({
+      ids: [documentAssetId, secondDocumentAssetId],
+      knowledgeSpaceId,
+    });
+  });
+
+  it("fails closed without per-document lookups when the bulk asset reader is unavailable", async () => {
+    const bundle = evidenceBundle(documentAssetId);
+
+    const projected = await projectEvidenceBundlesToActiveDocuments({
+      assets: {} as never,
+      bundles: [bundle],
+      knowledgeSpaceId,
+    });
+
+    expect(projected[0]?.items[0]?.text).toBe("Evidence deleted or unavailable");
+    expect(traceEvidenceAvailabilityFromMetadata(projected[0]?.items[0]?.metadata ?? {})).toEqual({
+      reason: "evidence-unavailable",
+      status: "unavailable",
+    });
   });
 });

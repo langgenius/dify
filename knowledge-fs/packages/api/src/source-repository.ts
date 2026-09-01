@@ -21,7 +21,7 @@ import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForSourceWorkflowAdmission } from "./knowledge-space-deletion-admission";
 
 export interface CreateSourceInput {
   readonly connectionId?: string | undefined;
@@ -400,8 +400,9 @@ export function createDatabaseSourceRepository({
         else throw new SourcePermissionFenceError();
         if (
           (permissionFence && permissionFence.knowledgeSpaceId !== knowledgeSpaceId) ||
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, tx, {
+          !(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, {
             knowledgeSpaceId,
+            sourceId: id,
             tenantId,
           }))
         ) {

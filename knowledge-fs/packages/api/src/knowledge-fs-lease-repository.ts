@@ -14,7 +14,7 @@ import {
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForRetrievalAdmission } from "./knowledge-space-deletion-admission";
 
 export interface KnowledgeFsLeaseLookupInput {
   readonly id: string;
@@ -249,13 +249,19 @@ export function createDatabaseKnowledgeFsLeaseRepository({
       const lease = cloneLease(KnowledgeFsLeaseSchema.parse(input));
       return database.transaction(async (transaction) => {
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId: lease.knowledgeSpaceId,
             tenantId: lease.tenantId,
           }))
         ) {
           throw new KnowledgeFsLeaseDeletionFenceActiveError();
         }
+        const targetDeletion = await selectKnowledgeFsLeaseTargetDeletion(
+          database,
+          transaction,
+          lease,
+        );
+        if (targetDeletion) throw new KnowledgeFsLeaseDeletionFenceActiveError();
         if (lease.leaseType !== "read") {
           const conflict = await transaction.execute({
             maxRows: 1,
@@ -311,15 +317,13 @@ export function createDatabaseKnowledgeFsLeaseRepository({
           lease.acquiredAt,
           lease.updatedAt,
         ] satisfies readonly DatabaseQueryValue[];
+        const candidateAlias = "lease_candidate";
+        const candidateField = (column: string) => `${candidateAlias}.${q(column)}`;
         const result = await transaction.execute({
           maxRows: 1,
           operation: "insert",
           params,
-          sql: `INSERT INTO ${q(tableName)} (${columns.map(q).join(", ")}) SELECT ${columns
-            .map((column, index) => jsonInsertPlaceholder(database, index + 1, column))
-            .join(
-              ", ",
-            )} FROM ${q("knowledge_spaces")} AS lease_space INNER JOIN ${q("knowledge_fs_sessions")} AS lease_session ON lease_session.${q("tenant_id")} = ${p(2)} AND lease_session.${q("knowledge_space_id")} = ${p(3)} AND lease_session.${q("id")} = ${p(4)} AND lease_session.${q("expires_at")} > ${p(14)} WHERE lease_space.${q("tenant_id")} = ${p(2)} AND lease_space.${q("id")} = ${p(3)} AND lease_space.${q("lifecycle_state")} = 'active' AND lease_space.${q("deletion_job_id")} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${p(2)} AND active_deletion.${q("knowledge_space_id")} = ${p(3)} AND active_deletion.${q("active_slot")} = 1)${database.dialect === "postgres" ? " RETURNING *" : ""};`,
+          sql: `INSERT INTO ${q(tableName)} (${columns.map(q).join(", ")}) SELECT ${columns.map(candidateField).join(", ")} FROM (SELECT ${columns.map((column, index) => `${jsonInsertPlaceholder(database, index + 1, column)} AS ${q(column)}`).join(", ")}) AS ${candidateAlias} INNER JOIN ${q("knowledge_spaces")} AS lease_space ON lease_space.${q("tenant_id")} = ${candidateField("tenant_id")} AND lease_space.${q("id")} = ${candidateField("knowledge_space_id")} INNER JOIN ${q("knowledge_fs_sessions")} AS lease_session ON lease_session.${q("tenant_id")} = ${candidateField("tenant_id")} AND lease_session.${q("knowledge_space_id")} = ${candidateField("knowledge_space_id")} AND lease_session.${q("id")} = ${candidateField("session_id")} AND lease_session.${q("expires_at")} > ${candidateField("acquired_at")} WHERE lease_space.${q("lifecycle_state")} = 'active' AND lease_space.${q("deletion_job_id")} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${candidateField("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${candidateField("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1 AND ${knowledgeFsLeaseDeletionOverlapSql(database, "active_deletion", candidateAlias)})${database.dialect === "postgres" ? " RETURNING *" : ""};`,
           tableName,
         });
         if (result.rowsAffected !== 1 && result.rows.length !== 1) {
@@ -358,7 +362,7 @@ export function createDatabaseKnowledgeFsLeaseRepository({
         const knowledgeSpaceId = scope.rows[0]?.knowledge_space_id;
         if (
           typeof knowledgeSpaceId !== "string" ||
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId,
             tenantId,
           }))
@@ -372,7 +376,7 @@ export function createDatabaseKnowledgeFsLeaseRepository({
             ["heartbeat_at", heartbeatAt],
             ["updated_at", updatedAt],
           ],
-          fenced: false,
+          fenced: true,
           id,
           tenantId,
         });
@@ -432,7 +436,64 @@ async function databaseKnowledgeFsLeaseGet(
 
 function knowledgeFsLeaseReadableSql(database: DatabaseAdapter, table: string): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  return `NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${q(table)}.${q("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${q(table)}.${q("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1)`;
+  return `NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${q(table)}.${q("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${q(table)}.${q("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1 AND ${knowledgeFsLeaseDeletionOverlapSql(database, "active_deletion", table)})`;
+}
+
+async function selectKnowledgeFsLeaseTargetDeletion(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  lease: KnowledgeFsLease,
+): Promise<boolean> {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const p = (position: number) => databasePlaceholder(database, position);
+  const candidateAlias = "lease_candidate";
+  const result = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [
+      lease.tenantId,
+      lease.knowledgeSpaceId,
+      lease.targetType,
+      lease.targetId,
+      lease.virtualPath,
+      JSON.stringify(lease.metadata),
+    ],
+    sql: `SELECT active_deletion.${q("id")} FROM (SELECT ${p(1)} AS ${q("tenant_id")}, ${p(2)} AS ${q("knowledge_space_id")}, ${p(3)} AS ${q("target_type")}, ${p(4)} AS ${q("target_id")}, ${p(5)} AS ${q("virtual_path")}, ${jsonInsertPlaceholder(database, 6, "metadata")} AS ${q("metadata")}) AS ${candidateAlias} INNER JOIN ${q("deletion_jobs")} AS active_deletion ON active_deletion.${q("tenant_id")} = ${candidateAlias}.${q("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${candidateAlias}.${q("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1 WHERE ${knowledgeFsLeaseDeletionOverlapSql(database, "active_deletion", candidateAlias)} LIMIT 1 FOR UPDATE;`,
+    tableName: "deletion_jobs",
+  });
+  return result.rows.length > 0;
+}
+
+function knowledgeFsLeaseDeletionOverlapSql(
+  database: DatabaseAdapter,
+  deletionAlias: string,
+  leaseAlias: string,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const deletion = (column: string) => `${deletionAlias}.${q(column)}`;
+  const lease = (column: string) => `${leaseAlias}.${q(column)}`;
+  const castId = (alias: string, column = "id") =>
+    database.dialect === "postgres"
+      ? `CAST(${alias}.${q(column)} AS TEXT)`
+      : `CAST(${alias}.${q(column)} AS CHAR(36))`;
+  const deletionTargetsDocument = (documentId: string) =>
+    `((${deletion("target_type")} = 'document_asset' AND ${deletion("target_id")} = ${documentId}) OR (${deletion("target_type")} = 'source' AND EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_source_asset WHERE lease_source_asset.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_source_asset.${q("id")} = ${documentId} AND lease_source_asset.${q("source_id")} = ${deletion("target_id")})) OR (${deletion("target_type")} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} AS lease_document_revision WHERE lease_document_revision.${q("tenant_id")} = ${deletion("tenant_id")} AND lease_document_revision.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_document_revision.${q("document_asset_id")} = ${documentId} AND lease_document_revision.${q("document_id")} = ${deletion("target_id")})))`;
+  const deletionTargetsSource = (sourceId: string) =>
+    `((${deletion("target_type")} = 'source' AND ${deletion("target_id")} = ${sourceId}) OR (${deletion("target_type")} = 'logical_document' AND EXISTS (SELECT 1 FROM ${q("logical_documents")} AS lease_source_document WHERE lease_source_document.${q("tenant_id")} = ${deletion("tenant_id")} AND lease_source_document.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_source_document.${q("id")} = ${deletion("target_id")} AND lease_source_document.${q("source_id")} = ${sourceId})) OR (${deletion("target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_source_asset WHERE lease_source_asset.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_source_asset.${q("id")} = ${deletion("target_id")} AND lease_source_asset.${q("source_id")} = ${sourceId})))`;
+  const deletionTargetsLogicalDocument = (documentId: string) =>
+    `((${deletion("target_type")} = 'logical_document' AND ${deletion("target_id")} = ${documentId}) OR (${deletion("target_type")} = 'source' AND EXISTS (SELECT 1 FROM ${q("logical_documents")} AS lease_path_document WHERE lease_path_document.${q("tenant_id")} = ${deletion("tenant_id")} AND lease_path_document.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_path_document.${q("id")} = ${documentId} AND lease_path_document.${q("source_id")} = ${deletion("target_id")})) OR (${deletion("target_type")} = 'document_asset' AND EXISTS (SELECT 1 FROM ${q("document_revisions")} AS lease_path_revision WHERE lease_path_revision.${q("tenant_id")} = ${deletion("tenant_id")} AND lease_path_revision.${q("knowledge_space_id")} = ${deletion("knowledge_space_id")} AND lease_path_revision.${q("document_id")} = ${documentId} AND lease_path_revision.${q("document_asset_id")} = ${deletion("target_id")})))`;
+  const directDocument = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_document WHERE lease_document.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${castId("lease_document")} = ${lease("target_id")} AND ${deletionTargetsDocument(`lease_document.${q("id")}`)})`;
+  const virtualDocument = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_virtual_document WHERE lease_virtual_document.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${lease("virtual_path")} = CONCAT('/sources/documents/', ${castId("lease_virtual_document")}) AND ${deletionTargetsDocument(`lease_virtual_document.${q("id")}`)})`;
+  const metadataDocumentId =
+    database.dialect === "postgres"
+      ? `${lease("metadata")} ->> 'documentAssetId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(${lease("metadata")}, '$.documentAssetId'))`;
+  const metadataDocument = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_metadata_document WHERE lease_metadata_document.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${castId("lease_metadata_document")} = ${metadataDocumentId} AND ${deletionTargetsDocument(`lease_metadata_document.${q("id")}`)})`;
+  const parseArtifact = `(${lease("target_type")} = 'parse-artifact' AND EXISTS (SELECT 1 FROM ${q("parse_artifacts")} AS lease_artifact WHERE ${castId("lease_artifact")} = ${lease("target_id")} AND ${deletionTargetsDocument(`lease_artifact.${q("document_asset_id")}`)}))`;
+  const projection = `(${lease("target_type")} = 'projection' AND EXISTS (SELECT 1 FROM ${q("index_projections")} AS lease_projection INNER JOIN ${q("knowledge_nodes")} AS lease_projection_node ON lease_projection_node.${q("id")} = lease_projection.${q("node_id")} WHERE ${castId("lease_projection")} = ${lease("target_id")} AND lease_projection_node.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${deletionTargetsDocument(`lease_projection_node.${q("document_asset_id")}`)}))`;
+  const stagedCommit = `(${lease("target_type")} = 'staged-commit' AND EXISTS (SELECT 1 FROM ${q("knowledge_space_staged_commits")} AS lease_commit WHERE lease_commit.${q("tenant_id")} = ${lease("tenant_id")} AND lease_commit.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND (${castId("lease_commit")} = ${lease("target_id")} OR lease_commit.${q("raw_object_key")} = ${lease("target_id")} OR lease_commit.${q("published_object_key")} = ${lease("target_id")}) AND ${deletionTargetsDocument(`lease_commit.${q("document_asset_id")}`)}))`;
+  const path = `(${lease("target_type")} = 'knowledge-path' AND EXISTS (SELECT 1 FROM ${q("knowledge_paths")} AS lease_path WHERE lease_path.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND (${castId("lease_path")} = ${lease("target_id")} OR lease_path.${q("target_id")} = ${lease("target_id")} OR lease_path.${q("virtual_path")} = ${lease("virtual_path")}) AND ((lease_path.${q("resource_type")} = 'source' AND EXISTS (SELECT 1 FROM ${q("sources")} AS lease_path_source WHERE lease_path_source.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${castId("lease_path_source")} = lease_path.${q("target_id")} AND ${deletionTargetsSource(`lease_path_source.${q("id")}`)})) OR (lease_path.${q("resource_type")} = 'document' AND (EXISTS (SELECT 1 FROM ${q("logical_documents")} AS lease_path_document WHERE lease_path_document.${q("tenant_id")} = ${deletion("tenant_id")} AND lease_path_document.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${castId("lease_path_document")} = lease_path.${q("target_id")} AND ${deletionTargetsLogicalDocument(`lease_path_document.${q("id")}`)}) OR EXISTS (SELECT 1 FROM ${q("document_assets")} AS lease_path_asset WHERE lease_path_asset.${q("knowledge_space_id")} = ${lease("knowledge_space_id")} AND ${castId("lease_path_asset")} = lease_path.${q("target_id")} AND ${deletionTargetsDocument(`lease_path_asset.${q("id")}`)}))))))`;
+  return `((${deletion("target_type")} = 'knowledge_space' AND ${deletion("target_id")} = ${lease("knowledge_space_id")}) OR ${lease("target_type")} = 'knowledge-space' OR (${lease("target_type")} = 'document-asset' AND ${directDocument}) OR ${virtualDocument} OR ${metadataDocument} OR ${parseArtifact} OR ${projection} OR ${stagedCommit} OR ${path})`;
 }
 
 async function updateDatabaseKnowledgeFsLease(

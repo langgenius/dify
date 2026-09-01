@@ -19,7 +19,7 @@ import {
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForSourceWorkflowAdmission } from "./knowledge-space-deletion-admission";
 import { readLegacyCredentials } from "./source-credential-service";
 import {
   type SourceSecretLifecycleRef,
@@ -147,7 +147,11 @@ export interface SourceCredentialBackfillRepository {
     readonly now: string;
   }): Promise<SourceCredentialBackfillJob | null>;
   withWriteAdmission<T>(
-    input: { readonly knowledgeSpaceId: string; readonly tenantId: string },
+    input: {
+      readonly knowledgeSpaceId: string;
+      readonly sourceId: string;
+      readonly tenantId: string;
+    },
     mutation: () => Promise<T>,
   ): Promise<T>;
 }
@@ -247,7 +251,9 @@ export function createDatabaseSourceCredentialBackfillRepository({
         );
         const observedJob = await getJob(database, transaction, jobId, false);
         if (!observedJob) return [];
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, observedJob))) {
+        if (
+          !(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, transaction, observedJob))
+        ) {
           return [];
         }
         const lifecycle = await lifecycleOperations.getByRef(
@@ -429,8 +435,9 @@ export function createDatabaseSourceCredentialBackfillRepository({
           const sourceVersion = positiveVersion(numberColumn(row, "source_version"));
           const tenantId = TenantIdSchema.parse(stringColumn(row, "tenant_id"));
           if (
-            !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+            !(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, transaction, {
               knowledgeSpaceId,
+              sourceId,
               tenantId,
             }))
           ) {
@@ -1178,11 +1185,15 @@ async function requireObservedJob(
 async function requireBackfillWriteAdmission(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
-  input: { readonly knowledgeSpaceId: string; readonly tenantId: string },
+  input: {
+    readonly knowledgeSpaceId: string;
+    readonly sourceId: string;
+    readonly tenantId: string;
+  },
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, input))) {
+  if (!(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, executor, input))) {
     throw new SourceCredentialBackfillTransitionError(
-      "Source credential backfill rejected while knowledge-space deletion is active",
+      "Source credential backfill rejected while a matching deletion is active",
     );
   }
 }

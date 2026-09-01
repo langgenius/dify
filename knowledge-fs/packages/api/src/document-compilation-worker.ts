@@ -35,6 +35,7 @@ import {
 import {
   type DeletionObjectWriteAdmission,
   DeletionObjectWriteAdmissionError,
+  type DeletionObjectWriteScope,
 } from "./deletion-object-write-admission";
 import { withDeletionObjectWriteAdmission } from "./deletion-object-write-storage";
 import type { DocumentAssetRepository } from "./document-asset-repository";
@@ -401,7 +402,12 @@ export function createDocumentCompilationWorker({
           onCleanupReady: (cleanup) => {
             cleanupStaleObjectWrites = cleanup;
           },
-          scope: { knowledgeSpaceId: input.knowledgeSpaceId, tenantId: input.tenantId },
+          scope: {
+            documentAssetId: activeAsset.id,
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            ...(activeAsset.sourceId ? { sourceId: activeAsset.sourceId } : {}),
+            tenantId: input.tenantId,
+          },
         });
         const compile = async () => {
           const initialJob = await jobs.get(input.documentCompilationJobId);
@@ -1589,7 +1595,7 @@ function createDeletionFencedCompilationObjectStorage({
   readonly objectWriteAdmission?: DeletionObjectWriteAdmission | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly onCleanupReady: (cleanup: () => Promise<void>) => void;
-  readonly scope: { readonly knowledgeSpaceId: string; readonly tenantId: string };
+  readonly scope: DeletionObjectWriteScope;
 }): PlatformAdapter["objectStorage"] {
   const createdKeys = new Set<string>();
   const cleanup = async (): Promise<void> => {

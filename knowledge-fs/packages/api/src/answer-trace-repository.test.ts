@@ -523,6 +523,52 @@ describe("AnswerTrace repositories", () => {
   );
 
   it.each(["postgres", "tidb"] as const)(
+    "allows %s trace persistence during child-resource deletion and rejects whole-space deletion",
+    async (kind) => {
+      const createRepository = (activeTargetType: "knowledge_space" | "source") => {
+        const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+          if (input.tableName === "knowledge_spaces") {
+            return {
+              rows: [{ id: input.params[0], tenant_id: "tenant-1" }],
+              rowsAffected: 1,
+            };
+          }
+          if (input.tableName === "answer_traces" && input.operation === "select") {
+            return { rows: [], rowsAffected: 0 };
+          }
+          if (input.tableName === "answer_traces" && input.operation === "insert") {
+            const wholeSpaceFence = hasWholeSpaceDeletionFence(input.sql, kind, {
+              idColumn: "id",
+              ownerAlias: "writable_space",
+            });
+            return {
+              rows: [],
+              rowsAffected: activeTargetType === "knowledge_space" || !wholeSpaceFence ? 0 : 1,
+            };
+          }
+          if (input.tableName === "answer_trace_steps") {
+            return { rows: [], rowsAffected: 1 };
+          }
+          throw new Error(`Unexpected answer-trace query: ${input.tableName}`);
+        };
+        const database = createSchemaDatabaseAdapter({
+          executor,
+          kind,
+          transaction: async (callback) => callback({ execute: executor }),
+        });
+        return createDatabaseAnswerTraceRepository({ database });
+      };
+
+      await expect(createRepository("source").create(databaseTrace())).resolves.toEqual(
+        databaseTrace(),
+      );
+      await expect(createRepository("knowledge_space").create(databaseTrace())).rejects.toThrow(
+        "Answer trace creation rejected by durable deletion",
+      );
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
     "persists an embedded EvidenceBundle with mandatory scope before the %s trace",
     async (kind) => {
       const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7e01";
@@ -552,7 +598,10 @@ describe("AnswerTrace repositories", () => {
           return { rows: [{ id: input.params[0], tenant_id: "tenant-1" }], rowsAffected: 1 };
         }
         if (input.tableName === "document_assets") {
-          return { rows: [{ id: documentAssetId }], rowsAffected: 1 };
+          return {
+            rows: [{ deletion_job_id: null, id: documentAssetId, lifecycle_state: "active" }],
+            rowsAffected: 1,
+          };
         }
         if (input.tableName === "evidence_bundles" && input.operation === "select") {
           return { rows: [], rowsAffected: 0 };
@@ -584,10 +633,10 @@ describe("AnswerTrace repositories", () => {
       });
       expect(calls.map((call) => [call.operation, call.tableName])).toEqual([
         ["select", "knowledge_spaces"],
-        ["select", "answer_traces"],
-        ["select", "document_assets"],
         ["select", "evidence_bundles"],
+        ["select", "document_assets"],
         ["insert", "evidence_bundles"],
+        ["select", "answer_traces"],
         ["insert", "answer_traces"],
         ["insert", "answer_trace_steps"],
       ]);
@@ -608,6 +657,326 @@ describe("AnswerTrace repositories", () => {
       }
       assertSqlArity(bundleInsert, kind);
       assertSqlArity(traceInsert, kind);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "stores a deleting-document embedded bundle only as a content-free tombstone in %s",
+    async (kind) => {
+      const deletingDocumentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7e11";
+      const evidenceBundle = EvidenceBundleSchema.parse({
+        createdAt: "2026-05-11T13:40:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7e12",
+        items: [
+          {
+            citations: [
+              {
+                documentAssetId: deletingDocumentAssetId,
+                documentVersion: 1,
+                sectionPath: ["Sensitive section"],
+              },
+            ],
+            conflicts: [],
+            freshness: { status: "fresh" },
+            metadata: { secret: "must-not-persist" },
+            nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f7e13",
+            score: 0.9,
+            scores: { final: 0.9, retrieval: 0.8 },
+            text: "sensitive deleting evidence",
+          },
+        ],
+        missingEvidence: [],
+        query: "deleting evidence",
+        state: "answerable",
+      });
+      const calls: DatabaseExecuteInput[] = [];
+      let documentAssetExists = true;
+      let storedBundleRow: DatabaseRow | undefined;
+      let storedTraceRow: DatabaseRow | undefined;
+      let storedStepRows: DatabaseRow[] = [];
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push({ ...input, params: [...input.params] });
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [{ id: input.params[0], tenant_id: "tenant-1" }], rowsAffected: 1 };
+        }
+        if (input.tableName === "document_assets") {
+          if (!documentAssetExists) return { rows: [], rowsAffected: 0 };
+          return {
+            rows: [
+              {
+                deletion_job_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7e14",
+                id: deletingDocumentAssetId,
+                lifecycle_state: "deleting",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "evidence_bundles" && input.operation === "select") {
+          return {
+            rows: storedBundleRow ? [storedBundleRow] : [],
+            rowsAffected: storedBundleRow ? 1 : 0,
+          };
+        }
+        if (input.tableName === "evidence_bundles" && input.operation === "insert") {
+          storedBundleRow = {
+            created_at: input.params[8],
+            id: input.params[0],
+            items: JSON.parse(String(input.params[6])) as unknown[],
+            knowledge_space_id: input.params[2],
+            missing_evidence: JSON.parse(String(input.params[7])) as unknown[],
+            query: input.params[4],
+            state: input.params[5],
+            tenant_id: input.params[1],
+            trace_id: input.params[3],
+          };
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "answer_traces" && input.operation === "select") {
+          return {
+            rows: storedTraceRow ? [storedTraceRow] : [],
+            rowsAffected: storedTraceRow ? 1 : 0,
+          };
+        }
+        if (input.tableName === "answer_traces" && input.operation === "insert") {
+          storedTraceRow = {
+            access_channel: input.params[10],
+            capability_grant_id: input.params[3],
+            completed: input.params[11],
+            created_at: input.params[12],
+            evidence_bundle_id: input.params[4],
+            id: input.params[0],
+            knowledge_space_id: input.params[2],
+            mode: input.params[6],
+            permission_snapshot_id: input.params[8],
+            permission_snapshot_revision: input.params[9],
+            query: input.params[5],
+            subject_id: input.params[7],
+            tenant_id: input.params[1],
+          };
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "answer_trace_steps" && input.operation === "select") {
+          return { rows: storedStepRows, rowsAffected: storedStepRows.length };
+        }
+        if (input.tableName === "answer_trace_steps" && input.operation === "insert") {
+          storedStepRows = Array.from({ length: input.params.length / 7 }, (_value, index) => {
+            const offset = index * 7;
+            return {
+              ended_at: input.params[offset + 6],
+              id: input.params[offset],
+              metadata: JSON.parse(String(input.params[offset + 4])) as Record<string, unknown>,
+              name: input.params[offset + 2],
+              started_at: input.params[offset + 5],
+              status: input.params[offset + 3],
+              trace_id: input.params[offset + 1],
+            };
+          });
+          return { rows: [], rowsAffected: storedStepRows.length };
+        }
+        return { rows: [], rowsAffected: 1 };
+      };
+      const repository = createDatabaseAnswerTraceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor,
+          kind,
+          transaction: async (callback) => callback({ execute: executor }),
+        }),
+      });
+      const trace = AnswerTraceSchema.parse({
+        ...databaseTrace(),
+        steps: [
+          {
+            endedAt: "2026-05-11T13:40:01.000Z",
+            metadata: { evidenceBundle },
+            name: "query.generate",
+            startedAt: "2026-05-11T13:40:00.000Z",
+            status: "ok",
+          },
+        ],
+      });
+
+      const created = await repository.create(trace);
+      const returnedBundle = EvidenceBundleSchema.parse(created.steps[0]?.metadata.evidenceBundle);
+      const storedBundle = EvidenceBundleSchema.parse(
+        storedStepRows[0]?.metadata &&
+          (storedStepRows[0].metadata as Record<string, unknown>).evidenceBundle,
+      );
+
+      documentAssetExists = false;
+      const replayed = await repository.create(trace);
+      const replayedBundle = EvidenceBundleSchema.parse(replayed.steps[0]?.metadata.evidenceBundle);
+
+      for (const persisted of [returnedBundle, storedBundle, replayedBundle]) {
+        expect(persisted.items[0]).toMatchObject({
+          citations: [{ documentAssetId: deletingDocumentAssetId, sectionPath: [] }],
+          metadata: {
+            traceEvidenceAvailability: {
+              reason: "document-deleted-or-unavailable",
+              status: "unavailable",
+            },
+          },
+          text: "Evidence deleted or unavailable",
+        });
+        expect(JSON.stringify(persisted)).not.toContain("sensitive deleting evidence");
+        expect(JSON.stringify(persisted)).not.toContain("must-not-persist");
+      }
+      expect(calls.filter((call) => call.operation === "insert")).toHaveLength(3);
+      for (const insert of calls.filter((call) => call.operation === "insert")) {
+        expect(JSON.stringify(insert.params)).not.toContain("sensitive deleting evidence");
+        expect(JSON.stringify(insert.params)).not.toContain("must-not-persist");
+      }
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "replays an active-document trace as a tombstone after physical deletion in %s",
+    async (kind) => {
+      const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7e21";
+      const evidenceBundle = EvidenceBundleSchema.parse({
+        createdAt: "2026-05-11T13:40:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7e22",
+        items: [
+          {
+            citations: [{ documentAssetId, documentVersion: 1, sectionPath: ["Original section"] }],
+            conflicts: [],
+            freshness: { status: "fresh" },
+            metadata: {},
+            nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f7e23",
+            score: 0.9,
+            scores: { final: 0.9, retrieval: 0.8 },
+            text: "original evidence before deletion",
+          },
+        ],
+        missingEvidence: [],
+        query: "deleted after trace persistence",
+        state: "answerable",
+      });
+      let documentAssetExists = true;
+      let storedBundleRow: DatabaseRow | undefined;
+      let storedTraceRow: DatabaseRow | undefined;
+      let storedStepRows: DatabaseRow[] = [];
+      let insertCount = 0;
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [{ id: input.params[0], tenant_id: "tenant-1" }], rowsAffected: 1 };
+        }
+        if (input.tableName === "document_assets") {
+          return documentAssetExists
+            ? {
+                rows: [{ deletion_job_id: null, id: documentAssetId, lifecycle_state: "active" }],
+                rowsAffected: 1,
+              }
+            : { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "evidence_bundles" && input.operation === "select") {
+          return {
+            rows: storedBundleRow ? [storedBundleRow] : [],
+            rowsAffected: storedBundleRow ? 1 : 0,
+          };
+        }
+        if (input.tableName === "evidence_bundles" && input.operation === "insert") {
+          insertCount += 1;
+          storedBundleRow = {
+            created_at: input.params[8],
+            id: input.params[0],
+            items: JSON.parse(String(input.params[6])) as unknown[],
+            knowledge_space_id: input.params[2],
+            missing_evidence: JSON.parse(String(input.params[7])) as unknown[],
+            query: input.params[4],
+            state: input.params[5],
+            tenant_id: input.params[1],
+            trace_id: input.params[3],
+          };
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "answer_traces" && input.operation === "select") {
+          return {
+            rows: storedTraceRow ? [storedTraceRow] : [],
+            rowsAffected: storedTraceRow ? 1 : 0,
+          };
+        }
+        if (input.tableName === "answer_traces" && input.operation === "insert") {
+          insertCount += 1;
+          storedTraceRow = {
+            access_channel: input.params[10],
+            capability_grant_id: input.params[3],
+            completed: input.params[11],
+            created_at: input.params[12],
+            evidence_bundle_id: input.params[4],
+            id: input.params[0],
+            knowledge_space_id: input.params[2],
+            mode: input.params[6],
+            permission_snapshot_id: input.params[8],
+            permission_snapshot_revision: input.params[9],
+            query: input.params[5],
+            subject_id: input.params[7],
+            tenant_id: input.params[1],
+          };
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "answer_trace_steps" && input.operation === "select") {
+          return { rows: storedStepRows, rowsAffected: storedStepRows.length };
+        }
+        if (input.tableName === "answer_trace_steps" && input.operation === "insert") {
+          insertCount += 1;
+          storedStepRows = [
+            {
+              ended_at: input.params[6],
+              id: input.params[0],
+              metadata: JSON.parse(String(input.params[4])) as Record<string, unknown>,
+              name: input.params[2],
+              started_at: input.params[5],
+              status: input.params[3],
+              trace_id: input.params[1],
+            },
+          ];
+          return { rows: [], rowsAffected: 1 };
+        }
+        throw new Error(`Unexpected answer trace query: ${input.tableName}`);
+      };
+      const repository = createDatabaseAnswerTraceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor,
+          kind,
+          transaction: async (callback) => callback({ execute: executor }),
+        }),
+      });
+      const trace = AnswerTraceSchema.parse({
+        ...databaseTrace(),
+        steps: [
+          {
+            endedAt: "2026-05-11T13:40:01.000Z",
+            metadata: { evidenceBundle },
+            name: "query.generate",
+            startedAt: "2026-05-11T13:40:00.000Z",
+            status: "ok",
+          },
+        ],
+      });
+
+      await expect(repository.create(trace)).resolves.toMatchObject({
+        steps: [{ metadata: { evidenceBundle } }],
+      });
+      documentAssetExists = false;
+      const replayed = await repository.create(trace);
+
+      expect(insertCount).toBe(3);
+      expect(replayed.steps[0]?.metadata.evidenceBundle).toMatchObject({
+        items: [
+          {
+            citations: [{ documentAssetId, sectionPath: [] }],
+            metadata: {
+              traceEvidenceAvailability: {
+                reason: "document-deleted-or-unavailable",
+                status: "unavailable",
+              },
+            },
+            text: "Evidence deleted or unavailable",
+          },
+        ],
+      });
+      expect(JSON.stringify(replayed)).not.toContain("original evidence before deletion");
     },
   );
 
@@ -767,4 +1136,19 @@ function assertSqlArity(call: DatabaseExecuteInput, kind: "postgres" | "tidb"): 
   }
   const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
   expect(Math.max(...positions)).toBe(call.params.length);
+}
+
+function hasWholeSpaceDeletionFence(
+  sql: string,
+  dialect: "postgres" | "tidb",
+  input: { readonly idColumn: string; readonly ownerAlias: string },
+): boolean {
+  const quoted = (identifier: string) =>
+    dialect === "postgres" ? `"${identifier}"` : `\`${identifier}\``;
+  return (
+    sql.includes(`active_deletion.${quoted("target_type")} = 'knowledge_space'`) &&
+    sql.includes(
+      `active_deletion.${quoted("target_id")} = ${input.ownerAlias}.${quoted(input.idColumn)}`,
+    )
+  );
 }

@@ -16,6 +16,7 @@ import {
 const tenantId = "tenant-1";
 const spaceId = "10000000-0000-4000-8000-000000000001";
 const sourceId = "20000000-0000-4000-8000-000000000001";
+const unrelatedSourceId = "20000000-0000-4000-8000-000000000002";
 const lifecycleId = "30000000-0000-4000-8000-000000000001";
 const leaseToken = "30000000-0000-4000-8000-000000000002";
 const oldRef = "source-secret:v1:40000000-0000-4000-8000-000000000001";
@@ -496,7 +497,10 @@ describe("in-memory source secret lifecycle registry", () => {
       false,
     );
     await expect(
-      repository.withWriteAdmission({ knowledgeSpaceId: spaceId, tenantId }, async () => "written"),
+      repository.withWriteAdmission(
+        { knowledgeSpaceId: spaceId, sourceId, tenantId },
+        async () => "written",
+      ),
     ).resolves.toBe("written");
     const missing = memoryRepository();
     await expect(
@@ -909,7 +913,7 @@ describe.each(["postgres", "tidb"] as const)("database lifecycle SQL (%s)", (dia
     });
 
     await expect(
-      repository.withWriteAdmission({ knowledgeSpaceId: spaceId, tenantId }, async () => {
+      repository.withWriteAdmission({ knowledgeSpaceId: spaceId, sourceId, tenantId }, async () => {
         mutationRanInTransaction = inTransaction;
         return "stored";
       }),
@@ -918,6 +922,26 @@ describe.each(["postgres", "tidb"] as const)("database lifecycle SQL (%s)", (dia
     expect(calls.map((call) => call.tableName)).toEqual(["knowledge_spaces", "deletion_jobs"]);
     expect(calls[0]?.sql).toContain("FOR UPDATE");
     expect(calls[1]?.sql).toContain("active_slot");
+    expect(calls[1]?.sql).toContain("logical_documents");
+    expect(calls[1]?.sql).toContain("document_assets");
+    assertPlaceholderArity(calls, dialect);
+
+    const unrelatedDeletion = createDatabase(
+      dialect,
+      async () => ({ rows: [], rowsAffected: 0 }),
+      undefined,
+      { activeDeletion: true, activeDeletionTargetId: unrelatedSourceId },
+    );
+    const unrelatedDeletionRepository = createDatabaseSourceRetiredSecretCleanupRepository({
+      database: unrelatedDeletion,
+      maxClaimBatchSize: 10,
+    });
+    await expect(
+      unrelatedDeletionRepository.withWriteAdmission(
+        { knowledgeSpaceId: spaceId, sourceId, tenantId },
+        async () => "stored",
+      ),
+    ).resolves.toBe("stored");
 
     const rejectedMutation = vi.fn(async () => "late-write");
     const deleting = createDatabase(
@@ -932,7 +956,7 @@ describe.each(["postgres", "tidb"] as const)("database lifecycle SQL (%s)", (dia
     });
     await expect(
       deletingRepository.withWriteAdmission(
-        { knowledgeSpaceId: spaceId, tenantId },
+        { knowledgeSpaceId: spaceId, sourceId, tenantId },
         rejectedMutation,
       ),
     ).rejects.toBeInstanceOf(SourceRetiredSecretCleanupTransitionError);
@@ -2130,7 +2154,10 @@ function createDatabase(
   dialect: "postgres" | "tidb",
   execute: (input: DatabaseExecuteInput) => Promise<DatabaseExecuteResult>,
   transactionState?: (running: boolean) => void,
-  admission?: { readonly activeDeletion?: boolean | undefined },
+  admission?: {
+    readonly activeDeletion?: boolean | undefined;
+    readonly activeDeletionTargetId?: string | undefined;
+  },
 ): DatabaseAdapter {
   const admittedExecute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     const result = await execute(input);
@@ -2141,8 +2168,12 @@ function createDatabase(
       };
     }
     if (input.operation === "select" && input.tableName === "deletion_jobs") {
+      const targetId = admission?.activeDeletionTargetId ?? sourceId;
       return {
-        rows: admission?.activeDeletion ? [{ id: "active-deletion-job" }] : [],
+        rows:
+          admission?.activeDeletion && input.params.includes(targetId)
+            ? [{ id: "active-deletion-job" }]
+            : [],
         rowsAffected: 0,
       };
     }

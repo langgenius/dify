@@ -1,4 +1,8 @@
 export interface DeletionObjectWriteScope {
+  /** Identifies the concrete object being written when it already has an asset identity. */
+  readonly documentAssetId?: string | undefined;
+  /** Identifies the logical-document aggregate for revision and replacement writes. */
+  readonly documentId?: string | undefined;
   readonly knowledgeSpaceId: string;
   /** Limits active Source-deletion fences to the Source that owns the external object. */
   readonly sourceId?: string | undefined;
@@ -10,6 +14,10 @@ export interface DeletionObjectWriteScope {
  * admission lock alive until `write` settles; a point-in-time preflight check is insufficient.
  */
 export interface DeletionObjectWriteAdmission {
+  /**
+   * The historical method name is retained for compatibility; implementations fence the supplied
+   * target hierarchy rather than every write in the knowledge space.
+   */
   withSpaceWriteAdmission<T>(scope: DeletionObjectWriteScope, write: () => Promise<T>): Promise<T>;
 }
 

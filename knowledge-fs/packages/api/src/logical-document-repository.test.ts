@@ -429,12 +429,19 @@ describe("logical document repository", () => {
         ),
       ).toBe(true);
       const deletionFence = fixture.calls.find((call) => call.tableName === "deletion_jobs");
-      expect(deletionFence?.params).toEqual([
-        tenantId,
-        knowledgeSpaceId,
-        documentId,
-        secondAssetId,
-      ]);
+      if (dialect === "postgres") {
+        expect(deletionFence?.params).toEqual([
+          tenantId,
+          knowledgeSpaceId,
+          documentId,
+          secondAssetId,
+        ]);
+      } else {
+        expect(deletionFence?.params.slice(0, 2)).toEqual([tenantId, knowledgeSpaceId]);
+        expect(deletionFence?.params).toContain(documentId);
+        expect(deletionFence?.params).toContain(secondAssetId);
+      }
+      if (deletionFence) assertPlaceholderArity(deletionFence, dialect);
       expect(deletionFence?.sql).toContain("'knowledge_space'");
       expect(deletionFence?.sql).toContain("'logical_document'");
       expect(deletionFence?.sql).toContain("'document_asset'");
@@ -732,6 +739,15 @@ describe("logical document repository", () => {
     });
   }
 });
+
+function assertPlaceholderArity(input: DatabaseExecuteInput, dialect: "postgres" | "tidb") {
+  if (dialect === "tidb") {
+    expect(input.sql.match(/\?/g)?.length ?? 0).toBe(input.params.length);
+    return;
+  }
+  const positions = [...input.sql.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(input.params.length);
+}
 
 function expectAssetDeletionVisibilityBeforeLimit(
   sql: string | undefined,

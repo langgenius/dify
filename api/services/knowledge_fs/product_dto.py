@@ -1892,6 +1892,8 @@ KnowledgeFSPublicErrorCode = Literal[
     "RESEARCH_TASK_FAILED",
     "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID",
     "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID",
+    "RETRIEVAL_DELETION_IN_PROGRESS",
+    "RETRIEVAL_EXECUTION_LEASE_LOST",
     "SOURCE_BULK_ACTION_FAILED",
     "SOURCE_CREDENTIAL_CONFIG_INVALID",
     "SOURCE_CREDENTIAL_MUTATION_FAILED",
@@ -1935,6 +1937,12 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
         "rate_limit": "Too many KnowledgeFS operations were requested. Try again later.",
         "timeout": "The KnowledgeFS operation timed out. Try again later.",
         "validation": "The KnowledgeFS request is invalid.",
+    }
+    _SAFE_MESSAGE_BY_CODE: ClassVar[dict[str, str]] = {
+        "RETRIEVAL_DELETION_IN_PROGRESS": "This knowledge space is being deleted and cannot be searched.",
+        "RETRIEVAL_EXECUTION_LEASE_LOST": (
+            "The retrieval execution expired before it could finish. Run the query again."
+        ),
     }
     _SAFE_PARAMETER_KEYS: ClassVar[frozenset[str]] = frozenset(
         {
@@ -2010,7 +2018,7 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
 
     @model_validator(mode="after")
     def replace_untrusted_message_with_bff_fallback(self) -> KnowledgeFSPublicFailureResponse:
-        self.message = self._SAFE_MESSAGE_BY_CATEGORY[self.category]
+        self.message = self._SAFE_MESSAGE_BY_CODE.get(self.code, self._SAFE_MESSAGE_BY_CATEGORY[self.category])
         return self
 
 

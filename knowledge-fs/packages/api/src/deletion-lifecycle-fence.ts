@@ -3,6 +3,7 @@ export type DeletionLifecycleTargetType = (typeof DeletionLifecycleTargetTypes)[
 
 export interface DeletionLifecycleFenceScope {
   readonly documentAssetId?: string | undefined;
+  readonly documentId?: string | undefined;
   readonly knowledgeSpaceId: string;
   readonly sourceId?: string | undefined;
   readonly tenantId: string;
@@ -130,6 +131,7 @@ function scopeTargets(
     ...(scope.documentAssetId
       ? [{ targetId: scope.documentAssetId, targetType: "document" as const }]
       : []),
+    ...(scope.documentId ? [{ targetId: scope.documentId, targetType: "document" as const }] : []),
   ];
 }
 
@@ -138,6 +140,7 @@ function normalizeScope(scope: DeletionLifecycleFenceScope): DeletionLifecycleFe
     ...(scope.documentAssetId
       ? { documentAssetId: requiredId(scope.documentAssetId, "documentAssetId") }
       : {}),
+    ...(scope.documentId ? { documentId: requiredId(scope.documentId, "documentId") } : {}),
     knowledgeSpaceId: requiredId(scope.knowledgeSpaceId, "knowledgeSpaceId"),
     ...(scope.sourceId ? { sourceId: requiredId(scope.sourceId, "sourceId") } : {}),
     tenantId: requiredId(scope.tenantId, "tenantId"),

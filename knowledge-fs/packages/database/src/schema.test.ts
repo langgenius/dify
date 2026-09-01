@@ -751,10 +751,40 @@ describe("database schema catalog", () => {
       columns: ["tenant_id", "knowledge_space_id", "target_type", "target_id", "active_slot"],
       unique: true,
     });
+    const activeJobsIndex = findIndex(schema, "deletion_jobs_active_scope_idx");
+    expect(activeJobsIndex).toMatchObject({
+      columns: ["tenant_id", "knowledge_space_id", "target_type", "target_id"],
+      columnsByDialect: {
+        tidb: ["tenant_id", "knowledge_space_id", "active_slot", "target_type", "target_id"],
+      },
+      tableName: "deletion_jobs",
+      where: { postgres: '"active_slot" = 1' },
+    });
+    expect(renderCreateIndexSql("postgres", activeJobsIndex)).toBe(
+      'CREATE INDEX IF NOT EXISTS "deletion_jobs_active_scope_idx" ON "deletion_jobs" ("tenant_id", "knowledge_space_id", "target_type", "target_id") WHERE "active_slot" = 1;',
+    );
+    expect(renderCreateIndexSql("tidb", activeJobsIndex)).toBe(
+      "CREATE INDEX IF NOT EXISTS `deletion_jobs_active_scope_idx` ON `deletion_jobs` (`tenant_id`, `knowledge_space_id`, `active_slot`, `target_type`, `target_id`);",
+    );
     expect(findIndex(schema, "deletion_tombstones_target_uq")).toMatchObject({
       columns: ["tenant_id", "target_type", "target_id"],
       unique: true,
     });
+    const activeTombstonesIndex = findIndex(schema, "deletion_tombstones_active_scope_idx");
+    expect(activeTombstonesIndex).toMatchObject({
+      columns: ["tenant_id", "knowledge_space_id"],
+      columnsByDialect: {
+        tidb: ["tenant_id", "knowledge_space_id", "state"],
+      },
+      tableName: "deletion_tombstones",
+      where: { postgres: "\"state\" = 'active'" },
+    });
+    expect(renderCreateIndexSql("postgres", activeTombstonesIndex)).toBe(
+      'CREATE INDEX IF NOT EXISTS "deletion_tombstones_active_scope_idx" ON "deletion_tombstones" ("tenant_id", "knowledge_space_id") WHERE "state" = \'active\';',
+    );
+    expect(renderCreateIndexSql("tidb", activeTombstonesIndex)).toBe(
+      "CREATE INDEX IF NOT EXISTS `deletion_tombstones_active_scope_idx` ON `deletion_tombstones` (`tenant_id`, `knowledge_space_id`, `state`);",
+    );
     expect(findIndex(schema, "deletion_outbox_job_request_uq")).toMatchObject({
       columns: ["deletion_job_id", "request_idempotency_key"],
       unique: true,

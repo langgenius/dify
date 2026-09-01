@@ -18,6 +18,8 @@ const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
 const EVENT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
 const QUERY_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const PERMISSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
+const SOURCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
+const UNRELATED_RESOURCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
 const NOW = "2026-07-14T14:00:00.000Z";
 
 describe.each(["postgres", "tidb"] as const)(
@@ -509,6 +511,10 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[0]?.sql).toContain("deletion_job_id");
       expect(calls[1]?.sql).toContain("active_slot");
       expect(calls[1]?.sql).toContain("FOR UPDATE");
+      expect(calls[1]?.sql).toContain("logical_documents");
+      expect(calls[1]?.sql).toContain("document_revisions");
+      expect(calls[1]?.sql).toContain("document_asset");
+      if (calls[1]) assertPlaceholderArity(calls[1], dialect);
     });
 
     it("validates repository bounds and activity inputs before database access", async () => {
@@ -605,6 +611,202 @@ describe.each(["postgres", "tidb"] as const)(
       await expect(
         unavailable.appendActivity({ ...activityInput(), id: EVENT_ID }),
       ).rejects.toThrow("unavailable for activity append");
+    });
+
+    it("allows query activity append during child deletion and rejects whole-space deletion", async () => {
+      const createRepository = (activeTargetType: "knowledge_space" | "logical_document") => {
+        let stored: DatabaseRow | undefined;
+        const database = testDatabase(dialect, async (input) => {
+          if (input.tableName === "knowledge_spaces") {
+            return { rows: [activeSpaceRow()], rowsAffected: 1 };
+          }
+          if (input.tableName === "deletion_jobs") {
+            const quoted = (identifier: string) =>
+              dialect === "postgres" ? `"${identifier}"` : `\`${identifier}\``;
+            const targetId = dialect === "postgres" ? "$2" : "?";
+            const wholeSpaceFence =
+              input.sql.includes(`active_deletion.${quoted("target_type")} = 'knowledge_space'`) &&
+              input.sql.includes(`active_deletion.${quoted("target_id")} = ${targetId}`);
+            return {
+              rows:
+                activeTargetType === "knowledge_space" || !wholeSpaceFence
+                  ? [{ id: "active-delete" }]
+                  : [],
+              rowsAffected: 0,
+            };
+          }
+          if (
+            input.tableName === "knowledge_space_activity_events" &&
+            input.operation === "insert"
+          ) {
+            stored = activityRowFromInsert(input.params);
+            return { rows: [], rowsAffected: 1 };
+          }
+          if (
+            input.tableName === "knowledge_space_activity_events" &&
+            input.operation === "select"
+          ) {
+            return { rows: stored ? [stored] : [], rowsAffected: stored ? 1 : 0 };
+          }
+          return { rows: [], rowsAffected: 0 };
+        });
+        return createDatabaseKnowledgeSpaceOverviewRepository({
+          database,
+          generateActivityId: () => EVENT_ID,
+          maxListLimit: 10,
+          maxRuleItems: 5,
+        });
+      };
+
+      await expect(
+        createRepository("logical_document").appendActivity(activityInput()),
+      ).resolves.toMatchObject({
+        action: "query.requested",
+      });
+      await expect(
+        createRepository("knowledge_space").appendActivity(activityInput()),
+      ).rejects.toThrow("Knowledge space is unavailable for activity append");
+    });
+
+    it("scopes source and document activity admission to the addressed resource hierarchy", async () => {
+      const append = async (
+        resource: { readonly id: string; readonly type: "document" | "source" },
+        activeTargetId: string,
+      ) => {
+        let stored: DatabaseRow | undefined;
+        let deletionCall: DatabaseExecuteInput | undefined;
+        const database = testDatabase(dialect, async (input) => {
+          if (input.tableName === "knowledge_spaces") {
+            return { rows: [activeSpaceRow()], rowsAffected: 1 };
+          }
+          if (input.tableName === "deletion_jobs") {
+            deletionCall = input;
+            return {
+              rows: input.params.includes(activeTargetId) ? [{ id: "active-delete" }] : [],
+              rowsAffected: 0,
+            };
+          }
+          if (
+            input.tableName === "knowledge_space_activity_events" &&
+            input.operation === "insert"
+          ) {
+            stored = activityRowFromInsert(input.params);
+            return { rows: [], rowsAffected: 1 };
+          }
+          if (
+            input.tableName === "knowledge_space_activity_events" &&
+            input.operation === "select"
+          ) {
+            return { rows: stored ? [stored] : [], rowsAffected: stored ? 1 : 0 };
+          }
+          return { rows: [], rowsAffected: 0 };
+        });
+        const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+          database,
+          generateActivityId: () => EVENT_ID,
+          maxListLimit: 10,
+          maxRuleItems: 5,
+        });
+        const result = repository.appendActivity({
+          ...activityInput(),
+          action: resource.type === "source" ? "source.synced" : "document.published",
+          resource,
+        });
+        return { deletionCall: () => deletionCall, result };
+      };
+
+      for (const resource of [
+        { id: SOURCE_ID, type: "source" as const },
+        { id: QUERY_ID, type: "document" as const },
+      ]) {
+        const unrelated = await append(resource, UNRELATED_RESOURCE_ID);
+        await expect(unrelated.result).resolves.toMatchObject({ resource });
+        const unrelatedCall = unrelated.deletionCall();
+        expect(unrelatedCall?.params).toContain(resource.id);
+        expect(unrelatedCall?.sql).toContain("logical_documents");
+        expect(unrelatedCall?.sql).toContain(
+          resource.type === "source" ? "document_assets" : "document_revisions",
+        );
+        expect(unrelatedCall?.sql).toContain("document_asset");
+        if (unrelatedCall) assertPlaceholderArity(unrelatedCall, dialect);
+
+        const matching = await append(resource, resource.id);
+        await expect(matching.result).rejects.toThrow("unavailable for activity append");
+      }
+    });
+
+    it("keeps source attention state writes available during an unrelated child deletion", async () => {
+      const run = async (activeTargetId: string) => {
+        const calls: DatabaseExecuteInput[] = [];
+        const database = testDatabase(dialect, async (input) => {
+          calls.push(input);
+          if (input.tableName === "sources") {
+            return {
+              rows: [
+                {
+                  created_at: "2026-07-01T00:00:00.000Z",
+                  id: SOURCE_ID,
+                  last_sync_at: "2026-07-02T00:00:00.000Z",
+                  permission_scope: ["team:camera"],
+                },
+              ],
+              rowsAffected: 1,
+            };
+          }
+          if (input.tableName === "knowledge_space_profile_heads") {
+            return {
+              rows: [{ bindings: 1, embedding_heads: 1, publications: 0, retrieval_heads: 1 }],
+              rowsAffected: 1,
+            };
+          }
+          if (input.tableName === "knowledge_spaces") {
+            return { rows: [activeSpaceRow()], rowsAffected: 1 };
+          }
+          if (input.tableName === "deletion_jobs") {
+            return {
+              rows: input.params.includes(activeTargetId) ? [{ id: "active-delete" }] : [],
+              rowsAffected: 0,
+            };
+          }
+          return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
+        });
+        const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+          database,
+          generateAttentionStateId: () => "attention-state-id",
+          maxListLimit: 10,
+          maxRuleItems: 5,
+        });
+        await repository.listAttention({
+          candidateGrants: ["team:camera"],
+          knowledgeSpaceId: SPACE_ID,
+          limit: 5,
+          now: NOW,
+          staleBefore: "2026-07-07T14:00:00.000Z",
+          tenantId: TENANT_ID,
+        });
+        return calls;
+      };
+
+      const unrelatedCalls = await run(UNRELATED_RESOURCE_ID);
+      expect(
+        unrelatedCalls.some(
+          (call) =>
+            call.tableName === "knowledge_space_attention_states" && call.operation === "insert",
+        ),
+      ).toBe(true);
+      const deletionCall = unrelatedCalls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionCall?.params).toContain(SOURCE_ID);
+      expect(deletionCall?.sql).toContain("logical_documents");
+      expect(deletionCall?.sql).toContain("document_assets");
+      if (deletionCall) assertPlaceholderArity(deletionCall, dialect);
+
+      const matchingCalls = await run(SOURCE_ID);
+      expect(
+        matchingCalls.some(
+          (call) =>
+            call.tableName === "knowledge_space_attention_states" && call.operation === "insert",
+        ),
+      ).toBe(false);
     });
 
     it("maps filtered activity pages and rejects unsafe limits", async () => {
@@ -1158,6 +1360,15 @@ function activityRowFromInsert(params: DatabaseExecuteInput["params"]): Database
     result: params[8],
     tenant_id: params[1],
   };
+}
+
+function assertPlaceholderArity(input: DatabaseExecuteInput, dialect: "postgres" | "tidb") {
+  if (dialect === "tidb") {
+    expect(input.sql.match(/\?/g)?.length ?? 0).toBe(input.params.length);
+    return;
+  }
+  const positions = [...input.sql.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(input.params.length);
 }
 
 function healthCoreRow(overrides: DatabaseRow = {}): DatabaseRow {

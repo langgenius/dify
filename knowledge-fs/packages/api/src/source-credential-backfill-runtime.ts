@@ -311,7 +311,7 @@ async function processJob(input: {
   }
 
   const stored = await input.repository.withWriteAdmission(
-    { knowledgeSpaceId: job.knowledgeSpaceId, tenantId: job.tenantId },
+    { knowledgeSpaceId: job.knowledgeSpaceId, sourceId: job.sourceId, tenantId: job.tenantId },
     () =>
       input.secretStore.put({
         ...scope,

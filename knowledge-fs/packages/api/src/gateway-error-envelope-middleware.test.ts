@@ -119,6 +119,42 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
     expect(JSON.stringify(body)).not.toContain("secret");
   });
 
+  it("preserves the actionable retrieval deletion conflict instead of collapsing it", async () => {
+    const app = new Hono<{ Variables: { traceId: string } }>();
+    app.use(async (context, next) => {
+      context.set("traceId", "trace-retrieval-deletion");
+      await next();
+    });
+    app.use(createKnowledgeFsErrorEnvelopeMiddleware());
+    app.post("/queries", (context) =>
+      context.json(
+        {
+          code: "RETRIEVAL_DELETION_IN_PROGRESS",
+          error: "internal deletion admission detail",
+        },
+        409,
+      ),
+    );
+
+    const response = await app.request("/queries", {
+      headers: { "X-KnowledgeFS-Error-Contract": "2" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "RETRIEVAL_DELETION_IN_PROGRESS",
+      error: "This knowledge space is being deleted and cannot be searched.",
+      failure: {
+        category: "conflict",
+        code: "RETRIEVAL_DELETION_IN_PROGRESS",
+        message: "This knowledge space is being deleted and cannot be searched.",
+        retryPolicy: "never",
+        traceId: "trace-retrieval-deletion",
+      },
+    });
+  });
+
   it("re-sanitizes pre-existing failure objects instead of trusting route payloads", async () => {
     const app = new Hono<{ Variables: { traceId: string } }>();
     app.use(async (context, next) => {

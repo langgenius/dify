@@ -12,7 +12,7 @@ import { numberColumn, optionalStringColumn, stringColumn } from "./database-row
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
 import { assertDatabaseKnowledgeSpacePermissionFence } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 import {
   type SourceConnection,
   SourceConnectionError,
@@ -780,7 +780,7 @@ async function requireSpaceAdmission(
   executor: DatabaseExecutor,
   input: { readonly knowledgeSpaceId: string; readonly tenantId: string },
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, input))) {
+  if (!(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, executor, input))) {
     throw new SourceConnectionError(
       "SOURCE_CONNECTION_DELETION_FENCED",
       "Knowledge space is unavailable for source connection mutation",

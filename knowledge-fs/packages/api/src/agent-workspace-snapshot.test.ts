@@ -459,6 +459,77 @@ describe("agent workspace snapshot repository", () => {
   });
 
   for (const dialect of ["postgres", "tidb"] as const) {
+    for (const targetType of ["source", "logical_document", "document_asset"] as const) {
+      it(`fences create, get, and replay while a ${targetType} deletion is active (${dialect})`, async () => {
+        const fixture = createDeletionAwareSnapshotDatabase(dialect);
+        const repository = createDatabaseAgentWorkspaceSnapshotRepository({
+          database: fixture.database,
+          maxCommandLogEntries: 2,
+          maxEvidenceBundles: 2,
+          maxMounts: 2,
+          maxSourceVersions: 2,
+          now: () => "2026-07-14T12:00:00.000Z",
+        });
+        const snapshotId = "018f0d60-7a49-7cc2-9c1b-5b36f18f6f20";
+        await repository.create({
+          ...durableSnapshotInput(snapshotId),
+          commandLog: [
+            {
+              command: "cat /knowledge/docs/deleting.md",
+              input: { path: "/knowledge/docs/deleting.md" },
+              outputSummary: "sensitive evidence text",
+              startedAt: "2026-07-14T11:59:00.000Z",
+            },
+          ],
+        });
+        const replayedCommands: string[] = [];
+        const replay = createAgentWorkspaceReplayService({
+          maxCommands: 2,
+          maxOutputSummaryBytes: 128,
+          runner: {
+            run: async ({ command }) => {
+              replayedCommands.push(command.command);
+              return { outputSummary: command.outputSummary };
+            },
+          },
+          snapshots: repository,
+        });
+
+        fixture.setActiveDeletionTarget(targetType);
+        const readDuringDeletion = await repository.get({ id: snapshotId, tenantId: "tenant-1" });
+        const replayDuringDeletion = await replay.replay({
+          id: snapshotId,
+          permissionSnapshot: replayPermissionSnapshot(),
+          tenantId: "tenant-1",
+        });
+        const createDuringDeletionWasRejected = await repository
+          .create(durableSnapshotInput("018f0d60-7a49-7cc2-9c1b-5b36f18f6f21"))
+          .then(
+            () => false,
+            () => true,
+          );
+
+        fixture.setActiveDeletionTarget(null);
+        const readAfterDeletion = await repository.get({ id: snapshotId, tenantId: "tenant-1" });
+
+        expect({
+          createDuringDeletionWasRejected,
+          persistedSnapshotWasPhysicallyDeleted: fixture.deletedSnapshotIds.includes(snapshotId),
+          readAfterDeletionId: readAfterDeletion?.id,
+          readDuringDeletion,
+          replayDuringDeletion,
+          replayedCommands,
+        }).toEqual({
+          createDuringDeletionWasRejected: true,
+          persistedSnapshotWasPhysicallyDeleted: false,
+          readAfterDeletionId: snapshotId,
+          readDuringDeletion: null,
+          replayDuringDeletion: null,
+          replayedCommands: [],
+        });
+      });
+    }
+
     it(`persists exact authorization and shares invalidation across replicas (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       let row: Record<string, unknown> | undefined;
@@ -550,10 +621,11 @@ describe("agent workspace snapshot repository", () => {
       );
       expect(spaceLock?.sql).toContain("FOR UPDATE");
       expect(spaceLock?.sql).toContain("lifecycle_state");
-      expect(
-        calls.find((call) => call.operation === "select" && call.tableName === "deletion_jobs")
-          ?.sql,
-      ).toContain("active_slot");
+      const deletionAdmission = calls.find(
+        (call) => call.operation === "select" && call.tableName === "deletion_jobs",
+      );
+      expect(deletionAdmission?.sql).toContain("active_slot");
+      expect(deletionAdmission?.sql).not.toContain("target_type");
       expect(insert?.params.slice(3, 7)).toEqual([
         "subject-1",
         "agent",
@@ -568,6 +640,7 @@ describe("agent workspace snapshot repository", () => {
       );
       expect(get?.sql).toContain("deletion_jobs");
       expect(get?.sql).toContain("active_slot");
+      expect(get?.sql).not.toContain("target_type");
 
       await writer.invalidateByKnowledgeSpace({
         invalidatedAt: "2026-07-14T12:01:00.000Z",
@@ -609,6 +682,87 @@ function baseSnapshotInput(id: string) {
     sourceVersions: [],
     tenantId: "tenant-1",
     traceIds: [],
+  };
+}
+
+function durableSnapshotInput(id: string) {
+  return {
+    ...baseSnapshotInput(id),
+    permissionSnapshot: {
+      accessChannel: "agent" as const,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6f11",
+      revision: 3,
+      scopes: ["knowledge-spaces:read"],
+      subjectId: "subject-1",
+      tenantId: "tenant-1",
+    },
+  };
+}
+
+function createDeletionAwareSnapshotDatabase(dialect: "postgres" | "tidb") {
+  type ChildDeletionTarget = "document_asset" | "logical_document" | "source";
+  let activeDeletionTarget: ChildDeletionTarget | null = null;
+  const deletedSnapshotIds: string[] = [];
+  const rows = new Map<string, Record<string, unknown>>();
+  const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+    if (input.operation === "select" && input.tableName === "knowledge_spaces") {
+      return {
+        rows: [{ deletion_job_id: null, id: knowledgeSpaceId, lifecycle_state: "active" }],
+        rowsAffected: 0,
+      };
+    }
+    if (input.operation === "select" && input.tableName === "deletion_jobs") {
+      const queryBlocksChildDeletion = !input.sql.includes("target_type");
+      return activeDeletionTarget && queryBlocksChildDeletion
+        ? { rows: [{ id: "active-child-deletion" }], rowsAffected: 0 }
+        : { rows: [], rowsAffected: 0 };
+    }
+    if (input.operation === "insert" && input.tableName === "agent_workspace_snapshots") {
+      const row = {
+        access_channel: input.params[4],
+        created_at: input.params[10],
+        fingerprint: input.params[8],
+        id: input.params[0],
+        invalidated_at: null,
+        invalidation_reason: null,
+        knowledge_space_id: input.params[2],
+        payload: JSON.parse(String(input.params[9])),
+        permission_scopes: JSON.parse(String(input.params[7])),
+        permission_snapshot_id: input.params[5],
+        permission_snapshot_revision: input.params[6],
+        subject_id: input.params[3],
+        tenant_id: input.params[1],
+      };
+      rows.set(String(row.id), row);
+      return { rows: dialect === "postgres" ? [row] : [], rowsAffected: 1 };
+    }
+    if (input.operation === "select" && input.tableName === "agent_workspace_snapshots") {
+      const queryBlocksChildDeletion = !input.sql.includes("target_type");
+      if (activeDeletionTarget && queryBlocksChildDeletion) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      const row = rows.get(String(input.params[1]));
+      return row ? { rows: [row], rowsAffected: 0 } : { rows: [], rowsAffected: 0 };
+    }
+    if (input.operation === "delete" && input.tableName === "agent_workspace_snapshots") {
+      for (const value of input.params) {
+        const id = String(value);
+        if (rows.delete(id)) deletedSnapshotIds.push(id);
+      }
+      return { rows: [], rowsAffected: input.params.length };
+    }
+    return { rows: [], rowsAffected: 0 };
+  };
+  return {
+    database: createSchemaDatabaseAdapter({
+      kind: dialect,
+      executor: execute,
+      transaction: async (callback) => callback({ execute }),
+    }),
+    deletedSnapshotIds,
+    setActiveDeletionTarget: (target: ChildDeletionTarget | null) => {
+      activeDeletionTarget = target;
+    },
   };
 }
 

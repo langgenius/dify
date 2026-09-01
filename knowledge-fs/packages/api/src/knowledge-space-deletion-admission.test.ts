@@ -10,7 +10,12 @@ import {
   KnowledgeFsSessionDeletionFenceActiveError,
   createDatabaseKnowledgeFsSessionRepository,
 } from "./knowledge-fs-session-repository";
-import { lockKnowledgeSpaceForDocumentWriteAdmission } from "./knowledge-space-deletion-admission";
+import {
+  lockKnowledgeSpaceForDocumentWriteAdmission,
+  lockKnowledgeSpaceForRetrievalAdmission,
+  lockKnowledgeSpaceForSourceWorkflowAdmission,
+  lockKnowledgeSpaceForWholeSpaceDeletionAdmission,
+} from "./knowledge-space-deletion-admission";
 
 const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const documentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
@@ -151,7 +156,14 @@ describe.each(["postgres", "tidb"] as const)(
       ).resolves.toBe(true);
 
       const deletionRead = calls.find((call) => call.tableName === "deletion_jobs");
-      expect(deletionRead?.params).toEqual(["tenant-1", spaceId, sourceId, documentId, assetId]);
+      if (dialect === "postgres") {
+        expect(deletionRead?.params).toEqual(["tenant-1", spaceId, sourceId, documentId, assetId]);
+      } else {
+        expect(deletionRead?.params.slice(0, 2)).toEqual(["tenant-1", spaceId]);
+        expect(deletionRead?.params).toEqual(
+          expect.arrayContaining([sourceId, documentId, assetId]),
+        );
+      }
       expect(deletionRead?.sql).toContain("target_type");
       expect(deletionRead?.sql).toContain("'knowledge_space'");
       expect(deletionRead?.sql).toContain("'source'");
@@ -162,6 +174,56 @@ describe.each(["postgres", "tidb"] as const)(
       expect(deletionRead?.sql).toContain("document_assets");
       expect(deletionRead?.sql).not.toContain("<> 'source'");
       expect(deletionRead?.sql).toContain("FOR UPDATE");
+      assertSqlPlaceholderArity(deletionRead, dialect);
+    });
+
+    it("binds every TiDB placeholder for retrieval and Source workflow scopes", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          calls.push(input);
+          if (input.tableName === "knowledge_spaces") {
+            return {
+              rows: [{ deletion_job_id: null, id: spaceId, lifecycle_state: "active" }],
+              rowsAffected: 0,
+            };
+          }
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: dialect,
+      });
+
+      await expect(
+        lockKnowledgeSpaceForRetrievalAdmission(database, database, {
+          knowledgeSpaceId: spaceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        lockKnowledgeSpaceForSourceWorkflowAdmission(database, database, {
+          knowledgeSpaceId: spaceId,
+          sourceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, database, {
+          knowledgeSpaceId: spaceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBe(true);
+
+      const deletionReads = calls.filter((call) => call.tableName === "deletion_jobs");
+      expect(deletionReads).toHaveLength(3);
+      for (const deletionRead of deletionReads) {
+        assertSqlPlaceholderArity(deletionRead, dialect);
+      }
+      for (const deletionRead of [deletionReads[0], deletionReads[2]]) {
+        expect(deletionRead?.sql).toContain("'knowledge_space'");
+        expect(deletionRead?.sql).not.toContain("'source'");
+        expect(deletionRead?.sql).not.toContain("'logical_document'");
+        expect(deletionRead?.sql).not.toContain("'document_asset'");
+      }
     });
 
     it("keeps a space deletion as a hard blocker", async () => {
@@ -220,4 +282,18 @@ function deferred<T>() {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+function assertSqlPlaceholderArity(
+  call: DatabaseExecuteInput | undefined,
+  dialect: "postgres" | "tidb",
+): void {
+  expect(call).toBeDefined();
+  if (!call) return;
+  if (dialect === "tidb") {
+    expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+    return;
+  }
+  const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(call.params.length);
 }

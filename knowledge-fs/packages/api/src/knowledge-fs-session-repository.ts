@@ -13,7 +13,7 @@ import {
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 
 export interface KnowledgeFsSessionLookupInput {
   readonly id: string;
@@ -245,7 +245,7 @@ export function createDatabaseKnowledgeFsSessionRepository({
       ] satisfies readonly DatabaseQueryValue[];
       const result = await database.transaction(async (transaction) => {
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, transaction, {
             knowledgeSpaceId: session.knowledgeSpaceId,
             tenantId: session.tenantId,
           }))
@@ -301,7 +301,7 @@ export function createDatabaseKnowledgeFsSessionRepository({
         const knowledgeSpaceId = scope.rows[0]?.knowledge_space_id;
         if (
           typeof knowledgeSpaceId !== "string" ||
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, transaction, {
             knowledgeSpaceId,
             tenantId,
           }))
@@ -364,7 +364,7 @@ async function databaseKnowledgeFsSessionGet(
 
 function knowledgeFsSessionReadableSql(database: DatabaseAdapter, table: string): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  return `NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${q(table)}.${q("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${q(table)}.${q("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1)`;
+  return `NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${q(table)}.${q("tenant_id")} AND active_deletion.${q("knowledge_space_id")} = ${q(table)}.${q("knowledge_space_id")} AND active_deletion.${q("active_slot")} = 1 AND active_deletion.${q("target_type")} = 'knowledge_space' AND active_deletion.${q("target_id")} = ${q(table)}.${q("knowledge_space_id")})`;
 }
 
 async function databaseKnowledgeFsSessionList(

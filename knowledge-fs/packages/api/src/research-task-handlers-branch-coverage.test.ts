@@ -285,7 +285,7 @@ describe("research task handler branch coverage", () => {
     expect((await fixture.invoke(getResearchTaskRoute)).status).toBe(404);
   });
 
-  it("filters inactive partial evidence, preserves active items, and returns the cursor", async () => {
+  it("preserves partial history and tombstones only inactive evidence items", async () => {
     const partials = [partialResult("active", []), partialResult("inactive", [ASSET_ID])];
     const fixture = researchFixture({
       asset: null,
@@ -295,7 +295,23 @@ describe("research task handler branch coverage", () => {
     });
     const response = await fixture.invoke(listResearchTaskPartialsRoute);
     expect(response).toMatchObject({
-      body: { items: [expect.objectContaining({ sequence: 1 })], nextCursor: "2" },
+      body: {
+        items: [
+          expect.objectContaining({ sequence: 1 }),
+          expect.objectContaining({
+            evidenceBundle: expect.objectContaining({
+              items: [
+                expect.objectContaining({
+                  citations: [expect.objectContaining({ sectionPath: [] })],
+                  text: "Evidence deleted or unavailable",
+                }),
+              ],
+            }),
+            sequence: 2,
+          }),
+        ],
+        nextCursor: "2",
+      },
       status: 200,
     });
     expect(fixture.listPartials).toHaveBeenCalledWith(expect.objectContaining({ cursor: "1" }));
@@ -490,6 +506,13 @@ function researchFixture(options: ResearchFixtureOptions = {}) {
     app: app as never,
     assets: {
       get: vi.fn(async () => (options.asset === undefined ? { id: ASSET_ID } : options.asset)),
+      getManyByIds: vi.fn(async ({ ids }: { readonly ids: readonly string[] }) =>
+        options.asset === null
+          ? []
+          : ids.map((id) =>
+              options.asset === undefined ? { id } : { ...(options.asset as object), id },
+            ),
+      ),
     } as never,
     authorization: { authorize } as never,
     autoRetrievalModeResolver:

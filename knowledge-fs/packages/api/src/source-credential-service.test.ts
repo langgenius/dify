@@ -570,7 +570,7 @@ function controlledSetup({
   const withWriteAdmission: SourceSecretLifecycleRepository["withWriteAdmission"] = (
     value,
     mutation,
-  ) => cleanups.withWriteAdmission(value, mutation);
+  ) => cleanups.withWriteAdmission({ ...value, sourceId }, mutation);
   const put = vi.fn(async (value: Parameters<SourceSecretStore["put"]>[0]) => {
     events.push("put");
     return baseSecretStore.put(value);

@@ -1163,11 +1163,16 @@ async function insertJob(
   await lockResearchTaskCreationSpace(database, executor, job);
   await assertResearchTaskCapabilityAllowed(database, executor, job);
   const values = jobValues(job);
-  const fenceParams = database.dialect === "postgres" ? [] : [job.tenantId, job.knowledgeSpaceId];
+  const fenceParams =
+    database.dialect === "postgres"
+      ? []
+      : [job.tenantId, job.knowledgeSpaceId, job.knowledgeSpaceId];
   const tenantFence =
     database.dialect === "postgres" ? `${p(database, 2)}::varchar` : p(database, values.length + 1);
   const spaceFence =
     database.dialect === "postgres" ? `${p(database, 3)}::uuid` : p(database, values.length + 2);
+  const targetFence =
+    database.dialect === "postgres" ? `${p(database, 3)}::uuid` : p(database, values.length + 3);
   const result = await executor.execute({
     maxRows: database.dialect === "postgres" ? 1 : 0,
     operation: "insert",
@@ -1182,7 +1187,13 @@ async function insertJob(
     )} active_deletion WHERE active_deletion.${q(database, "tenant_id")} = ${tenantFence} AND active_deletion.${q(
       database,
       "knowledge_space_id",
-    )} = ${spaceFence} AND active_deletion.${q(database, "active_slot")} = 1)${
+    )} = ${spaceFence} AND active_deletion.${q(
+      database,
+      "target_type",
+    )} = 'knowledge_space' AND active_deletion.${q(
+      database,
+      "target_id",
+    )} = ${targetFence} AND active_deletion.${q(database, "active_slot")} = 1)${
       database.dialect === "postgres" ? ` RETURNING ${q(database, "id")}` : ""
     }`,
     tableName: jobTable,

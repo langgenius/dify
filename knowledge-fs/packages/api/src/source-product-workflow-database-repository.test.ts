@@ -36,10 +36,7 @@ describe.each(["postgres", "tidb"] as const)(
         calls.push(input);
         if (input.tableName === "knowledge_spaces") return activeSpace();
         if (input.tableName === "deletion_jobs") {
-          const admittedSourceId = input.params[2];
-          return admittedSourceId && admittedSourceId !== deletingSourceId
-            ? empty()
-            : oneRow("deletion_jobs");
+          return input.params.includes(deletingSourceId) ? oneRow("deletion_jobs") : empty();
         }
         if (input.tableName === "knowledge_space_permission_snapshots") {
           return { rows: [permissionRow()], rowsAffected: 1 };
@@ -60,16 +57,85 @@ describe.each(["postgres", "tidb"] as const)(
         sourceId,
       });
       const deletionAdmission = calls.find((call) => call.tableName === "deletion_jobs");
-      expect(deletionAdmission?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
-      expect(deletionAdmission?.sql).toContain(
-        dialect === "postgres"
-          ? `active_deletion."target_type" <> 'source' OR active_deletion."target_id" = $3`
-          : "active_deletion.`target_type` <> 'source' OR active_deletion.`target_id` = ?",
-      );
+      if (dialect === "postgres") {
+        expect(deletionAdmission?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
+      } else {
+        expect(deletionAdmission?.params.slice(0, 2)).toEqual([tenantId, knowledgeSpaceId]);
+        expect(deletionAdmission?.params).toContain(sourceId);
+      }
+      expect(deletionAdmission?.sql).toContain("'knowledge_space'");
+      expect(deletionAdmission?.sql).toContain("'source'");
+      expect(deletionAdmission?.sql).toContain("logical_documents");
+      expect(deletionAdmission?.sql).toContain("document_assets");
+      expect(deletionAdmission?.sql).not.toContain("<> 'source'");
+      assertSqlPlaceholderArity(deletionAdmission, dialect);
 
       calls.length = 0;
       deletingSourceId = sourceId;
       await expect(repository.start(newSourceRun())).rejects.toMatchObject({
+        code: "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
+      });
+      expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
+        false,
+      );
+    });
+
+    it("admits a bulk workflow only when none of its selected Sources is deletion-fenced", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const unrelatedSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99";
+      let deletingSourceId = unrelatedSourceId;
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") return activeSpace();
+        if (input.tableName === "deletion_jobs") {
+          const isScopedAdmission = input.sql.includes("'source'");
+          return !isScopedAdmission || input.params.includes(deletingSourceId)
+            ? oneRow("deletion_jobs")
+            : empty();
+        }
+        if (input.tableName === "knowledge_space_permission_snapshots") {
+          return { rows: [permissionRow()], rowsAffected: 1 };
+        }
+        if (isAccessLock(input.tableName)) return oneRow(input.tableName);
+        if (input.tableName === "sources") {
+          return { rows: [sourceRow([])], rowsAffected: 1 };
+        }
+        if (input.tableName === "source_workflow_runs" && input.operation === "select") {
+          return empty();
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+      const bulk = {
+        items: [
+          {
+            action: "disable" as const,
+            id: itemId,
+            runId,
+            sourceId,
+            status: "eligible" as const,
+            updatedAt: now,
+          },
+        ],
+        run: {
+          ...newBulkRun(),
+          payload: { action: "disable" as const, sourceIds: [sourceId] },
+        },
+      };
+
+      await expect(repository.startBulk(bulk)).resolves.toMatchObject({ id: runId });
+      const deletionReads = calls.filter((call) => call.tableName === "deletion_jobs");
+      expect(deletionReads).toHaveLength(1);
+      expect(deletionReads[0]?.params).toContain(sourceId);
+      expect(deletionReads[0]?.sql).toContain("'knowledge_space'");
+      expect(deletionReads[0]?.sql).toContain("'source'");
+      expect(deletionReads[0]?.sql).toContain("logical_documents");
+      expect(deletionReads[0]?.sql).toContain("document_assets");
+      assertSqlPlaceholderArity(deletionReads[0], dialect);
+
+      calls.length = 0;
+      deletingSourceId = sourceId;
+      await expect(repository.startBulk(bulk)).rejects.toMatchObject({
         code: "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
       });
       expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
@@ -2850,6 +2916,20 @@ function expectLockOrder(
 
 function empty(): DatabaseExecuteResult {
   return { rows: [], rowsAffected: 0 };
+}
+
+function assertSqlPlaceholderArity(
+  call: DatabaseExecuteInput | undefined,
+  dialect: "postgres" | "tidb",
+): void {
+  expect(call).toBeDefined();
+  if (!call) return;
+  if (dialect === "tidb") {
+    expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
+    return;
+  }
+  const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(call.params.length);
 }
 
 function testDatabase(

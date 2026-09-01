@@ -18,6 +18,7 @@ import {
 import {
   DeletionLifecycleFenceActiveError,
   type DeletionLifecycleFenceGuard,
+  type DeletionLifecycleFenceToken,
 } from "./deletion-lifecycle-fence";
 import {
   type DeletionObjectWriteAdmission,
@@ -1811,33 +1812,35 @@ async function writeKnowledgeFsDocument({
     knowledgeSpaceId: input.knowledgeSpaceId,
     tenantId: subject.tenantId,
   });
-  const deletionToken = await deletionFence?.captureDeletionFence({
-    documentAssetId: assetId,
+  const deletionScope = {
+    documentAssetId: existingAsset?.id ?? assetId,
     knowledgeSpaceId: input.knowledgeSpaceId,
     tenantId: subject.tenantId,
-  });
+  };
+  const deletionToken = await deletionFence?.captureDeletionFence(deletionScope);
+  let createdAssetDeletionToken: DeletionLifecycleFenceToken | undefined;
   const assertWritable = async (): Promise<void> => {
     if (deletionToken) await deletionFence?.assertDeletionFenceUnchanged(deletionToken);
+    if (createdAssetDeletionToken) {
+      await deletionFence?.assertDeletionFenceUnchanged(createdAssetDeletionToken);
+    }
   };
   let createdAsset: Awaited<ReturnType<DocumentAssetRepository["create"]>> | undefined;
 
   try {
     await assertWritable();
-    await withDeletionObjectWriteAdmission(
-      objectWriteAdmission,
-      { knowledgeSpaceId: input.knowledgeSpaceId, tenantId: subject.tenantId },
-      () =>
-        objectStorage.putObject({
-          body,
-          contentType: mimeType,
-          key: objectKey,
-          metadata: {
-            command: mode,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            tenantId: subject.tenantId,
-            writtenBy: subject.subjectId,
-          },
-        }),
+    await withDeletionObjectWriteAdmission(objectWriteAdmission, deletionScope, () =>
+      objectStorage.putObject({
+        body,
+        contentType: mimeType,
+        key: objectKey,
+        metadata: {
+          command: mode,
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          tenantId: subject.tenantId,
+          writtenBy: subject.subjectId,
+        },
+      }),
     );
     await assertWritable();
 
@@ -1860,6 +1863,13 @@ async function writeKnowledgeFsDocument({
       tenantId: subject.tenantId,
     });
     createdAsset = asset;
+    if (asset.id !== deletionScope.documentAssetId) {
+      createdAssetDeletionToken = await deletionFence?.captureDeletionFence({
+        documentAssetId: asset.id,
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        tenantId: subject.tenantId,
+      });
+    }
     await assertWritable();
     await assets.updateParserStatus({
       id: asset.id,

@@ -17,7 +17,7 @@ import {
   KnowledgeSpaceAccessError,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForRetrievalAdmission } from "./knowledge-space-deletion-admission";
 
 import {
   type DatabaseAdapter,
@@ -748,7 +748,16 @@ export function createDatabaseFailedQueryRepository({
           )} AND active_deletion.${quoteDatabaseIdentifier(
             database,
             "active_slot",
-          )} = 1) AND (${quoteDatabaseIdentifier(database, candidateAlias)}.${quoteDatabaseIdentifier(
+          )} = 1 AND active_deletion.${quoteDatabaseIdentifier(
+            database,
+            "target_type",
+          )} = 'knowledge_space' AND active_deletion.${quoteDatabaseIdentifier(
+            database,
+            "target_id",
+          )} = ${quoteDatabaseIdentifier(database, candidateAlias)}.${quoteDatabaseIdentifier(
+            database,
+            "knowledge_space_id",
+          )}) AND (${quoteDatabaseIdentifier(database, candidateAlias)}.${quoteDatabaseIdentifier(
             database,
             "answer_trace_id",
           )} IS NULL OR EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(
@@ -1027,7 +1036,7 @@ async function lockFailedQuerySpace(
   knowledgeSpaceId: string,
 ): Promise<void> {
   if (
-    !(await lockKnowledgeSpaceForDeletionAdmission(database, executor, {
+    !(await lockKnowledgeSpaceForRetrievalAdmission(database, executor, {
       knowledgeSpaceId,
       tenantId,
     }))

@@ -17,6 +17,7 @@ import { createSourceCredentialFingerprinter } from "./source-secret-store";
 const tenantId = "tenant-1";
 const spaceId = "10000000-0000-4000-8000-000000000001";
 const sourceId = "20000000-0000-4000-8000-000000000001";
+const unrelatedSourceId = "20000000-0000-4000-8000-000000000002";
 const jobId = "30000000-0000-4000-8000-000000000001";
 const lifecycleId = "30000000-0000-4000-8000-000000000002";
 const leaseToken = "40000000-0000-4000-8000-000000000001";
@@ -54,14 +55,33 @@ describe.each(["postgres", "tidb"] as const)(
       );
 
       await expect(
-        repository.withWriteAdmission({ knowledgeSpaceId: spaceId, tenantId }, async () => {
-          mutationRanInTransaction = inTransaction;
-          return "stored";
-        }),
+        repository.withWriteAdmission(
+          { knowledgeSpaceId: spaceId, sourceId, tenantId },
+          async () => {
+            mutationRanInTransaction = inTransaction;
+            return "stored";
+          },
+        ),
       ).resolves.toBe("stored");
       expect(mutationRanInTransaction).toBe(true);
       expect(calls.map((call) => call.tableName)).toEqual(["knowledge_spaces", "deletion_jobs"]);
       expect(calls[0]?.sql).toContain("FOR UPDATE");
+      expect(calls[1]?.sql).toContain("logical_documents");
+      expect(calls[1]?.sql).toContain("document_assets");
+      assertPlaceholderArity(calls, dialect);
+
+      const unrelatedDeletionRepository = createRepository(
+        dialect,
+        async () => ({ rows: [], rowsAffected: 0 }),
+        undefined,
+        { activeDeletion: true, activeDeletionTargetId: unrelatedSourceId },
+      );
+      await expect(
+        unrelatedDeletionRepository.withWriteAdmission(
+          { knowledgeSpaceId: spaceId, sourceId, tenantId },
+          async () => "stored",
+        ),
+      ).resolves.toBe("stored");
 
       let lateMutationRan = false;
       const deletingRepository = createRepository(
@@ -71,9 +91,12 @@ describe.each(["postgres", "tidb"] as const)(
         { activeDeletion: true },
       );
       await expect(
-        deletingRepository.withWriteAdmission({ knowledgeSpaceId: spaceId, tenantId }, async () => {
-          lateMutationRan = true;
-        }),
+        deletingRepository.withWriteAdmission(
+          { knowledgeSpaceId: spaceId, sourceId, tenantId },
+          async () => {
+            lateMutationRan = true;
+          },
+        ),
       ).rejects.toBeInstanceOf(SourceCredentialBackfillTransitionError);
       expect(lateMutationRan).toBe(false);
     });
@@ -1066,7 +1089,10 @@ function createRepository(
   dialect: "postgres" | "tidb",
   execute: (input: DatabaseExecuteInput) => Promise<DatabaseExecuteResult>,
   transactionState?: (running: boolean) => void,
-  admission?: { readonly activeDeletion?: boolean | undefined },
+  admission?: {
+    readonly activeDeletion?: boolean | undefined;
+    readonly activeDeletionTargetId?: string | undefined;
+  },
 ) {
   return createDatabaseSourceCredentialBackfillRepository({
     database: createDatabase(dialect, execute, transactionState, admission),
@@ -1084,7 +1110,10 @@ function createDatabase(
   dialect: "postgres" | "tidb",
   execute: (input: DatabaseExecuteInput) => Promise<DatabaseExecuteResult>,
   transactionState?: (running: boolean) => void,
-  admission?: { readonly activeDeletion?: boolean | undefined },
+  admission?: {
+    readonly activeDeletion?: boolean | undefined;
+    readonly activeDeletionTargetId?: string | undefined;
+  },
 ): DatabaseAdapter {
   const admittedExecute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     const result = await execute(input);
@@ -1095,8 +1124,12 @@ function createDatabase(
       };
     }
     if (input.operation === "select" && input.tableName === "deletion_jobs") {
+      const targetId = admission?.activeDeletionTargetId ?? sourceId;
       return {
-        rows: admission?.activeDeletion ? [{ id: "active-deletion-job" }] : [],
+        rows:
+          admission?.activeDeletion && input.params.includes(targetId)
+            ? [{ id: "active-deletion-job" }]
+            : [],
         rowsAffected: 0,
       };
     }

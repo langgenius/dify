@@ -281,6 +281,7 @@ describe.each(["postgres", "tidb"] as const)(
           return {
             rows: [
               {
+                database_now: createdAt,
                 deletion_job_id: null,
                 lifecycle_state: "active",
                 name: "Source space",
@@ -401,6 +402,187 @@ describe.each(["postgres", "tidb"] as const)(
       expect(permissionLock).toBeLessThan(sourceLock);
     });
 
+    it("persists the locked database admission time as the immutable quiescence fence", async () => {
+      const databaseAdmissionStartedAt = "2026-07-14T12:00:10.000Z";
+      const databaseNow = "2026-07-14T12:00:09.999Z";
+      const futureWorkerClaimAt = "2026-07-14T12:10:00.000Z";
+      const idempotencyKey = "delete-space-with-database-fence";
+      const calls: DatabaseExecuteInput[] = [];
+      let insertedJob = false;
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return {
+            rows: insertedJob
+              ? [
+                  jobRow({
+                    idempotency_key: idempotencyKey,
+                    name_challenge_digest: requestFingerprint,
+                    started_at: databaseAdmissionStartedAt,
+                    target_id: knowledgeSpaceId,
+                    target_revision: 2,
+                    target_type: "knowledge_space",
+                  }),
+                ]
+              : [],
+            rowsAffected: 0,
+          };
+        }
+        if (input.operation === "select" && input.tableName === "knowledge_spaces") {
+          return {
+            rows: [
+              {
+                database_now: databaseNow,
+                deletion_job_id: null,
+                lifecycle_state: "active",
+                name: "Knowledge Space A",
+                revision: 2,
+              },
+            ],
+            rowsAffected: 0,
+          };
+        }
+        if (input.operation === "select" && input.tableName === "retrieval_execution_leases") {
+          return {
+            rows: [{ admission_acquired_at: databaseAdmissionStartedAt }],
+            rowsAffected: 1,
+          };
+        }
+        if (input.operation === "select" && input.tableName === "deletion_tombstones") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.operation === "insert" && input.tableName === "deletion_jobs") {
+          insertedJob = true;
+        }
+        return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseDurableDeletionRepository({
+        database,
+        fingerprinter: () => requestFingerprint,
+        generateJobId: () => jobId,
+        generateLeaseToken: () => leaseToken,
+        generateOutboxId: () => outboxId,
+        generateTombstoneId: () => tombstoneId,
+      });
+
+      const requested = await repository.requestKnowledgeSpaceDeletion({
+        accessChannel: "interactive",
+        createdAt,
+        expectedRevision: 2,
+        idempotencyKey,
+        knowledgeSpaceId,
+        nameChallenge: "Knowledge Space A",
+        permissionSnapshotId: "permission-space-a",
+        permissionSnapshotRevision: 1,
+        requestedBySubjectId: "owner-a",
+        tenantId,
+      });
+
+      expect(requested.job.startedAt).toBe(databaseAdmissionStartedAt);
+      expect(requested.job.startedAt).not.toBe(createdAt);
+      expect(requested.job.startedAt).not.toBe(futureWorkerClaimAt);
+      const spaceReads = calls.filter(
+        (call) => call.operation === "select" && call.tableName === "knowledge_spaces",
+      );
+      expect(spaceReads).toHaveLength(2);
+      const [spaceLock, databaseClockRead] = spaceReads;
+      expect(spaceLock?.sql).toContain("FOR UPDATE");
+      expect(spaceLock?.sql).not.toContain(identifier(dialect, "database_now"));
+      const activeLeaseRead = calls.find(
+        (call) => call.operation === "select" && call.tableName === "retrieval_execution_leases",
+      );
+      if (!activeLeaseRead || !databaseClockRead) throw new Error("admission reads missing");
+      expect(activeLeaseRead.sql).toContain(identifier(dialect, "acquired_at"));
+      expect(activeLeaseRead.sql).toContain(`${identifier(dialect, "status")} = 'active'`);
+      expect(activeLeaseRead.sql).toContain(
+        `ORDER BY active_retrieval.${identifier(dialect, "acquired_at")} DESC, active_retrieval.${identifier(dialect, "id")} DESC`,
+      );
+      expect(activeLeaseRead.sql).toContain("LIMIT 1 FOR UPDATE");
+      expect(activeLeaseRead.sql).not.toContain("MAX(");
+      expect(activeLeaseRead.sql.includes("date_trunc('milliseconds'")).toBe(
+        dialect === "postgres",
+      );
+      expect(databaseClockRead.sql).toContain(
+        `${dialect === "postgres" ? "clock_timestamp()" : "CURRENT_TIMESTAMP(3)"}`,
+      );
+      expect(databaseClockRead.sql).toContain(`AS ${identifier(dialect, "database_now")}`);
+      if (dialect === "tidb") {
+        expect(activeLeaseRead.sql.match(/\?/gu)).toHaveLength(activeLeaseRead.params.length);
+        expect(databaseClockRead.sql.match(/\?/gu) ?? []).toHaveLength(
+          databaseClockRead.params.length,
+        );
+      }
+      expect(calls.indexOf(spaceLock as DatabaseExecuteInput)).toBeLessThan(
+        calls.indexOf(activeLeaseRead as DatabaseExecuteInput),
+      );
+      expect(calls.indexOf(activeLeaseRead as DatabaseExecuteInput)).toBeLessThan(
+        calls.indexOf(databaseClockRead as DatabaseExecuteInput),
+      );
+
+      const jobInsert = calls.find(
+        (call) => call.operation === "insert" && call.tableName === "deletion_jobs",
+      );
+      if (!jobInsert) throw new Error("deletion job insert missing");
+      const insertColumns = jobInsert.sql
+        .slice(jobInsert.sql.indexOf("(") + 1, jobInsert.sql.indexOf(") VALUES"))
+        .split(", ");
+      const startedAtParamIndex = insertColumns.indexOf(identifier(dialect, "started_at"));
+      expect(startedAtParamIndex).toBeGreaterThanOrEqual(0);
+      expect(jobInsert.params[startedAtParamIndex]).toBe(databaseAdmissionStartedAt);
+
+      const queued = jobRow({
+        idempotency_key: idempotencyKey,
+        name_challenge_digest: requestFingerprint,
+        run_state: "queued",
+        started_at: databaseAdmissionStartedAt,
+        target_id: knowledgeSpaceId,
+        target_revision: 2,
+        target_type: "knowledge_space",
+      });
+      const running = jobRow({
+        execution_attempts: 1,
+        heartbeat_at: futureWorkerClaimAt,
+        idempotency_key: idempotencyKey,
+        lease_expires_at: "2026-07-14T12:20:00.000Z",
+        lease_token: leaseToken,
+        name_challenge_digest: requestFingerprint,
+        row_version: 2,
+        run_state: "running",
+        started_at: databaseAdmissionStartedAt,
+        target_id: knowledgeSpaceId,
+        target_revision: 2,
+        target_type: "knowledge_space",
+        updated_at: futureWorkerClaimAt,
+        worker_id: "worker-a",
+      });
+      const claimScript = scriptedDatabase(dialect, [
+        step("deletion_jobs", "select", [], "execution_attempts"),
+        step("deletion_jobs", "select", [queued], "lease_expires_at"),
+        step("deletion_jobs", "update", [], "COALESCE"),
+        step("deletion_outbox", "update", []),
+        step("deletion_jobs", "select", [running]),
+      ]);
+
+      await expect(
+        createDatabaseDurableDeletionRepository({
+          database: claimScript.database,
+          fingerprinter: () => requestFingerprint,
+          generateLeaseToken: () => leaseToken,
+        }).claimJobs({
+          leaseExpiresAt: "2026-07-14T12:20:00.000Z",
+          limit: 1,
+          now: futureWorkerClaimAt,
+          workerId: "worker-a",
+        }),
+      ).resolves.toMatchObject([{ startedAt: databaseAdmissionStartedAt }]);
+      claimScript.expectDone();
+    });
+
     it("persists only capability provenance for a newly admitted source deletion", async () => {
       const calls: DatabaseExecuteInput[] = [];
       let insertedJob = false;
@@ -413,6 +595,7 @@ describe.each(["postgres", "tidb"] as const)(
           return {
             rows: [
               {
+                database_now: createdAt,
                 deletion_job_id: null,
                 lifecycle_state: "active",
                 name: "Capability source space",
@@ -486,6 +669,25 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
         false,
       );
+      const activeChildCheck = calls.find(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "deletion_tombstones" &&
+          call.sql.includes("child_tombstone"),
+      );
+      expect(activeChildCheck).toBeDefined();
+      expectActiveChildDeletionParameterBinding(dialect, activeChildCheck, {
+        postgres: [tenantId, knowledgeSpaceId, targetId],
+        tidb: [
+          tenantId,
+          knowledgeSpaceId,
+          knowledgeSpaceId,
+          targetId,
+          tenantId,
+          knowledgeSpaceId,
+          targetId,
+        ],
+      });
     });
 
     it("rejects a revoked source-removal permission before locking or mutating the source", async () => {
@@ -499,6 +701,7 @@ describe.each(["postgres", "tidb"] as const)(
           return {
             rows: [
               {
+                database_now: createdAt,
                 deletion_job_id: null,
                 lifecycle_state: "active",
                 name: "Source space",
@@ -568,6 +771,7 @@ describe.each(["postgres", "tidb"] as const)(
           return {
             rows: [
               {
+                database_now: createdAt,
                 deletion_job_id: null,
                 lifecycle_state: "active",
                 name: "Logical document space",
@@ -675,6 +879,85 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls.findIndex((call) => call === logicalUpdate)).toBeLessThan(
         calls.findIndex((call) => call === assetUpdate),
       );
+    });
+
+    it("blocks a logical deletion while an active logical tombstone shares an asset", async () => {
+      const harness = sharedLogicalDeletionAdmissionHarness(dialect, { sharesAsset: true });
+
+      await expect(harness.request()).rejects.toMatchObject({
+        name: "DurableDeletionTargetConflictError",
+      });
+
+      expect(harness.calls.some((call) => call.operation === "insert")).toBe(false);
+      const activeChildCheck = harness.activeChildChecks()[0];
+      expect(activeChildCheck?.sql).toContain("child_logical_revision");
+      expect(activeChildCheck?.sql).toContain(identifier(dialect, "document_asset_id"));
+      expectActiveChildDeletionParameterBinding(dialect, activeChildCheck, {
+        postgres: [tenantId, knowledgeSpaceId, logicalDocumentId],
+        tidb: [
+          tenantId,
+          knowledgeSpaceId,
+          tenantId,
+          knowledgeSpaceId,
+          logicalDocumentId,
+          tenantId,
+          knowledgeSpaceId,
+          logicalDocumentId,
+        ],
+      });
+    });
+
+    it("admits a logical deletion alongside an unrelated active logical tombstone", async () => {
+      const harness = sharedLogicalDeletionAdmissionHarness(dialect, { sharesAsset: false });
+
+      await expect(harness.request()).resolves.toMatchObject({
+        created: true,
+        job: { targetId: logicalDocumentId, targetType: "logical_document" },
+      });
+
+      expect(harness.calls.some((call) => call.operation === "insert")).toBe(true);
+      const activeChildCheck = harness.activeChildChecks()[0];
+      expect(activeChildCheck?.sql).toContain("child_logical_revision");
+      expectActiveChildDeletionParameterBinding(dialect, activeChildCheck, {
+        postgres: [tenantId, knowledgeSpaceId, logicalDocumentId],
+        tidb: [
+          tenantId,
+          knowledgeSpaceId,
+          tenantId,
+          knowledgeSpaceId,
+          logicalDocumentId,
+          tenantId,
+          knowledgeSpaceId,
+          logicalDocumentId,
+        ],
+      });
+    });
+
+    it("retries a shared-asset logical deletion after the first tombstone completes", async () => {
+      const harness = sharedLogicalDeletionAdmissionHarness(dialect, { sharesAsset: true });
+
+      await expect(harness.request()).rejects.toMatchObject({
+        name: "DurableDeletionTargetConflictError",
+      });
+      expect(
+        harness.calls.some(
+          (call) => call.operation === "update" && call.tableName === "document_assets",
+        ),
+      ).toBe(false);
+
+      harness.completeActiveLogicalDeletion();
+      await expect(harness.request()).resolves.toMatchObject({
+        created: true,
+        job: { targetId: logicalDocumentId, targetType: "logical_document" },
+      });
+
+      const assetUpdate = harness.calls.find(
+        (call) => call.operation === "update" && call.tableName === "document_assets",
+      );
+      expect(assetUpdate?.sql).toContain("owned_revision");
+      expect(assetUpdate?.sql).toContain("external_revision");
+      expect(assetUpdate?.sql).toContain("NOT EXISTS");
+      expect(harness.activeChildChecks()).toHaveLength(2);
     });
 
     it("retires a crashed final-attempt lease instead of stranding it in running", async () => {
@@ -2015,6 +2298,7 @@ describe.each(["postgres", "tidb"] as const)(
             return {
               rows: [
                 {
+                  database_now: createdAt,
                   deletion_job_id: null,
                   lifecycle_state: "active",
                   name: mode === "name-mismatch" ? "Different Space" : request.nameChallenge,
@@ -2926,6 +3210,7 @@ describe.each(["postgres", "tidb"] as const)(
             return {
               rows: [
                 {
+                  database_now: createdAt,
                   deletion_job_id: null,
                   lifecycle_state: "active",
                   name: "Target space",
@@ -3132,6 +3417,159 @@ function failedSourceCleanupRequest(): RequestDocumentDeletionInput {
   };
 }
 
+function sharedLogicalDeletionAdmissionHarness(
+  dialect: DatabaseAdapter["dialect"],
+  options: { readonly sharesAsset: boolean },
+): {
+  readonly activeChildChecks: () => readonly DatabaseExecuteInput[];
+  readonly calls: readonly DatabaseExecuteInput[];
+  readonly completeActiveLogicalDeletion: () => void;
+  readonly request: () => ReturnType<
+    ReturnType<typeof createDatabaseDurableDeletionRepository>["requestLogicalDocumentDeletion"]
+  >;
+} {
+  const permissionSnapshotId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3201";
+  const idempotencyKey = "delete-shared-logical-document";
+  const calls: DatabaseExecuteInput[] = [];
+  let activeLogicalDeletion = true;
+  let insertedJob = false;
+  const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+    calls.push(input);
+    if (input.operation === "select" && input.tableName === "deletion_jobs") {
+      return {
+        rows: insertedJob
+          ? [
+              jobRow({
+                idempotency_key: idempotencyKey,
+                started_at: createdAt,
+                target_id: logicalDocumentId,
+                target_revision: 0,
+                target_type: "logical_document",
+              }),
+            ]
+          : [],
+        rowsAffected: 0,
+      };
+    }
+    if (input.operation === "select" && input.tableName === "knowledge_spaces") {
+      return {
+        rows: [
+          {
+            database_now: createdAt,
+            deletion_job_id: null,
+            lifecycle_state: "active",
+            name: "Shared asset space",
+            revision: 2,
+          },
+        ],
+        rowsAffected: 0,
+      };
+    }
+    if (input.operation === "select" && input.tableName === "logical_documents") {
+      return {
+        rows: [
+          {
+            active_revision: null,
+            row_version: 0,
+            source_id: null,
+            status: "failed",
+          },
+        ],
+        rowsAffected: 0,
+      };
+    }
+    if (
+      input.operation === "select" &&
+      input.tableName === "knowledge_space_permission_snapshots"
+    ) {
+      return { rows: [permissionSnapshotRow(permissionSnapshotId)], rowsAffected: 0 };
+    }
+    if (
+      input.operation === "select" &&
+      [
+        "knowledge_space_members",
+        "knowledge_space_access_policies",
+        "knowledge_space_api_access",
+      ].includes(input.tableName)
+    ) {
+      return { rows: [{ id: `${input.tableName}-row` }], rowsAffected: 0 };
+    }
+    if (input.operation === "select" && input.tableName === "deletion_tombstones") {
+      const isActiveChildCheck = input.sql.includes("child_tombstone");
+      const checksSharedLogicalAsset = input.sql.includes("child_logical_revision");
+      return {
+        rows:
+          isActiveChildCheck &&
+          checksSharedLogicalAsset &&
+          activeLogicalDeletion &&
+          options.sharesAsset
+            ? [{ deletion_job_id: "active-shared-logical-deletion" }]
+            : [],
+        rowsAffected: 0,
+      };
+    }
+    if (input.operation === "insert" && input.tableName === "deletion_jobs") {
+      insertedJob = true;
+    }
+    return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+  };
+  const database = createSchemaDatabaseAdapter({
+    executor: execute,
+    kind: dialect,
+    transaction: async (callback) => callback({ execute }),
+  });
+  const repository = createDatabaseDurableDeletionRepository({
+    database,
+    fingerprinter: () => requestFingerprint,
+    generateJobId: () => jobId,
+    generateOutboxId: () => outboxId,
+    generateTombstoneId: () => tombstoneId,
+  });
+
+  return {
+    activeChildChecks: () =>
+      calls.filter(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "deletion_tombstones" &&
+          call.sql.includes("child_tombstone"),
+      ),
+    calls,
+    completeActiveLogicalDeletion: () => {
+      activeLogicalDeletion = false;
+    },
+    request: () =>
+      repository.requestLogicalDocumentDeletion({
+        accessChannel: "interactive",
+        createdAt,
+        documentId: logicalDocumentId,
+        expectedDocumentRowVersion: 0,
+        idempotencyKey,
+        knowledgeSpaceId,
+        permissionSnapshotId,
+        permissionSnapshotRevision: 1,
+        requestedBySubjectId: "user-a",
+        tenantId,
+      }),
+  };
+}
+
+function expectActiveChildDeletionParameterBinding(
+  dialect: DatabaseAdapter["dialect"],
+  call: DatabaseExecuteInput | undefined,
+  expected: {
+    readonly postgres: readonly DatabaseExecuteInput["params"][number][];
+    readonly tidb: readonly DatabaseExecuteInput["params"][number][];
+  },
+): void {
+  expect(call).toBeDefined();
+  if (!call) return;
+  expect(call.params).toEqual(expected[dialect]);
+  if (dialect === "tidb") {
+    expect(call.sql.match(/\?/g) ?? []).toHaveLength(call.params.length);
+  }
+}
+
 function failedSourceCleanupDatabase(
   dialect: DatabaseAdapter["dialect"],
   options: {
@@ -3166,6 +3604,7 @@ function failedSourceCleanupDatabase(
       return {
         rows: [
           {
+            database_now: createdAt,
             deletion_job_id: null,
             lifecycle_state: "active",
             name: "Source cleanup space",

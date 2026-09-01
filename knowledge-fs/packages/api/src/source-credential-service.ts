@@ -148,6 +148,7 @@ export function createSourceCredentialService(input: {
         await input.retiredSecrets.withWriteAdmission(
           {
             knowledgeSpaceId: rawInput.knowledgeSpaceId,
+            sourceId,
             tenantId: rawInput.tenantId,
           },
           () =>
@@ -305,14 +306,16 @@ export function createSourceCredentialService(input: {
       }
 
       try {
-        await input.retiredSecrets.withWriteAdmission({ knowledgeSpaceId, tenantId }, () =>
-          putReservedSecret(input.secretStore, {
-            credentialRef,
-            credentials,
-            knowledgeSpaceId,
-            sourceId,
-            tenantId,
-          }),
+        await input.retiredSecrets.withWriteAdmission(
+          { knowledgeSpaceId, sourceId, tenantId },
+          () =>
+            putReservedSecret(input.secretStore, {
+              credentialRef,
+              credentials,
+              knowledgeSpaceId,
+              sourceId,
+              tenantId,
+            }),
         );
       } catch (error) {
         throw mutationFailure("Source credential persistence failed", error);

@@ -1,7 +1,10 @@
+import { createSchemaDatabaseAdapter } from "@knowledge/adapters";
+import type { DatabaseExecuteInput, DatabaseExecuteResult, DatabaseRow } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { AUTO_RETRIEVAL_MODE_PROMPT_VERSION } from "./auto-retrieval-mode-resolver";
 import { KnowledgeSpaceAuthorizationError } from "./knowledge-space-authorization";
+import { createDatabaseKnowledgeSpaceOverviewRepository } from "./knowledge-space-overview-database-repository";
 import { PublishedProjectionReadUnavailableError } from "./published-projection-read-snapshot";
 import { registerQueryHandlers } from "./query-handlers";
 import { streamQueryRoute } from "./query-routes";
@@ -88,6 +91,32 @@ describe("query handler branch coverage", () => {
     const failure = new Error("lease failed");
     await expect(queryFixture({ leaseAcquireError: failure }).invoke()).rejects.toBe(failure);
   });
+
+  it.each(["fast", "deep", "research"] as const)(
+    "uses the same deletion-scoped retrieval admission for %s mode",
+    async (mode) => {
+      const fixture = queryFixture({
+        body: { mode },
+        lease: {
+          assertActive: vi.fn(async () => undefined),
+          release: vi.fn(async () => undefined),
+          signal: new AbortController().signal,
+        },
+        manifest: { retrievalProfile: retrievalProfile() },
+      });
+
+      const response = await fixture.invoke();
+      expect(response.status).toBe(200);
+      expect(fixture.acquire).toHaveBeenCalledOnce();
+      expect(fixture.acquire).toHaveBeenCalledWith({
+        knowledgeSpaceId: SPACE_ID,
+        subjectId: SUBJECT.subjectId,
+        tenantId: SUBJECT.tenantId,
+        traceId: RUN_ID,
+      });
+      await response.body?.cancel();
+    },
+  );
 
   it("releases an aborted lease when auto-mode resolution is canceled", async () => {
     const controller = new AbortController();
@@ -242,6 +271,80 @@ describe("query handler branch coverage", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
+  it.each(["postgres", "tidb"] as const)(
+    "continues the %s query stream when an unrelated child deletion is active",
+    async (kind) => {
+      let storedActivity: DatabaseRow | undefined;
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: SPACE_ID, lifecycle_state: "active" }],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "deletion_jobs") {
+          const quoted = (identifier: string) =>
+            kind === "postgres" ? `"${identifier}"` : `\`${identifier}\``;
+          const targetId = kind === "postgres" ? "$2" : "?";
+          const wholeSpaceOnly =
+            input.sql.includes(`active_deletion.${quoted("target_type")} = 'knowledge_space'`) &&
+            input.sql.includes(`active_deletion.${quoted("target_id")} = ${targetId}`);
+          return {
+            rows: wholeSpaceOnly ? [] : [{ id: "unrelated-document-delete" }],
+            rowsAffected: 0,
+          };
+        }
+        if (input.tableName === "knowledge_space_activity_events" && input.operation === "insert") {
+          storedActivity = {
+            action: input.params[5],
+            actor_subject_id: input.params[4],
+            actor_type: input.params[3],
+            details: input.params[10],
+            id: input.params[0],
+            knowledge_space_id: input.params[2],
+            occurred_at: input.params[11],
+            required_permission_scope: input.params[9],
+            resource_id: input.params[7],
+            resource_type: input.params[6],
+            result: input.params[8],
+            tenant_id: input.params[1],
+          };
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "knowledge_space_activity_events" && input.operation === "select") {
+          return {
+            rows: storedActivity ? [storedActivity] : [],
+            rowsAffected: storedActivity ? 1 : 0,
+          };
+        }
+        return { rows: [], rowsAffected: 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor,
+        kind,
+        transaction: async (callback) => callback({ execute: executor }),
+      });
+      const overview = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        maxListLimit: 10,
+        maxRuleItems: 5,
+      });
+      const fixture = queryFixture({
+        lease: {
+          assertActive: vi.fn(async () => undefined),
+          release: vi.fn(async () => undefined),
+          signal: new AbortController().signal,
+        },
+        overview,
+      });
+
+      const response = await fixture.invoke();
+      expect(response.status).toBe(200);
+      await response.body?.cancel();
+      expect(storedActivity).toMatchObject({ action: "query.requested" });
+    },
+  );
+
   it("does not append a terminal activity when the stream completes", async () => {
     const appendActivity = vi.fn(async () => ({}));
     const fixture = queryFixture({ overview: { appendActivity } });
@@ -304,6 +407,10 @@ function queryFixture(options: QueryFixtureOptions = {}) {
     if (options.projectionError) throw options.projectionError;
     return options.projectionSnapshot;
   });
+  const acquire = vi.fn(async () => {
+    if (options.leaseAcquireError) throw options.leaseAcquireError;
+    return options.lease;
+  });
   registerQueryHandlers({
     access: { createPermissionSnapshot } as never,
     ...(options.answerTraceRecorder
@@ -345,10 +452,7 @@ function queryFixture(options: QueryFixtureOptions = {}) {
     ...(options.lease || options.leaseAcquireError
       ? {
           retrievalExecutionLeases: {
-            acquire: vi.fn(async () => {
-              if (options.leaseAcquireError) throw options.leaseAcquireError;
-              return options.lease;
-            }),
+            acquire,
           } as never,
         }
       : {}),
@@ -372,6 +476,7 @@ function queryFixture(options: QueryFixtureOptions = {}) {
     ...(options.readinessError ? { tidbFtsPostingReadiness: { assertReady } as never } : {}),
   });
   return {
+    acquire,
     assertReady,
     createPermissionSnapshot,
     invoke: async () => {

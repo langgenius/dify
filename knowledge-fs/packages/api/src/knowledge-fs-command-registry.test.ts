@@ -599,7 +599,11 @@ describe("createKnowledgeFsCommandRegistry", () => {
       nodes: {},
       objectWriteAdmission: {
         withSpaceWriteAdmission: async (scope, write) => {
-          expect(scope).toEqual({ knowledgeSpaceId: SPACE_ID, tenantId: "tenant-1" });
+          expect(scope).toEqual({
+            documentAssetId: expect.any(String),
+            knowledgeSpaceId: SPACE_ID,
+            tenantId: "tenant-1",
+          });
           objectWriteAdmissionEvents.push("admission:acquired");
           const result = await write();
           objectWriteAdmissionEvents.push("admission:released");

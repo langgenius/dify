@@ -10,7 +10,7 @@ import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
 
@@ -524,7 +524,7 @@ export function createDatabaseKnowledgeSpaceRepository({
       try {
         return await database.transaction(async (transaction) => {
           if (
-            !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+            !(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, transaction, {
               knowledgeSpaceId: id,
               tenantId,
             }))

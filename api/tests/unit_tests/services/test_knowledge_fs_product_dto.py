@@ -280,6 +280,35 @@ def test_public_failure_replaces_a_registered_code_message_with_a_safe_bff_fallb
     assert "credential-secret" not in failure.model_dump_json()
 
 
+def test_public_failure_preserves_the_allowlisted_retrieval_deletion_message() -> None:
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "category": "conflict",
+            "code": "RETRIEVAL_DELETION_IN_PROGRESS",
+            "message": "database deletion job detail must not cross the boundary",
+            "retryPolicy": "never",
+        }
+    )
+
+    assert failure.message == "This knowledge space is being deleted and cannot be searched."
+    assert "database deletion job detail" not in failure.model_dump_json()
+
+
+def test_public_failure_preserves_the_allowlisted_retrieval_lease_message() -> None:
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "action": "retry",
+            "category": "conflict",
+            "code": "RETRIEVAL_EXECUTION_LEASE_LOST",
+            "message": "database lease token must not cross the boundary",
+            "retryPolicy": "manual",
+        }
+    )
+
+    assert failure.message == "The retrieval execution expired before it could finish. Run the query again."
+    assert "database lease token" not in failure.model_dump_json()
+
+
 def test_document_reindex_response_preserves_disabled_items() -> None:
     response = KnowledgeFSDocumentReindexResponse.model_validate(
         {

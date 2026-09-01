@@ -388,6 +388,70 @@ describe.each(["postgres", "tidb"] as const)(
       );
     });
 
+    it("scopes child-deletion admission and readability to the lease target hierarchy", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: SPACE_ID, lifecycle_state: "active" }],
+            rowsAffected: 0,
+          };
+        }
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.operation === "select" && input.tableName === "knowledge_fs_leases") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseKnowledgeFsLeaseRepository({
+        database,
+        maxListLimit: 10,
+      });
+      const input = lease("018f0d60-7a49-7cc2-9c1b-5b36f18f4b10");
+
+      await expect(repository.acquire(input)).resolves.toEqual(input);
+      await expect(repository.get({ id: input.id, tenantId: input.tenantId })).resolves.toBeNull();
+
+      const targetFence = calls.find(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "deletion_jobs" &&
+          call.sql.includes("document_assets"),
+      );
+      expect(targetFence?.params).toContain(input.targetId);
+      expect(targetFence?.sql).toContain("document_revisions");
+      expect(targetFence?.sql).toContain("target_type");
+      const insert = calls.find(
+        (call) => call.operation === "insert" && call.tableName === "knowledge_fs_leases",
+      );
+      expect(insert?.sql).toContain("parse_artifacts");
+      expect(insert?.sql).toContain("knowledge_space_staged_commits");
+      expect(insert?.sql).toContain("document_revisions");
+      const read = calls.find(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "knowledge_fs_leases" &&
+          call.sql.startsWith("SELECT *") &&
+          call.sql.includes("NOT EXISTS"),
+      );
+      expect(read?.sql).toContain("parse_artifacts");
+      expect(read?.sql).toContain("knowledge_space_staged_commits");
+      expect(read?.sql).toContain("target_type");
+      if (dialect === "tidb") {
+        for (const call of [targetFence, insert, read]) {
+          expect(call?.sql.match(/\?/gu) ?? []).toHaveLength(call?.params.length ?? 0);
+        }
+      }
+    });
+
     it("persists heartbeat/release/delete and paginates active and expired leases", async () => {
       const calls: DatabaseExecuteInput[] = [];
       const firstId = "018f0d60-7a49-7cc2-9c1b-5b36f18f4b01";

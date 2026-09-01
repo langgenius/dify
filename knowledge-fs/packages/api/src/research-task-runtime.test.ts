@@ -1585,6 +1585,25 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("continues Research when an unrelated child document deletion is active", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const fences = createInMemoryDeletionLifecycleFenceReader();
+    await fences.activateFence({
+      id: "fence-document-preexisting",
+      knowledgeSpaceId: SPACE_ID,
+      targetId: "document-being-deleted",
+      targetType: "document",
+      tenantId: "tenant-1",
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      deletionFence: createDeletionLifecycleFenceGuard(fences),
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, succeeded: 1 });
+    expect(repository.job).toMatchObject({ stage: "completed" });
+  });
+
   it("fails a Capability task when provenance storage is absent or no active grant remains", async () => {
     for (const capabilityGrants of [
       undefined,

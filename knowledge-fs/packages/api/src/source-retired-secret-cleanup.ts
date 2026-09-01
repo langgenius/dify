@@ -24,7 +24,7 @@ import {
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
 import { cloneJsonObject } from "./json-utils";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForSourceWorkflowAdmission } from "./knowledge-space-deletion-admission";
 import {
   type CreateSourceInput,
   type SourceRepository,
@@ -197,7 +197,11 @@ export interface SourceSecretLifecycleRepository {
    * deletion either observes the durable reservation and completed put, or the put is rejected.
    */
   withWriteAdmission<T>(
-    input: { readonly knowledgeSpaceId: string; readonly tenantId: string },
+    input: {
+      readonly knowledgeSpaceId: string;
+      readonly sourceId: string;
+      readonly tenantId: string;
+    },
     mutation: () => Promise<T>,
   ): Promise<T>;
 }
@@ -954,6 +958,7 @@ export function createDatabaseSourceRetiredSecretCleanupRepository({
       return database.transaction(async (transaction) => {
         await requireWriteAdmission(database, transaction, {
           knowledgeSpaceId: input.source.knowledgeSpaceId,
+          sourceId: input.source.id,
           tenantId: input.tenantId,
         });
         const row = await requireLockedRef(database, transaction, input.reservedCredentialRef);
@@ -1511,10 +1516,14 @@ async function mutateDeleteFence(
 async function requireWriteAdmission(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
-  input: { readonly knowledgeSpaceId: string; readonly tenantId: string },
+  input: {
+    readonly knowledgeSpaceId: string;
+    readonly sourceId: string;
+    readonly tenantId: string;
+  },
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, input))) {
-    throw transition("Source secret mutation rejected while knowledge-space deletion is active");
+  if (!(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, executor, input))) {
+    throw transition("Source secret mutation rejected while a matching deletion is active");
   }
 }
 

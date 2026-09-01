@@ -33,7 +33,7 @@ import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 
 export const KnowledgeSpaceProfileKinds = ["embedding", "retrieval"] as const;
 export type KnowledgeSpaceProfileKind = (typeof KnowledgeSpaceProfileKinds)[number];
@@ -1572,7 +1572,7 @@ async function requireWritableSpace(
   executor: DatabaseExecutor,
   scope: KnowledgeSpaceProfileScope,
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, scope))) {
+  if (!(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, executor, scope))) {
     throw new KnowledgeSpaceProfileTransitionError(
       "KNOWLEDGE_SPACE_PROFILE_SPACE_NOT_WRITABLE",
       "Knowledge space is missing, deleting, or fenced by an active deletion job",

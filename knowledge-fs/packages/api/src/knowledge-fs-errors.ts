@@ -379,6 +379,19 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
     500,
     "contact_admin",
   ),
+  RETRIEVAL_DELETION_IN_PROGRESS: descriptor(
+    "conflict",
+    "This knowledge space is being deleted and cannot be searched.",
+    "never",
+    409,
+  ),
+  RETRIEVAL_EXECUTION_LEASE_LOST: descriptor(
+    "conflict",
+    "The retrieval execution expired before it could finish. Run the query again.",
+    "manual",
+    409,
+    "retry",
+  ),
   SOURCE_BULK_ACTION_FAILED: descriptor(
     "dependency",
     "The source bulk operation could not be completed.",

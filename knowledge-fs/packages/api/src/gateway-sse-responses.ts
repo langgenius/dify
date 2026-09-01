@@ -346,7 +346,7 @@ export function createQuerySseResponse({
         if (!clientCanceled) {
           try {
             const failure = knowledgeFsFailureForCode(
-              leaseLost ? "KNOWLEDGE_FS_CONFLICT" : "KNOWLEDGE_FS_UNAVAILABLE",
+              leaseLost ? "RETRIEVAL_EXECUTION_LEASE_LOST" : "KNOWLEDGE_FS_UNAVAILABLE",
               { stage: "query_generation", traceId },
             );
             controller.enqueue(

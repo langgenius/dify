@@ -44,6 +44,30 @@ describe("KnowledgeFS public errors", () => {
     expect(knowledgeFsFailureAllowsManualRetry(failure)).toBe(true);
   });
 
+  it("keeps retrieval deletion admission distinct from an unrelated conflict", () => {
+    const failure = knowledgeFsFailureForCode("RETRIEVAL_DELETION_IN_PROGRESS");
+
+    expect(failure).toEqual({
+      category: "conflict",
+      code: "RETRIEVAL_DELETION_IN_PROGRESS",
+      message: "This knowledge space is being deleted and cannot be searched.",
+      retryPolicy: "never",
+    });
+    expect(knowledgeFsFailureAllowsManualRetry(failure)).toBe(false);
+  });
+
+  it("keeps an execution lease loss actionable without exposing runtime diagnostics", () => {
+    const failure = knowledgeFsFailureForCode("RETRIEVAL_EXECUTION_LEASE_LOST");
+
+    expect(failure).toEqual({
+      action: "retry",
+      category: "conflict",
+      code: "RETRIEVAL_EXECUTION_LEASE_LOST",
+      message: "The retrieval execution expired before it could finish. Run the query again.",
+      retryPolicy: "manual",
+    });
+  });
+
   it("maps parser deadlines to a manual timeout instead of an automatic retry", () => {
     const failure = knowledgeFsFailureForCode("provider_timeout");
 

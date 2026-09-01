@@ -1128,11 +1128,48 @@ describe("database quality-control repository", () => {
     expect(calls).toHaveLength(2);
     expect(calls[1]).toMatchObject({ operation: "select", tableName: "deletion_jobs" });
     expect(calls[1]?.sql).toContain("active_slot");
+    expect(calls[1]?.sql).toContain("target_type");
+    expect(calls[1]?.sql).toContain("knowledge_space");
     expect(calls[1]?.sql).toContain("FOR UPDATE");
     expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
       false,
     );
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "keeps quality control available during unrelated child deletion on %s",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseQualityControlRepository({ database, maxListLimit: 100 });
+
+      await expect(
+        repository.cancelReplay({
+          actorSubjectId: "editor-1",
+          expectedRevision: 1,
+          id: RUN_ID,
+          knowledgeSpaceId: SPACE_ID,
+          permission: permissionBinding(),
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBeNull();
+
+      const deletionFence = calls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionFence?.sql).toContain("target_type");
+      expect(deletionFence?.sql).toContain("knowledge_space");
+      expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
+        true,
+      );
+      if (dialect === "tidb") {
+        expect(deletionFence?.sql.match(/\?/gu) ?? []).toHaveLength(
+          deletionFence?.params.length ?? 0,
+        );
+      }
+    },
+  );
 
   it("never marks a run passed while any persisted item is non-passed", async () => {
     const calls: DatabaseExecuteInput[] = [];
@@ -1455,6 +1492,9 @@ describe("database quality-control repository", () => {
       expect(traceFence?.sql).toContain("FOR UPDATE");
       const itemUpdate = calls.find(
         (call) => call.tableName === "quality_replay_items" && call.operation === "update",
+      );
+      expect(itemUpdate?.sql).toContain(
+        `${dialect === "postgres" ? '"state"' : "`state`"} = 'queued'`,
       );
       expect(calls.indexOf(traceFence as DatabaseExecuteInput)).toBeLessThan(
         calls.indexOf(itemUpdate as DatabaseExecuteInput),

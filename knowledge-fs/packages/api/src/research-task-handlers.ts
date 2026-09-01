@@ -19,7 +19,7 @@ import {
   toPublicResearchTaskJob,
 } from "./derived-result-authorization";
 import type { DocumentAssetRepository } from "./document-asset-repository";
-import { evidenceBundlesHaveActiveDocuments } from "./evidence-bundle-visibility";
+import { projectEvidenceBundlesToActiveDocuments } from "./evidence-bundle-visibility";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { ResearchTaskDirectStreamOptions } from "./gateway-options";
 import { createResearchTaskProgressSseResponse } from "./gateway-sse-responses";
@@ -85,7 +85,7 @@ export interface RegisterResearchTaskHandlersOptions {
     | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed">
     | undefined;
   readonly directStream?: ResearchTaskDirectStreamOptions | undefined;
-  readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly assets: Pick<DocumentAssetRepository, "get" | "getManyByIds">;
   readonly dryRunResearchPlanner: ResearchTaskDryRunPlanner;
   readonly deletionVisibility?: ResearchTaskDeletionVisibility | undefined;
   readonly researchTaskJobs: ResearchTaskJobStateMachine;
@@ -491,15 +491,11 @@ export function registerResearchTaskHandlers({
         researchTaskJobId: params.id,
         tenantId: subject.tenantId,
       });
-      const readable = await Promise.all(
-        page.items.map((partial) =>
-          evidenceBundlesHaveActiveDocuments({
-            assets,
-            bundles: [partial.evidenceBundle],
-            knowledgeSpaceId: partial.knowledgeSpaceId,
-          }),
-        ),
-      );
+      const projectedBundles = await projectEvidenceBundlesToActiveDocuments({
+        assets,
+        bundles: page.items.map((partial) => partial.evidenceBundle),
+        knowledgeSpaceId: job.knowledgeSpaceId,
+      });
 
       if (!(await isResearchHistoryVisible(deletionVisibility, job))) {
         return context.json({ error: "Research task job not found" }, 404);
@@ -507,7 +503,13 @@ export function registerResearchTaskHandlers({
 
       return context.json(
         {
-          items: page.items.filter((_partial, index) => readable[index] === true),
+          items: page.items.map((partial, index) => {
+            const evidenceBundle = projectedBundles[index];
+            if (!evidenceBundle) {
+              throw new Error("Research evidence projection returned an incomplete page");
+            }
+            return { ...partial, evidenceBundle };
+          }),
           ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
         },
         200,

@@ -16,12 +16,17 @@ import {
   jsonInsertPlaceholder,
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
+import {
+  goldenQuestionDeletionReadableSql,
+  hasActiveGoldenQuestionDeletionConflict,
+  hasAnyActiveGoldenQuestionDeletionConflict,
+} from "./durable-deletion-evidence-scope";
 import { cloneJsonObject, jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
 import {
   KnowledgeSpaceAccessError,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForRetrievalAdmission } from "./knowledge-space-deletion-admission";
 
 interface LegacyGoldenQuestionPermissionBinding {
   readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
@@ -465,8 +470,14 @@ export function createDatabaseGoldenQuestionRepository({
         );
         const tenantId = input.permission.tenantId;
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId: input.knowledgeSpaceId,
+            tenantId,
+          })) ||
+          (await hasActiveGoldenQuestionDeletionConflict(database, transaction, {
+            expectedEvidenceIds: input.expectedEvidenceIds ?? [],
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            metadata: input.metadata ?? {},
             tenantId,
           }))
         ) {
@@ -581,10 +592,24 @@ export function createDatabaseGoldenQuestionRepository({
       }) satisfies readonly DatabaseQueryValue[];
       const created = await database.transaction(async (transaction) => {
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId: first.knowledgeSpaceId,
             tenantId: first.permission.tenantId,
           }))
+        ) {
+          return null;
+        }
+        if (
+          await hasAnyActiveGoldenQuestionDeletionConflict(
+            database,
+            transaction,
+            inputs.map((input) => ({
+              expectedEvidenceIds: input.expectedEvidenceIds ?? [],
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              metadata: input.metadata ?? {},
+              tenantId: input.permission.tenantId,
+            })),
+          )
         ) {
           return null;
         }
@@ -655,7 +680,7 @@ export function createDatabaseGoldenQuestionRepository({
         const timestamp = now();
         assertGoldenQuestionPermissionBinding(permission);
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId,
             tenantId: permission.tenantId,
           }))
@@ -681,6 +706,16 @@ export function createDatabaseGoldenQuestionRepository({
           true,
         );
         if (!existing) return false;
+        if (
+          await hasActiveGoldenQuestionDeletionConflict(database, transaction, {
+            expectedEvidenceIds: existing.expectedEvidenceIds,
+            knowledgeSpaceId,
+            metadata: existing.metadata,
+            tenantId: permission.tenantId,
+          })
+        ) {
+          throw new GoldenQuestionDeletionFenceActiveError();
+        }
         const result = await transaction.execute({
           maxRows: 0,
           operation: "delete",
@@ -712,7 +747,7 @@ export function createDatabaseGoldenQuestionRepository({
         const timestamp = now();
         assertGoldenQuestionPermissionBinding(permission);
         if (
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+          !(await lockKnowledgeSpaceForRetrievalAdmission(database, transaction, {
             knowledgeSpaceId,
             tenantId: permission.tenantId,
           }))
@@ -738,6 +773,16 @@ export function createDatabaseGoldenQuestionRepository({
           true,
         );
         if (!existing) return null;
+        if (
+          await hasActiveGoldenQuestionDeletionConflict(database, transaction, {
+            expectedEvidenceIds: input.expectedEvidenceIds ?? existing.expectedEvidenceIds,
+            knowledgeSpaceId,
+            metadata: input.metadata ?? existing.metadata,
+            tenantId: permission.tenantId,
+          })
+        ) {
+          throw new GoldenQuestionDeletionFenceActiveError();
+        }
         const updatedAt = timestamp;
         const expectedEvidenceIds = JSON.stringify(
           input.expectedEvidenceIds ?? existing.expectedEvidenceIds,
@@ -916,7 +961,7 @@ function goldenQuestionSpaceReadableSql(database: DatabaseAdapter, alias: string
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const spaceId = `${alias}.${q("knowledge_space_id")}`;
   const tenantId = `${alias}.${q("tenant_id")}`;
-  return `EXISTS (SELECT 1 FROM ${q("knowledge_spaces")} AS golden_space WHERE golden_space.${q("tenant_id")} = ${tenantId} AND golden_space.${q("id")} = ${spaceId} AND golden_space.${q("lifecycle_state")} = 'active' AND golden_space.${q("deletion_job_id")} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q("deletion_jobs")} AS active_deletion WHERE active_deletion.${q("tenant_id")} = ${tenantId} AND active_deletion.${q("knowledge_space_id")} = ${spaceId} AND active_deletion.${q("active_slot")} = 1))`;
+  return `EXISTS (SELECT 1 FROM ${q("knowledge_spaces")} AS golden_space WHERE golden_space.${q("tenant_id")} = ${tenantId} AND golden_space.${q("id")} = ${spaceId} AND golden_space.${q("lifecycle_state")} = 'active' AND golden_space.${q("deletion_job_id")} IS NULL AND ${goldenQuestionDeletionReadableSql(database, alias)})`;
 }
 
 function goldenQuestionPermissionScopeSql(

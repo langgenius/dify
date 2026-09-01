@@ -154,6 +154,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0046_remove_provider_sync_policy.tidb.sql",
       "packages/database/migrations/0047_parse_artifact_checkpoints.postgres.sql",
       "packages/database/migrations/0047_parse_artifact_checkpoints.tidb.sql",
+      "packages/database/migrations/0048_deletion_active_scope_indexes.postgres.sql",
+      "packages/database/migrations/0048_deletion_active_scope_indexes.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -826,6 +828,30 @@ describe("migration file rendering", () => {
     }
   });
 
+  it("indexes active deletion fences without scanning permanent audit history", () => {
+    const artifacts = getDatabaseMigrationArtifacts();
+    const postgres = artifacts.find((artifact) =>
+      artifact.path.endsWith("0048_deletion_active_scope_indexes.postgres.sql"),
+    )?.content;
+    const tidb = artifacts.find((artifact) =>
+      artifact.path.endsWith("0048_deletion_active_scope_indexes.tidb.sql"),
+    )?.content;
+
+    expect(postgres).toContain(
+      'ON "deletion_jobs" ("tenant_id", "knowledge_space_id", "target_type", "target_id")\n  WHERE "active_slot" = 1;',
+    );
+    expect(postgres).toContain(
+      'ON "deletion_tombstones" ("tenant_id", "knowledge_space_id")\n  WHERE "state" = \'active\';',
+    );
+    expect(tidb).toContain(
+      "ON `deletion_jobs` (`tenant_id`, `knowledge_space_id`, `active_slot`, `target_type`, `target_id`);",
+    );
+    expect(tidb).toContain(
+      "ON `deletion_tombstones` (`tenant_id`, `knowledge_space_id`, `state`);",
+    );
+    expect(tidb).not.toContain(" WHERE ");
+  });
+
   it("detects missing or drifted checked-in migration artifacts", () => {
     const artifacts = getDatabaseMigrationArtifacts();
     const currentArtifacts = Object.fromEntries(
@@ -907,6 +933,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0045_quality_replay_match_policy.postgres.sql",
       "packages/database/migrations/0046_remove_provider_sync_policy.postgres.sql",
       "packages/database/migrations/0047_parse_artifact_checkpoints.postgres.sql",
+      "packages/database/migrations/0048_deletion_active_scope_indexes.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -958,6 +985,7 @@ describe("migration file rendering", () => {
           "0045_quality_replay_match_policy",
           "0046_remove_provider_sync_policy",
           "0047_parse_artifact_checkpoints",
+          "0048_deletion_active_scope_indexes",
         ],
         dialect: "postgres",
       }),

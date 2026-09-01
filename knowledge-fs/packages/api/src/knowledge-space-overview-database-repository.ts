@@ -20,7 +20,11 @@ import {
   KnowledgeSpaceAccessError,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import {
+  lockKnowledgeSpaceForDocumentWriteAdmission,
+  lockKnowledgeSpaceForSourceWorkflowAdmission,
+  lockKnowledgeSpaceForWholeSpaceDeletionAdmission,
+} from "./knowledge-space-deletion-admission";
 import {
   type AppendKnowledgeSpaceActivityInput,
   HiddenKnowledgeSpaceActivityActions,
@@ -69,7 +73,14 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
     appendActivity: async (rawInput) => {
       const input = normalizeActivityInput(rawInput, rawInput.id ?? generateActivityId());
       return database.transaction(async (transaction) => {
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, input))) {
+        if (
+          !(await lockOverviewResourceForDeletionAdmission(
+            database,
+            transaction,
+            input,
+            input.resource,
+          ))
+        ) {
           throw new Error("Knowledge space is unavailable for activity append");
         }
         return appendKnowledgeSpaceActivityWithExecutor({
@@ -166,10 +177,18 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
         )
         .slice(0, input.limit);
     },
-    transitionAttention: async (input) =>
-      database.transaction(async (transaction) => {
-        assertOverviewPermissionBinding(input);
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, input))) {
+    transitionAttention: async (input) => {
+      assertOverviewPermissionBinding(input);
+      const expectedResource = attentionResourceFromIssueKey(input.issueKey);
+      return database.transaction(async (transaction) => {
+        if (
+          !(await lockOverviewResourceForDeletionAdmission(
+            database,
+            transaction,
+            input,
+            expectedResource ?? { id: input.knowledgeSpaceId, type: "knowledge-space" },
+          ))
+        ) {
           return null;
         }
         const permission = await assertDatabaseKnowledgeSpacePermissionFence({
@@ -195,6 +214,13 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
         const candidateGrants = [...permission.permissionScopes];
         const existing = await readAttentionState(database, transaction, input, true);
         if (!existing) return null;
+        if (
+          expectedResource &&
+          (existing.resourceId !== expectedResource.id ||
+            existing.resourceType !== expectedResource.type)
+        ) {
+          throw new KnowledgeSpaceAttentionRevisionConflictError();
+        }
         const signal = await signalFromStoredState(database, existing, {
           ...input,
           candidateGrants,
@@ -225,7 +251,8 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
           : await readAttentionState(database, transaction, input);
         if (!state) throw new Error("Attention state disappeared after update");
         return mergeAttentionState(signal, state, input.now);
-      }),
+      });
+    },
     getHealth: async (input) => getHealth(database, input),
   };
 }
@@ -921,10 +948,12 @@ async function ensureAttentionState(
 ) {
   await database.transaction(async (transaction) => {
     if (
-      !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
-        knowledgeSpaceId: issue.knowledgeSpaceId,
-        tenantId,
-      }))
+      !(await lockOverviewResourceForDeletionAdmission(
+        database,
+        transaction,
+        { knowledgeSpaceId: issue.knowledgeSpaceId, tenantId },
+        issue.resource,
+      ))
     ) {
       return;
     }
@@ -946,6 +975,52 @@ async function ensureAttentionState(
       tableName: "knowledge_space_attention_states",
     });
   });
+}
+
+function attentionResourceFromIssueKey(
+  issueKey: string,
+): KnowledgeSpaceAttentionIssue["resource"] | null {
+  const [ruleId, resourceType, ...resourceIdParts] = issueKey.split(":");
+  const resourceId = resourceIdParts.join(":");
+  if (
+    !KnowledgeSpaceAttentionRuleIds.includes(ruleId as KnowledgeSpaceAttentionRuleId) ||
+    !(["knowledge-space", "document", "source", "failed-query"] as const).includes(
+      resourceType as KnowledgeSpaceAttentionIssue["resource"]["type"],
+    ) ||
+    !resourceId
+  ) {
+    return null;
+  }
+  return {
+    id: resourceId,
+    type: resourceType as KnowledgeSpaceAttentionIssue["resource"]["type"],
+  };
+}
+
+async function lockOverviewResourceForDeletionAdmission(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  scope: { readonly knowledgeSpaceId: string; readonly tenantId: string },
+  resource: {
+    readonly id?: string | undefined;
+    readonly type:
+      | KnowledgeSpaceActivityResourceType
+      | KnowledgeSpaceAttentionIssue["resource"]["type"];
+  },
+): Promise<boolean> {
+  if (resource.type === "source" && resource.id) {
+    return lockKnowledgeSpaceForSourceWorkflowAdmission(database, executor, {
+      ...scope,
+      sourceId: resource.id,
+    });
+  }
+  if (resource.type === "document" && resource.id) {
+    return lockKnowledgeSpaceForDocumentWriteAdmission(database, executor, {
+      ...scope,
+      documentId: resource.id,
+    });
+  }
+  return lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, executor, scope);
 }
 
 async function readAttentionStates(

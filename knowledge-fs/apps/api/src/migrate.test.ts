@@ -143,6 +143,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
@@ -213,6 +215,13 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[45]).toContain("-- Migration id: 0046_remove_provider_sync_policy\n");
     expect(migrationSql[46]).toContain("-- Migration id: 0047_parse_artifact_checkpoints\n");
     expect(migrationSql[46]).toContain('CREATE TABLE IF NOT EXISTS "parse_artifact_checkpoints"');
+    expect(migrationSql[47]).toContain("-- Migration id: 0048_deletion_active_scope_indexes\n");
+    expect(migrationSql[47]).toContain(
+      'CREATE INDEX IF NOT EXISTS "deletion_jobs_active_scope_idx"',
+    );
+    expect(migrationSql[47]).toContain(
+      'CREATE INDEX IF NOT EXISTS "deletion_tombstones_active_scope_idx"',
+    );
     expect(closed).toBe(true);
   });
 

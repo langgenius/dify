@@ -5,6 +5,7 @@ import {
   type DeletionObjectWriteAdmission,
   DeletionObjectWriteAdmissionError,
 } from "./deletion-object-write-admission";
+import { documentWriteDeletionScopeQuery } from "./knowledge-space-deletion-admission";
 
 /**
  * Holds a lock on the active knowledge-space row across the complete external write. PostgreSQL
@@ -19,6 +20,10 @@ export function createDatabaseDeletionObjectWriteAdmission(
   return {
     withSpaceWriteAdmission: async (rawScope, write) => {
       const scope = {
+        ...(rawScope.documentAssetId
+          ? { documentAssetId: UuidSchema.parse(rawScope.documentAssetId) }
+          : {}),
+        ...(rawScope.documentId ? { documentId: UuidSchema.parse(rawScope.documentId) } : {}),
         knowledgeSpaceId: UuidSchema.parse(rawScope.knowledgeSpaceId),
         ...(rawScope.sourceId ? { sourceId: UuidSchema.parse(rawScope.sourceId) } : {}),
         tenantId: TenantIdSchema.parse(rawScope.tenantId),
@@ -41,19 +46,14 @@ export function createDatabaseDeletionObjectWriteAdmission(
         if (!row || row.lifecycle_state !== "active" || row.deletion_job_id != null) {
           throw new DeletionObjectWriteAdmissionError();
         }
-        const activeDeletionParams = scope.sourceId
-          ? [scope.tenantId, scope.knowledgeSpaceId, scope.sourceId]
-          : [scope.tenantId, scope.knowledgeSpaceId];
-        const sourceScope = scope.sourceId
-          ? ` AND (${q("target_type")} <> 'source' OR ${q("target_id")} = ${p(3)})`
-          : "";
+        const deletionScope = documentWriteDeletionScopeQuery(database, scope);
         const activeDeletion = await transaction.execute({
           maxRows: 1,
           operation: "select",
-          params: activeDeletionParams,
+          params: deletionScope.params,
           // Keep this a current locking read too: a TiDB repeatable-read snapshot may predate the
           // deletion transaction that the space-row lock just waited for.
-          sql: `SELECT ${q("id")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1${sourceScope} LIMIT 1 ${admissionLock};`,
+          sql: `SELECT active_deletion.${q("id")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${deletionScope.tenantParameter} AND active_deletion.${q("knowledge_space_id")} = ${deletionScope.knowledgeSpaceParameter} AND active_deletion.${q("active_slot")} = 1${deletionScope.scopeSql} LIMIT 1 ${admissionLock};`,
           tableName: "deletion_jobs",
         });
         if (activeDeletion.rows.length > 0) throw new DeletionObjectWriteAdmissionError();

@@ -27,8 +27,8 @@ import {
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
 import {
-  lockKnowledgeSpaceForDeletionAdmission,
   lockKnowledgeSpaceForSourceWorkflowAdmission,
+  lockKnowledgeSpaceForSourceWorkflowBulkAdmission,
 } from "./knowledge-space-deletion-admission";
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
@@ -138,7 +138,17 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     startBulk: ({ items, run: record }) =>
       database.transaction(async (tx) => {
         if (record.kind !== "bulk" || items.length !== record.progressTotal) invalidState();
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, tx, record))) {
+        const admittedSourceIds = [
+          ...new Set(
+            items.filter((item) => item.status === "eligible").map((item) => item.sourceId),
+          ),
+        ].sort();
+        if (
+          !(await lockKnowledgeSpaceForSourceWorkflowBulkAdmission(database, tx, {
+            ...record,
+            sourceIds: admittedSourceIds,
+          }))
+        ) {
           throw new SourceWorkflowError(
             "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
             "Knowledge space is missing or deletion-fenced",

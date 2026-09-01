@@ -7594,6 +7594,16 @@ const indexes = [
     unique: true,
   },
   {
+    columns: ["tenant_id", "knowledge_space_id", "target_type", "target_id"],
+    columnsByDialect: {
+      tidb: ["tenant_id", "knowledge_space_id", "active_slot", "target_type", "target_id"],
+    },
+    name: "deletion_jobs_active_scope_idx",
+    purpose: "Resolve active deletion fences without scanning permanent job history",
+    tableName: "deletion_jobs",
+    where: { postgres: '"active_slot" = 1' },
+  },
+  {
     columns: ["run_state", "retry_at", "lease_expires_at", "created_at", "id"],
     name: "deletion_jobs_claim_idx",
     purpose: "Lease runnable or expired deletion work without scanning job history",
@@ -7631,6 +7641,16 @@ const indexes = [
     name: "deletion_tombstones_space_target_idx",
     purpose: "Fence all writers and readers inside one deleting knowledge space",
     tableName: "deletion_tombstones",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id"],
+    columnsByDialect: {
+      tidb: ["tenant_id", "knowledge_space_id", "state"],
+    },
+    name: "deletion_tombstones_active_scope_idx",
+    purpose: "Resolve active child deletion overlap without scanning permanent tombstone history",
+    tableName: "deletion_tombstones",
+    where: { postgres: "\"state\" = 'active'" },
   },
   {
     columns: ["deletion_job_id", "id"],

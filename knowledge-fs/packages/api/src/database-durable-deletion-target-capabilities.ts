@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   type CacheAdapter,
   type DatabaseAdapter,
+  type DatabaseExecuteInput,
   type DatabaseExecutor,
   type DatabaseQueryValue,
   type DatabaseRow,
@@ -14,9 +15,9 @@ import {
 
 import { optionalStringColumn, stringColumn } from "./database-row-utils";
 import {
-  databasePlaceholder,
-  jsonInsertPlaceholder,
   quoteDatabaseIdentifier,
+  databasePlaceholder as renderDatabasePlaceholder,
+  jsonInsertPlaceholder as renderJsonInsertPlaceholder,
 } from "./database-sql-utils";
 import { DeletionCleanupCapabilityUnavailableError } from "./deletion-residue-cleanup";
 import {
@@ -39,9 +40,15 @@ import {
   deleteResearchTaskSpaceResiduePage,
   hasResearchTaskSpaceResidue,
 } from "./research-task-deletion-cleanup";
+
 import { createDatabaseRetrievalExecutionLeaseRepository } from "./retrieval-execution-lease";
 import type { SourceSecretStore } from "./source-secret-store";
 import { uploadSessionObjectKeyPrefix } from "./upload-session";
+
+type EvidenceDeletionTarget = Pick<
+  DurableDeletionTargetOperationInput["job"],
+  "deleteMode" | "knowledgeSpaceId" | "targetId" | "targetType"
+>;
 
 export interface DatabaseDurableDeletionTargetCapabilitiesOptions {
   readonly cache: CacheAdapter;
@@ -67,6 +74,101 @@ interface InventoryCursor {
   readonly sourceCursor?: string | undefined;
 }
 
+const DurableDeletionParameterMarker = "__KFS_DURABLE_DELETION_PARAMETER_";
+const DurableDeletionParameterPattern = /__KFS_DURABLE_DELETION_PARAMETER_(\d+)__/gu;
+
+/**
+ * PostgreSQL can reuse and reorder `$n` references. TiDB's anonymous placeholders cannot, so keep
+ * the logical position in an internal marker until the complete statement is available. The
+ * database wrapper below then expands logical values in exact SQL lexical order before execution.
+ */
+function databasePlaceholder(database: Pick<DatabaseAdapter, "dialect">, position: number): string {
+  if (database.dialect === "postgres") return renderDatabasePlaceholder(database, position);
+  if (!Number.isSafeInteger(position) || position < 1) {
+    throw new Error("Durable deletion SQL parameter position is invalid");
+  }
+  return `${DurableDeletionParameterMarker}${position}__`;
+}
+
+function jsonInsertPlaceholder(
+  database: Pick<DatabaseAdapter, "dialect">,
+  position: number,
+  column: string | undefined,
+): string {
+  const rendered = renderJsonInsertPlaceholder(database, position, column);
+  return database.dialect === "postgres"
+    ? rendered
+    : rendered.replace("?", databasePlaceholder(database, position));
+}
+
+function createReusableDatabaseParameter(
+  database: Pick<DatabaseAdapter, "dialect">,
+  params: DatabaseQueryValue[],
+  value: DatabaseQueryValue,
+): () => string {
+  let postgresPosition: number | undefined;
+  return () => {
+    if (database.dialect === "postgres" && postgresPosition !== undefined) {
+      return databasePlaceholder(database, postgresPosition);
+    }
+    params.push(value);
+    postgresPosition = params.length;
+    return databasePlaceholder(database, postgresPosition);
+  };
+}
+
+function normalizeDurableDeletionExecuteInput(input: DatabaseExecuteInput): DatabaseExecuteInput {
+  if (!input.sql.includes(DurableDeletionParameterMarker)) return input;
+  const params: DatabaseQueryValue[] = [];
+  const sql = input.sql.replace(DurableDeletionParameterPattern, (_marker, rawPosition: string) => {
+    const position = Number(rawPosition);
+    if (!Number.isSafeInteger(position) || position < 1 || position > input.params.length) {
+      throw new Error("Durable deletion SQL parameter marker is out of bounds");
+    }
+    const value = input.params[position - 1];
+    if (value === undefined) {
+      throw new Error("Durable deletion SQL parameter value is missing");
+    }
+    params.push(value);
+    return "?";
+  });
+  if (sql.includes(DurableDeletionParameterMarker)) {
+    throw new Error("Durable deletion SQL contains an invalid parameter marker");
+  }
+  return { ...input, params, sql };
+}
+
+function createDurableDeletionParameterExecutor(
+  database: Pick<DatabaseAdapter, "dialect">,
+  executor: DatabaseExecutor,
+): DatabaseExecutor {
+  if (database.dialect === "postgres") return executor;
+  return {
+    execute: (input) => executor.execute(normalizeDurableDeletionExecuteInput(input)),
+  };
+}
+
+function createDurableDeletionParameterDatabase(database: DatabaseAdapter): DatabaseAdapter {
+  if (database.dialect === "postgres") return database;
+  return {
+    ...(database.close ? { close: database.close.bind(database) } : {}),
+    checkPerformanceIndexes: () => database.checkPerformanceIndexes(),
+    dialect: database.dialect,
+    execute: (input) => database.execute(normalizeDurableDeletionExecuteInput(input)),
+    getCapabilities: () => database.getCapabilities(),
+    getSchemaSummary: () => database.getSchemaSummary(),
+    health: () => database.health(),
+    kind: database.kind,
+    planBatchGetRows: (input) => database.planBatchGetRows(input),
+    planListRows: (input) => database.planListRows(input),
+    renderMigrationSql: () => database.renderMigrationSql(),
+    transaction: (callback) =>
+      database.transaction((transaction) =>
+        callback(createDurableDeletionParameterExecutor(database, transaction)),
+      ),
+  };
+}
+
 /**
  * Concrete production capabilities. Every DB mutation is tenant/space scoped, every external item
  * is inventoried before primary deletion, publication exclusion is a head CAS, and primary-row
@@ -80,6 +182,7 @@ export function createDatabaseDurableDeletionTargetCapabilities({
   objectStorage,
   secretStore,
 }: DatabaseDurableDeletionTargetCapabilitiesOptions): DurableDeletionTargetCapabilities {
+  database = createDurableDeletionParameterDatabase(database);
   if (!cache.deletePrefix) {
     throw new DeletionCleanupCapabilityUnavailableError("cache.deletePrefix");
   }
@@ -93,7 +196,13 @@ export function createDatabaseDurableDeletionTargetCapabilities({
     async quiesce({ job, signal }) {
       throwIfAborted(signal);
       await cancelScopedWork(database, job);
+      // startedAt is written once on the first worker claim and never moves on retry. It is a
+      // conservative immutable fence: it may also wait for safe queries admitted between the
+      // deletion commit and first claim, but queries admitted after that fence cannot starve the
+      // deletion indefinitely. Legacy/unclaimed jobs fall back to their immutable createdAt.
+      const retrievalFenceAt = job.startedAt ?? job.createdAt;
       const retrievalDrain = await retrievalExecutionLeases.drainExpiredForSpace({
+        acquiredBefore: retrievalFenceAt,
         knowledgeSpaceId: job.knowledgeSpaceId,
         limit: 1_000,
         tenantId: job.tenantId,
@@ -102,14 +211,13 @@ export function createDatabaseDurableDeletionTargetCapabilities({
       const probes = await Promise.all([
         retrievalDrain.hasExpiredRemaining || retrievalDrain.hasLive,
         preservesDocuments ? false : hasActiveCompilation(database, job),
-        hasActiveResearch(database, job),
+        job.targetType === "knowledge_space" ? hasActiveResearch(database, job) : false,
         hasActiveKnowledgeFsLease(database, job),
-        hasActiveKnowledgeFsSessionLease(database, job),
         hasActiveMutationLease(database, job),
-        hasActiveStagedCommit(database, job),
-        preservesDocuments ? false : hasActiveLegacyBootstrap(database, job),
-        preservesDocuments ? false : hasActivePageIndexBackfill(database, job),
-        preservesDocuments ? false : hasActiveTidbFtsBackfill(database, job),
+        preservesDocuments ? false : hasActiveStagedCommit(database, job),
+        hasActiveLegacyBootstrap(database, job),
+        hasActivePageIndexBackfill(database, job),
+        hasActiveTidbFtsBackfill(database, job),
         hasActiveSourceCredentialBackfill(database, job),
         hasActiveSourceSync(database, job),
         hasActiveSourceProductWorkflow(database, job),
@@ -379,32 +487,36 @@ export function createDatabaseDurableDeletionTargetCapabilities({
         const preservesDocuments = job.targetType === "source" && job.deleteMode === "keep";
         let operationFailed = false;
         try {
-          // Command logs, KnowledgeFS session metadata, Golden Question metadata, and Research inputs
-          // are opaque JSON. They cannot be attributed safely to one document/source, so every target
-          // invalidates or removes the complete space-scoped history before primary identity removal.
-          const retrievalLeaseHistoryDeleted = await deleteRetrievalExecutionLeaseHistoryPage(
-            fencedDatabase,
-            job,
-            limit,
-          );
-          if (retrievalLeaseHistoryDeleted > 0) {
-            return { complete: false, deleted: retrievalLeaseHistoryDeleted };
+          // Retrieval lease and Research histories are user-visible space history. Retain them when a
+          // child resource is deleted; only whole-space deletion may remove that complete history.
+          // Other opaque product metadata below still follows its target-specific cleanup contract.
+          if (job.targetType === "knowledge_space") {
+            const retrievalLeaseHistoryDeleted = await deleteRetrievalExecutionLeaseHistoryPage(
+              fencedDatabase,
+              job,
+              limit,
+            );
+            if (retrievalLeaseHistoryDeleted > 0) {
+              return { complete: false, deleted: retrievalLeaseHistoryDeleted };
+            }
           }
-          const resourceMountsDeleted = await deleteOpaqueResourceMountPage(
-            fencedDatabase,
-            job,
-            limit,
-          );
-          if (resourceMountsDeleted > 0) {
-            return { complete: false, deleted: resourceMountsDeleted };
-          }
-          const failedQueriesDeleted = await deleteOpaqueFailedQueryPage(
-            fencedDatabase,
-            job,
-            limit,
-          );
-          if (failedQueriesDeleted > 0) {
-            return { complete: false, deleted: failedQueriesDeleted };
+          if (job.targetType === "knowledge_space") {
+            const resourceMountsDeleted = await deleteOpaqueResourceMountPage(
+              fencedDatabase,
+              job,
+              limit,
+            );
+            if (resourceMountsDeleted > 0) {
+              return { complete: false, deleted: resourceMountsDeleted };
+            }
+            const failedQueriesDeleted = await deleteOpaqueFailedQueryPage(
+              fencedDatabase,
+              job,
+              limit,
+            );
+            if (failedQueriesDeleted > 0) {
+              return { complete: false, deleted: failedQueriesDeleted };
+            }
           }
           const qualityResidueDeleted = await deleteQualityControlResiduePage(
             fencedDatabase,
@@ -414,13 +526,15 @@ export function createDatabaseDurableDeletionTargetCapabilities({
           if (qualityResidueDeleted > 0) {
             return { complete: false, deleted: qualityResidueDeleted };
           }
-          const workspaceSnapshotsDeleted = await deleteAgentWorkspaceSnapshotPage(
-            fencedDatabase,
-            job,
-            limit,
-          );
-          if (workspaceSnapshotsDeleted > 0) {
-            return { complete: false, deleted: workspaceSnapshotsDeleted };
+          if (job.targetType === "knowledge_space") {
+            const workspaceSnapshotsDeleted = await deleteAgentWorkspaceSnapshotPage(
+              fencedDatabase,
+              job,
+              limit,
+            );
+            if (workspaceSnapshotsDeleted > 0) {
+              return { complete: false, deleted: workspaceSnapshotsDeleted };
+            }
           }
           const terminalTargetLeasesDeleted = await deleteTargetKnowledgeFsLeasePage(
             fencedDatabase,
@@ -430,25 +544,32 @@ export function createDatabaseDurableDeletionTargetCapabilities({
           if (terminalTargetLeasesDeleted > 0) {
             return { complete: false, deleted: terminalTargetLeasesDeleted };
           }
-          const knowledgeFsRowsDeleted = await deleteKnowledgeFsSpaceHistoryPage(
-            fencedDatabase,
-            job,
-            limit,
-          );
-          if (knowledgeFsRowsDeleted > 0) {
-            return { complete: false, deleted: knowledgeFsRowsDeleted };
+          if (job.targetType === "knowledge_space") {
+            const knowledgeFsRowsDeleted = await deleteKnowledgeFsSpaceHistoryPage(
+              fencedDatabase,
+              job,
+              limit,
+            );
+            if (knowledgeFsRowsDeleted > 0) {
+              return { complete: false, deleted: knowledgeFsRowsDeleted };
+            }
           }
           const goldenQuestionsDeleted = await deleteGoldenQuestionPage(fencedDatabase, job, limit);
           if (goldenQuestionsDeleted > 0) {
             return { complete: false, deleted: goldenQuestionsDeleted };
           }
-          const researchResidueDeleted = await deleteResearchTaskSpaceResiduePage(fencedDatabase, {
-            knowledgeSpaceId: job.knowledgeSpaceId,
-            limit,
-            tenantId: job.tenantId,
-          });
-          if (researchResidueDeleted > 0) {
-            return { complete: false, deleted: researchResidueDeleted };
+          if (job.targetType === "knowledge_space") {
+            const researchResidueDeleted = await deleteResearchTaskSpaceResiduePage(
+              fencedDatabase,
+              {
+                knowledgeSpaceId: job.knowledgeSpaceId,
+                limit,
+                tenantId: job.tenantId,
+              },
+            );
+            if (researchResidueDeleted > 0) {
+              return { complete: false, deleted: researchResidueDeleted };
+            }
           }
           const publicationResidueDeleted = await deleteTargetHistoricalPublicationPage(
             fencedDatabase,
@@ -500,9 +621,11 @@ export function createDatabaseDurableDeletionTargetCapabilities({
               return { complete: false, deleted: documentMetadataScrubbed };
             }
           }
-          if (!preservesDocuments) {
+          if (job.targetType === "knowledge_space") {
             const tracesDeleted = await deleteAnswerTracePage(fencedDatabase, job, limit);
             if (tracesDeleted > 0) return { complete: false, deleted: tracesDeleted };
+          }
+          if (!preservesDocuments) {
             const documentResidueDeleted = await deleteDocumentDerivedResiduePage(
               fencedDatabase,
               graph,
@@ -717,6 +840,7 @@ async function deleteRetrievalExecutionLeaseHistoryPage(
   job: DurableDeletionTargetOperationInput["job"],
   limit: number,
 ): Promise<number> {
+  if (job.targetType !== "knowledge_space") return 0;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const rows = await database.execute({
@@ -770,16 +894,20 @@ async function deleteOpaqueFailedQueryPage(
 }
 
 /**
- * Quality replays freeze an entire publication/profile snapshot and their result JSON can carry
- * arbitrary evidence identifiers. A document/source deletion therefore cannot safely retain a
- * subset of a space's quality history. Drain the exact tenant-space closure child-first for every
- * target type, including source-keep, before deleting any referenced answer trace.
+ * Whole-space deletion removes the complete quality closure. Child deletion keeps the report and
+ * unrelated history, but removes target-owned review rows and tombstones replay-item evidence. The
+ * target predicates are evaluated before primary document rows disappear, so they can use the
+ * same evidence membership proof as AnswerTrace cleanup without retaining raw result JSON.
  */
 async function deleteQualityControlResiduePage(
   database: DatabaseAdapter,
   job: DurableDeletionTargetOperationInput["job"],
   limit: number,
 ): Promise<number> {
+  if (job.targetType !== "knowledge_space") {
+    if (job.targetType === "source" && job.deleteMode === "keep") return 0;
+    return deleteChildQualityControlResiduePage(database, job, limit);
+  }
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   for (const table of [
@@ -820,6 +948,162 @@ async function deleteQualityControlResiduePage(
   const runIds = runs.rows.map((row) => stringColumn(row, "id"));
   await deleteIds(database, database, "quality_replay_runs", "id", runIds);
   return runIds.length;
+}
+
+async function deleteChildQualityControlResiduePage(
+  database: DatabaseAdapter,
+  job: DurableDeletionTargetOperationInput["job"],
+  limit: number,
+): Promise<number> {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const p = (position: number) => databasePlaceholder(database, position);
+
+  const historyAlias = "target_quality_history";
+  const historyParams: DatabaseQueryValue[] = [];
+  const historyParameters: QualityTargetSqlParameters = {
+    space: createReusableDatabaseParameter(database, historyParams, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, historyParams, job.targetId),
+    tenant: createReusableDatabaseParameter(database, historyParams, job.tenantId),
+  };
+  const historyLimit = createReusableDatabaseParameter(database, historyParams, limit);
+  const historyTenant = historyParameters.tenant();
+  const historySpace = historyParameters.space();
+  const historyPredicate = targetQualityHistoryPredicateSql(
+    database,
+    job,
+    historyAlias,
+    historyParameters,
+  );
+  const historyLimitSql = historyLimit();
+  const history = await database.execute({
+    maxRows: limit,
+    operation: "select",
+    params: historyParams,
+    sql: `SELECT ${historyAlias}.${q("id")} FROM ${q("quality_resource_history")} AS ${historyAlias} WHERE ${historyAlias}.${q("tenant_id")} = ${historyTenant} AND ${historyAlias}.${q("knowledge_space_id")} = ${historySpace} AND ${historyPredicate} ORDER BY ${historyAlias}.${q("id")} ASC LIMIT ${historyLimitSql} FOR UPDATE;`,
+    tableName: "quality_resource_history",
+  });
+  const historyIds = history.rows.map((row) => stringColumn(row, "id"));
+  await deleteIds(database, database, "quality_resource_history", "id", historyIds);
+  if (historyIds.length > 0) return historyIds.length;
+
+  for (const table of ["quality_bad_cases", "quality_missing_evidence_reviews"] as const) {
+    const alias = table === "quality_bad_cases" ? "target_bad_case" : "target_missing_review";
+    const rowParams: DatabaseQueryValue[] = [];
+    const rowParameters: QualityTargetSqlParameters = {
+      space: createReusableDatabaseParameter(database, rowParams, job.knowledgeSpaceId),
+      target: createReusableDatabaseParameter(database, rowParams, job.targetId),
+      tenant: createReusableDatabaseParameter(database, rowParams, job.tenantId),
+    };
+    const rowLimit = createReusableDatabaseParameter(database, rowParams, limit);
+    const rowTenant = rowParameters.tenant();
+    const rowSpace = rowParameters.space();
+    const rowPredicate = targetQualityTraceIdPredicateSql(
+      database,
+      job,
+      `${alias}.${q("trace_id")}`,
+      rowParameters,
+    );
+    const rowLimitSql = rowLimit();
+    const rows = await database.execute({
+      maxRows: limit,
+      operation: "select",
+      params: rowParams,
+      sql: `SELECT ${alias}.${q("id")} FROM ${q(table)} AS ${alias} WHERE ${alias}.${q("tenant_id")} = ${rowTenant} AND ${alias}.${q("knowledge_space_id")} = ${rowSpace} AND ${rowPredicate} ORDER BY ${alias}.${q("id")} ASC LIMIT ${rowLimitSql} FOR UPDATE;`,
+      tableName: table,
+    });
+    const ids = rows.rows.map((row) => stringColumn(row, "id"));
+    await deleteIds(database, database, table, "id", ids);
+    if (ids.length > 0) return ids.length;
+  }
+
+  const itemAlias = "target_replay_item";
+  const itemParams: DatabaseQueryValue[] = [];
+  const itemParameters: QualityTargetSqlParameters = {
+    space: createReusableDatabaseParameter(database, itemParams, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, itemParams, job.targetId),
+    tenant: createReusableDatabaseParameter(database, itemParams, job.tenantId),
+  };
+  const itemLimit = createReusableDatabaseParameter(database, itemParams, limit);
+  const itemTenant = itemParameters.tenant();
+  const itemSpace = itemParameters.space();
+  const itemPredicate = targetQualityReplayItemPredicateSql(
+    database,
+    job,
+    itemAlias,
+    itemParameters,
+  );
+  const itemLimitSql = itemLimit();
+  const items = await database.execute({
+    maxRows: limit,
+    operation: "select",
+    params: itemParams,
+    sql: `SELECT ${itemAlias}.${q("id")} FROM ${q("quality_replay_items")} AS ${itemAlias} INNER JOIN ${q("quality_replay_runs")} AS target_replay_run ON target_replay_run.${q("id")} = ${itemAlias}.${q("run_id")} WHERE target_replay_run.${q("tenant_id")} = ${itemTenant} AND target_replay_run.${q("knowledge_space_id")} = ${itemSpace} AND ${itemPredicate} AND (${itemAlias}.${q("result")} IS NOT NULL OR ${itemAlias}.${q("trace_id")} IS NOT NULL OR ${qualityExpectedEvidenceNotEmptySql(database, itemAlias)}) ORDER BY ${itemAlias}.${q("id")} ASC LIMIT ${itemLimitSql} FOR UPDATE;`,
+    tableName: "quality_replay_items",
+  });
+  const itemIds = items.rows.map((row) => stringColumn(row, "id"));
+  if (itemIds.length === 0) return 0;
+  await database.execute({
+    maxRows: 0,
+    operation: "update",
+    params: itemIds,
+    sql: `UPDATE ${q("quality_replay_items")} SET ${q("state")} = 'canceled', ${q("result")} = NULL, ${q("trace_id")} = NULL, ${q("expected_evidence_ids")} = ${database.dialect === "postgres" ? "'[]'::jsonb" : "JSON_ARRAY()"}, ${q("updated_at")} = CURRENT_TIMESTAMP WHERE ${q("id")} IN (${itemIds.map((_, index) => p(index + 1)).join(", ")});`,
+    tableName: "quality_replay_items",
+  });
+  return itemIds.length;
+}
+
+function targetQualityTraceIdPredicateSql(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  traceId: string,
+  parameters?: TargetDocumentSqlParameters,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const traceAlias = "target_quality_trace";
+  const space = parameters?.space() ?? databasePlaceholder(database, 1);
+  return `EXISTS (SELECT 1 FROM ${q("answer_traces")} AS ${traceAlias} WHERE ${traceAlias}.${q("knowledge_space_id")} = ${space} AND ${traceAlias}.${q("id")} = ${traceId} AND ${targetTraceEvidencePredicateSql(database, job, traceAlias, parameters)})`;
+}
+
+interface QualityTargetSqlParameters extends TargetDocumentSqlParameters {
+  readonly tenant: () => string;
+}
+
+function targetQualityHistoryPredicateSql(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  historyAlias: string,
+  parameters: QualityTargetSqlParameters,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const targetAggregate = (table: string, type: string, alias: string) =>
+    `(${historyAlias}.${q("aggregate_type")} = '${type}' AND EXISTS (SELECT 1 FROM ${q(table)} AS ${alias} WHERE ${alias}.${q("tenant_id")} = ${parameters.tenant()} AND ${alias}.${q("knowledge_space_id")} = ${parameters.space()} AND ${alias}.${q("id")} = ${historyAlias}.${q("aggregate_id")} AND ${targetQualityTraceIdPredicateSql(database, job, `${alias}.${q("trace_id")}`, parameters)}))`;
+  return `(${targetAggregate("quality_bad_cases", "bad-case", "history_bad_case")} OR ${targetAggregate("quality_missing_evidence_reviews", "missing-evidence", "history_missing_review")})`;
+}
+
+function targetQualityReplayItemPredicateSql(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  itemAlias: string,
+  parameters?: TargetDocumentSqlParameters,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const goldenAlias = "target_quality_golden";
+  const trace = targetQualityTraceIdPredicateSql(
+    database,
+    job,
+    `${itemAlias}.${q("trace_id")}`,
+    parameters,
+  );
+  const golden = `EXISTS (SELECT 1 FROM ${q("golden_questions")} AS ${goldenAlias} WHERE ${goldenAlias}.${q("knowledge_space_id")} = ${parameters?.space() ?? databasePlaceholder(database, 1)} AND ${goldenAlias}.${q("id")} = ${itemAlias}.${q("golden_question_id")} AND ${targetGoldenQuestionPredicateSql(database, job, goldenAlias, parameters)})`;
+  return `(${trace} OR ${golden})`;
+}
+
+function qualityExpectedEvidenceNotEmptySql(database: DatabaseAdapter, itemAlias: string): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const field = `${itemAlias}.${q("expected_evidence_ids")}`;
+  return database.dialect === "postgres"
+    ? `jsonb_array_length(${field}) > 0`
+    : `JSON_LENGTH(${field}) > 0`;
 }
 
 async function deleteOverviewResiduePage(
@@ -1341,15 +1625,14 @@ async function deleteTargetKnowledgeFsLeasePage(
   limit: number,
 ): Promise<number> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
   const alias = "target_lease";
-  const params = targetKnowledgeFsLeaseParams(job);
-  params.push(limit);
+  const target = targetKnowledgeFsLeaseQuery(database, job, alias);
+  const limitSql = createReusableDatabaseParameter(database, target.params, limit)();
   const leases = await database.execute({
     maxRows: limit,
     operation: "select",
-    params,
-    sql: `SELECT ${alias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${alias} WHERE ${targetKnowledgeFsLeasePredicateSql(database, job, alias)} AND (${alias}.${q("status")} <> 'active' OR ${alias}.${q("expires_at")} <= CURRENT_TIMESTAMP) ORDER BY ${alias}.${q("id")} ASC LIMIT ${p(params.length)};`,
+    params: target.params,
+    sql: `SELECT ${alias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${alias} WHERE ${target.predicateSql} AND (${alias}.${q("status")} <> 'active' OR ${alias}.${q("expires_at")} <= CURRENT_TIMESTAMP) ORDER BY ${alias}.${q("id")} ASC LIMIT ${limitSql};`,
     tableName: "knowledge_fs_leases",
   });
   const ids = leases.rows.map((row) => stringColumn(row, "id"));
@@ -1362,6 +1645,7 @@ async function deleteKnowledgeFsSpaceHistoryPage(
   job: DurableDeletionTargetOperationInput["job"],
   limit: number,
 ): Promise<number> {
+  if (job.targetType !== "knowledge_space") return 0;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, limit];
@@ -1464,9 +1748,8 @@ async function cancelScopedWork(
       sql: `UPDATE ${q("knowledge_fs_leases")} SET ${q("status")} = 'released', ${q("updated_at")} = ${p(3)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("status")} = 'active' AND ${q("expires_at")} <= ${p(3)};`,
       tableName: "knowledge_fs_leases",
     });
-    // Research/session/cache history is conservatively space-scoped for every target, including
-    // source-keep. Drain those writers before its early return; only document/index writers may be
-    // preserved by keep semantics.
+    // The remaining opaque writers still need a space-wide fence. Research history is different:
+    // subresource deletion retains it and evidence reads project deleted citations as unavailable.
     await cancelWholeSpaceOpaqueWriters(transaction, database, job, nowIso, nowMs);
     await cancelSourceProductWork(transaction, database, job, nowIso);
     if (job.targetType === "source" && job.deleteMode === "keep") {
@@ -1539,27 +1822,51 @@ async function cancelWholeSpaceOpaqueWriters(
 ): Promise<void> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  await transaction.execute({
-    maxRows: 0,
-    operation: "update",
-    params: [job.tenantId, job.knowledgeSpaceId, nowMs],
-    sql: `UPDATE ${q("research_task_jobs")} SET ${q("stage")} = 'canceled', ${q("worker_id")} = NULL, ${q("lease_token")} = NULL, ${q("lease_expires_at")} = NULL, ${q("heartbeat_at")} = NULL, ${q("retry_at")} = NULL, ${q("completed_at")} = ${p(3)}, ${q("updated_at")} = ${p(3)}, ${q("row_version")} = ${q("row_version")} + 1 WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} NOT IN ('completed', 'failed', 'canceled') AND (${q("lease_token")} IS NULL OR ${q("lease_expires_at")} <= ${p(3)});`,
-    tableName: "research_task_jobs",
-  });
-  await transaction.execute({
-    maxRows: 0,
-    operation: "update",
-    params: [job.tenantId, job.knowledgeSpaceId, nowMs],
-    sql: `UPDATE ${q("research_task_outbox")} SET ${q("status")} = 'canceled', ${q("locked_by")} = NULL, ${q("lock_token")} = NULL, ${q("locked_until")} = NULL, ${q("updated_at")} = ${p(3)} WHERE ${q("research_task_job_id")} IN (SELECT ${q("id")} FROM ${q("research_task_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} = 'canceled') AND ${q("status")} NOT IN ('completed', 'canceled', 'dead');`,
-    tableName: "research_task_outbox",
-  });
-  await transaction.execute({
-    maxRows: 0,
-    operation: "update",
-    params: [job.tenantId, job.knowledgeSpaceId, nowIso],
-    sql: `UPDATE ${q("knowledge_space_staged_commits")} SET ${q("status")} = 'canceled', ${q("updated_at")} = ${p(3)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("status")} NOT IN ('published', 'failed-terminal', 'canceled', 'gc-complete');`,
-    tableName: "knowledge_space_staged_commits",
-  });
+  if (job.targetType === "knowledge_space") {
+    await transaction.execute({
+      maxRows: 0,
+      operation: "update",
+      params: [job.tenantId, job.knowledgeSpaceId, nowMs],
+      sql: `UPDATE ${q("research_task_jobs")} SET ${q("stage")} = 'canceled', ${q("worker_id")} = NULL, ${q("lease_token")} = NULL, ${q("lease_expires_at")} = NULL, ${q("heartbeat_at")} = NULL, ${q("retry_at")} = NULL, ${q("completed_at")} = ${p(3)}, ${q("updated_at")} = ${p(3)}, ${q("row_version")} = ${q("row_version")} + 1 WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} NOT IN ('completed', 'failed', 'canceled') AND (${q("lease_token")} IS NULL OR ${q("lease_expires_at")} <= ${p(3)});`,
+      tableName: "research_task_jobs",
+    });
+    await transaction.execute({
+      maxRows: 0,
+      operation: "update",
+      params: [job.tenantId, job.knowledgeSpaceId, nowMs],
+      sql: `UPDATE ${q("research_task_outbox")} SET ${q("status")} = 'canceled', ${q("locked_by")} = NULL, ${q("lock_token")} = NULL, ${q("locked_until")} = NULL, ${q("updated_at")} = ${p(3)} WHERE ${q("research_task_job_id")} IN (SELECT ${q("id")} FROM ${q("research_task_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} = 'canceled') AND ${q("status")} NOT IN ('completed', 'canceled', 'dead');`,
+      tableName: "research_task_outbox",
+    });
+  }
+  if (!(job.targetType === "source" && job.deleteMode === "keep")) {
+    const stagedParams: DatabaseQueryValue[] = [];
+    const stagedNow = createReusableDatabaseParameter(database, stagedParams, nowIso);
+    const stagedTenant = createReusableDatabaseParameter(database, stagedParams, job.tenantId);
+    const stagedSpace = createReusableDatabaseParameter(
+      database,
+      stagedParams,
+      job.knowledgeSpaceId,
+    );
+    const stagedTargetId = createReusableDatabaseParameter(database, stagedParams, job.targetId);
+    const stagedUpdatedAt = stagedNow();
+    const stagedTenantId = stagedTenant();
+    const stagedSpaceId = stagedSpace();
+    let stagedTarget = "";
+    if (job.targetType === "document_asset") {
+      stagedTarget = ` AND ${q("document_asset_id")} = ${stagedTargetId()}`;
+    } else if (job.targetType === "source") {
+      stagedTarget = ` AND ${q("document_asset_id")} IN (SELECT target_asset.${q("id")} FROM ${q("document_assets")} AS target_asset WHERE target_asset.${q("knowledge_space_id")} = ${stagedSpace()} AND target_asset.${q("source_id")} = ${stagedTargetId()})`;
+    } else if (job.targetType === "logical_document") {
+      stagedTarget = ` AND ${q("document_asset_id")} IN (SELECT target_revision.${q("document_asset_id")} FROM ${q("document_revisions")} AS target_revision WHERE target_revision.${q("tenant_id")} = ${stagedTenant()} AND target_revision.${q("knowledge_space_id")} = ${stagedSpace()} AND target_revision.${q("document_id")} = ${stagedTargetId()})`;
+    }
+    await transaction.execute({
+      maxRows: 0,
+      operation: "update",
+      params: stagedParams,
+      sql: `UPDATE ${q("knowledge_space_staged_commits")} SET ${q("status")} = 'canceled', ${q("updated_at")} = ${stagedUpdatedAt} WHERE ${q("tenant_id")} = ${stagedTenantId} AND ${q("knowledge_space_id")} = ${stagedSpaceId}${stagedTarget} AND ${q("status")} NOT IN ('published', 'failed-terminal', 'canceled', 'gc-complete');`,
+      tableName: "knowledge_space_staged_commits",
+    });
+  }
   await transaction.execute({
     maxRows: 0,
     operation: "delete",
@@ -1577,27 +1884,29 @@ async function cancelLegacyScopedWorkers(
 ): Promise<void> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  for (const worker of [
-    {
-      terminalState: "canceled",
-      table: "legacy_space_publication_bootstraps",
-    },
-    {
-      terminalState: "superseded",
-      table: "page_index_upgrade_backfills",
-    },
-    {
-      terminalState: "failed",
-      table: "tidb_fts_posting_backfills",
-    },
-  ] as const) {
-    await transaction.execute({
-      maxRows: 0,
-      operation: "update",
-      params: [job.tenantId, job.knowledgeSpaceId, now],
-      sql: `UPDATE ${q(worker.table)} SET ${q("run_state")} = '${worker.terminalState}', ${q("worker_id")} = NULL, ${q("lease_token")} = NULL, ${q("lease_expires_at")} = NULL, ${q("heartbeat_at")} = NULL, ${q("completed_at")} = ${p(3)}, ${q("updated_at")} = ${p(3)}, ${q("last_error_code")} = 'DURABLE_DELETION_FENCE', ${q("last_error_message")} = 'Canceled by durable deletion', ${q("row_version")} = ${q("row_version")} + 1 WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND (${q("run_state")} = 'queued' OR (${q("run_state")} = 'running' AND ${q("lease_expires_at")} <= ${p(3)}));`,
-      tableName: worker.table,
-    });
+  if (job.targetType === "knowledge_space") {
+    for (const worker of [
+      {
+        terminalState: "canceled",
+        table: "legacy_space_publication_bootstraps",
+      },
+      {
+        terminalState: "superseded",
+        table: "page_index_upgrade_backfills",
+      },
+      {
+        terminalState: "failed",
+        table: "tidb_fts_posting_backfills",
+      },
+    ] as const) {
+      await transaction.execute({
+        maxRows: 0,
+        operation: "update",
+        params: [job.tenantId, job.knowledgeSpaceId, now],
+        sql: `UPDATE ${q(worker.table)} SET ${q("run_state")} = '${worker.terminalState}', ${q("worker_id")} = NULL, ${q("lease_token")} = NULL, ${q("lease_expires_at")} = NULL, ${q("heartbeat_at")} = NULL, ${q("completed_at")} = ${p(3)}, ${q("updated_at")} = ${p(3)}, ${q("last_error_code")} = 'DURABLE_DELETION_FENCE', ${q("last_error_message")} = 'Canceled by durable deletion', ${q("row_version")} = ${q("row_version")} + 1 WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND (${q("run_state")} = 'queued' OR (${q("run_state")} = 'running' AND ${q("lease_expires_at")} <= ${p(3)}));`,
+        tableName: worker.table,
+      });
+    }
   }
   await cancelSourceCredentialBackfills(transaction, database, job, now);
 }
@@ -1691,6 +2000,7 @@ async function deleteAndProbePrimaryData(
   objectStorage: ObjectStorageAdapter,
   { job, leaseFence, signal, transaction }: DurableDeletionPrimaryDeleteInput,
 ): Promise<{ readonly clean: boolean }> {
+  transaction = createDurableDeletionParameterExecutor(database, transaction);
   throwIfAborted(signal);
   if (
     leaseFence.deletionJobId !== job.id ||
@@ -3124,7 +3434,9 @@ async function deleteAnswerTracePage(
   job: DurableDeletionTargetOperationInput["job"],
   limit: number,
 ): Promise<number> {
-  if (job.targetType === "source" && job.deleteMode === "keep") return 0;
+  // AnswerTrace is immutable query history. Child deletion keeps the trace and its evidence bundle;
+  // the read projection resolves deleted document/node references to unavailable tombstones.
+  if (job.targetType !== "knowledge_space") return 0;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   return database.transaction(async (transaction) => {
@@ -3168,7 +3480,7 @@ async function deleteAnswerTracePage(
         maxRows: limit,
         operation: "select",
         params: [...targetParams, limit],
-        sql: `SELECT ${partialAlias}.${q("id")} FROM ${q("research_task_partial_results")} AS ${partialAlias} WHERE ${partialAlias}.${q("knowledge_space_id")} = ${p(1)} AND ${targetEvidenceItemsPredicateSql(database, job, evidenceBundleJson)} ORDER BY ${partialAlias}.${q("id")} ASC LIMIT ${p(limitPosition)} FOR UPDATE;`,
+        sql: `SELECT ${partialAlias}.${q("id")} FROM ${q("research_task_partial_results")} AS ${partialAlias} WHERE ${partialAlias}.${q("knowledge_space_id")} = ${p(1)} AND ${job.targetType === "knowledge_space" ? "1 = 1" : targetEvidenceItemsPredicateSql(database, job, evidenceBundleJson)} ORDER BY ${partialAlias}.${q("id")} ASC LIMIT ${p(limitPosition)} FOR UPDATE;`,
         tableName: "research_task_partial_results",
       });
       const partialIds = partials.rows.map((row) => stringColumn(row, "id"));
@@ -3223,17 +3535,17 @@ async function deleteGoldenQuestionPage(
   job: DurableDeletionTargetOperationInput["job"],
   limit: number,
 ): Promise<number> {
+  if (job.targetType === "source" && job.deleteMode === "keep") return 0;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
   return database.transaction(async (transaction) => {
-    const params = targetGoldenQuestionQueryParams(job);
-    params.push(limit);
     const alias = "target_golden_question";
+    const target = targetGoldenQuestionQuery(database, job, alias);
+    const limitSql = createReusableDatabaseParameter(database, target.params, limit)();
     const rows = await transaction.execute({
       maxRows: limit,
       operation: "select",
-      params,
-      sql: `SELECT ${alias}.${q("id")} FROM ${q("golden_questions")} AS ${alias} WHERE ${alias}.${q("knowledge_space_id")} = ${p(1)} AND ${targetGoldenQuestionPredicateSql(database, job, alias)} ORDER BY ${alias}.${q("id")} ASC LIMIT ${p(params.length)} FOR UPDATE;`,
+      params: target.params,
+      sql: `SELECT ${alias}.${q("id")} FROM ${q("golden_questions")} AS ${alias} WHERE ${target.predicateSql} ORDER BY ${alias}.${q("id")} ASC LIMIT ${limitSql} FOR UPDATE;`,
       tableName: "golden_questions",
     });
     const ids = rows.rows.map((row) => stringColumn(row, "id"));
@@ -3244,17 +3556,16 @@ async function deleteGoldenQuestionPage(
 
 function targetGoldenQuestionPredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   questionAlias: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
-  if (
-    job.targetType === "knowledge_space" ||
-    (job.targetType === "source" && job.deleteMode === "keep")
-  ) {
+  if (job.targetType === "source" && job.deleteMode === "keep") return "1 = 0";
+  if (job.targetType === "knowledge_space") {
     return "1 = 1";
   }
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
+  const space = () => parameters?.space() ?? databasePlaceholder(database, 1);
   const metadata = `${questionAlias}.${q("metadata")}`;
   const expectedEvidence = `${questionAlias}.${q("expected_evidence_ids")}`;
   const contextItems =
@@ -3266,6 +3577,7 @@ function targetGoldenQuestionPredicateSql(
     job,
     expectedEvidence,
     "golden_expected",
+    parameters,
   );
   const contextExpected =
     database.dialect === "postgres"
@@ -3276,8 +3588,20 @@ function targetGoldenQuestionPredicateSql(
     job,
     contextExpected,
     "golden_context_expected",
+    parameters,
   );
-  const missingEvidencePredicate = goldenMissingEvidencePredicateSql(database, job, metadata);
+  const evidenceMatchPredicate = goldenEvidenceMatchPredicateSql(
+    database,
+    job,
+    metadata,
+    parameters,
+  );
+  const missingEvidencePredicate = goldenMissingEvidencePredicateSql(
+    database,
+    job,
+    metadata,
+    parameters,
+  );
   const traceId =
     database.dialect === "postgres"
       ? `COALESCE(${metadata} ->> 'traceId', ${metadata} ->> 'answerTraceId', ${metadata} -> 'evidenceContext' ->> 'traceId')`
@@ -3286,26 +3610,35 @@ function targetGoldenQuestionPredicateSql(
     database.dialect === "postgres"
       ? `CAST(golden_trace.${q("id")} AS TEXT) = ${traceId}`
       : `CAST(golden_trace.${q("id")} AS CHAR(36)) = ${traceId}`;
-  const relatedTrace = `EXISTS (SELECT 1 FROM ${q("answer_traces")} AS golden_trace WHERE golden_trace.${q("knowledge_space_id")} = ${p(1)} AND ${traceIdMatch} AND ${targetTraceEvidencePredicateSql(database, job, "golden_trace")})`;
-  return `(${expectedPredicate} OR ${contextExpectedPredicate} OR ${missingEvidencePredicate} OR ${targetEvidenceItemsPredicateSql(database, job, contextItems)} OR ${relatedTrace})`;
+  const contextItemsPredicate = targetEvidenceItemsPredicateSql(
+    database,
+    job,
+    contextItems,
+    parameters,
+  );
+  const relatedTrace = `EXISTS (SELECT 1 FROM ${q("answer_traces")} AS golden_trace WHERE golden_trace.${q("knowledge_space_id")} = ${space()} AND ${traceIdMatch} AND ${targetTraceEvidencePredicateSql(database, job, "golden_trace", parameters)})`;
+  return `(${expectedPredicate} OR ${contextExpectedPredicate} OR ${evidenceMatchPredicate} OR ${missingEvidencePredicate} OR ${contextItemsPredicate} OR ${relatedTrace})`;
 }
 
 function goldenEvidenceIdArrayPredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   jsonArray: string,
   alias: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
+  const space = () => parameters?.space() ?? databasePlaceholder(database, 1);
   const evidenceId =
     database.dialect === "postgres" ? `${alias}.evidence_id` : `${alias}.evidence_id`;
-  const directDocument = targetDocumentMembershipSql(database, job, evidenceId, true);
+  const directDocument = targetDocumentMembershipSql(database, job, evidenceId, true, parameters);
+  const nodeSpace = space();
   const nodeDocument = targetDocumentMembershipSql(
     database,
     job,
     `golden_node.${q("document_asset_id")}`,
     false,
+    parameters,
   );
   const nodeIdMatch =
     database.dialect === "postgres"
@@ -3319,7 +3652,20 @@ function goldenEvidenceIdArrayPredicateSql(
     database.dialect === "postgres"
       ? `CAST(golden_expected_trace.${q("id")} AS TEXT) = ${evidenceId}`
       : `CAST(golden_expected_trace.${q("id")} AS CHAR(36)) = ${evidenceId}`;
-  const target = `(${directDocument} OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS golden_node WHERE golden_node.${q("knowledge_space_id")} = ${p(1)} AND ${nodeIdMatch} AND ${nodeDocument}) OR EXISTS (SELECT 1 FROM ${q("evidence_bundles")} AS golden_bundle WHERE ${bundleIdMatch} AND ${targetEvidenceBundlePredicateSql(database, job, "golden_bundle")}) OR EXISTS (SELECT 1 FROM ${q("answer_traces")} AS golden_expected_trace WHERE golden_expected_trace.${q("knowledge_space_id")} = ${p(1)} AND ${traceIdMatch} AND ${targetTraceEvidencePredicateSql(database, job, "golden_expected_trace")}))`;
+  const bundlePredicate = targetEvidenceBundlePredicateSql(
+    database,
+    job,
+    "golden_bundle",
+    parameters,
+  );
+  const traceSpace = space();
+  const tracePredicate = targetTraceEvidencePredicateSql(
+    database,
+    job,
+    "golden_expected_trace",
+    parameters,
+  );
+  const target = `(${directDocument} OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS golden_node WHERE golden_node.${q("knowledge_space_id")} = ${nodeSpace} AND ${nodeIdMatch} AND ${nodeDocument}) OR EXISTS (SELECT 1 FROM ${q("evidence_bundles")} AS golden_bundle WHERE ${bundleIdMatch} AND ${bundlePredicate}) OR EXISTS (SELECT 1 FROM ${q("answer_traces")} AS golden_expected_trace WHERE golden_expected_trace.${q("knowledge_space_id")} = ${traceSpace} AND ${traceIdMatch} AND ${tracePredicate}))`;
   if (database.dialect === "postgres") {
     const safeArray = `CASE WHEN jsonb_typeof(${jsonArray}) = 'array' THEN ${jsonArray} ELSE '[]'::jsonb END`;
     return `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${safeArray}) AS ${alias}(evidence_id) WHERE ${target})`;
@@ -3329,24 +3675,27 @@ function goldenEvidenceIdArrayPredicateSql(
 
 function goldenMissingEvidencePredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   metadata: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
+  const space = () => parameters?.space() ?? databasePlaceholder(database, 1);
   const evidenceId = "golden_missing.evidence_id";
-  const directDocument = targetDocumentMembershipSql(database, job, evidenceId, true);
+  const directDocument = targetDocumentMembershipSql(database, job, evidenceId, true, parameters);
+  const nodeSpace = space();
   const nodeDocument = targetDocumentMembershipSql(
     database,
     job,
     `golden_missing_node.${q("document_asset_id")}`,
     false,
+    parameters,
   );
   const nodeIdMatch =
     database.dialect === "postgres"
       ? `CAST(golden_missing_node.${q("id")} AS TEXT) = ${evidenceId}`
       : `CAST(golden_missing_node.${q("id")} AS CHAR(36)) = ${evidenceId}`;
-  const target = `(${directDocument} OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS golden_missing_node WHERE golden_missing_node.${q("knowledge_space_id")} = ${p(1)} AND ${nodeIdMatch} AND ${nodeDocument}))`;
+  const target = `(${directDocument} OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS golden_missing_node WHERE golden_missing_node.${q("knowledge_space_id")} = ${nodeSpace} AND ${nodeIdMatch} AND ${nodeDocument}))`;
   if (database.dialect === "postgres") {
     const missing = `${metadata} -> 'evidenceContext' -> 'missingEvidence'`;
     const safeMissing = `CASE WHEN jsonb_typeof(${missing}) = 'array' THEN ${missing} ELSE '[]'::jsonb END`;
@@ -3355,18 +3704,68 @@ function goldenMissingEvidencePredicateSql(
   return `EXISTS (SELECT 1 FROM JSON_TABLE(${metadata}, '$.evidenceContext.missingEvidence[*]' COLUMNS (evidence_id VARCHAR(255) PATH '$.expectedEvidenceId')) AS golden_missing WHERE ${target})`;
 }
 
-function targetGoldenQuestionQueryParams(
-  job: DurableDeletionTargetOperationInput["job"],
-): DatabaseQueryValue[] {
-  return job.targetType === "knowledge_space" ||
-    (job.targetType === "source" && job.deleteMode === "keep")
-    ? [job.knowledgeSpaceId]
-    : targetDocumentQueryParams(job);
+function goldenEvidenceMatchPredicateSql(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  metadata: string,
+  parameters?: TargetDocumentSqlParameters,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const space = () => parameters?.space() ?? databasePlaceholder(database, 1);
+  const documentAssetId =
+    database.dialect === "postgres"
+      ? `${metadata} -> 'evidenceMatch' ->> 'documentAssetId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(${metadata}, '$.evidenceMatch.documentAssetId'))`;
+  const nodeId =
+    database.dialect === "postgres"
+      ? `${metadata} -> 'evidenceMatch' ->> 'nodeId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(${metadata}, '$.evidenceMatch.nodeId'))`;
+  const nodeIdMatch =
+    database.dialect === "postgres"
+      ? `CAST(golden_match_node.${q("id")} AS TEXT) = ${nodeId}`
+      : `CAST(golden_match_node.${q("id")} AS CHAR(36)) = ${nodeId}`;
+  const directDocument = targetDocumentMembershipSql(
+    database,
+    job,
+    documentAssetId,
+    true,
+    parameters,
+  );
+  const nodeDocument = targetDocumentMembershipSql(
+    database,
+    job,
+    `golden_match_node.${q("document_asset_id")}`,
+    false,
+    parameters,
+  );
+  return `(${directDocument} OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS golden_match_node WHERE golden_match_node.${q("knowledge_space_id")} = ${space()} AND ${nodeIdMatch} AND ${nodeDocument}))`;
 }
 
-function targetDocumentQueryParams(
-  job: DurableDeletionTargetOperationInput["job"],
-): DatabaseQueryValue[] {
+interface TargetGoldenQuestionQuery {
+  readonly params: DatabaseQueryValue[];
+  readonly predicateSql: string;
+}
+
+function targetGoldenQuestionQuery(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  questionAlias: string,
+): TargetGoldenQuestionQuery {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const params: DatabaseQueryValue[] = [];
+  const parameters: TargetDocumentSqlParameters = {
+    space: createReusableDatabaseParameter(database, params, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, params, job.targetId),
+  };
+  const space = parameters.space();
+  const target = targetGoldenQuestionPredicateSql(database, job, questionAlias, parameters);
+  return {
+    params,
+    predicateSql: `${questionAlias}.${q("knowledge_space_id")} = ${space} AND ${target}`,
+  };
+}
+
+function targetDocumentQueryParams(job: EvidenceDeletionTarget): DatabaseQueryValue[] {
   return job.targetType === "knowledge_space"
     ? [job.knowledgeSpaceId]
     : [job.knowledgeSpaceId, job.targetId];
@@ -3374,17 +3773,19 @@ function targetDocumentQueryParams(
 
 function targetEvidenceBundlePredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   bundleAlias: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  return targetEvidenceItemsPredicateSql(database, job, `${bundleAlias}.${q("items")}`);
+  return targetEvidenceItemsPredicateSql(database, job, `${bundleAlias}.${q("items")}`, parameters);
 }
 
 function targetTraceEvidencePredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   traceAlias: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const bundleAlias = "target_bundle";
@@ -3401,23 +3802,24 @@ function targetTraceEvidencePredicateSql(
     "evidence_bundle_id",
   )} OR ${bundleAlias}.${q("trace_id")} = ${traceAlias}.${q(
     "id",
-  )}) AND ${targetEvidenceBundlePredicateSql(database, job, bundleAlias)})`;
+  )}) AND ${targetEvidenceBundlePredicateSql(database, job, bundleAlias, parameters)})`;
   const inlineBundle = `EXISTS (SELECT 1 FROM ${q(
     "answer_trace_steps",
   )} AS ${stepAlias} WHERE ${stepAlias}.${q("trace_id")} = ${traceAlias}.${q(
     "id",
-  )} AND ${targetEvidenceItemsPredicateSql(database, job, inlineItems)})`;
+  )} AND ${targetEvidenceItemsPredicateSql(database, job, inlineItems, parameters)})`;
 
   return `(${persistedBundle} OR ${inlineBundle})`;
 }
 
 function targetEvidenceItemsPredicateSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   items: string,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
+  const space = () => parameters?.space() ?? databasePlaceholder(database, 1);
   const itemTargetDocument = targetDocumentMembershipSql(
     database,
     job,
@@ -3425,47 +3827,75 @@ function targetEvidenceItemsPredicateSql(
       ? `target_citation.value ->> 'documentAssetId'`
       : "target_citation.document_asset_id",
     true,
+    parameters,
   );
+  const nodeSpace = space();
   const nodeTargetDocument = targetDocumentMembershipSql(
     database,
     job,
     `target_node.${q("document_asset_id")}`,
     false,
+    parameters,
   );
   if (database.dialect === "postgres") {
     const safeItems = `CASE WHEN jsonb_typeof(${items}) = 'array' THEN ${items} ELSE '[]'::jsonb END`;
     const citations = `target_item.value -> 'citations'`;
     const safeCitations = `CASE WHEN jsonb_typeof(${citations}) = 'array' THEN ${citations} ELSE '[]'::jsonb END`;
-    return `EXISTS (SELECT 1 FROM jsonb_array_elements(${safeItems}) AS target_item(value) WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(${safeCitations}) AS target_citation(value) WHERE ${itemTargetDocument}) OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS target_node WHERE target_node.${q("knowledge_space_id")} = ${p(1)} AND CAST(target_node.${q("id")} AS TEXT) = target_item.value ->> 'nodeId' AND ${nodeTargetDocument}))`;
+    return `EXISTS (SELECT 1 FROM jsonb_array_elements(${safeItems}) AS target_item(value) WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(${safeCitations}) AS target_citation(value) WHERE ${itemTargetDocument}) OR EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS target_node WHERE target_node.${q("knowledge_space_id")} = ${nodeSpace} AND CAST(target_node.${q("id")} AS TEXT) = target_item.value ->> 'nodeId' AND ${nodeTargetDocument}))`;
   }
-  return `(EXISTS (SELECT 1 FROM JSON_TABLE(${items}, '$[*].citations[*]' COLUMNS (document_asset_id VARCHAR(255) PATH '$.documentAssetId')) AS target_citation WHERE ${itemTargetDocument}) OR EXISTS (SELECT 1 FROM JSON_TABLE(${items}, '$[*]' COLUMNS (node_id VARCHAR(255) PATH '$.nodeId')) AS target_item INNER JOIN ${q("knowledge_nodes")} AS target_node ON CAST(target_node.${q("id")} AS CHAR(36)) = target_item.node_id WHERE target_node.${q("knowledge_space_id")} = ${p(1)} AND ${nodeTargetDocument}))`;
+  return `(EXISTS (SELECT 1 FROM JSON_TABLE(${items}, '$[*].citations[*]' COLUMNS (document_asset_id VARCHAR(255) PATH '$.documentAssetId')) AS target_citation WHERE ${itemTargetDocument}) OR EXISTS (SELECT 1 FROM JSON_TABLE(${items}, '$[*]' COLUMNS (node_id VARCHAR(255) PATH '$.nodeId')) AS target_item INNER JOIN ${q("knowledge_nodes")} AS target_node ON CAST(target_node.${q("id")} AS CHAR(36)) = target_item.node_id WHERE target_node.${q("knowledge_space_id")} = ${nodeSpace} AND ${nodeTargetDocument}))`;
+}
+
+interface TargetDocumentSqlParameters {
+  readonly space: () => string;
+  readonly target: () => string;
 }
 
 function targetDocumentMembershipSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   documentIdExpression: string,
   textComparison: boolean,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
-  return targetDocumentMembershipAtSql(database, job, documentIdExpression, textComparison, 1, 2);
+  return targetDocumentMembershipAtSql(
+    database,
+    job,
+    documentIdExpression,
+    textComparison,
+    1,
+    2,
+    parameters,
+  );
 }
 
 function targetDocumentMembershipAtSql(
   database: DatabaseAdapter,
-  job: DurableDeletionTargetOperationInput["job"],
+  job: EvidenceDeletionTarget,
   documentIdExpression: string,
   textComparison: boolean,
   spaceParamPosition: number,
   targetParamPosition: number,
+  parameters?: TargetDocumentSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
+  const space = () => parameters?.space() ?? p(spaceParamPosition);
+  const target = () => parameters?.target() ?? p(targetParamPosition);
+  if (job.targetType === "knowledge_space") {
+    const selectedDocumentId = textComparison
+      ? database.dialect === "postgres"
+        ? `CAST(target_space_document.${q("id")} AS TEXT)`
+        : `CAST(target_space_document.${q("id")} AS CHAR(36))`
+      : `target_space_document.${q("id")}`;
+    return `${documentIdExpression} IN (SELECT ${selectedDocumentId} FROM ${q("document_assets")} AS target_space_document WHERE target_space_document.${q("knowledge_space_id")} = ${space()})`;
+  }
   if (job.targetType === "document_asset") {
     const targetParameter = textComparison
       ? database.dialect === "postgres"
-        ? `CAST(CAST(${p(targetParamPosition)} AS UUID) AS TEXT)`
-        : `CAST(${p(targetParamPosition)} AS CHAR(36))`
-      : p(targetParamPosition);
+        ? `CAST(CAST(${target()} AS UUID) AS TEXT)`
+        : `CAST(${target()} AS CHAR(36))`
+      : target();
     return `${documentIdExpression} = ${targetParameter}`;
   }
   if (job.targetType === "logical_document") {
@@ -3474,14 +3904,14 @@ function targetDocumentMembershipAtSql(
         ? `CAST(owned_revision.${q("document_asset_id")} AS TEXT)`
         : `CAST(owned_revision.${q("document_asset_id")} AS CHAR(36))`
       : `owned_revision.${q("document_asset_id")}`;
-    return `${documentIdExpression} IN (SELECT ${selectedRevisionAsset} FROM ${q("document_revisions")} owned_revision WHERE owned_revision.${q("knowledge_space_id")} = ${p(spaceParamPosition)} AND owned_revision.${q("document_id")} = ${p(targetParamPosition)} AND NOT EXISTS (SELECT 1 FROM ${q("document_revisions")} external_revision WHERE external_revision.${q("knowledge_space_id")} = ${p(spaceParamPosition)} AND external_revision.${q("document_id")} <> ${p(targetParamPosition)} AND external_revision.${q("document_asset_id")} = owned_revision.${q("document_asset_id")}))`;
+    return `${documentIdExpression} IN (SELECT ${selectedRevisionAsset} FROM ${q("document_revisions")} owned_revision WHERE owned_revision.${q("knowledge_space_id")} = ${space()} AND owned_revision.${q("document_id")} = ${target()} AND NOT EXISTS (SELECT 1 FROM ${q("document_revisions")} external_revision WHERE external_revision.${q("knowledge_space_id")} = ${space()} AND external_revision.${q("document_id")} <> ${target()} AND external_revision.${q("document_asset_id")} = owned_revision.${q("document_asset_id")}))`;
   }
   const selectedDocumentId = textComparison
     ? database.dialect === "postgres"
       ? `CAST(target_document.${q("id")} AS TEXT)`
       : `CAST(target_document.${q("id")} AS CHAR(36))`
     : `target_document.${q("id")}`;
-  return `${documentIdExpression} IN (SELECT ${selectedDocumentId} FROM ${q("document_assets")} AS target_document WHERE target_document.${q("knowledge_space_id")} = ${p(spaceParamPosition)} AND target_document.${q("source_id")} = ${p(targetParamPosition)})`;
+  return `${documentIdExpression} IN (SELECT ${selectedDocumentId} FROM ${q("document_assets")} AS target_document WHERE target_document.${q("knowledge_space_id")} = ${space()} AND target_document.${q("source_id")} = ${target()})`;
 }
 
 function appendPlaceholders(
@@ -3806,6 +4236,52 @@ function targetSemanticPathPredicateSql(
   return `((${pathAlias}.${q("resource_type")} = 'document' AND ${pathAlias}.${q("target_id")} ${textDocumentPredicate}) OR ${documentReferences(pathAlias, "semantic_document_ref")} OR ${sourceNodeReferences(pathAlias)} OR (${targetedCommunity}))`;
 }
 
+/**
+ * Parameter-safe form of the semantic-path predicate for queries that repeat one logical value.
+ * Each TiDB `?` is rendered together with its value in lexical SQL order; PostgreSQL keeps reusing
+ * the first positional parameter for that logical value.
+ */
+function targetSemanticPathPredicateWithParametersSql(
+  database: DatabaseAdapter,
+  job: EvidenceDeletionTarget,
+  parameters: TargetDocumentSqlParameters,
+  pathAlias: string,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const documentMembership = (expression: string, textComparison: boolean) =>
+    targetDocumentMembershipAtSql(database, job, expression, textComparison, 0, 0, parameters);
+  const documentReferences = (ownerAlias: string, referenceAlias: string) => {
+    const metadata = `${ownerAlias}.${q("metadata")}`;
+    const referenceRows =
+      database.dialect === "postgres"
+        ? `jsonb_array_elements_text(CASE WHEN jsonb_typeof(${metadata} -> 'documentAssetIds') = 'array' THEN ${metadata} -> 'documentAssetIds' ELSE '[]'::jsonb END) AS ${referenceAlias}(document_asset_id)`
+        : `JSON_TABLE(${metadata}, '$.documentAssetIds[*]' COLUMNS (document_asset_id VARCHAR(255) PATH '$')) AS ${referenceAlias}`;
+    return `EXISTS (SELECT 1 FROM ${referenceRows} WHERE ${documentMembership(`${referenceAlias}.document_asset_id`, true)})`;
+  };
+  const directDocument = `(${pathAlias}.${q("resource_type")} = 'document' AND ${documentMembership(`${pathAlias}.${q("target_id")}`, true)})`;
+  const directReferences = documentReferences(pathAlias, "semantic_document_ref");
+  const sourceMetadata = `${pathAlias}.${q("metadata")}`;
+  const sourceRows =
+    database.dialect === "postgres"
+      ? `jsonb_array_elements_text(CASE WHEN jsonb_typeof(${sourceMetadata} -> 'sourceSummaryNodeIds') = 'array' THEN ${sourceMetadata} -> 'sourceSummaryNodeIds' ELSE '[]'::jsonb END) AS semantic_source_ref(node_id)`
+      : `JSON_TABLE(${sourceMetadata}, '$.sourceSummaryNodeIds[*]' COLUMNS (node_id VARCHAR(255) PATH '$')) AS semantic_source_ref`;
+  const sourceNodeIdMatch =
+    database.dialect === "postgres"
+      ? `CAST(semantic_source_node.${q("id")} AS TEXT) = semantic_source_ref.node_id`
+      : `CAST(semantic_source_node.${q("id")} AS CHAR(36)) = semantic_source_ref.node_id`;
+  const sourceReferences = `EXISTS (SELECT 1 FROM ${sourceRows} INNER JOIN ${q("knowledge_nodes")} AS semantic_source_node ON ${sourceNodeIdMatch} WHERE semantic_source_node.${q("knowledge_space_id")} = ${parameters.space()} AND ${documentMembership(`semantic_source_node.${q("document_asset_id")}`, false)})`;
+  const communityId =
+    database.dialect === "postgres"
+      ? `${pathAlias}.${q("metadata")} ->> 'communityId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(${pathAlias}.${q("metadata")}, '$.communityId'))`;
+  const rootCommunityId =
+    database.dialect === "postgres"
+      ? `target_community.${q("metadata")} ->> 'communityId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(target_community.${q("metadata")}, '$.communityId'))`;
+  const targetedCommunity = `${pathAlias}.${q("view_name")} = 'by-community' AND ${communityId} IS NOT NULL AND EXISTS (SELECT 1 FROM ${q("knowledge_paths")} AS target_community WHERE target_community.${q("knowledge_space_id")} = ${parameters.space()} AND target_community.${q("view_name")} = 'by-community' AND ${rootCommunityId} = ${communityId} AND ${documentReferences("target_community", "target_community_document")})`;
+  return `(${directDocument} OR ${directReferences} OR ${sourceReferences} OR (${targetedCommunity}))`;
+}
+
 async function deleteCompositeIds(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
@@ -3874,16 +4350,20 @@ async function hasKnowledgeFsHistoryResidue(
   job: DurableDeletionTargetOperationInput["job"],
 ): Promise<boolean> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
   const targetAlias = "target_lease";
+  const targetQuery = targetKnowledgeFsLeaseQuery(database, job, targetAlias);
   const targetLease = await executor.execute({
     maxRows: 1,
     operation: "select",
-    params: targetKnowledgeFsLeaseParams(job),
-    sql: `SELECT ${targetAlias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${targetAlias} WHERE ${targetKnowledgeFsLeasePredicateSql(database, job, targetAlias)} LIMIT 1;`,
+    params: targetQuery.params,
+    sql: `SELECT ${targetAlias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${targetAlias} WHERE ${targetQuery.predicateSql} LIMIT 1;`,
     tableName: "knowledge_fs_leases",
   });
   if (targetLease.rows.length > 0) return true;
+
+  if (job.targetType !== "knowledge_space") return false;
+
+  const p = (position: number) => databasePlaceholder(database, position);
 
   for (const table of ["knowledge_fs_leases", "knowledge_fs_sessions"] as const) {
     const result = await executor.execute({
@@ -3903,14 +4383,15 @@ async function hasTargetGoldenQuestionResidue(
   executor: DatabaseExecutor,
   job: DurableDeletionTargetOperationInput["job"],
 ): Promise<boolean> {
+  if (job.targetType === "source" && job.deleteMode === "keep") return false;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
   const alias = "target_golden_question";
+  const target = targetGoldenQuestionQuery(database, job, alias);
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
-    params: targetGoldenQuestionQueryParams(job),
-    sql: `SELECT ${alias}.${q("id")} FROM ${q("golden_questions")} AS ${alias} WHERE ${alias}.${q("knowledge_space_id")} = ${p(1)} AND ${targetGoldenQuestionPredicateSql(database, job, alias)} LIMIT 1;`,
+    params: target.params,
+    sql: `SELECT ${alias}.${q("id")} FROM ${q("golden_questions")} AS ${alias} WHERE ${target.predicateSql} LIMIT 1;`,
     tableName: "golden_questions",
   });
   return result.rows.length > 0;
@@ -4000,20 +4481,29 @@ async function hasForbiddenDerivedResidue(
 ): Promise<boolean> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  if (await hasRetrievalExecutionLeaseResidue(database, executor, job)) return true;
-  if (await hasOpaqueSpaceResidue(database, executor, job, "resource_mounts", true)) return true;
-  if (await hasOpaqueSpaceResidue(database, executor, job, "failed_queries", false)) return true;
-  if (await hasAgentWorkspaceSnapshotResidue(database, executor, job)) return true;
+  if (
+    job.targetType === "knowledge_space" &&
+    (await hasRetrievalExecutionLeaseResidue(database, executor, job))
+  ) {
+    return true;
+  }
+  if (job.targetType === "knowledge_space") {
+    if (await hasOpaqueSpaceResidue(database, executor, job, "resource_mounts", true)) return true;
+    if (await hasOpaqueSpaceResidue(database, executor, job, "failed_queries", false)) return true;
+    if (await hasAgentWorkspaceSnapshotResidue(database, executor, job)) return true;
+  }
   if (await hasQualityControlResidue(database, executor, job)) return true;
   if (await hasKnowledgeFsHistoryResidue(database, executor, job)) return true;
   if (await hasTargetGoldenQuestionResidue(database, executor, job)) return true;
-  if (
-    await hasResearchTaskSpaceResidue(database, executor, {
-      knowledgeSpaceId: job.knowledgeSpaceId,
-      tenantId: job.tenantId,
-    })
-  ) {
-    return true;
+  if (job.targetType === "knowledge_space") {
+    if (
+      await hasResearchTaskSpaceResidue(database, executor, {
+        knowledgeSpaceId: job.knowledgeSpaceId,
+        tenantId: job.tenantId,
+      })
+    ) {
+      return true;
+    }
   }
   if (await hasTargetHistoricalPublicationResidue(database, executor, job)) return true;
   if (await hasSourceProductDerivedResidue(database, executor, job)) return true;
@@ -4062,7 +4552,12 @@ async function hasForbiddenDerivedResidue(
     return publicationMetadata.rows.length > 0;
   }
   if (await hasOverviewResidue(database, executor, job)) return true;
-  if (await hasTargetAnswerTraceOrEvidenceResidue(database, executor, job)) return true;
+  if (
+    job.targetType === "knowledge_space" &&
+    (await hasTargetAnswerTraceOrEvidenceResidue(database, executor, job))
+  ) {
+    return true;
+  }
   if (job.targetType === "knowledge_space") {
     return hasKnowledgeSpaceExplicitCleanupResidue(database, executor, job);
   }
@@ -4279,6 +4774,7 @@ async function hasRetrievalExecutionLeaseResidue(
   executor: DatabaseExecutor,
   job: DurableDeletionTargetOperationInput["job"],
 ): Promise<boolean> {
+  if (job.targetType !== "knowledge_space") return false;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const result = await executor.execute({
@@ -4315,6 +4811,10 @@ async function hasQualityControlResidue(
   executor: DatabaseExecutor,
   job: DurableDeletionTargetOperationInput["job"],
 ): Promise<boolean> {
+  if (job.targetType !== "knowledge_space") {
+    if (job.targetType === "source" && job.deleteMode === "keep") return false;
+    return hasChildQualityControlResidue(database, executor, job);
+  }
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId];
@@ -4346,11 +4846,93 @@ async function hasQualityControlResidue(
   return false;
 }
 
+async function hasChildQualityControlResidue(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  job: DurableDeletionTargetOperationInput["job"],
+): Promise<boolean> {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const historyAlias = "target_quality_history";
+  const historyParams: DatabaseQueryValue[] = [];
+  const historyParameters: QualityTargetSqlParameters = {
+    space: createReusableDatabaseParameter(database, historyParams, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, historyParams, job.targetId),
+    tenant: createReusableDatabaseParameter(database, historyParams, job.tenantId),
+  };
+  const historyTenant = historyParameters.tenant();
+  const historySpace = historyParameters.space();
+  const historyPredicate = targetQualityHistoryPredicateSql(
+    database,
+    job,
+    historyAlias,
+    historyParameters,
+  );
+  const history = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: historyParams,
+    sql: `SELECT ${historyAlias}.${q("id")} FROM ${q("quality_resource_history")} AS ${historyAlias} WHERE ${historyAlias}.${q("tenant_id")} = ${historyTenant} AND ${historyAlias}.${q("knowledge_space_id")} = ${historySpace} AND ${historyPredicate} LIMIT 1;`,
+    tableName: "quality_resource_history",
+  });
+  if (history.rows.length > 0) return true;
+
+  for (const table of ["quality_bad_cases", "quality_missing_evidence_reviews"] as const) {
+    const alias = table === "quality_bad_cases" ? "target_bad_case" : "target_missing_review";
+    const rowParams: DatabaseQueryValue[] = [];
+    const rowParameters: QualityTargetSqlParameters = {
+      space: createReusableDatabaseParameter(database, rowParams, job.knowledgeSpaceId),
+      target: createReusableDatabaseParameter(database, rowParams, job.targetId),
+      tenant: createReusableDatabaseParameter(database, rowParams, job.tenantId),
+    };
+    const rowTenant = rowParameters.tenant();
+    const rowSpace = rowParameters.space();
+    const rowPredicate = targetQualityTraceIdPredicateSql(
+      database,
+      job,
+      `${alias}.${q("trace_id")}`,
+      rowParameters,
+    );
+    const result = await executor.execute({
+      maxRows: 1,
+      operation: "select",
+      params: rowParams,
+      sql: `SELECT ${alias}.${q("id")} FROM ${q(table)} AS ${alias} WHERE ${alias}.${q("tenant_id")} = ${rowTenant} AND ${alias}.${q("knowledge_space_id")} = ${rowSpace} AND ${rowPredicate} LIMIT 1;`,
+      tableName: table,
+    });
+    if (result.rows.length > 0) return true;
+  }
+
+  const itemAlias = "target_replay_item";
+  const itemParams: DatabaseQueryValue[] = [];
+  const itemParameters: QualityTargetSqlParameters = {
+    space: createReusableDatabaseParameter(database, itemParams, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, itemParams, job.targetId),
+    tenant: createReusableDatabaseParameter(database, itemParams, job.tenantId),
+  };
+  const itemTenant = itemParameters.tenant();
+  const itemSpace = itemParameters.space();
+  const itemPredicate = targetQualityReplayItemPredicateSql(
+    database,
+    job,
+    itemAlias,
+    itemParameters,
+  );
+  const item = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: itemParams,
+    sql: `SELECT ${itemAlias}.${q("id")} FROM ${q("quality_replay_items")} AS ${itemAlias} INNER JOIN ${q("quality_replay_runs")} AS target_replay_run ON target_replay_run.${q("id")} = ${itemAlias}.${q("run_id")} WHERE target_replay_run.${q("tenant_id")} = ${itemTenant} AND target_replay_run.${q("knowledge_space_id")} = ${itemSpace} AND ${itemPredicate} AND (${itemAlias}.${q("result")} IS NOT NULL OR ${itemAlias}.${q("trace_id")} IS NOT NULL OR ${qualityExpectedEvidenceNotEmptySql(database, itemAlias)}) LIMIT 1;`,
+    tableName: "quality_replay_items",
+  });
+  return item.rows.length > 0;
+}
+
 async function hasTargetAnswerTraceOrEvidenceResidue(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
   job: DurableDeletionTargetOperationInput["job"],
 ): Promise<boolean> {
+  if (job.targetType !== "knowledge_space") return false;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const params = targetDocumentQueryParams(job);
@@ -4387,7 +4969,7 @@ async function hasTargetAnswerTraceOrEvidenceResidue(
     maxRows: 1,
     operation: "select",
     params,
-    sql: `SELECT ${partialAlias}.${q("id")} FROM ${q("research_task_partial_results")} AS ${partialAlias} WHERE ${partialAlias}.${q("knowledge_space_id")} = ${p(1)} AND ${targetEvidenceItemsPredicateSql(database, job, evidenceBundleJson)} LIMIT 1;`,
+    sql: `SELECT ${partialAlias}.${q("id")} FROM ${q("research_task_partial_results")} AS ${partialAlias} WHERE ${partialAlias}.${q("knowledge_space_id")} = ${p(1)} AND ${job.targetType === "knowledge_space" ? "1 = 1" : targetEvidenceItemsPredicateSql(database, job, evidenceBundleJson)} LIMIT 1;`,
     tableName: "research_task_partial_results",
   });
   return partials.rows.length > 0;
@@ -4428,6 +5010,7 @@ async function hasActiveResearch(
   database: DatabaseAdapter,
   job: DurableDeletionTargetOperationInput["job"],
 ) {
+  if (job.targetType !== "knowledge_space") return false;
   return hasScopedRow(
     database,
     "research_task_jobs",
@@ -4443,71 +5026,66 @@ async function hasActiveKnowledgeFsLease(
 ): Promise<boolean> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const leaseAlias = "target_lease";
+  const target = targetKnowledgeFsLeaseQuery(database, job, leaseAlias);
   const result = await database.execute({
     maxRows: 1,
     operation: "select",
-    params: targetKnowledgeFsLeaseParams(job),
-    sql: `SELECT ${leaseAlias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${leaseAlias} WHERE ${targetKnowledgeFsLeasePredicateSql(database, job, leaseAlias)} AND ${leaseAlias}.${q("status")} = 'active' AND ${leaseAlias}.${q("expires_at")} > CURRENT_TIMESTAMP LIMIT 1;`,
+    params: target.params,
+    sql: `SELECT ${leaseAlias}.${q("id")} FROM ${q("knowledge_fs_leases")} AS ${leaseAlias} WHERE ${target.predicateSql} AND ${leaseAlias}.${q("status")} = 'active' AND ${leaseAlias}.${q("expires_at")} > CURRENT_TIMESTAMP LIMIT 1;`,
     tableName: "knowledge_fs_leases",
   });
   return result.rows.length > 0;
 }
 
-async function hasActiveKnowledgeFsSessionLease(
+interface TargetKnowledgeFsLeaseQuery {
+  readonly params: DatabaseQueryValue[];
+  readonly predicateSql: string;
+}
+
+interface TargetKnowledgeFsLeaseSqlParameters extends TargetDocumentSqlParameters {
+  readonly tenant: () => string;
+}
+
+function targetKnowledgeFsLeaseQuery(
   database: DatabaseAdapter,
   job: DurableDeletionTargetOperationInput["job"],
-): Promise<boolean> {
-  const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
-  const result = await database.execute({
-    maxRows: 1,
-    operation: "select",
-    params: [job.tenantId, job.knowledgeSpaceId],
-    sql: `SELECT ${q("id")} FROM ${q("knowledge_fs_leases")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("status")} = 'active' AND ${q("expires_at")} > CURRENT_TIMESTAMP LIMIT 1;`,
-    tableName: "knowledge_fs_leases",
-  });
-  return result.rows.length > 0;
-}
-
-function targetKnowledgeFsLeaseParams(
-  job: DurableDeletionTargetOperationInput["job"],
-): DatabaseQueryValue[] {
-  return job.targetType === "knowledge_space"
-    ? [job.tenantId, job.knowledgeSpaceId]
-    : [job.tenantId, job.knowledgeSpaceId, job.targetId];
+  leaseAlias: string,
+): TargetKnowledgeFsLeaseQuery {
+  const params: DatabaseQueryValue[] = [];
+  const parameters: TargetKnowledgeFsLeaseSqlParameters = {
+    space: createReusableDatabaseParameter(database, params, job.knowledgeSpaceId),
+    target: createReusableDatabaseParameter(database, params, job.targetId),
+    tenant: createReusableDatabaseParameter(database, params, job.tenantId),
+  };
+  return {
+    params,
+    predicateSql: targetKnowledgeFsLeasePredicateSql(database, job, leaseAlias, parameters),
+  };
 }
 
 function targetKnowledgeFsLeasePredicateSql(
   database: DatabaseAdapter,
   job: DurableDeletionTargetOperationInput["job"],
   leaseAlias: string,
+  parameters: TargetKnowledgeFsLeaseSqlParameters,
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const p = (position: number) => databasePlaceholder(database, position);
   const field = (column: string) => `${leaseAlias}.${q(column)}`;
-  const textParam = (position: number) =>
+  const textParam = (parameter: string) =>
     database.dialect === "postgres"
-      ? `CAST(CAST(${p(position)} AS UUID) AS TEXT)`
-      : `CAST(${p(position)} AS CHAR(36))`;
-  const scope = `${field("tenant_id")} = ${p(1)} AND ${field("knowledge_space_id")} = ${p(2)}`;
+      ? `CAST(CAST(${parameter} AS UUID) AS TEXT)`
+      : `CAST(${parameter} AS CHAR(36))`;
+  const scope = `${field("tenant_id")} = ${parameters.tenant()} AND ${field("knowledge_space_id")} = ${parameters.space()}`;
   if (job.targetType === "knowledge_space") return scope;
 
   const uuidDocumentMembership = (expression: string) =>
-    targetDocumentMembershipAtSql(database, job, expression, false, 2, 3);
+    targetDocumentMembershipAtSql(database, job, expression, false, 0, 0, parameters);
   const textDocumentId = (alias: string) =>
     database.dialect === "postgres"
       ? `CAST(${alias}.${q("id")} AS TEXT)`
       : `CAST(${alias}.${q("id")} AS CHAR(36))`;
   const textDocumentMembership = (expression: string) =>
-    targetDocumentMembershipAtSql(database, job, expression, true, 2, 3);
-  const uuidDocumentPredicate = uuidDocumentMembership("TARGET_DOCUMENT_ID").replace(
-    "TARGET_DOCUMENT_ID ",
-    "",
-  );
-  const textDocumentPredicate = textDocumentMembership("TARGET_DOCUMENT_ID").replace(
-    "TARGET_DOCUMENT_ID ",
-    "",
-  );
+    targetDocumentMembershipAtSql(database, job, expression, true, 0, 0, parameters);
   const metadataDocumentId =
     database.dialect === "postgres"
       ? `${field("metadata")} ->> 'documentAssetId'`
@@ -4516,13 +5094,16 @@ function targetKnowledgeFsLeasePredicateSql(
     database.dialect === "postgres"
       ? `CAST(${alias}.${q("id")} AS TEXT)`
       : `CAST(${alias}.${q("id")} AS CHAR(36))`;
-  const documentVirtualPath = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS target_document WHERE target_document.${q("knowledge_space_id")} = ${p(2)} AND ${field("virtual_path")} = CONCAT('/sources/documents/', ${textDocumentId("target_document")}) AND ${uuidDocumentMembership(`target_document.${q("id")}`)})`;
+  const knowledgeSpaceTarget = `(${field("target_type")} = 'knowledge-space' AND ${field("target_id")} = ${textParam(parameters.space())})`;
+  const documentAssetTarget = `(${field("target_type")} = 'document-asset' AND ${textDocumentMembership(field("target_id"))})`;
+  const documentVirtualPath = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS target_document WHERE target_document.${q("knowledge_space_id")} = ${parameters.space()} AND ${field("virtual_path")} = CONCAT('/sources/documents/', ${textDocumentId("target_document")}) AND ${uuidDocumentMembership(`target_document.${q("id")}`)})`;
+  const metadataTarget = textDocumentMembership(metadataDocumentId);
   const parseArtifactTarget = `${field("target_type")} = 'parse-artifact' AND ${field("target_id")} IN (SELECT ${castId("target_artifact")} FROM ${q("parse_artifacts")} AS target_artifact WHERE ${uuidDocumentMembership(`target_artifact.${q("document_asset_id")}`)})`;
-  const projectionTarget = `${field("target_type")} = 'projection' AND ${field("target_id")} IN (SELECT ${castId("target_projection")} FROM ${q("index_projections")} AS target_projection INNER JOIN ${q("knowledge_nodes")} AS projection_node ON projection_node.${q("id")} = target_projection.${q("node_id")} WHERE projection_node.${q("knowledge_space_id")} = ${p(2)} AND ${uuidDocumentMembership(`projection_node.${q("document_asset_id")}`)})`;
-  const pathTarget = `${field("target_type")} = 'knowledge-path' AND EXISTS (SELECT 1 FROM ${q("knowledge_paths")} AS target_path WHERE target_path.${q("knowledge_space_id")} = ${p(2)} AND (${field("target_id")} = ${castId("target_path")} OR ${field("target_id")} = target_path.${q("target_id")} OR ${field("virtual_path")} = target_path.${q("virtual_path")}) AND ${targetSemanticPathPredicateSql(database, uuidDocumentPredicate, textDocumentPredicate, 2, "target_path")})`;
-  const stagedCommitTarget = `${field("target_type")} = 'staged-commit' AND EXISTS (SELECT 1 FROM ${q("knowledge_space_staged_commits")} AS target_commit WHERE target_commit.${q("tenant_id")} = ${p(1)} AND target_commit.${q("knowledge_space_id")} = ${p(2)} AND ${uuidDocumentMembership(`target_commit.${q("document_asset_id")}`)} AND (${field("target_id")} = ${castId("target_commit")} OR ${field("target_id")} = target_commit.${q("raw_object_key")} OR ${field("target_id")} = target_commit.${q("published_object_key")}))`;
+  const projectionTarget = `${field("target_type")} = 'projection' AND ${field("target_id")} IN (SELECT ${castId("target_projection")} FROM ${q("index_projections")} AS target_projection INNER JOIN ${q("knowledge_nodes")} AS projection_node ON projection_node.${q("id")} = target_projection.${q("node_id")} WHERE projection_node.${q("knowledge_space_id")} = ${parameters.space()} AND ${uuidDocumentMembership(`projection_node.${q("document_asset_id")}`)})`;
+  const pathTarget = `${field("target_type")} = 'knowledge-path' AND EXISTS (SELECT 1 FROM ${q("knowledge_paths")} AS target_path WHERE target_path.${q("knowledge_space_id")} = ${parameters.space()} AND (${field("target_id")} = ${castId("target_path")} OR ${field("target_id")} = target_path.${q("target_id")} OR ${field("virtual_path")} = target_path.${q("virtual_path")}) AND ${targetSemanticPathPredicateWithParametersSql(database, job, parameters, "target_path")})`;
+  const stagedCommitTarget = `${field("target_type")} = 'staged-commit' AND EXISTS (SELECT 1 FROM ${q("knowledge_space_staged_commits")} AS target_commit WHERE target_commit.${q("tenant_id")} = ${parameters.tenant()} AND target_commit.${q("knowledge_space_id")} = ${parameters.space()} AND ${uuidDocumentMembership(`target_commit.${q("document_asset_id")}`)} AND (${field("target_id")} = ${castId("target_commit")} OR ${field("target_id")} = target_commit.${q("raw_object_key")} OR ${field("target_id")} = target_commit.${q("published_object_key")}))`;
 
-  return `${scope} AND ((${field("target_type")} = 'knowledge-space' AND ${field("target_id")} = ${textParam(2)}) OR (${field("target_type")} = 'document-asset' AND ${textDocumentMembership(field("target_id"))}) OR ${documentVirtualPath} OR ${textDocumentMembership(metadataDocumentId)} OR (${parseArtifactTarget}) OR (${projectionTarget}) OR (${pathTarget}) OR (${stagedCommitTarget}))`;
+  return `${scope} AND (${knowledgeSpaceTarget} OR ${documentAssetTarget} OR ${documentVirtualPath} OR ${metadataTarget} OR (${parseArtifactTarget}) OR (${projectionTarget}) OR (${pathTarget}) OR (${stagedCommitTarget}))`;
 }
 
 async function hasActiveMutationLease(
@@ -4591,6 +5172,9 @@ async function hasActiveSourceCredentialBackfill(
   } else if (job.targetType === "document_asset") {
     params.push(job.targetId);
     target = ` AND ${q("source_id")} IN (SELECT ${q("source_id")} FROM ${q("document_assets")} WHERE ${q("knowledge_space_id")} = ${p(2)} AND ${q("id")} = ${p(3)} AND ${q("source_id")} IS NOT NULL)`;
+  } else if (job.targetType === "logical_document") {
+    params.push(job.targetId);
+    target = ` AND ${q("source_id")} IN (SELECT ${q("source_id")} FROM ${q("logical_documents")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("id")} = ${p(3)} AND ${q("source_id")} IS NOT NULL)`;
   }
   const result = await database.execute({
     maxRows: 1,

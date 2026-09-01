@@ -58,6 +58,47 @@ describe.each(["postgres", "tidb"] as const)(
       ).toBe(true);
     });
 
+    it("allows disabling an unrelated Source while fencing the deleting Source", async () => {
+      const unrelatedCalls: DatabaseExecuteInput[] = [];
+      const unrelated = createDatabaseSourceRepository({
+        database: databaseFixture(
+          dialect,
+          unrelatedCalls,
+          false,
+          false,
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99",
+        ),
+      });
+
+      await expect(
+        unrelated.disableWithPermissionFence({
+          expectedVersion: 1,
+          id: sourceId,
+          knowledgeSpaceId,
+          now,
+          permissionFence: permissionFence(),
+        }),
+      ).resolves.toMatchObject({ status: "disabled" });
+      const scopedAdmission = unrelatedCalls.find((call) => call.tableName === "deletion_jobs");
+      expect(scopedAdmission?.params).toContain(sourceId);
+      expect(scopedAdmission?.sql).toContain("'source'");
+      expect(scopedAdmission?.sql).toContain("logical_documents");
+      expect(scopedAdmission?.sql).toContain("document_assets");
+
+      const matching = createDatabaseSourceRepository({
+        database: databaseFixture(dialect, [], false, false, sourceId),
+      });
+      await expect(
+        matching.disableWithPermissionFence({
+          expectedVersion: 1,
+          id: sourceId,
+          knowledgeSpaceId,
+          now,
+          permissionFence: permissionFence(),
+        }),
+      ).rejects.toMatchObject({ name: "SourcePermissionFenceError" });
+    });
+
     it("does not lock or update the source after permission revocation", async () => {
       const calls: DatabaseExecuteInput[] = [];
       const repository = createDatabaseSourceRepository({
@@ -135,6 +176,7 @@ function databaseFixture(
   calls: DatabaseExecuteInput[],
   revoked: boolean,
   capability = false,
+  deletingSourceId?: string,
 ): DatabaseAdapter {
   const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     calls.push(input);
@@ -144,7 +186,13 @@ function databaseFixture(
         rowsAffected: 1,
       };
     }
-    if (input.tableName === "deletion_jobs") return empty();
+    if (input.tableName === "deletion_jobs") {
+      if (!deletingSourceId) return empty();
+      const scopedAdmission = input.sql.includes("'source'");
+      return !scopedAdmission || input.params.includes(deletingSourceId)
+        ? { rows: [{ id: "active-deletion" }], rowsAffected: 1 }
+        : empty();
+    }
     if (input.tableName === "capability_grants") {
       return capability && !revoked
         ? {

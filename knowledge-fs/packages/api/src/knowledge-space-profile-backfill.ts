@@ -16,7 +16,7 @@ import {
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 import {
   type KnowledgeSpaceProfileKind,
   KnowledgeSpaceProfileKinds,
@@ -535,7 +535,9 @@ export function createDatabaseKnowledgeSpaceProfileBackfillRepository({
             "Knowledge-space profile backfill was not found",
           );
         }
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, preview))) {
+        if (
+          !(await lockKnowledgeSpaceForWholeSpaceDeletionAdmission(database, transaction, preview))
+        ) {
           const current = await requireFencedBackfill(database, transaction, fence);
           return {
             activated: false,

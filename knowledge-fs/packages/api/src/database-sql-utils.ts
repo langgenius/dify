@@ -1,4 +1,4 @@
-import type { DatabaseAdapter } from "@knowledge/core";
+import type { DatabaseAdapter, DatabaseQueryValue } from "@knowledge/core";
 
 type DatabaseDialectInput = Pick<DatabaseAdapter, "dialect">;
 
@@ -21,6 +21,27 @@ export function qualifiedDatabaseIdentifier(
 
 export function databasePlaceholder(database: DatabaseDialectInput, position: number): string {
   return database.dialect === "postgres" ? `$${position}` : "?";
+}
+
+/**
+ * Creates a logical parameter reference that can be rendered more than once in a SQL statement.
+ * PostgreSQL positional parameters can reuse their first `$n`; TiDB's anonymous `?` parameters
+ * require the value to be appended for every occurrence, in SQL lexical order.
+ */
+export function createReusableDatabaseParameter(
+  database: DatabaseDialectInput,
+  params: DatabaseQueryValue[],
+  value: DatabaseQueryValue,
+): () => string {
+  let postgresPosition: number | undefined;
+  return () => {
+    if (database.dialect === "postgres" && postgresPosition !== undefined) {
+      return databasePlaceholder(database, postgresPosition);
+    }
+    params.push(value);
+    postgresPosition = params.length;
+    return databasePlaceholder(database, postgresPosition);
+  };
 }
 
 export function jsonInsertPlaceholder(

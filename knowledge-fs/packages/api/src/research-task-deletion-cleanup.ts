@@ -9,9 +9,9 @@ export interface ResearchTaskSpaceDeletionScope {
 }
 
 /**
- * Research jobs accept arbitrary query/metadata/progress payloads, so document/source durable
- * deletion cannot prove per-document attribution. I2 therefore invalidates the complete space
- * Research history. Deleting the owning jobs makes every GET/partials/events endpoint return 404.
+ * Removes the complete Research history only when its owning knowledge space is deleted. Child
+ * deletion deliberately never calls this space-scoped cleanup; its history remains readable and
+ * deleted document citations are projected to unavailable tombstones at read time.
  */
 export async function deleteResearchTaskSpaceResiduePage(
   database: DatabaseAdapter,

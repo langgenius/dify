@@ -208,7 +208,7 @@ describe.each(["postgres", "tidb"] as const)(
       }
     });
 
-    it("fails closed when durable deletion becomes active before job insertion", async () => {
+    it("fails closed when knowledge-space deletion becomes active before job insertion", async () => {
       const fake = new RecordingDatabase(dialect, async (input) => {
         if (input.tableName === "research_task_jobs" && input.operation === "insert") {
           return { rows: [], rowsAffected: 0 };
@@ -236,9 +236,47 @@ describe.each(["postgres", "tidb"] as const)(
       });
       expect(fake.calls[1]?.sql).toContain("deletion_jobs");
       expect(fake.calls[1]?.sql).toContain("active_slot");
+      expect(fake.calls[1]?.sql).toContain("target_type");
+      expect(fake.calls[1]?.sql).toContain("knowledge_space");
       expect(fake.calls[1]?.sql).toContain("NOT EXISTS");
       expect(fake.calls[1]?.sql).not.toContain("Compare durable ACL behavior");
       assertPlaceholderArity(fake.calls[1] as DatabaseExecuteInput, dialect);
+    });
+
+    it("admits a fast task while only a child-resource deletion is active", async () => {
+      const fake = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "insert") {
+          const quoted = (identifier: string) =>
+            dialect === "postgres" ? `"${identifier}"` : `\`${identifier}\``;
+          const scopesDeletionFenceToWholeSpace =
+            input.sql.includes(`active_deletion.${quoted("target_type")} = 'knowledge_space'`) &&
+            input.sql.includes(
+              `active_deletion.${quoted("target_id")} = ${
+                dialect === "postgres" ? "$3::uuid" : "?"
+              }`,
+            ) &&
+            (dialect === "postgres" ||
+              input.params.slice(-3).join(":") === `tenant-1:${SPACE_ID}:${SPACE_ID}`);
+          return { rows: [], rowsAffected: scopesDeletionFenceToWholeSpace ? 1 : 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseResearchTaskDurableRepository({ database: fake.adapter });
+
+      await expect(repository.start(job({ mode: "fast" }))).resolves.toMatchObject({
+        id: JOB_ID,
+        mode: "fast",
+      });
+
+      expect(fake.commits).toBe(1);
+      expect(fake.rollbacks).toBe(0);
+      const insert = fake.calls.find(
+        (call) => call.tableName === "research_task_jobs" && call.operation === "insert",
+      );
+      expect(insert?.sql).toContain("target_type");
+      expect(insert?.sql).toContain("target_id");
+      expect(insert?.sql).toContain("= 'knowledge_space'");
+      assertPlaceholderArity(insert as DatabaseExecuteInput, dialect);
     });
 
     it("rolls back the job/outbox transaction when the progress append fails", async () => {
@@ -1839,7 +1877,7 @@ function outboxRow(overrides: Partial<DatabaseRow> = {}): DatabaseRow {
   };
 }
 
-function job(): ResearchTaskJob {
+function job(overrides: Partial<ResearchTaskJob> = {}): ResearchTaskJob {
   return {
     cost: { entries: [], totalUsd: 0 },
     createdAt: 1_000,
@@ -1862,6 +1900,7 @@ function job(): ResearchTaskJob {
     tenantId: "tenant-1",
     topK: 7,
     updatedAt: 1_000,
+    ...overrides,
   };
 }
 

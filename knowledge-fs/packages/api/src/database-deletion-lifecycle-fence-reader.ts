@@ -1,7 +1,7 @@
 import type { DatabaseAdapter, DatabaseQueryValue, DatabaseRow } from "@knowledge/core";
 
 import { stringColumn } from "./database-row-utils";
-import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
+import { createReusableDatabaseParameter, quoteDatabaseIdentifier } from "./database-sql-utils";
 import type {
   ActiveDeletionLifecycleFence,
   DeletionLifecycleFenceReader,
@@ -14,9 +14,9 @@ const tombstoneTable = "deletion_tombstones";
 /**
  * Reads active deletion admission fences plus the permanent target tombstone hierarchy.
  *
- * Source-scoped writers may overlap deletion of a different Source. Space, document, and matching
- * Source deletions still fence them; writers without a Source scope remain space-wide. Completed
- * tombstones remain irreversible target-specific write fences.
+ * Target-scoped writers may overlap deletion of unrelated Sources and documents. A whole-space
+ * deletion always wins; matching ancestors, descendants, and completed target tombstones remain
+ * irreversible target-specific write fences.
  */
 export function createDatabaseDeletionLifecycleFenceReader(
   database: DatabaseAdapter,
@@ -24,17 +24,12 @@ export function createDatabaseDeletionLifecycleFenceReader(
   return {
     async getActiveFence(rawScope) {
       const scope = normalizeScope(rawScope);
-      const params = [
-        scope.tenantId,
-        scope.knowledgeSpaceId,
-        scope.sourceId ?? null,
-        scope.documentAssetId ?? null,
-      ] satisfies readonly DatabaseQueryValue[];
+      const query = tombstoneHierarchyQuery(database, scope);
       const result = await database.execute({
         maxRows: 1,
         operation: "select",
-        params,
-        sql: tombstoneHierarchySql(database),
+        params: query.params,
+        sql: query.sql,
         tableName: tombstoneTable,
       });
       return result.rows[0] ? mapFence(result.rows[0]) : null;
@@ -42,16 +37,37 @@ export function createDatabaseDeletionLifecycleFenceReader(
   };
 }
 
-function tombstoneHierarchySql(database: DatabaseAdapter): string {
+function tombstoneHierarchyQuery(
+  database: DatabaseAdapter,
+  scope: DeletionLifecycleFenceScope,
+): { readonly params: readonly DatabaseQueryValue[]; readonly sql: string } {
   const q = (identifier: string) => quoteDatabaseIdentifier(database, identifier);
-  const p = (position: number) => databasePlaceholder(database, position);
-  const idParam = (position: number) =>
-    database.dialect === "postgres" ? `${p(position)}::uuid` : p(position);
-  const sourceId = idParam(3);
-  const documentAssetId = idParam(4);
+  const params: DatabaseQueryValue[] = [];
+  const tenant = createReusableDatabaseParameter(database, params, scope.tenantId);
+  const knowledgeSpace = createReusableDatabaseParameter(database, params, scope.knowledgeSpaceId);
+  const source = createReusableDatabaseParameter(database, params, scope.sourceId ?? null);
+  const document = createReusableDatabaseParameter(database, params, scope.documentId ?? null);
+  const documentAsset = createReusableDatabaseParameter(
+    database,
+    params,
+    scope.documentAssetId ?? null,
+  );
+  const idParam = (parameter: () => string) =>
+    database.dialect === "postgres" ? `${parameter()}::uuid` : parameter();
+  const sourceId = () => idParam(source);
+  const documentId = () => idParam(document);
+  const documentAssetId = () => idParam(documentAsset);
   const columns = ["id", "tenant_id", "knowledge_space_id", "target_type", "target_id"];
   const selected = columns.map(q).join(", ");
-  return `SELECT ${selected} FROM (SELECT ${selected}, 0 AS ${q("fence_priority")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1 AND (${q("target_type")} <> 'source' OR ${q("target_id")} = COALESCE(${sourceId}, ${q("target_id")})) UNION ALL SELECT ${selected}, 1 AS ${q("fence_priority")} FROM ${q(tombstoneTable)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ((${q("target_type")} = 'knowledge_space' AND ${q("target_id")} = ${p(2)}) OR (${q("target_type")} = 'source' AND ((${sourceId} IS NOT NULL AND ${q("target_id")} = ${sourceId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_id")} IN (SELECT source_document.${q("source_id")} FROM ${q("document_assets")} source_document WHERE source_document.${q("knowledge_space_id")} = ${p(2)} AND source_document.${q("id")} = ${documentAssetId} AND source_document.${q("source_id")} IS NOT NULL)))) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'document_asset' AND ${q("target_id")} = ${documentAssetId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'logical_document' AND ${q("target_id")} IN (SELECT logical_revision.${q("document_id")} FROM ${q("document_revisions")} logical_revision WHERE logical_revision.${q("tenant_id")} = ${p(1)} AND logical_revision.${q("knowledge_space_id")} = ${p(2)} AND logical_revision.${q("document_asset_id")} = ${documentAssetId})))) AS lifecycle_fence ORDER BY ${q("fence_priority")} ASC, CASE ${q("target_type")} WHEN 'knowledge_space' THEN 0 WHEN 'source' THEN 1 ELSE 2 END ASC LIMIT 1;`;
+  const hierarchy = (alias: string) => {
+    const targetType = `${alias}.${q("target_type")}`;
+    const targetId = `${alias}.${q("target_id")}`;
+    return `((${targetType} = 'knowledge_space' AND ${targetId} = ${knowledgeSpace()}) OR (${targetType} = 'source' AND ((${sourceId()} IS NOT NULL AND ${targetId} = ${sourceId()}) OR (${documentId()} IS NOT NULL AND ${targetId} IN (SELECT source_document.${q("source_id")} FROM ${q("logical_documents")} source_document WHERE source_document.${q("tenant_id")} = ${tenant()} AND source_document.${q("knowledge_space_id")} = ${knowledgeSpace()} AND source_document.${q("id")} = ${documentId()} AND source_document.${q("source_id")} IS NOT NULL)) OR (${documentAssetId()} IS NOT NULL AND ${targetId} IN (SELECT source_asset.${q("source_id")} FROM ${q("document_assets")} source_asset WHERE source_asset.${q("knowledge_space_id")} = ${knowledgeSpace()} AND source_asset.${q("id")} = ${documentAssetId()} AND source_asset.${q("source_id")} IS NOT NULL)))) OR (${targetType} = 'logical_document' AND ((${documentId()} IS NOT NULL AND ${targetId} = ${documentId()}) OR (${documentAssetId()} IS NOT NULL AND ${targetId} IN (SELECT logical_revision.${q("document_id")} FROM ${q("document_revisions")} logical_revision WHERE logical_revision.${q("tenant_id")} = ${tenant()} AND logical_revision.${q("knowledge_space_id")} = ${knowledgeSpace()} AND logical_revision.${q("document_asset_id")} = ${documentAssetId()})))) OR (${targetType} = 'document_asset' AND ((${documentAssetId()} IS NOT NULL AND ${targetId} = ${documentAssetId()}) OR (${documentId()} IS NOT NULL AND ${targetId} IN (SELECT document_revision.${q("document_asset_id")} FROM ${q("document_revisions")} document_revision WHERE document_revision.${q("tenant_id")} = ${tenant()} AND document_revision.${q("knowledge_space_id")} = ${knowledgeSpace()} AND document_revision.${q("document_id")} = ${documentId()}))))`;
+  };
+  const selectedFor = (alias: string) =>
+    columns.map((column) => `${alias}.${q(column)}`).join(", ");
+  const sql = `SELECT ${selected} FROM (SELECT ${selectedFor("active_deletion")}, 0 AS ${q("fence_priority")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${tenant()} AND active_deletion.${q("knowledge_space_id")} = ${knowledgeSpace()} AND active_deletion.${q("active_slot")} = 1 AND ${hierarchy("active_deletion")} UNION ALL SELECT ${selectedFor("target_tombstone")}, 1 AS ${q("fence_priority")} FROM ${q(tombstoneTable)} target_tombstone WHERE target_tombstone.${q("tenant_id")} = ${tenant()} AND target_tombstone.${q("knowledge_space_id")} = ${knowledgeSpace()} AND ${hierarchy("target_tombstone")}) AS lifecycle_fence ORDER BY ${q("fence_priority")} ASC, CASE ${q("target_type")} WHEN 'knowledge_space' THEN 0 WHEN 'source' THEN 1 ELSE 2 END ASC LIMIT 1;`;
+  return { params, sql };
 }
 
 function mapFence(row: DatabaseRow): ActiveDeletionLifecycleFence {
@@ -85,6 +101,7 @@ function normalizeScope(scope: DeletionLifecycleFenceScope): DeletionLifecycleFe
     ...(scope.documentAssetId
       ? { documentAssetId: requiredId(scope.documentAssetId, "documentAssetId") }
       : {}),
+    ...(scope.documentId ? { documentId: requiredId(scope.documentId, "documentId") } : {}),
     knowledgeSpaceId: requiredId(scope.knowledgeSpaceId, "knowledgeSpaceId"),
     ...(scope.sourceId ? { sourceId: requiredId(scope.sourceId, "sourceId") } : {}),
     tenantId: requiredId(scope.tenantId, "tenantId"),

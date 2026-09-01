@@ -7,9 +7,9 @@ export interface ResearchTaskDeletionVisibilityScope {
   readonly tenantId: string;
 }
 
-/** Public Research views are conservative because stored query/progress/bundle metadata can name
- * any document or source. Any active durable deletion in the space hides the complete history
- * until the deletion processor has physically invalidated it. */
+/** Public Research history remains visible during subresource deletion; evidence reads separately
+ * project deleted document references to content-free unavailable tombstones. Only deletion of the
+ * owning knowledge space hides the complete history. */
 export interface ResearchTaskDeletionVisibility {
   isSpaceReadable(scope: ResearchTaskDeletionVisibilityScope): Promise<boolean>;
 }
@@ -28,7 +28,7 @@ export function createDatabaseResearchTaskDeletionVisibility(
         params: [scope.tenantId, scope.knowledgeSpaceId],
         sql: `SELECT ${q("id")} FROM ${q("deletion_jobs")} WHERE ${q(
           "tenant_id",
-        )} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1 LIMIT 1;`,
+        )} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("target_type")} = 'knowledge_space' AND ${q("active_slot")} = 1 LIMIT 1;`,
         tableName: "deletion_jobs",
       });
       return result.rows.length === 0;

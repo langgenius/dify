@@ -5,8 +5,13 @@ import {
   type DatabaseRow,
   type EvidenceBundle,
   EvidenceBundleSchema,
+  type EvidenceItem,
 } from "@knowledge/core";
 
+import {
+  TRACE_EVIDENCE_AVAILABILITY_METADATA_KEY,
+  TRACE_UNAVAILABLE_EVIDENCE_TEXT,
+} from "./answer-trace-evidence-availability";
 import { optionalStringColumn, stringColumn } from "./database-row-utils";
 import {
   databasePlaceholder,
@@ -103,7 +108,10 @@ export function createDatabaseEvidenceBundleRepository({
         )} = scoped_bundle.${q(database, "knowledge_space_id")} AND active_deletion.${q(
           database,
           "active_slot",
-        )} = 1) LIMIT 1;`,
+        )} = 1 AND active_deletion.${q(database, "target_type")} = 'knowledge_space' AND active_deletion.${q(
+          database,
+          "target_id",
+        )} = scoped_bundle.${q(database, "knowledge_space_id")}) LIMIT 1;`,
         tableName: "evidence_bundles",
       });
       if (!result.rows[0]) return null;
@@ -111,11 +119,17 @@ export function createDatabaseEvidenceBundleRepository({
       const ids = citationDocumentIds(bundle);
       if (ids.length > maxDocumentReferences) return null;
       try {
-        await assertActiveDocuments(database, database, input.knowledgeSpaceId, ids);
+        const unavailableDocumentIds = await resolveScopedDocumentAvailability(
+          database,
+          database,
+          input.knowledgeSpaceId,
+          ids,
+          false,
+        );
+        return redactUnavailableDocumentEvidence(bundle, unavailableDocumentIds);
       } catch {
         return null;
       }
-      return bundle;
     },
   };
 }
@@ -137,22 +151,51 @@ export async function persistScopedEvidenceBundleWithExecutor(
       `Evidence bundle document references exceed maxDocumentReferences=${maxDocumentReferences}`,
     );
   }
-  await assertActiveDocuments(database, executor, input.knowledgeSpaceId, documentAssetIds);
-
   const existing = await selectBundleById(database, executor, input.bundle.id, true);
   if (existing) {
     const existingTenantId = optionalStringColumn(existing, "tenant_id");
     const existingSpaceId = optionalStringColumn(existing, "knowledge_space_id");
     const existingBundle = mapEvidenceBundle(existing);
-    if (
-      existingTenantId !== input.tenantId ||
-      existingSpaceId !== input.knowledgeSpaceId ||
-      JSON.stringify(existingBundle) !== JSON.stringify(input.bundle)
-    ) {
+    if (existingTenantId !== input.tenantId || existingSpaceId !== input.knowledgeSpaceId) {
       throw new Error("Evidence bundle id already belongs to different scoped content");
     }
-    return existingBundle;
+    const replayDocumentAssetIds = [
+      ...new Set([...documentAssetIds, ...citationDocumentIds(existingBundle)]),
+    ].sort();
+    if (replayDocumentAssetIds.length > maxDocumentReferences) {
+      throw new Error(
+        `Evidence bundle document references exceed maxDocumentReferences=${maxDocumentReferences}`,
+      );
+    }
+    // An exact retry can arrive after physical document cleanup. The existing scoped bundle is
+    // durable proof that those citation ids were validated on first creation, so missing rows now
+    // mean unavailable evidence rather than a new cross-space reference.
+    const unavailableDocumentIds = await resolveScopedDocumentAvailability(
+      database,
+      executor,
+      input.knowledgeSpaceId,
+      replayDocumentAssetIds,
+      false,
+    );
+    const canonicalExisting = redactUnavailableDocumentEvidence(
+      existingBundle,
+      unavailableDocumentIds,
+    );
+    const canonicalReplay = redactUnavailableDocumentEvidence(input.bundle, unavailableDocumentIds);
+    if (JSON.stringify(canonicalExisting) !== JSON.stringify(canonicalReplay)) {
+      throw new Error("Evidence bundle id already belongs to different scoped content");
+    }
+    return canonicalExisting;
   }
+
+  const unavailableDocumentIds = await resolveScopedDocumentAvailability(
+    database,
+    executor,
+    input.knowledgeSpaceId,
+    documentAssetIds,
+    true,
+  );
+  const persistedBundle = redactUnavailableDocumentEvidence(input.bundle, unavailableDocumentIds);
 
   const columns = [
     "id",
@@ -167,16 +210,16 @@ export async function persistScopedEvidenceBundleWithExecutor(
     "updated_at",
   ] as const;
   const params = [
-    input.bundle.id,
+    persistedBundle.id,
     input.tenantId,
     input.knowledgeSpaceId,
-    input.bundle.traceId ?? null,
-    input.bundle.query,
-    input.bundle.state,
-    JSON.stringify(input.bundle.items),
-    JSON.stringify(input.bundle.missingEvidence),
-    input.bundle.createdAt,
-    input.bundle.createdAt,
+    persistedBundle.traceId ?? null,
+    persistedBundle.query,
+    persistedBundle.state,
+    JSON.stringify(persistedBundle.items),
+    JSON.stringify(persistedBundle.missingEvidence),
+    persistedBundle.createdAt,
+    persistedBundle.createdAt,
   ] satisfies readonly DatabaseQueryValue[];
   const alias = "scoped_bundle";
   const result = await executor.execute({
@@ -204,13 +247,19 @@ export async function persistScopedEvidenceBundleWithExecutor(
     )} = ${q(database, alias)}.${q(
       database,
       "knowledge_space_id",
-    )} AND active_deletion.${q(database, "active_slot")} = 1);`,
+    )} AND active_deletion.${q(database, "active_slot")} = 1 AND active_deletion.${q(
+      database,
+      "target_type",
+    )} = 'knowledge_space' AND active_deletion.${q(database, "target_id")} = ${q(
+      database,
+      alias,
+    )}.${q(database, "knowledge_space_id")});`,
     tableName: "evidence_bundles",
   });
   if (result.rowsAffected !== 1) {
     throw new Error("Evidence bundle creation rejected by active durable deletion");
   }
-  return cloneBundle(input.bundle);
+  return cloneBundle(persistedBundle);
 }
 
 export async function assertEvidenceBundleScopeReady(database: DatabaseAdapter): Promise<void> {
@@ -320,36 +369,45 @@ async function lockWritableSpace(
   }
 }
 
-async function assertActiveDocuments(
+async function resolveScopedDocumentAvailability(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
   knowledgeSpaceId: string,
   documentAssetIds: readonly string[],
-): Promise<void> {
-  if (documentAssetIds.length === 0) return;
+  requireAllDocuments: boolean,
+): Promise<ReadonlySet<string>> {
+  if (documentAssetIds.length === 0) return new Set();
   const params: DatabaseQueryValue[] = [knowledgeSpaceId, ...documentAssetIds];
   const result = await executor.execute({
     maxRows: documentAssetIds.length,
     operation: "select",
     params,
-    sql: `SELECT ${q(database, "id")} FROM ${q(
+    sql: `SELECT ${q(database, "id")}, ${q(database, "lifecycle_state")}, ${q(
       database,
-      "document_assets",
-    )} WHERE ${q(database, "knowledge_space_id")} = ${p(
+      "deletion_job_id",
+    )} FROM ${q(database, "document_assets")} WHERE ${q(database, "knowledge_space_id")} = ${p(
       database,
       1,
     )} AND ${q(database, "id")} IN (${documentAssetIds
       .map((_, index) => p(database, index + 2))
-      .join(", ")}) AND ${q(database, "lifecycle_state")} = 'active' AND ${q(
-      database,
-      "deletion_job_id",
-    )} IS NULL;`,
+      .join(", ")});`,
     tableName: "document_assets",
   });
   const found = new Set(result.rows.map((row) => stringColumn(row, "id")));
-  if (found.size !== documentAssetIds.length || documentAssetIds.some((id) => !found.has(id))) {
+  const missing = documentAssetIds.filter((id) => !found.has(id));
+  if (requireAllDocuments && (found.size !== documentAssetIds.length || missing.length > 0)) {
     throw new Error("Evidence bundle references unavailable or cross-space documents");
   }
+  return new Set([
+    ...missing,
+    ...result.rows
+      .filter(
+        (row) =>
+          stringColumn(row, "lifecycle_state") !== "active" ||
+          optionalStringColumn(row, "deletion_job_id") !== undefined,
+      )
+      .map((row) => stringColumn(row, "id")),
+  ]);
 }
 
 async function selectBundleById(
@@ -412,6 +470,41 @@ function normalizeLookup(input: ScopedEvidenceBundleLookup): ScopedEvidenceBundl
 
 function cloneBundle(bundle: EvidenceBundle): EvidenceBundle {
   return EvidenceBundleSchema.parse(JSON.parse(JSON.stringify(bundle)) as unknown);
+}
+
+function redactUnavailableDocumentEvidence(
+  bundle: EvidenceBundle,
+  unavailableDocumentIds: ReadonlySet<string>,
+): EvidenceBundle {
+  if (unavailableDocumentIds.size === 0) return cloneBundle(bundle);
+  return EvidenceBundleSchema.parse({
+    ...bundle,
+    items: bundle.items.map((item) =>
+      item.citations.some((citation) => unavailableDocumentIds.has(citation.documentAssetId))
+        ? contentFreeUnavailableEvidenceItem(item)
+        : item,
+    ),
+  });
+}
+
+function contentFreeUnavailableEvidenceItem(item: EvidenceItem): EvidenceItem {
+  return {
+    ...item,
+    citations: item.citations.map((citation) => ({
+      documentAssetId: citation.documentAssetId,
+      documentVersion: citation.documentVersion,
+      sectionPath: [],
+    })),
+    conflicts: [],
+    freshness: { status: "unknown" },
+    metadata: {
+      [TRACE_EVIDENCE_AVAILABILITY_METADATA_KEY]: {
+        reason: "document-deleted-or-unavailable",
+        status: "unavailable",
+      },
+    },
+    text: TRACE_UNAVAILABLE_EVIDENCE_TEXT,
+  };
 }
 
 function q(database: DatabaseAdapter, identifier: string): string {

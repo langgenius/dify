@@ -20,7 +20,7 @@ import {
   KnowledgeSpaceAccessError,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForRetrievalAdmission } from "./knowledge-space-deletion-admission";
 import type {
   FrozenQualityRuntimeSnapshot,
   MissingEvidenceReview,
@@ -731,7 +731,7 @@ export function createDatabaseQualityControlRepository({
           maxRows: 1,
           operation: "select",
           params: [input.now],
-          sql: `SELECT outbox.${q(database, "id")} AS ${q(database, "outbox_id")}, run.* FROM ${q(database, "quality_replay_outbox")} outbox INNER JOIN ${q(database, "quality_replay_runs")} run ON run.${q(database, "id")} = outbox.${q(database, "run_id")} INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND space.${q(database, "id")} = run.${q(database, "knowledge_space_id")} WHERE (outbox.${q(database, "delivery_state")} = 'pending' OR (outbox.${q(database, "delivery_state")} = 'claimed' AND outbox.${q(database, "lease_expires_at")} < ${p(database, 1)})) AND run.${q(database, "state")} IN ('queued', 'running') AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q(database, "deletion_jobs")} active_deletion WHERE active_deletion.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND active_deletion.${q(database, "knowledge_space_id")} = run.${q(database, "knowledge_space_id")} AND active_deletion.${q(database, "active_slot")} = 1) ORDER BY outbox.${q(database, "created_at")} ASC, outbox.${q(database, "id")} ASC LIMIT 1;`,
+          sql: `SELECT outbox.${q(database, "id")} AS ${q(database, "outbox_id")}, run.* FROM ${q(database, "quality_replay_outbox")} outbox INNER JOIN ${q(database, "quality_replay_runs")} run ON run.${q(database, "id")} = outbox.${q(database, "run_id")} INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND space.${q(database, "id")} = run.${q(database, "knowledge_space_id")} WHERE (outbox.${q(database, "delivery_state")} = 'pending' OR (outbox.${q(database, "delivery_state")} = 'claimed' AND outbox.${q(database, "lease_expires_at")} < ${p(database, 1)})) AND run.${q(database, "state")} IN ('queued', 'running') AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q(database, "deletion_jobs")} active_deletion WHERE active_deletion.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND active_deletion.${q(database, "knowledge_space_id")} = run.${q(database, "knowledge_space_id")} AND active_deletion.${q(database, "active_slot")} = 1 AND active_deletion.${q(database, "target_type")} = 'knowledge_space' AND active_deletion.${q(database, "target_id")} = run.${q(database, "knowledge_space_id")}) ORDER BY outbox.${q(database, "created_at")} ASC, outbox.${q(database, "id")} ASC LIMIT 1;`,
           tableName: "quality_replay_outbox",
         });
         const candidateRow = candidate.rows[0];
@@ -1931,7 +1931,7 @@ async function lockActiveSpace(
   knowledgeSpaceId: string,
 ) {
   if (
-    !(await lockKnowledgeSpaceForDeletionAdmission(database, executor, {
+    !(await lockKnowledgeSpaceForRetrievalAdmission(database, executor, {
       knowledgeSpaceId,
       tenantId,
     }))

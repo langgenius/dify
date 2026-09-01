@@ -185,31 +185,43 @@ export function createDatabaseAnswerTraceRepository({
           throw new Error("Answer trace evidenceBundleId does not match embedded EvidenceBundle");
         }
         const resolvedEvidenceBundleId = parsed.evidenceBundleId ?? embeddedBundle?.id;
-        const persistedTrace = resolvedEvidenceBundleId
+        let persistedTrace = resolvedEvidenceBundleId
           ? parseAnswerTraceProvenance({
               ...parsed,
               evidenceBundleId: resolvedEvidenceBundleId,
             })
           : parsed;
+        let canonicalEmbeddedBundle: EvidenceBundle | undefined;
+        if (embeddedBundle) {
+          canonicalEmbeddedBundle = await persistScopedEvidenceBundleWithExecutor(
+            database,
+            transaction,
+            {
+              bundle: embeddedBundle,
+              knowledgeSpaceId: parsed.knowledgeSpaceId,
+              tenantId,
+            },
+          );
+          persistedTrace = replaceAnswerTraceEmbeddedEvidenceBundle(
+            persistedTrace,
+            canonicalEmbeddedBundle,
+          );
+        }
         const existing = await readStoredAnswerTraceForCreate(
           database,
           transaction,
           persistedTrace,
         );
         if (existing) {
-          return cloneAnswerTrace(reconcileAnswerTraceWrite(existing, persistedTrace));
+          const canonicalExisting = canonicalEmbeddedBundle
+            ? replaceAnswerTraceEmbeddedEvidenceBundle(existing, canonicalEmbeddedBundle)
+            : existing;
+          return cloneAnswerTrace(reconcileAnswerTraceWrite(canonicalExisting, persistedTrace));
         }
         if (persistedTrace.capabilityGrantId) {
           await assertCapabilityJobPublicationAllowed(database, transaction, {
             capabilityGrantId: persistedTrace.capabilityGrantId,
             knowledgeSpaceId: persistedTrace.knowledgeSpaceId,
-            tenantId,
-          });
-        }
-        if (embeddedBundle) {
-          await persistScopedEvidenceBundleWithExecutor(database, transaction, {
-            bundle: embeddedBundle,
-            knowledgeSpaceId: parsed.knowledgeSpaceId,
             tenantId,
           });
         }
@@ -298,7 +310,16 @@ export function createDatabaseAnswerTraceRepository({
           )} AND active_deletion.${quoteDatabaseIdentifier(
             database,
             "active_slot",
-          )} = 1) AND (${evidenceNullParameter} IS NULL OR EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(
+          )} = 1 AND active_deletion.${quoteDatabaseIdentifier(
+            database,
+            "target_type",
+          )} = 'knowledge_space' AND active_deletion.${quoteDatabaseIdentifier(
+            database,
+            "target_id",
+          )} = writable_space.${quoteDatabaseIdentifier(
+            database,
+            "id",
+          )}) AND (${evidenceNullParameter} IS NULL OR EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(
             database,
             "evidence_bundles",
           )} scoped_bundle WHERE scoped_bundle.${quoteDatabaseIdentifier(
@@ -549,6 +570,26 @@ function answerTraceEmbeddedEvidenceBundle(trace: AnswerTrace): EvidenceBundle |
     selected = candidate.data;
   }
   return selected;
+}
+
+function replaceAnswerTraceEmbeddedEvidenceBundle(
+  trace: AnswerTrace,
+  canonicalBundle: EvidenceBundle,
+): AnswerTrace {
+  return parseAnswerTraceProvenance({
+    ...trace,
+    steps: trace.steps.map((step) => {
+      const candidate = EvidenceBundleSchema.safeParse(step.metadata.evidenceBundle);
+      if (!candidate.success || candidate.data.id !== canonicalBundle.id) return step;
+      return {
+        ...step,
+        metadata: {
+          ...step.metadata,
+          evidenceBundle: canonicalBundle,
+        },
+      };
+    }),
+  });
 }
 
 function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRow[]): AnswerTrace {

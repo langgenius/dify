@@ -116,13 +116,28 @@ describe("database document candidate admission", () => {
         "deletion_jobs",
         "document_compilation_attempts",
       ]);
-      expect(lockingReads[1]?.params).toEqual([tenantId, knowledgeSpaceId, documentId]);
+      if (dialect === "postgres") {
+        expect(lockingReads[1]?.params).toEqual([tenantId, knowledgeSpaceId, documentId]);
+      } else {
+        expect(lockingReads[1]?.params.slice(0, 2)).toEqual([tenantId, knowledgeSpaceId]);
+        expect(lockingReads[1]?.params).toContain(documentId);
+      }
+      if (lockingReads[1]) assertPlaceholderArity(lockingReads[1], dialect);
       expect(lockingReads[1]?.sql).toContain("'knowledge_space'");
       expect(lockingReads[1]?.sql).toContain("'logical_document'");
       expect(lockingReads[1]?.sql).toContain("document_revisions");
     });
   }
 });
+
+function assertPlaceholderArity(input: DatabaseExecuteInput, dialect: "postgres" | "tidb") {
+  if (dialect === "tidb") {
+    expect(input.sql.match(/\?/g)?.length ?? 0).toBe(input.params.length);
+    return;
+  }
+  const positions = [...input.sql.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
+  expect(Math.max(0, ...positions)).toBe(input.params.length);
+}
 
 function admissionInput() {
   return {

@@ -464,6 +464,71 @@ describe("createInMemoryFailedQueryRepository", () => {
 });
 
 describe("createDatabaseFailedQueryRepository", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "allows %s failed-query persistence during child deletion and rejects whole-space deletion",
+    async (kind) => {
+      const createRepository = (activeTargetType: "knowledge_space" | "document_asset") => {
+        const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+          if (input.tableName === "knowledge_spaces") {
+            return {
+              rows: [{ deletion_job_id: null, id: SPACE_A, lifecycle_state: "active" }],
+              rowsAffected: 1,
+            };
+          }
+          if (input.tableName === "deletion_jobs") {
+            const wholeSpaceFence = hasWholeSpaceDeletionFence(input.sql, kind, {
+              idExpression: kind === "postgres" ? "$2" : "?",
+            });
+            return {
+              rows:
+                activeTargetType === "knowledge_space" || !wholeSpaceFence
+                  ? [{ id: "active-delete" }]
+                  : [],
+              rowsAffected: 0,
+            };
+          }
+          const permissionFence = permissionFenceResult(input);
+          if (permissionFence) return permissionFence;
+          if (input.tableName === "failed_queries" && input.operation === "insert") {
+            const wholeSpaceFence = hasWholeSpaceDeletionFence(input.sql, kind, {
+              idColumn: "knowledge_space_id",
+              ownerAlias: "failed_query_candidate",
+            });
+            return {
+              rows: [],
+              rowsAffected: activeTargetType === "knowledge_space" || !wholeSpaceFence ? 0 : 1,
+            };
+          }
+          return { rows: [], rowsAffected: 0 };
+        };
+        const database = createSchemaDatabaseAdapter({
+          executor,
+          kind,
+          transaction: async (callback) => callback({ execute: executor }),
+        });
+        return createDatabaseFailedQueryRepository({
+          database,
+          generateId: fixedId(1),
+          now: () => "2026-07-06T00:00:00.000Z",
+        });
+      };
+      const input = {
+        ...captureAuth(),
+        knowledgeSpaceId: SPACE_A,
+        mode: "fast" as const,
+        query: "scope-safe failed query",
+        trigger: "no-retrieval-evidence" as const,
+      };
+
+      await expect(createRepository("document_asset").create(input)).resolves.toMatchObject({
+        knowledgeSpaceId: SPACE_A,
+      });
+      await expect(createRepository("knowledge_space").create(input)).rejects.toThrow(
+        "Failed query write rejected because knowledge space is unavailable",
+      );
+    },
+  );
+
   it("persists workflow Capability provenance and reuses an exact event across fresh grants", async () => {
     const eventId = "10000000-0000-4000-8000-000000000077";
     const traceGrantId = "10000000-0000-4000-8000-000000000078";
@@ -1096,4 +1161,23 @@ function assertPlaceholderArity(call: DatabaseExecuteInput, dialect: "postgres" 
   }
   const positions = [...call.sql.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
   expect(Math.max(0, ...positions)).toBe(call.params.length);
+}
+
+function hasWholeSpaceDeletionFence(
+  sql: string,
+  dialect: "postgres" | "tidb",
+  input:
+    | { readonly idColumn: string; readonly ownerAlias: string }
+    | { readonly idExpression: string },
+): boolean {
+  const quoted = (identifier: string) =>
+    dialect === "postgres" ? `"${identifier}"` : `\`${identifier}\``;
+  const idExpression =
+    "idExpression" in input
+      ? input.idExpression
+      : `${quoted(input.ownerAlias)}.${quoted(input.idColumn)}`;
+  return (
+    sql.includes(`active_deletion.${quoted("target_type")} = 'knowledge_space'`) &&
+    sql.includes(`active_deletion.${quoted("target_id")} = ${idExpression}`)
+  );
 }
