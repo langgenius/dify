@@ -274,10 +274,21 @@ function assertSqlPlaceholderArity(
 ): void {
   expect(call).toBeDefined();
   if (!call) return;
+  assertSqlParenthesesBalanced(call.sql);
   if (dialect === "tidb") {
     expect(call.sql.match(/\?/gu) ?? []).toHaveLength(call.params.length);
     return;
   }
   const positions = [...call.sql.matchAll(/\$(\d+)/gu)].map((match) => Number(match[1]));
   expect(Math.max(0, ...positions)).toBe(call.params.length);
+}
+
+function assertSqlParenthesesBalanced(sql: string): void {
+  let depth = 0;
+  for (const character of sql) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    expect(depth).toBeGreaterThanOrEqual(0);
+  }
+  expect(depth).toBe(0);
 }

@@ -522,11 +522,15 @@ function lowReasoningEffortSupported(selection: KnowledgeSpaceModelSelection): b
   const pluginId = selection.pluginId.trim().toLocaleLowerCase();
   const provider = selection.provider.trim().toLocaleLowerCase();
   const model = selection.model.trim().toLocaleLowerCase();
-  return (
-    pluginId === "langgenius/openai" &&
-    provider === "openai" &&
-    /^(?:gpt-5(?:[.-]|$)|o(?:1|3|4)(?:[.-]|$))/u.test(model)
-  );
+  const openAiReasoningModel = /^(?:gpt-5(?:[.-]|$)|o(?:1|3|4)(?:[.-]|$))/u;
+  const directOpenAi =
+    pluginId === "langgenius/openai" && provider === "openai" && openAiReasoningModel.test(model);
+  const openRouterOpenAi =
+    pluginId === "langgenius/openrouter" &&
+    provider === "openrouter" &&
+    model.startsWith("openai/") &&
+    openAiReasoningModel.test(model.slice("openai/".length));
+  return directOpenAi || openRouterOpenAi;
 }
 
 function normalizeBooleanValue(value: unknown): boolean | undefined {
