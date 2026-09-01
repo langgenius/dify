@@ -1,14 +1,17 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
+import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { useDocumentReindexWorkflow } from './workflow-context'
 
-export function DocumentReindexAction({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+export function DocumentReindexAction() {
   const { t } = useTranslation('dataset')
+  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const {
     canCancel,
     cancelBusy,

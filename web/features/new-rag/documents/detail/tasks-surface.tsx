@@ -1,29 +1,28 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { LogicalDocument } from '../models'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { logicalDocumentListFromApi } from '../models'
 import { ProcessingTasksDrawer } from '../tasks/drawer'
 import { createTaskProgressStore } from '../tasks/progress-store'
+import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
+import { documentDetailDocumentAtom, refreshDocumentDetailAtom } from './state/queries'
 import { DocumentPermissionRecoveryNotice, DocumentTaskNotices } from './status'
 import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
 
 export function DocumentTasksSurface({
-  currentDocument,
-  knowledgeSpaceId,
-  refetchDocument,
   titleRef,
 }: {
-  currentDocument: LogicalDocument
-  knowledgeSpaceId: string
-  refetchDocument: () => Promise<unknown>
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
+  const currentDocument = useAtomValue(documentDetailDocumentAtom)
+  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
+  const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
   const {
     fetchNextPage,
     hasNextPage,
@@ -85,7 +84,7 @@ export function DocumentTasksSurface({
         onLoadMoreTasks={() => void fetchNextPage()}
         onOpenChange={setOpen}
         onRefreshDocumentsAndTasks={() => {
-          void Promise.all([refetchDocument(), documentsQuery.refetch(), refetch()])
+          void Promise.all([refreshDocument(), documentsQuery.refetch(), refetch()])
         }}
         onRetryDocumentQuery={() => {
           if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage()

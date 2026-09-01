@@ -1,9 +1,8 @@
 'use client'
 
-import type { LogicalDocument } from '../models'
+import { useAtomValue } from 'jotai'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { newKnowledgeDocumentsPath } from '../../routes'
 import { useKnowledgeSpace } from '../../space/context'
@@ -12,6 +11,8 @@ import { DocumentErrorState } from './error-state'
 import { DocumentDetailHeader } from './header'
 import { DocumentReindexAction } from './reindex-action'
 import { DocumentRevisionBrowser } from './revision-browser'
+import { documentDetailDocumentIdAtom, documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
+import { documentDetailDocumentAtom } from './state/queries'
 import { DocumentTasksSurface } from './tasks-surface'
 import {
   DocumentReindexWorkflowContext,
@@ -21,30 +22,17 @@ import {
 
 const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 
-export function DocumentDetailWorkspace({
-  document,
-  documentQueryKey,
-  knowledgeSpaceId,
-  locale,
-  refetchDocument,
-}: {
-  document: LogicalDocument
-  documentQueryKey: readonly unknown[]
-  knowledgeSpaceId: string
-  locale: string
-  refetchDocument: () => Promise<unknown>
-}) {
+export function DocumentDetailWorkspace() {
   const { t } = useTranslation('dataset')
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
+  const document = useAtomValue(documentDetailDocumentAtom)
+  const documentId = useAtomValue(documentDetailDocumentIdAtom)
+  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const chunksQueryKey =
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const documentActiveRevision = document.activeRevision ?? document.active?.revision ?? 0
   const workflow = useDocumentReindex({
-    chunksQueryKey,
     documentActiveRevision,
-    documentId: document.id,
-    documentQueryKey,
+    documentId,
     enabled: true,
     knowledgeSpaceId,
     refreshWritePermission: async () =>
@@ -174,9 +162,7 @@ export function DocumentDetailWorkspace({
               knowledgeSpaceId={knowledgeSpaceId}
             />
             <DocumentDetailHeader
-              action={
-                <DocumentReindexAction key={document.id} knowledgeSpaceId={knowledgeSpaceId} />
-              }
+              action={<DocumentReindexAction key={document.id} />}
               backPath={newKnowledgeDocumentsPath(knowledgeSpaceId)}
               title={document.title}
               titleRef={titleRef}
@@ -186,17 +172,8 @@ export function DocumentDetailWorkspace({
                 {t(($) => $['newKnowledge.documentPermissionRestricted'])}
               </p>
             )}
-            <DocumentTasksSurface
-              currentDocument={document}
-              knowledgeSpaceId={knowledgeSpaceId}
-              refetchDocument={refetchDocument}
-              titleRef={titleRef}
-            />
-            <DocumentRevisionBrowser
-              document={document}
-              knowledgeSpaceId={knowledgeSpaceId}
-              locale={locale}
-            />
+            <DocumentTasksSurface titleRef={titleRef} />
+            <DocumentRevisionBrowser />
           </section>
         </DocumentTaskWorkflowContext>
       </DocumentReindexWorkflowContext>

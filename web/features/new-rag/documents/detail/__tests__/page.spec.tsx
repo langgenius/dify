@@ -2,6 +2,7 @@ import type {
   KnowledgeFsDocumentMultimodalManifestResponse,
   KnowledgeFsDocumentOutlineResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ReactElement } from 'react'
 import type { DocumentMetadataField } from '../../metadata/editor-model'
 import type {
   BackgroundTask,
@@ -13,17 +14,23 @@ import type {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { createStore, Provider } from 'jotai'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../page'
 
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
   keys: ['knowledge_space_document_write'],
+  name: 'Support knowledge',
   refetch: vi.fn(),
 }))
 vi.mock('../../../space/context', () => ({
   useKnowledgeSpace: () => ({
     refetch: knowledgeSpacePermissionState.refetch,
-    space: { permission_keys: knowledgeSpacePermissionState.keys },
+    space: {
+      control_space_id: 'space-1',
+      permission_keys: knowledgeSpacePermissionState.keys,
+      technical_summary: { name: knowledgeSpacePermissionState.name },
+    },
   }),
 }))
 
@@ -325,16 +332,50 @@ const documentsOptions = vi.hoisted(() =>
   })),
 )
 
-vi.mock('jotai', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai')>()
+const queryAtomTestState = vi.hoisted(() => ({
+  versionAtom: undefined as import('jotai').PrimitiveAtom<number> | undefined,
+}))
+
+vi.mock('jotai-tanstack-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  const versionAtom = atom(0)
+  queryAtomTestState.versionAtom = versionAtom
+
   return {
     ...original,
-    useAtomValue: (atom: unknown) =>
-      atom === permissionState.datasetAtom ? permissionState.keys : undefined,
-    useSetAtom: (atom: unknown) =>
-      atom === permissionState.refreshAtom ? permissionState.refresh : vi.fn(),
+    atomWithQuery: (
+      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
+        queryKind?: string
+      },
+    ) =>
+      atom((get) => {
+        get(versionAtom)
+        const options = getOptions(get)
+        if (options.queryKind === 'document') return { ...documentQuery }
+        throw new Error(`Unexpected query atom: ${options.queryKind ?? 'unknown'}`)
+      }),
   }
 })
+
+function render(ui: ReactElement, options?: Parameters<typeof renderWithNuqs>[1]) {
+  const store = createStore()
+  const refreshQueryAtoms = () => {
+    store.set(queryAtomTestState.versionAtom!, (version) => version + 1)
+  }
+  const withStore = (content: ReactElement) => <Provider store={store}>{content}</Provider>
+
+  refreshQueryAtoms()
+  const rendered = renderWithNuqs(withStore(ui), options)
+
+  return {
+    ...rendered,
+    rerender(nextUi: ReactElement) {
+      act(refreshQueryAtoms)
+      rendered.rerender(withStore(nextUi))
+    },
+  }
+}
 
 vi.mock('@/context/permission-state', () => ({
   datasetDefaultPermissionKeysAtom: permissionState.datasetAtom,

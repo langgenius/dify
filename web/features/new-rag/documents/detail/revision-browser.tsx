@@ -1,8 +1,8 @@
 'use client'
 
-import type { LogicalDocument } from '../models'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryStates } from 'nuqs'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,8 @@ import { consoleQuery } from '@/service/client'
 import { documentRevisionListFromApi } from '../models'
 import { initialDocumentRevision } from './model'
 import { DocumentRevisionData } from './revision-content'
+import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
+import { documentDetailDocumentAtom } from './state/queries'
 
 const documentRevisionParser = createParser<number>({
   parse: (value) => {
@@ -57,17 +59,12 @@ function RevisionErrorState({
   )
 }
 
-export function DocumentRevisionBrowser({
-  document,
-  knowledgeSpaceId,
-  locale,
-}: {
-  document: LogicalDocument
-  knowledgeSpaceId: string
-  locale: string
-}) {
-  const { t } = useTranslation('dataset')
+export function DocumentRevisionBrowser() {
+  const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const document = useAtomValue(documentDetailDocumentAtom)
+  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
+  const locale = i18n.resolvedLanguage ?? i18n.language
   const [documentLocation, setDocumentLocation] = useQueryStates({
     chunk: documentChunkParser,
     revision: documentRevisionParser,

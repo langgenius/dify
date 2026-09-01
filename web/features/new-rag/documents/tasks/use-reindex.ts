@@ -55,24 +55,33 @@ function readSubmittedReindex(storageKey: string): SubmittedReindex | undefined 
 }
 
 export function useDocumentReindex({
-  chunksQueryKey,
   documentActiveRevision,
   documentId,
-  documentQueryKey,
   enabled,
   knowledgeSpaceId,
   refreshWritePermission,
 }: {
-  chunksQueryKey: readonly unknown[]
   documentActiveRevision: number
   documentId: string
-  documentQueryKey: readonly unknown[]
   enabled: boolean
   knowledgeSpaceId: string
   refreshWritePermission: () => Promise<boolean>
 }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
+  const documentQueryKey =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.get.queryOptions(
+      {
+        input: {
+          params: {
+            control_space_id: knowledgeSpaceId,
+            document_id: documentId,
+          },
+        },
+      },
+    ).queryKey
+  const chunksQueryKey =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const storageKey = submittedReindexStorageKey(knowledgeSpaceId, documentId)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
   const [documentMissing, setDocumentMissing] = useState(false)

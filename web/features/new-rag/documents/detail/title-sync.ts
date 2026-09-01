@@ -1,26 +1,17 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { useKnowledgeSpace } from '../../space/context'
+import { documentDetailTitleAtom } from './state/queries'
 
-export function useDocumentDetailTitle({
-  documentTitle,
-  knowledgeSpaceId,
-}: {
-  documentTitle?: string
-  knowledgeSpaceId: string
-}) {
+export function useDocumentDetailTitle() {
   const { t } = useTranslation('dataset')
-  const knowledgeSpaceQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
-    }),
-  )
+  const documentTitle = useAtomValue(documentDetailTitleAtom)
+  const { space } = useKnowledgeSpace()
   const resolvedDocumentTitle = documentTitle ?? t(($) => $['newKnowledge.documents'])
-  const knowledgeSpaceTitle =
-    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
+  const knowledgeSpaceTitle = space.technical_summary?.name ?? t(($) => $.knowledge)
 
   useDocumentTitle(`${resolvedDocumentTitle} · ${knowledgeSpaceTitle}`)
 }
