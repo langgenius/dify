@@ -423,15 +423,17 @@ class DifyBuilderService:
         self._enqueue_fn = enqueue_fn
         self._subscribe_fn = subscribe_fn or (lambda _sid: None)
 
-    def create_fix_session(
+    def _prepare_fix_session(
         self,
         app_id: str,
         actor: Actor,
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | None = None,
         model_config: dict | None = None,
-    ) -> SessionView:
-        """Port of Go ``CreateFixSession``, extended to record the failed run.
+    ) -> tuple[str, Action]:
+        """Shared setup for ``create_fix_session``/``create_fix_session_stream``:
+        everything through persisting the session (and the failed-run record)
+        up to -- but not including -- the ``request_fix`` dispatch.
 
         ``failed_run_id`` is the id of the **Dify workflow run** that failed
         (what the frontend has). In fix mode we record it as an immutable
@@ -475,16 +477,53 @@ class DifyBuilderService:
             # advance's diagnose can resolve fc.failed_run_id.
             self._repo.save_run(s.id, failed_run)
 
-        self.dispatch(s.id, Action(kind="request_fix", base_version=1), actor)
-        return self.get_session_view(s.id, actor)
+        return s.id, Action(kind="request_fix", base_version=1)
 
-    def create_build_session(
-        self, app_id: str, actor: Actor, goal_text: str, model_config: dict | None = None
+    def create_fix_session(
+        self,
+        app_id: str,
+        actor: Actor,
+        failed_run_id: str | None = None,
+        checklist_errors: list[ChecklistError] | None = None,
+        model_config: dict | None = None,
     ) -> SessionView:
-        """Start a Build session at build.capability_check and dispatch the
-        initial ``send_goal`` (parallels ``create_fix_session``). The goal is
-        seeded as the user's opening bubble; the first advance's
-        ``handle_capability_check`` analyzes it into requirements."""
+        """Port of Go ``CreateFixSession``, extended to record the failed run."""
+        session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        if action is not None:
+            self.dispatch(session_id, action, actor)
+        return self.get_session_view(session_id, actor)
+
+    def create_fix_session_stream(
+        self,
+        app_id: str,
+        actor: Actor,
+        failed_run_id: str | None = None,
+        checklist_errors: list[ChecklistError] | None = None,
+        model_config: dict | None = None,
+    ) -> Iterator[str]:
+        """Streaming counterpart of ``create_fix_session``: subscribes to the
+        session's progress channel BEFORE dispatching the initial
+        ``request_fix`` advance, so no progress frames are lost."""
+        from services.dify_builder.wiring import stream_advance_frames
+
+        session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
+        try:
+            self.dispatch(session_id, action, actor)
+        except Exception:
+            if subscription is not None:
+                subscription.close()
+            raise
+        return stream_advance_frames(
+            asdict(self.get_session_view(session_id, actor)), subscription, expect_advance=True
+        )
+
+    def _prepare_build_session(
+        self, app_id: str, actor: Actor, goal_text: str, model_config: dict | None = None
+    ) -> tuple[str, Action]:
+        """Shared setup for ``create_build_session``/``create_build_session_stream``:
+        everything through persisting the session up to -- but not including --
+        the ``send_goal`` dispatch."""
         if model_config:
             validate_model_config(actor.tenant_id, model_config)
         policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
@@ -498,16 +537,44 @@ class DifyBuilderService:
         )
         items = [UserItem(text=goal_text).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
-        self.dispatch(s.id, Action(kind="send_goal", payload={"text": goal_text}, base_version=1), actor)
-        return self.get_session_view(s.id, actor)
+        return s.id, Action(kind="send_goal", payload={"text": goal_text}, base_version=1)
 
-    def create_edit_session(self, app_id: str, actor: Actor, model_config: dict | None = None) -> SessionView:
-        """Start an Edit session at edit.capability_check WITHOUT dispatching.
-        Mock 02-edit.txt:3 -- on open, show history + composer only; do not read
-        or lock the canvas. The graph read + impact analysis happen on the first
-        send_edit_goal action, not here. Unlike create_build_session, this takes
-        no goal and enqueues no advance -- the session simply rests, canvas
-        editable, until the user sends their change request."""
+    def create_build_session(
+        self, app_id: str, actor: Actor, goal_text: str, model_config: dict | None = None
+    ) -> SessionView:
+        """Start a Build session at build.capability_check and dispatch the
+        initial ``send_goal`` (parallels ``create_fix_session``). The goal is
+        seeded as the user's opening bubble; the first advance's
+        ``handle_capability_check`` analyzes it into requirements."""
+        session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config)
+        if action is not None:
+            self.dispatch(session_id, action, actor)
+        return self.get_session_view(session_id, actor)
+
+    def create_build_session_stream(
+        self, app_id: str, actor: Actor, goal_text: str, model_config: dict | None = None
+    ) -> Iterator[str]:
+        """Streaming counterpart of ``create_build_session``: subscribes BEFORE
+        dispatching the initial ``send_goal`` advance."""
+        from services.dify_builder.wiring import stream_advance_frames
+
+        session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config)
+        subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
+        try:
+            self.dispatch(session_id, action, actor)
+        except Exception:
+            if subscription is not None:
+                subscription.close()
+            raise
+        return stream_advance_frames(
+            asdict(self.get_session_view(session_id, actor)), subscription, expect_advance=True
+        )
+
+    def _prepare_edit_session(
+        self, app_id: str, actor: Actor, model_config: dict | None = None
+    ) -> tuple[str, Action | None]:
+        """Shared setup for ``create_edit_session``/``create_edit_session_stream``:
+        creates the row (no dispatch), always returning a ``None`` action."""
         if model_config:
             validate_model_config(actor.tenant_id, model_config)
         fc = DifyBuilderContext(model_config=model_config or {})
@@ -519,7 +586,28 @@ class DifyBuilderService:
             current_state=PcState.EDIT_CAPABILITY_CHECK,
         )
         self._repo.create_session(s, fc, [])  # empty conversation; assigns s.id, s.version = 1
-        return self.get_session_view(s.id, actor)
+        return s.id, None
+
+    def create_edit_session(self, app_id: str, actor: Actor, model_config: dict | None = None) -> SessionView:
+        """Start an Edit session at edit.capability_check WITHOUT dispatching.
+        Mock 02-edit.txt:3 -- on open, show history + composer only; do not read
+        or lock the canvas. The graph read + impact analysis happen on the first
+        send_edit_goal action, not here. Unlike create_build_session, this takes
+        no goal and enqueues no advance -- the session simply rests, canvas
+        editable, until the user sends their change request."""
+        session_id, action = self._prepare_edit_session(app_id, actor, model_config)
+        if action is not None:
+            self.dispatch(session_id, action, actor)
+        return self.get_session_view(session_id, actor)
+
+    def create_edit_session_stream(self, app_id: str, actor: Actor, model_config: dict | None = None) -> Iterator[str]:
+        """Streaming counterpart of ``create_edit_session``: settle-only --
+        ``create_edit_session`` dispatches no advance, so this yields just the
+        snapshot frame and closes (no subscription)."""
+        from services.dify_builder.wiring import stream_advance_frames
+
+        session_id, _action = self._prepare_edit_session(app_id, actor, model_config)  # _action is None
+        return stream_advance_frames(asdict(self.get_session_view(session_id, actor)), None, expect_advance=False)
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Port of Go ``GetSessionView``."""
