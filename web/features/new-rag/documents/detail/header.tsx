@@ -1,34 +1,17 @@
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { LogicalDocument } from '../models'
-import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 export function DocumentDetailHeader({
+  action,
   backPath,
-  canCancelReindex,
-  cancelReindexBusy,
   document,
-  onCancelReindex,
-  onReindex,
-  reindexDisabled,
-  reindexDisabledReasonId,
-  reindexFailed,
-  reindexInProgress,
-  reindexing,
   titleRef,
 }: {
+  action: ReactNode
   backPath: string
-  canCancelReindex: boolean
-  cancelReindexBusy: boolean
   document: LogicalDocument
-  onCancelReindex: () => void
-  onReindex: () => void
-  reindexDisabled: boolean
-  reindexDisabledReasonId?: string
-  reindexFailed: boolean
-  reindexInProgress: boolean
-  reindexing: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
@@ -54,25 +37,7 @@ export function DocumentDetailHeader({
             {document.title}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            aria-busy={reindexing || cancelReindexBusy}
-            aria-describedby={reindexDisabledReasonId}
-            className="gap-1 pl-3"
-            disabled={reindexInProgress ? !canCancelReindex : reindexDisabled}
-            loading={reindexInProgress ? cancelReindexBusy : reindexing}
-            onClick={reindexInProgress ? onCancelReindex : onReindex}
-          >
-            {!reindexInProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
-            {t(($) =>
-              reindexInProgress
-                ? $['newKnowledge.cancelDocumentReindex']
-                : reindexFailed
-                  ? $['newKnowledge.retryReindexDocument']
-                  : $['newKnowledge.reindexDocument'],
-            )}
-          </Button>
-        </div>
+        <div className="flex flex-wrap items-center gap-2">{action}</div>
       </div>
     </>
   )

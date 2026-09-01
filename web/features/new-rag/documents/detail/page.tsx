@@ -8,14 +8,13 @@ import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
-import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { newKnowledgeDocumentsPath } from '../../routes'
 import { useKnowledgeSpace } from '../../space/context'
-import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
 import { logicalDocumentFromApi } from '../models'
 import { useDocumentReindex } from '../tasks/use-reindex'
 import { DocumentDetailHeader } from './header'
 import { responseStatus } from './model'
+import { DocumentReindexAction } from './reindex-action'
 import { DocumentRevisionBrowser } from './revision-browser'
 import { DocumentTasksSurface } from './tasks-surface'
 
@@ -56,13 +55,6 @@ export function DocumentDetailPage({
   const { t: tCommon } = useTranslation('common')
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const {
-    configureModelSetup,
-    ensureModelReady,
-    modelReadiness,
-    modelSetupDialogOpen,
-    setModelSetupDialogOpen,
-  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
 
   const documentQueryOptions = useMemo(
     () =>
@@ -124,8 +116,6 @@ export function DocumentDetailPage({
     tasksError,
     writePermissionRevoked,
   } = useDocumentReindex({
-    beforeReindex: async () =>
-      (await ensureModelReady({ capability: 'index', intent: 'reindex' })).status === 'ready',
     documentActiveRevision,
     chunksQueryKey,
     documentId,
@@ -184,29 +174,35 @@ export function DocumentDetailPage({
         knowledgeSpaceId={knowledgeSpaceId}
       />
       <DocumentDetailHeader
-        backPath={backPath}
-        canCancelReindex={canCancelReindex}
-        cancelReindexBusy={cancelReindexBusy}
-        document={document}
-        onCancelReindex={() => void cancelReindex()}
-        onReindex={() => void reindex()}
-        reindexDisabled={
-          !canEdit ||
-          reindexBusy ||
-          submissionPending ||
-          taskIsActive ||
-          tasksPending ||
-          isFetchingNextTaskPage ||
-          isLookingUpTask ||
-          lookupExhausted ||
-          !document.enabled ||
-          document.status === 'deleting' ||
-          Boolean(tasksError)
+        action={
+          <DocumentReindexAction
+            key={document.id}
+            canCancel={canCancelReindex}
+            cancelBusy={cancelReindexBusy}
+            disabled={
+              !canEdit ||
+              reindexBusy ||
+              submissionPending ||
+              taskIsActive ||
+              tasksPending ||
+              isFetchingNextTaskPage ||
+              isLookingUpTask ||
+              lookupExhausted ||
+              !document.enabled ||
+              document.status === 'deleting' ||
+              Boolean(tasksError)
+            }
+            disabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
+            failed={latestTask?.state === 'failed'}
+            inProgress={reindexInProgress}
+            knowledgeSpaceId={knowledgeSpaceId}
+            reindexing={reindexBusy || submissionPending}
+            onCancel={cancelReindex}
+            onReindex={reindex}
+          />
         }
-        reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
-        reindexFailed={latestTask?.state === 'failed'}
-        reindexInProgress={reindexInProgress}
-        reindexing={reindexBusy || submissionPending}
+        backPath={backPath}
+        document={document}
         titleRef={titleRef}
       />
       {!hasEditPermission && (
@@ -247,12 +243,6 @@ export function DocumentDetailPage({
         documentId={documentId}
         knowledgeSpaceId={knowledgeSpaceId}
         locale={locale}
-      />
-      <KnowledgeModelSetupDialog
-        open={modelSetupDialogOpen}
-        readiness={modelReadiness}
-        onOpenChange={setModelSetupDialogOpen}
-        onConfigure={configureModelSetup}
       />
     </section>
   )
