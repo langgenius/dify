@@ -36,7 +36,8 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records and per-run event streams after their last write; defaults to 2 hours. |
 | `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
-| `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Maximum time to buffer compatible text deltas before publishing one coalesced event. |
+| `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
+| `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Soft debounce interval for compatible text deltas. Already-ready source events may continue to merge after this interval; a waiting source triggers the timed flush. Must be greater than zero; use `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED=false` to disable coalescing. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS` | `4096` | Character threshold that flushes a buffered text-delta event immediately. |
 | `DIFY_AGENT_RUN_TIMEOUT_SECONDS` | `3600` | Wall-clock deadline in seconds for the Pydantic AI `agent.run(...)` model/tool loop. Deadline failures use `agent_run_limit_exceeded`. Its default intentionally matches `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS`, but the settings are independently configurable. |
 | `DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` | `210` | Shell command deadline for running the sandbox `dify-agent file upload --no-download-link` conversion. Keep it above the CLI's 180-second upload deadline. |
@@ -146,8 +147,10 @@ Run records and event streams use the same retention. Status writes refresh the
 record TTL, and event writes refresh both the stream TTL and the corresponding
 record TTL so active runs that keep producing events remain observable. Text
 deltas for the same response part and provider metadata are coalesced within a
-bounded time/size window before being published. Every Redis Stream write also
-applies the configured approximate maximum length. A reconnect cursor older than the
+soft debounce/size window before being published. The debounce timer flushes
+when reading the next source event would block; already-ready events may keep
+merging until the character threshold or a non-compatible event is reached.
+Every Redis Stream write also applies the configured approximate maximum length. A reconnect cursor older than the
 retained window resumes from the oldest remaining event, so callers must treat
 the terminal snapshot and application-owned history as authoritative rather
 than relying on the Agent event stream as long-term history.

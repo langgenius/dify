@@ -48,9 +48,10 @@ class ServerSettings(BaseSettings):
     shutdown_grace_seconds: float = 30
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
     run_event_stream_max_length: int = Field(default=DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, ge=1)
+    stream_text_delta_coalescing_enabled: bool = True
     stream_text_delta_flush_interval_ms: int = Field(
         default=int(DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS * 1000),
-        ge=0,
+        ge=1,
     )
     stream_text_delta_max_chars: int = Field(default=DEFAULT_TEXT_DELTA_MAX_CHARS, ge=1)
     run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)

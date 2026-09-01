@@ -193,6 +193,7 @@ class AgentRunRunner:
     dify_api_http_client: httpx.AsyncClient
     is_cancelled: Callable[[], bool]
     run_timeout_seconds: float
+    stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
     stream_text_delta_max_chars: int
     _terminal_session_snapshot: CompositorSessionSnapshot | None
@@ -209,11 +210,12 @@ class AgentRunRunner:
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
+        stream_text_delta_coalescing_enabled: bool = True,
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
     ) -> None:
-        if stream_text_delta_flush_interval_seconds < 0:
-            raise ValueError("stream_text_delta_flush_interval_seconds must be non-negative")
+        if stream_text_delta_flush_interval_seconds <= 0:
+            raise ValueError("stream_text_delta_flush_interval_seconds must be positive")
         if stream_text_delta_max_chars <= 0:
             raise ValueError("stream_text_delta_max_chars must be positive")
         self.sink = sink
@@ -224,6 +226,7 @@ class AgentRunRunner:
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
         self.is_cancelled = is_cancelled or (lambda: False)
         self.run_timeout_seconds = run_timeout_seconds
+        self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self._terminal_session_snapshot = None
@@ -336,12 +339,13 @@ class AgentRunRunner:
                     raise AgentRunValidationError(EMPTY_USER_PROMPTS_ERROR)
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
-                    coalesced_events = coalesce_agent_stream_events(
+                    published_events = coalesce_agent_stream_events(
                         events,
+                        enabled=self.stream_text_delta_coalescing_enabled,
                         flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
                         max_chars=self.stream_text_delta_max_chars,
                     )
-                    async for event in coalesced_events:
+                    async for event in published_events:
                         if self.is_cancelled():
                             raise asyncio.CancelledError
                         text_delta = _extract_agent_message_delta(event)

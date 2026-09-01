@@ -471,6 +471,7 @@ def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
                 plugin_daemon_http_client=client,
                 dify_api_http_client=client,
                 run_timeout_seconds=17,
+                stream_text_delta_coalescing_enabled=False,
                 stream_text_delta_flush_interval_seconds=0.25,
                 stream_text_delta_max_chars=2048,
             )
@@ -479,6 +480,7 @@ def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
 
         assert isinstance(runner, AgentRunRunner)
         assert runner.run_timeout_seconds == 17
+        assert runner.stream_text_delta_coalescing_enabled is False
         assert runner.stream_text_delta_flush_interval_seconds == 0.25
         assert runner.stream_text_delta_max_chars == 2048
 
