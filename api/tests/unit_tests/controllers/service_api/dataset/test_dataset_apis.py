@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
