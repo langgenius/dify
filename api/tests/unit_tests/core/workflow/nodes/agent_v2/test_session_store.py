@@ -303,37 +303,31 @@ def test_load_or_create_fails_before_binding_create_when_caller_row_is_missing(m
     context = MagicMock()
     session = context.__enter__.return_value
     create = MagicMock()
-    sleep = MagicMock()
     store = WorkflowAgentWorkspaceStore()
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: context,
     )
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
     monkeypatch.setattr(session, "scalar", MagicMock(return_value=None))
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
     with pytest.raises(AgentWorkspaceNotFoundError, match="Workflow node execution caller is unavailable"):
         store.load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
 
-    assert session.scalar.call_count == 60
-    assert sleep.call_count == 59
+    assert session.scalar.call_count == 1
     create.assert_not_called()
     session.commit.assert_not_called()
 
 
-def test_load_existing_scope_waits_for_caller_row_to_become_visible(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_existing_scope_reads_committed_caller_once(monkeypatch: pytest.MonkeyPatch) -> None:
     execution = SimpleNamespace(agent_workspace_binding_id=None)
     context = MagicMock()
     session = context.__enter__.return_value
-    session.scalar.side_effect = [None, None, execution]
-    sleep = MagicMock()
+    session.scalar.return_value = execution
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: context,
     )
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
-
     scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -344,8 +338,7 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(monkeypatch:
     )
 
     assert scope is None
-    assert session.scalar.call_count == 3
-    assert sleep.call_count == 2
+    assert session.scalar.call_count == 1
 
 
 def test_save_snapshot_targets_binding(monkeypatch: pytest.MonkeyPatch) -> None:
