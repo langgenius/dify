@@ -151,7 +151,8 @@ const SnippetList = () => {
     () => pages.flatMap(({ data: pageSnippets }) => pageSnippets),
     [pages],
   )
-  const hasAnySnippet = (pages[0]?.total ?? 0) > 0
+  const totalSnippetCount = pages[0]?.total ?? 0
+  const hasAnySnippet = totalSnippetCount > 0
   const showSkeleton =
     isLoadingCurrentWorkspace ||
     (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
@@ -162,7 +163,7 @@ const SnippetList = () => {
     : hasAnySnippet
       ? t(($) => $['operation.searchCount'], {
           ns: 'common',
-          count: snippets.length,
+          count: totalSnippetCount,
           content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
         })
       : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })

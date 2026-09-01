@@ -481,6 +481,30 @@ describe('SnippetList', () => {
     )
   })
 
+  it('announces the total result count when only the first page is loaded', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            total: 80,
+            has_more: true,
+          },
+        ],
+      },
+      hasNextPage: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'common.operation.searchCount:{"count":80,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
   it('announces kept-data refreshes when the result count stays the same', () => {
     const { rerenderList } = renderList()
     const status = screen.getByRole('status')
