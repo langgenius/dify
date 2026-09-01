@@ -257,6 +257,21 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:app-tracing-config-service-boundary]
+name = App tracing configuration service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app_tracing_config_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:webapp-access-query-service-boundary]
 name = Web app access query application service is framework and persistence neutral
 type = forbidden
