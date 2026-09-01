@@ -2,6 +2,7 @@ import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiInformationLine } from '@remixicon/react'
@@ -9,7 +10,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Input from '@/app/components/base/input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
@@ -85,10 +85,10 @@ const Item = ({
       {renaming && (
         <div className="flex w-full items-center space-x-1">
           <Input
-            wrapperClassName="grow rounded-md"
-            className="h-6"
+            aria-label={t(($) => $['operation.rename'], { ns: 'common' })}
+            className="h-6 grow"
             value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
+            onValueChange={setRenameValue}
             placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
             onClick={(e) => e.stopPropagation()}
           />
