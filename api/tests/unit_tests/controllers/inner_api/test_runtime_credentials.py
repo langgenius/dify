@@ -10,13 +10,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import UnprocessableEntity
 
-from configs import dify_config
 from controllers.inner_api.runtime_credentials import (
     EnterpriseRuntimeCredentialsResolve,
     InnerRuntimeCredentialsResolvePayload,
 )
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def test_runtime_credentials_payload_accepts_items():
@@ -231,8 +231,7 @@ def test_invalid_body_is_rejected_before_the_handler_runs(app: Flask) -> None:
 
     with (
         patch("controllers.console.wraps._is_setup_completed", return_value=True),
-        patch.object(dify_config, "INNER_API", True),
-        patch.object(dify_config, "INNER_API_KEY", "inner-api-key"),
+        config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
         app.test_request_context(
             method="POST",
             json={},

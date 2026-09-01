@@ -18,7 +18,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
-from configs import dify_config
 from controllers.inner_api.app import dsl as dsl_module
 from controllers.inner_api.app.dsl import (
     EnterpriseAppDSLExport,
@@ -31,6 +30,7 @@ from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _persist_app(session: Session) -> App:
@@ -497,8 +497,7 @@ class TestModelValidateDecorator:
 
         with (
             patch("controllers.console.wraps._is_setup_completed", return_value=True),
-            patch.object(dify_config, "INNER_API", True),
-            patch.object(dify_config, "INNER_API_KEY", "inner-api-key"),
+            config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
             app.test_request_context(
                 method="POST",
                 json={},
