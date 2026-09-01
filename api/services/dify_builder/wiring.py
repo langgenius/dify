@@ -20,10 +20,17 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService, SessionView
 from tasks.dify_builder_advance_task import advance_session
 
-__all__ = ["build_service", "dify_builder_error_response", "session_view_to_dict", "stream_frames"]
+__all__ = [
+    "build_service",
+    "dify_builder_error_response",
+    "session_view_to_dict",
+    "stream_advance_frames",
+    "stream_frames",
+]
 
 _MAX_STREAM_SECONDS = 180
 _HEARTBEAT_SECONDS = 15
+_TERMINAL_KINDS = ("state", "error")
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
@@ -80,3 +87,32 @@ def stream_frames(view_dict: dict, subscription) -> Iterator[str]:
             yield f"event: {kind}\ndata: {raw.decode()}\n\n"
     finally:
         subscription.close()
+
+
+def stream_advance_frames(view_dict: dict, subscription, expect_advance: bool) -> Iterator[str]:
+    """Snapshot, then (if an advance is in flight) relay progress frames until this
+    advance's terminal frame (`state` or `error`), inclusive, then close. Settle-only
+    calls (no advance) yield just the snapshot. Bounded by _MAX_STREAM_SECONDS."""
+    try:
+        yield f"event: snapshot\ndata: {json.dumps(view_dict)}\n\n"
+        if not expect_advance or subscription is None:
+            return
+        deadline = time.monotonic() + _MAX_STREAM_SECONDS
+        while time.monotonic() < deadline:
+            try:
+                raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
+            except SubscriptionClosedError:
+                return
+            if raw is None:
+                yield ": keep-alive\n\n"
+                continue
+            try:
+                kind = json.loads(raw).get("kind", "message")
+            except (ValueError, TypeError):
+                kind = "message"
+            yield f"event: {kind}\ndata: {raw.decode()}\n\n"
+            if kind in _TERMINAL_KINDS:
+                return
+    finally:
+        if subscription is not None:
+            subscription.close()
