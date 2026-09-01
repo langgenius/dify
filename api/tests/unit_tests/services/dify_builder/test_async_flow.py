@@ -20,6 +20,7 @@ Test-only: no production code changes belong in this file.
 """
 
 import dataclasses
+import json
 from collections.abc import Iterator
 
 import pytest
@@ -188,3 +189,29 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(
     session_lock.release(s.id, held)
     reacquired = session_lock.acquire(s.id)
     assert reacquired is not None, "release must actually free the lock"
+
+
+# ---- Test 3: terminal state frame carries the full SessionView -------------
+
+
+def test_terminal_state_frame_carries_full_session_view(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
+    repo.save_run(
+        "00000000-0000-0000-0000-000000000000",
+        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
+    )
+
+    svc, events = _wire(monkeypatch, repo)
+
+    # create_fix_session's dispatch runs the task synchronously (eager
+    # enqueue), so by the time this returns the task has already published
+    # its terminal `state` frame.
+    svc.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
+
+    state_frames = [ev for _sid, ev in events if ev.get("kind") == "state"]
+    assert len(state_frames) >= 1
+    terminal = state_frames[-1]
+    assert "conversation" in terminal  # full view, not the trimmed subset
+    assert "version" in terminal
+    assert "actions" in terminal
+    assert "session_id" in terminal  # a SessionView-only field, proves it's the whole view
+    json.dumps(terminal)  # must stay JSON-serializable

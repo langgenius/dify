@@ -84,18 +84,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # session owner (they dispatched this action), so the owner-check
         # inside get_session_view passes.
         view = DifyBuilderService(repo, session_lock, lambda *a, **k: None).get_session_view(session_id, actor)
-        progress_bus.publish(
-            session_id,
-            {
-                "kind": "state",
-                "version": view.version,
-                "phase": str(view.phase),
-                "run_status": str(view.run_status),
-                "state": view.state,
-                "canvas_read_only": view.canvas_read_only,
-                "actions": [asdict(a) for a in view.actions],
-            },
-        )
+        progress_bus.publish(session_id, {"kind": "state", **asdict(view)})
     except ConflictError:
         progress_bus.publish(session_id, {"kind": "error", "error": "conflict"})
     except Exception:
