@@ -11,8 +11,10 @@ Review the requested scope for concrete, reproducible regressions. This skill ow
 
 1. Establish the review scope from the requested files or current diff.
 2. Read the changed lines, their behavior owner, and the nearest scoped `AGENTS.md`.
-3. Trace public consumers, generated contracts, primitive APIs, or runtime configuration only when they decide correctness.
-4. Report only findings tied to an observable failure, violated contract, security boundary, or demonstrated maintenance risk.
+3. For a named component or a diff that changes component ownership, trace every locally owned rendered path from the review root to its leaves, including conditional and secondary surfaces. Stop at third-party primitives, Dify UI primitives, or an explicit stable feature boundary unless that boundary is part of the change.
+4. Along every path, map where state, queries, mutations, custom hooks, derived facts, and handlers are declared; record which component actually consumes each value and which props are only forwarded.
+5. Trace other public consumers, generated contracts, primitive APIs, or runtime configuration only when they decide correctness.
+6. Report only findings tied to an observable failure, violated contract, security boundary, or demonstrated maintenance risk.
 
 ## Rule Routing
 
