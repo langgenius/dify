@@ -1,3 +1,4 @@
+import { createConcurrencyGate, runWithAbortSignal } from "./bounded-concurrency";
 import { selectPageIndexDocuments } from "./page-index-document-selection";
 import { type PageIndexNodeQueueItem, openPageIndexEvidenceQueue } from "./page-index-node-queue";
 import { buildPageIndexNodeValues } from "./page-index-node-values";
@@ -9,6 +10,7 @@ import type {
 } from "./published-page-index-repository";
 import {
   InteractiveResearchEvidenceRetrievalPolicy,
+  createResearchRetrievalBudget,
   validateResearchRetrievalPolicy,
 } from "./research-retrieval-policy";
 import type { RetrievalCandidate, RetrievalSource } from "./retrieval-candidates";
@@ -41,13 +43,20 @@ export function createResearchOutlineEvidenceRetrieval({
 
   return {
     retrieve: async (input) => {
-      const base = await retriever.retrieve(input);
+      input.signal?.throwIfAborted();
+      const base = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       if (input.mode !== "research") return base;
+      input.signal?.throwIfAborted();
 
       const scope = researchPageIndexScope(input);
       const policy = validateResearchRetrievalPolicy(
         input.researchExecutionPolicy ?? InteractiveResearchEvidenceRetrievalPolicy,
       );
+      const budget =
+        input.researchBudget ??
+        createResearchRetrievalBudget(policy, Date.now, undefined, input.signal);
+      const openGate =
+        input.researchOpenGate ?? createConcurrencyGate(policy.maxConcurrentTreeSelections);
       const candidates = base.items.map(hybridItemAsCandidate);
       const selectedDocuments = selectPageIndexDocuments({
         candidates,
@@ -57,12 +66,17 @@ export function createResearchOutlineEvidenceRetrieval({
       const outlines =
         selectedDocuments.length === 0
           ? { items: [] }
-          : await pageIndex.listOutlines({
-              ...scope,
-              documentAssetIds: selectedDocuments.map((document) => document.documentAssetId),
-              limit: policy.maxDocuments,
-              permissionScope: input.permissionScope ?? [],
-            });
+          : await runWithAbortSignal(
+              () =>
+                pageIndex.listOutlines({
+                  ...scope,
+                  documentAssetIds: selectedDocuments.map((document) => document.documentAssetId),
+                  limit: policy.maxDocuments,
+                  permissionScope: input.permissionScope ?? [],
+                }),
+              input.signal,
+            );
+      input.signal?.throwIfAborted();
       const documentById = new Map(
         selectedDocuments.map((document) => [document.documentAssetId, document] as const),
       );
@@ -96,15 +110,21 @@ export function createResearchOutlineEvidenceRetrieval({
       }
 
       let lexicalCandidates = 0;
-      if (pageIndex.searchSections) {
+      const searchSections = pageIndex.searchSections;
+      if (searchSections) {
         const terms = pageIndexQueryTerms(input.query);
         if (terms.length > 0) {
-          const lexical = await pageIndex.searchSections({
-            ...scope,
-            limit: policy.maxQueueItems,
-            permissionScope: input.permissionScope ?? [],
-            terms,
-          });
+          const lexical = await runWithAbortSignal(
+            () =>
+              searchSections({
+                ...scope,
+                limit: policy.maxQueueItems,
+                permissionScope: input.permissionScope ?? [],
+                terms,
+              }),
+            input.signal,
+          );
+          input.signal?.throwIfAborted();
           lexicalCandidates = lexical.items.length;
           for (const item of lexical.items) {
             if (!isOpenable(item.node)) continue;
@@ -134,11 +154,16 @@ export function createResearchOutlineEvidenceRetrieval({
         maxConcurrentOpens: Math.min(maxConcurrentOpens, policy.maxConcurrentTreeSelections),
         maxEvidencePerRange: policy.maxEvidencePerRange,
         maxFinalItems: Math.max(input.limit, policy.maxFinalItems),
+        openGate,
         permissionScope: input.permissionScope ?? [],
         queue: boundedQueue,
+        reserveOpen: () => budget.consume("openedResources"),
         repository: pageIndex,
+        ...(input.signal ? { signal: input.signal } : {}),
         scope,
       });
+      input.signal?.throwIfAborted();
+      const budgetSnapshot = budget.snapshot();
       const fused = fuseRankedHybridRetrievalLists({
         limit: input.limit,
         lists: [
@@ -156,6 +181,8 @@ export function createResearchOutlineEvidenceRetrieval({
               pageIndexOpenedRanges: opened.openedRangeCount,
               pageIndexScannedOutlines: outlines.items.length,
               researchOutlineLexicalCandidates: lexicalCandidates,
+              researchBudgetExhaustedReasons: budgetSnapshot.exhaustedReasons,
+              researchOpenedResources: budgetSnapshot.openedResources,
             }
           : undefined,
         plan: base.plan,

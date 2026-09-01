@@ -1,3 +1,4 @@
+import type { EmbeddingProvider } from "@knowledge/embeddings";
 import { describe, expect, it, vi } from "vitest";
 
 import { createResearchQueryVectorizer } from "./research-query-vectorizer";
@@ -64,6 +65,34 @@ describe("Research query vectorizer", () => {
       }),
     ).resolves.toEqual([]);
     expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("forwards cancellation and stops awaiting an embedding provider that ignores it", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("retrieval lease lost");
+    const embed = vi.fn(
+      async (_input: Parameters<EmbeddingProvider["embed"]>[0]) =>
+        new Promise<never>(() => undefined),
+    );
+    const vectorizer = createResearchQueryVectorizer({
+      resolve: async () => ({
+        ...embeddingProfile,
+        providerInstance: { embed, kind: "static" as const, models: vi.fn() },
+      }),
+    });
+    const pending = vectorizer.vectorize({
+      embeddingProfile,
+      knowledgeSpaceId: "space-1",
+      queries: ["query one"],
+      signal: controller.signal,
+      tenantId: "tenant-1",
+    });
+    await vi.waitFor(() => expect(embed).toHaveBeenCalledOnce());
+    expect(embed.mock.calls[0]?.[0].signal).toBe(controller.signal);
+
+    controller.abort(cancellation);
+
+    await expect(pending).rejects.toBe(cancellation);
   });
 
   it.each([

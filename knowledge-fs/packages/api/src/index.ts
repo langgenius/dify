@@ -352,6 +352,7 @@ export * from "./research-task-response-schemas";
 export * from "./research-retrieval-policy";
 export * from "./research-model-usage";
 export * from "./research-retrieval-checkpoint";
+export * from "./research-retrieval-limits";
 export * from "./retrieval-test";
 export * from "./retrieval-test-handlers";
 export * from "./retrieval-test-routes";
@@ -624,7 +625,7 @@ import {
   createEvidenceBundleCache,
   createQueryNormalizationCache,
 } from "./retrieval-cache";
-import { createRetrievalPlanner } from "./retrieval-planner";
+import { RETRIEVAL_MAX_TOP_K, createRetrievalPlanner } from "./retrieval-planner";
 import { registerRetrievalTestHandlers } from "./retrieval-test-handlers";
 import { type RetrievalQueryLanguage, detectRetrievalQueryLanguage } from "./retrieval-text-utils";
 import type {
@@ -1222,7 +1223,7 @@ export function createKnowledgeGateway({
     researchTaskPlanner ??
     createResearchTaskDryRunPlanner({
       retrievalPlanner: createRetrievalPlanner({
-        maxTopK: 100,
+        maxTopK: RETRIEVAL_MAX_TOP_K,
         traces,
       }),
     });

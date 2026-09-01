@@ -224,7 +224,12 @@ async function retrievePublishedPageIndex({
         traceId: traceId ?? "",
       })
     : undefined;
-  const budget = createResearchRetrievalBudget(policy, now, restoredCheckpoint?.budget);
+  const budget = createResearchRetrievalBudget(
+    policy,
+    now,
+    restoredCheckpoint?.budget,
+    input.signal,
+  );
   const degradationFlags = new Set<string>(restoredCheckpoint?.metrics.degradationFlags ?? []);
 
   if (restoredCheckpoint && restoredCheckpoint.phase !== "navigation") {
@@ -731,6 +736,7 @@ async function retrievePublishedPageIndex({
       permissionScope: prerequisites.permissionScope,
       queue: roundQueue,
       repository: pageIndex,
+      ...(input.signal ? { signal: input.signal } : {}),
       scope: {
         fingerprint: prerequisites.snapshot.fingerprint,
         knowledgeSpaceId: input.knowledgeSpaceId,
@@ -883,6 +889,7 @@ async function resumeResearchEvidenceCheckpoint({
       permissionScope: prerequisites.permissionScope,
       queue: roundQueue,
       repository: pageIndex,
+      ...(input.signal ? { signal: input.signal } : {}),
       scope: {
         fingerprint: prerequisites.snapshot.fingerprint,
         knowledgeSpaceId: input.knowledgeSpaceId,

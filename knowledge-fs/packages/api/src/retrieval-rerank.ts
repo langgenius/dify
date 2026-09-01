@@ -1,5 +1,6 @@
 import type { RerankerProvider } from "@knowledge/embeddings";
 
+import { runWithAbortSignal } from "./bounded-concurrency";
 import { cloneJsonObject } from "./json-utils";
 import { cloneRetrievalCitation } from "./retrieval-candidates";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
@@ -22,6 +23,7 @@ export async function rerankHybridRetrievalItems({
   model,
   query,
   reranker,
+  signal,
   tenantId,
 }: {
   readonly items: readonly HybridRetrievalItem[];
@@ -29,27 +31,35 @@ export async function rerankHybridRetrievalItems({
   readonly model: string;
   readonly query: string;
   readonly reranker: RerankerProvider;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
 }): Promise<HybridRetrievalItem[]> {
+  signal?.throwIfAborted();
   if (items.length === 0) {
     return [];
   }
 
   const originalById = new Map(items.map((item) => [item.nodeId, item]));
-  const reranked = await reranker.rerank({
-    documents: items.map((item) => ({
-      id: item.nodeId,
-      metadata: {
-        projectionIds: [...item.projectionIds],
-        sources: [...item.sources],
-      },
-      text: rerankTextForHybridItem(item),
-    })),
-    model,
-    query,
-    ...(tenantId ? { tenantId } : {}),
-    topN: limit,
-  });
+  const reranked = await runWithAbortSignal(
+    () =>
+      reranker.rerank({
+        documents: items.map((item) => ({
+          id: item.nodeId,
+          metadata: {
+            projectionIds: [...item.projectionIds],
+            sources: [...item.sources],
+          },
+          text: rerankTextForHybridItem(item),
+        })),
+        model,
+        query,
+        ...(signal ? { signal } : {}),
+        ...(tenantId ? { tenantId } : {}),
+        topN: limit,
+      }),
+    signal,
+  );
+  signal?.throwIfAborted();
 
   validateRerankResult({
     items,

@@ -15,6 +15,42 @@ export interface ConcurrencyGateOptions {
   readonly onEvent?: ((event: ConcurrencyGateEvent) => Promise<void> | void) | undefined;
 }
 
+/**
+ * Starts an operation only while its owner is active and stops awaiting it immediately on abort.
+ *
+ * The signal is still expected to be forwarded into providers that support physical cancellation;
+ * this wrapper is the fail-safe for database/adaptor implementations that cannot cancel in-flight
+ * work yet. Attaching both settlement handlers also prevents a detached rejection from becoming
+ * unhandled after the caller has already observed cancellation.
+ */
+export async function runWithAbortSignal<T>(
+  operation: () => Promise<T>,
+  signal?: AbortSignal | undefined,
+): Promise<T> {
+  signal?.throwIfAborted();
+  const pending = operation();
+  if (!signal) return pending;
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+    pending.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** Fair FIFO gate that shares a fixed concurrency budget across independent callers. */
 export function createConcurrencyGate(
   limit: number,
@@ -118,14 +154,19 @@ export async function mapWithConcurrency<T, R>(
   items: readonly T[],
   limit: number,
   fn: (item: T, index: number) => Promise<R>,
+  signal?: AbortSignal | undefined,
 ): Promise<R[]> {
+  signal?.throwIfAborted();
   const results = new Array<R>(items.length);
   let cursor = 0;
   let failed = false;
   let firstError: unknown;
+  const failureController = new AbortController();
+  const operationSignal = signal ? AbortSignal.any([signal, failureController.signal]) : undefined;
 
   async function worker(): Promise<void> {
     while (!failed) {
+      operationSignal?.throwIfAborted();
       const index = cursor;
       cursor += 1;
       if (index >= items.length) {
@@ -133,11 +174,16 @@ export async function mapWithConcurrency<T, R>(
       }
 
       try {
-        results[index] = await fn(items[index] as T, index);
+        results[index] = await runWithAbortSignal(
+          () => fn(items[index] as T, index),
+          operationSignal,
+        );
+        operationSignal?.throwIfAborted();
       } catch (error) {
         if (!failed) {
           failed = true;
           firstError = error;
+          if (signal) failureController.abort(error);
         }
       }
     }

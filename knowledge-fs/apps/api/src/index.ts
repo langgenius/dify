@@ -6,6 +6,7 @@ import {
 } from "@knowledge/adapters/node";
 import {
   type KnowledgeSpaceEmbeddingResolver,
+  RETRIEVAL_MAX_TOP_K,
   createDatabaseDeletionObjectWriteAdmission,
   createDatabaseHybridRetrievalRepository,
   createDatabasePublishedGraphIndexRepository,
@@ -102,6 +103,7 @@ import {
 } from "./repository-options";
 import { createApiRerankerOptions } from "./reranker-options";
 import { createApiResearchEvidenceReasoningOptions } from "./research-evidence-reasoning-options";
+import { createApiResearchRetrievalOptions } from "./research-retrieval-options";
 import {
   assertApiResearchTaskDurability,
   createApiResearchTaskRuntime,
@@ -117,8 +119,6 @@ import {
 } from "./upload-session-options";
 import { createApiVisualEmbeddingOptions } from "./visual-embedding-options";
 import { createApiWebsiteCrawlOptions } from "./website-crawl-options";
-
-const RETRIEVAL_MAX_TOP_K = 100;
 
 const documentCompilationOptions = createApiDocumentCompilationOptions();
 const bufferedDocumentUploadOptions = createApiBufferedDocumentUploadOptions();
@@ -192,6 +192,7 @@ const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions
 });
 const profileReasoningCapability = createApiProfileReasoningCapability();
 const researchEvidenceReasoningOptions = createApiResearchEvidenceReasoningOptions();
+const researchRetrievalOptions = createApiResearchRetrievalOptions();
 const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
   batchSize: 5,
   maxConcurrentBatches: 4,
@@ -752,6 +753,7 @@ const retriever = retrievalRepository
       ...(embeddingResolver
         ? {
             researchEvidence: {
+              maxRerankCandidates: researchRetrievalOptions.maxRerankCandidates,
               queryVectorizer: createResearchQueryVectorizer(embeddingResolver),
               reasoning: researchEvidenceReasoning,
             },

@@ -5,6 +5,7 @@ import {
 import type { RerankerProvider } from "@knowledge/embeddings";
 
 import type { KnowledgeSpaceModelSelection } from "@knowledge/core";
+import { createConcurrencyGate, runWithAbortSignal } from "./bounded-concurrency";
 import { resolveFinalRerankRuntime } from "./final-rerank-retrieval";
 import type {
   ResearchEvidenceJudgement,
@@ -17,6 +18,7 @@ import {
   ResearchRetrievalCheckpointVersion,
   validateAnyResearchRetrievalSearchCheckpointScope,
 } from "./research-retrieval-checkpoint";
+import { RESEARCH_MAX_RERANK_CANDIDATES } from "./research-retrieval-limits";
 import {
   InteractiveResearchEvidenceRetrievalPolicy,
   type ResearchRetrievalBudgetSnapshot,
@@ -38,6 +40,7 @@ export interface ResearchQueryVectorizer {
     readonly embeddingProfile: NonNullable<RetrieveHybridInput["embeddingProfile"]>;
     readonly knowledgeSpaceId: string;
     readonly queries: readonly string[];
+    readonly signal?: AbortSignal | undefined;
     readonly tenantId: string;
   }): Promise<readonly (readonly number[])[]>;
 }
@@ -66,7 +69,7 @@ export interface ResearchEvidenceRetrievalOptions {
 export function createResearchEvidenceRetrieval({
   legacyResearchRetriever,
   maxCandidateLists = 4,
-  maxRerankCandidates = 200,
+  maxRerankCandidates = RESEARCH_MAX_RERANK_CANDIDATES,
   now = Date.now,
   planner,
   queryVectorizer,
@@ -76,10 +79,18 @@ export function createResearchEvidenceRetrieval({
 }: ResearchEvidenceRetrievalOptions): BasicHybridRetriever {
   positiveInteger(maxCandidateLists, "maxCandidateLists");
   positiveInteger(maxRerankCandidates, "maxRerankCandidates");
+  if (maxRerankCandidates > RESEARCH_MAX_RERANK_CANDIDATES) {
+    throw new Error(
+      `Research retrieval maxRerankCandidates must not exceed ${RESEARCH_MAX_RERANK_CANDIDATES}`,
+    );
+  }
 
   return {
     retrieve: async (input) => {
-      if (input.mode !== "research") return retriever.retrieve(input);
+      input.signal?.throwIfAborted();
+      if (input.mode !== "research") {
+        return runWithAbortSignal(() => retriever.retrieve(input), input.signal);
+      }
 
       // V2 checkpoints contain a PageIndex tree frontier. Keep in-flight tasks replayable until
       // their retained checkpoints expire; all fresh Research requests enter V3 below.
@@ -87,7 +98,7 @@ export function createResearchEvidenceRetrieval({
         if (!legacyResearchRetriever) {
           throw new Error("Legacy Research checkpoint cannot be resumed without the V2 retriever");
         }
-        return legacyResearchRetriever.retrieve(input);
+        return runWithAbortSignal(() => legacyResearchRetriever.retrieve(input), input.signal);
       }
 
       const startedAt = now();
@@ -133,7 +144,24 @@ export function createResearchEvidenceRetrieval({
         });
         return restored.result;
       }
-      const budget = createResearchRetrievalBudget(policy, now, restored?.checkpoint.budget);
+      const remainingWallClockMs =
+        policy.wallClockMs - (restored?.checkpoint.budget.elapsedMs ?? 0);
+      if (remainingWallClockMs <= 0) {
+        throw new Error("Research retrieval wall-clock budget was exhausted before execution");
+      }
+      const deadlineSignal = AbortSignal.timeout(Math.max(1, Math.ceil(remainingWallClockMs)));
+      const executionSignal = input.signal
+        ? AbortSignal.any([input.signal, deadlineSignal])
+        : deadlineSignal;
+      const executionInput: RetrieveHybridInput = { ...input, signal: executionSignal };
+      const budget = createResearchRetrievalBudget(
+        policy,
+        now,
+        restored?.checkpoint.budget,
+        executionSignal,
+      );
+      const researchOpenGate =
+        input.researchOpenGate ?? createConcurrencyGate(policy.maxConcurrentTreeSelections);
       const reserveModelCall = () => {
         if (!budget.consume("modelCalls")) {
           throw new Error("Research retrieval model-call budget was exhausted");
@@ -147,10 +175,12 @@ export function createResearchEvidenceRetrieval({
             reasoningModel,
             reserveModelCall,
             researchModelCallObserver: input.researchModelCallObserver,
+            signal: executionSignal,
             tenantId,
             traceId: input.traceId,
           });
       const planMs = restored ? 0 : Math.max(0, now() - planStartedAt);
+      executionSignal.throwIfAborted();
       const retrievalPlan =
         planner?.plan({
           hasQueryImages: (input.queryImages?.length ?? 0) > 0,
@@ -177,10 +207,15 @@ export function createResearchEvidenceRetrieval({
         questions: [input.query, ...queryPlan.subqueries],
         topK: input.topK ?? input.limit,
       });
+      executionSignal.throwIfAborted();
       const candidateLimit = Math.min(
         maxRerankCandidates,
         Math.max(input.limit, retrievalPlan.rerankCandidateLimit),
       );
+      const rerankCandidateBudget = maxRerankCandidates;
+      // Supplemental fusion may reorder any reranked candidate, so replay-safe boundaries retain
+      // the complete, globally bounded pool rather than only the public result or maxFinalItems.
+      const checkpointCandidateLimit = candidateLimit;
       const rerankRuntime = resolveFinalRerankRuntime({
         input,
         reranker: undefined,
@@ -193,9 +228,14 @@ export function createResearchEvidenceRetrieval({
       let rerankCandidates = restored?.result?.metrics?.rerankCandidates ?? 0;
       let scoreThresholdFilteredCandidates =
         restored?.result?.metrics?.scoreThresholdFilteredCandidates ?? 0;
+      const rerankListCandidates = [
+        ...(restored?.result?.metrics?.researchRerankListCandidates ?? []),
+      ];
       const rerankLists = async (lists: readonly ResearchQueryRerankList[]) => {
+        executionSignal.throwIfAborted();
         const rerankStartedAt = now();
         rerankCandidates += lists.reduce((total, list) => total + list.items.length, 0);
+        rerankListCandidates.push(...lists.map((list) => list.items.length));
         try {
           return await Promise.all(
             lists.map(async (list) => {
@@ -205,6 +245,7 @@ export function createResearchEvidenceRetrieval({
                 model: rerankRuntime.model,
                 query: list.query,
                 reranker: rerankRuntime.provider,
+                signal: executionSignal,
                 tenantId,
               });
               const thresholded = thresholdItems(rerankedItems, scoreThreshold);
@@ -223,7 +264,25 @@ export function createResearchEvidenceRetrieval({
       let reranked: Awaited<ReturnType<typeof rerankHybridRetrievalItems>>;
       let judgement = restored?.checkpoint.judgement;
       let judgeMs = 0;
+      let queryEmbeddingMs = restored?.result?.metrics?.researchQueryEmbeddingMs ?? 0;
       const shouldRecall = !restored || restored.checkpoint.phase === "planned";
+      const checkpointMetrics = (): HybridRetrievalMetrics | undefined => {
+        const recallMetrics = aggregateRecallMetrics(
+          recalled,
+          shouldRecall ? undefined : restored?.result?.metrics,
+        );
+        return recallMetrics
+          ? {
+              ...recallMetrics,
+              rerankCandidates,
+              rerankMs,
+              researchQueryEmbeddingMs: queryEmbeddingMs,
+              researchRerankCandidateBudget: rerankCandidateBudget,
+              researchRerankListCandidates: [...rerankListCandidates],
+              ...(scoreThresholdFilteredCandidates > 0 ? { scoreThresholdFilteredCandidates } : {}),
+            }
+          : undefined;
+      };
       if (!shouldRecall) {
         if (!restored) {
           throw new Error("Research V3 restore state is unavailable");
@@ -237,13 +296,19 @@ export function createResearchEvidenceRetrieval({
         reranked = [...restored.result.items];
       } else {
         const subqueries = queryPlan.subqueries.slice(0, Math.max(0, maxCandidateLists - 1));
+        const queryInputCount = 1 + subqueries.length;
+        if (!budget.consume("rounds") || !budget.consume("retrievalSteps", queryInputCount)) {
+          throw new Error("Research retrieval step budget was exhausted before candidate recall");
+        }
+        const subqueryEmbeddingStartedAt = now();
         const vectors = await vectorizeSubqueries({
           embeddingProfile,
-          input,
+          input: executionInput,
           queries: subqueries,
           queryVectorizer,
           tenantId,
         });
+        queryEmbeddingMs += Math.max(0, now() - subqueryEmbeddingStartedAt);
         const queryInputs = [
           { query: input.query, vector: input.queryVector, weight: 1 },
           ...subqueries.map((query, index) => ({
@@ -252,23 +317,27 @@ export function createResearchEvidenceRetrieval({
             weight: 0.85,
           })),
         ];
-        if (!budget.consume("rounds") || !budget.consume("retrievalSteps", queryInputs.length)) {
-          throw new Error("Research retrieval step budget was exhausted before candidate recall");
-        }
         recalled = await Promise.all(
           queryInputs.map(({ query, vector }, index) =>
-            retriever.retrieve({
-              ...input,
-              limit: candidateLimit,
-              query,
-              queryVector: vector,
-              researchExecutionPolicy: policy,
-              // Graph is a single knowledge-space-wide recall leg, not one traversal per rewrite.
-              researchGraphEnabled: queryPlan.useGraph && index === 0,
-              topK: candidateLimit,
-            }),
+            runWithAbortSignal(
+              () =>
+                retriever.retrieve({
+                  ...executionInput,
+                  limit: candidateLimit,
+                  query,
+                  queryVector: vector,
+                  researchExecutionPolicy: policy,
+                  researchBudget: budget,
+                  // Graph is a single knowledge-space-wide recall leg, not one traversal per rewrite.
+                  researchGraphEnabled: queryPlan.useGraph && index === 0,
+                  researchOpenGate,
+                  topK: candidateLimit,
+                }),
+              executionSignal,
+            ),
           ),
         );
+        executionSignal.throwIfAborted();
         fused = fuseRankedHybridRetrievalLists({
           limit: candidateLimit,
           lists: recalled.map((result, index) => ({
@@ -279,7 +348,7 @@ export function createResearchEvidenceRetrieval({
         });
         const queryRerankedLists = await rerankLists(
           boundResearchQueryRerankLists({
-            limit: candidateLimit,
+            limit: rerankCandidateBudget,
             lists: recalled.map((result, index) => ({
               items: result.items,
               label: `query:${index}`,
@@ -292,10 +361,10 @@ export function createResearchEvidenceRetrieval({
           limit: candidateLimit,
           lists: queryRerankedLists,
         });
-        const recallMetrics = aggregateRecallMetrics(recalled);
         const initialResult: HybridRetrievalResult = {
-          items: reranked.slice(0, input.limit),
-          metrics: recallMetrics ? { ...recallMetrics, rerankCandidates, rerankMs } : undefined,
+          // Durable resume needs the bounded candidate tail, not only the final public Top K.
+          items: reranked.slice(0, checkpointCandidateLimit),
+          metrics: checkpointMetrics(),
           plan: { ...retrievalPlan, strategyVersion: "retrieval-planner-v2" },
         };
         await persistV3Boundary({
@@ -316,7 +385,10 @@ export function createResearchEvidenceRetrieval({
         ],
         retrievalCount: fused.length,
       });
-      if (!judgement) {
+      executionSignal.throwIfAborted();
+      // Interactive retrieval cannot act on a supplemental query. Avoid paying for a diagnostic
+      // model call whose control-flow output is intentionally disabled by policy.
+      if (!judgement && policy.maxSupplementalSearches > 0) {
         const judgeStartedAt = now();
         const evaluatedJudgement = await reasoning.judge({
           evidence: reranked.slice(0, input.limit),
@@ -325,6 +397,7 @@ export function createResearchEvidenceRetrieval({
           reasoningModel,
           reserveModelCall,
           researchModelCallObserver: input.researchModelCallObserver,
+          signal: executionSignal,
           tenantId,
           traceId: input.traceId,
         });
@@ -334,13 +407,16 @@ export function createResearchEvidenceRetrieval({
       let supplementalSearches = 0;
 
       if (
+        judgement &&
         !judgement.sufficient &&
         judgement.supplementalQuery &&
         policy.maxSupplementalSearches > 0
       ) {
+        const supplementalQuery = judgement.supplementalQuery;
         if (restored?.checkpoint.phase !== "supplemental") {
           const initialResult: HybridRetrievalResult = {
-            items: reranked.slice(0, input.limit),
+            items: reranked.slice(0, checkpointCandidateLimit),
+            metrics: checkpointMetrics(),
             plan: { ...retrievalPlan, strategyVersion: "retrieval-planner-v2" },
           };
           await persistV3Boundary({
@@ -361,40 +437,51 @@ export function createResearchEvidenceRetrieval({
         ) {
           throw new Error("Research retrieval budget was exhausted before supplemental search");
         }
+        const supplementalEmbeddingStartedAt = now();
         const [supplementalVector] = await queryVectorizer.vectorize({
           embeddingProfile,
           knowledgeSpaceId: input.knowledgeSpaceId,
-          queries: [judgement.supplementalQuery],
+          queries: [supplementalQuery],
+          signal: executionSignal,
           tenantId,
         });
+        queryEmbeddingMs += Math.max(0, now() - supplementalEmbeddingStartedAt);
         assertVector(supplementalVector, "supplemental query");
-        const supplemental = await retriever.retrieve({
-          ...input,
-          limit: candidateLimit,
-          query: judgement.supplementalQuery,
-          queryVector: supplementalVector,
-          researchExecutionPolicy: policy,
-          researchGraphEnabled: false,
-          topK: candidateLimit,
-        });
+        const supplemental = await runWithAbortSignal(
+          () =>
+            retriever.retrieve({
+              ...executionInput,
+              limit: candidateLimit,
+              query: supplementalQuery,
+              queryVector: supplementalVector,
+              researchExecutionPolicy: policy,
+              researchBudget: budget,
+              researchGraphEnabled: false,
+              researchOpenGate,
+              topK: candidateLimit,
+            }),
+          executionSignal,
+        );
         supplementalSearches = 1;
+        recalled = [...recalled, supplemental];
         const [supplementalReranked] = await rerankLists([
           {
             items: supplemental.items,
             label: "supplemental",
-            query: judgement.supplementalQuery,
+            query: supplementalQuery,
             weight: 0.9,
           },
         ]);
         if (!supplementalReranked) {
           throw new Error("Research supplemental rerank result is unavailable");
         }
+        const supplementalFusionLists = [
+          { items: reranked, label: "initial", weight: 1 },
+          { items: supplemental.items, label: "supplemental", weight: 0.9 },
+        ] as const;
         fused = fuseRankedHybridRetrievalLists({
-          limit: candidateLimit,
-          lists: [
-            { items: reranked.slice(0, input.limit), label: "initial", weight: 1 },
-            { items: supplemental.items, label: "supplemental", weight: 0.9 },
-          ],
+          limit: uniqueResearchCandidateCount(supplementalFusionLists),
+          lists: supplementalFusionLists,
         });
         reranked = mergeResearchQueryRerankedLists({
           limit: candidateLimit,
@@ -406,22 +493,32 @@ export function createResearchEvidenceRetrieval({
       }
 
       const items = reranked.slice(0, input.limit);
+      executionSignal.throwIfAborted();
       const snapshot = budget.snapshot();
       const metrics = combineResearchMetrics({
-        base: aggregateRecallMetrics(recalled) ?? restored?.result?.metrics,
+        base: aggregateRecallMetrics(
+          recalled,
+          shouldRecall ? undefined : restored?.result?.metrics,
+        ),
+        budgetExhaustedReasons: snapshot.exhaustedReasons,
         candidateLists:
           1 + Math.min(queryPlan.subqueries.length, maxCandidateLists - 1) + supplementalSearches,
         fusedCandidates: fused.length,
         judgeMs,
         modelCalls: snapshot.modelCalls,
+        openedResources: snapshot.openedResources,
         planMs,
+        queryEmbeddingMs,
+        rerankCandidateBudget,
         rerankCandidates,
+        rerankListCandidates,
         rerankMs,
+        retrievalSteps: snapshot.retrievalSteps,
         rounds: snapshot.rounds,
         ...(scoreThreshold === undefined ? {} : { scoreThresholdFilteredCandidates }),
-        sufficiencyReached: judgement.sufficient,
+        sufficiencyReached: judgement?.sufficient,
         supplementalSearches,
-        totalMs: Math.max(0, now() - startedAt),
+        totalMs: Math.max(snapshot.elapsedMs, Math.max(0, now() - startedAt)),
       });
       const result: HybridRetrievalResult = {
         items,
@@ -553,8 +650,10 @@ async function vectorizeSubqueries({
     embeddingProfile,
     knowledgeSpaceId: input.knowledgeSpaceId,
     queries,
+    ...(input.signal ? { signal: input.signal } : {}),
     tenantId,
   });
+  input.signal?.throwIfAborted();
   if (vectors.length !== queries.length) {
     throw new Error(
       `Research query vectorizer returned ${vectors.length} vectors for ${queries.length} queries`,
@@ -633,7 +732,9 @@ function mergeResearchQueryRerankedLists({
   readonly lists: readonly ResearchQueryRerankList[];
 }): HybridRetrievalItem[] {
   const fused = fuseRankedHybridRetrievalLists({
-    limit,
+    // RRF supplies provenance and a deterministic tie-break. It must not pre-filter candidates
+    // that have already paid for a query-specific reranker score.
+    limit: uniqueResearchCandidateCount(lists),
     lists: lists.map((list) => ({
       items: list.items,
       label: list.label,
@@ -706,6 +807,12 @@ function mergeResearchQueryRerankedLists({
         first.nodeId.localeCompare(second.nodeId),
     )
     .slice(0, limit);
+}
+
+function uniqueResearchCandidateCount(
+  lists: readonly { readonly items: readonly HybridRetrievalItem[] }[],
+): number {
+  return Math.max(1, new Set(lists.flatMap((list) => list.items.map((item) => item.nodeId))).size);
 }
 
 function queryRerankMatches(
@@ -784,13 +891,19 @@ function thresholdItems(
 
 function combineResearchMetrics({
   base,
+  budgetExhaustedReasons,
   candidateLists,
   fusedCandidates,
   judgeMs,
   modelCalls,
+  openedResources,
   planMs,
+  queryEmbeddingMs,
+  rerankCandidateBudget,
   rerankCandidates,
+  rerankListCandidates,
   rerankMs,
+  retrievalSteps,
   rounds,
   scoreThresholdFilteredCandidates,
   sufficiencyReached,
@@ -798,19 +911,35 @@ function combineResearchMetrics({
   totalMs,
 }: {
   readonly base: HybridRetrievalMetrics | undefined;
+  readonly budgetExhaustedReasons: readonly string[];
   readonly candidateLists: number;
   readonly fusedCandidates: number;
   readonly judgeMs: number;
   readonly modelCalls: number;
+  readonly openedResources: number;
   readonly planMs: number;
+  readonly queryEmbeddingMs: number;
+  readonly rerankCandidateBudget: number;
   readonly rerankCandidates: number;
+  readonly rerankListCandidates: readonly number[];
   readonly rerankMs: number;
+  readonly retrievalSteps: number;
   readonly rounds: number;
   readonly scoreThresholdFilteredCandidates?: number | undefined;
-  readonly sufficiencyReached: boolean;
+  readonly sufficiencyReached?: boolean | undefined;
   readonly supplementalSearches: number;
   readonly totalMs: number;
 }): HybridRetrievalMetrics {
+  const observedStageMaxMs = Math.max(
+    base?.denseMs ?? 0,
+    base?.ftsMs ?? 0,
+    base?.fusionMs ?? 0,
+    base?.graphExpansionMs ?? 0,
+    judgeMs,
+    planMs,
+    queryEmbeddingMs,
+    rerankMs,
+  );
   return {
     ...(base ?? {}),
     denseCandidates: base?.denseCandidates ?? 0,
@@ -822,48 +951,108 @@ function combineResearchMetrics({
     rerankCandidates,
     rerankMs,
     researchCandidateLists: candidateLists,
+    ...(budgetExhaustedReasons.length > 0
+      ? { researchBudgetExhaustedReasons: [...budgetExhaustedReasons] }
+      : {}),
     researchEvidenceJudgeMs: judgeMs,
-    researchExecutionKind: base?.researchExecutionKind,
+    ...(base?.researchExecutionKind ? { researchExecutionKind: base.researchExecutionKind } : {}),
     researchModelCalls: modelCalls,
+    researchOpenedResources: openedResources,
     researchPlanMs: planMs,
+    researchQueryEmbeddingMs: queryEmbeddingMs,
+    researchRerankCandidateBudget: rerankCandidateBudget,
+    researchRerankListCandidates: [...rerankListCandidates],
+    researchRetrievalSteps: retrievalSteps,
     researchRounds: rounds,
     researchRrfCandidates: fusedCandidates,
     researchStrategyVersion: "research-evidence-v3",
-    researchSufficiencyReached: sufficiencyReached,
+    ...(sufficiencyReached === undefined ? {} : { researchSufficiencyReached: sufficiencyReached }),
     researchSupplementalSearches: supplementalSearches,
     ...(scoreThresholdFilteredCandidates === undefined ? {} : { scoreThresholdFilteredCandidates }),
-    totalMs,
+    // Provider telemetry may be rounded independently from the local clock. Never publish a
+    // component duration greater than the end-to-end duration shown beside it.
+    totalMs: Math.max(totalMs, observedStageMaxMs),
   };
 }
 
 function aggregateRecallMetrics(
   results: readonly HybridRetrievalResult[],
+  prior?: HybridRetrievalMetrics | undefined,
 ): HybridRetrievalMetrics | undefined {
-  const metrics = results.flatMap((result) => (result.metrics ? [result.metrics] : []));
+  const metrics = [
+    ...(prior ? [prior] : []),
+    ...results.flatMap((result) => (result.metrics ? [result.metrics] : [])),
+  ];
   if (metrics.length === 0) return undefined;
   const sum = (field: keyof HybridRetrievalMetrics) =>
     metrics.reduce((total, metric) => {
       const value = metric[field];
       return total + (typeof value === "number" && Number.isFinite(value) ? value : 0);
     }, 0);
+  const maximum = (field: keyof HybridRetrievalMetrics) =>
+    metrics.reduce((largest, metric) => {
+      const value = metric[field];
+      return typeof value === "number" && Number.isFinite(value)
+        ? Math.max(largest, value)
+        : largest;
+    }, 0);
+  const has = (field: keyof HybridRetrievalMetrics) =>
+    metrics.some((metric) => metric[field] !== undefined);
+  const aggregateResearchWork = (
+    aggregateField: "researchRecallDenseCandidates" | "researchRecallFtsCandidates",
+    fallbackField: "denseCandidates" | "ftsCandidates",
+  ) =>
+    metrics.reduce((total, metric) => {
+      const value = metric[aggregateField] ?? metric[fallbackField];
+      return total + (Number.isFinite(value) ? value : 0);
+    }, 0);
   return {
     degradationFlags: [...new Set(metrics.flatMap((metric) => metric.degradationFlags ?? []))],
-    denseCandidates: sum("denseCandidates"),
-    denseMs: sum("denseMs"),
-    ftsCandidates: sum("ftsCandidates"),
-    ftsMs: sum("ftsMs"),
+    denseCandidates: maximum("denseCandidates"),
+    denseMs: maximum("denseMs"),
+    ...(has("documentOutlineMatchedItems")
+      ? { documentOutlineMatchedItems: sum("documentOutlineMatchedItems") }
+      : {}),
+    ftsCandidates: maximum("ftsCandidates"),
+    ftsMs: maximum("ftsMs"),
     fusedCandidates: sum("fusedCandidates"),
-    fusionMs: sum("fusionMs"),
-    graphExpansionCandidates: sum("graphExpansionCandidates"),
-    graphExpansionMs: sum("graphExpansionMs"),
-    graphExpansionRelations: sum("graphExpansionRelations"),
-    graphExpansionSeeds: sum("graphExpansionSeeds"),
-    graphExpansionTraversedEntities: sum("graphExpansionTraversedEntities"),
-    pageIndexMatchedNodes: sum("pageIndexMatchedNodes"),
-    pageIndexOpenedRanges: sum("pageIndexOpenedRanges"),
-    pageIndexScannedOutlines: sum("pageIndexScannedOutlines"),
-    researchOutlineLexicalCandidates: sum("researchOutlineLexicalCandidates"),
-    totalMs: sum("totalMs"),
+    fusionMs: maximum("fusionMs"),
+    ...(has("graphExpansionCandidates")
+      ? { graphExpansionCandidates: sum("graphExpansionCandidates") }
+      : {}),
+    ...(has("graphExpansionMs") ? { graphExpansionMs: maximum("graphExpansionMs") } : {}),
+    ...(has("graphExpansionRelations")
+      ? { graphExpansionRelations: sum("graphExpansionRelations") }
+      : {}),
+    ...(has("graphExpansionSeeds") ? { graphExpansionSeeds: sum("graphExpansionSeeds") } : {}),
+    ...(has("graphExpansionTraversedEntities")
+      ? { graphExpansionTraversedEntities: sum("graphExpansionTraversedEntities") }
+      : {}),
+    ...(has("pageIndexMatchedNodes")
+      ? { pageIndexMatchedNodes: sum("pageIndexMatchedNodes") }
+      : {}),
+    ...(has("pageIndexOpenedRanges")
+      ? { pageIndexOpenedRanges: sum("pageIndexOpenedRanges") }
+      : {}),
+    ...(has("pageIndexScannedOutlines")
+      ? { pageIndexScannedOutlines: sum("pageIndexScannedOutlines") }
+      : {}),
+    ...(has("researchOutlineLexicalCandidates")
+      ? { researchOutlineLexicalCandidates: sum("researchOutlineLexicalCandidates") }
+      : {}),
+    // A restored boundary already contains aggregate work from its original parallel legs. Do not
+    // collapse that total back to the standard per-leg maximum when a supplemental result joins it.
+    researchRecallDenseCandidates: aggregateResearchWork(
+      "researchRecallDenseCandidates",
+      "denseCandidates",
+    ),
+    researchRecallFtsCandidates: aggregateResearchWork(
+      "researchRecallFtsCandidates",
+      "ftsCandidates",
+    ),
+    // Query legs run concurrently. Standard durations/counts describe the user-visible critical
+    // path; explicitly named researchRecall* counters retain aggregate provider work.
+    totalMs: maximum("totalMs"),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
   QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
+  RETRIEVAL_MAX_TOP_K,
   type ResearchEvidenceReasoning,
   type ResearchQueryVectorizer,
   type RetrievalCandidate,
@@ -36,6 +37,7 @@ import {
   normalizeRetrievalMetadataFilters,
   normalizeRetrievalPermissionScope,
   recordRetrievalOperationalMetric,
+  runWithAbortSignal,
 } from "@knowledge/api";
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 
@@ -92,6 +94,7 @@ export interface ApiRetrieverOptions {
   /** Online Research V3. Omission retains the V2 path for lower-level compatibility tests. */
   readonly researchEvidence?:
     | {
+        readonly maxRerankCandidates?: number | undefined;
         readonly queryVectorizer: ResearchQueryVectorizer;
         readonly reasoning: ResearchEvidenceReasoning;
       }
@@ -225,7 +228,7 @@ export function createApiRetriever({
       ...(pageIndexFindability ? { findability: pageIndexFindability } : {}),
       ...(pageIndexLayeredTreeSearch ? { layeredTreeSearch: pageIndexLayeredTreeSearch } : {}),
       // Research's planner already caps semantic recall at RETRIEVAL_MAX_TOP_K.
-      maxSemanticCandidates: 100,
+      maxSemanticCandidates: RETRIEVAL_MAX_TOP_K,
       maxSemanticCandidatesPerCall: 5,
       pageIndex,
       planner: pageIndexPlanner,
@@ -278,6 +281,9 @@ export function createApiRetriever({
   const researchRetriever = researchEvidence
     ? createResearchEvidenceRetrieval({
         ...(legacyResearchStack ? { legacyResearchRetriever: legacyResearchStack } : {}),
+        ...(researchEvidence.maxRerankCandidates === undefined
+          ? {}
+          : { maxRerankCandidates: researchEvidence.maxRerankCandidates }),
         planner,
         queryVectorizer: researchEvidence.queryVectorizer,
         reasoning: researchEvidence.reasoning,
@@ -382,6 +388,7 @@ function createVisualDenseRetrievalPath({
 }): BasicHybridRetriever {
   return {
     retrieve: async (input) => {
+      input.signal?.throwIfAborted();
       const snapshot = input.projectionSnapshot;
       if (strictPublishedReads && !snapshot) {
         throw new Error("Hybrid retrieval requires a published projection snapshot");
@@ -416,23 +423,28 @@ function createVisualDenseRetrievalPath({
         if (!resolvedModel.trim()) {
           throw new Error("Visual query embedding provider returned an empty model");
         }
-        const candidates = await searchVisualDense({
-          denseProjectionModel: resolvedModel,
-          filters: input.filters,
-          knowledgeSpaceId: input.knowledgeSpaceId,
-          permissionScope: input.permissionScope,
-          projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-          projectionSetFingerprint: input.projectionSetFingerprint,
-          ...(snapshot ? { projectionSetPublicationId: snapshot.publicationId } : {}),
-          projectionSetReadMode: input.projectionSetReadMode,
-          queryVector,
-          ...(snapshot
-            ? { tenantId: snapshot.tenantId }
-            : input.tenantId
-              ? { tenantId: input.tenantId }
-              : {}),
-          topK: plan?.denseTopK ?? input.topK,
-        });
+        const candidates = await runWithAbortSignal(
+          () =>
+            searchVisualDense({
+              denseProjectionModel: resolvedModel,
+              filters: input.filters,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              permissionScope: input.permissionScope,
+              projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+              projectionSetFingerprint: input.projectionSetFingerprint,
+              ...(snapshot ? { projectionSetPublicationId: snapshot.publicationId } : {}),
+              projectionSetReadMode: input.projectionSetReadMode,
+              queryVector,
+              ...(input.signal ? { signal: input.signal } : {}),
+              ...(snapshot
+                ? { tenantId: snapshot.tenantId }
+                : input.tenantId
+                  ? { tenantId: input.tenantId }
+                  : {}),
+              topK: plan?.denseTopK ?? input.topK,
+            }),
+          input.signal,
+        );
         const metadataFiltered = filterRetrievalCandidatesByMetadata(
           candidates,
           normalizeRetrievalMetadataFilters(input.filters),
@@ -454,15 +466,19 @@ function createVisualDenseRetrievalPath({
         }
 
         const allowed = new Set(
-          await publishedProjectionMembership.filterComponentKeys({
-            componentKeys: [
-              ...new Set(projectionFiltered.map((candidate) => candidate.projectionId)),
-            ],
-            componentType: "index-projection",
-            knowledgeSpaceId: snapshot.knowledgeSpaceId,
-            publicationId: snapshot.publicationId,
-            tenantId: snapshot.tenantId,
-          }),
+          await runWithAbortSignal(
+            () =>
+              publishedProjectionMembership.filterComponentKeys({
+                componentKeys: [
+                  ...new Set(projectionFiltered.map((candidate) => candidate.projectionId)),
+                ],
+                componentType: "index-projection",
+                knowledgeSpaceId: snapshot.knowledgeSpaceId,
+                publicationId: snapshot.publicationId,
+                tenantId: snapshot.tenantId,
+              }),
+            input.signal,
+          ),
         );
 
         return projectionFiltered.filter((candidate) => allowed.has(candidate.projectionId));
@@ -478,26 +494,31 @@ function createVisualDenseRetrievalPath({
               };
             }
             const images = input.queryImages ?? [];
-            const embedding = await imageQuery.provider.embedImages({
-              images: images.map((image) => ({
-                assetRef: { uploadFileId: image.uploadFileId },
-                body: image.body,
-                contentType: image.mimeType,
-                documentAssetId: image.uploadFileId,
-                metadata: { queryImage: true, sha256: image.sha256 },
-                modality: "image",
-                nodeId: image.uploadFileId,
-                objectKey: image.uploadFileId,
-                sourceText: "",
-              })),
-              inputType: "query",
-              model: imageQuery.model,
-              ...(snapshot
-                ? { tenantId: snapshot.tenantId }
-                : input.tenantId
-                  ? { tenantId: input.tenantId }
-                  : {}),
-            });
+            const embedding = await runWithAbortSignal(
+              () =>
+                imageQuery.provider.embedImages({
+                  images: images.map((image) => ({
+                    assetRef: { uploadFileId: image.uploadFileId },
+                    body: image.body,
+                    contentType: image.mimeType,
+                    documentAssetId: image.uploadFileId,
+                    metadata: { queryImage: true, sha256: image.sha256 },
+                    modality: "image",
+                    nodeId: image.uploadFileId,
+                    objectKey: image.uploadFileId,
+                    sourceText: "",
+                  })),
+                  inputType: "query",
+                  model: imageQuery.model,
+                  ...(input.signal ? { signal: input.signal } : {}),
+                  ...(snapshot
+                    ? { tenantId: snapshot.tenantId }
+                    : input.tenantId
+                      ? { tenantId: input.tenantId }
+                      : {}),
+                }),
+              input.signal,
+            );
             if (embedding.dense.length !== images.length) {
               throw new Error(
                 `Visual query embedding provider returned ${embedding.dense.length} vectors for ${images.length} images`,
@@ -513,16 +534,21 @@ function createVisualDenseRetrievalPath({
           if (!visualQuery || !input.query.trim()) {
             return { candidateLists: [] as RetrievalCandidate[][], ok: true as const };
           }
-          const embedding = await visualQuery.provider.embed({
-            inputType: "search_query",
-            model: visualQuery.model,
-            texts: [input.query],
-            ...(snapshot
-              ? { tenantId: snapshot.tenantId }
-              : input.tenantId
-                ? { tenantId: input.tenantId }
-                : {}),
-          });
+          const embedding = await runWithAbortSignal(
+            () =>
+              visualQuery.provider.embed({
+                inputType: "search_query",
+                model: visualQuery.model,
+                ...(input.signal ? { signal: input.signal } : {}),
+                texts: [input.query],
+                ...(snapshot
+                  ? { tenantId: snapshot.tenantId }
+                  : input.tenantId
+                    ? { tenantId: input.tenantId }
+                    : {}),
+              }),
+            input.signal,
+          );
           if (embedding.dense.length !== 1) {
             throw new Error(
               `Visual query embedding provider returned ${embedding.dense.length} vectors for 1 query`,
@@ -545,6 +571,7 @@ function createVisualDenseRetrievalPath({
             ok: true as const,
           };
         } catch {
+          input.signal?.throwIfAborted();
           return {
             candidateLists: [] as RetrievalCandidate[][],
             degradationFlag:
@@ -555,7 +582,7 @@ function createVisualDenseRetrievalPath({
           };
         }
       };
-      const basePromise = retriever.retrieve(input);
+      const basePromise = runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       const visualMode =
         (input.queryImages?.length ?? 0) > 0 ? imageQuery?.mode : visualQuery?.mode;
       const [baseResult, visualResult] =
@@ -574,6 +601,7 @@ function createVisualDenseRetrievalPath({
                 : [base, await retrieveVisual()];
             })()
           : await Promise.all([basePromise, retrieveVisual()]);
+      input.signal?.throwIfAborted();
 
       if (
         visualMode === "fallback" &&

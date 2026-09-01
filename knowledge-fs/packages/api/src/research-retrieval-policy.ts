@@ -81,8 +81,8 @@ export const DurableResearchRetrievalPolicy: ResearchRetrievalExecutionPolicy = 
 /**
  * Research Evidence V3 policies. The legacy policies above remain frozen because an in-flight V2
  * PageIndex checkpoint may already contain counters that exceed the V3 limits. Fresh requests and
- * V3 checkpoints use these policies instead: at most one planner call, one set-level evidence
- * judge, and (for durable work only) one deterministic supplemental retrieval round. The third
+ * V3 checkpoints use these policies instead: at most one planner call and, when supplemental
+ * retrieval is enabled, one set-level evidence judge plus one deterministic supplemental round. The third
  * model-call slot remains only so checkpoints written by the former bounded-recovery contract can
  * still resume safely after deployment.
  */
@@ -202,6 +202,7 @@ export function createResearchRetrievalBudget(
   policy: ResearchRetrievalExecutionPolicy,
   now: () => number = Date.now,
   initial?: ResearchRetrievalBudgetSnapshot | undefined,
+  signal?: AbortSignal | undefined,
 ): ResearchRetrievalBudget {
   validateResearchRetrievalPolicy(policy);
   const startedAt = now();
@@ -239,6 +240,7 @@ export function createResearchRetrievalBudget(
 
   return {
     consume: (counter, amount = 1) => {
+      signal?.throwIfAborted();
       if (!Number.isSafeInteger(amount) || amount < 1) {
         throw new Error("Research retrieval budget consumption must be a positive integer");
       }
@@ -289,7 +291,8 @@ export function estimateResearchRetrievalWork(
   validateResearchRetrievalPolicy(policy);
   const synthesisCalls = options.includeFinalSynthesis ? 1 : 0;
   if (policy.strategyVersion === "research-evidence-v3") {
-    const retrievalModelCalls = Math.min(policy.maxModelCalls, 2);
+    const judgeCalls = policy.maxSupplementalSearches > 0 ? 1 : 0;
+    const retrievalModelCalls = Math.min(policy.maxModelCalls, 1 + judgeCalls);
     return {
       expected: {
         modelCalls: retrievalModelCalls + synthesisCalls,
@@ -308,8 +311,8 @@ export function estimateResearchRetrievalWork(
         retrievalSteps: policy.maxRetrievalSteps,
       },
       minimum: {
-        // A simple query skips the planner model call, but still runs one evidence-set judge.
-        modelCalls: 1 + synthesisCalls,
+        // A simple query skips the planner; only policies that can act on insufficiency run judge.
+        modelCalls: judgeCalls + synthesisCalls,
         openedResources: 0,
         retrievalSteps: 1,
       },

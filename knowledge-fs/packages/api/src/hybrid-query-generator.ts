@@ -34,6 +34,7 @@ import {
   validateResearchRetrievalCheckpointScope,
   validateResearchRetrievalDurableCheckpoint,
 } from "./research-retrieval-checkpoint";
+import { RESEARCH_MAX_RERANK_CANDIDATES } from "./research-retrieval-limits";
 import {
   DurableResearchEvidenceRetrievalPolicy,
   DurableResearchRetrievalPolicy,
@@ -111,6 +112,9 @@ export function createHybridQueryGenerator({
     topK,
   });
   const evidenceBundleAssembler = createEvidenceBundleAssembler();
+  const durableCheckpointEvidenceBundleAssembler = createEvidenceBundleAssembler({
+    maxItems: RESEARCH_MAX_RERANK_CANDIDATES,
+  });
 
   return {
     stream: async function* (input): AsyncGenerator<QueryGenerationEvent> {
@@ -211,7 +215,7 @@ export function createHybridQueryGenerator({
           ...(input.onResearchDurableCheckpoint
             ? {
                 onResearchSearchCheckpoint: async (boundary) => {
-                  const bundle = evidenceBundleAssembler.assemble({
+                  const bundle = durableCheckpointEvidenceBundleAssembler.assemble({
                     query: input.query,
                     ...(input.queryImageMetadata?.length
                       ? { queryImages: input.queryImageMetadata }

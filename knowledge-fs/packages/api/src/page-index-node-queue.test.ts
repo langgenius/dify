@@ -1,6 +1,7 @@
 import { DocumentOutlineSchema, KnowledgeNodeSchema } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
+import { createConcurrencyGate } from "./bounded-concurrency";
 import { buildPageIndexNodeQueue, openPageIndexEvidenceQueue } from "./page-index-node-queue";
 import type { PageIndexNodeQueueOutlineInput } from "./page-index-node-queue";
 import type { PageIndexWholeTreeNodeSelection } from "./page-index-whole-tree-selection";
@@ -173,6 +174,152 @@ describe("PageIndex node queue", () => {
 
     expect(result).toEqual({ items: [], openedRangeCount: 0, truncated: false });
     expect(openLeafEvidence).not.toHaveBeenCalled();
+  });
+
+  it("enforces a request-wide open reservation before physical I/O", async () => {
+    const outline = fixtureOutline();
+    const queue = buildPageIndexNodeQueue({
+      maxQueueItems: 2,
+      maxValueNodesPerOutline: 2,
+      outlines: [
+        {
+          documentScore: 1,
+          generationId: GENERATION_ID,
+          llmSelections: [],
+          outline,
+          rankedValueNodeIds: ["invoice", "fees"],
+          valuesByNodeId: new Map([
+            ["invoice", { breadthValue: 1, peakValue: 1 }],
+            ["fees", { breadthValue: 0.9, peakValue: 0.9 }],
+          ]),
+        },
+      ],
+    });
+    const selectedNode = outline.nodes[0];
+    if (!selectedNode) throw new Error("missing selected node");
+    const openLeafEvidence = vi.fn(async () => ({
+      items: [],
+      openedRange: { endOffset: 100, startOffset: 0 },
+      outline,
+      selectedNode,
+    }));
+    let remaining = 1;
+
+    const result = await openPageIndexEvidenceQueue({
+      maxConcurrentOpens: 2,
+      maxEvidencePerRange: 1,
+      maxFinalItems: 2,
+      permissionScope: [],
+      queue,
+      repository: { openLeafEvidence },
+      reserveOpen: () => remaining-- > 0,
+      scope: {
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        knowledgeSpaceId: SPACE_ID,
+        publicationId: "80000000-0000-4000-8000-000000000001",
+        tenantId: "tenant-1",
+      },
+    });
+
+    expect(openLeafEvidence).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ openedRangeCount: 1, truncated: true });
+  });
+
+  it("stops awaiting an admitted range open when its owner is cancelled", async () => {
+    const outline = fixtureOutline();
+    const queue = buildPageIndexNodeQueue({
+      maxQueueItems: 1,
+      maxValueNodesPerOutline: 1,
+      outlines: [
+        {
+          documentScore: 1,
+          generationId: GENERATION_ID,
+          llmSelections: [],
+          outline,
+          rankedValueNodeIds: ["invoice"],
+          valuesByNodeId: new Map([["invoice", { breadthValue: 1, peakValue: 1 }]]),
+        },
+      ],
+    });
+    const controller = new AbortController();
+    const cancellation = new Error("lease lost");
+    const openLeafEvidence = vi.fn(async () => new Promise<never>(() => undefined));
+    const opening = openPageIndexEvidenceQueue({
+      maxConcurrentOpens: 1,
+      maxEvidencePerRange: 1,
+      maxFinalItems: 1,
+      permissionScope: [],
+      queue,
+      repository: { openLeafEvidence },
+      signal: controller.signal,
+      scope: {
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        knowledgeSpaceId: SPACE_ID,
+        publicationId: "80000000-0000-4000-8000-000000000001",
+        tenantId: "tenant-1",
+      },
+    });
+    await vi.waitFor(() => expect(openLeafEvidence).toHaveBeenCalledOnce());
+
+    controller.abort(cancellation);
+
+    await expect(opening).rejects.toBe(cancellation);
+  });
+
+  it("does not reserve an open budget unit for work cancelled in the shared gate", async () => {
+    const outline = fixtureOutline();
+    const queue = buildPageIndexNodeQueue({
+      maxQueueItems: 1,
+      maxValueNodesPerOutline: 1,
+      outlines: [
+        {
+          documentScore: 1,
+          generationId: GENERATION_ID,
+          llmSelections: [],
+          outline,
+          rankedValueNodeIds: ["invoice"],
+          valuesByNodeId: new Map([["invoice", { breadthValue: 1, peakValue: 1 }]]),
+        },
+      ],
+    });
+    const gate = createConcurrencyGate(1);
+    let releaseGate: (() => void) | undefined;
+    const occupied = gate.run(
+      async () =>
+        new Promise<void>((resolve) => {
+          releaseGate = resolve;
+        }),
+    );
+    await vi.waitFor(() => expect(releaseGate).toBeDefined());
+    const controller = new AbortController();
+    const reserveOpen = vi.fn(() => true);
+    const opening = openPageIndexEvidenceQueue({
+      maxConcurrentOpens: 1,
+      maxEvidencePerRange: 1,
+      maxFinalItems: 1,
+      openGate: gate,
+      permissionScope: [],
+      queue,
+      repository: { openLeafEvidence: vi.fn() },
+      reserveOpen,
+      signal: controller.signal,
+      scope: {
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        knowledgeSpaceId: SPACE_ID,
+        publicationId: "80000000-0000-4000-8000-000000000001",
+        tenantId: "tenant-1",
+      },
+    });
+    await Promise.resolve();
+    expect(reserveOpen).not.toHaveBeenCalled();
+
+    const cancellation = new Error("request cancelled while queued");
+    controller.abort(cancellation);
+    await expect(opening).rejects.toBe(cancellation);
+    expect(reserveOpen).not.toHaveBeenCalled();
+
+    releaseGate?.();
+    await occupied;
   });
 
   it("marks range and item truncation and preserves LLM-only evidence metadata", async () => {

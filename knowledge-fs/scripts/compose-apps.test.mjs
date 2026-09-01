@@ -225,6 +225,11 @@ test("app compose profile uses local middleware and the required Dify dependency
   );
   assert.match(
     compose,
+    /^ {6}KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES: \$\{KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES:-200\}$/m,
+  );
+  assert.match(localEnvExample, /^KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES=200$/m);
+  assert.match(
+    compose,
     /^ {6}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY: \$\{KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY:-2\}$/m,
   );
   assert.match(
@@ -453,6 +458,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_DIRECT_STREAM_ENABLED",
     "KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS",
     "KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS",
+    "KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES",
     "KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED",
     "KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS",
     "UNSTRUCTURED_API_URL",
@@ -499,6 +505,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS=8192$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS=60000$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES=200$/m);
   assert.match(
     difyKnowledgeFsEnv,
     /^UNSTRUCTURED_API_URL=http:\/\/knowledge_fs_unstructured:8000$/m,
@@ -590,6 +597,7 @@ test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", 
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: "8192"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS: "60000"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES: "200"$/m);
   assert.match(
     kubernetesBaseline,
     /^ {2}KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: "2"$/m,

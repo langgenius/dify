@@ -1,3 +1,4 @@
+import { runWithAbortSignal } from "./bounded-concurrency";
 import {
   type KnowledgeSpaceEmbeddingResolver,
   assertEmbeddingModelMatchesProfile,
@@ -10,23 +11,29 @@ export function createResearchQueryVectorizer(
   resolver: KnowledgeSpaceEmbeddingResolver,
 ): ResearchQueryVectorizer {
   return {
-    vectorize: async ({ embeddingProfile, knowledgeSpaceId, queries, tenantId }) => {
+    vectorize: async ({ embeddingProfile, knowledgeSpaceId, queries, signal, tenantId }) => {
+      signal?.throwIfAborted();
       if (queries.length === 0) return [];
-      const resolved = await resolver.resolve({
-        knowledgeSpaceId,
-        profile: embeddingProfile,
-        tenantId,
-      });
+      const resolved = await runWithAbortSignal(
+        () => resolver.resolve({ knowledgeSpaceId, profile: embeddingProfile, tenantId }),
+        signal,
+      );
       if (!resolved) throw new Error("Research query embedding profile could not be resolved");
       if (resolved.vectorSpaceId !== embeddingProfile.vectorSpaceId) {
         throw new Error("Research query embedding resolver changed the frozen vector space");
       }
-      const result = await resolved.providerInstance.embed({
-        inputType: "search_query",
-        model: embeddingProfile.model,
-        tenantId,
-        texts: [...queries],
-      });
+      const result = await runWithAbortSignal(
+        () =>
+          resolved.providerInstance.embed({
+            inputType: "search_query",
+            model: embeddingProfile.model,
+            ...(signal ? { signal } : {}),
+            tenantId,
+            texts: [...queries],
+          }),
+        signal,
+      );
+      signal?.throwIfAborted();
       if (result.dense.length !== queries.length) {
         throw new Error(
           `Research query embedding provider returned ${result.dense.length} vectors for ${queries.length} queries`,

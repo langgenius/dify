@@ -1,5 +1,10 @@
 import type { DocumentOutline, DocumentOutlineNode } from "@knowledge/core";
 
+import {
+  type ConcurrencyGate,
+  mapWithConcurrency,
+  runWithAbortSignal,
+} from "./bounded-concurrency";
 import { cloneJsonObject } from "./json-utils";
 import type { PageIndexNodeValuePrior } from "./page-index-whole-tree-selection";
 import type { PageIndexWholeTreeNodeSelection } from "./page-index-whole-tree-selection";
@@ -44,9 +49,13 @@ export interface OpenPageIndexEvidenceQueueInput {
   readonly maxConcurrentOpens: number;
   readonly maxEvidencePerRange: number;
   readonly maxFinalItems: number;
+  readonly openGate?: ConcurrencyGate | undefined;
   readonly permissionScope: readonly string[];
   readonly queue: readonly PageIndexNodeQueueItem[];
+  /** Reserves one request-wide resource unit immediately before a physical range open. */
+  readonly reserveOpen?: (() => boolean) | undefined;
   readonly repository: Pick<PublishedPageIndexRepository, "openLeafEvidence">;
+  readonly signal?: AbortSignal | undefined;
   readonly scope: PublishedPageIndexScope;
 }
 
@@ -104,9 +113,12 @@ export async function openPageIndexEvidenceQueue({
   maxConcurrentOpens,
   maxEvidencePerRange,
   maxFinalItems,
+  openGate,
   permissionScope,
   queue,
+  reserveOpen,
   repository,
+  signal,
   scope,
 }: OpenPageIndexEvidenceQueueInput): Promise<OpenPageIndexEvidenceQueueResult> {
   validatePositiveInteger(maxConcurrentOpens, "maxConcurrentOpens");
@@ -116,18 +128,40 @@ export async function openPageIndexEvidenceQueue({
     return { items: [], openedRangeCount: 0, truncated: false };
   }
 
-  const opened = await mapWithConcurrency(queue, maxConcurrentOpens, async (selection) => ({
-    result: await repository.openLeafEvidence({
-      ...scope,
-      documentAssetId: selection.documentAssetId,
-      generationId: selection.generationId,
-      limit: maxEvidencePerRange,
-      outlineId: selection.outlineId,
-      outlineNodeId: selection.outlineNodeId,
-      permissionScope,
-    }),
-    selection,
-  }));
+  const attempts = await mapWithConcurrency(
+    queue,
+    maxConcurrentOpens,
+    async (selection) => {
+      signal?.throwIfAborted();
+      const open = async () => {
+        signal?.throwIfAborted();
+        // Reserve only after the shared gate admits this operation. Queued work that is canceled
+        // must not consume the request-wide budget for a range that was never physically opened.
+        if (reserveOpen && !reserveOpen()) return undefined;
+        return {
+          result: await runWithAbortSignal(
+            () =>
+              repository.openLeafEvidence({
+                ...scope,
+                documentAssetId: selection.documentAssetId,
+                generationId: selection.generationId,
+                limit: maxEvidencePerRange,
+                outlineId: selection.outlineId,
+                outlineNodeId: selection.outlineNodeId,
+                permissionScope,
+              }),
+            signal,
+          ),
+          selection,
+        };
+      };
+      return openGate ? openGate.run(open, { signal }) : open();
+    },
+    signal,
+  );
+  const opened = attempts.filter(
+    (attempt): attempt is NonNullable<(typeof attempts)[number]> => attempt !== undefined,
+  );
   const byNodeId = new Map<string, MutableEvidenceItem>();
 
   for (const { result, selection } of opened) {
@@ -173,7 +207,10 @@ export async function openPageIndexEvidenceQueue({
   return {
     items: allItems.slice(0, maxFinalItems),
     openedRangeCount: opened.length,
-    truncated: allItems.length > maxFinalItems || opened.some(({ result }) => result.truncated),
+    truncated:
+      opened.length < queue.length ||
+      allItems.length > maxFinalItems ||
+      opened.some(({ result }) => result.truncated),
   };
 }
 
@@ -321,29 +358,6 @@ function freezeEvidenceItem(item: MutableEvidenceItem): HybridRetrievalItem {
     score: item.score,
     sources: contributions.includes("value") ? ["pageindex", "dense"] : ["pageindex"],
   };
-}
-
-async function mapWithConcurrency<Input, Output>(
-  inputs: readonly Input[],
-  concurrency: number,
-  map: (input: Input, index: number) => Promise<Output>,
-): Promise<Output[]> {
-  const outputs = new Array<Output>(inputs.length);
-  let nextIndex = 0;
-  const worker = async () => {
-    while (nextIndex < inputs.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      const input = inputs[index];
-      if (input !== undefined) {
-        outputs[index] = await map(input, index);
-      }
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, inputs.length) }, async () => worker()),
-  );
-  return outputs;
 }
 
 function validateScore(value: number, label: string): void {

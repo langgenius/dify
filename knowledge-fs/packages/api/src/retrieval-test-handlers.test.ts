@@ -8,8 +8,16 @@ import { createKnowledgeGateway } from "./index";
 import { createInMemoryKnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
 import { RetrievalExecutionAdmissionError } from "./retrieval-execution-lease";
-import type { RetrievalTestExecutor, RetrievalTestResult } from "./retrieval-test";
-import { RetrievalTestRequestSchema, RetrievalTestResponseSchema } from "./retrieval-test-routes";
+import {
+  type RetrievalTestExecutor,
+  type RetrievalTestResult,
+  createRetrievalTestExecutor,
+} from "./retrieval-test";
+import {
+  RetrievalTestMetricsSchema,
+  RetrievalTestRequestSchema,
+  RetrievalTestResponseSchema,
+} from "./retrieval-test-routes";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const TOKEN = "owner-token";
@@ -147,6 +155,97 @@ describe("retrieval test route", () => {
       }),
     );
     expect(stream).not.toHaveBeenCalled();
+  });
+
+  it("serializes the real Research executor plan and metrics contract", async () => {
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: {
+        embed: async () => ({
+          dense: [[0.1, 0.2, 0.3]],
+          metadata: {
+            dimension: 3,
+            model: embeddingSelection.model,
+            provider: "dify-model-runtime",
+          },
+          model: embeddingSelection.model,
+        }),
+        kind: "dify-model-runtime",
+        models: async () => [],
+      },
+      retriever: {
+        retrieve: async (input) => ({
+          items: [
+            {
+              citation: {
+                artifactHash: "d".repeat(64),
+                documentAssetId: "document-1",
+                documentVersion: 1,
+                sectionPath: ["Camera"],
+              },
+              metadata: { text: "Camera evidence" },
+              nodeId: "node-1",
+              permissionScope: [...(input.permissionScope ?? [])],
+              projectionIds: ["projection-1"],
+              score: 0.8,
+              sources: ["dense", "fts", "pageindex"],
+            },
+          ],
+          metrics: researchMetrics(),
+          plan: {
+            denseTopK: 30,
+            ftsTopK: 30,
+            fusionLimit: 15,
+            queryLanguage: "latin",
+            requestedMode: "research",
+            rerankCandidateLimit: 15,
+            resolvedMode: "research",
+            strategyVersion: "retrieval-planner-v2",
+            topK: 3,
+          },
+        }),
+      },
+    });
+    const app = gateway({
+      executor,
+      retrievalExecutionLeases: {
+        acquire: async () => ({
+          assertActive: async () => undefined,
+          release: async () => undefined,
+          signal: new AbortController().signal,
+        }),
+      },
+      runtimeSnapshotResolver: {
+        assertReady: async () => undefined,
+        resolve: async () => runtimeSnapshot(),
+      },
+    });
+    await createSpace(app);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({ mode: "research", query: "compare camera evidence" }),
+      headers: jsonBearer(),
+      method: "POST",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(() => RetrievalTestResponseSchema.parse(body)).not.toThrow();
+    expect(body).toMatchObject({
+      capabilityStatus: { embedding: "verified", reasoning: "verified", rerank: "verified" },
+      metrics: {
+        researchStrategyVersion: "research-evidence-v3",
+        researchSufficiencyReached: true,
+      },
+      mode: "research",
+      plan: { strategyVersion: "retrieval-planner-v2" },
+    });
+    expect(
+      RetrievalTestMetricsSchema.parse({
+        ...researchMetrics(),
+        futureInternalMetric: undefined,
+      }),
+    ).not.toHaveProperty("futureInternalMetric");
   });
 
   it("keeps request filters bounded and rejects unsupported auto mode", () => {
@@ -310,6 +409,50 @@ describe("retrieval test route", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it("combines the HTTP disconnect signal with the retrieval lease and releases promptly", async () => {
+    const requestAbort = new AbortController();
+    const release = vi.fn(async () => undefined);
+    let observedSignal: AbortSignal | undefined;
+    const execute = vi.fn(
+      async (input: Parameters<RetrievalTestExecutor["execute"]>[0]) =>
+        new Promise<RetrievalTestResult>((_resolve, reject) => {
+          observedSignal = input.signal;
+          const onAbort = () => reject(input.signal?.reason);
+          input.signal?.addEventListener("abort", onAbort, { once: true });
+          if (input.signal?.aborted) onAbort();
+        }),
+    );
+    const app = gateway({
+      executor: { execute },
+      retrievalExecutionLeases: {
+        acquire: async () => ({
+          assertActive: async () => undefined,
+          release,
+          signal: new AbortController().signal,
+        }),
+      },
+      runtimeSnapshotResolver: {
+        assertReady: async () => undefined,
+        resolve: async () => runtimeSnapshot(),
+      },
+    });
+    await createSpace(app);
+
+    const response = app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({ mode: "research", query: "compare camera evidence" }),
+      headers: jsonBearer(),
+      method: "POST",
+      signal: requestAbort.signal,
+    });
+    await vi.waitFor(() => expect(observedSignal).toBeDefined());
+
+    requestAbort.abort(new DOMException("client disconnected", "AbortError"));
+
+    expect((await response).status).toBe(503);
+    expect(observedSignal?.aborted).toBe(true);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects unverified active profiles before executing and still releases the lease", async () => {
     const execute = vi.fn();
     const release = vi.fn(async () => undefined);
@@ -438,19 +581,21 @@ function retrievalResult(mode: "deep" | "fast" | "research"): RetrievalTestResul
         text: "Camera evidence",
       },
     ],
-    metrics: {
-      denseCandidates: 2,
-      denseMs: 1,
-      ftsCandidates: 2,
-      ftsMs: 1,
-      fusedCandidates: 3,
-      fusionMs: 1,
-      graphExpansionCandidates: mode === "deep" ? 1 : undefined,
-      graphExpansionMs: mode === "deep" ? 1 : undefined,
-      rerankCandidates: 3,
-      rerankMs: 1,
-      totalMs: 5,
-    },
+    metrics:
+      mode === "research"
+        ? researchMetrics()
+        : {
+            denseCandidates: 2,
+            denseMs: 1,
+            ftsCandidates: 2,
+            ftsMs: 1,
+            fusedCandidates: 3,
+            fusionMs: 1,
+            ...(mode === "deep" ? { graphExpansionCandidates: 1, graphExpansionMs: 1 } : {}),
+            rerankCandidates: 3,
+            rerankMs: 1,
+            totalMs: 5,
+          },
     plan: {
       denseTopK: 3,
       ftsTopK: 3,
@@ -459,7 +604,7 @@ function retrievalResult(mode: "deep" | "fast" | "research"): RetrievalTestResul
       requestedMode: mode,
       rerankCandidateLimit: 3,
       resolvedMode: mode,
-      strategyVersion: "retrieval-planner-v1",
+      strategyVersion: mode === "research" ? "retrieval-planner-v2" : "retrieval-planner-v1",
       topK: 3,
     },
     stages: [
@@ -467,6 +612,33 @@ function retrievalResult(mode: "deep" | "fast" | "research"): RetrievalTestResul
       { candidateCount: 1, name: "graph", status: mode === "deep" ? "executed" : "skipped" },
       { candidateCount: 3, name: "rerank", status: "executed" },
     ],
+  };
+}
+
+function researchMetrics() {
+  return {
+    denseCandidates: 4,
+    denseMs: 2,
+    ftsCandidates: 3,
+    ftsMs: 1,
+    fusedCandidates: 5,
+    fusionMs: 1,
+    pageIndexMatchedNodes: 4,
+    pageIndexOpenedRanges: 1,
+    pageIndexScannedOutlines: 2,
+    rerankCandidates: 5,
+    rerankMs: 2,
+    researchCandidateLists: 2,
+    researchEvidenceJudgeMs: 2,
+    researchModelCalls: 1,
+    researchOpenedResources: 1,
+    researchOutlineLexicalCandidates: 1,
+    researchPlanMs: 1,
+    researchRounds: 1,
+    researchStrategyVersion: "research-evidence-v3" as const,
+    researchSufficiencyReached: true,
+    researchSupplementalSearches: 0,
+    totalMs: 7,
   };
 }
 

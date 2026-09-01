@@ -3,6 +3,9 @@ import { type RetrievalQueryLanguage, detectRetrievalQueryLanguage } from "./ret
 import type { RetrievalMode, RetrievalPlan } from "./retrieval-types";
 import { type TraceAttributes, type TraceRecorder, createNoopTraceRecorder } from "./tracing";
 
+/** One shared ceiling for production planning and the retrieval-test contract. */
+export const RETRIEVAL_MAX_TOP_K = 100;
+
 export interface RetrievalPlanInput {
   readonly hasQueryImages?: boolean | undefined;
   readonly mode?: RetrievalMode | undefined;

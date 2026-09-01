@@ -1017,7 +1017,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     });
   });
 
-  it("wires fresh Research through FTS, deterministic outlines, one judge, and profile rerank", async () => {
+  it("wires fresh interactive Research through FTS, outlines, and profile rerank without an unusable judge call", async () => {
     const dense = vi.fn(async () => [
       {
         ...candidateWithGraphSeed(),
@@ -1054,6 +1054,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
         searchFts: fts,
       },
       researchEvidence: {
+        maxRerankCandidates: 80,
         queryVectorizer: { vectorize: vi.fn() },
         reasoning: {
           judge,
@@ -1118,7 +1119,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     expect(dense).toHaveBeenCalled();
     expect(fts).toHaveBeenCalled();
     expect(legacyScore).not.toHaveBeenCalled();
-    expect(judge).toHaveBeenCalledOnce();
+    expect(judge).not.toHaveBeenCalled();
     expect(providerFactory).toHaveBeenCalledWith({
       model: "space-reranker",
       pluginId: "vendor/reranker",
@@ -1126,6 +1127,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     });
     expect(rerankCalls).toHaveLength(1);
     expect(result.metrics).toMatchObject({
+      researchRerankCandidateBudget: 80,
       researchStrategyVersion: "research-evidence-v3",
       researchSupplementalSearches: 0,
     });

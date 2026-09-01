@@ -82,7 +82,7 @@ import {
   ResearchTaskRuntimeSnapshotInvalidError,
   researchTaskRuntimeSnapshotFromMetadata,
 } from "./research-task-runtime-snapshot";
-import { createRetrievalPlanner } from "./retrieval-planner";
+import { RETRIEVAL_MAX_TOP_K, createRetrievalPlanner } from "./retrieval-planner";
 
 export interface ResearchTaskRuntimeOptions {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
@@ -137,7 +137,7 @@ export interface ResearchTaskRuntime {
 type ResearchTaskRuntimeOutcome = Exclude<keyof ResearchTaskRuntimeTickResult, "leased">;
 
 const terminalStages = new Set<ResearchTaskJobStage>(["completed", "failed", "canceled"]);
-const modePlanner = createRetrievalPlanner({ maxTopK: 100 });
+const modePlanner = createRetrievalPlanner({ maxTopK: RETRIEVAL_MAX_TOP_K });
 const RESEARCH_TASK_ANSWER_DELTA_BATCH_CHARS = 128;
 const RESEARCH_TASK_MAX_COST_ENTRIES = 1_000;
 

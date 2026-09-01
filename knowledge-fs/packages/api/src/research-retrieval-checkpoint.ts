@@ -238,13 +238,10 @@ const evidenceSearchCheckpointSchema = z
   })
   .strict()
   .superRefine((checkpoint, context) => {
-    if (
-      (checkpoint.phase === "complete" || checkpoint.phase === "supplemental") &&
-      checkpoint.judgement === undefined
-    ) {
+    if (checkpoint.phase === "supplemental" && checkpoint.judgement === undefined) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Research Evidence V3 ${checkpoint.phase} checkpoint requires judgement`,
+        message: "Research Evidence V3 supplemental checkpoint requires judgement",
         path: ["judgement"],
       });
     }

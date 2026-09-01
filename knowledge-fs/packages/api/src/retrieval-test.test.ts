@@ -254,6 +254,44 @@ describe("createRetrievalTestExecutor", () => {
       rerank: "executed",
       summary: "skipped",
     });
+    expect(
+      result.stages.find((stage) => stage.name === "embedding")?.durationMs,
+    ).toBeGreaterThanOrEqual(4);
+    expect(result.stages.find((stage) => stage.name === "outline")?.candidateCount).toBe(2);
+  });
+
+  it("forwards cancellation into retrieval and stops awaiting an adapter that ignores it", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("retrieval lease lost");
+    let retrievalInput: RetrieveHybridInput | undefined;
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: embeddingProvider(),
+      retriever: {
+        retrieve: async (input) => {
+          retrievalInput = input;
+          return new Promise<never>(() => undefined);
+        },
+      },
+    });
+
+    const execution = executor.execute({
+      embeddingProfile,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "research",
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot,
+      query: "compare camera evidence",
+      retrievalProfile,
+      signal: controller.signal,
+      subject,
+      traceId: "trace-cancel",
+    });
+    await vi.waitFor(() => expect(retrievalInput?.signal).toBe(controller.signal));
+
+    controller.abort(cancellation);
+
+    await expect(execution).rejects.toBe(cancellation);
   });
 
   it("requires Deep to report ordinary hybrid plus Graph before the shared final rerank", async () => {
@@ -515,18 +553,19 @@ function researchMetrics(): HybridRetrievalMetrics {
   return {
     denseCandidates: 4,
     denseMs: 2,
-    documentOutlineMatchedItems: 1,
     ftsCandidates: 3,
     ftsMs: 1,
     fusedCandidates: 5,
     fusionMs: 1,
     pageIndexMatchedNodes: 4,
     pageIndexOpenedRanges: 1,
+    pageIndexScannedOutlines: 2,
     rerankCandidates: 5,
     rerankMs: 2,
     researchCandidateLists: 1,
     researchEvidenceJudgeMs: 2,
     researchModelCalls: 1,
+    researchQueryEmbeddingMs: 4,
     researchRounds: 1,
     researchStrategyVersion: "research-evidence-v3",
     researchSufficiencyReached: true,

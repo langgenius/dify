@@ -127,6 +127,7 @@ export function registerRetrievalTestHandlers({
           tenantId: subject.tenantId,
         });
         await executionLease.assertActive();
+        const executionSignal = AbortSignal.any([executionLease.signal, context.req.raw.signal]);
 
         const result = await executor.execute({
           ...(runtimeSnapshot.embeddingProfile
@@ -140,18 +141,16 @@ export function registerRetrievalTestHandlers({
           projectionSnapshot: runtimeSnapshot.projectionSnapshot,
           query: body.query,
           retrievalProfile: runtimeSnapshot.retrievalProfile,
-          signal: executionLease.signal,
+          signal: executionSignal,
           subject,
           traceId,
         });
         await executionLease.assertActive();
         const embeddingCapabilityStatus = "verified" as const;
-        const rerankCapabilityStatus: "disabled" | "not-required" | "verified" = !runtimeSnapshot
-          .retrievalProfile.rerank.enabled
-          ? "disabled"
-          : mode === "research"
-            ? "not-required"
-            : "verified";
+        const rerankCapabilityStatus: "disabled" | "verified" = runtimeSnapshot.retrievalProfile
+          .rerank.enabled
+          ? "verified"
+          : "disabled";
 
         const response = RetrievalTestResponseSchema.parse({
           capabilityStatus: {

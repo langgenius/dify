@@ -16,6 +16,7 @@ import {
   RetrievalCustomMetadataFieldTypes,
   normalizeRetrievalCustomMetadataFilter,
 } from "./retrieval-custom-metadata";
+import { RETRIEVAL_MAX_TOP_K } from "./retrieval-planner";
 import { RetrievalTestStageNames } from "./retrieval-test";
 
 const RetrievalQuerySchema = z
@@ -143,13 +144,39 @@ export const RetrievalTestMetricsSchema = z
     metadataFilteredCandidates: CandidateCountSchema.optional(),
     multimodalCandidates: CandidateCountSchema.optional(),
     pageIndexCandidateTruncated: z.boolean().optional(),
+    pageIndexFallbackDocuments: CandidateCountSchema.optional(),
+    pageIndexFlattenedLevels: CandidateCountSchema.optional(),
+    pageIndexLayeredDocuments: CandidateCountSchema.optional(),
+    pageIndexLayeredSteps: CandidateCountSchema.optional(),
     pageIndexMatchedNodes: CandidateCountSchema.optional(),
     pageIndexOpenedRanges: CandidateCountSchema.optional(),
     pageIndexScannedNodes: CandidateCountSchema.optional(),
     pageIndexScannedOutlines: CandidateCountSchema.optional(),
     pageIndexScoreVersion: z.string().max(256).optional(),
+    pageIndexSelectedDocuments: CandidateCountSchema.optional(),
+    pageIndexSerializedTreeTokens: CandidateCountSchema.optional(),
+    pageIndexWholeTreeDocuments: CandidateCountSchema.optional(),
     permissionFilteredCandidates: CandidateCountSchema.optional(),
     projectionFilteredCandidates: CandidateCountSchema.optional(),
+    researchBudgetExhaustedReasons: z.array(z.string().max(256)).max(6).readonly().optional(),
+    researchCandidateLists: CandidateCountSchema.optional(),
+    researchEvidenceJudgeMs: DurationSchema.optional(),
+    researchExecutionKind: z.enum(["durable", "interactive"]).optional(),
+    researchModelCalls: CandidateCountSchema.optional(),
+    researchOpenedResources: CandidateCountSchema.optional(),
+    researchOutlineLexicalCandidates: CandidateCountSchema.optional(),
+    researchPlanMs: DurationSchema.optional(),
+    researchQueryEmbeddingMs: DurationSchema.optional(),
+    researchRecallDenseCandidates: CandidateCountSchema.optional(),
+    researchRecallFtsCandidates: CandidateCountSchema.optional(),
+    researchRerankCandidateBudget: CandidateCountSchema.optional(),
+    researchRerankListCandidates: z.array(CandidateCountSchema).max(5).readonly().optional(),
+    researchRetrievalSteps: CandidateCountSchema.optional(),
+    researchRrfCandidates: CandidateCountSchema.optional(),
+    researchRounds: CandidateCountSchema.optional(),
+    researchStrategyVersion: z.literal("research-evidence-v3").optional(),
+    researchSufficiencyReached: z.boolean().optional(),
+    researchSupplementalSearches: CandidateCountSchema.optional(),
     reasoningTreeSearchNodes: CandidateCountSchema.optional(),
     rerankCandidates: CandidateCountSchema.optional(),
     rerankMs: DurationSchema.optional(),
@@ -160,7 +187,9 @@ export const RetrievalTestMetricsSchema = z
     totalMs: DurationSchema,
     visualEmbeddingCandidates: CandidateCountSchema.optional(),
   })
-  .strict();
+  // Metrics are an operational superset that can grow independently from this public DTO. Strip
+  // unknown internal telemetry instead of turning a successful retrieval into an HTTP 503.
+  .strip();
 
 export const RetrievalTestResponseSchema = z
   .object({
@@ -211,8 +240,8 @@ export const RetrievalTestResponseSchema = z
         requestedMode: KnowledgeSpaceRetrievalModeSchema,
         rerankCandidateLimit: z.number().int().nonnegative(),
         resolvedMode: KnowledgeSpaceRetrievalModeSchema,
-        strategyVersion: z.literal("retrieval-planner-v1"),
-        topK: z.number().int().min(1).max(100),
+        strategyVersion: z.enum(["retrieval-planner-v1", "retrieval-planner-v2"]),
+        topK: z.number().int().min(1).max(RETRIEVAL_MAX_TOP_K),
       })
       .strict(),
     projectionSnapshot: z

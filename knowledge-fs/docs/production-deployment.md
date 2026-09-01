@@ -73,6 +73,9 @@ the service:
 | `KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS` | Public verification key set issued by Dify. |
 | `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED` | Opt in to query-image visual retrieval; requires an enabled visual-embedding provider/index and a query mode other than `off`. |
 | `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single Deep/Research vision expansion call; defaults to 8000 ms. |
+| `KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS` | Structured planner/judge output ceiling; defaults to `8192` so hidden reasoning tokens do not force a second model call. |
+| `KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS` | Per-call Research planner/judge deadline; defaults to `60000`. Caller cancellation and the request-wide Research deadline remain authoritative. |
+| `KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES` | Initial cross-encoder pool shared fairly across the original query and up to three planned intents. Defaults to and is capped at `200`; lower it to trade multi-intent recall depth for latency/cost. A durable evidence judge may add one separately plan-bounded supplemental list. The response reports the initial pool and every selected list count, so total provider work remains observable. |
 | `KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY` | Process-wide active-request limit for the API-buffered upload compatibility path. Defaults to `2` and accepts `1..8`. |
 | `KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES` | Aggregate source-byte reservation for admitted buffered uploads. Defaults to `31457280` (30 MiB), must be at least the configured per-file fallback limit, and is capped at 100 MiB. |
 | `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY` | Process-wide active-request limit for legacy/capability multipart document routes, acquired before Hono form validation. Defaults to `2` and accepts `1..8`. |
@@ -88,6 +91,12 @@ the service:
 | `UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS` | Heavy-document total timeout. The bundled page-parallel profile uses `2400000`, below the `3600000` validation ceiling. `UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS` remains a lower-precedence compatibility alias. |
 | `UNSTRUCTURED_MAX_RESPONSE_BYTES` | Maximum parser response body; defaults to `33554432` (32 MiB). |
 | `UNSTRUCTURED_MAX_RETRIES` | In-process retry count for explicit retryable HTTP responses. Ambiguous transport failures are never retried inline. The integrated deployment uses `0`; durable compilation owns whole-attempt retries. |
+
+Research planner/judge prompts treat retrieved document text as untrusted data and prohibit obeying
+embedded instructions. They use strict structured output, expose no tools, and may only issue one
+normalized supplemental query inside the same tenant, permission snapshot, resource budget, and
+request deadline. This limits prompt-injection impact to retrieval quality and one bounded model /
+retrieval round; it is not a substitute for document trust and model-call monitoring.
 
 Compose injects `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`; do not duplicate them in the
 operator-owned env file. Do not add `MINIO_*`, cloud object-storage credentials, provider API keys,

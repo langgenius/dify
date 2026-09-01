@@ -74,6 +74,41 @@ describe("Research retrieval durable search checkpoint", () => {
     ).toEqual(durable);
   });
 
+  it("accepts a completed interactive V3 boundary when policy intentionally skipped judge", () => {
+    const durable = validateResearchRetrievalDurableCheckpoint({
+      evidenceBundle: evidenceBundle(),
+      searchState: {
+        budget: {
+          elapsedMs: 10,
+          exhaustedReasons: [],
+          modelCalls: 0,
+          openedResources: 0,
+          retrievalSteps: 1,
+          rounds: 1,
+          supplementalSearches: 0,
+        },
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        knowledgeSpaceId: SPACE_ID,
+        phase: "complete",
+        publicationId: PUBLICATION_ID,
+        query: "invoice retention",
+        queryPlan: {
+          evidenceDimensions: [],
+          intent: "direct",
+          subqueries: [],
+          useGraph: false,
+        },
+        sequence: 2,
+        tenantId: "tenant-1",
+        traceId: TRACE_ID,
+        version: ResearchEvidenceRetrievalCheckpointVersion,
+      },
+    });
+
+    expect(durable.searchState).toMatchObject({ phase: "complete" });
+    expect(durable.searchState).not.toHaveProperty("judgement");
+  });
+
   it("round-trips a bounded layered frontier, decisions, queue, and budget counters", () => {
     const searchState = checkpoint();
     const durable = validateResearchRetrievalDurableCheckpoint({

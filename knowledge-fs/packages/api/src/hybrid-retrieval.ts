@@ -1,6 +1,7 @@
 import type { DatabaseAdapter, DatabaseQueryValue } from "@knowledge/core";
 import type { RerankerProvider } from "@knowledge/embeddings";
 
+import { runWithAbortSignal } from "./bounded-concurrency";
 import {
   databasePlaceholder,
   qualifiedDatabaseIdentifier,
@@ -511,6 +512,7 @@ export function createBasicHybridRetriever({
 
   return {
     retrieve: async (input) => {
+      input.signal?.throwIfAborted();
       if (!Number.isInteger(input.limit) || input.limit < 1) {
         throw new Error("Hybrid retrieval limit must be at least 1");
       }
@@ -551,52 +553,64 @@ export function createBasicHybridRetriever({
       const [denseSettled, ftsSettled] = await Promise.allSettled([
         hasTextQuery
           ? timed(now, () =>
-              repository.searchDense({
-                denseProjectionModel: input.denseProjectionModel,
-                denseProjectionStatuses: input.denseProjectionStatuses,
-                denseProjectionVersion: input.denseProjectionVersion,
-                filters: input.filters,
-                knowledgeSpaceId: input.knowledgeSpaceId,
-                permissionScope: input.permissionScope,
-                projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-                projectionSetFingerprint: input.projectionSetFingerprint,
-                ...(publishedScope
-                  ? { projectionSetPublicationId: publishedScope.publicationId }
-                  : {}),
-                projectionSetReadMode: input.projectionSetReadMode,
-                queryVector: input.queryVector,
-                ...(publishedScope
-                  ? { tenantId: publishedScope.tenantId }
-                  : input.tenantId
-                    ? { tenantId: input.tenantId }
-                    : {}),
-                topK: plan.denseTopK,
-              }),
+              runWithAbortSignal(
+                () =>
+                  repository.searchDense({
+                    denseProjectionModel: input.denseProjectionModel,
+                    denseProjectionStatuses: input.denseProjectionStatuses,
+                    denseProjectionVersion: input.denseProjectionVersion,
+                    filters: input.filters,
+                    knowledgeSpaceId: input.knowledgeSpaceId,
+                    permissionScope: input.permissionScope,
+                    projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+                    projectionSetFingerprint: input.projectionSetFingerprint,
+                    ...(publishedScope
+                      ? { projectionSetPublicationId: publishedScope.publicationId }
+                      : {}),
+                    projectionSetReadMode: input.projectionSetReadMode,
+                    queryVector: input.queryVector,
+                    ...(input.signal ? { signal: input.signal } : {}),
+                    ...(publishedScope
+                      ? { tenantId: publishedScope.tenantId }
+                      : input.tenantId
+                        ? { tenantId: input.tenantId }
+                        : {}),
+                    topK: plan.denseTopK,
+                  }),
+                input.signal,
+              ),
             )
           : Promise.resolve({ durationMs: 0, value: [] }),
         hasTextQuery
           ? timed(now, () =>
-              repository.searchFts({
-                filters: input.filters,
-                knowledgeSpaceId: input.knowledgeSpaceId,
-                permissionScope: input.permissionScope,
-                projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
-                projectionSetFingerprint: input.projectionSetFingerprint,
-                ...(publishedScope
-                  ? { projectionSetPublicationId: publishedScope.publicationId }
-                  : {}),
-                projectionSetReadMode: input.projectionSetReadMode,
-                query: input.query,
-                ...(publishedScope
-                  ? { tenantId: publishedScope.tenantId }
-                  : input.tenantId
-                    ? { tenantId: input.tenantId }
-                    : {}),
-                topK: plan.ftsTopK,
-              }),
+              runWithAbortSignal(
+                () =>
+                  repository.searchFts({
+                    filters: input.filters,
+                    knowledgeSpaceId: input.knowledgeSpaceId,
+                    permissionScope: input.permissionScope,
+                    projectionSetCandidateFingerprint: input.projectionSetCandidateFingerprint,
+                    projectionSetFingerprint: input.projectionSetFingerprint,
+                    ...(publishedScope
+                      ? { projectionSetPublicationId: publishedScope.publicationId }
+                      : {}),
+                    projectionSetReadMode: input.projectionSetReadMode,
+                    query: input.query,
+                    ...(input.signal ? { signal: input.signal } : {}),
+                    ...(publishedScope
+                      ? { tenantId: publishedScope.tenantId }
+                      : input.tenantId
+                        ? { tenantId: input.tenantId }
+                        : {}),
+                    topK: plan.ftsTopK,
+                  }),
+                input.signal,
+              ),
             )
           : Promise.resolve({ durationMs: 0, value: [] }),
       ]);
+      // An AbortError from one leg must never be mistaken for an allowed dense/FTS degradation.
+      input.signal?.throwIfAborted();
       const denseResult =
         denseSettled.status === "fulfilled"
           ? denseSettled.value
@@ -670,6 +684,7 @@ export function createBasicHybridRetriever({
               allowedProjectionIds: undefined,
               filteredCandidates: 0,
             };
+      input.signal?.throwIfAborted();
       const denseProjectionCandidates = membershipFiltered.allowedProjectionIds
         ? legacyDenseProjectionCandidates.filter((candidate) =>
             membershipFiltered.allowedProjectionIds?.has(candidate.projectionId),
@@ -705,6 +720,7 @@ export function createBasicHybridRetriever({
 
       if (hasTextQuery && reranker && plan.rerankCandidateLimit > 0) {
         try {
+          input.signal?.throwIfAborted();
           rerankResult = await timed(now, () =>
             rerankHybridRetrievalItems({
               items: fusionResult.value,
@@ -712,6 +728,7 @@ export function createBasicHybridRetriever({
               model: rerankerModel ?? "",
               query: input.query,
               reranker,
+              ...(input.signal ? { signal: input.signal } : {}),
               ...(input.tenantId ? { tenantId: input.tenantId } : {}),
             }),
           );
@@ -732,6 +749,8 @@ export function createBasicHybridRetriever({
           value: fusionResult.value.slice(0, input.limit),
         };
       }
+
+      input.signal?.throwIfAborted();
 
       return {
         items: rerankResult.value,

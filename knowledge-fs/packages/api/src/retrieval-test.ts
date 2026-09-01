@@ -7,6 +7,7 @@ import {
 } from "@knowledge/core";
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 
+import { runWithAbortSignal } from "./bounded-concurrency";
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
 import {
   type KnowledgeSpaceEmbeddingResolver,
@@ -18,14 +19,14 @@ import type { PublishedProjectionReadSnapshot } from "./published-projection-rea
 import type { RetrievalMetadataFilters } from "./retrieval-candidates";
 import type { RetrievalSource } from "./retrieval-candidates";
 import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
-import { createRetrievalPlanner } from "./retrieval-planner";
+import { RETRIEVAL_MAX_TOP_K, createRetrievalPlanner } from "./retrieval-planner";
 import type {
   BasicHybridRetriever,
   HybridRetrievalMetrics,
   RetrievalPlan,
 } from "./retrieval-types";
 
-const retrievalTestPlanner = createRetrievalPlanner({ maxTopK: 100 });
+const retrievalTestPlanner = createRetrievalPlanner({ maxTopK: RETRIEVAL_MAX_TOP_K });
 
 export const RetrievalTestStageNames = [
   "embedding",
@@ -212,28 +213,33 @@ export function createRetrievalTestExecutor({
           tenantId: input.subject.tenantId,
         });
         const embeddingMs = Math.max(0, Date.now() - embeddingStartedAt);
-        const retrieval = await retriever.retrieve({
-          ...(input.embeddingProfile
-            ? {
-                denseProjectionModel: input.embeddingProfile.vectorSpaceId,
-                embeddingProfile: input.embeddingProfile,
-              }
-            : {}),
-          knowledgeSpaceId: input.knowledgeSpaceId,
-          ...(input.filters === undefined
-            ? {}
-            : { filters: normalizeRetrievalMetadataFilters(input.filters) }),
-          limit: input.retrievalProfile.topK,
-          mode: input.mode,
-          permissionScope: input.permissionScope,
-          projectionSnapshot: input.projectionSnapshot,
-          query: input.query,
-          queryVector,
-          retrievalProfile: input.retrievalProfile,
-          tenantId: input.subject.tenantId,
-          topK: input.retrievalProfile.topK,
-          traceId: input.traceId,
-        });
+        const retrieval = await runWithAbortSignal(
+          () =>
+            retriever.retrieve({
+              ...(input.embeddingProfile
+                ? {
+                    denseProjectionModel: input.embeddingProfile.vectorSpaceId,
+                    embeddingProfile: input.embeddingProfile,
+                  }
+                : {}),
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              ...(input.filters === undefined
+                ? {}
+                : { filters: normalizeRetrievalMetadataFilters(input.filters) }),
+              limit: input.retrievalProfile.topK,
+              mode: input.mode,
+              permissionScope: input.permissionScope,
+              projectionSnapshot: input.projectionSnapshot,
+              query: input.query,
+              queryVector,
+              retrievalProfile: input.retrievalProfile,
+              ...(input.signal ? { signal: input.signal } : {}),
+              tenantId: input.subject.tenantId,
+              topK: input.retrievalProfile.topK,
+              traceId: input.traceId,
+            }),
+          input.signal,
+        );
         if (!retrieval.plan || !retrieval.metrics) {
           throw new RetrievalTestUnavailableError(
             "Production retrieval did not return the required plan and stage metrics",
@@ -270,6 +276,9 @@ export function createRetrievalTestExecutor({
           }),
         };
       } catch (error) {
+        if (input.signal?.aborted) {
+          throw input.signal.reason;
+        }
         if (error instanceof RetrievalTestUnavailableError) {
           throw error;
         }
@@ -306,24 +315,27 @@ async function resolveRetrievalTestEmbedding({
     );
   }
   const resolved = embeddingResolver
-    ? await embeddingResolver.resolve({
-        profile: embeddingProfile,
-        knowledgeSpaceId,
-        tenantId,
-      })
+    ? await runWithAbortSignal(
+        () => embeddingResolver.resolve({ profile: embeddingProfile, knowledgeSpaceId, tenantId }),
+        signal,
+      )
     : null;
   const provider = resolved?.providerInstance ?? embeddings;
   const model = resolved?.model ?? embeddingModel;
   if (!provider || !model?.trim()) {
     throw new RetrievalTestUnavailableError("Embedding capability is unavailable");
   }
-  const response = await provider.embed({
-    inputType: "search_query",
-    model,
-    ...(signal ? { signal } : {}),
-    tenantId,
-    texts: [query],
-  });
+  const response = await runWithAbortSignal(
+    () =>
+      provider.embed({
+        inputType: "search_query",
+        model,
+        ...(signal ? { signal } : {}),
+        tenantId,
+        texts: [query],
+      }),
+    signal,
+  );
   const vector = response.dense[0];
   if (
     response.dense.length !== 1 ||
@@ -359,12 +371,16 @@ function retrievalTestStages({
   const graph = deep || metrics.graphExpansionCandidates !== undefined;
   const rerank = profile.rerank.enabled;
   return [
-    stage("embedding", true, undefined, embeddingMs),
+    stage("embedding", true, undefined, embeddingMs + (metrics.researchQueryEmbeddingMs ?? 0)),
     stage("dense", true, metrics.denseCandidates, metrics.denseMs),
     stage("fts", true, metrics.ftsCandidates, metrics.ftsMs),
     stage("fusion", true, metrics.fusedCandidates, metrics.fusionMs),
     stage("summary", false, metrics.summaryCandidates),
-    stage("outline", research, metrics.documentOutlineMatchedItems),
+    stage(
+      "outline",
+      research,
+      metrics.documentOutlineMatchedItems ?? metrics.pageIndexScannedOutlines,
+    ),
     stage(
       "pageindex",
       research,

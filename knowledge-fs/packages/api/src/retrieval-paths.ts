@@ -1,5 +1,6 @@
 import type { DocumentOutline, DocumentOutlineNode } from "@knowledge/core";
 
+import { runWithAbortSignal } from "./bounded-concurrency";
 import type { DocumentOutlineRepository } from "./document-outline-repository";
 import {
   type GraphEntity,
@@ -89,7 +90,7 @@ export function createRequiredDeepGraphCapabilityGuard({
       if (input.mode === "deep") {
         throw new DeepGraphCapabilityUnavailableError();
       }
-      const result = await retriever.retrieve(input);
+      const result = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       if (input.mode !== "research" || input.researchGraphEnabled !== true || !result.metrics) {
         return result;
       }
@@ -144,25 +145,33 @@ export function createSummaryTreeRetrievalPath({
   return {
     retrieve: async (input) => {
       if (!shouldRunModeExtension(input.mode, "summary-tree")) {
-        return retriever.retrieve(input);
+        return runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       }
 
-      const summaryResult = await retriever.retrieve({
-        ...input,
-        filters: summaryTreeSummaryFilters(input.filters),
-        limit: Math.min(maxSelectedSections, input.limit + maxSelectedSections),
-        topK: Math.min(input.topK, maxSummaryTopK),
-      });
+      const summaryResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve({
+            ...input,
+            filters: summaryTreeSummaryFilters(input.filters),
+            limit: Math.min(maxSelectedSections, input.limit + maxSelectedSections),
+            topK: Math.min(input.topK, maxSummaryTopK),
+          }),
+        input.signal,
+      );
       const selectedSections = summaryResult.items
         .map((item) => item.citation.sectionPath)
         .filter((sectionPath) => sectionPath.length > 0)
         .slice(0, maxSelectedSections);
-      const leafResult = await retriever.retrieve({
-        ...input,
-        filters: summaryTreeLeafFilters(input.filters),
-        limit: Math.min(maxLeafTopK, Math.max(input.limit * 2, input.limit)),
-        topK: Math.min(input.topK, maxLeafTopK),
-      });
+      const leafResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve({
+            ...input,
+            filters: summaryTreeLeafFilters(input.filters),
+            limit: Math.min(maxLeafTopK, Math.max(input.limit * 2, input.limit)),
+            topK: Math.min(input.topK, maxLeafTopK),
+          }),
+        input.signal,
+      );
       const sectionFiltered =
         selectedSections.length === 0
           ? leafResult.items
@@ -214,8 +223,12 @@ export function createDocumentOutlineRetrievalPath({
       const plannedPageIndexResearch = shouldRunModeExtension(input.mode, "document-outline");
       // This is a legacy compatibility path. Research itself has no hybrid planner fanout; use a
       // bounded Fast base only to locate documents that still carry old, non-published outlines.
-      const baseResult = await retriever.retrieve(
-        plannedPageIndexResearch ? { ...input, mode: "fast", limit: requestedLimit } : input,
+      const baseResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve(
+            plannedPageIndexResearch ? { ...input, mode: "fast", limit: requestedLimit } : input,
+          ),
+        input.signal,
       );
       const pageIndexResearch =
         plannedPageIndexResearch || shouldRunModeExtension(input.mode, "document-outline");
@@ -232,12 +245,17 @@ export function createDocumentOutlineRetrievalPath({
       const outlineKeys = uniqueOutlineKeys(baseResult.items).slice(0, maxOutlinesPerQuery);
       const outlineResults = await Promise.all(
         outlineKeys.map((key) =>
-          outlines.getByDocumentVersion({
-            documentAssetId: key.documentAssetId,
-            version: key.documentVersion,
-          }),
+          runWithAbortSignal(
+            () =>
+              outlines.getByDocumentVersion({
+                documentAssetId: key.documentAssetId,
+                version: key.documentVersion,
+              }),
+            input.signal,
+          ),
         ),
       );
+      input.signal?.throwIfAborted();
       const outlineByKey = new Map<string, DocumentOutline>();
 
       for (const outline of outlineResults) {
@@ -381,18 +399,24 @@ export function createTableSpecificRetrievalPath({
 
   return {
     retrieve: async (input) => {
-      const baseResult = await retriever.retrieve(input);
+      input.signal?.throwIfAborted();
+      const baseResult = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
+      input.signal?.throwIfAborted();
 
       if (!shouldRunTableSpecificRetrieval(input)) {
         return baseResult;
       }
 
-      const tableResult = await retriever.retrieve({
-        ...input,
-        filters: tableSpecificRetrievalFilters(input.filters),
-        limit: Math.min(input.limit, maxTableCandidates),
-        topK: Math.min(input.topK, maxTableTopK),
-      });
+      const tableResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve({
+            ...input,
+            filters: tableSpecificRetrievalFilters(input.filters),
+            limit: Math.min(input.limit, maxTableCandidates),
+            topK: Math.min(input.topK, maxTableTopK),
+          }),
+        input.signal,
+      );
 
       return {
         items: mergeTableSpecificRetrievalItems({
@@ -418,18 +442,22 @@ export function createImageOcrRetrievalPath({
 
   return {
     retrieve: async (input) => {
-      const baseResult = await retriever.retrieve(input);
+      const baseResult = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
 
       if (!shouldRunImageOcrRetrieval(input)) {
         return baseResult;
       }
 
-      const imageResult = await retriever.retrieve({
-        ...input,
-        filters: imageOcrRetrievalFilters(input.filters),
-        limit: Math.min(input.limit, maxImageCandidates),
-        topK: Math.min(input.topK, maxImageTopK),
-      });
+      const imageResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve({
+            ...input,
+            filters: imageOcrRetrievalFilters(input.filters),
+            limit: Math.min(input.limit, maxImageCandidates),
+            topK: Math.min(input.topK, maxImageTopK),
+          }),
+        input.signal,
+      );
 
       return {
         items: mergeImageOcrRetrievalItems({
@@ -470,7 +498,7 @@ export function createGraphExpandedRetrievalPath({
 
   return {
     retrieve: async (input) => {
-      const baseResult = await retriever.retrieve(input);
+      const baseResult = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       if (
         !shouldRunModeExtension(input.mode, "graph-expansion") ||
         (input.mode === "research" && input.researchGraphEnabled !== true)
@@ -495,15 +523,20 @@ export function createGraphExpandedRetrievalPath({
       const metadataSeedEntityIds = graphSeedEntityIdsFromItems(baseResult.items, maxSeedEntities);
       const seedEntityIds = snapshot
         ? uniqueStrings(
-            await (publishedGraph as PublishedGraphIndexRepository).findSeedEntityIds({
-              candidateEntityIds: metadataSeedEntityIds,
-              limit: maxSeedEntities,
-              permissionScope: input.permissionScope ?? [],
-              snapshot,
-              sourceNodeIds: baseResult.items.map((item) => item.nodeId),
-            }),
+            await runWithAbortSignal(
+              () =>
+                (publishedGraph as PublishedGraphIndexRepository).findSeedEntityIds({
+                  candidateEntityIds: metadataSeedEntityIds,
+                  limit: maxSeedEntities,
+                  permissionScope: input.permissionScope ?? [],
+                  snapshot,
+                  sourceNodeIds: baseResult.items.map((item) => item.nodeId),
+                }),
+              input.signal,
+            ),
           ).slice(0, maxSeedEntities)
         : metadataSeedEntityIds;
+      input.signal?.throwIfAborted();
 
       if (seedEntityIds.length === 0) {
         return withGraphExpansionMetrics(baseResult, [], 0, [], Date.now() - expansionStartedAt);
@@ -511,27 +544,32 @@ export function createGraphExpandedRetrievalPath({
 
       const traversalResults = await Promise.all(
         seedEntityIds.map((startEntityId) =>
-          snapshot
-            ? (publishedGraph as PublishedGraphIndexRepository).traverse({
-                fanout,
-                maxDepth,
-                maxNodes: maxTraversalNodes,
-                permissionScope: input.permissionScope ?? [],
-                snapshot,
-                startEntityId,
-                timeoutMs,
-              })
-            : graph.traverse({
-                fanout,
-                knowledgeSpaceId: input.knowledgeSpaceId,
-                maxDepth,
-                maxNodes: maxTraversalNodes,
-                permissionScope: input.permissionScope ?? [],
-                startEntityId,
-                timeoutMs,
-              }),
+          runWithAbortSignal(
+            () =>
+              snapshot
+                ? (publishedGraph as PublishedGraphIndexRepository).traverse({
+                    fanout,
+                    maxDepth,
+                    maxNodes: maxTraversalNodes,
+                    permissionScope: input.permissionScope ?? [],
+                    snapshot,
+                    startEntityId,
+                    timeoutMs,
+                  })
+                : graph.traverse({
+                    fanout,
+                    knowledgeSpaceId: input.knowledgeSpaceId,
+                    maxDepth,
+                    maxNodes: maxTraversalNodes,
+                    permissionScope: input.permissionScope ?? [],
+                    startEntityId,
+                    timeoutMs,
+                  }),
+            input.signal,
+          ),
         ),
       );
+      input.signal?.throwIfAborted();
       const permissionScope = normalizeRetrievalPermissionScope(input.permissionScope);
       const graphEntities = uniqueGraphTraversalEntities(
         traversalResults.flatMap((result) => result.entities),
@@ -560,14 +598,21 @@ export function createGraphExpandedRetrievalPath({
         );
       }
 
-      const graphResult = await retriever.retrieve({
-        ...input,
-        filters: snapshot
-          ? publishedGraphExpandedRetrievalFilters(input.filters, publishedGraphCandidateNodeIds)
-          : graphExpandedRetrievalFilters(input.filters, graphEntityFilters),
-        limit: graphTopK,
-        topK: graphTopK,
-      });
+      const graphResult = await runWithAbortSignal(
+        () =>
+          retriever.retrieve({
+            ...input,
+            filters: snapshot
+              ? publishedGraphExpandedRetrievalFilters(
+                  input.filters,
+                  publishedGraphCandidateNodeIds,
+                )
+              : graphExpandedRetrievalFilters(input.filters, graphEntityFilters),
+            limit: graphTopK,
+            topK: graphTopK,
+          }),
+        input.signal,
+      );
 
       return {
         items: mergeGraphExpandedRetrievalItems({

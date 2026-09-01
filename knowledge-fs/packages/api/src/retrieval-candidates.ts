@@ -59,6 +59,8 @@ export interface SearchDenseInput {
   readonly projectionSetFingerprint?: string | undefined;
   readonly projectionSetReadMode?: "evaluation" | "preview" | "published" | undefined;
   readonly queryVector: readonly number[];
+  /** Cancels best-effort repository/provider work when the owning execution is no longer valid. */
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly topK: number;
 }
@@ -73,6 +75,8 @@ export interface SearchFtsInput {
   readonly projectionSetFingerprint?: string | undefined;
   readonly projectionSetReadMode?: "evaluation" | "preview" | "published" | undefined;
   readonly query: string;
+  /** See {@link SearchDenseInput.signal}. */
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly topK: number;
 }

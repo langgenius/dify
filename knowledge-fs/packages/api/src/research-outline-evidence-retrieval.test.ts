@@ -1,8 +1,13 @@
 import type { DocumentOutline, KnowledgeNode } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
+import { createConcurrencyGate } from "./bounded-concurrency";
 import type { PublishedPageIndexRepository } from "./published-page-index-repository";
 import { createResearchOutlineEvidenceRetrieval } from "./research-outline-evidence-retrieval";
+import {
+  InteractiveResearchEvidenceRetrievalPolicy,
+  createResearchRetrievalBudget,
+} from "./research-retrieval-policy";
 
 const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
 const outlineNode = {
@@ -219,6 +224,92 @@ describe("Research outline evidence retrieval", () => {
     expect(searchSections).toHaveBeenCalledOnce();
     expect(openLeafEvidence).toHaveBeenCalledOnce();
     expect(result.items.map((item) => item.nodeId)).toEqual(["outline-only"]);
+  });
+
+  it("shares one open budget and concurrency gate across parallel Research query legs", async () => {
+    const policy = { ...InteractiveResearchEvidenceRetrievalPolicy, maxOpenedResources: 2 };
+    const budget = createResearchRetrievalBudget(policy);
+    const researchOpenGate = createConcurrencyGate(1);
+    let active = 0;
+    let maxActive = 0;
+    const openLeafEvidence = vi.fn(async () => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await Promise.resolve();
+      active -= 1;
+      return {
+        items: [],
+        openedRange: { endOffset: 100, startOffset: 0 },
+        outline,
+        selectedNode: outlineNode,
+      };
+    });
+    const retriever = createResearchOutlineEvidenceRetrieval({
+      pageIndex: {
+        listOutlines: async () => ({
+          items: [
+            {
+              documentAssetId,
+              generationId: "generation-1",
+              outline,
+              publicationId: "publication-1",
+            },
+          ],
+        }),
+        openLeafEvidence,
+      },
+      retriever: {
+        retrieve: async () => ({
+          items: [hybridItem("base-node", "Renewal summary")],
+          metrics: {
+            denseCandidates: 1,
+            denseMs: 1,
+            ftsCandidates: 1,
+            ftsMs: 1,
+            fusedCandidates: 1,
+            fusionMs: 1,
+            totalMs: 3,
+          },
+        }),
+      },
+    });
+    const input = {
+      denseProjectionModel: "vector-space-1",
+      knowledgeSpaceId: "space-1",
+      limit: 10,
+      mode: "research" as const,
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot: {
+        fingerprint: "a".repeat(64),
+        headRevision: 1,
+        knowledgeSpaceId: "space-1",
+        projectionVersion: 1,
+        publicationId: "publication-1",
+        tenantId: "tenant-1",
+      },
+      query: "renewal notice",
+      queryVector: [0.1],
+      researchBudget: budget,
+      researchExecutionPolicy: policy,
+      researchOpenGate,
+      tenantId: "tenant-1",
+      topK: 10,
+    };
+
+    await Promise.all([retriever.retrieve(input), retriever.retrieve(input)]);
+    const exhausted = await retriever.retrieve(input);
+
+    expect(openLeafEvidence).toHaveBeenCalledTimes(2);
+    expect(maxActive).toBe(1);
+    expect(budget.snapshot()).toMatchObject({
+      exhaustedReasons: ["opened-resources"],
+      openedResources: 2,
+    });
+    expect(exhausted.metrics).toMatchObject({
+      pageIndexOpenedRanges: 0,
+      researchBudgetExhaustedReasons: ["opened-resources"],
+      researchOpenedResources: 2,
+    });
   });
 
   it("does not inspect outlines outside Research mode", async () => {

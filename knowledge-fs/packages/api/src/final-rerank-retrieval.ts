@@ -5,6 +5,7 @@ import {
 } from "@knowledge/core";
 import type { RerankerProvider } from "@knowledge/embeddings";
 
+import { runWithAbortSignal } from "./bounded-concurrency";
 import { type RetrievalPlanner, defaultRetrievalPlan } from "./retrieval-planner";
 import { rerankHybridRetrievalItems } from "./retrieval-rerank";
 import type {
@@ -68,7 +69,11 @@ export function createFinalRerankRetrieval({
             throw new Error("Knowledge-space retrieval requires an enabled rerank model");
           }
         }
-        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
+        return normalizeRetrievalResult(
+          await runWithAbortSignal(() => retriever.retrieve(input), input.signal),
+          input.limit,
+          { preserveInputTieOrder: true },
+        );
       }
 
       const planned = resolveFinalRerankPlan(input, planner);
@@ -76,7 +81,10 @@ export function createFinalRerankRetrieval({
         assertKnowledgeSpaceRetrievalProfileForMode(input.retrievalProfile, planned.resolvedMode);
       }
       if (!shouldFinalRerank(planned)) {
-        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
+        return normalizeRetrievalResult(
+          await runWithAbortSignal(() => retriever.retrieve(input), input.signal),
+          input.limit,
+        );
       }
 
       // Resolve a knowledge-space provider only after the plan has confirmed
@@ -89,7 +97,10 @@ export function createFinalRerankRetrieval({
         rerankerModel,
       });
       if (!runtime) {
-        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
+        return normalizeRetrievalResult(
+          await runWithAbortSignal(() => retriever.retrieve(input), input.signal),
+          input.limit,
+        );
       }
 
       const candidateLimit = Math.min(
@@ -97,7 +108,10 @@ export function createFinalRerankRetrieval({
         maxRerankCandidates,
       );
       const retrieval = normalizeRetrievalResult(
-        await retriever.retrieve({ ...input, limit: candidateLimit }),
+        await runWithAbortSignal(
+          () => retriever.retrieve({ ...input, limit: candidateLimit }),
+          input.signal,
+        ),
         candidateLimit,
       );
       const effectivePlan = retrieval.plan ?? planned;
@@ -115,6 +129,7 @@ export function createFinalRerankRetrieval({
         model: runtime.model,
         query: input.query,
         reranker: runtime.provider,
+        ...(input.signal ? { signal: input.signal } : {}),
         ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       });
       const rerankMs = Math.max(0, now() - rerankStartedAt);
@@ -230,6 +245,7 @@ function limitRetrievalResult(
 function normalizeRetrievalResult(
   retrieval: HybridRetrievalResult,
   limit: number,
+  options: { readonly preserveInputTieOrder?: boolean | undefined } = {},
 ): HybridRetrievalResult {
   const sourceItems = retrieval.items;
   if (sourceItems.length === 0) {
@@ -247,7 +263,7 @@ function normalizeRetrievalResult(
   const maximum = Math.max(...scores);
   const alreadyNormalized = minimum >= 0 && maximum <= 1;
   const normalizedItems = sourceItems
-    .map((item) => {
+    .map((item, inputIndex) => {
       let score = item.score;
 
       if (!alreadyNormalized) {
@@ -261,14 +277,22 @@ function normalizeRetrievalResult(
       }
 
       return {
-        ...item,
-        score: Math.min(1, Math.max(0, score)),
+        inputIndex,
+        item: {
+          ...item,
+          score: Math.min(1, Math.max(0, score)),
+        },
       };
     })
     .sort(
-      (first, second) => second.score - first.score || first.nodeId.localeCompare(second.nodeId),
+      (first, second) =>
+        second.item.score - first.item.score ||
+        (options.preserveInputTieOrder
+          ? first.inputIndex - second.inputIndex
+          : first.item.nodeId.localeCompare(second.item.nodeId)),
     )
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(({ item }) => item);
 
   return {
     ...retrieval,

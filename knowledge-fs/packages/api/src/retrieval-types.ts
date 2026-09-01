@@ -2,11 +2,15 @@ import type {
   KnowledgeSpaceEmbeddingProfile,
   KnowledgeSpaceRetrievalProfile,
 } from "@knowledge/core";
+import type { ConcurrencyGate } from "./bounded-concurrency";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
 import type { AnyResearchRetrievalSearchCheckpoint } from "./research-retrieval-checkpoint";
-import type { ResearchRetrievalExecutionPolicy } from "./research-retrieval-policy";
+import type {
+  ResearchRetrievalBudget,
+  ResearchRetrievalExecutionPolicy,
+} from "./research-retrieval-policy";
 import type { SearchDenseInput } from "./retrieval-candidates";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import type { RetrievalQueryLanguage } from "./retrieval-text-utils";
@@ -69,6 +73,14 @@ export interface HybridRetrievalMetrics {
   readonly researchEvidenceJudgeMs?: number | undefined;
   readonly researchOutlineLexicalCandidates?: number | undefined;
   readonly researchPlanMs?: number | undefined;
+  readonly researchQueryEmbeddingMs?: number | undefined;
+  /** Aggregate dense work across concurrent Research query legs. */
+  readonly researchRecallDenseCandidates?: number | undefined;
+  /** Aggregate lexical work across concurrent Research query legs. */
+  readonly researchRecallFtsCandidates?: number | undefined;
+  readonly researchRerankCandidateBudget?: number | undefined;
+  /** Selected counts in execution order: original query, planned subqueries, then supplemental. */
+  readonly researchRerankListCandidates?: readonly number[] | undefined;
   readonly researchRrfCandidates?: number | undefined;
   readonly researchStrategyVersion?: "research-evidence-v3" | undefined;
   readonly graphExpansionCandidates?: number | undefined;
@@ -119,6 +131,10 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly requestedMode?: RetrievalMode | undefined;
   /** Internal execution envelope. Public interactive requests omit it and use the safe default. */
   readonly researchExecutionPolicy?: ResearchRetrievalExecutionPolicy | undefined;
+  /** Request-wide resource budget shared by every Research query leg and supplemental round. */
+  readonly researchBudget?: ResearchRetrievalBudget | undefined;
+  /** Request-wide outline-open gate; per-leg gates must not multiply configured concurrency. */
+  readonly researchOpenGate?: ConcurrencyGate | undefined;
   /** Internal Research V3 routing decision; false suppresses the graph leg for direct queries. */
   readonly researchGraphEnabled?: boolean | undefined;
   readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;

@@ -4,6 +4,7 @@ import {
   type ConcurrencyGateEvent,
   createConcurrencyGate,
   mapWithConcurrency,
+  runWithAbortSignal,
 } from "./bounded-concurrency";
 
 describe("bounded concurrency", () => {
@@ -217,5 +218,61 @@ describe("bounded concurrency", () => {
     ).rejects.toThrow("materialization failed");
 
     await expect(gate.run(async () => "next document")).resolves.toBe("next document");
+  });
+
+  it("stops awaiting an in-flight adapter that does not implement cancellation", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("owner cancelled");
+    let started = false;
+    const operation = runWithAbortSignal(async () => {
+      started = true;
+      return new Promise<never>(() => undefined);
+    }, controller.signal);
+    await vi.waitFor(() => expect(started).toBe(true));
+
+    controller.abort(cancellation);
+
+    await expect(operation).rejects.toBe(cancellation);
+  });
+
+  it("stops a concurrent map when active work ignores cancellation", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("retrieval deadline reached");
+    let started = false;
+    const pending = mapWithConcurrency(
+      [1],
+      1,
+      async () => {
+        started = true;
+        return new Promise<never>(() => undefined);
+      },
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(started).toBe(true));
+
+    controller.abort(cancellation);
+
+    await expect(pending).rejects.toBe(cancellation);
+  });
+
+  it("stops awaiting sibling work after the first mapper failure", async () => {
+    const failure = new Error("range open failed");
+    const owner = new AbortController();
+    let siblingStarted = false;
+    const pending = mapWithConcurrency(
+      ["failed", "stalled"],
+      2,
+      async (item) => {
+        if (item === "failed") {
+          await vi.waitFor(() => expect(siblingStarted).toBe(true));
+          throw failure;
+        }
+        siblingStarted = true;
+        return new Promise<never>(() => undefined);
+      },
+      owner.signal,
+    );
+
+    await expect(pending).rejects.toBe(failure);
   });
 });

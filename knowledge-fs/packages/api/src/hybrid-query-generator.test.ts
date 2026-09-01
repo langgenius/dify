@@ -5,6 +5,72 @@ import { createHybridQueryGenerator } from "./hybrid-query-generator";
 import type { BasicHybridRetriever } from "./retrieval-types";
 
 describe("hybrid query generator", () => {
+  it("persists the complete bounded Research rerank pool at durable boundaries", async () => {
+    const checkpointItems = Array.from({ length: 50 }, (_, index) => checkpointItem(index));
+    const retriever: BasicHybridRetriever = {
+      retrieve: async (input) => {
+        await input.onResearchSearchCheckpoint?.({
+          checkpoint: {
+            budget: {
+              elapsedMs: 10,
+              exhaustedReasons: [],
+              modelCalls: 1,
+              openedResources: 0,
+              retrievalSteps: 1,
+              rounds: 1,
+              supplementalSearches: 0,
+            },
+            fingerprint: "fingerprint-1",
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            phase: "initial",
+            publicationId: "publication-1",
+            query: input.query,
+            queryPlan: {
+              evidenceDimensions: [],
+              intent: "direct",
+              subqueries: [],
+              useGraph: false,
+            },
+            sequence: 1,
+            tenantId: input.tenantId ?? "tenant-1",
+            traceId: input.traceId ?? "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
+            version: "research-evidence-retrieval-checkpoint-v3",
+          },
+          result: { items: checkpointItems },
+        });
+        return { items: checkpointItems.slice(0, 1) };
+      },
+    };
+    const generator = createHybridQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      retriever,
+      topK: 10,
+    });
+    let checkpointItemCount = 0;
+
+    for await (const _event of generator.stream({
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mode: "research",
+      onResearchDurableCheckpoint: async (checkpoint) => {
+        checkpointItemCount = checkpoint.evidenceBundle.items.length;
+      },
+      permissionScope: ["knowledge-spaces:read"],
+      query: "compare renewal and termination",
+      researchExecutionKind: "durable",
+      subject: {
+        scopes: ["knowledge-spaces:read"],
+        subjectId: "user-1",
+        tenantId: "tenant-1",
+      },
+      traceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
+    })) {
+      // Drain the generator so the durable callback and final result both execute.
+    }
+
+    expect(checkpointItemCount).toBe(50);
+  });
+
   it("streams layered retrieval evidence with plan and citations", async () => {
     const calls: unknown[] = [];
     const resolverCalls: unknown[] = [];
@@ -992,3 +1058,21 @@ describe("hybrid query generator", () => {
     ]);
   });
 });
+
+function checkpointItem(index: number) {
+  const suffix = index.toString(16).padStart(12, "0");
+  return {
+    citation: {
+      artifactHash: "a".repeat(64),
+      documentAssetId: `018f0d60-7a49-4cc2-8c1b-${suffix}`,
+      documentVersion: 1,
+      sectionPath: ["Research"],
+    },
+    metadata: { text: `research evidence ${index}` },
+    nodeId: `018f0d60-7a49-4cc2-9c1b-${suffix}`,
+    permissionScope: [] as string[],
+    projectionIds: [`projection-${index}`],
+    score: 1 - index / 100,
+    sources: ["dense" as const],
+  };
+}

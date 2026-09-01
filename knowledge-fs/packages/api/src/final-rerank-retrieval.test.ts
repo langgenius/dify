@@ -150,6 +150,22 @@ describe("final rerank capability gating", () => {
     expect(result.items.map((item) => item.score)).toEqual([0.8, 0.4]);
   });
 
+  it("preserves the Research orchestrator tie order instead of replacing fused rank with node id", async () => {
+    const retriever = createFinalRerankRetrieval({
+      retriever: scoredRetriever([
+        ["018f0d60-7a49-7cc2-9c1b-5b36f18f2c82", 0.8],
+        ["018f0d60-7a49-7cc2-9c1b-5b36f18f2c81", 0.8],
+      ]),
+    });
+
+    const result = await retriever.retrieve({ ...input("research"), limit: 2 });
+
+    expect(result.items.map((item) => item.nodeId)).toEqual([
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f2c82",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+    ]);
+  });
+
   it.each(["fast", "deep"] as const)(
     "fails closed for %s when a mode-final threshold has no reranker",
     async (mode) => {
