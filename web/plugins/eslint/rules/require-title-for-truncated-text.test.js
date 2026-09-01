@@ -231,3 +231,86 @@ it('resolves truncation classes imported from CSS modules', () => {
   assert.equal(result.messages.length, 2)
   assert.ok(result.messages.every((message) => message.severity === 1))
 })
+
+it('reports dynamic truncation class and style expressions without fixing', () => {
+  const code = `
+    const regularClassName = 'regular'
+    const dynamicClassNames = ['regular']
+    const classMap = { regular: true }
+    const regularStyle = { color: 'red' }
+    const styles = [regularStyle]
+    const tag = strings => strings[0]
+    export const Example = ({ condition, name }) => <>
+      <span className={\`regular \${condition ? 'truncate' : regularClassName}\`}>{name}</span>
+      <span className={tag\`md:line-clamp-2\`}>{name}</span>
+      <span className={cn(...dynamicClassNames, new String('truncate'))}>{name}</span>
+      <span className={condition ? regularClassName : 'truncate'}>{name}</span>
+      <span className={condition && (regularClassName + ' truncate')}>{name}</span>
+      <span className={[...dynamicClassNames, 'truncate']}>{name}</span>
+      <span className={{ ...classMap, ['truncate']: condition }}>{name}</span>
+      <span className={(regularClassName, 'truncate')}>{name}</span>
+      <span style={condition ? regularStyle : { ['text-overflow']: 'ellipsis' }}>{name}</span>
+      <span style={condition && { WebkitLineClamp: 2 }}>{name}</span>
+      <span style={[...styles, { lineClamp: '3' }]}>{name}</span>
+      <span style={{ lineClamp: undefined }}>{name}</span>
+      <span style={{ WebkitLineClamp: 0 }}>{name}</span>
+      <span style={{ webkitLineClamp: 'none' }}>{name}</span>
+    </>
+  `
+  const result = verifyAndFix(code)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 11)
+  assert.ok(result.messages.every((message) => message.messageId === 'missingTitle'))
+  assert.equal(result.output, code)
+})
+
+it('reports statically empty title forms without replacing them', () => {
+  const code = `
+    export const Example = ({ name }) => <>
+      <span className="truncate" title>{name}</span>
+      <span className="truncate" title={null}>{name}</span>
+      <span className="truncate" title={undefined}>{name}</span>
+      <span className="truncate" title={\`\`}>{name}</span>
+      <span className="truncate" title={'   '}>{name}</span>
+    </>
+  `
+  const result = verifyAndFix(code)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 5)
+  assert.ok(result.messages.every((message) => message.messageId === 'emptyTitle'))
+  assert.equal(result.output, code)
+})
+
+it('reports safe literal content but accepts a titled single child', () => {
+  const result = verifyAndFix(`
+    export const Example = ({ name }) => <>
+      <span className="truncate">{42}</span>
+      <span className="truncate">{\`Dify\`}</span>
+      <span className="truncate" title={/* intentionally empty */}>{name}</span>
+      <div className="truncate"><span title={name}>{name}</span></div>
+    </>
+  `)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 3)
+  assert.deepEqual(
+    result.messages.map((message) => message.messageId),
+    ['missingTitle', 'missingTitle', 'emptyTitle'],
+  )
+})
+
+it('accepts referenced TooltipTrigger render candidates', () => {
+  const result = verifyAndFix(`
+    import { TooltipTrigger as Trigger } from '@langgenius/dify-ui/tooltip'
+    export const Example = ({ condition, name }) => {
+      const primaryTrigger = <span className="truncate">{name}</span>
+      const fallbackTrigger = <span className="line-clamp-2">{name}</span>
+      return <Trigger render={condition && (condition ? primaryTrigger : fallbackTrigger)} />
+    }
+  `)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 0)
+})
