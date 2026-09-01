@@ -95,6 +95,8 @@ function TrendingNavigation({
 
     if (pauseReasonsRef.current.size > 0) progressAnimation.pause()
     progressAnimation.onfinish = onNext
+    // cancel() rejects `finished` with AbortError; keep that from becoming unhandled.
+    void progressAnimation.finished.catch(() => {})
 
     return () => {
       progressAnimation.onfinish = null

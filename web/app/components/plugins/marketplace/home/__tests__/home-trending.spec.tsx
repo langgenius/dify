@@ -259,6 +259,7 @@ describe('HomeTrending', () => {
       value: vi.fn(() => {
         const animation = {
           cancel: vi.fn(),
+          finished: Promise.resolve(),
           onfinish: null,
           pause: vi.fn(),
           play: vi.fn(),
@@ -290,6 +291,47 @@ describe('HomeTrending', () => {
         'true',
       )
       expect(track).toHaveStyle({ transform: 'translate3d(-0%, 0, 0)', transition: 'none' })
+    } finally {
+      Object.defineProperty(Element.prototype, 'animate', {
+        configurable: true,
+        value: originalAnimate,
+      })
+    }
+  })
+
+  it('does not reject when the autoplay animation is canceled on unmount', async () => {
+    let rejectFinished: (reason: unknown) => void = () => {}
+    const finished = new Promise<Animation>((_resolve, reject) => {
+      rejectFinished = reject
+    })
+    const progressAnimation = {
+      cancel: vi.fn(() => {
+        rejectFinished(
+          Object.assign(new Error('The animation was canceled.'), { name: 'AbortError' }),
+        )
+      }),
+      onfinish: null,
+      pause: vi.fn(),
+      play: vi.fn(),
+      finished,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+
+    try {
+      const { unmount } = render(
+        <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />,
+      )
+
+      unmount()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(progressAnimation.cancel).toHaveBeenCalled()
     } finally {
       Object.defineProperty(Element.prototype, 'animate', {
         configurable: true,
@@ -360,6 +402,7 @@ describe('HomeTrending', () => {
     const cancel = vi.fn()
     const progressAnimation = {
       cancel,
+      finished: Promise.resolve(),
       onfinish: null,
       pause,
       play,
@@ -517,6 +560,7 @@ describe('HomeTrending', () => {
     const play = vi.fn()
     const progressAnimation = {
       cancel: vi.fn(),
+      finished: Promise.resolve(),
       onfinish: null,
       pause,
       play,
@@ -557,6 +601,7 @@ describe('HomeTrending', () => {
     const play = vi.fn()
     const progressAnimation = {
       cancel: vi.fn(),
+      finished: Promise.resolve(),
       onfinish: null,
       pause,
       play,
@@ -592,6 +637,7 @@ describe('HomeTrending', () => {
     const play = vi.fn()
     const progressAnimation = {
       cancel: vi.fn(),
+      finished: Promise.resolve(),
       onfinish: null,
       pause,
       play,
