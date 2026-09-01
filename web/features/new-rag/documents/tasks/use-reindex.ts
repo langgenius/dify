@@ -10,6 +10,8 @@ import { responseStatus } from '../detail/model'
 import { documentTaskIsActive, useDocumentTaskStatus } from './use-task-status'
 
 const REINDEX_STORAGE_PREFIX = 'dify-new-rag-reindex'
+const revisionsQueryKey =
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.key()
 
 type SubmittedReindex = {
   baselineRevision: number
@@ -61,7 +63,6 @@ export function useDocumentReindex({
   enabled,
   knowledgeSpaceId,
   refreshWritePermission,
-  revisionsQueryKey,
 }: {
   beforeReindex: () => Promise<boolean>
   chunksQueryKey: readonly unknown[]
@@ -71,7 +72,6 @@ export function useDocumentReindex({
   enabled: boolean
   knowledgeSpaceId: string
   refreshWritePermission: () => Promise<boolean>
-  revisionsQueryKey: readonly unknown[]
 }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
@@ -216,7 +216,6 @@ export function useDocumentReindex({
     documentQueryKey,
     latestTask,
     queryClient,
-    revisionsQueryKey,
     submittedReindex,
     taskIsActive,
     taskStatus.queryKey,
@@ -244,7 +243,6 @@ export function useDocumentReindex({
     chunksQueryKey,
     documentQueryKey,
     queryClient,
-    revisionsQueryKey,
     submittedJobIsTerminal,
     submittedJobMissing,
     submittedReindex,

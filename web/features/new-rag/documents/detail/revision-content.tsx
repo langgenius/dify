@@ -1,13 +1,10 @@
 'use client'
 
 import type { LogicalDocument, LogicalDocumentRevision } from '../models'
-import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { documentChunkListFromApi } from '../models'
-import { DocumentChunkDetail } from './chunk-detail'
+import { DocumentFactsSidebar, DocumentReadingPane } from './chunk-detail'
 import { DocumentChunkTreePanel } from './chunk-tree'
 import { buildDocumentDetailModel } from './model'
 import {
@@ -16,88 +13,7 @@ import {
   documentOutlineQueryOptions,
 } from './queries'
 
-export function DocumentRevisionContent({
-  canEdit,
-  document,
-  documentId,
-  effectiveRevision,
-  knowledgeSpaceId,
-  locale,
-  onSelectChunk,
-  revision,
-  revisionHistoryError,
-  revisionHistoryPending,
-  retryRevisionHistory,
-  selectedChunkId,
-}: {
-  canEdit: boolean
-  document: LogicalDocument
-  documentId: string
-  effectiveRevision?: number
-  knowledgeSpaceId: string
-  locale: string
-  onSelectChunk: (chunkId: string) => void
-  revision?: Exclude<LogicalDocumentRevision, null>
-  revisionHistoryError: boolean
-  revisionHistoryPending: boolean
-  retryRevisionHistory: () => void
-  selectedChunkId?: string
-}) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
-
-  if (effectiveRevision === undefined && revisionHistoryPending)
-    return (
-      <div className="flex min-h-80 items-center justify-center">
-        <Loading />
-      </div>
-    )
-
-  if (effectiveRevision === undefined && revisionHistoryError)
-    return (
-      <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
-        <span aria-hidden className="i-ri-error-warning-line size-8 text-text-destructive" />
-        <h2 className="mt-3 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.documentLoadErrorTitle'])}
-        </h2>
-        <p className="mt-2 max-w-lg body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.documentLoadErrorDescription'])}
-        </p>
-        <Button className="mt-4" onClick={retryRevisionHistory}>
-          {tCommon(($) => $['operation.retry'])}
-        </Button>
-      </div>
-    )
-
-  if (effectiveRevision === undefined)
-    return (
-      <div className="flex min-h-80 flex-col items-center justify-center text-center">
-        <span aria-hidden className="i-ri-file-warning-line size-8 text-text-tertiary" />
-        <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.documentRevisionMissingTitle'])}
-        </h2>
-        <p className="mt-2 max-w-lg body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.documentRevisionMissingDescription'])}
-        </p>
-      </div>
-    )
-
-  return (
-    <LoadedDocumentRevisionContent
-      canEdit={canEdit}
-      document={document}
-      documentId={documentId}
-      effectiveRevision={effectiveRevision}
-      knowledgeSpaceId={knowledgeSpaceId}
-      locale={locale}
-      onSelectChunk={onSelectChunk}
-      revision={revision}
-      selectedChunkId={selectedChunkId}
-    />
-  )
-}
-
-function LoadedDocumentRevisionContent({
+export function DocumentRevisionData({
   canEdit,
   document,
   documentId,
@@ -183,6 +99,7 @@ function LoadedDocumentRevisionContent({
     ? detailModel.contentBlocksByChunkId.get(detailModel.tree.roots[0].targetChunkId)
     : undefined
   const selectedBlock = targetedBlock ?? (targetLookupComplete ? fallbackBlock : undefined)
+  const revisionSessionKey = `${documentId}:${effectiveRevision}`
 
   useEffect(() => {
     if (
@@ -206,6 +123,7 @@ function LoadedDocumentRevisionContent({
   return (
     <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
       <DocumentChunkTreePanel
+        key={`tree:${revisionSessionKey}`}
         chunkCount={chunks.length}
         error={Boolean(chunksQuery.error)}
         fetchNextPage={chunksQuery.fetchNextPage}
@@ -219,10 +137,17 @@ function LoadedDocumentRevisionContent({
         tree={detailModel.tree}
       />
 
-      <DocumentChunkDetail
-        canEdit={canEdit}
-        controlSpaceId={knowledgeSpaceId}
+      <DocumentReadingPane
+        key={`content:${revisionSessionKey}`}
         contentBlocks={detailModel.contentBlocks}
+        isLoadingMore={chunksQuery.isFetchingNextPage}
+        multimodalItems={multimodalItems}
+        selectedChunkId={selectedBlock?.chunk.id}
+      />
+
+      <DocumentFactsSidebar
+        key={`facts:${documentId}`}
+        canEdit={canEdit}
         chunksComplete={
           Boolean(chunksQuery.data) &&
           !chunksQuery.error &&
@@ -230,13 +155,11 @@ function LoadedDocumentRevisionContent({
           !chunksQuery.isFetchingNextPage &&
           !chunksQuery.isFetchNextPageError
         }
+        controlSpaceId={knowledgeSpaceId}
         document={document}
-        isLoadingMore={chunksQuery.isFetchingNextPage}
-        locale={locale}
-        multimodalItems={multimodalItems}
-        revision={revision}
-        selectedChunkId={selectedBlock?.chunk.id}
         indexChunks={detailModel.indexChunks}
+        locale={locale}
+        revision={revision}
       />
     </div>
   )

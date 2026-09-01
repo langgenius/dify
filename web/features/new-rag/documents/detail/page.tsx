@@ -2,8 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { createParser, parseAsString, useQueryStates } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -13,28 +12,16 @@ import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setu
 import { newKnowledgeDocumentsPath } from '../../routes'
 import { useKnowledgeSpace } from '../../space/context'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
-import {
-  documentRevisionListFromApi,
-  logicalDocumentFromApi,
-  logicalDocumentListFromApi,
-} from '../models'
+import { logicalDocumentFromApi, logicalDocumentListFromApi } from '../models'
 import { ProcessingTasksDrawer } from '../tasks/drawer'
 import { createTaskProgressStore } from '../tasks/progress-store'
 import { useDocumentReindex } from '../tasks/use-reindex'
 import { DocumentDetailHeader } from './header'
-import { initialDocumentRevision, responseStatus } from './model'
-import { DocumentRevisionContent } from './revision-content'
+import { responseStatus } from './model'
+import { DocumentRevisionBrowser } from './revision-browser'
 import { DocumentDetailStatus } from './status'
 
 const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
-const documentRevisionParser = createParser<number>({
-  parse: (value) => {
-    const revision = Number(value)
-    return Number.isInteger(revision) && revision > 0 ? revision : null
-  },
-  serialize: String,
-}).withOptions({ history: 'push' })
-const documentChunkParser = parseAsString.withOptions({ history: 'replace' })
 
 function ErrorState({
   description,
@@ -70,11 +57,6 @@ export function DocumentDetailPage({
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
-  const [documentLocation, setDocumentLocation] = useQueryStates({
-    chunk: documentChunkParser,
-    revision: documentRevisionParser,
-  })
-  const { chunk: selectedChunkId, revision: selectedRevision } = documentLocation
   const [tasksDrawerOpen, setTasksDrawerOpen] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
@@ -130,68 +112,6 @@ export function DocumentDetailPage({
       initialPageParam: null as string | null,
     }),
   )
-  const revisionsQueryOptions = useMemo(
-    () =>
-      consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.infiniteOptions(
-        {
-          input: (pageParam) => ({
-            params: {
-              control_space_id: knowledgeSpaceId,
-              document_id: documentId,
-            },
-            query: {
-              ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-            },
-          }),
-          getNextPageParam: (lastPage) => lastPage.next_cursor,
-          initialPageParam: null as string | null,
-        },
-      ),
-    [documentId, knowledgeSpaceId],
-  )
-  const revisionsQuery = useInfiniteQuery(revisionsQueryOptions)
-  const {
-    fetchNextPage: fetchNextRevisionPage,
-    hasNextPage: hasNextRevisionPage,
-    isFetchNextPageError: isFetchNextRevisionPageError,
-    isFetchingNextPage: isFetchingNextRevisionPage,
-  } = revisionsQuery
-  const revisions = useMemo(
-    () =>
-      revisionsQuery.data?.pages.flatMap((page) => documentRevisionListFromApi(page).items) ?? [],
-    [revisionsQuery.data],
-  )
-  const availableRevisions = useMemo(() => {
-    const byRevision = new Map(revisions.map((revision) => [revision.revision, revision]))
-    if (documentQuery.data?.active)
-      byRevision.set(documentQuery.data.active.revision, documentQuery.data.active)
-    return [...byRevision.values()].sort((left, right) => right.revision - left.revision)
-  }, [documentQuery.data?.active, revisions])
-  const requestedRevision = documentQuery.data
-    ? (selectedRevision ?? initialDocumentRevision(documentQuery.data, availableRevisions))
-    : undefined
-  const activeRevision = availableRevisions.find(
-    (revision) => revision.revision === requestedRevision,
-  )
-  const effectiveRevision = activeRevision?.revision
-  useEffect(() => {
-    if (
-      selectedRevision === null ||
-      activeRevision ||
-      !hasNextRevisionPage ||
-      isFetchingNextRevisionPage ||
-      isFetchNextRevisionPageError
-    )
-      return
-    void fetchNextRevisionPage()
-  }, [
-    activeRevision,
-    fetchNextRevisionPage,
-    hasNextRevisionPage,
-    isFetchNextRevisionPageError,
-    isFetchingNextRevisionPage,
-    selectedRevision,
-  ])
   const chunksQueryKey =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const documentActiveRevision =
@@ -236,7 +156,6 @@ export function DocumentDetailPage({
       Boolean(
         (await refetchKnowledgeSpace())?.permission_keys.includes('knowledge_space_document_write'),
       ),
-    revisionsQueryKey: revisionsQueryOptions.queryKey,
   })
   const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
   const canEdit = hasEditPermission && !writePermissionRevoked
@@ -289,38 +208,6 @@ export function DocumentDetailPage({
     )
   }
 
-  if (
-    selectedRevision !== null &&
-    !activeRevision &&
-    (revisionsQuery.isPending || isFetchingNextRevisionPage || hasNextRevisionPage)
-  )
-    return (
-      <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
-        <Loading />
-        <span className="sr-only">{tCommon(($) => $.loading)}</span>
-      </div>
-    )
-
-  if (selectedRevision !== null && !activeRevision && revisionsQuery.error)
-    return (
-      <ErrorState
-        description={t(($) => $['newKnowledge.documentRevisionsLoadError'])}
-        onRetry={() => {
-          if (isFetchNextRevisionPageError) void fetchNextRevisionPage()
-          else void revisionsQuery.refetch()
-        }}
-        title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
-      />
-    )
-
-  if (selectedRevision !== null && !activeRevision)
-    return (
-      <ErrorState
-        description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
-        title={t(($) => $['newKnowledge.documentNotFoundTitle'])}
-      />
-    )
-
   const document = documentQuery.data
   return (
     <section className="flex min-h-0 flex-1 flex-col px-6 pt-3 pb-5">
@@ -363,19 +250,14 @@ export function DocumentDetailPage({
 
       <DocumentDetailStatus
         continueLookup={continueLookup}
-        effectiveRevision={effectiveRevision}
         isLookingUpTask={isLookingUpTask}
         latestTask={latestTask}
         lookupExhausted={lookupExhausted}
         permissionRecoveryBusy={permissionRecoveryBusy}
         permissionRecoveryNeeded={permissionRecoveryNeeded}
-        refetchRevisions={() => void revisionsQuery.refetch()}
         refetchTasks={() => void refetchTasks()}
         retryWritePermission={retryWritePermission}
         reindexInProgress={reindexInProgress}
-        revisionHistoryBackgroundError={Boolean(
-          revisionsQuery.error && !revisionsQuery.isFetchNextPageError,
-        )}
         tasksError={Boolean(tasksError)}
         titleRef={titleRef}
         onViewTasks={() => setTasksDrawerOpen(true)}
@@ -425,20 +307,12 @@ export function DocumentDetailPage({
         tasks={tasks}
       />
 
-      <DocumentRevisionContent
-        key={effectiveRevision ?? 'missing'}
+      <DocumentRevisionBrowser
         canEdit={canEdit}
         document={document}
         documentId={documentId}
-        effectiveRevision={effectiveRevision}
         knowledgeSpaceId={knowledgeSpaceId}
         locale={locale}
-        onSelectChunk={(chunkId) => void setDocumentLocation({ chunk: chunkId })}
-        revision={activeRevision}
-        revisionHistoryError={Boolean(revisionsQuery.error)}
-        revisionHistoryPending={revisionsQuery.isPending}
-        retryRevisionHistory={() => void revisionsQuery.refetch()}
-        selectedChunkId={selectedChunkId ?? undefined}
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}

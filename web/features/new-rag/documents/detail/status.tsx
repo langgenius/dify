@@ -6,33 +6,27 @@ import { useTranslation } from 'react-i18next'
 
 export function DocumentDetailStatus({
   continueLookup,
-  effectiveRevision,
   isLookingUpTask,
   latestTask,
   lookupExhausted,
   permissionRecoveryBusy,
   permissionRecoveryNeeded,
-  refetchRevisions,
   refetchTasks,
   retryWritePermission,
   reindexInProgress,
-  revisionHistoryBackgroundError,
   tasksError,
   titleRef,
   onViewTasks,
 }: {
   continueLookup: () => void
-  effectiveRevision?: number
   isLookingUpTask: boolean
   latestTask?: DocumentProcessingTask
   lookupExhausted: boolean
   permissionRecoveryBusy: boolean
   permissionRecoveryNeeded: boolean
-  refetchRevisions: () => void
   refetchTasks: () => void
   retryWritePermission: () => Promise<boolean>
   reindexInProgress: boolean
-  revisionHistoryBackgroundError: boolean
   tasksError: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
   onViewTasks: () => void
@@ -140,16 +134,6 @@ export function DocumentDetailStatus({
               </Button>
             </>
           )}
-        </div>
-      )}
-
-      {revisionHistoryBackgroundError && effectiveRevision !== undefined && (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-          role="alert"
-        >
-          <span>{t(($) => $['newKnowledge.documentRevisionsLoadError'])}</span>
-          <Button onClick={refetchRevisions}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
     </>

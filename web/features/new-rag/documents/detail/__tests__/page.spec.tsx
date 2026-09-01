@@ -1466,6 +1466,44 @@ describe('DocumentDetailPage', () => {
     })
   })
 
+  it('preserves a document metadata draft when the active revision changes', async () => {
+    const user = userEvent.setup()
+    documentQuery.data = logicalDocument({
+      userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
+    })
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const valueInput = await screen.findByRole('textbox', { name: 'category' })
+    await user.clear(valueInput)
+    await user.type(valueInput, 'draft value')
+
+    const nextRevision = activeRevision({
+      documentAssetId: 'asset-2',
+      documentAssetVersion: 2,
+      revision: 4,
+    })
+    documentQuery.data = logicalDocument({
+      active: nextRevision,
+      activeRevision: 4,
+      userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
+    })
+    revisionsQuery.data = { pages: [{ items: [nextRevision] }] }
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('textbox', { name: 'category' })).toHaveValue('draft value')
+    expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+      params: {
+        control_space_id: 'space-1',
+        document_id: 'document-1',
+        revision: 4,
+      },
+      query: {},
+    })
+  })
+
   it('lets users choose the type of a new document metadata field', async () => {
     const user = userEvent.setup()
     metadataFieldsQuery.data = [metadataField({ name: 'priority', type: 'number' })]
@@ -2082,6 +2120,25 @@ describe('DocumentDetailPage', () => {
       },
       query: {},
     })
+  })
+
+  it('keeps document actions available when a URL revision is missing', () => {
+    revisionsQuery.data = { pages: [{ items: [] }] }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=2',
+    })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'sso-enterprise.pdf' })).toBeVisible()
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'dataset.newKnowledge.documentNotFoundTitle',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+    ).toBeEnabled()
   })
 
   it('resolves an exact URL revision from later revision pages before rendering content', async () => {
