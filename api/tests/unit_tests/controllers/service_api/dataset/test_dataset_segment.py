@@ -2290,23 +2290,26 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
     @pytest.mark.parametrize(
-        ("call", "route"),
+        ("call", "route", "method"),
         [
             (
                 lambda: DatasetSegmentApi().post(
                     tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"
                 ),
                 "/datasets/d/documents/doc-id/segments/seg-id",
+                "POST",
             ),
             (
                 lambda: ChildChunkApi().post(tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"),
                 "/datasets/d/documents/doc-id/segments/seg-id/child_chunks",
+                "POST",
             ),
             (
                 lambda: DatasetChildChunkApi().patch(
                     tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id", child_chunk_id="cc-id"
                 ),
                 "/datasets/d/documents/doc-id/segments/seg-id/child_chunks/cc-id",
+                "PATCH",
             ),
         ],
     )
@@ -2320,10 +2323,11 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
         mock_tenant: Mock,
         call: Callable[[], object],
         route: str,
+        method: str,
     ) -> None:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
 
-        with app.test_request_context(route, method="POST", json={}, headers={"Authorization": "Bearer test_token"}):
+        with app.test_request_context(route, method=method, json={}, headers={"Authorization": "Bearer test_token"}):
             with pytest.raises(UnprocessableEntity) as exc_info:
                 call()
 
