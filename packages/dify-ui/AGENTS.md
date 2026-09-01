@@ -20,9 +20,9 @@ then read only the guide for the contract being changed.
 - Imports, exports, naming, public types, generics, and anatomy: [Public API authoring]
 - Button and icon-only action behavior: [Button contract] and [Icon Button contract]
 - Compound input behavior: [Input Group contract]
-- Form structure and labels: [Forms]
+- Form structure, labels, and value ownership: [Forms]
 - Picker choice and typed values: [Selection]
-- Portals, layering, and floating-surface semantics: [Overlays]
+- Portals, presence, layering, and floating-surface semantics: [Overlays]
 - Tailwind integration and radius mapping: [Styling]
 - Package test ownership and setup: [Testing and development]
 

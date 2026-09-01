@@ -68,7 +68,9 @@ export function DeploymentStatus({ status }: { status?: DeploymentStatusValue })
       ) : (
         <StatusDot size="small" status={STATUS_DOT[resolvedStatus]} />
       )}
-      <span className="truncate">{label}</span>
+      <span className="truncate" title={label}>
+        {label}
+      </span>
     </span>
   )
 }

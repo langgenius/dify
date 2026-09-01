@@ -5,7 +5,7 @@ import type {
 import type { FileTreeNode } from '../shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { FileTreeItem, FileTreeNameInput } from '../file-tree-items'
 
 const skillFile: SkillFileResponse = {

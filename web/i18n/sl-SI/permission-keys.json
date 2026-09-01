@@ -3,7 +3,6 @@
   "api_extension.manage": "Upravljanje konfiguracije razširitve API",
   "app.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",
   "app.acl.access_config": "Ogled in upravljanje dovoljenj za dostop",
-  "app.acl.access_point_manage": "Ogled in upravljanje dostopnih točk",
   "app.acl.delete": "Izbriši aplikacijo",
   "app.acl.deploy": "Uvedi aplikacijo",
   "app.acl.edit": "Uredi podatke o aplikaciji in orkestriraj aplikacijo",

@@ -17,6 +17,7 @@ import SpeechToText from '@/app/components/base/features/new-feature-panel/speec
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{
   show: boolean
@@ -56,10 +57,11 @@ const NewFeaturePanel = ({
   const { t } = useTranslation()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
+  const { hasBlockingModalOpen } = useModalContext()
 
   return (
     <FeaturePanelDrawer
-      show={show}
+      show={show && !hasBlockingModalOpen}
       onClose={onClose}
       inWorkflow={inWorkflow}
       className={drawerClassName}

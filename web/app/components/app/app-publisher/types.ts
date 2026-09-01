@@ -5,9 +5,16 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
+export type AppPublisherPublishOptions = {
+  showSuccessToast?: boolean
+}
+
 type AppPublisherPublishHandler =
-  | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
-  | ((params?: unknown) => Promise<unknown> | unknown)
+  | ((
+      params?: AppPublisherPublishParams,
+      options?: AppPublisherPublishOptions,
+    ) => Promise<unknown> | unknown)
+  | ((params?: unknown, options?: AppPublisherPublishOptions) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 

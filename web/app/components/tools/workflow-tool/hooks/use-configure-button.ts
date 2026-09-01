@@ -126,7 +126,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     onRefreshData,
     onConfigured,
   } = options
-
   const { t } = useTranslation()
 
   // Data fetching via React Query
@@ -185,6 +184,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
+      await handlePublish()
       await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
       onRefreshData?.()
@@ -209,6 +209,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     } catch (e) {
       toast.error((e as Error).message)
