@@ -3853,11 +3853,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
