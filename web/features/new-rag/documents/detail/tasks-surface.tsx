@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../models'
+import type { LogicalDocument } from '../models'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,57 +10,38 @@ import { logicalDocumentListFromApi } from '../models'
 import { ProcessingTasksDrawer } from '../tasks/drawer'
 import { createTaskProgressStore } from '../tasks/progress-store'
 import { DocumentDetailStatus } from './status'
+import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
 
 export function DocumentTasksSurface({
-  actionResultsValid,
-  canEdit,
-  continueLookup,
   currentDocument,
-  fetchNextTaskPage,
-  hasNextTaskPage,
-  isFetchNextTaskPageError,
-  isFetchingNextTaskPage,
-  isLookingUpTask,
   knowledgeSpaceId,
-  latestTask,
-  lookupExhausted,
-  permissionRecoveryBusy,
-  permissionRecoveryNeeded,
   refetchDocument,
-  refetchTasks,
-  reindexInProgress,
-  retryWritePermission,
-  taskQueryFetching,
-  taskQueryPending,
-  tasks,
-  tasksError,
   titleRef,
 }: {
-  actionResultsValid: boolean
-  canEdit: boolean
-  continueLookup: () => void
   currentDocument: LogicalDocument
-  fetchNextTaskPage: () => Promise<unknown>
-  hasNextTaskPage: boolean
-  isFetchNextTaskPageError: boolean
-  isFetchingNextTaskPage: boolean
-  isLookingUpTask: boolean
   knowledgeSpaceId: string
-  latestTask?: DocumentProcessingTask
-  lookupExhausted: boolean
-  permissionRecoveryBusy: boolean
-  permissionRecoveryNeeded: boolean
   refetchDocument: () => Promise<unknown>
-  refetchTasks: () => Promise<unknown>
-  reindexInProgress: boolean
-  retryWritePermission: () => Promise<boolean>
-  taskQueryFetching: boolean
-  taskQueryPending: boolean
-  tasks: BackgroundTask[]
-  tasksError: unknown
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
+  const {
+    continueLookup,
+    fetchNextPage,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetching,
+    isFetchingNextPage,
+    isLookingUp,
+    isPending,
+    latestTask,
+    lookupExhausted,
+    refetch,
+    reindexInProgress,
+    tasks,
+    tasksError,
+  } = useDocumentTaskWorkflow()
+  const { canEdit, permissionRecoveryBusy, permissionRecoveryNeeded, retryWritePermission } =
+    useDocumentWriteAccess()
   const [open, setOpen] = useState(false)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
@@ -93,12 +74,12 @@ export function DocumentTasksSurface({
     <>
       <DocumentDetailStatus
         continueLookup={continueLookup}
-        isLookingUpTask={isLookingUpTask}
+        isLookingUpTask={isLookingUp}
         latestTask={latestTask}
         lookupExhausted={lookupExhausted}
         permissionRecoveryBusy={permissionRecoveryBusy}
         permissionRecoveryNeeded={permissionRecoveryNeeded}
-        refetchTasks={() => void refetchTasks()}
+        refetchTasks={() => void refetch()}
         reindexInProgress={reindexInProgress}
         retryWritePermission={retryWritePermission}
         tasksError={Boolean(tasksError)}
@@ -106,23 +87,23 @@ export function DocumentTasksSurface({
         onViewTasks={() => setOpen(true)}
       />
       <ProcessingTasksDrawer
-        actionResultsValid={actionResultsValid}
+        actionResultsValid
         canEdit={canEdit}
         documentQueryError={Boolean(documentsQuery.error)}
         documentQueryFetching={documentsQuery.isFetching}
         documents={documents}
         documentsPending={Boolean(documentsQuery.isPending || documentsQuery.hasNextPage)}
         hasNextDocumentPage={Boolean(documentsQuery.hasNextPage)}
-        hasNextTaskPage={hasNextTaskPage}
+        hasNextTaskPage={hasNextPage}
         hasUnresolvedTaskDocuments={hasUnresolvedTaskDocuments}
         isFetchingNextDocumentPage={documentsQuery.isFetchingNextPage}
-        isFetchingNextTaskPage={isFetchingNextTaskPage}
+        isFetchingNextTaskPage={isFetchingNextPage}
         knowledgeSpaceId={knowledgeSpaceId}
         onLoadMoreDocuments={() => void documentsQuery.fetchNextPage()}
-        onLoadMoreTasks={() => void fetchNextTaskPage()}
+        onLoadMoreTasks={() => void fetchNextPage()}
         onOpenChange={setOpen}
         onRefreshDocumentsAndTasks={() => {
-          void Promise.all([refetchDocument(), documentsQuery.refetch(), refetchTasks()])
+          void Promise.all([refetchDocument(), documentsQuery.refetch(), refetch()])
         }}
         onRetryDocumentQuery={() => {
           if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage()
@@ -130,10 +111,10 @@ export function DocumentTasksSurface({
         }}
         onRetryPermissionQuery={() => void retryWritePermission()}
         onRetryTaskQuery={() => {
-          if (isFetchNextTaskPageError) void fetchNextTaskPage()
-          else void refetchTasks()
+          if (isFetchNextPageError) void fetchNextPage()
+          else void refetch()
         }}
-        onTaskUpdated={() => void refetchTasks()}
+        onTaskUpdated={() => void refetch()}
         onWritePermissionDenied={() => void retryWritePermission()}
         open={open}
         permissionQueryError={false}
@@ -144,8 +125,8 @@ export function DocumentTasksSurface({
         }
         taskProgressStore={taskProgressStore}
         taskQueryError={Boolean(tasksError)}
-        taskQueryFetching={taskQueryFetching}
-        taskQueryPending={taskQueryPending}
+        taskQueryFetching={isFetching}
+        taskQueryPending={isPending}
         tasks={tasks}
       />
     </>

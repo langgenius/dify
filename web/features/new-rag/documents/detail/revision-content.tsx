@@ -14,7 +14,6 @@ import {
 } from './queries'
 
 export function DocumentRevisionData({
-  canEdit,
   document,
   documentId,
   effectiveRevision,
@@ -24,7 +23,6 @@ export function DocumentRevisionData({
   revision,
   selectedChunkId,
 }: {
-  canEdit: boolean
   document: LogicalDocument
   documentId: string
   effectiveRevision: number
@@ -147,7 +145,6 @@ export function DocumentRevisionData({
 
       <DocumentFactsSidebar
         key={`facts:${documentId}`}
-        canEdit={canEdit}
         chunksComplete={
           Boolean(chunksQuery.data) &&
           !chunksQuery.error &&

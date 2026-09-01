@@ -5,31 +5,21 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
+import { useDocumentReindexWorkflow } from './workflow-context'
 
-export function DocumentReindexAction({
-  canCancel,
-  cancelBusy,
-  disabled,
-  disabledReasonId,
-  failed,
-  inProgress,
-  knowledgeSpaceId,
-  onCancel,
-  onReindex,
-  reindexing,
-}: {
-  canCancel: boolean
-  cancelBusy: boolean
-  disabled: boolean
-  disabledReasonId?: string
-  failed: boolean
-  inProgress: boolean
-  knowledgeSpaceId: string
-  onCancel: () => Promise<unknown>
-  onReindex: () => Promise<unknown>
-  reindexing: boolean
-}) {
+export function DocumentReindexAction({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
+  const {
+    canCancel,
+    cancelBusy,
+    disabled,
+    disabledReasonId,
+    failed,
+    inProgress,
+    onCancel,
+    onReindex,
+    reindexing,
+  } = useDocumentReindexWorkflow()
   const [guardBusy, setGuardBusy] = useState(false)
   const guardPendingRef = useRef(false)
   const {

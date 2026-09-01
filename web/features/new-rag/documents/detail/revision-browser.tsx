@@ -58,13 +58,11 @@ function RevisionErrorState({
 }
 
 export function DocumentRevisionBrowser({
-  canEdit,
   document,
   documentId,
   knowledgeSpaceId,
   locale,
 }: {
-  canEdit: boolean
   document: LogicalDocument
   documentId: string
   knowledgeSpaceId: string
@@ -194,7 +192,6 @@ export function DocumentRevisionBrowser({
         </div>
       )}
       <DocumentRevisionData
-        canEdit={canEdit}
         document={document}
         documentId={documentId}
         effectiveRevision={effectiveRevision}

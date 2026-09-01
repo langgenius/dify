@@ -1,48 +1,15 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
-import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
-import { newKnowledgeDocumentsPath } from '../../routes'
-import { useKnowledgeSpace } from '../../space/context'
 import { logicalDocumentFromApi } from '../models'
-import { useDocumentReindex } from '../tasks/use-reindex'
-import { DocumentDetailHeader } from './header'
+import { DocumentErrorState } from './error-state'
 import { responseStatus } from './model'
-import { DocumentReindexAction } from './reindex-action'
-import { DocumentRevisionBrowser } from './revision-browser'
-import { DocumentTasksSurface } from './tasks-surface'
-
-const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
-
-function ErrorState({
-  description,
-  onRetry,
-  title,
-}: {
-  description: string
-  onRetry?: () => void
-  title: string
-}) {
-  const { t: tCommon } = useTranslation('common')
-  return (
-    <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
-      <span aria-hidden className="i-ri-error-warning-line size-8 text-text-destructive" />
-      <h1 className="mt-3 title-2xl-semi-bold text-text-primary">{title}</h1>
-      <p className="mt-2 max-w-lg body-sm-regular text-text-tertiary">{description}</p>
-      {onRetry && (
-        <Button className="mt-4" onClick={onRetry}>
-          {tCommon(($) => $['operation.retry'])}
-        </Button>
-      )}
-    </div>
-  )
-}
+import { DocumentDetailWorkspace } from './workspace'
 
 export function DocumentDetailPage({
   documentId,
@@ -53,8 +20,6 @@ export function DocumentDetailPage({
 }) {
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
-  const titleRef = useRef<HTMLHeadingElement>(null)
 
   const documentQueryOptions = useMemo(
     () =>
@@ -85,58 +50,7 @@ export function DocumentDetailPage({
   const knowledgeSpaceTitle =
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
-  const chunksQueryKey =
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
-  const documentActiveRevision =
-    documentQuery.data?.activeRevision ?? documentQuery.data?.active?.revision ?? 0
   const documentErrorStatus = responseStatus(documentQuery.error)
-  const {
-    cancelReindex,
-    cancelReindexBusy,
-    continueLookup,
-    documentMissing,
-    fetchNextPage: fetchNextTaskPage,
-    hasNextPage: hasNextTaskPage,
-    isFetchNextPageError: isFetchNextTaskPageError,
-    isFetching: tasksFetching,
-    isFetchingNextPage: isFetchingNextTaskPage,
-    isLookingUp: isLookingUpTask,
-    isPending: tasksPending,
-    latestTask,
-    lookupExhausted,
-    permissionRecoveryBusy,
-    permissionRecoveryNeeded,
-    refetch: refetchTasks,
-    reindex,
-    reindexBusy,
-    retryWritePermission,
-    submissionPending,
-    taskIsActive,
-    tasks,
-    tasksError,
-    writePermissionRevoked,
-  } = useDocumentReindex({
-    documentActiveRevision,
-    chunksQueryKey,
-    documentId,
-    documentQueryKey: documentQueryOptions.queryKey,
-    enabled:
-      Boolean(documentQuery.data) && documentErrorStatus !== 403 && documentErrorStatus !== 404,
-    knowledgeSpaceId,
-    refreshWritePermission: async () =>
-      Boolean(
-        (await refetchKnowledgeSpace())?.permission_keys.includes('knowledge_space_document_write'),
-      ),
-  })
-  const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
-  const canEdit = hasEditPermission && !writePermissionRevoked
-  const reindexInProgress = submissionPending || taskIsActive
-  const canCancelReindex =
-    canEdit &&
-    reindexInProgress &&
-    (submissionPending || latestTask?.canCancel !== false) &&
-    !tasksError
-  const backPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const locale = i18n.resolvedLanguage ?? i18n.language
 
   if (documentQuery.isPending)
@@ -147,9 +61,9 @@ export function DocumentDetailPage({
       </div>
     )
 
-  if (documentMissing || documentErrorStatus === 403 || documentErrorStatus === 404)
+  if (documentErrorStatus === 403 || documentErrorStatus === 404)
     return (
-      <ErrorState
+      <DocumentErrorState
         description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
         title={t(($) => $['newKnowledge.documentNotFoundTitle'])}
       />
@@ -157,7 +71,7 @@ export function DocumentDetailPage({
 
   if (!documentQuery.data) {
     return (
-      <ErrorState
+      <DocumentErrorState
         description={t(($) => $['newKnowledge.documentLoadErrorDescription'])}
         onRetry={() => void documentQuery.refetch()}
         title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
@@ -165,85 +79,15 @@ export function DocumentDetailPage({
     )
   }
 
-  const document = documentQuery.data
   return (
-    <section className="flex min-h-0 flex-1 flex-col px-6 pt-3 pb-5">
-      <KnowledgeModelReadinessBanner
-        capability="index"
-        className="mb-4"
-        knowledgeSpaceId={knowledgeSpaceId}
-      />
-      <DocumentDetailHeader
-        action={
-          <DocumentReindexAction
-            key={document.id}
-            canCancel={canCancelReindex}
-            cancelBusy={cancelReindexBusy}
-            disabled={
-              !canEdit ||
-              reindexBusy ||
-              submissionPending ||
-              taskIsActive ||
-              tasksPending ||
-              isFetchingNextTaskPage ||
-              isLookingUpTask ||
-              lookupExhausted ||
-              !document.enabled ||
-              document.status === 'deleting' ||
-              Boolean(tasksError)
-            }
-            disabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
-            failed={latestTask?.state === 'failed'}
-            inProgress={reindexInProgress}
-            knowledgeSpaceId={knowledgeSpaceId}
-            reindexing={reindexBusy || submissionPending}
-            onCancel={cancelReindex}
-            onReindex={reindex}
-          />
-        }
-        backPath={backPath}
-        document={document}
-        titleRef={titleRef}
-      />
-      {!hasEditPermission && (
-        <p id={REINDEX_RESTRICTION_ID} className="mt-2 system-xs-regular text-text-warning">
-          {t(($) => $['newKnowledge.documentPermissionRestricted'])}
-        </p>
-      )}
-
-      <DocumentTasksSurface
-        actionResultsValid={!documentMissing}
-        canEdit={canEdit}
-        continueLookup={continueLookup}
-        currentDocument={document}
-        fetchNextTaskPage={fetchNextTaskPage}
-        hasNextTaskPage={Boolean(hasNextTaskPage)}
-        isFetchNextTaskPageError={isFetchNextTaskPageError}
-        isFetchingNextTaskPage={isFetchingNextTaskPage}
-        isLookingUpTask={isLookingUpTask}
-        knowledgeSpaceId={knowledgeSpaceId}
-        latestTask={latestTask}
-        lookupExhausted={lookupExhausted}
-        permissionRecoveryBusy={permissionRecoveryBusy}
-        permissionRecoveryNeeded={permissionRecoveryNeeded}
-        refetchDocument={documentQuery.refetch}
-        refetchTasks={refetchTasks}
-        reindexInProgress={reindexInProgress}
-        retryWritePermission={retryWritePermission}
-        taskQueryFetching={tasksFetching}
-        taskQueryPending={tasksPending}
-        tasks={tasks}
-        tasksError={tasksError}
-        titleRef={titleRef}
-      />
-
-      <DocumentRevisionBrowser
-        canEdit={canEdit}
-        document={document}
-        documentId={documentId}
-        knowledgeSpaceId={knowledgeSpaceId}
-        locale={locale}
-      />
-    </section>
+    <DocumentDetailWorkspace
+      key={`${knowledgeSpaceId}:${documentId}`}
+      document={documentQuery.data}
+      documentId={documentId}
+      documentQueryKey={documentQueryOptions.queryKey}
+      knowledgeSpaceId={knowledgeSpaceId}
+      locale={locale}
+      refetchDocument={documentQuery.refetch}
+    />
   )
 }

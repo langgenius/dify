@@ -18,6 +18,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { DocumentMetadataCard } from '../metadata/card'
 import { chunkCharacterCount, placeDocumentMultimodalItems } from './model'
 import { DocumentMultimodalAsset } from './multimodal-asset'
+import { useDocumentWriteAccess } from './workflow-context'
 
 const SELECTED_CHUNK_TOP_OFFSET = 8
 const SELECTED_CHUNK_ALIGNMENT_FRAMES = 12
@@ -271,7 +272,6 @@ export function DocumentReadingPane({
 }
 
 export function DocumentFactsSidebar({
-  canEdit,
   chunksComplete,
   controlSpaceId,
   document,
@@ -279,7 +279,6 @@ export function DocumentFactsSidebar({
   locale,
   revision,
 }: {
-  canEdit: boolean
   chunksComplete: boolean
   controlSpaceId: string
   document: LogicalDocument
@@ -289,6 +288,7 @@ export function DocumentFactsSidebar({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const { canEdit } = useDocumentWriteAccess()
   const characterCount = useMemo(
     () => indexChunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
     [indexChunks],
