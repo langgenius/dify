@@ -11,6 +11,7 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '../../models'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
@@ -422,10 +423,17 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
 
 function render(ui: ReactElement, options?: Parameters<typeof renderWithNuqs>[1]) {
   const store = createStore()
+  const testQueryClient = new QueryClient({
+    defaultOptions: { queries: { gcTime: 0, retry: false } },
+  })
   const refreshQueryAtoms = () => {
     store.set(queryAtomTestState.versionAtom!, (version) => version + 1)
   }
-  const withStore = (content: ReactElement) => <Provider store={store}>{content}</Provider>
+  const withStore = (content: ReactElement) => (
+    <QueryClientProvider client={testQueryClient}>
+      <Provider store={store}>{content}</Provider>
+    </QueryClientProvider>
+  )
 
   refreshQueryAtoms()
   const rendered = renderWithNuqs(withStore(ui), options)
@@ -563,6 +571,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       }
     },
     useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
+      if (options.queryKey?.includes('document-multimodal-asset'))
+        return original.useQuery(options as Parameters<typeof original.useQuery>[0])
       if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       if (options.queryKind === 'multimodal') return multimodalQuery
       if (options.queryKind === 'outline') return outlineQuery

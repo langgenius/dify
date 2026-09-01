@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeFsDocumentMultimodalItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // oxlint-disable-next-line no-restricted-imports
@@ -14,6 +15,34 @@ function consoleApiAssetPath(source: string) {
   return `${url.pathname.slice(CONSOLE_API_PATH.length)}${url.search}`
 }
 
+function protectedDocumentAssetQueryOptions(sources: string[]) {
+  const firstSource = sources[0]
+  const enabled = Boolean(firstSource && consoleApiAssetPath(firstSource))
+
+  return queryOptions({
+    enabled,
+    queryFn: async ({ signal }) => {
+      for (const rawSource of sources) {
+        const apiAssetPath = consoleApiAssetPath(rawSource)
+        if (!apiAssetPath) return { rawSource }
+        try {
+          const response = await get<Response>(
+            apiAssetPath,
+            { signal },
+            { needAllResponseContent: true, silent: true },
+          )
+          return { blob: await response.blob(), rawSource }
+        } catch (error) {
+          if (signal.aborted) throw error
+        }
+      }
+      throw new Error('Document multimodal asset is unavailable')
+    },
+    queryKey: ['knowledge-fs', 'document-multimodal-asset', sources],
+    retry: false,
+  })
+}
+
 export function DocumentMultimodalAsset({
   item,
 }: {
@@ -21,51 +50,38 @@ export function DocumentMultimodalAsset({
 }) {
   const { t } = useTranslation('dataset')
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set())
-  const rawSource = [item.asset_url, item.thumbnail_url].find(
-    (candidate) => candidate && !failedSources.has(candidate),
+  const sources = [item.asset_url, item.thumbnail_url].filter((candidate): candidate is string =>
+    Boolean(candidate && !failedSources.has(candidate)),
   )
-  const apiAssetPath = rawSource ? consoleApiAssetPath(rawSource) : undefined
+  const firstSource = sources[0]
+  const protectedSource = Boolean(firstSource && consoleApiAssetPath(firstSource))
+  const assetQuery = useQuery(protectedDocumentAssetQueryOptions(sources))
+  const resolvedRawSource = protectedSource ? assetQuery.data?.rawSource : firstSource
+  const resolvedBlob = protectedSource ? assetQuery.data?.blob : undefined
   const [loadedAsset, setLoadedAsset] = useState<{ objectUrl: string; rawSource: string }>()
-  const source = apiAssetPath
-    ? loadedAsset && loadedAsset.rawSource === rawSource
+  const source = resolvedBlob
+    ? loadedAsset && loadedAsset.rawSource === resolvedRawSource
       ? loadedAsset.objectUrl
       : undefined
-    : rawSource
+    : resolvedRawSource
   const rawLabel =
     item.caption?.trim() || item.title?.trim() || item.text_preview?.trim() || item.ocr_text?.trim()
   const label = rawLabel && rawLabel.length > 500 ? `${rawLabel.slice(0, 497)}...` : rawLabel
 
   useEffect(() => {
-    if (!apiAssetPath || !rawSource) return
-
-    const abortController = new AbortController()
-    let objectUrl: string | undefined
-
-    void get<Response>(
-      apiAssetPath,
-      { signal: abortController.signal },
-      { needAllResponseContent: true, silent: true },
-    )
-      .then(async (response) => {
-        const blob = await response.blob()
-        if (abortController.signal.aborted) return
-        objectUrl = URL.createObjectURL(blob)
-        setLoadedAsset({ objectUrl, rawSource })
-      })
-      .catch(() => {
-        if (abortController.signal.aborted) return
-        setFailedSources((current) => new Set(current).add(rawSource))
-      })
+    if (!resolvedBlob || !resolvedRawSource) return
+    const objectUrl = URL.createObjectURL(resolvedBlob)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Browser object URLs are external resources created and revoked with this effect lifecycle.
+    setLoadedAsset({ objectUrl, rawSource: resolvedRawSource })
 
     return () => {
-      abortController.abort()
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
+      URL.revokeObjectURL(objectUrl)
     }
-  }, [apiAssetPath, rawSource])
+  }, [resolvedBlob, resolvedRawSource])
 
   const handleError = () => {
-    if (!rawSource) return
-    setFailedSources((current) => new Set(current).add(rawSource))
+    if (!resolvedRawSource) return
+    setFailedSources((current) => new Set(current).add(resolvedRawSource))
   }
 
   return (
@@ -82,7 +98,7 @@ export function DocumentMultimodalAsset({
           onError={handleError}
           src={source}
         />
-      ) : rawSource ? (
+      ) : firstSource && assetQuery.isPending ? (
         <div
           aria-busy="true"
           className="flex min-h-32 items-center justify-center bg-background-default text-text-tertiary"
