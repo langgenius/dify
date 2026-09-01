@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Action, ConversationItem } from '@/app/components/dify-builder/contract/types'
+import type { Action, ConversationItem } from '@dify/contracts/dify-builder'
 import type { ChecklistErrorPayload } from '@/app/components/dify-builder/types'
 import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'

@@ -1,4 +1,4 @@
-import type { ConversationItem } from '@/app/components/dify-builder/contract/types'
+import type { ConversationItem } from '@dify/contracts/dify-builder'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

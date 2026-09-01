@@ -3,7 +3,7 @@ import type {
   Action,
   ConversationItem,
   SessionModel,
-} from '@/app/components/dify-builder/contract/types'
+} from '@dify/contracts/dify-builder'
 import type { ChecklistErrorPayload } from '@/app/components/dify-builder/types'
 import type { DifyBuilderSessionController } from '@/app/components/dify-builder/use-dify-builder-session'
 import { atom } from 'jotai'

@@ -1,4 +1,4 @@
-import type { Action } from '@/app/components/dify-builder/contract/types'
+import type { Action } from '@dify/contracts/dify-builder'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
