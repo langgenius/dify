@@ -99,6 +99,32 @@ class TestAccountService:
     - Error conditions and edge cases
     """
 
+    def test_resolve_role_id_by_tag_returns_matching_builtin_role(self) -> None:
+        matching_role = MagicMock(
+            id="editor-role-id",
+            is_builtin=True,
+            category="global_system_default",
+            role_tag="editor",
+        )
+        roles = [
+            MagicMock(is_builtin=False, category="global_system_default", role_tag="editor"),
+            matching_role,
+        ]
+
+        with patch("services.account_service.RBACService.Roles.list", return_value=MagicMock(data=roles)):
+            role_id = AccountService._resolve_role_id_by_tag("tenant-1", "account-1", "editor")
+
+        assert role_id == "editor-role-id"
+
+    def test_resolve_role_id_by_tag_raises_when_builtin_role_is_missing(self) -> None:
+        roles = [MagicMock(is_builtin=True, category="global_system_default", role_tag="owner")]
+
+        with (
+            patch("services.account_service.RBACService.Roles.list", return_value=MagicMock(data=roles)),
+            pytest.raises(ValueError, match="Builtin RBAC role not found for tag 'editor' in tenant tenant-1"),
+        ):
+            AccountService._resolve_role_id_by_tag("tenant-1", "account-1", "editor")
+
     @pytest.fixture
     def mock_password_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for password-related functions."""
