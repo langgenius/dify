@@ -138,13 +138,6 @@ export function DocumentDetailTasksDrawer({
   const retryActionCount = orderedTasks.filter(taskCanRetry).length
 
   useEffect(() => {
-    if (open) return
-    loadMoreRequestedRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A committed controlled close starts a fresh drawer-local pagination cycle.
-    setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-  }, [open])
-
-  useEffect(() => {
     if (!open || hasMoreTasks || !loadMoreRequestedRef.current) return
     loadMoreRequestedRef.current = false
     drawerCloseButtonRef.current?.focus()
@@ -163,7 +156,18 @@ export function DocumentDetailTasksDrawer({
   }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
 
   return (
-    <Drawer open={open} modal swipeDirection="right" onOpenChange={onOpenChange}>
+    <Drawer
+      open={open}
+      modal
+      swipeDirection="right"
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          loadMoreRequestedRef.current = false
+          setVisibleTaskLimit(TASK_DRAWER_LIMIT)
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
