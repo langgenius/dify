@@ -4,11 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { logicalDocumentFromApi } from '../models'
 import { DocumentErrorState } from './error-state'
 import { responseStatus } from './model'
+import { useDocumentDetailTitle } from './title-sync'
 import { DocumentDetailWorkspace } from './workspace'
 
 export function DocumentDetailPage({
@@ -41,15 +41,7 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
-  const knowledgeSpaceQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
-    }),
-  )
-  const documentTitle = documentQuery.data?.title ?? t(($) => $['newKnowledge.documents'])
-  const knowledgeSpaceTitle =
-    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
-  useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
+  useDocumentDetailTitle({ documentTitle: documentQuery.data?.title, knowledgeSpaceId })
   const documentErrorStatus = responseStatus(documentQuery.error)
   const locale = i18n.resolvedLanguage ?? i18n.language
 
@@ -83,7 +75,6 @@ export function DocumentDetailPage({
     <DocumentDetailWorkspace
       key={`${knowledgeSpaceId}:${documentId}`}
       document={documentQuery.data}
-      documentId={documentId}
       documentQueryKey={documentQueryOptions.queryKey}
       knowledgeSpaceId={knowledgeSpaceId}
       locale={locale}

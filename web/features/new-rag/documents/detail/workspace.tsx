@@ -23,14 +23,12 @@ const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 
 export function DocumentDetailWorkspace({
   document,
-  documentId,
   documentQueryKey,
   knowledgeSpaceId,
   locale,
   refetchDocument,
 }: {
   document: LogicalDocument
-  documentId: string
   documentQueryKey: readonly unknown[]
   knowledgeSpaceId: string
   locale: string
@@ -45,7 +43,7 @@ export function DocumentDetailWorkspace({
   const workflow = useDocumentReindex({
     chunksQueryKey,
     documentActiveRevision,
-    documentId,
+    documentId: document.id,
     documentQueryKey,
     enabled: true,
     knowledgeSpaceId,
@@ -180,7 +178,7 @@ export function DocumentDetailWorkspace({
                 <DocumentReindexAction key={document.id} knowledgeSpaceId={knowledgeSpaceId} />
               }
               backPath={newKnowledgeDocumentsPath(knowledgeSpaceId)}
-              document={document}
+              title={document.title}
               titleRef={titleRef}
             />
             {!hasEditPermission && (
@@ -196,7 +194,6 @@ export function DocumentDetailWorkspace({
             />
             <DocumentRevisionBrowser
               document={document}
-              documentId={documentId}
               knowledgeSpaceId={knowledgeSpaceId}
               locale={locale}
             />

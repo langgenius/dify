@@ -59,12 +59,10 @@ function RevisionErrorState({
 
 export function DocumentRevisionBrowser({
   document,
-  documentId,
   knowledgeSpaceId,
   locale,
 }: {
   document: LogicalDocument
-  documentId: string
   knowledgeSpaceId: string
   locale: string
 }) {
@@ -81,7 +79,7 @@ export function DocumentRevisionBrowser({
         input: (pageParam) => ({
           params: {
             control_space_id: knowledgeSpaceId,
-            document_id: documentId,
+            document_id: document.id,
           },
           query: {
             ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
@@ -193,7 +191,6 @@ export function DocumentRevisionBrowser({
       )}
       <DocumentRevisionData
         document={document}
-        documentId={documentId}
         effectiveRevision={effectiveRevision}
         knowledgeSpaceId={knowledgeSpaceId}
         locale={locale}

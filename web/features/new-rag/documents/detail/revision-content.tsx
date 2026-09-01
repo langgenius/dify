@@ -15,7 +15,6 @@ import {
 
 export function DocumentRevisionData({
   document,
-  documentId,
   effectiveRevision,
   knowledgeSpaceId,
   locale,
@@ -24,7 +23,6 @@ export function DocumentRevisionData({
   selectedChunkId,
 }: {
   document: LogicalDocument
-  documentId: string
   effectiveRevision: number
   knowledgeSpaceId: string
   locale: string
@@ -33,8 +31,13 @@ export function DocumentRevisionData({
   selectedChunkId?: string
 }) {
   const chunksQueryOptions = useMemo(
-    () => documentChunksQueryOptions({ documentId, effectiveRevision, knowledgeSpaceId }),
-    [documentId, effectiveRevision, knowledgeSpaceId],
+    () =>
+      documentChunksQueryOptions({
+        documentId: document.id,
+        effectiveRevision,
+        knowledgeSpaceId,
+      }),
+    [document.id, effectiveRevision, knowledgeSpaceId],
   )
   const chunksQuery = useInfiniteQuery(chunksQueryOptions)
   const {
@@ -97,7 +100,7 @@ export function DocumentRevisionData({
     ? detailModel.contentBlocksByChunkId.get(detailModel.tree.roots[0].targetChunkId)
     : undefined
   const selectedBlock = targetedBlock ?? (targetLookupComplete ? fallbackBlock : undefined)
-  const revisionSessionKey = `${documentId}:${effectiveRevision}`
+  const revisionSessionKey = `${document.id}:${effectiveRevision}`
 
   useEffect(() => {
     if (
@@ -144,7 +147,7 @@ export function DocumentRevisionData({
       />
 
       <DocumentFactsSidebar
-        key={`facts:${documentId}`}
+        key={`facts:${document.id}`}
         chunksComplete={
           Boolean(chunksQuery.data) &&
           !chunksQuery.error &&

@@ -1,17 +1,16 @@
 import type { ReactNode, RefObject } from 'react'
-import type { LogicalDocument } from '../models'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 export function DocumentDetailHeader({
   action,
   backPath,
-  document,
+  title,
   titleRef,
 }: {
   action: ReactNode
   backPath: string
-  document: LogicalDocument
+  title: string
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
@@ -34,7 +33,7 @@ export function DocumentDetailHeader({
             className="truncate title-2xl-semi-bold text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             tabIndex={-1}
           >
-            {document.title}
+            {title}
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">{action}</div>
