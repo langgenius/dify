@@ -16,6 +16,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { createStore, Provider } from 'jotai'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../page'
 
@@ -2553,6 +2554,39 @@ describe('DocumentDetailPage', () => {
     )
     await waitFor(() => expect(contentScroll.scrollTop).toBe(592))
     getBoundingClientRect.mockRestore()
+  })
+
+  it('isolates document route state while client navigation renders two route instances', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({ id: 'first', text: 'First chunk' }),
+            chunk({ id: 'target', ordinal: 2, text: 'Target chunk' }),
+          ],
+        },
+      ],
+    }
+
+    render(
+      <>
+        <NuqsTestingAdapter searchParams="?revision=3&chunk=first">
+          <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />
+        </NuqsTestingAdapter>
+        <NuqsTestingAdapter searchParams="?revision=3&chunk=target">
+          <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />
+        </NuqsTestingAdapter>
+      </>,
+    )
+
+    const firstChunkRows = screen.getAllByRole('treeitem', { name: 'First chunk' })
+    const targetChunkRows = screen.getAllByRole('treeitem', { name: 'Target chunk' })
+    expect(firstChunkRows).toHaveLength(2)
+    expect(targetChunkRows).toHaveLength(2)
+    expect(firstChunkRows[0]).toHaveAttribute('aria-selected', 'true')
+    expect(targetChunkRows[0]).toHaveAttribute('aria-selected', 'false')
+    expect(firstChunkRows[1]).toHaveAttribute('aria-selected', 'false')
+    expect(targetChunkRows[1]).toHaveAttribute('aria-selected', 'true')
   })
 
   it('distinguishes missing, restricted, and retryable document failures', async () => {
