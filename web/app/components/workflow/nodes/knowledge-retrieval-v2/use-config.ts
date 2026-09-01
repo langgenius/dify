@@ -105,8 +105,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     (model?: KnowledgeRetrievalV2RerankingModel) => {
       setInputs(
         produce(inputs, (draft) => {
-          if (model) draft.reranking_model = model
-          else delete draft.reranking_model
+          draft.reranking_model = model
         }),
       )
     },

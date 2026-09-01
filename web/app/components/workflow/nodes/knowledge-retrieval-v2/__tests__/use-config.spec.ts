@@ -102,7 +102,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
     )
   })
 
-  it('stores a custom rerank model and restores the system default by removing it', () => {
+  it('stores a custom rerank model and restores the system default by clearing the override', () => {
     const { result } = setup()
 
     act(() =>
@@ -129,9 +129,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       }),
     )
     act(() => configuredResult.current.handleRerankingModelChange(undefined))
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({ reranking_model: expect.anything() }),
-    )
+    expect(mockSetInputs.mock.lastCall?.[0]).toHaveProperty('reranking_model', undefined)
   })
 
   it('stores a bounded score threshold and supports disabling it', () => {
