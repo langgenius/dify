@@ -175,16 +175,10 @@ function SkillPlaceholderState({
                   />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span
-                    className="block truncate system-md-medium text-text-secondary"
-                    title={t(($) => $['skillManagement.emptyAction.createTitle'])}
-                  >
+                  <span className="block truncate system-md-medium text-text-secondary">
                     {t(($) => $['skillManagement.emptyAction.createTitle'])}
                   </span>
-                  <span
-                    className="block truncate system-xs-regular text-text-tertiary"
-                    title={t(($) => $['skillManagement.emptyAction.createDescription'])}
-                  >
+                  <span className="block truncate system-xs-regular text-text-tertiary">
                     {t(($) => $['skillManagement.emptyAction.createDescription'])}
                   </span>
                 </span>
@@ -205,16 +199,10 @@ function SkillPlaceholderState({
                   />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span
-                    className="block truncate system-md-medium text-text-secondary"
-                    title={t(($) => $['skillManagement.emptyAction.importTitle'])}
-                  >
+                  <span className="block truncate system-md-medium text-text-secondary">
                     {t(($) => $['skillManagement.emptyAction.importTitle'])}
                   </span>
-                  <span
-                    className="block truncate system-xs-regular text-text-tertiary"
-                    title={t(($) => $['skillManagement.emptyAction.importDescription'])}
-                  >
+                  <span className="block truncate system-xs-regular text-text-tertiary">
                     {t(($) => $['skillManagement.emptyAction.importDescription'])}
                   </span>
                 </span>
@@ -306,10 +294,7 @@ function DeleteSkillDialog({
     >
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle
-            className="truncate title-2xl-semi-bold text-text-primary"
-            title={t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
-          >
+          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
             {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -460,29 +445,16 @@ function SkillCard({
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
             <SkillIcon />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2
-                id={nameId}
-                className="truncate system-md-semibold text-text-secondary"
-                title={skill.display_name}
-              >
+              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
               </h2>
               {!skill.name.startsWith('untitled-skill-') && (
-                <p className="truncate system-xs-regular text-text-tertiary" title={skill.name}>
-                  {skill.name}
-                </p>
+                <p className="truncate system-xs-regular text-text-tertiary">{skill.name}</p>
               )}
             </div>
           </div>
           <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-            <div
-              className="line-clamp-2 min-h-8"
-              title={
-                skill.description.trim()
-                  ? skill.description
-                  : t(($) => $['skillManagement.noDescription'])
-              }
-            >
+            <div className="line-clamp-2 min-h-8">
               {skill.description.trim()
                 ? skill.description
                 : t(($) => $['skillManagement.noDescription'])}
@@ -566,14 +538,7 @@ function SkillCard({
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
             </span>
-            <span
-              className="min-w-0 truncate"
-              title={
-                isDraft
-                  ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                  : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })
-              }
-            >
+            <span className="min-w-0 truncate">
               {isDraft
                 ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
                 : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
@@ -914,10 +879,7 @@ export default function SkillsPage() {
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-          <h1
-            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
-            title={t(($) => $['skillManagement.title'])}
-          >
+          <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
             {t(($) => $['skillManagement.title'])}
           </h1>
         </div>

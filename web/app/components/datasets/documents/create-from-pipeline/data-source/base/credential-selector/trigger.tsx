@@ -21,9 +21,7 @@ const Trigger = ({ currentCredential, isOpen }: TriggerProps) => {
     >
       <CredentialIcon avatarUrl={avatar_url} name={name} size={20} />
       <div className="flex grow items-center gap-x-1 overflow-hidden">
-        <span className="grow truncate system-md-semibold text-text-secondary" title={name}>
-          {name}
-        </span>
+        <span className="grow truncate system-md-semibold text-text-secondary">{name}</span>
         <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />
       </div>
     </div>

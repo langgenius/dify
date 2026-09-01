@@ -107,10 +107,7 @@ export const CheckboxList = ({
               {!searchQuery ? (
                 <div className="flex min-w-0 flex-1 items-center gap-1">
                   {title && (
-                    <span
-                      className="truncate system-xs-semibold-uppercase leading-5 text-text-secondary"
-                      title={title}
-                    >
+                    <span className="truncate system-xs-semibold-uppercase leading-5 text-text-secondary">
                       {title}
                     </span>
                   )}

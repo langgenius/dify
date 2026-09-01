@@ -43,9 +43,7 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
     <Fieldset className="flex items-center gap-x-1">
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate system-xs-medium text-text-secondary" title={label}>
-          {label}
-        </div>
+        <div className="truncate system-xs-medium text-text-secondary">{label}</div>
         <Infotip aria-label={label} className="size-3.5">
           {label}
         </Infotip>

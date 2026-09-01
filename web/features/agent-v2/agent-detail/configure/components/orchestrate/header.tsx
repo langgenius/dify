@@ -24,11 +24,7 @@ export function AgentOrchestrateHeader({
     <div className="shrink-0 px-4 py-3">
       <div className="flex h-6 min-w-0 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <h2
-            id={headingId}
-            className="truncate title-xl-semi-bold text-text-primary"
-            title={t(($) => $['agentDetail.configure.title'])}
-          >
+          <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
             {t(($) => $['agentDetail.configure.title'])}
           </h2>
           <CommunityEditionTip tip={communityEditionIsolationTip} className="max-w-[320px]" />

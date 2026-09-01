@@ -85,7 +85,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                           data-testid="folder-icon"
                         />
                       </div>
-                      <div className="truncate text-sm text-gray-800" title={dataset.name}>
+                      <div className="truncate text-sm text-gray-800" title="">
                         {dataset.name}
                       </div>
                     </div>

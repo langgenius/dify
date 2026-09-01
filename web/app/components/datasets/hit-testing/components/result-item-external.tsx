@@ -39,9 +39,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {/* Main */}
       <div className="mt-1 px-3">
-        <div className="line-clamp-2 body-md-regular break-all text-text-primary" title={content}>
-          {content}
-        </div>
+        <div className="line-clamp-2 body-md-regular break-all text-text-primary">{content}</div>
       </div>
 
       {/* Foot */}

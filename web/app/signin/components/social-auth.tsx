@@ -29,15 +29,11 @@ export default function SocialAuth() {
     <>
       <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/github')}>
         <span aria-hidden="true" className={cn(style.githubIcon, 'size-5')} />
-        <span className="truncate leading-normal" title={t(($) => $.withGitHub, { ns: 'login' })}>
-          {t(($) => $.withGitHub, { ns: 'login' })}
-        </span>
+        <span className="truncate leading-normal">{t(($) => $.withGitHub, { ns: 'login' })}</span>
       </a>
       <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/google')}>
         <span aria-hidden="true" className={cn(style.googleIcon, 'size-5')} />
-        <span className="truncate leading-normal" title={t(($) => $.withGoogle, { ns: 'login' })}>
-          {t(($) => $.withGoogle, { ns: 'login' })}
-        </span>
+        <span className="truncate leading-normal">{t(($) => $.withGoogle, { ns: 'login' })}</span>
       </a>
     </>
   )

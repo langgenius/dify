@@ -341,9 +341,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                   <div className="flex size-8 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default-dodge">
                     <ProviderIcon type={provider.key} />
                   </div>
-                  <span className="w-full truncate system-xs-regular" title={provider.name}>
-                    {provider.name}
-                  </span>
+                  <span className="w-full truncate system-xs-regular">{provider.name}</span>
                 </button>
               ))}
             </div>

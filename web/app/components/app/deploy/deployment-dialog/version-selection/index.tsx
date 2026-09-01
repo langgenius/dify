@@ -62,7 +62,6 @@ function VersionChoice({
       <span className="flex min-w-0 items-center gap-1">
         <span
           className={cn('truncate system-md-medium text-text-secondary', current && 'opacity-50')}
-          title={version.name}
         >
           {version.name}
         </span>
@@ -70,10 +69,7 @@ function VersionChoice({
         {current && <VersionBadge>{t(($) => $['studio.current'])}</VersionBadge>}
       </span>
       {version.description && (
-        <span
-          className="line-clamp-3 system-xs-regular text-text-tertiary"
-          title={version.description}
-        >
+        <span className="line-clamp-3 system-xs-regular text-text-tertiary">
           {version.description}
         </span>
       )}

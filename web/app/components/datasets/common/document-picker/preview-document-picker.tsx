@@ -48,10 +48,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
             <FileIcon name={name} extension={extension} size="lg" />
             <div className="ml-1 flex flex-col items-start">
               <div className="flex items-center space-x-0.5">
-                <span
-                  className={cn('max-w-50 truncate system-md-semibold text-text-primary')}
-                  title={name || '--'}
-                >
+                <span className={cn('max-w-50 truncate system-md-semibold text-text-primary')}>
                   {' '}
                   {name || '--'}
                 </span>
@@ -103,9 +100,7 @@ function PreviewDocumentList({
           onClick={() => onChange(item)}
         >
           <FileIcon name={item.name} extension={item.extension} size="lg" />
-          <span className="truncate text-sm text-text-secondary" title={item.name}>
-            {item.name}
-          </span>
+          <span className="truncate text-sm text-text-secondary">{item.name}</span>
         </button>
       ))}
     </div>

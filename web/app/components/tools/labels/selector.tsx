@@ -70,9 +70,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
                   className="flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
                 >
                   <Checkbox className="shrink-0" value={label.name} />
-                  <div className="grow truncate text-sm/5 text-text-secondary" title={label.label}>
-                    {label.label}
-                  </div>
+                  <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                 </label>
               ))}
               {!filteredLabelList.length && (

@@ -78,11 +78,7 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
         />
       </div>
       <div className="min-w-0 py-px">
-        <h3
-          id={appNameId}
-          className="truncate system-md-semibold text-text-secondary"
-          title={app.name}
-        >
+        <h3 id={appNameId} className="truncate system-md-semibold text-text-secondary">
           {app.name}
         </h3>
         <span id={appModeId} className="sr-only">
@@ -94,21 +90,13 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
         >
           {app.author_name && (
             <>
-              <span className="min-w-0 truncate" title={app.author_name}>
-                {app.author_name}
-              </span>
+              <span className="min-w-0 truncate">{app.author_name}</span>
               <span className="shrink-0" aria-hidden="true">
                 ·
               </span>
             </>
           )}
-          <span
-            className="min-w-0 truncate"
-            title={t(($) => $['continueWork.editedAt'], {
-              ns: 'explore',
-              time: formatTimeFromNow(updatedAt),
-            })}
-          >
+          <span className="min-w-0 truncate">
             {t(($) => $['continueWork.editedAt'], {
               ns: 'explore',
               time: formatTimeFromNow(updatedAt),

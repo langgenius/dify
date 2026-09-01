@@ -216,9 +216,7 @@ function AgentMonitoringSourceFilter({
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">
               <span className="shrink-0 system-sm-regular text-text-tertiary">{label}</span>
-              <span className="truncate system-sm-medium text-text-secondary" title={selectedName}>
-                {selectedName}
-              </span>
+              <span className="truncate system-sm-medium text-text-secondary">{selectedName}</span>
             </span>
           </span>
         </SelectTrigger>

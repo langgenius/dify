@@ -233,9 +233,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                       />
                     </span>
                     <span className="flex min-w-0 grow items-center justify-between gap-2">
-                      <span className="truncate text-sm text-text-secondary" title={creator.name}>
-                        {creator.name}
-                      </span>
+                      <span className="truncate text-sm text-text-secondary">{creator.name}</span>
                       {creator.isYou && (
                         <span className="shrink-0 text-sm text-text-quaternary">
                           {t(($) => $['studio.filters.you'], { ns: 'app' })}

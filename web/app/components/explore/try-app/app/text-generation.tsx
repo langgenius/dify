@@ -206,10 +206,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div
-              className="grow truncate system-md-semibold text-text-secondary"
-              title={siteInfo.title}
-            >
+            <div className="grow truncate system-md-semibold text-text-secondary">
               {siteInfo.title}
             </div>
           </div>
@@ -222,7 +219,6 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
                   !descExpanded && 'line-clamp-3',
                   descExpanded && 'max-h-32 overflow-y-auto',
                 )}
-                title={siteInfo.description}
               >
                 {siteInfo.description}
                 {!descExpanded && showDescToggle && (

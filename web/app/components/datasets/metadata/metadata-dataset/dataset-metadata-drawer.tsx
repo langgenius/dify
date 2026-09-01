@@ -90,10 +90,7 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
-          <div
-            className="max-w-62.5 truncate system-sm-medium text-text-primary"
-            title={payload.name}
-          >
+          <div className="max-w-62.5 truncate system-sm-medium text-text-primary">
             {payload.name}
           </div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
@@ -130,10 +127,7 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle
-                className="w-full truncate title-2xl-semi-bold text-text-primary"
-                title={t(($) => $['metadata.datasetMetadata.deleteTitle'], { ns: 'dataset' })}
-              >
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                 {t(($) => $['metadata.datasetMetadata.deleteTitle'], { ns: 'dataset' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

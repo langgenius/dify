@@ -50,9 +50,7 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
           disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
         >
           <span className="shrink-0">{option.icon}</span>
-          <span className="min-w-0 truncate" title={option.label}>
-            {option.label}
-          </span>
+          <span className="min-w-0 truncate">{option.label}</span>
           {option.value === TransferMethod.local_file && <FileInput fileConfig={fileConfig} />}
         </Button>
       )

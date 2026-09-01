@@ -58,10 +58,7 @@ export function DeleteAgentDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="p-6">
-        <AlertDialogTitle
-          className="truncate title-2xl-semi-bold text-text-primary"
-          title={t(($) => $['roster.deleteDialog.title'], { name: agentName })}
-        >
+        <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
           {t(($) => $['roster.deleteDialog.title'], { name: agentName })}
         </AlertDialogTitle>
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

@@ -23,9 +23,7 @@ const CardMoreInfoComponent = ({ downloadCount, tags, variant = 'default' }: Pro
               )}
             >
               <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
-              <span className="truncate" title={tag}>
-                {tag}
-              </span>
+              <span className="truncate">{tag}</span>
             </div>
           ))}
         </div>
@@ -45,9 +43,7 @@ const CardMoreInfoComponent = ({ downloadCount, tags, variant = 'default' }: Pro
             {tags.map((tag) => (
               <div key={tag} className="flex max-w-30 space-x-1 overflow-hidden system-xs-regular">
                 <span className="text-text-quaternary">#</span>
-                <span className="truncate text-text-tertiary" title={tag}>
-                  {tag}
-                </span>
+                <span className="truncate text-text-tertiary">{tag}</span>
               </div>
             ))}
           </div>

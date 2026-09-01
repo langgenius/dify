@@ -122,10 +122,7 @@ function SkillDetailDeleteDialog({
     >
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle
-            className="truncate title-2xl-semi-bold text-text-primary"
-            title={t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
-          >
+          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
             {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

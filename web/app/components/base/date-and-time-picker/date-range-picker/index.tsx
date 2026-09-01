@@ -85,10 +85,7 @@ const DateRangePicker: FC<DateRangePickerProps> = ({
             props.onKeyDown?.(event)
           }}
         >
-          <span
-            className={cn('truncate', !value && 'text-components-input-text-placeholder')}
-            title={displayValue || placeholder}
-          >
+          <span className={cn('truncate', !value && 'text-components-input-text-placeholder')}>
             {displayValue || placeholder}
           </span>
           {clearable && value && !disabled && (

@@ -213,10 +213,7 @@ const EmbeddingProcess = ({
                   className="flex w-0 grow items-center gap-1"
                   title={getSourceName(indexingStatusDetail.id)}
                 >
-                  <div
-                    className="truncate system-xs-medium text-text-secondary"
-                    title={getSourceName(indexingStatusDetail.id)}
-                  >
+                  <div className="truncate system-xs-medium text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
                   {enableBilling && <PriorityLabel className="ml-0" />}

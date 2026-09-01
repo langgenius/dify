@@ -60,10 +60,7 @@ const CredentialSelector = ({
           </div>
         )}
         {!selectedCredential && (
-          <div
-            className="grow truncate system-sm-regular text-components-input-text-placeholder"
-            title={t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'common' })}
-          >
+          <div className="grow truncate system-sm-regular text-components-input-text-placeholder">
             {t(($) => $['modelProvider.auth.selectModelCredential'], { ns: 'common' })}
           </div>
         )}

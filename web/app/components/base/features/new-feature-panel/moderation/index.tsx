@@ -131,10 +131,7 @@ const Moderation = ({ disabled, onChange }: Props) => {
     >
       <>
         {!moderation?.enabled && (
-          <div
-            className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
-            title={t(($) => $['feature.moderation.description'], { ns: 'appDebug' })}
-          >
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
             {t(($) => $['feature.moderation.description'], { ns: 'appDebug' })}
           </div>
         )}

@@ -90,11 +90,7 @@ export function AccessSurfaceCard({
             >
               <span aria-hidden className={cn(icon, 'size-4')} />
             </span>
-            <h3
-              id={titleId}
-              className="truncate system-md-semibold text-text-secondary"
-              title={title}
-            >
+            <h3 id={titleId} className="truncate system-md-semibold text-text-secondary">
               {title}
             </h3>
             {badge}
@@ -134,7 +130,6 @@ export function AccessSurfaceCard({
             <span
               className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
               translate="no"
-              title={endpoint || t(($) => $['agentDetail.access.workflow.notAvailable'])}
             >
               {endpoint || t(($) => $['agentDetail.access.workflow.notAvailable'])}
             </span>

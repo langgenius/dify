@@ -72,11 +72,7 @@ function WorkspaceCreditsLabel({ credits, unit }: { credits: string; unit?: stri
   return (
     <span className="flex min-w-0 flex-1 items-baseline gap-0.5" title={label}>
       <span className="shrink-0 system-xs-medium">{`${credits}${unit ? ' ' : ''}`}</span>
-      {unit && (
-        <span className="min-w-0 truncate system-xs-regular" title={unit}>
-          {unit}
-        </span>
-      )}
+      {unit && <span className="min-w-0 truncate system-xs-regular">{unit}</span>}
     </span>
   )
 }

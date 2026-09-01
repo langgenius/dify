@@ -22,7 +22,6 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-  title?: string
 } & Pick<
   StreamdownWrapperProps,
   | 'customComponents'
@@ -44,7 +43,6 @@ export const Markdown = memo((props: MarkdownProps) => {
     rehypePlugins,
     mode,
     className,
-    title,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
 
@@ -52,7 +50,6 @@ export const Markdown = memo((props: MarkdownProps) => {
     <div
       className={cn('markdown-body', 'text-text-primary!', className)}
       data-testid="markdown-body"
-      title={title}
     >
       <StreamdownWrapper
         pluginInfo={pluginInfo}

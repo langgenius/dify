@@ -162,15 +162,11 @@ const SnippetList = () => {
             <Link
               href="/apps"
               className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              title={t(($) => $['menus.apps'], { ns: 'common' })}
             >
               {t(($) => $['menus.apps'], { ns: 'common' })}
             </Link>
             <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
-            <h1
-              className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
-              title={t(($) => $['tabs.snippets'], { ns: 'workflow' })}
-            >
+            <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
               {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
             </h1>
           </>

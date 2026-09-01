@@ -65,9 +65,7 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
               value={option.value}
               closeOnClick
             >
-              <span className="min-w-0 flex-1 truncate" title={option.text}>
-                {option.text}
-              </span>
+              <span className="min-w-0 flex-1 truncate">{option.text}</span>
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>
           ))}

@@ -60,9 +60,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
               className="h-7 rounded-lg px-2 system-sm-medium text-text-secondary"
               title={option.label}
             >
-              <div className="mr-1 grow truncate px-1 pl-1" title={option.label}>
-                {option.label}
-              </div>
+              <div className="mr-1 grow truncate px-1 pl-1">{option.label}</div>
               {value === option.value && (
                 <RiCheckLine className="size-4 shrink-0 text-text-accent" />
               )}

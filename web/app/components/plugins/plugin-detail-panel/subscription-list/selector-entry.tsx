@@ -80,7 +80,6 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
           'truncate system-xs-medium text-components-button-ghost-text',
           statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
         )}
-        title={statusConfig.label}
       >
         {statusConfig.label}
       </span>

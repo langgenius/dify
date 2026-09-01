@@ -157,9 +157,7 @@ export function IntegrationSidebarUtilityActions({
               <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                 <span className="i-ri-bug-line size-4" />
               </span>
-              <span className="min-w-0 truncate" title={debugLabel}>
-                {debugLabel}
-              </span>
+              <span className="min-w-0 truncate">{debugLabel}</span>
             </>
           }
         />
@@ -176,9 +174,7 @@ export function IntegrationSidebarUtilityActions({
                 <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                   <span className="i-ri-equalizer-2-line size-4" />
                 </span>
-                <span className="min-w-0 truncate" title={permissionsLabel}>
-                  {permissionsLabel}
-                </span>
+                <span className="min-w-0 truncate">{permissionsLabel}</span>
               </Button>
             }
           />

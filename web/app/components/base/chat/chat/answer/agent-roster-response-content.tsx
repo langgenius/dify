@@ -202,9 +202,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
             <span className="i-ri-hammer-line size-3.5" aria-hidden />
           )}
         </span>
-        <span className="min-w-0 truncate text-text-secondary" title={label}>
-          {label}
-        </span>
+        <span className="min-w-0 truncate text-text-secondary">{label}</span>
       </span>
       {hasDetails && (
         <span

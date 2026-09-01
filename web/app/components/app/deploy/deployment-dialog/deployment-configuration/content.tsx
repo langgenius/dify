@@ -117,9 +117,7 @@ export function DeploymentConfigurationContent({
         <div className="flex items-center justify-between gap-3 rounded-xl bg-background-section p-3">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span aria-hidden className="i-ri-stack-line size-3.5 shrink-0 text-text-tertiary" />
-            <span className="truncate system-sm-medium text-text-secondary" title={version.name}>
-              {version.name}
-            </span>
+            <span className="truncate system-sm-medium text-text-secondary">{version.name}</span>
           </div>
           <span
             aria-hidden
@@ -127,10 +125,7 @@ export function DeploymentConfigurationContent({
           />
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <span aria-hidden className="i-ri-instance-line size-3.5 shrink-0 text-text-tertiary" />
-            <span
-              className="truncate system-sm-medium text-text-secondary"
-              title={request.environment}
-            >
+            <span className="truncate system-sm-medium text-text-secondary">
               {request.environment}
             </span>
           </div>

@@ -134,10 +134,7 @@ const AppInfoTrigger = ({
       {expand && (
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
           <div className="flex w-full min-w-0 items-center gap-2 pr-1">
-            <div
-              className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary"
-              title={appDetail.name}
-            >
+            <div className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary">
               {appDetail.name}
             </div>
             <AppOperations

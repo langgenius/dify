@@ -73,9 +73,7 @@ const OnlineUsers = () => {
 
     return (
       <span className={cn('inline-flex min-w-0 items-center gap-1', baseClassName)}>
-        <span className="truncate" title={baseName}>
-          {baseName}
-        </span>
+        <span className="truncate">{baseName}</span>
         {isCurrentUser && (
           <span className={cn('shrink-0', suffixClassName)}>{currentUserSuffix}</span>
         )}

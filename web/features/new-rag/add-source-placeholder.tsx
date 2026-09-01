@@ -204,9 +204,7 @@ export function UnavailableConnectedSourceSetup({
                 className="sr-only"
               />
               <span aria-hidden className={`${option.icon} size-4 shrink-0`} />
-              <span className="truncate" title={option.label}>
-                {option.label}
-              </span>
+              <span className="truncate">{option.label}</span>
             </label>
           ))}
         </div>

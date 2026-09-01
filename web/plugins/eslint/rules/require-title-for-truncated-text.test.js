@@ -28,7 +28,7 @@ function verifyAndFix(code, filename = 'test.tsx') {
           },
         },
         plugins: { dify: plugin },
-        rules: { 'dify/require-title-for-truncated-text': 'error' },
+        rules: { 'dify/require-title-for-truncated-text': 'warn' },
       },
     ],
     { filename },
@@ -62,21 +62,21 @@ it('accepts Dify UI TooltipTrigger children and render elements', () => {
   assert.equal(result.fixed, false)
 })
 
-it('adds title for static classes, class helpers, constants, and inline styles', () => {
-  const result = verifyAndFix(`
+it('reports static classes, class helpers, constants, and inline styles without fixing', () => {
+  const code = `
     const truncatedClassName = cn('min-w-0', condition && 'md:truncate')
     export const Example = ({ itemName, label }) => <>
       <span className={truncatedClassName}>{itemName}</span>
       <p className={cn('line-clamp-2', condition && 'text-secondary')}>{label}</p>
       <div style={{ textOverflow: 'ellipsis' }}>Description</div>
     </>
-  `)
+  `
+  const result = verifyAndFix(code)
 
-  assert.equal(result.messages.length, 0)
-  assert.equal(result.fixed, true)
-  assert.match(result.output, /className=\{truncatedClassName\} title=\{itemName\}/u)
-  assert.match(result.output, /className=\{cn\([^)]+\)\} title=\{label\}/u)
-  assert.match(result.output, /style=\{\{ textOverflow: 'ellipsis' \}\} title="Description"/u)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 3)
+  assert.ok(result.messages.every((message) => message.severity === 1))
+  assert.equal(result.output, code)
 })
 
 it('resolves truncation variables from the active lexical scope', () => {
@@ -107,31 +107,36 @@ it('resolves truncation variables from the active lexical scope', () => {
     }
   `)
 
-  assert.equal(nestedBindingResult.fixed, true)
-  assert.equal(nestedBindingResult.messages.length, 0)
-  assert.equal(nestedBindingResult.output.match(/title=\{label\}/gu)?.length, 2)
+  assert.equal(nestedBindingResult.fixed, false)
+  assert.equal(nestedBindingResult.messages.length, 2)
+  assert.ok(nestedBindingResult.messages.every((message) => message.severity === 1))
 })
 
-it('replaces an empty title', () => {
-  const result = verifyAndFix(`
+it('reports an empty title without replacing it', () => {
+  const code = `
     export const Example = ({ name }) => <span className="truncate" title="">{name}</span>
-  `)
+  `
+  const result = verifyAndFix(code)
 
-  assert.equal(result.messages.length, 0)
-  assert.equal(result.fixed, true)
-  assert.match(result.output, /title=\{name\}/u)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 1)
+  assert.equal(result.messages[0].severity, 1)
+  assert.equal(result.messages[0].messageId, 'emptyTitle')
+  assert.equal(result.output, code)
 })
 
-it('fixes custom components when their visible text is a safe identifier', () => {
-  const result = verifyAndFix(`
+it('reports custom components without fixing them', () => {
+  const code = `
     export const Example = ({ name }) => (
       <CustomText className="truncate">{name}</CustomText>
     )
-  `)
+  `
+  const result = verifyAndFix(code)
 
-  assert.equal(result.fixed, true)
-  assert.equal(result.messages.length, 0)
-  assert.match(result.output, /title=\{name\}/u)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 1)
+  assert.equal(result.messages[0].severity, 1)
+  assert.equal(result.output, code)
 })
 
 it('ignores expressions that may execute user code', () => {
@@ -153,7 +158,7 @@ it('ignores expressions that may execute user code', () => {
   assert.equal(result.output, code)
 })
 
-it('uses a single nested text child or a text-bearing prop', () => {
+it('reports a single nested text child or a text-bearing prop without fixing', () => {
   const result = verifyAndFix(`
     export const Example = ({ name, content }) => <>
       <div className="truncate"><span>{name}</span></div>
@@ -161,10 +166,9 @@ it('uses a single nested text child or a text-bearing prop', () => {
     </>
   `)
 
-  assert.equal(result.fixed, true)
-  assert.equal(result.messages.length, 0)
-  assert.match(result.output, /className="truncate" title=\{name\}/u)
-  assert.match(result.output, /content=\{content\} title=\{content\}/u)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 2)
+  assert.ok(result.messages.every((message) => message.severity === 1))
 })
 
 it('checks Dify UI single text but ignores multiple text children', () => {
@@ -183,9 +187,9 @@ it('checks Dify UI single text but ignores multiple text children', () => {
     filename,
   )
 
-  assert.equal(result.fixed, true)
-  assert.equal(result.messages.length, 0)
-  assert.equal(result.output.match(/title=\{primary\}/gu)?.length, 1)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 1)
+  assert.equal(result.messages[0].severity, 1)
 })
 
 it('does not count non-text conditional children as additional text', () => {
@@ -223,7 +227,7 @@ it('resolves truncation classes imported from CSS modules', () => {
     filename,
   )
 
-  assert.equal(result.fixed, true)
-  assert.equal(result.messages.length, 0)
-  assert.equal(result.output.match(/title=\{name\}/gu)?.length, 2)
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 2)
+  assert.ok(result.messages.every((message) => message.severity === 1))
 })

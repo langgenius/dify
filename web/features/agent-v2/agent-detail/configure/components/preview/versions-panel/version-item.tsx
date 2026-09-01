@@ -9,17 +9,15 @@ function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryRespo
   const { formatTime } = useTimestamp()
 
   if (version.created_at == null && !version.created_by) return null
-  const createdAt =
-    version.created_at == null
-      ? null
-      : formatTime(
-          version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
-        )
+
   return (
     <p className="truncate system-xs-regular text-text-tertiary">
-      {createdAt}
-      {createdAt && version.created_by && ' · '}
+      {version.created_at != null &&
+        formatTime(
+          version.created_at,
+          t(($) => $['roster.dateTimeFormat']),
+        )}
+      {version.created_at != null && version.created_by && ' · '}
       {version.created_by}
     </p>
   )
@@ -65,7 +63,6 @@ export function VersionItem({
               'truncate system-sm-semibold',
               isActive ? 'text-text-accent' : 'text-text-secondary',
             )}
-            title={label}
           >
             {label}
           </p>
@@ -76,10 +73,7 @@ export function VersionItem({
           )}
         </div>
         {isActive && version.summary && (
-          <p
-            className="mt-0.5 line-clamp-4 system-xs-regular text-text-secondary"
-            title={version.summary}
-          >
+          <p className="mt-0.5 line-clamp-4 system-xs-regular text-text-secondary">
             {version.summary}
           </p>
         )}

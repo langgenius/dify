@@ -95,10 +95,7 @@ function EnvEditorScope({
 
   if (!editable) {
     return (
-      <span
-        className="min-w-0 truncate px-3 system-xs-regular text-text-secondary"
-        title={t(($) => $[scopeLabelKeys[scope]])}
-      >
+      <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
         {t(($) => $[scopeLabelKeys[scope]])}
       </span>
     )
@@ -238,7 +235,6 @@ function EnvEditorRow({
               'min-w-0 truncate px-3 system-xs-regular text-text-secondary',
               isHighlighted && 'text-text-primary',
             )}
-            title={variable.key}
           >
             {variable.key}
           </span>
@@ -256,10 +252,7 @@ function EnvEditorRow({
             onValueChange={onValueChange ?? (() => {})}
           />
         ) : (
-          <span
-            className="min-w-0 truncate px-3 system-xs-regular text-text-secondary"
-            title={displayedValue}
-          >
+          <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
             {displayedValue}
           </span>
         )}
@@ -331,10 +324,7 @@ function EnvEditorDraftRow({
     ($) => $['agentDetail.configure.advancedSettings.envEditor.valuePlaceholder'],
   )
   const renderDraftPlaceholder = (label: string) => (
-    <span
-      className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder"
-      title={label}
-    >
+    <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
       {label}
     </span>
   )

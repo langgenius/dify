@@ -90,42 +90,27 @@ const AppInfo: FC<Props> = ({
           </div>
           <div className="flex items-center text-2xs leading-4.5 font-medium text-text-tertiary">
             {mode === 'advanced-chat' && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {mode === 'chat' && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {mode === 'agent-chat' && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {mode === 'workflow' && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {mode === 'completion' && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
@@ -145,10 +130,7 @@ const AppInfo: FC<Props> = ({
           onClick={onCreate}
         >
           <span className="i-ri-add-line size-4 shrink-0" />
-          <span
-            className="truncate"
-            title={t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
-          >
+          <span className="truncate">
             {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
           </span>
         </Button>
@@ -178,10 +160,7 @@ const AppInfo: FC<Props> = ({
             {requirements.map((item) => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
-                <div
-                  className="w-0 grow truncate system-md-regular text-text-secondary"
-                  title={item.name}
-                >
+                <div className="w-0 grow truncate system-md-regular text-text-secondary">
                   {item.name}
                 </div>
               </div>

@@ -84,14 +84,7 @@ export function ShowIncompatibleModelsButton({
       className="h-10 w-full justify-start rounded-none px-4 text-left system-xs-regular text-text-tertiary"
       onClick={onClick}
     >
-      <span
-        className="min-w-0 truncate"
-        title={
-          showIncompatibleModels
-            ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
-            : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })
-        }
-      >
+      <span className="min-w-0 truncate">
         {showIncompatibleModels
           ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
           : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })}

@@ -65,10 +65,7 @@ const Item = ({
       )}
       {!renaming && (
         <>
-          <div
-            className="min-w-0 grow truncate system-sm-medium text-text-secondary"
-            title={credentialItem.name}
-          >
+          <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
             {credentialItem.name}
           </div>
           {credentialItem.is_default && (

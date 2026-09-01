@@ -63,10 +63,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
             <span aria-hidden>
               <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
             </span>
-            <span
-              className="grow truncate system-sm-medium text-text-secondary"
-              title={currentValue.name}
-            >
+            <span className="grow truncate system-sm-medium text-text-secondary">
               {currentValue.name}
             </span>
             <span className="system-xs-regular text-text-quaternary">{currentValue.email}</span>
@@ -116,10 +113,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
                 <span aria-hidden>
                   <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
                 </span>
-                <span
-                  className="grow truncate system-sm-medium text-text-secondary"
-                  title={account.name}
-                >
+                <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}
                 </span>
                 <span className="system-xs-regular text-text-quaternary">{account.email}</span>

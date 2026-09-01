@@ -246,10 +246,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle
-                className="w-full truncate title-2xl-semi-bold text-text-primary"
-                title="Warning"
-              >
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                 Warning
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

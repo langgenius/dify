@@ -287,9 +287,7 @@ function FeaturedTriggerUninstalledItem({
         size="sm"
         toolIcon={plugin.icon}
       />
-      <span className="ml-2 truncate system-sm-medium text-text-secondary" title={label}>
-        {label}
-      </span>
+      <span className="ml-2 truncate system-sm-medium text-text-secondary">{label}</span>
       <span
         aria-hidden
         className={cn(

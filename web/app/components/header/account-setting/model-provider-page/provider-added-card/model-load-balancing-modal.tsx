@@ -395,10 +395,7 @@ const ModelLoadBalancingModal = ({
           <AlertDialog open={!!deleteModel} onOpenChange={(open) => !open && closeConfirmDelete()}>
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle
-                  className="w-full truncate title-2xl-semi-bold text-text-primary"
-                  title={t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
-                >
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                   {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
                 </AlertDialogTitle>
               </div>

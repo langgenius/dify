@@ -30,14 +30,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
                 'data-popup-open:bg-background-section-burn! data-popup-open:hover:bg-background-section-burn',
               )}
             >
-              <div
-                className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary')}
-                title={
-                  value === 'llm'
-                    ? t(($) => $['createTool.toolInput.methodParameter'], { ns: 'tools' })
-                    : t(($) => $['createTool.toolInput.methodSetting'], { ns: 'tools' })
-                }
-              >
+              <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary')}>
                 {value === 'llm'
                   ? t(($) => $['createTool.toolInput.methodParameter'], { ns: 'tools' })
                   : t(($) => $['createTool.toolInput.methodSetting'], { ns: 'tools' })}

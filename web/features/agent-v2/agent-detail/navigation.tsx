@@ -117,7 +117,6 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         <Link
           href="/agents"
           className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          title="Agents"
         >
           Agents
         </Link>
@@ -219,16 +218,10 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
           </div>
           <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
             <div className="flex min-w-0 flex-1 flex-col justify-center">
-              <div
-                className="truncate system-md-semibold text-text-secondary"
-                title={agent?.name ?? t(($) => $['agentDetail.title'])}
-              >
+              <div className="truncate system-md-semibold text-text-secondary">
                 {agent?.name ?? t(($) => $['agentDetail.title'])}
               </div>
-              <div
-                className="truncate system-2xs-medium-uppercase text-text-tertiary"
-                title={agent?.role ?? t(($) => $['agentDetail.type'])}
-              >
+              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
                 {agent?.role ?? t(($) => $['agentDetail.type'])}
               </div>
             </div>

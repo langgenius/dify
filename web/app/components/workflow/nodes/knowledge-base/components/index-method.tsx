@@ -100,10 +100,7 @@ const IndexMethod = ({
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
               <div className="flex grow items-center">
-                <div
-                  className="truncate system-xs-medium text-text-secondary"
-                  title={keywordNumberLabel}
-                >
+                <div className="truncate system-xs-medium text-text-secondary">
                   {keywordNumberLabel}
                 </div>
                 <Infotip aria-label={keywordNumberLabel} className="ml-0.5 size-3.5">

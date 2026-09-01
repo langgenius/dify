@@ -73,9 +73,7 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
         </div>
       </div>
       <div className="py-1 system-xs-regular text-text-tertiary">
-        <div className="line-clamp-3" title={app.description}>
-          {app.description}
-        </div>
+        <div className="line-clamp-3">{app.description}</div>
       </div>
       {(canCreate || canViewApp) && (
         <div

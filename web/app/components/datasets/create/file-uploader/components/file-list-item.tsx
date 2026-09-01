@@ -50,10 +50,7 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
       </div>
       <div className="flex shrink grow flex-col gap-0.5">
         <div className="flex w-full">
-          <div
-            className="w-0 grow truncate text-sm/4 text-text-secondary"
-            title={fileItem.file.name}
-          >
+          <div className="w-0 grow truncate text-sm/4 text-text-secondary">
             {fileItem.file.name}
           </div>
         </div>

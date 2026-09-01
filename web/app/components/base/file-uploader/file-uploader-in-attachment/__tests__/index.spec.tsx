@@ -1,7 +1,6 @@
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from '../index'
 
@@ -108,8 +107,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(screen.getByText(/fileUploader\.pasteFileLink/)).toBeInTheDocument()
   })
 
-  it('should call handleRemoveFile when remove button is clicked', async () => {
-    const user = userEvent.setup()
+  it('should call handleRemoveFile when remove button is clicked', () => {
     const files = [createFile({ id: 'f1', name: 'a.txt' })]
 
     render(
@@ -120,7 +118,11 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /operation\.remove.*a\.txt/i }))
+    // Find the file item row, then locate the delete button within it
+    const fileNameEl = screen.getByText(/a\.txt/i)
+    const fileRow = fileNameEl.closest('[title="a.txt"]')?.parentElement?.parentElement
+    const deleteBtn = fileRow?.querySelector('button:last-of-type')
+    fireEvent.click(deleteBtn!)
 
     expect(mockHandleRemoveFile).toHaveBeenCalledWith('f1')
   })

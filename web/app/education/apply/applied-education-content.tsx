@@ -76,10 +76,7 @@ const AppliedEducationContent = ({
                     {workspaceName?.[0]?.toLocaleUpperCase()}
                   </span>
                 </span>
-                <span
-                  className="min-w-0 truncate system-md-semibold text-text-primary"
-                  title={workspaceName}
-                >
+                <span className="min-w-0 truncate system-md-semibold text-text-primary">
                   {workspaceName}
                 </span>
                 <PlanBadge plan={workspacePlan} />

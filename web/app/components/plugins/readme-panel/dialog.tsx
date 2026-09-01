@@ -21,10 +21,7 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
         <ReadmePanelContent
           detail={detail}
           title={
-            <DialogTitle
-              className="truncate text-xs font-medium text-text-tertiary uppercase"
-              title={t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
-            >
+            <DialogTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
               {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
             </DialogTitle>
           }

@@ -31,10 +31,7 @@ const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
     >
       <NavIcon icon={item.icon} className="group-aria-[current=page]:hidden" />
       <NavIcon icon={item.activeIcon} className="hidden group-aria-[current=page]:block" />
-      <span
-        className="min-w-0 truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]"
-        title={item.label}
-      >
+      <span className="min-w-0 truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]">
         {item.label}
       </span>
       {children}

@@ -159,10 +159,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       <AlertDialog open={showConfirm} onOpenChange={(open) => !open && setShowConfirm(false)}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={`${t(($) => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t(($) => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {`${t(($) => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t(($) => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

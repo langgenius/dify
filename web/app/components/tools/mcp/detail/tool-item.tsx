@@ -64,10 +64,7 @@ const MCPToolItem = ({ tool }: Props) => {
             <div className="pb-0.5 system-md-semibold text-text-secondary">
               {tool.label[language]}
             </div>
-            <div
-              className="line-clamp-2 system-xs-regular text-text-tertiary"
-              title={tool.description[language]}
-            >
+            <div className="line-clamp-2 system-xs-regular text-text-tertiary">
               {tool.description[language]}
             </div>
           </button>

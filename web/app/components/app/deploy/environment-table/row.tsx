@@ -38,10 +38,7 @@ export function EnvironmentRow({
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg text-text-secondary">
             <span aria-hidden className="i-ri-instance-line size-3.5" />
           </span>
-          <span
-            className="truncate system-md-medium text-text-secondary"
-            title={row.environment.display_name}
-          >
+          <span className="truncate system-md-medium text-text-secondary">
             {row.environment.display_name}
           </span>
         </div>

@@ -79,11 +79,7 @@ export function EnvironmentVariableField({
             aria-hidden
             className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600"
           />
-          <label
-            htmlFor={inputId}
-            className="truncate system-sm-medium text-text-primary"
-            title={slot.key}
-          >
+          <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
             {slot.key}
           </label>
           <span className="shrink-0 system-xs-regular text-text-tertiary">{valueTypeLabel}</span>

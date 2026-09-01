@@ -17,9 +17,7 @@ const RoleBadge = memo(({ label, className }: RoleBadgeProps) => {
       )}
       title={label}
     >
-      <span className="truncate" title={label}>
-        {label}
-      </span>
+      <span className="truncate">{label}</span>
     </span>
   )
 })

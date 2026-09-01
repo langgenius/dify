@@ -68,10 +68,7 @@ export function BuiltInEnvironmentCard({ canAccessPoint = false }: { canAccessPo
             <h2 id="built-in-environment-title" className="system-md-semibold text-text-primary">
               {t(($) => $['studio.builtInTitle'])}
             </h2>
-            <p
-              className="truncate system-xs-regular text-text-tertiary"
-              title={t(($) => $['studio.builtInDescription'])}
-            >
+            <p className="truncate system-xs-regular text-text-tertiary">
               {t(($) => $['studio.builtInDescription'])}
             </p>
           </div>
@@ -105,17 +102,7 @@ export function BuiltInEnvironmentCard({ canAccessPoint = false }: { canAccessPo
       {/* Status and updated time */}
       <div className="flex items-center justify-between gap-4 px-4 py-2.5">
         <DeploymentStatus status={DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING} />
-        <p
-          className="truncate system-xs-regular text-text-tertiary"
-          title={
-            publishedWorkflow
-              ? t(($) => $['studio.updatedAtBy'], {
-                  name: updatedBy,
-                  time: formatTime(publishedWorkflow.updated_at, 'MM-DD HH:mm'),
-                })
-              : '--'
-          }
-        >
+        <p className="truncate system-xs-regular text-text-tertiary">
           {publishedWorkflow
             ? t(($) => $['studio.updatedAtBy'], {
                 name: updatedBy,

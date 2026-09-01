@@ -81,27 +81,14 @@ const FollowUp = ({ disabled, onChange }: Props) => {
       >
         <>
           {!suggested?.enabled && (
-            <div
-              className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
-              title={t(($) => $['feature.suggestedQuestionsAfterAnswer.description'], {
-                ns: 'appDebug',
-              })}
-            >
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
               {t(($) => $['feature.suggestedQuestionsAfterAnswer.description'], { ns: 'appDebug' })}
             </div>
           )}
           {!!suggested?.enabled && (
             <>
               {!isHovering && (
-                <div
-                  className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
-                  title={
-                    suggested.model?.name ||
-                    t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.defaultModel'], {
-                      ns: 'appDebug',
-                    })
-                  }
-                >
+                <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
                   {suggested.model?.name ||
                     t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.defaultModel'], {
                       ns: 'appDebug',

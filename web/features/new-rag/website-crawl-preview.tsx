@@ -233,16 +233,10 @@ const CrawlPageList = memo(
               className="mt-0.5 size-4"
             />
             <span className="min-w-0">
-              <span
-                className="block truncate system-xs-medium text-text-primary"
-                title={page.title || page.sourceUrl}
-              >
+              <span className="block truncate system-xs-medium text-text-primary">
                 {page.title || page.sourceUrl}
               </span>
-              <span
-                className="block truncate system-2xs-regular text-text-tertiary"
-                title={page.sourceUrl}
-              >
+              <span className="block truncate system-2xs-regular text-text-tertiary">
                 {page.sourceUrl}
               </span>
             </span>

@@ -30,10 +30,7 @@ function UninstalledItem({ payload }: UninstalledItemProps) {
       <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={payload.icon} />
       <div className="ml-2 flex w-0 grow items-center">
         <div className="flex w-0 grow items-center gap-x-2">
-          <span
-            className="truncate system-sm-regular text-text-primary"
-            title={getLocalizedText(payload.label)}
-          >
+          <span className="truncate system-sm-regular text-text-primary">
             {getLocalizedText(payload.label)}
           </span>
           <span className="system-xs-regular text-text-quaternary">{payload.org}</span>

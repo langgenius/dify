@@ -142,10 +142,7 @@ const AppInfoModals = ({
             }}
           >
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle
-                className="w-full truncate title-2xl-semi-bold text-text-primary"
-                title={t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-              >
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -212,10 +209,7 @@ const AppInfoModals = ({
           exportDialogMode === 'warning' && (
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle
-                  className="w-full truncate title-2xl-semi-bold text-text-primary"
-                  title={t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
-                >
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                   {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

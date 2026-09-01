@@ -301,10 +301,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <AlertDialog open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['segment.delete'], { ns: 'datasetDocuments' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['segment.delete'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>

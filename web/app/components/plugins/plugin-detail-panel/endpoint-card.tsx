@@ -177,10 +177,7 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
                 {endpoint.method}
               </div>
               <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
-                <div
-                  className="truncate"
-                  title={`${data.url}${endpoint.path}`}
-                >{`${data.url}${endpoint.path}`}</div>
+                <div className="truncate">{`${data.url}${endpoint.path}`}</div>
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -227,10 +224,7 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
       <AlertDialog open={isShowDisableConfirm} onOpenChange={handleDisableConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -250,10 +244,7 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

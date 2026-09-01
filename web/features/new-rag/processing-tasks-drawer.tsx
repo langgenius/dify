@@ -507,13 +507,6 @@ export function ProcessingTasksDrawer({
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
-                      const taskStateLabel = t(
-                        ($) => $[`newKnowledge.processingTaskState.${task.state}`],
-                        { progress: task.progressPercent },
-                      )
-                      const taskTimeLabel = Number.isNaN(timestamp)
-                        ? null
-                        : formatTimeFromNow(timestamp)
                       const taskError = task.errorMessage ?? task.errorCode
                       const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
                       return (
@@ -531,18 +524,17 @@ export function ProcessingTasksDrawer({
                             }
                           />
                           <div className="min-w-0 flex-1">
-                            <p
-                              className="truncate system-xs-medium text-text-primary"
-                              title={t(($) => $['newKnowledge.processDocument'], { name: title })}
-                            >
+                            <p className="truncate system-xs-medium text-text-primary">
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
                             <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
-                              {taskStateLabel}
-                              {taskTimeLabel && (
+                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+                                progress: task.progressPercent,
+                              })}
+                              {!Number.isNaN(timestamp) && (
                                 <>
                                   <span aria-hidden> · </span>
-                                  {taskTimeLabel}
+                                  {formatTimeFromNow(timestamp)}
                                 </>
                               )}
                             </p>

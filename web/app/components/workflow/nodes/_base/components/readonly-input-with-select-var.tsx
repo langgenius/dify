@@ -11,12 +11,11 @@ type Props = Readonly<{
   nodeId: string
   value: string
   className?: string
-  title?: string
 }>
 
 const VAR_PLACEHOLDER = '@#!@#!'
 
-const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className, title }) => {
+const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className }) => {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranchIncludeParent(nodeId)
   const startNode = availableNodes.find((node: any) => {
@@ -60,10 +59,6 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className, title
     return html
   })()
 
-  return (
-    <div className={cn('text-xs break-all', className)} title={title}>
-      {res}
-    </div>
-  )
+  return <div className={cn('text-xs break-all', className)}>{res}</div>
 }
 export default React.memo(ReadonlyInputWithSelectVar)

@@ -109,10 +109,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['resetConfig.title'], { ns: 'appDebug' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['resetConfig.title'], { ns: 'appDebug' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

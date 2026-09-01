@@ -220,7 +220,6 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                       endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary',
                       'truncate',
                     )}
-                    title={endUser}
                   >
                     {endUser}
                   </div>

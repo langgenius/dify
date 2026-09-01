@@ -25,13 +25,8 @@ const Row = ({ className, name, description, roleCategory, role, onView, onEdit 
       )}
     >
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="truncate system-sm-semibold text-text-primary" title={name}>
-          {name}
-        </div>
-        <p
-          className="truncate system-xs-regular text-text-secondary"
-          title={description || t(($) => $['role.noDescription'], { ns: 'permission' })}
-        >
+        <div className="truncate system-sm-semibold text-text-primary">{name}</div>
+        <p className="truncate system-xs-regular text-text-secondary">
           {description || t(($) => $['role.noDescription'], { ns: 'permission' })}
         </p>
       </div>

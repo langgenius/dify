@@ -40,23 +40,15 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
             )}
           </div>
           <div className="min-w-0 flex-1 py-px">
-            <h2
-              className="truncate system-md-semibold text-text-secondary"
-              title={knowledgeSpace.name}
-            >
+            <h2 className="truncate system-md-semibold text-text-secondary">
               {knowledgeSpace.name}
             </h2>
             <div className="mt-0.5 flex min-w-0 items-center gap-1 system-2xs-medium-uppercase text-text-disabled">
-              <span className="truncate" title={t(($) => $['newKnowledge.cardType'])}>
-                {t(($) => $['newKnowledge.cardType'])}
-              </span>
+              <span className="truncate">{t(($) => $['newKnowledge.cardType'])}</span>
             </div>
           </div>
         </div>
-        <p
-          className="line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary"
-          title={knowledgeSpace.description || t(($) => $['newKnowledge.noDescription'])}
-        >
+        <p className="line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
           {knowledgeSpace.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
         <div
@@ -82,12 +74,7 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
           <span aria-hidden className="text-divider-deep">
             /
           </span>
-          <span
-            className="ml-auto min-w-0 truncate text-right"
-            title={t(($) => $['newKnowledge.updated'], {
-              date: formattedUpdatedAt,
-            })}
-          >
+          <span className="ml-auto min-w-0 truncate text-right">
             {t(($) => $['newKnowledge.updated'], {
               date: formattedUpdatedAt,
             })}

@@ -440,13 +440,12 @@ function AgentVersionRestoreBar({
           version.created_at,
           t(($) => $['roster.dateTimeFormat']),
         )
+
   return (
     <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
       <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
         <div className="flex min-w-0 items-center gap-1">
-          <p className="min-w-0 truncate system-sm-semibold text-text-primary" title={versionLabel}>
-            {versionLabel}
-          </p>
+          <p className="min-w-0 truncate system-sm-semibold text-text-primary">{versionLabel}</p>
           <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
             {t(($) => $['agentDetail.versionHistory.viewOnly'])}
           </span>

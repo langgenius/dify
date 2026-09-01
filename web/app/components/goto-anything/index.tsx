@@ -610,16 +610,10 @@ function GotoAnythingDialog() {
                                       <span aria-hidden className={`${option.icon} size-4`} />
                                     </span>
                                     <span className="min-w-0 flex-1 text-left">
-                                      <span
-                                        className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary"
-                                        title={option.shortcut}
-                                      >
+                                      <span className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary">
                                         {option.shortcut}
                                       </span>
-                                      <span
-                                        className="mt-1 line-clamp-2 block text-xs leading-4 text-text-tertiary"
-                                        title={getCommandOptionDescription(option)}
-                                      >
+                                      <span className="mt-1 line-clamp-2 block text-xs leading-4 text-text-tertiary">
                                         {getCommandOptionDescription(option)}
                                       </span>
                                     </span>
@@ -650,17 +644,11 @@ function GotoAnythingDialog() {
                                 >
                                   {result.icon}
                                   <div className="min-w-0 flex-1">
-                                    <div
-                                      className="truncate font-medium text-text-secondary"
-                                      title={result.title}
-                                    >
+                                    <div className="truncate font-medium text-text-secondary">
                                       {result.title}
                                     </div>
                                     {result.description && (
-                                      <div
-                                        className="mt-0.5 truncate text-xs text-text-quaternary"
-                                        title={result.description}
-                                      >
+                                      <div className="mt-0.5 truncate text-xs text-text-quaternary">
                                         {result.description}
                                       </div>
                                     )}

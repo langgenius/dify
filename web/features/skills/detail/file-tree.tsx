@@ -1203,7 +1203,6 @@ export function FileTree({
               <Link
                 href="/skills"
                 className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                title="SKILLS"
               >
                 SKILLS
               </Link>
@@ -1284,17 +1283,11 @@ export function FileTree({
                     skillId={skillId}
                   />
                 ) : (
-                  <div
-                    className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary"
-                    title={skillId}
-                  >
+                  <div className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary">
                     {skillId}
                   </div>
                 )}
-                <p
-                  className="truncate px-1 system-xs-regular text-text-tertiary"
-                  title={detail?.name ?? skillId}
-                >
+                <p className="truncate px-1 system-xs-regular text-text-tertiary">
                   {detail?.name ?? skillId}
                 </p>
               </div>
@@ -1566,9 +1559,7 @@ export function FileTree({
                       className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate" title={referenceCountLabel}>
-                        {referenceCountLabel}
-                      </span>
+                      <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
                       <span
                         aria-hidden
                         className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
@@ -1596,19 +1587,12 @@ export function FileTree({
             ) : (
               <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
                 <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate" title={referenceCountLabel}>
-                  {referenceCountLabel}
-                </span>
+                <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
               </div>
             )}
             <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
               <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
-              <span
-                className="min-w-0 truncate"
-                title={t(($) => $['skillManagement.detail.createdBy'], {
-                  name: creatorName,
-                })}
-              >
+              <span className="min-w-0 truncate">
                 {t(($) => $['skillManagement.detail.createdBy'], {
                   name: creatorName,
                 })}

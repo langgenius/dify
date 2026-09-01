@@ -27,10 +27,7 @@ const Item = ({ payload }: Props) => {
           </div>
         </div>
       </div>
-      <div
-        className="mt-1.5 truncate system-xs-regular text-text-tertiary"
-        title={payload.description}
-      >
+      <div className="mt-1.5 truncate system-xs-regular text-text-tertiary">
         {payload.description}
       </div>
     </div>

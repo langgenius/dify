@@ -261,7 +261,6 @@ const DatePicker = ({
                 readOnly
                 value={state.open ? '' : displayValue}
                 placeholder={placeholderDate}
-                title={state.open ? '' : displayValue}
               />
               <span
                 className={cn(

@@ -35,10 +35,7 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
               >
                 <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
                 {expand && (
-                  <div
-                    className="min-w-0 grow truncate system-sm-regular text-text-secondary"
-                    title={t(($) => $['appMenus.apiAccess'], { ns: 'common' })}
-                  >
+                  <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">
                     {t(($) => $['appMenus.apiAccess'], { ns: 'common' })}
                   </div>
                 )}

@@ -31,12 +31,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
   const content = (
     <div className="truncate system-xs-regular text-text-tertiary">
-      <ReadonlyInputWithSelectVar
-        value={truncatedText}
-        nodeId={nodeId}
-        className="truncate"
-        title={topic.name}
-      />
+      <ReadonlyInputWithSelectVar value={truncatedText} nodeId={nodeId} className="truncate" />
     </div>
   )
 

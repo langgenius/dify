@@ -71,23 +71,13 @@ function DocumentPickerTriggerValue({
       ? t(($) => $['parentMode.paragraph'], { ns: 'dataset' })
       : t(($) => $['parentMode.fullDoc'], { ns: 'dataset' })
   })()
-  const chunkingModeLabel = (() => {
-    if (isGeneralMode) return t(($) => $['chunkingMode.general'], { ns: 'dataset' })
-    if (isQAMode) return t(($) => $['chunkingMode.qa'], { ns: 'dataset' })
-    if (isParentChild)
-      return `${t(($) => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`
-    return ''
-  })()
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       <FileIcon name={document?.name} extension={getDocumentExtension(document)} size="xl" />
       <span className="flex min-w-0 flex-col items-start">
         <span className="flex max-w-full min-w-0 items-center gap-1">
-          <span
-            className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary"
-            title={document?.name || '--'}
-          >
+          <span className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary">
             {document?.name || '--'}
           </span>
           <span
@@ -105,11 +95,11 @@ function DocumentPickerTriggerValue({
             )}
             aria-hidden="true"
           />
-          <span
-            className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}
-            title={chunkingModeLabel}
-          >
-            {chunkingModeLabel}
+          <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
+            {isGeneralMode && t(($) => $['chunkingMode.general'], { ns: 'dataset' })}
+            {isQAMode && t(($) => $['chunkingMode.qa'], { ns: 'dataset' })}
+            {isParentChild &&
+              `${t(($) => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`}
           </span>
         </span>
       </span>

@@ -62,7 +62,6 @@ const TypeSelector: FC<Props> = ({ value, onSelect, items, popupInnerClassName, 
                 'ml-1.5 truncate text-components-input-text-filled',
                 !selectedItem?.name && 'text-components-input-text-placeholder',
               )}
-              title={selectedItem?.name}
             >
               {selectedItem?.name}
             </span>

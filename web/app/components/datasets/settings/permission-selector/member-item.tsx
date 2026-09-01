@@ -33,9 +33,7 @@ const MemberItem = ({
             </span>
           )}
         </div>
-        <div className="truncate system-xs-regular text-text-tertiary" title={email}>
-          {email}
-        </div>
+        <div className="truncate system-xs-regular text-text-tertiary">{email}</div>
       </div>
       {isSelected && (
         <span

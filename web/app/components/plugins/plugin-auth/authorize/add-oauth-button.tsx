@@ -244,9 +244,7 @@ const AddOAuthButton = ({
         disabled={disabled}
         onClick={openVisibilityModal}
       >
-        <div className="truncate" title={buttonText}>
-          {buttonText}
-        </div>
+        <div className="truncate">{buttonText}</div>
         {is_oauth_custom_client_enabled && (
           <Badge
             className={cn(

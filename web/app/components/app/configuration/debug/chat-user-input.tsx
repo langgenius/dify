@@ -86,9 +86,7 @@ const ChatUserInput = ({ inputs }: Props) => {
             <div>
               {type !== 'checkbox' && (
                 <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-                  <div className="truncate" title={name || key}>
-                    {name || key}
-                  </div>
+                  <div className="truncate">{name || key}</div>
                   {!required && (
                     <span className="system-xs-regular text-text-tertiary">
                       {t(($) => $['panel.optional'], { ns: 'workflow' })}

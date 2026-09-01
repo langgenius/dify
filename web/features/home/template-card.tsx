@@ -94,42 +94,27 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {appMode === AppModeEnum.ADVANCED_CHAT && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {appMode === AppModeEnum.CHAT && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {appMode === AppModeEnum.AGENT_CHAT && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {appMode === AppModeEnum.WORKFLOW && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
             {appMode === AppModeEnum.COMPLETION && (
-              <div
-                className="truncate"
-                title={t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
-              >
+              <div className="truncate">
                 {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
@@ -140,7 +125,6 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
         <div
           id={descriptionId}
           className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary"
-          title={app.description ?? undefined}
         >
           {app.description}
         </div>

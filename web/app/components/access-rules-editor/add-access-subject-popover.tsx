@@ -117,13 +117,8 @@ function AddAccessSubjectPopoverContent({
                   className={cn('bg-components-icon-bg-blue-solid', isAdded && 'opacity-50')}
                 />
                 <div className={cn('min-w-0 flex-1', isAdded && 'opacity-50')}>
-                  <div className="truncate system-sm-medium text-text-secondary" title={memberName}>
-                    {memberName}
-                  </div>
-                  <div
-                    className="truncate system-xs-regular text-text-tertiary"
-                    title={member.email}
-                  >
+                  <div className="truncate system-sm-medium text-text-secondary">{memberName}</div>
+                  <div className="truncate system-xs-regular text-text-tertiary">
                     {member.email}
                   </div>
                 </div>

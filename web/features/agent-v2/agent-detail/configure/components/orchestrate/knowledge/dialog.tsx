@@ -317,9 +317,7 @@ function EditableKnowledgeRetrievalName({
         setEditing(true)
       }}
     >
-      <span className="min-w-0 truncate" title={name}>
-        {name}
-      </span>
+      <span className="min-w-0 truncate">{name}</span>
     </button>
   )
 }
@@ -494,12 +492,7 @@ function AgentKnowledgeRetrievalDialogContent({
                 nativeButton
                 render={<button type="button" className={optionCardClassName} />}
               >
-                <span
-                  className="min-w-0 truncate"
-                  title={t(
-                    ($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`],
-                  )}
-                >
+                <span className="min-w-0 truncate">
                   {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
                 </span>
               </RadioItem>
@@ -728,10 +721,7 @@ function AgentKnowledgeRetrievalDialogContent({
           className="inline-flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           <span aria-hidden className="i-ri-book-read-line size-3 shrink-0" />
-          <span
-            className="min-w-0 truncate"
-            title={t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
-          >
+          <span className="min-w-0 truncate">
             {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
           </span>
         </a>

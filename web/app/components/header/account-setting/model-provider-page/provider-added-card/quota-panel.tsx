@@ -226,14 +226,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 <span aria-hidden className="shrink-0 system-sm-regular text-text-tertiary">
                   ·
                 </span>
-                <span
-                  className="min-w-0 truncate system-sm-regular text-text-tertiary"
-                  title={t(($) => $['modelProvider.ranOutDate'], {
-                    ns: 'common',
-                    date: formatMonthDay(exhaustedAt),
-                    interpolation: { escapeValue: false },
-                  })}
-                >
+                <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.ranOutDate'], {
                     ns: 'common',
                     date: formatMonthDay(exhaustedAt),
@@ -247,14 +240,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 <span aria-hidden className="shrink-0 system-sm-regular text-text-tertiary">
                   ·
                 </span>
-                <span
-                  className="min-w-0 truncate system-sm-regular text-text-tertiary"
-                  title={t(($) => $['modelProvider.resetDate'], {
-                    ns: 'common',
-                    date: formatMonthDay(nextCreditResetDate),
-                    interpolation: { escapeValue: false },
-                  })}
-                >
+                <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.resetDate'], {
                     ns: 'common',
                     date: formatMonthDay(nextCreditResetDate),

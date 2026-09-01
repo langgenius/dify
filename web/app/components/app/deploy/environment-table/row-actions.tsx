@@ -130,10 +130,7 @@ export function EnvironmentRowActions({
             aria-hidden
             className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
           />
-          <span
-            className="truncate"
-            title={rowActionLabel(primaryAction, row, t, defaultVersionName)}
-          >
+          <span className="truncate">
             {rowActionLabel(primaryAction, row, t, defaultVersionName)}
           </span>
         </Button>
@@ -166,10 +163,7 @@ export function EnvironmentRowActions({
                       'size-4 shrink-0 text-text-secondary',
                     )}
                   />
-                  <span
-                    className="min-w-0 flex-1 truncate system-md-regular text-text-secondary"
-                    title={rowActionLabel(action, row, t, defaultVersionName)}
-                  >
+                  <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
                     {rowActionLabel(action, row, t, defaultVersionName)}
                   </span>
                 </DropdownMenuItem>

@@ -86,17 +86,11 @@ const GenerationPlan = ({ plan }: Props) => {
             </span>
           )}
           <div className="min-w-0">
-            <div
-              className="truncate text-sm font-semibold text-text-primary"
-              title={plan.app_name || plan.title}
-            >
+            <div className="truncate text-sm font-semibold text-text-primary">
               {plan.app_name || plan.title}
             </div>
             {plan.description && (
-              <div
-                className="truncate system-xs-regular text-text-tertiary"
-                title={plan.description}
-              >
+              <div className="truncate system-xs-regular text-text-tertiary">
                 {plan.description}
               </div>
             )}

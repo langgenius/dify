@@ -204,9 +204,7 @@ export function CreateSourceSetup({
                   className="sr-only"
                 />
                 <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
-                <span className="truncate" title={provider.label}>
-                  {provider.label}
-                </span>
+                <span className="truncate">{provider.label}</span>
               </label>
             )
           })}

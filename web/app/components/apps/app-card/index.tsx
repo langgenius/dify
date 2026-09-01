@@ -146,14 +146,11 @@ export const AppCard = memo(
           </div>
           <div className="flex w-0 grow flex-col gap-1 py-px">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div id={appNameId} className="truncate" title={app.name}>
+              <div id={appNameId} className="truncate">
                 {app.name}
               </div>
             </div>
-            <div
-              className="truncate system-2xs-medium-uppercase text-text-tertiary"
-              title={appModeLabel}
-            >
+            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
               {appModeLabel}
             </div>
           </div>
@@ -169,11 +166,7 @@ export const AppCard = memo(
           )}
         </div>
         <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
-          <div
-            id={appDescriptionId}
-            className="line-clamp-2 min-h-8"
-            title={app.description ?? undefined}
-          >
+          <div id={appDescriptionId} className="line-clamp-2 min-h-8">
             {app.description}
           </div>
         </div>
@@ -181,15 +174,11 @@ export const AppCard = memo(
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
-                <div className="min-w-0 truncate" title={app.author_name}>
-                  {app.author_name}
-                </div>
+                <div className="min-w-0 truncate">{app.author_name}</div>
                 <div className="shrink-0">·</div>
               </>
             )}
-            <div className="min-w-0 truncate" title={editTimeText}>
-              {editTimeText}
-            </div>
+            <div className="min-w-0 truncate">{editTimeText}</div>
           </div>
         </div>
       </>

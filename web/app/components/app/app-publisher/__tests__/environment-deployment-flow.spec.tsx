@@ -527,10 +527,9 @@ describe('PublisherEnvironmentFlow', () => {
       screen.queryByText('Publish the app before deploying it to an environment.'),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Go to publish' })).not.toBeInTheDocument()
-    const latestLabel = screen.getByText('Latest')
-    const latestVersionRow = latestLabel.parentElement
-    expect(latestLabel).toHaveClass('capitalize')
-    expect(latestVersionRow).toHaveTextContent(`Latest: ${latestVersion.name}`)
+    expect(screen.getByText('Latest').parentElement).toHaveTextContent(
+      `Latest: ${latestVersion.name}`,
+    )
 
     await user.click(screen.getByRole('button', { name: 'All versions' }))
     expect(screen.getByRole('heading', { name: 'Deploy to Development' })).toBeInTheDocument()
@@ -616,10 +615,9 @@ describe('PublisherEnvironmentFlow', () => {
     renderFlow(createDeployment(), { isDeploymentError: true })
 
     expect(screen.getByText('Sprint-42')).toBeInTheDocument()
-    const latestLabel = screen.getByText('Latest')
-    const latestVersionRow = latestLabel.parentElement
-    expect(latestLabel).toHaveClass('capitalize')
-    expect(latestVersionRow).toHaveTextContent(`Latest: ${latestVersion.name}`)
+    expect(screen.getByText('Latest').parentElement).toHaveTextContent(
+      `Latest: ${latestVersion.name}`,
+    )
     expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
     expect(screen.queryByText('Deploying...')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

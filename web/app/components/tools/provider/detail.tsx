@@ -287,13 +287,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                         {collection.type === CollectionType.workflow ||
                         collection.type === CollectionType.custom ? (
-                          <div
-                            className="truncate system-xs-regular text-text-tertiary"
-                            title={
-                              collection.author &&
-                              `${t(($) => $.author, { ns: 'tools' })} ${collection.author}`
-                            }
-                          >
+                          <div className="truncate system-xs-regular text-text-tertiary">
                             {collection.author &&
                               `${t(($) => $.author, { ns: 'tools' })} ${collection.author}`}
                           </div>
@@ -352,10 +346,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             'my-3 h-8 min-w-0 flex-1 rounded-lg py-2',
                           )}
                         >
-                          <span
-                            className="min-w-0 truncate system-sm-medium"
-                            title={t(($) => $.openInStudio, { ns: 'tools' })}
-                          >
+                          <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
@@ -370,10 +361,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             aria-hidden
                             className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text"
                           />
-                          <span
-                            className="min-w-0 truncate system-sm-medium text-components-button-secondary-text"
-                            title={t(($) => $['createTool.editAction'], { ns: 'tools' })}
-                          >
+                          <span className="min-w-0 truncate system-sm-medium text-components-button-secondary-text">
                             {t(($) => $['createTool.editAction'], { ns: 'tools' })}
                           </span>
                         </Button>
@@ -558,10 +546,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 >
                   <AlertDialogContent>
                     <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                      <AlertDialogTitle
-                        className="w-full truncate title-2xl-semi-bold text-text-primary"
-                        title={t(($) => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
-                      >
+                      <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                         {t(($) => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
                       </AlertDialogTitle>
                       <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

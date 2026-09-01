@@ -31,15 +31,6 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
   if (!activity) return <span className="text-text-quaternary">--</span>
 
   const failed = activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED
-  const label = activityLabel(
-    activity,
-    t,
-    tWorkflow(($) => $['versionHistory.defaultName']),
-  )
-  const metaLabel = t(($) => $['studio.activity.meta'], {
-    name: activity.operator.display_name,
-    time: formatTimeFromNow(activity.activity_at * 1000),
-  })
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -48,17 +39,23 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
           'flex min-w-0 items-center gap-1 truncate system-xs-medium',
           failed ? 'text-text-warning' : 'text-text-secondary',
         )}
-        title={label}
       >
         {failed && (
           <span aria-hidden className="i-ri-error-warning-fill size-3 shrink-0 text-text-warning" />
         )}
-        <span className="truncate" title={label}>
-          {label}
+        <span className="truncate">
+          {activityLabel(
+            activity,
+            t,
+            tWorkflow(($) => $['versionHistory.defaultName']),
+          )}
         </span>
       </div>
-      <div className="truncate system-xs-regular text-text-tertiary" title={metaLabel}>
-        {metaLabel}
+      <div className="truncate system-xs-regular text-text-tertiary">
+        {t(($) => $['studio.activity.meta'], {
+          name: activity.operator.display_name,
+          time: formatTimeFromNow(activity.activity_at * 1000),
+        })}
       </div>
     </div>
   )

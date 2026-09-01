@@ -177,16 +177,10 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
                     {roles.map((role) => (
                       <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
                         <SelectItemText className="grid gap-0.5">
-                          <span
-                            className="truncate text-sm leading-5 text-text-secondary"
-                            title={role.name}
-                          >
+                          <span className="truncate text-sm leading-5 text-text-secondary">
                             {role.name}
                           </span>
-                          <span
-                            className="line-clamp-2 text-xs leading-4.5 text-text-tertiary"
-                            title={getRoleDescription(role)}
-                          >
+                          <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
                             {getRoleDescription(role)}
                           </span>
                         </SelectItemText>

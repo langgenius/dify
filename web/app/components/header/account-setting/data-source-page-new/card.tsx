@@ -114,9 +114,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
           />
         </div>
         <div className="flex min-w-0 grow items-center gap-2">
-          <div className="truncate system-md-medium text-text-primary" title={providerLabel}>
-            {providerLabel}
-          </div>
+          <div className="truncate system-md-medium text-text-primary">{providerLabel}</div>
           <div className="flex shrink-0 items-center gap-1">
             {pluginDetail ? (
               <DataSourcePluginActions detail={pluginDetail} onUpdate={onPluginUpdate} />
@@ -175,10 +173,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>

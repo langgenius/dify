@@ -64,10 +64,7 @@ const StepThree = ({
                   <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
                     {t(($) => $['stepThree.label'], { ns: 'datasetCreation' })}
                   </div>
-                  <div
-                    className="w-full truncate rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled"
-                    title={datasetName || creationCache?.dataset?.name}
-                  >
+                  <div className="w-full truncate rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
                     <span className="px-1">{datasetName || creationCache?.dataset?.name}</span>
                   </div>
                 </div>

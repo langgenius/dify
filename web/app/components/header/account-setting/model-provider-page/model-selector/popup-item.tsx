@@ -129,9 +129,7 @@ function PopupItem({
           id={providerHeadingId}
           className="group/provider min-h-0 w-auto min-w-0 justify-start gap-0 rounded-none p-0 text-xs font-medium text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-tertiary data-panel-open:text-text-tertiary"
         >
-          <span className="truncate" title={providerLabel}>
-            {providerLabel}
-          </span>
+          <span className="truncate">{providerLabel}</span>
           <span
             aria-hidden="true"
             className={cn(
@@ -155,10 +153,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
-                      <span
-                        className="ml-1 truncate"
-                        title={t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
-                      >
+                      <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
                       </span>
                     </>
@@ -168,12 +163,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
-                      <span
-                        className="ml-1 truncate text-text-warning"
-                        title={t(($) => $['modelProvider.selector.creditsExhausted'], {
-                          ns: 'common',
-                        })}
-                      >
+                      <span className="ml-1 truncate text-text-warning">
                         {t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}
                       </span>
                     </>
@@ -181,19 +171,12 @@ function PopupItem({
                 ) : credentialName ? (
                   <>
                     <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
-                    <span className="ml-1 truncate text-text-tertiary" title={credentialName}>
-                      {credentialName}
-                    </span>
+                    <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
                   </>
                 ) : (
                   <>
                     <StatusDot size="small" status="disabled" />
-                    <span
-                      className="ml-1 truncate text-text-tertiary"
-                      title={t(($) => $['modelProvider.selector.configureRequired'], {
-                        ns: 'common',
-                      })}
-                    >
+                    <span className="ml-1 truncate text-text-tertiary">
                       {t(($) => $['modelProvider.selector.configureRequired'], { ns: 'common' })}
                     </span>
                   </>

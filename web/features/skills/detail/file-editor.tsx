@@ -1443,10 +1443,7 @@ export function FileEditor({
           <div className="flex h-full items-center justify-center bg-background-default">
             <div className="flex w-64 flex-col items-center text-center">
               <span aria-hidden className={cn('size-16', getSkillFileIconClass(file))} />
-              <p
-                className="mt-1 max-w-full truncate system-sm-medium text-text-secondary"
-                title={getPathBaseName(file.path)}
-              >
+              <p className="mt-1 max-w-full truncate system-sm-medium text-text-secondary">
                 {getPathBaseName(file.path)}
               </p>
               <p className="mt-1 system-xs-regular text-text-tertiary">

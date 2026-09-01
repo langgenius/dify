@@ -1127,7 +1127,7 @@ export const lintConfig = {
         'web/**/*.story.{jsx,tsx}',
       ],
       rules: {
-        'dify/require-title-for-truncated-text': 'error',
+        'dify/require-title-for-truncated-text': 'warn',
       },
     },
     {

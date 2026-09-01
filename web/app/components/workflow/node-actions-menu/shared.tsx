@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { WorkflowCanvasShortcutId } from '@/app/components/workflow/shortcuts/definitions'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
@@ -9,14 +10,12 @@ export function NodeActionsMenuItemContent({
   children,
   shortcut,
 }: {
-  children: string
+  children: ReactNode
   shortcut?: WorkflowCanvasShortcutId
 }) {
   return (
     <>
-      <span className="min-w-0 truncate" title={children}>
-        {children}
-      </span>
+      <span className="min-w-0 truncate">{children}</span>
       {shortcut && <ShortcutKbd shortcut={shortcut} />}
     </>
   )

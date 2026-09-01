@@ -38,9 +38,7 @@ const SelectItem: FC<ItemProps> = ({ text, type, value, Icon, onClick }) => {
       ) : (
         <InputVarTypeIcon type={type!} className="size-4 text-text-secondary" />
       )}
-      <div className="ml-2 truncate text-xs text-text-primary" title={text}>
-        {text}
-      </div>
+      <div className="ml-2 truncate text-xs text-text-primary">{text}</div>
     </DropdownMenuItem>
   )
 }

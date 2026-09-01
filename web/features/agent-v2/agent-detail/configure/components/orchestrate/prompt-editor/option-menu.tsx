@@ -45,9 +45,7 @@ export function AgentPromptOptionMenu({
             onClick={() => onInsert(option.token)}
           >
             <span aria-hidden className={`${option.icon} size-4 text-text-tertiary`} />
-            <span className="min-w-0 flex-1 truncate" title={t(($) => $[option.labelKey])}>
-              {t(($) => $[option.labelKey])}
-            </span>
+            <span className="min-w-0 flex-1 truncate">{t(($) => $[option.labelKey])}</span>
             <span className="code-xs-regular text-text-quaternary">{option.token}</span>
           </DropdownMenuItem>
         ))}

@@ -135,10 +135,7 @@ export function AgentSelectorContent({
                 onClick={onStartFromScratch}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-                <span
-                  className="min-w-0 flex-1 truncate"
-                  title={t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
-                >
+                <span className="min-w-0 flex-1 truncate">
                   {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
                 </span>
               </Button>
@@ -158,10 +155,7 @@ export function AgentSelectorContent({
                   aria-hidden
                   className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
                 />
-                <span
-                  className="min-w-0 flex-1 truncate"
-                  title={t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
-                >
+                <span className="min-w-0 flex-1 truncate">
                   {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
                 </span>
               </Link>
@@ -230,13 +224,8 @@ function AgentSelectorItem({ agent }: { agent: AgentInviteOptionResponse }) {
           <AgentSelectorAvatar agent={agent} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-sm-medium text-text-secondary" title={agent.name}>
-            {agent.name}
-          </span>
-          <span
-            className="truncate system-xs-regular text-text-tertiary"
-            title={agent.role || agent.description}
-          >
+          <span className="truncate system-sm-medium text-text-secondary">{agent.name}</span>
+          <span className="truncate system-xs-regular text-text-tertiary">
             {agent.role || agent.description}
           </span>
         </span>
@@ -272,10 +261,7 @@ export function AgentBlockItem({
             className="w-full justify-start gap-0 px-3 text-left data-popup-open:bg-state-base-hover"
           >
             <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-            <span
-              className="min-w-0 grow truncate system-sm-medium text-text-secondary"
-              title={block.metaData.title}
-            >
+            <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
               {block.metaData.title}
             </span>
             <Badge

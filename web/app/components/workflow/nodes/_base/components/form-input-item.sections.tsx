@@ -58,15 +58,14 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
 
     return selectedLabel || placeholder || 'Select options'
   }
-  const renderedLabel = renderLabel()
 
   return (
     <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
       <div className="grow">
         <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
-          <span className={cn('flex min-w-0 items-center', textClassName)} title={renderedLabel}>
+          <span className={cn('flex min-w-0 items-center', textClassName)}>
             {isLoading && <LoadingIndicator />}
-            {renderedLabel}
+            {renderLabel()}
           </span>
         </SelectTrigger>
         <SelectPortal>

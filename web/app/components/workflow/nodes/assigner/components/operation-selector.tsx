@@ -65,11 +65,6 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         <div className="flex items-center p-1">
           <span
             className={`truncate overflow-hidden system-sm-regular text-ellipsis ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
-            title={
-              selectedItem && isOperationItem(selectedItem)
-                ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], { ns: 'workflow' })
-                : t(($) => $['nodes.assigner.operations.title'], { ns: 'workflow' })
-            }
           >
             {selectedItem && isOperationItem(selectedItem)
               ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], { ns: 'workflow' })

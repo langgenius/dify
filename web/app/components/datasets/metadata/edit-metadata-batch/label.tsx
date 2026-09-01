@@ -17,7 +17,6 @@ const Label: FC<Props> = ({ isDeleted, className, text }) => {
         isDeleted && 'text-text-quaternary line-through',
         className,
       )}
-      title={text}
     >
       {text}
     </div>

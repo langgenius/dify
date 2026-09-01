@@ -100,9 +100,7 @@ export function TopKAndScoreThreshold({
                   onCheckedChange={scoreThreshold.onEnabledChange}
                   disabled={readonly}
                 />
-                <span className="grow truncate" title={scoreThresholdLabel}>
-                  {scoreThresholdLabel}
-                </span>
+                <span className="grow truncate">{scoreThresholdLabel}</span>
               </FieldLabel>
               <Infotip aria-label={scoreThresholdTip} className="ml-0.5 size-3.5">
                 {scoreThresholdTip}

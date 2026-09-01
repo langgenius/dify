@@ -57,7 +57,6 @@ export default function SupportMenu() {
               <span
                 aria-hidden
                 className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible"
-                title={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
               >
                 {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
               </span>

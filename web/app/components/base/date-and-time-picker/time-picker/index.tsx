@@ -204,7 +204,6 @@ const TimePicker = ({
         readOnly
         value={open ? '' : displayValue}
         placeholder={placeholderDate}
-        title={open ? '' : displayValue}
       />
     )
   }

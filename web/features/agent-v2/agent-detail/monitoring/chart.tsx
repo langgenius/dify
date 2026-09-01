@@ -48,10 +48,7 @@ export function AgentMonitoringChart({
     <article className="flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg">
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center gap-1">
-          <h3
-            className="truncate system-md-semibold text-text-secondary"
-            title={t(($) => $[titleKey])}
-          >
+          <h3 className="truncate system-md-semibold text-text-secondary">
             {t(($) => $[titleKey])}
           </h3>
           <Infotip aria-label={t(($) => $[explanationKey])}>{t(($) => $[explanationKey])}</Infotip>
@@ -61,15 +58,11 @@ export function AgentMonitoringChart({
       <div className="flex h-8 shrink-0 items-start gap-1 px-6 py-1">
         <div
           className={`truncate text-3xl leading-7 font-normal ${isEmptySummary ? 'text-text-quaternary' : 'text-text-primary'}`}
-          title={summaryValue}
         >
           {summaryValue}
         </div>
         {chartType !== 'tokenUsage' && unitKey && (
-          <div
-            className="mt-0.5 truncate system-sm-regular text-text-secondary"
-            title={t(($) => $[unitKey])}
-          >
+          <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
             {t(($) => $[unitKey])}
           </div>
         )}

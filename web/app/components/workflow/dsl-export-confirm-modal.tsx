@@ -80,9 +80,7 @@ export const DSLExportConfirmContent = ({
                         aria-hidden="true"
                         className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600"
                       />
-                      <div className="truncate text-text-primary" title={env.name}>
-                        {env.name}
-                      </div>
+                      <div className="truncate text-text-primary">{env.name}</div>
                       <div className="shrink-0 text-text-tertiary">
                         {t(($) => $['env.export.secret'], { ns: 'workflow' })}
                       </div>
@@ -98,14 +96,7 @@ export const DSLExportConfirmContent = ({
                       index + 1 !== envList.length && 'border-b border-divider-regular',
                     )}
                   >
-                    <div
-                      className="truncate system-xs-regular text-text-secondary"
-                      title={
-                        typeof env.value === 'object'
-                          ? JSON.stringify(env.value)
-                          : String(env.value)
-                      }
-                    >
+                    <div className="truncate system-xs-regular text-text-secondary">
                       {typeof env.value === 'object'
                         ? JSON.stringify(env.value)
                         : String(env.value)}

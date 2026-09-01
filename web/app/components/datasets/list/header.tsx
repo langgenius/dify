@@ -165,10 +165,7 @@ const DatasetListHeader = ({
                         aria-hidden
                         className="i-ri-add-line size-4 shrink-0 text-text-secondary"
                       />
-                      <span
-                        className="min-w-0 flex-1 truncate px-1"
-                        title={t(($) => $['firstEmpty.createTitle'], { ns: 'dataset' })}
-                      >
+                      <span className="min-w-0 flex-1 truncate px-1">
                         {t(($) => $['firstEmpty.createTitle'], { ns: 'dataset' })}
                       </span>
                     </DropdownMenuItem>
@@ -180,10 +177,7 @@ const DatasetListHeader = ({
                         aria-hidden
                         className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary"
                       />
-                      <span
-                        className="min-w-0 flex-1 truncate px-1"
-                        title={t(($) => $['firstEmpty.pipelineTitle'], { ns: 'dataset' })}
-                      >
+                      <span className="min-w-0 flex-1 truncate px-1">
                         {t(($) => $['firstEmpty.pipelineTitle'], { ns: 'dataset' })}
                       </span>
                     </DropdownMenuItem>
@@ -201,10 +195,7 @@ const DatasetListHeader = ({
                       aria-hidden
                       className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary"
                     />
-                    <span
-                      className="min-w-0 flex-1 truncate px-1"
-                      title={t(($) => $.connectDataset, { ns: 'dataset' })}
-                    >
+                    <span className="min-w-0 flex-1 truncate px-1">
                       {t(($) => $.connectDataset, { ns: 'dataset' })}
                     </span>
                   </DropdownMenuItem>

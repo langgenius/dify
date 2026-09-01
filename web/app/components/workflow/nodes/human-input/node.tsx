@@ -55,10 +55,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
                 key={userAction.id}
                 className="relative flex flex-row-reverse items-center px-4 py-1"
               >
-                <span
-                  className="truncate system-xs-semibold-uppercase text-text-secondary"
-                  title={userAction.id}
-                >
+                <span className="truncate system-xs-semibold-uppercase text-text-secondary">
                   {userAction.id}
                 </span>
                 <NodeSourceHandle
@@ -71,12 +68,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           </>
         )}
         <div className="relative flex flex-row-reverse items-center px-4 py-1">
-          <div
-            className="truncate system-xs-semibold-uppercase text-text-secondary"
-            title="Timeout"
-          >
-            Timeout
-          </div>
+          <div className="truncate system-xs-semibold-uppercase text-text-secondary">Timeout</div>
           <NodeSourceHandle
             {...props}
             handleId="__timeout"

@@ -34,16 +34,10 @@ function Item({ payload }: Props) {
       />
       <div className="ml-2 flex w-0 grow">
         <div className="w-0 grow">
-          <div
-            className="h-4 truncate system-sm-medium leading-4 text-text-primary"
-            title={getLocalizedText(payload.label)}
-          >
+          <div className="h-4 truncate system-sm-medium leading-4 text-text-primary">
             {getLocalizedText(payload.label)}
           </div>
-          <div
-            className="h-5 truncate system-xs-regular leading-5 text-text-tertiary"
-            title={getLocalizedText(payload.brief)}
-          >
+          <div className="h-5 truncate system-xs-regular leading-5 text-text-tertiary">
             {getLocalizedText(payload.brief)}
           </div>
           <div className="flex space-x-1 system-xs-regular text-text-tertiary">

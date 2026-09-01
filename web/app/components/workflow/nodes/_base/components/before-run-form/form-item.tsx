@@ -120,12 +120,6 @@ const FormItem: FC<Props> = ({
     }
     return ''
   })()
-  const fieldLabel =
-    typeof payload.label === 'string'
-      ? payload.label
-      : payload.label.isChatVar
-        ? payload.label.variable
-        : `${payload.label.nodeName} ${payload.label.variable}`
 
   const isBooleanType = type === InputVarType.checkbox
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
@@ -150,7 +144,7 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-          <div className="truncate" title={fieldLabel}>
+          <div className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true ? (

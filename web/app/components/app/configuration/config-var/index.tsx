@@ -373,13 +373,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
-                ns: 'appDebug',
-                varName: promptVariables[removeIndex as number]?.name,
-              })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
                 varName: promptVariables[removeIndex as number]?.name,

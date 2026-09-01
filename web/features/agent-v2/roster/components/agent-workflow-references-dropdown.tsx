@@ -79,9 +79,7 @@ export function AgentWorkflowReferencesDropdown({
                     imageUrl={imageUrl}
                   />
                 </span>
-                <span className="min-w-0 flex-1 truncate" title={reference.app_name}>
-                  {reference.app_name}
-                </span>
+                <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
                 <span
                   aria-hidden
                   className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary"

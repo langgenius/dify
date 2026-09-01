@@ -153,10 +153,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
               ragVariables={ragVariables}
             />
           ) : (
-            <div
-              className="max-w-full truncate system-xs-medium text-components-input-text-filled"
-              title={summaryText}
-            >
+            <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">
               {summaryText}
             </div>
           )}

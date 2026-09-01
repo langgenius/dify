@@ -63,7 +63,6 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
               style={{
                 backgroundColor: userColor,
               }}
-              title={userName}
             >
               {userName}
             </div>

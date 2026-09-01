@@ -54,7 +54,6 @@ export function VersionLabel({
             <button
               type="button"
               className="min-w-0 cursor-help truncate border-b border-dotted border-text-quaternary system-md-medium text-text-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-              title={name}
             >
               {name}
             </button>

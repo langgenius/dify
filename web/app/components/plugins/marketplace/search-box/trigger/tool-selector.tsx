@@ -23,7 +23,6 @@ function ToolSelectorTrigger({
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
   const selectedTagLabels = tags.map((tag) => tagsMap[tag]?.label).filter(Boolean)
-  const visibleTagLabels = selectedTagLabels.slice(0, 2).join(',')
   const triggerLabel = selectedTagLabels.length
     ? selectedTagLabels.join(', ')
     : t(($) => $.allTags, { ns: 'pluginTags' })
@@ -63,8 +62,12 @@ function ToolSelectorTrigger({
             </span>
             {!!selectedTagsLength && (
               <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
-                <span className="truncate text-text-secondary" title={visibleTagLabels}>
-                  {visibleTagLabels}
+                <span className="truncate text-text-secondary">
+                  {tags
+                    .map((tag) => tagsMap[tag]?.label)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join(',')}
                 </span>
                 {selectedTagsLength > 2 && (
                   <span className="shrink-0 system-xs-medium text-text-tertiary">

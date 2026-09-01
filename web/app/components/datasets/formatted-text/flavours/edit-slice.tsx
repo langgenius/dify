@@ -65,7 +65,6 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
       <SliceContainer
         {...rest}
         className={cn('mr-0 line-clamp-4 block', className)}
-
         ref={refs.setReference}
         {...getReferenceProps()}
       >

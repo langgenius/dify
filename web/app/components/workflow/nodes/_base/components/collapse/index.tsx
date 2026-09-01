@@ -51,7 +51,7 @@ export function CollapseTrigger({ className, ...props }: CollapsibleTriggerProps
 }
 
 type CollapseTitleProps = {
-  children: string
+  children: ReactNode
   className?: string
 }
 
@@ -59,7 +59,6 @@ export function CollapseTitle({ children, className }: CollapseTitleProps) {
   return (
     <span
       className={cn('min-w-0 truncate system-sm-semibold-uppercase text-text-secondary', className)}
-      title={children}
     >
       {children}
     </span>

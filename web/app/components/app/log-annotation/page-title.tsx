@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { getTextFromReactNode } from '@/utils/react'
 
 type PageTitleProps = {
   title: ReactNode
@@ -17,9 +16,7 @@ const PageTitle = ({ title, description, learnMoreHref, learnMoreLabel }: PageTi
         <h1 className="title-2xl-semi-bold text-text-primary">{title}</h1>
       </div>
       <div className="flex min-w-0 items-start gap-0.5 system-xs-regular text-text-tertiary">
-        <p className="min-w-0 truncate" title={getTextFromReactNode(description)}>
-          {description}
-        </p>
+        <p className="min-w-0 truncate">{description}</p>
         {showLearnMore && (
           <a
             href={learnMoreHref}

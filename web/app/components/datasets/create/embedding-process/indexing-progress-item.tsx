@@ -87,9 +87,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
       <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
-          <div className="truncate system-xs-medium text-text-secondary" title={name}>
-            {name}
-          </div>
+          <div className="truncate system-xs-medium text-text-secondary">{name}</div>
           {enableBilling && <PriorityLabel className="ml-0" />}
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}

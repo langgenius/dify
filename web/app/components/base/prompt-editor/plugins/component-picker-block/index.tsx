@@ -319,10 +319,7 @@ const ComponentPicker = ({
                       }}
                     >
                       <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0" />
-                      <span
-                        className="min-w-0 flex-1 truncate"
-                        title={t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
-                      >
+                      <span className="min-w-0 flex-1 truncate">
                         {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
                       </span>
                       <span

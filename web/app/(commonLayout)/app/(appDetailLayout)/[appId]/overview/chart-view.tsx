@@ -123,10 +123,7 @@ function ChartViewContent({
             </h1>
           </div>
           <div className="mt-0.5 flex h-4 min-w-0 items-start gap-0.5 system-xs-regular text-text-tertiary">
-            <p
-              className="min-w-0 truncate"
-              title={t(($) => $['monitoring.description'], { ns: 'appLog' })}
-            >
+            <p className="min-w-0 truncate">
               {t(($) => $['monitoring.description'], { ns: 'appLog' })}
             </p>
             <a

@@ -53,9 +53,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
         <div className="mb-0.5 text-[13px] font-medium text-text-secondary">
           {apiBasedExtension.name}
         </div>
-        <div className="truncate text-xs text-text-tertiary" title={apiBasedExtension.api_endpoint}>
-          {apiBasedExtension.api_endpoint}
-        </div>
+        <div className="truncate text-xs text-text-tertiary">{apiBasedExtension.api_endpoint}</div>
       </div>
       <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
         <Button disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
@@ -73,10 +71,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
             </AlertDialogTitle>
           </div>

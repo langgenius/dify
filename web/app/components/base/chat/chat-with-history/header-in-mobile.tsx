@@ -97,10 +97,7 @@ const HeaderInMobile = () => {
                 imageUrl={appData?.site.icon_url}
                 background={appData?.site.icon_background}
               />
-              <div
-                className="truncate system-md-semibold text-text-secondary"
-                title={appData?.site.title}
-              >
+              <div className="truncate system-md-semibold text-text-secondary">
                 {appData?.site.title}
               </div>
             </>
@@ -163,10 +160,7 @@ const HeaderInMobile = () => {
       <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

@@ -73,9 +73,7 @@ export function PermissionQuickPanel({ permission, onChange }: PermissionQuickPa
                     render={<button type="button" className={permissionOptionCardClassName} />}
                     aria-label={`${row.label}: ${optionLabel}`}
                   >
-                    <span className="min-w-0 truncate" title={optionLabel}>
-                      {optionLabel}
-                    </span>
+                    <span className="min-w-0 truncate">{optionLabel}</span>
                   </RadioItem>
                 )
               })}

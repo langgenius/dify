@@ -96,10 +96,7 @@ const Chart: React.FC<IChartProps> = ({
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
-          <div
-            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
-            title={title}
-          >
+          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
             {title}
           </div>
           {explanation && (

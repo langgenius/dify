@@ -68,10 +68,7 @@ const FileUpload = ({ disabled, onChange }: Props) => {
     >
       <>
         {!file?.enabled && (
-          <div
-            className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
-            title={t(($) => $['feature.imageUpload.description'], { ns: 'appDebug' })}
-          >
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
             {t(($) => $['feature.imageUpload.description'], { ns: 'appDebug' })}
           </div>
         )}

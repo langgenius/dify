@@ -242,9 +242,7 @@ function SkillBuilderMessageAttachments({
             title={attachment.name}
           >
             <span aria-hidden className="i-ri-file-line size-4 shrink-0 text-text-tertiary" />
-            <span className="truncate system-xs-medium" title={attachment.name}>
-              {attachment.name}
-            </span>
+            <span className="truncate system-xs-medium">{attachment.name}</span>
           </div>
         ),
       )}
@@ -992,10 +990,7 @@ export function SkillBuilderPanel({
                       disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
-                      <span
-                        className="truncate px-1.5 system-xs-medium text-components-button-secondary-text"
-                        title={suggestion}
-                      >
+                      <span className="truncate px-1.5 system-xs-medium text-components-button-secondary-text">
                         {suggestion}
                       </span>
                     </button>
@@ -1034,9 +1029,7 @@ export function SkillBuilderPanel({
                         aria-hidden
                         className="i-ri-attachment-line size-3.5 shrink-0 text-text-tertiary"
                       />
-                      <span className="min-w-0 truncate" title={attachment.name}>
-                        {attachment.name}
-                      </span>
+                      <span className="min-w-0 truncate">{attachment.name}</span>
                       <button
                         type="button"
                         aria-label={t(($) => $['skillManagement.detail.builder.removeAttachment'], {

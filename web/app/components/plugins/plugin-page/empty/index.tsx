@@ -169,9 +169,7 @@ const Empty = ({
                     }}
                   >
                     <Icon className="size-4 text-components-button-secondary-text" />
-                    <span className="min-w-0 flex-1 truncate text-left" title={text}>
-                      {text}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate text-left">{text}</span>
                   </Button>
                 ))}
               </div>

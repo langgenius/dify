@@ -112,10 +112,7 @@ export function AgentSkillItem({
             aria-hidden
             className="i-custom-vender-agent-v2-building-blocks size-4 shrink-0 text-text-secondary"
           />
-          <span
-            className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary decoration-divider-deep decoration-dotted group-focus-within:underline group-hover:underline"
-            title={skill.name}
-          >
+          <span className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary decoration-divider-deep decoration-dotted group-focus-within:underline group-hover:underline">
             {skill.name}
           </span>
           {skill.isMissing ? (

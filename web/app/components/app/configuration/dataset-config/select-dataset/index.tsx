@@ -173,7 +173,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                         'max-w-50 truncate text-[13px] font-medium text-text-secondary',
                         !item.embedding_available && 'max-w-30! opacity-30',
                       )}
-                      title={item.name}
                     >
                       {item.name}
                     </div>

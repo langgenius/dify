@@ -7,7 +7,6 @@ import FileIcon from '@/app/components/base/file-icon'
 import Link from '@/next/link'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
-import { getTextFromReactNode } from '@/utils/react'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
 
@@ -47,9 +46,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
             className="flex h-7 max-w-60 items-center rounded-lg bg-components-button-secondary-bg px-2"
           >
             <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
-            <div className="truncate text-xs text-text-tertiary" title={data.documentName}>
-              {data.documentName}
-            </div>
+            <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
           </div>
         }
       />
@@ -66,10 +63,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
           <div className="px-4 pt-3 pb-2">
             <div className="flex h-4.5 items-center">
               <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
-              <div
-                className="truncate system-xs-medium text-text-tertiary"
-                title={getTextFromReactNode(data.documentName)}
-              >
+              <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
                 !!data.sources?.[0]?.dataset_id ? (
                   <button
@@ -77,7 +71,6 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                     className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
                     onClick={handleDownloadUploadFile}
                     disabled={isDownloading}
-                    title={data.documentName}
                   >
                     {data.documentName}
                   </button>

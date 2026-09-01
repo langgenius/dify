@@ -23,9 +23,7 @@ const Item = ({ credential, isSelected, onCredentialChange }: ItemProps) => {
       onClick={handleCredentialChange}
     >
       <CredentialIcon avatarUrl={avatar_url} name={name} size={20} />
-      <span className="grow truncate system-sm-medium text-text-secondary" title={name}>
-        {name}
-      </span>
+      <span className="grow truncate system-sm-medium text-text-secondary">{name}</span>
       {isSelected && <RiCheckLine className="size-4 shrink-0 text-text-accent" />}
     </div>
   )

@@ -216,11 +216,7 @@ const StatusPanel: FC<ResultProps> = ({
               </div>
               {pausedReasons.length > 0 ? (
                 pausedReasons.map((reason) => (
-                  <div
-                    className="truncate system-xs-medium text-text-secondary"
-                    key={reason}
-                    title={reason}
-                  >
+                  <div className="truncate system-xs-medium text-text-secondary" key={reason}>
                     {reason}
                   </div>
                 ))

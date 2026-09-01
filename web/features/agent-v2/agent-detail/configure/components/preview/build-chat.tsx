@@ -54,10 +54,7 @@ function AgentBuildChatEmptyState({
         />
       </div>
       <div className="mt-3 flex max-w-full items-center gap-1.5">
-        <div
-          className="min-w-0 truncate system-md-medium text-text-secondary"
-          title={t(($) => $['agentDetail.configure.build.empty.title'])}
-        >
+        <div className="min-w-0 truncate system-md-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.build.empty.title'])}
         </div>
         <CommunityEditionTip

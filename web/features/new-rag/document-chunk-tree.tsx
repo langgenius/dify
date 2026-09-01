@@ -188,9 +188,7 @@ export function DocumentChunkTreePanel({
             hasChildren ? (expanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line') : '',
           )}
         />
-        <span className="min-w-0 truncate" title={label}>
-          {label}
-        </span>
+        <span className="min-w-0 truncate">{label}</span>
       </button>
     )
   }

@@ -109,7 +109,6 @@ const FieldInfo: FC<FieldInfoProps> = ({
           'w-50 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary',
           editAlignTop && 'pt-1',
         )}
-        title={label}
       >
         {label}
       </div>

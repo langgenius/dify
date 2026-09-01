@@ -83,7 +83,6 @@ export function DocumentDetailHeader({
             ref={titleRef}
             className="truncate title-2xl-semi-bold text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             tabIndex={-1}
-            title={document.title}
           >
             {document.title}
           </h1>

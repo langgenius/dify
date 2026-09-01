@@ -76,10 +76,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       <div className="w-full max-w-120">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
           <ApiConnectionMod className="size-4 text-text-secondary" />
-          <div
-            className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary"
-            title={currentDataset?.external_knowledge_info.external_knowledge_api_name}
-          >
+          <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
             {currentDataset?.external_knowledge_info.external_knowledge_api_name}
           </div>
           <div className="system-xs-regular text-text-tertiary">·</div>

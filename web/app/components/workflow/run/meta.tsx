@@ -32,10 +32,7 @@ const MetaData: FC<Props> = ({
       </div>
       <div className="py-1">
         <div className="flex">
-          <div
-            className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-            title={t(($) => $['meta.status'], { ns: 'runLog' })}
-          >
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.status'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -51,10 +48,7 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div
-            className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-            title={t(($) => $['meta.executor'], { ns: 'runLog' })}
-          >
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.executor'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -65,10 +59,7 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div
-            className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-            title={t(($) => $['meta.startTime'], { ns: 'runLog' })}
-          >
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.startTime'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -85,10 +76,7 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div
-            className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-            title={t(($) => $['meta.time'], { ns: 'runLog' })}
-          >
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.time'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -99,10 +87,7 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div
-            className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-            title={t(($) => $['meta.tokens'], { ns: 'runLog' })}
-          >
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.tokens'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -114,10 +99,7 @@ const MetaData: FC<Props> = ({
         </div>
         {showSteps && (
           <div className="flex">
-            <div
-              className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary"
-              title={t(($) => $['meta.steps'], { ns: 'runLog' })}
-            >
+            <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
               {t(($) => $['meta.steps'], { ns: 'runLog' })}
             </div>
             <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">

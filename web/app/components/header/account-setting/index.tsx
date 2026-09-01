@@ -209,11 +209,7 @@ export default function AccountSetting({
                       }}
                     >
                       {activeMenu === item.key ? item.activeIcon : item.icon}
-                      {!isMobile && (
-                        <div className="truncate" title={item.name}>
-                          {item.name}
-                        </div>
-                      )}
+                      {!isMobile && <div className="truncate">{item.name}</div>}
                     </button>
                   ))}
                 </div>

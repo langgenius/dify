@@ -131,10 +131,7 @@ const MultipleToolSelector = ({
               aria-label={label}
               className="group/collapse h-6 min-h-0 w-auto min-w-0 justify-start gap-0.5 bg-transparent p-0 hover:not-data-disabled:bg-transparent"
             >
-              <span
-                className="truncate system-sm-semibold-uppercase text-text-secondary"
-                title={label}
-              >
+              <span className="truncate system-sm-semibold-uppercase text-text-secondary">
                 {label}
               </span>
               {required && <span className="text-red-500">*</span>}
@@ -148,10 +145,7 @@ const MultipleToolSelector = ({
             </CollapsibleTrigger>
           ) : (
             <>
-              <div
-                className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary"
-                title={label}
-              >
+              <div className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary">
                 {label}
               </div>
               {required && <div className="text-red-500">*</div>}

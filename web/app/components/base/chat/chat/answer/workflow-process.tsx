@@ -107,7 +107,6 @@ const WorkflowProcessItem = ({
             'min-w-0 grow truncate system-xs-medium',
             collapse && failed && data.error ? 'text-text-destructive' : 'text-text-secondary',
           )}
-          title={!collapse ? fallbackTitle : collapsedTitle}
         >
           {!collapse ? fallbackTitle : collapsedTitle}
         </div>

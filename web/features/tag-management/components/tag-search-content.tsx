@@ -146,10 +146,7 @@ export const TagSearchContentView = ({
                 className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary"
                 aria-hidden="true"
               />
-              <span
-                className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary"
-                title={t(($) => $['tag.manageTags'], { ns: 'common' })}
-              >
+              <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
                 {t(($) => $['tag.manageTags'], { ns: 'common' })}
               </span>
             </Button>

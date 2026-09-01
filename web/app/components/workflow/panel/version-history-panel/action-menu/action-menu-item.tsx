@@ -40,9 +40,7 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({ item, onClick, isDestructive 
           isDestructive && 'text-inherit',
         )}
       >
-        <div className="w-full truncate" title={item.name}>
-          {item.name}
-        </div>
+        <div className="w-full truncate">{item.name}</div>
         {item.description && (
           <div
             className="w-full max-w-38 truncate system-2xs-regular text-text-tertiary"

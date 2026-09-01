@@ -101,10 +101,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             background={siteInfo.icon_background || appDefaultIconBackground}
             imageUrl={siteInfo.icon_url}
           />
-          <div
-            className="grow truncate system-md-semibold text-text-secondary"
-            title={siteInfo.title}
-          >
+          <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}
           </div>
           <MenuDropdown
@@ -121,7 +118,6 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
-              title={siteInfo.description}
             >
               {siteInfo.description}
               {!descExpanded && showDescToggle && (

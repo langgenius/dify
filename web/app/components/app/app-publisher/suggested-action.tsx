@@ -2,7 +2,6 @@ import type { PropsWithChildren, MouseEvent as ReactMouseEvent, ReactNode } from
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import Link from '@/next/link'
-import { getTextFromReactNode } from '@/utils/react'
 
 type SuggestedActionButton = {
   ariaLabel: string
@@ -69,7 +68,6 @@ const SuggestedAction = ({
             'block truncate system-sm-medium text-text-secondary transition-colors',
             !disabled && 'group-hover:text-text-primary group-focus-visible:text-text-primary',
           )}
-          title={getTextFromReactNode(children)}
         >
           {children}
         </span>
@@ -84,7 +82,6 @@ const SuggestedAction = ({
             <span
               id={descriptionId}
               className="min-h-0 truncate system-xs-regular text-text-tertiary"
-              title={getTextFromReactNode(description)}
             >
               {description}
             </span>

@@ -132,7 +132,6 @@ function CurrentDraftItem({
           'min-w-0 flex-1 truncate py-1 system-sm-semibold',
           isActive ? 'text-text-accent' : 'text-text-secondary',
         )}
-        title={t(($) => $['skillManagement.detail.currentDraft'])}
       >
         {t(($) => $['skillManagement.detail.currentDraft'])}
       </span>
@@ -192,14 +191,7 @@ function VersionFilter({
                 setOpen(false)
               }}
             >
-              <span
-                className="min-w-0 flex-1 truncate system-md-regular text-text-primary"
-                title={
-                  filterValue === 'all'
-                    ? tWorkflow(($) => $['versionHistory.filter.all'])
-                    : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])
-                }
-              >
+              <span className="min-w-0 flex-1 truncate system-md-regular text-text-primary">
                 {filterValue === 'all'
                   ? tWorkflow(($) => $['versionHistory.filter.all'])
                   : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])}
@@ -353,7 +345,6 @@ function VersionRow({
                     'min-w-0 flex-1 truncate system-sm-semibold',
                     selected ? 'text-text-accent' : 'text-text-secondary',
                   )}
-                  title={versionTitle}
                 >
                   {versionTitle}
                 </span>
@@ -368,16 +359,7 @@ function VersionRow({
                   {version.publish_note}
                 </span>
               )}
-              <span
-                className="block truncate pt-0.5 system-xs-regular text-text-tertiary"
-                title={t(($) => $['skillManagement.detail.versionPublishedMeta'], {
-                  name: publishedBy,
-                  time: formatTime(
-                    version.created_at,
-                    t(($) => $['skillManagement.dateTimeFormat']),
-                  ),
-                })}
-              >
+              <span className="block truncate pt-0.5 system-xs-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.versionPublishedMeta'], {
                   name: publishedBy,
                   time: formatTime(
@@ -534,10 +516,7 @@ export function VersionPanel({
     <aside className="flex w-67 shrink-0 flex-col py-1">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
         <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
-          <h2
-            className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary"
-            title={t(($) => $['skillManagement.detail.versions'])}
-          >
+          <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
             {t(($) => $['skillManagement.detail.versions'])}
           </h2>
           <VersionFilter value={filterValue} onChange={setFilterValue} />

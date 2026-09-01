@@ -67,10 +67,7 @@ function WorkspaceSwitchControls({
     <>
       <div className="flex items-start gap-0.5 py-1 pr-2 pl-3">
         <div className="flex min-w-0 flex-1 items-center justify-center py-1">
-          <span
-            className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary"
-            title={t(($) => $['userProfile.workspace'], { ns: 'common' })}
-          >
+          <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary">
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
@@ -108,10 +105,7 @@ function WorkspaceSwitchControls({
                   <span className="flex size-4 shrink-0 items-center justify-center">
                     <DropdownMenuRadioItemIndicator className="ml-0" />
                   </span>
-                  <span
-                    className="min-w-0 flex-1 truncate px-1 system-md-regular text-text-secondary"
-                    title={option.label}
-                  >
+                  <span className="min-w-0 flex-1 truncate px-1 system-md-regular text-text-secondary">
                     {option.label}
                   </span>
                 </DropdownMenuRadioItem>

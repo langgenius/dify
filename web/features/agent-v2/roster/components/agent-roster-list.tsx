@@ -280,27 +280,14 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-                  <h2
-                    id={nameId}
-                    className="truncate system-md-semibold text-text-secondary"
-                    title={agent.name}
-                  >
+                  <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
                     {agent.name}
                   </h2>
-                  <p
-                    className="truncate system-xs-regular text-text-tertiary"
-                    title={agent.role ?? undefined}
-                  >
-                    {agent.role}
-                  </p>
+                  <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
                 </div>
               </div>
               <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-                <div
-                  id={descriptionId}
-                  className="line-clamp-2 min-h-8"
-                  title={agent.description ?? undefined}
-                >
+                <div id={descriptionId} className="line-clamp-2 min-h-8">
                   {agent.description}
                 </div>
               </div>
@@ -378,9 +365,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               <span aria-hidden className="shrink-0 text-text-quaternary">
                 ·
               </span>
-              <span className="min-w-0 truncate" title={updatedAt}>
-                {updatedAt}
-              </span>
+              <span className="min-w-0 truncate">{updatedAt}</span>
             </>
           )}
         </div>

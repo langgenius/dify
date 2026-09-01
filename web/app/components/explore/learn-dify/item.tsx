@@ -71,18 +71,13 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
           background={appBasicInfo.icon_background}
           imageUrl={appBasicInfo.icon_url}
         />
-        <h3
-          id={appNameId}
-          className="w-full truncate system-md-semibold text-text-secondary"
-          title={appBasicInfo.name}
-        >
+        <h3 id={appNameId} className="w-full truncate system-md-semibold text-text-secondary">
           {appBasicInfo.name}
         </h3>
       </div>
       <p
         id={appDescriptionId}
         className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
-        title={item.description}
       >
         {item.description}
       </p>

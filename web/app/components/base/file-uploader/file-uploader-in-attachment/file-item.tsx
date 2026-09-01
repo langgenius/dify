@@ -60,9 +60,7 @@ const FileInAttachmentItem = ({
             className="mb-0.5 flex items-center truncate system-xs-medium text-text-secondary"
             title={file.name}
           >
-            <div className="truncate" title={name}>
-              {name}
-            </div>
+            <div className="truncate">{name}</div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {ext && <span>{ext.toLowerCase()}</span>}

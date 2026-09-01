@@ -35,10 +35,7 @@ export default function UsagePrioritySection({
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
-          <span
-            className="truncate system-sm-medium text-text-secondary"
-            title={t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
-          >
+          <span className="truncate system-sm-medium text-text-secondary">
             {t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
           </span>
           <Infotip aria-label={usagePriorityTip}>{usagePriorityTip}</Infotip>

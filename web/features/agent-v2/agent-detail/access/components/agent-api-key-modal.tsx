@@ -189,24 +189,10 @@ export function AgentApiKeyModal({
                     className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary last:border-b-0"
                     key={apiKey.id}
                   >
-                    <div
-                      className="w-64 shrink-0 truncate px-3 font-mono"
-                      translate="no"
-                      title={maskApiKey(apiKey.token)}
-                    >
+                    <div className="w-64 shrink-0 truncate px-3 font-mono" translate="no">
                       {maskApiKey(apiKey.token)}
                     </div>
-                    <div
-                      className="w-50 shrink-0 truncate px-3"
-                      title={
-                        apiKey.created_at
-                          ? formatTime(
-                              apiKey.created_at,
-                              t(($) => $.dateTimeFormat, { ns: 'appLog' }),
-                            )
-                          : t(($) => $.never)
-                      }
-                    >
+                    <div className="w-50 shrink-0 truncate px-3">
                       {apiKey.created_at
                         ? formatTime(
                             apiKey.created_at,
@@ -214,17 +200,7 @@ export function AgentApiKeyModal({
                           )
                         : t(($) => $.never)}
                     </div>
-                    <div
-                      className="w-50 shrink-0 truncate px-3"
-                      title={
-                        apiKey.last_used_at
-                          ? formatTime(
-                              apiKey.last_used_at,
-                              t(($) => $.dateTimeFormat, { ns: 'appLog' }),
-                            )
-                          : t(($) => $.never)
-                      }
-                    >
+                    <div className="w-50 shrink-0 truncate px-3">
                       {apiKey.last_used_at
                         ? formatTime(
                             apiKey.last_used_at,
@@ -269,10 +245,7 @@ export function AgentApiKeyModal({
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['actionMsg.deleteConfirmTitle'])}
-            >
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['actionMsg.deleteConfirmTitle'])}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -331,7 +304,6 @@ function AgentApiKeyGenerateModal({
           <span
             className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary"
             translate="no"
-            title={apiKey?.token}
           >
             {apiKey?.token}
           </span>

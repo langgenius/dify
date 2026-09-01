@@ -23,10 +23,7 @@ export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
         <div className="pb-6">
           {/* Header */}
           <div className="relative flex p-6 pr-14 pb-3">
-            <DialogTitle
-              className="grow truncate title-2xl-semi-bold text-text-primary"
-              title={t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflow' })}
-            >
+            <DialogTitle className="grow truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflow' })}
             </DialogTitle>
             <button

@@ -35,10 +35,7 @@ export function RosterSortSelect() {
           <span className="shrink-0 system-sm-regular text-text-tertiary">
             {t(($) => $['roster.sort.label'])}
           </span>
-          <span
-            className="truncate system-sm-medium text-text-secondary"
-            title={t(($) => $[selectedOption.labelKey])}
-          >
+          <span className="truncate system-sm-medium text-text-secondary">
             {t(($) => $[selectedOption.labelKey])}
           </span>
         </span>

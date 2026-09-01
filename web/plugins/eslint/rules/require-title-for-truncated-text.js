@@ -656,14 +656,15 @@ function collectReferencedIdentifiers(node, names) {
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
-    type: 'problem',
+    type: 'suggestion',
     docs: {
-      description: 'Require truncated JSX text to expose its full value through title or Tooltip',
+      description: 'Flag truncated JSX text for manual full-content disclosure review',
     },
-    fixable: 'code',
     messages: {
-      emptyTitle: 'CSS-truncated text must have a non-empty title or be a Tooltip trigger.',
-      missingTitle: 'CSS-truncated text must have a title or be a Tooltip trigger.',
+      emptyTitle:
+        'Review this truncated text against the disclosure policy; do not replace its existing title automatically.',
+      missingTitle:
+        'Review this truncated text against the AUTO, COVERED, SKIP, and REVIEW disclosure policy.',
     },
     schema: [],
   },
@@ -734,13 +735,6 @@ export default {
           context.report({
             node: titleAttribute ?? openingElement.name,
             messageId: titleAttribute ? 'emptyTitle' : 'missingTitle',
-            fix:
-              fixText === null
-                ? null
-                : (fixer) =>
-                    titleAttribute
-                      ? fixer.replaceText(titleAttribute, fixText)
-                      : fixer.insertTextAfter(openingElement.attributes.at(-1), ` ${fixText}`),
           })
         }
       },

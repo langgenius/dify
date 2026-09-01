@@ -177,16 +177,10 @@ export function TriggerAccessPointCard({
                   className="flex min-h-11 items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
                 >
                   <TriggerIcon trigger={trigger} triggerPlugins={triggerPlugins} />
-                  <span
-                    className="w-28 shrink-0 truncate system-sm-medium text-text-secondary"
-                    title={trigger.title}
-                  >
+                  <span className="w-28 shrink-0 truncate system-sm-medium text-text-secondary">
                     {trigger.title}
                   </span>
-                  <span
-                    className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary"
-                    title={trigger.provider_name}
-                  >
+                  <span className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
                     {trigger.provider_name}
                   </span>
                   <span

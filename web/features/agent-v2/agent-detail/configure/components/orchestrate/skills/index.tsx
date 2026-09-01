@@ -85,18 +85,14 @@ function AgentSkillAddMenuItem({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate system-sm-medium text-text-secondary" title={label}>
-            {label}
-          </span>
+          <span className="truncate system-sm-medium text-text-secondary">{label}</span>
           {badge && (
             <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {badge}
             </span>
           )}
         </span>
-        <span className="line-clamp-2 system-xs-regular text-text-tertiary" title={description}>
-          {description}
-        </span>
+        <span className="line-clamp-2 system-xs-regular text-text-tertiary">{description}</span>
       </span>
     </button>
   )
@@ -150,10 +146,7 @@ function WorkspaceSkillRow({
       )}
     >
       <WorkspaceSkillIcon />
-      <span
-        className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary"
-        title={skill.display_name}
-      >
+      <span className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
         {skill.display_name}
       </span>
       {isAdded && (
@@ -186,12 +179,8 @@ function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
       <div className="flex min-w-0 flex-col items-start gap-1">
         <WorkspaceSkillIcon />
         <div className="min-w-0 flex-1">
-          <div className="truncate system-md-medium text-text-primary" title={skill.display_name}>
-            {skill.display_name}
-          </div>
-          <div className="truncate system-xs-regular text-text-tertiary" title={skill.name}>
-            {skill.name}
-          </div>
+          <div className="truncate system-md-medium text-text-primary">{skill.display_name}</div>
+          <div className="truncate system-xs-regular text-text-tertiary">{skill.name}</div>
         </div>
       </div>
       {!!skill.tags?.length && (
@@ -394,10 +383,7 @@ function WorkspaceAgentSkillItem({
           className="i-custom-vender-agent-v2-building-blocks size-4 shrink-0 text-text-secondary"
         />
         <span className="flex w-0 min-w-0 flex-1 items-center gap-1">
-          <span
-            className="min-w-0 truncate system-sm-medium text-text-secondary"
-            title={displayName}
-          >
+          <span className="min-w-0 truncate system-sm-medium text-text-secondary">
             {displayName}
           </span>
           <span

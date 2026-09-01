@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type { WithIconCardItemProps } from './markdown-with-directive-schema'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getTextFromReactNode } from '@/utils/react'
 
 type WithIconItemProps = WithIconCardItemProps & {
   children?: ReactNode
@@ -24,10 +23,7 @@ function WithIconCardItem({ icon, children, className, iconAlt }: WithIconItemPr
         width={40}
         height={40}
       />
-      <div
-        className="min-w-0 grow overflow-hidden system-sm-medium text-text-secondary [&_p]:m-0! [&_p]:block [&_p]:w-full [&_p]:truncate"
-        title={getTextFromReactNode(children)}
-      >
+      <div className="min-w-0 grow overflow-hidden system-sm-medium text-text-secondary [&_p]:m-0! [&_p]:block [&_p]:w-full [&_p]:truncate">
         {children}
       </div>
     </div>

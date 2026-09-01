@@ -67,7 +67,6 @@ const ResultItem = ({ payload }: ResultItemProps) => {
           className="line-clamp-2"
           content={sign_content || content}
           customDisallowedElements={['input']}
-          title={sign_content || content}
         />
         {images.length > 0 && <ImageList images={images} size="md" className="py-1" />}
         {isParentChildRetrieval && (

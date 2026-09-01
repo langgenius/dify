@@ -40,10 +40,7 @@ export const ChecklistNodeGroup = memo(
       <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">
         <div className="flex items-center gap-2 px-2 pt-2">
           <BlockIcon type={item.type as BlockEnum} size="sm" toolIcon={item.toolIcon} />
-          <span
-            className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary"
-            title={item.title}
-          >
+          <span className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary">
             {item.title}
           </span>
         </div>
@@ -52,10 +49,7 @@ export const ChecklistNodeGroup = memo(
             const content = (
               <>
                 <ItemIndicator />
-                <span
-                  className="min-w-0 grow truncate text-xs/4 text-text-warning"
-                  title={sub.message}
-                >
+                <span className="min-w-0 grow truncate text-xs/4 text-text-warning">
                   {sub.message}
                 </span>
                 {goToEnabled && (

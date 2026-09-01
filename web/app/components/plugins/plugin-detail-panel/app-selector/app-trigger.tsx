@@ -37,17 +37,11 @@ export function AppTrigger({ open, appDetail }: AppTriggerProps) {
         />
       )}
       {appDetail ? (
-        <span
-          className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled"
-          title={appDetail.name}
-        >
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           {appDetail.name}
         </span>
       ) : (
-        <span
-          className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder"
-          title={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
-        >
+        <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
           {t(($) => $['appSelector.placeholder'], { ns: 'app' })}
         </span>
       )}

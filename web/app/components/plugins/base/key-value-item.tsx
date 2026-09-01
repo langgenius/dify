@@ -60,7 +60,6 @@ function KeyValueItem({
       <div className="flex items-center justify-center gap-0.5">
         <span
           className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}
-          title={maskedValue || value}
         >
           {maskedValue || value}
         </span>

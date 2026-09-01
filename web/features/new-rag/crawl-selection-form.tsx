@@ -401,10 +401,6 @@ function ReadyCrawlSelectionForm({
             role="status"
             aria-live="polite"
             className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
-            title={t(($) => $['newKnowledge.pagesCrawled'], {
-              count: pages.length,
-              host: new URL(rootUrl).host,
-            })}
           >
             {t(($) => $['newKnowledge.pagesCrawled'], {
               count: pages.length,
@@ -463,14 +459,12 @@ function ReadyCrawlSelectionForm({
                       <span
                         id={titleId}
                         className="block truncate system-xs-medium text-text-primary"
-                        title={page.title || page.sourceUrl}
                       >
                         {page.title || page.sourceUrl}
                       </span>
                       <span
                         id={urlId}
                         className="block truncate system-2xs-regular text-text-tertiary"
-                        title={page.sourceUrl}
                       >
                         {page.sourceUrl}
                       </span>

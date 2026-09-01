@@ -40,10 +40,7 @@ export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDr
               <ReadmePanelContent
                 detail={detail}
                 title={
-                  <DrawerTitle
-                    className="truncate text-xs font-medium text-text-tertiary uppercase"
-                    title={t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
-                  >
+                  <DrawerTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
                     {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
                   </DrawerTitle>
                 }
