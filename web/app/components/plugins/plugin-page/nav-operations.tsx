@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
@@ -79,8 +80,8 @@ type SubmitRequestDropdownMenuProps = SubmitRequestDropdownProps & {
   docLink: (path: DocPathWithoutLang) => string
 }
 
-// Presentational dropdown. Callers that cannot use useDocLink() — standalone
-// Marketplace SSR — pass a locale-composed docLink instead.
+// Presentational dropdown. Callers that cannot use useDocLink() -- standalone
+// Marketplace SSR -- pass a locale-composed docLink instead.
 export function SubmitRequestDropdownMenu({
   dividerAfterFirst,
   docLink,
@@ -88,23 +89,30 @@ export function SubmitRequestDropdownMenu({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const options = getOptions(docLink)
+  const guideLabel = t(($) => $['marketplace.home.guide'], { ns: 'plugin' })
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        render={
-          <IconButton
-            aria-label={t(($) => $.requestSubmit, {
-              ns: 'plugin',
-              defaultValue: t(($) => $.requestAPlugin, { ns: 'plugin' }),
-            })}
-            size="lg"
-            className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
-          >
-            <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
-          </IconButton>
-        }
-      />
+      <Tooltip disabled={open}>
+        <DropdownMenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={guideLabel}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                >
+                  <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
+                </IconButton>
+              }
+            />
+          }
+        />
+        <TooltipContent placement="bottom" role="tooltip">
+          {guideLabel}
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px] p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>

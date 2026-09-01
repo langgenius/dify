@@ -293,6 +293,60 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).toHaveBeenCalledOnce()
   })
 
+  it('selects a suggestion without submitting when the parent handles the result', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const onSuggestionSelect = vi.fn()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const ControlledSearch = () => {
+      const [value, setValue] = useState('')
+
+      return (
+        <form>
+          <MarketplaceSearchAutocomplete
+            inputName="q"
+            locale="en-US"
+            onSuggestionSelect={onSuggestionSelect}
+            onValueChange={setValue}
+            placeholder="Search plugins"
+            scope="plugins"
+            value={value}
+          />
+        </form>
+      )
+    }
+
+    const { container } = render(<ControlledSearch />, { wrapper: Wrapper })
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    await user.click(await screen.findByText('Google Search'))
+
+    expect(onSuggestionSelect).toHaveBeenCalledOnce()
+    expect(onSuggestionSelect.mock.calls[0]?.[0]).toMatchObject({
+      kind: 'plugin',
+      plugin: { name: 'google-search' },
+    })
+    expect(handleSubmit).not.toHaveBeenCalled()
+  })
+
   it('keeps keyboard selection working for the highlighted suggestion', async () => {
     mockPluginSearch.mockResolvedValue({
       data: {

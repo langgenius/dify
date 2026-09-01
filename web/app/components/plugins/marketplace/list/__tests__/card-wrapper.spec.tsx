@@ -49,21 +49,14 @@ vi.mock('../../detail-dialog', () => ({
   default: ({
     isInstalled,
     open,
-    onInstall,
     onOpenChange,
   }: {
     isInstalled: boolean
     open: boolean
-    onInstall: () => void
     onOpenChange: (open: boolean) => void
   }) =>
     open ? (
       <div role="dialog" aria-label="marketplace detail" data-installed={isInstalled}>
-        {!isInstalled && (
-          <button type="button" onClick={onInstall}>
-            install from detail
-          </button>
-        )}
         <button type="button" onClick={() => onOpenChange(false)}>
           close detail
         </button>
@@ -73,6 +66,10 @@ vi.mock('../../detail-dialog', () => ({
 
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en-US',
 }))
 
 const plugin = {
@@ -117,6 +114,37 @@ describe('CardWrapper', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(document.querySelector('[data-marketplace-card="plugin-a"]')).toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
+  })
+
+  it('opens marketplace detail from the card surface', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.click(screen.getByRole('button', { name: 'Plugin A' }))
+
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+  })
+
+  it('opens marketplace detail from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Plugin A' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+  })
+
+  it('keeps install as its own action when the card is clicked through the install button', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
+
+    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
   })
 
   it('links the card to its marketplace detail when explicitly enabled', () => {
@@ -171,14 +199,13 @@ describe('CardWrapper', () => {
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 
-  it('opens the same install modal from the marketplace detail dialog', async () => {
+  it('does not open the install confirmation modal from the marketplace detail dialog', async () => {
     const user = userEvent.setup()
     renderCardWrapper({ showInstallButton: true })
 
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
-    await user.click(screen.getByRole('button', { name: 'install from detail' }))
 
-    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 })

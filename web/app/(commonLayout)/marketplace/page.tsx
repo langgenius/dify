@@ -1,4 +1,3 @@
-import AccountSection from '@/app/components/main-nav/components/account-section'
 import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/constants'
 import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
@@ -11,15 +10,7 @@ const MarketplacePage = () => {
       className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
       <MarketplaceInstallPermissionProvider>
-        <EmbeddedMarketplace
-          showInstallButton
-          variant="home"
-          homeHeaderActions={
-            <div className="p-0.5">
-              <AccountSection compact />
-            </div>
-          }
-        />
+        <EmbeddedMarketplace showInstallButton variant="home" />
       </MarketplaceInstallPermissionProvider>
     </div>
   )

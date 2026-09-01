@@ -114,10 +114,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
 }))
 
-vi.mock('@/app/components/main-nav/components/account-section', () => ({
-  default: () => <div data-testid="account-section" />,
-}))
-
 vi.mock('@/app/components/base/app-icon', () => ({
   default: () => <span aria-hidden />,
 }))
@@ -126,28 +122,11 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({ installedInfo: mocks.installedInfo }),
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({ manifest }: { manifest: { name: string } }) => (
-    <div data-testid="install-plugin">{manifest.name}</div>
-  ),
-}))
-
 vi.mock('../../detail-dialog', () => ({
-  default: ({
-    isInstalled,
-    onInstall,
-    plugin,
-  }: {
-    isInstalled: boolean
-    onInstall: () => void
-    plugin: { name: string }
-  }) => (
+  default: ({ isInstalled, plugin }: { isInstalled: boolean; plugin: { name: string } }) => (
     <div role="dialog" aria-label="plugin-detail">
       <span>{plugin.name}</span>
       <span>{isInstalled ? 'installed' : 'not installed'}</span>
-      <button type="button" onClick={onInstall}>
-        Install plugin
-      </button>
     </div>
   ),
 }))
@@ -200,9 +179,7 @@ describe('DifyCreatorProfile', () => {
     const dialog = screen.getByRole('dialog', { name: 'plugin-detail' })
     expect(dialog).toHaveTextContent('deep_research')
     expect(dialog).toHaveTextContent('installed')
-
-    await user.click(screen.getByRole('button', { name: 'Install plugin' }))
-    expect(screen.getByTestId('install-plugin')).toHaveTextContent('deep_research')
+    expect(screen.queryByTestId('install-plugin')).not.toBeInTheDocument()
   })
 
   it('opens a template detail and imports it inside Dify', async () => {

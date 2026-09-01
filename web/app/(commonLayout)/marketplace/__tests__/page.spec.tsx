@@ -15,10 +15,6 @@ vi.mock('@/app/components/plugins/marketplace/embedded', () => ({
   EmbeddedMarketplace: () => <p>Embedded marketplace home</p>,
 }))
 
-vi.mock('@/app/components/main-nav/components/account-section', () => ({
-  default: () => null,
-}))
-
 describe('embedded marketplace home route', () => {
   it('does not stream async server children that Flight would double-resolve', () => {
     const source = readFileSync(
@@ -28,6 +24,8 @@ describe('embedded marketplace home route', () => {
 
     expect(source).not.toMatch(/const MarketplacePage = async/)
     expect(source).not.toContain('HydrateQueryClient')
+    expect(source).not.toContain('AccountSection')
+    expect(source).not.toContain('homeHeaderActions')
   })
 
   it('renders the client marketplace home inside the install-permission provider', async () => {

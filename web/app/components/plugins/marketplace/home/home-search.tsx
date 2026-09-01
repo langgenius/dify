@@ -3,10 +3,9 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from '#i18n'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
+import EmbeddedMarketplaceSearch from './embedded-marketplace-search'
 import styles from './home-sticky.module.css'
-import MarketplacePluginSearch from './marketplace-plugin-search'
 import { preserveStickySearchScroll } from './preserve-sticky-search-scroll'
 
 type HomeSearchProps = {
@@ -31,7 +30,6 @@ const HomeSearch = ({
   overlapHero = true,
 }: HomeSearchProps) => {
   const searchRef = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation('plugin')
 
   useEffect(() => {
     const searchRoot = searchRef.current
@@ -66,11 +64,7 @@ const HomeSearch = ({
         ref={searchRef}
         className={cn('pointer-events-auto relative w-full', styles.searchContent)}
       >
-        {children ?? (
-          <MarketplacePluginSearch
-            placeholder={t(($) => $['marketplace.home.searchPlaceholder'])}
-          />
-        )}
+        {children ?? <EmbeddedMarketplaceSearch />}
       </div>
     </div>
   )

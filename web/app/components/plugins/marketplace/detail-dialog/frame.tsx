@@ -13,11 +13,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 
+type ReplyToMarketplaceFrame = (data: unknown) => void
+
 type MarketplaceDetailDialogFrameProps = {
   open: boolean
   src: string
   title: string
-  onMessage?: (data: unknown) => void
+  onMessage?: (data: unknown, reply: ReplyToMarketplaceFrame) => void
   onOpenChange: (open: boolean) => void
 }
 
@@ -53,7 +55,9 @@ export default function MarketplaceDetailDialogFrame({
       if (event.source !== iframeRef.current?.contentWindow || event.origin !== marketplaceOrigin)
         return
 
-      onMessage(event.data)
+      onMessage(event.data, (payload) => {
+        iframeRef.current?.contentWindow?.postMessage(payload, marketplaceOrigin)
+      })
     }
 
     window.addEventListener('message', handleMessage)
@@ -120,7 +124,7 @@ export default function MarketplaceDetailDialogFrame({
                 ref={closeButtonRef}
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 size="sm"
-                className="absolute top-5 right-5 size-8 rounded-lg"
+                className="absolute top-5 right-5 z-10 size-8 rounded-lg"
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
               </IconButton>

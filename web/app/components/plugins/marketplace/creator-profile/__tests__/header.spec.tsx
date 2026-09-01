@@ -38,5 +38,7 @@ describe('CreatorProfileHeader', () => {
     expect(pluginsLink).not.toHaveClass('bg-state-base-active')
     expect(templatesLink).not.toHaveAttribute('aria-current')
     expect(templatesLink).not.toHaveClass('bg-state-base-active')
+    expect(screen.getByTestId('marketplace-guide')).toBeInTheDocument()
+    expect(screen.queryByTestId('account-section')).not.toBeInTheDocument()
   })
 })

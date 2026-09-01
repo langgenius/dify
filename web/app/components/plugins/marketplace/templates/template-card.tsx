@@ -46,11 +46,17 @@ export default function TemplateCard({ template, className, partnerText }: Templ
     <>
       <article
         className={cn(
-          'relative flex h-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+          'relative flex h-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-md',
           className,
         )}
       >
-        <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
+        <button
+          type="button"
+          aria-label={template.template_name}
+          className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={showDetail}
+        />
+        <div className="relative z-0 flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <AppIcon
             size="large"
             iconType={imageUrl ? 'image' : 'emoji'}
@@ -60,15 +66,11 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           />
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
             <div className="flex items-center">
-              <button
-                type="button"
-                onClick={showDetail}
-                className="truncate text-left system-md-medium text-text-primary outline-hidden after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid focus-visible:after:ring-inset"
-              >
+              <span className="truncate text-left system-md-medium text-text-primary">
                 {template.template_name}
-              </button>
+              </span>
               {template.badges?.includes('partner') && (
-                <Partner className="relative z-[1] ml-0.5 size-4 shrink-0" text={partnerText} />
+                <Partner className="relative z-[2] ml-0.5 size-4 shrink-0" text={partnerText} />
               )}
             </div>
             <div className="flex items-center gap-2 system-xs-regular text-text-tertiary">
