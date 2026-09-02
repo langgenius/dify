@@ -322,6 +322,7 @@ def test_path_params_reach_the_context(
 
 
 def _rename_handler(*, ctx: Context) -> str:
+    assert ctx.caller is not None
     ctx.caller.name = "renamed"
     return "ok"
 
@@ -341,7 +342,9 @@ def test_write_true_by_default_commits_a_mutation_on_success(
         view()
 
     with sqlite_session_factory() as verify:
-        assert verify.get(Account, ACCOUNT_ID).name == "renamed"
+        renamed = verify.get(Account, ACCOUNT_ID)
+        assert renamed is not None
+        assert renamed.name == "renamed"
 
 
 def test_write_false_does_not_persist_a_mutation(
@@ -359,4 +362,6 @@ def test_write_false_does_not_persist_a_mutation(
         view()
 
     with sqlite_session_factory() as verify:
-        assert verify.get(Account, ACCOUNT_ID).name == "OpenAPI account"
+        unchanged = verify.get(Account, ACCOUNT_ID)
+        assert unchanged is not None
+        assert unchanged.name == "OpenAPI account"
