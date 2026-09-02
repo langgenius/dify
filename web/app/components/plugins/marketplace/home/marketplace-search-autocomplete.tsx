@@ -30,7 +30,7 @@ import { marketplaceQuery } from '@/service/client'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import { getPluginIconInMarketplace } from '../utils'
 
-export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
 export type MarketplaceSearchSelection =
   | { kind: 'plugin'; plugin: MarketplacePlugin }

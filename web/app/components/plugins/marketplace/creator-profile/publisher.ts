@@ -6,7 +6,7 @@ import { marketplaceClient } from '@/service/client'
 import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
 import { adaptCreations, toPublisherSortQuery } from './model'
 
-export const CREATOR_PAGE_SIZE = 40
+const CREATOR_PAGE_SIZE = 40
 
 export type PublisherPage<T> = {
   items: T[]
@@ -14,7 +14,7 @@ export type PublisherPage<T> = {
   hasMore: boolean
 }
 
-export const publisherPageHasMore = (page: number, itemCount: number, total?: number) =>
+const publisherPageHasMore = (page: number, itemCount: number, total?: number) =>
   typeof total === 'number' ? page * CREATOR_PAGE_SIZE < total : itemCount === CREATOR_PAGE_SIZE
 
 export const getTemplateIcon = (template: MarketplaceTemplate) =>
