@@ -23,9 +23,7 @@ _FORWARD_MIGRATION_PATH = _MIGRATIONS_DIRECTORY / ("2026_08_11_1100-c9e4f7a2b6d1
 _FRESH_CHAIN_PATHS = (
     _MIGRATIONS_DIRECTORY / "2026_07_25_1000-5c8f1a2b3d4e_add_human_input_v2_contact_directory.py",
     _BASE_MIGRATION_PATH,
-    _MIGRATIONS_DIRECTORY / "2026_07_25_1200-8a1c4e7f9b2d_add_human_input_v2_form_core.py",
-    _MIGRATIONS_DIRECTORY / "2026_07_25_1300-9c2e5f7a1b3d_add_human_input_v2_otp_proof_session.py",
-    _MIGRATIONS_DIRECTORY / "2026_07_25_1400-ad4f6b8c2e1d_add_human_input_v2_submission_runtime.py",
+    _MIGRATIONS_DIRECTORY / "2026_07_25_1200-8a1c4e7f9b2d_add_human_input_email_provider.py",
     _MIGRATIONS_DIRECTORY / "2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox.py",
     _MIGRATIONS_DIRECTORY / "2026_08_11_1000-b7d3e5f9a1c2_add_im_reconciliation_change_log.py",
     _FORWARD_MIGRATION_PATH,

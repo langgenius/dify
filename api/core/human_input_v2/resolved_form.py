@@ -151,9 +151,6 @@ class ResolvedForm:
         if len(action_ids) != len(set(action_ids)):
             raise ValueError("resolved form action identifiers must be unique")
 
-    def accepts_action(self, selected_action_id: str) -> bool:
-        return any(action.id == selected_action_id for action in self.user_actions)
-
 
 __all__ = [
     "FileInput",

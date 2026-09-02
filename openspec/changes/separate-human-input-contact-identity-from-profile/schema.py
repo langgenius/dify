@@ -79,7 +79,8 @@ class HumanInputContactIdentity(TypeBase):
     external_profile: Mapped[HumanInputExternalContactProfile | None] = relationship(
         lambda: HumanInputExternalContactProfile,
         primaryjoin=lambda: sa.and_(
-            HumanInputContactIdentity.id == orm.foreign(HumanInputExternalContactProfile.contact_id),
+            HumanInputContactIdentity.id
+            == orm.foreign(HumanInputExternalContactProfile.contact_id),
             HumanInputContactIdentity.subject_type == ContactSubjectType.EXTERNAL,
         ),
         back_populates="identity",
@@ -184,18 +185,6 @@ CONTACT_REFERENCES: tuple[ContactReference, ...] = (
         "contact_id",
         True,
         "historical reconciliation mutation",
-    ),
-    ContactReference(
-        "human_input_v2_form_approver_grants",
-        "contact_id",
-        True,
-        "frozen form approval subject",
-    ),
-    ContactReference(
-        "human_input_v2_form_otp_challenges",
-        "contact_id",
-        True,
-        "captured Contact proof subject",
     ),
 )
 

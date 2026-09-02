@@ -75,6 +75,15 @@ def test_resolved_form_values_reject_mutable_sequence_ownership(constructor) -> 
         constructor()
 
 
+@pytest.mark.parametrize(
+    ("action_id", "title"),
+    [("", "Approve"), ("approve", "")],
+)
+def test_resolved_form_action_rejects_each_blank_component(action_id: str, title: str) -> None:
+    with pytest.raises(ValueError, match="must not be blank"):
+        ResolvedFormAction(action_id, title, ButtonStyle.PRIMARY)
+
+
 def test_resolved_defaults_and_identifiers_are_validated_at_construction() -> None:
     with pytest.raises(ValueError, match="default"):
         SelectInput("decision", ("approve", "reject"), "escalate")
@@ -82,8 +91,6 @@ def test_resolved_defaults_and_identifiers_are_validated_at_construction() -> No
         ParagraphInput("", None)
     with pytest.raises(ValueError, match="number limits"):
         FileListInput("files", (), (), (), 0)
-    with pytest.raises(ValueError, match="must not be blank"):
-        ResolvedFormAction("approve", "", ButtonStyle.PRIMARY)
     with pytest.raises(TypeError, match="ButtonStyle"):
         ResolvedFormAction("approve", "Approve", "primary")
 

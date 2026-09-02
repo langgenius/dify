@@ -1,7 +1,7 @@
 """Add the durable IM message inbox.
 
 Revision ID: f1a2b3c4d5e6
-Revises: ad4f6b8c2e1d
+Revises: 8a1c4e7f9b2d
 Create Date: 2026-08-02 10:00:00
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 import models.types
 
 revision: str = "f1a2b3c4d5e6"
-down_revision: str | None = "ad4f6b8c2e1d"
+down_revision: str | None = "8a1c4e7f9b2d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

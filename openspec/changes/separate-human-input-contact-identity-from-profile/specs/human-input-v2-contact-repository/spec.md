@@ -144,11 +144,7 @@ SQLAlchemy implementations of `ContactRepository`、`EnterpriseContactRepository
 - **AND** every participating Repository MUST use the same injected Session until the complete transaction commits or rolls back
 
 ### Requirement: Current Contact consumers MUST NOT depend on removed implementation or Contact ORM layout
-Console Contact、recipient resolution、approval、OTP、submission authorization、IM matching and lifecycle code MUST obtain current Contact facts through `ContactRepository` and optionally `ContactIMBindingRepository`。EE candidate and Platform mutation code MUST use `EnterpriseContactRepository`。Only the unified SQLAlchemy Contact implementation MAY combine `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` and `HumanInputExternalContactProfile` into Contact values or candidates。Historical readers MAY continue reading their own frozen snapshot columns without current Contact lookup。
-
-#### Scenario: Recipient resolution loads current Contacts
-- **WHEN** recipient resolution needs saved Contact IDs
-- **THEN** its application caller MUST batch-load current Contacts through `ContactRepository` and pass values without any snapshot/policy dependency
+Console Contact、IM matching and lifecycle code MUST obtain current Contact facts through `ContactRepository` and optionally `ContactIMBindingRepository`。EE candidate and Platform mutation code MUST use `EnterpriseContactRepository`。Only the unified SQLAlchemy Contact implementation MAY combine `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` and `HumanInputExternalContactProfile` into Contact values or candidates。Historical readers MAY continue reading their own frozen snapshot columns without current Contact lookup。
 
 #### Scenario: IM reconciliation loads matching candidates
 - **WHEN** IM synchronization prepares Email reconciliation for one tenant
