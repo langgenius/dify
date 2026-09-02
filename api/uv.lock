@@ -1309,7 +1309,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.34.0,<3.0.0" },
+    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.38.0,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
     { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.2" },
     { name = "httpx", specifier = "==0.28.1" },
