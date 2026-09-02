@@ -60,3 +60,14 @@ def init_app(app: DifyApp):
             _ = db.engine  # triggers engine creation with the configured options
     except Exception:
         logger.exception("Failed to initialize SQLAlchemy engine during app startup")
+
+    # SQLAlchemy attaches its own echo handlers to ``sqlalchemy.engine`` (and
+    # sub-loggers like ``sqlalchemy.pool``) at engine creation. Those handlers
+    # bypass the root logger's ``LOG_TZ``-aware formatter because
+    # ``sqlalchemy.engine`` has ``propagate = False`` (see
+    # ``extensions.ext_logging``). Apply the same ``LOG_TZ`` converter to
+    # their formatters so engine log timestamps stay consistent with the
+    # rest of the application logs.
+    from extensions.ext_logging import apply_timezone_to_sqlalchemy_loggers
+
+    apply_timezone_to_sqlalchemy_loggers()

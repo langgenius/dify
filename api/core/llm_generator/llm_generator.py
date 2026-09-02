@@ -37,7 +37,13 @@ from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+)
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
@@ -306,7 +312,19 @@ class LLMGenerator:
                     tenant_id=tenant_id,
                     model_type=ModelType.LLM,
                 )
-        except InvokeAuthorizationError:
+        except (
+            InvokeAuthorizationError,
+            InvokeConnectionError,
+            InvokeRateLimitError,
+            InvokeBadRequestError,
+        ):
+            # Model-resolution failures during suggested-questions generation are
+            # a soft enhancement: a missing/expired credential, an unreachable
+            # provider, a per-tenant rate limit, or a malformed model config
+            # must NEVER surface as an error to the client or break the
+            # already-produced answer. Match the silent-degradation contract
+            # documented on `generate_workflow_instruction_suggestions` and
+            # return an empty suggestion list.
             return []
 
         prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
