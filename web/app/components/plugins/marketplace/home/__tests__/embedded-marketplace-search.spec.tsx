@@ -29,7 +29,6 @@ vi.mock('#i18n', async () => {
     'marketplace.home.templates': 'Templates',
     'marketplace.loadError': 'Failed to load. Please try again.',
     'marketplace.noPluginFound': 'No integration found',
-    'marketplace.viewMore': 'View more',
     'newApp.noTemplateFound': 'No templates found',
     clearSearch: 'Clear search',
     loading: 'Loading',
@@ -155,6 +154,7 @@ describe('EmbeddedMarketplaceSearch', () => {
     const pluginGroup = screen.getByRole('group', { name: 'Plugins' })
     expect(within(templateGroup).getByText('Legal Research Agent')).toBeInTheDocument()
     expect(within(pluginGroup).getByText('Google Search')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /view more/i })).not.toBeInTheDocument()
     expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
@@ -209,33 +209,6 @@ describe('EmbeddedMarketplaceSearch', () => {
       'Legal Research Agent',
     )
     expect(screen.queryByRole('dialog', { name: 'plugin-detail' })).not.toBeInTheDocument()
-  })
-
-  it('filters the current catalog when the visitor asks to view more results', async () => {
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
-    const user = userEvent.setup()
-    const { onUrlUpdate } = renderSearch()
-
-    await user.type(screen.getByRole('combobox'), 'google')
-    await user.click(await screen.findByRole('button', { name: 'View more' }))
-
-    await waitFor(() => {
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')
-    })
   })
 
   it('filters the current catalog when Enter is pressed instead of opening a result', async () => {

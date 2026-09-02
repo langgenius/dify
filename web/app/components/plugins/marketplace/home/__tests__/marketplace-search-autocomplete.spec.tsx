@@ -10,11 +10,12 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const { debounceState, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
+const { debounceState, mockPluginSearch, mockPush, mockTemplateSearch } = vi.hoisted(() => ({
   // Most tests bypass the debounce for simplicity; the debounce-window test
   // flips this on to exercise the real 300ms lag.
   debounceState: { useRealDebounce: false },
   mockPluginSearch: vi.fn(),
+  mockPush: vi.fn(),
   mockTemplateSearch: vi.fn(),
 }))
 
@@ -38,10 +39,13 @@ vi.mock('react-i18next', async () => {
     'marketplace.home.plugins': 'Plugins',
     'marketplace.home.templates': 'Templates',
     'marketplace.noPluginFound': 'No integration found',
-    'marketplace.viewMore': 'View more',
     'newApp.noTemplateFound': 'No templates found',
   })
 })
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}))
 
 vi.mock('@/service/client', () => ({
   marketplaceQuery: {
@@ -69,6 +73,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe('MarketplaceSearchAutocomplete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPush.mockReset()
     debounceState.useRealDebounce = false
     queryClient = new QueryClient({
       defaultOptions: {
@@ -131,6 +136,12 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0)
     expect(screen.queryByText(/Loading/)).not.toBeInTheDocument()
     expect(screen.getByText('Research legal questions with cited sources.')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Legal Research Agent'))
+    expect(mockPush).toHaveBeenCalledWith(
+      '/template/dify/Legal%20Research%20Agent?templateId=template-1',
+    )
+
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('type', 'text')
@@ -189,7 +200,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(mockTemplateSearch).not.toHaveBeenCalled()
   })
 
-  it('groups mixed suggestions and submits the complete search from the popup', async () => {
+  it('groups mixed suggestions and opens the selected result instead of viewing more', async () => {
     mockTemplateSearch.mockResolvedValue({
       data: {
         templates: [
@@ -247,10 +258,12 @@ describe('MarketplaceSearchAutocomplete', () => {
     const pluginGroup = screen.getByRole('group', { name: 'Plugins' })
     expect(within(templateGroup).getByText('Legal Research Agent')).toBeInTheDocument()
     expect(within(pluginGroup).getByText('Google Search')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /view more/i })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'View more' }))
+    await user.click(screen.getByText('Google Search'))
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    expect(mockPush).toHaveBeenCalledWith('/plugin/langgenius/google-search')
+    expect(handleSubmit).not.toHaveBeenCalled()
   })
 
   it('submits the typed query on Enter without selecting a hovered suggestion', async () => {
@@ -313,7 +326,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByRole('combobox')).toHaveValue('search')
   })
 
-  it('submits the route search form when a suggestion is chosen', async () => {
+  it('opens plugin detail when a suggestion is chosen', async () => {
     mockPluginSearch.mockResolvedValue({
       data: {
         plugins: [
@@ -350,7 +363,8 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), 'google')
     await user.click(await screen.findByText('Google Search'))
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    expect(mockPush).toHaveBeenCalledWith('/plugin/langgenius/google-search')
+    expect(handleSubmit).not.toHaveBeenCalled()
   })
 
   it('selects a suggestion without submitting when the parent handles the result', async () => {
@@ -445,7 +459,8 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(await screen.findByText('Google Search')).toBeInTheDocument()
     await user.keyboard('{ArrowDown}{Enter}')
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    expect(mockPush).toHaveBeenCalledWith('/plugin/langgenius/google-search')
+    expect(handleSubmit).not.toHaveBeenCalled()
   })
 
   it('hands the selected plugin back to a creator-profile owner without submitting', async () => {

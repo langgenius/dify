@@ -70,6 +70,18 @@ export const getPluginDetailLinkInMarketplace = (
   return `/plugin/${org}/${name}`
 }
 
+export const getTemplateDetailLinkInMarketplace = (
+  template: Pick<
+    MarketplaceTemplate,
+    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
+  >,
+) => {
+  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
+  const search = new URLSearchParams({ templateId: template.id })
+
+  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}?${search.toString()}`
+}
+
 export const getTemplateLinkInMarketplace = (
   template: Pick<
     MarketplaceTemplate,

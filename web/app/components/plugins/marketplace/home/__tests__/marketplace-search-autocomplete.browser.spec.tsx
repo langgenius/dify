@@ -15,6 +15,10 @@ const { mockTemplateSearch } = vi.hoisted(() => ({
   mockTemplateSearch: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 vi.mock('ahooks', async (importOriginal) => {
   const original = await importOriginal<typeof import('ahooks')>()
 
@@ -37,7 +41,6 @@ vi.mock('react-i18next', async (importOriginal) => {
       'marketplace.home.plugins': 'Plugins',
       'marketplace.home.templates': 'Templates',
       'marketplace.noPluginFound': 'No integration found',
-      'marketplace.viewMore': 'View more',
       'newApp.noTemplateFound': 'No templates found',
     }),
   }
@@ -209,6 +212,8 @@ describe('Marketplace search autocomplete layout', () => {
     await screen.getByRole('combobox', { name: 'Search templates' }).fill('legal')
     await expect.element(screen.getByText('Legal Research Agent')).toBeVisible()
 
+    const input = screen.getByRole('combobox', { name: 'Search templates' }).element()
+    const searchBox = input.parentElement!
     const list = screen.getByRole('listbox').element()
     const panel = list.parentElement!
     const templateGroup = screen.getByRole('group', { name: 'Templates' }).element()
@@ -221,7 +226,7 @@ describe('Marketplace search autocomplete layout', () => {
     const statusRoots = screen.getByRole('status').all()
     const trailingStatus = statusRoots.at(-1)!.element()
 
-    expect(panelStyle.width).toBe('472px')
+    expect(panel.getBoundingClientRect().width).toBeCloseTo(searchBox.getBoundingClientRect().width)
     expect(panelStyle.paddingTop).toBe('0px')
     expect(panelStyle.paddingRight).toBe('0px')
     expect(panelStyle.paddingBottom).toBe('0px')
