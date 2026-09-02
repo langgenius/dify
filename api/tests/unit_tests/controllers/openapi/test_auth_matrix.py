@@ -527,6 +527,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
+    # invite/remove check WORKSPACE_MEMBER_MANAGE; update_role checks WORKSPACE_ROLE_MANAGE
+    # (matches check_member_permission's own add/remove vs update split)
     "workspaces.members.invite": {
         Case.NO_BEARER: DENY_NO_BEARER,
         Case.MEMBER: ADMIT,

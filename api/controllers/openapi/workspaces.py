@@ -276,7 +276,7 @@ class WorkspaceMemberApi(Resource):
             CheckWorkspaceMember(),
             CheckRBACPermission(
                 resource_type=RBACResourceScope.WORKSPACE,
-                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+                scene=RBACPermission.WORKSPACE_ROLE_MANAGE,
                 resource_required=False,
             ),
             CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
