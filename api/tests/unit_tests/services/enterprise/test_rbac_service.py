@@ -777,7 +777,7 @@ class TestMyPermissions:
             (
                 "dataset_operator",
                 svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
-                [],
+                svc._LEGACY_APP_DATASET_OPERATOR_KEYS,
                 svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
             ),
         ],

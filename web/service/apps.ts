@@ -6,7 +6,6 @@ import type {
   TracingConfig,
   TracingStatus,
   UpdateAppModelConfigResponse,
-  UpdateAppSiteCodeResponse,
   WebhookTriggerResponse,
 } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
@@ -170,14 +169,6 @@ export const importDSLConfirm = ({
 
 export const deleteApp = (appID: string): Promise<CommonResponse> => {
   return del<CommonResponse>(`apps/${appID}`)
-}
-
-export const updateAppSiteAccessToken = ({
-  url,
-}: {
-  url: string
-}): Promise<UpdateAppSiteCodeResponse> => {
-  return post<UpdateAppSiteCodeResponse>(url)
 }
 
 export const updateAppSiteConfig = ({

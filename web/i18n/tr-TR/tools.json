@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Açıklama",
   "createTool.toolOutput.reserved": "Ayrılmış",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json ve dosyalar ayrılmış değişkenlerdir. Bu isimlere sahip değişkenler çıktı şemasında yer alamaz.",
+  "createTool.toolOutput.sourceNode": "Kaynak düğüm",
   "createTool.toolOutput.title": "Araç Çıktısı",
   "createTool.urlError": "Geçerli bir URL girin",
   "createTool.viewSchemaSpec": "OpenAPI-Swagger Spesifikasyonunu Görüntüle",

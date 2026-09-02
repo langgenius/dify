@@ -17,11 +17,6 @@ const mocks = vi.hoisted(() => ({
   },
   webCard: vi.fn(),
   apiCard: vi.fn(),
-  capabilities: {
-    canEdit: false,
-    canDeploy: true,
-    canReleaseAndVersion: false,
-  },
   mcpCard: vi.fn(),
   triggerCard: vi.fn(),
   useAppWorkflow: vi.fn(),
@@ -44,14 +39,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai')>()
-  return {
-    ...actual,
-    useAtomValue: () => undefined,
-  }
-})
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ appDetail: mocks.appInfo }),
@@ -68,14 +55,10 @@ vi.mock('@/service/use-workflow', () => ({
   },
 }))
 
-vi.mock('@/utils/permission', () => ({
-  getAppACLCapabilities: () => mocks.capabilities,
-}))
-
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
+    handleResult: vi.fn(),
     refreshAppDetail: vi.fn(),
-    regenerateSiteCode: vi.fn(),
     saveSiteConfig: vi.fn(),
   }),
 }))
@@ -123,26 +106,32 @@ describe('BuiltInAccessPoints', () => {
       isError: false,
       isPending: false,
     }
-    mocks.capabilities = {
-      canEdit: false,
-      canDeploy: true,
-      canReleaseAndVersion: false,
-    }
   })
 
   it('renders the unpublished state across all access point cards', () => {
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint={false}
+        canReleaseAndVersion={false}
+      />,
+    )
 
     expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
     expect(mocks.webCard).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: 'unavailable', canDeploy: true, canEdit: false }),
+      expect.objectContaining({
+        availability: 'unavailable',
+        canDeploy: true,
+        canManageAccessPoint: false,
+      }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable', canManage: false }),
     )
     expect(mocks.mcpCard).toHaveBeenCalledTimes(1)
     expect(mocks.triggerCard).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: 'unavailable', canEdit: false }),
+      expect.objectContaining({ availability: 'unavailable', canManageAccessPoint: false }),
     )
   })
 
@@ -157,7 +146,14 @@ describe('BuiltInAccessPoints', () => {
       isPending: false,
     }
 
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint={false}
+        canReleaseAndVersion={false}
+      />,
+    )
 
     expect(
       screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
@@ -173,20 +169,38 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
-  it('does not use edit permission to manage the Service API', () => {
-    mocks.capabilities = {
-      canEdit: true,
-      canDeploy: true,
-      canReleaseAndVersion: false,
-    }
+  it('uses Access Point management for every requested built-in operation', () => {
+    render(
+      <BuiltInAccessPoints
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion={false}
+      />,
+    )
 
-    render(<BuiltInAccessPoints appId="app-1" />)
-
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ canManage: false }))
+    expect(mocks.webCard).toHaveBeenCalledWith(
+      expect.objectContaining({ canManageAccess: false, canManageAccessPoint: true }),
+    )
+    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ canManage: true }))
+    expect(mocks.mcpCard).toHaveBeenCalledWith(
+      expect.objectContaining({ canManageAccessPoint: true }),
+    )
+    expect(mocks.triggerCard).toHaveBeenCalledWith(
+      expect.objectContaining({ canManageAccessPoint: true }),
+    )
   })
 
   it('highlights only the targeted built-in access point card', () => {
-    render(<BuiltInAccessPoints appId="app-1" highlightedAccessPoint="mcp" />)
+    render(
+      <BuiltInAccessPoints
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+        highlightedAccessPoint="mcp"
+      />,
+    )
 
     expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
     expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
@@ -205,7 +219,9 @@ describe('BuiltInAccessPoints', () => {
       isPending: false,
     }
 
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+    )
 
     expect(mocks.webCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable' }),
@@ -231,7 +247,9 @@ describe('BuiltInAccessPoints', () => {
       isPending: true,
     }
 
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+    )
 
     expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ availability: 'loading' }))
     expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ availability: 'loading' }))
@@ -247,7 +265,9 @@ describe('BuiltInAccessPoints', () => {
       isPending: false,
     }
 
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+    )
 
     expect(
       screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
@@ -255,7 +275,9 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it('does not retry forbidden published workflow requests', () => {
-    render(<BuiltInAccessPoints appId="app-1" />)
+    render(
+      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+    )
 
     const options = mocks.useAppWorkflow.mock.calls.at(-1)?.[1] as {
       retry: (failureCount: number, error: unknown) => boolean

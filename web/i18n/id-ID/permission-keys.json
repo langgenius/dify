@@ -3,6 +3,8 @@
   "api_extension.manage": "Kelola konfigurasi ekstensi API",
   "app.access_config": "Konfigurasikan izin akses aplikasi",
   "app.acl.access_config": "Lihat dan kelola izin akses",
+  "app.acl.access_point_manage": "Kelola titik akses",
+  "app.acl.access_point_view": "Lihat titik akses",
   "app.acl.delete": "Hapus aplikasi",
   "app.acl.deploy": "Deploy aplikasi",
   "app.acl.edit": "Edit informasi aplikasi dan orkestrasikan aplikasi",

@@ -4,18 +4,13 @@ import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { getAppACLCapabilities } from '@/utils/permission'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
 import { MCPAccessPointCard } from './mcp-card'
@@ -25,18 +20,22 @@ import { WebAppAccessPointCard } from './web-app-card'
 
 type BuiltInAccessPointsProps = {
   appId: string
+  canDeploy: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
-export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAccessPointsProps) {
+export function BuiltInAccessPoints({
+  appId,
+  canDeploy,
+  canManageAccessPoint,
+  canReleaseAndVersion,
+  highlightedAccessPoint,
+}: BuiltInAccessPointsProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appInfo = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
   const {
@@ -50,16 +49,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
       return failureCount < 3
     },
   })
-  const capabilities = useMemo(
-    () =>
-      getAppACLCapabilities(appInfo?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appInfo?.maintainer,
-        workspacePermissionKeys,
-      }),
-    [appInfo?.maintainer, appInfo?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
-  const actions = useAccessPointActions(appId, capabilities.canEdit)
+  const actions = useAccessPointActions(appId, canManageAccessPoint)
 
   if (!appInfo) return <Loading />
 
@@ -94,7 +84,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
               })}
             </span>
           </div>
-          {capabilities.canReleaseAndVersion ? (
+          {canReleaseAndVersion ? (
             <Link
               href={`/app/${appId}/workflow`}
               className={cn(
@@ -118,12 +108,11 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
         <WebAppAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
-          canEdit={capabilities.canEdit}
-          canDeploy={capabilities.canDeploy}
-          canManageAccess={capabilities.canReleaseAndVersion}
+          canDeploy={canDeploy}
+          canManageAccess={canReleaseAndVersion}
+          canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
           onRefreshApp={actions.refreshAppDetail}
-          onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}
@@ -131,12 +120,12 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
         <ServiceApiAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
-          canManage={capabilities.canReleaseAndVersion}
+          canManage={canManageAccessPoint}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard
           appInfo={appInfo}
-          canEdit={capabilities.canEdit}
+          canManageAccessPoint={canManageAccessPoint}
           workflow={workflow}
           workflowLoading={workflowLoading}
           triggerModeDisabled={workflowState.hasTriggerNode}
@@ -146,7 +135,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           <TriggerAccessPointCard
             appInfo={appInfo}
             availability={triggerAvailability}
-            canEdit={capabilities.canEdit}
+            canManageAccessPoint={canManageAccessPoint}
             highlighted={highlightedAccessPoint === 'trigger'}
           />
         )}

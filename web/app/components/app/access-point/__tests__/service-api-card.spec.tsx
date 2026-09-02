@@ -136,6 +136,20 @@ describe('ServiceApiAccessPointCard', () => {
     expect(apiReferenceLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
+  it('updates API status through the generated contract', async () => {
+    const user = userEvent.setup()
+    renderCard(AppModeEnum.WORKFLOW)
+
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(mocks.apiEnable.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-1' },
+        body: { enable_api: false },
+      })
+    })
+  })
+
   it('shows loading without reporting an environment failure', () => {
     renderCard(AppModeEnum.WORKFLOW, 'loading')
 
@@ -158,7 +172,7 @@ describe('ServiceApiAccessPointCard', () => {
     )
   })
 
-  it('disables API management without release permission', () => {
+  it('disables API management without Access Point management permission', () => {
     renderCard(AppModeEnum.WORKFLOW, 'available', false)
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()

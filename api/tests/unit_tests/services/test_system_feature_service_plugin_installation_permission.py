@@ -1,12 +1,14 @@
+"""Tests for SystemFeatureService plugin-installation policy."""
+
 import logging
 from collections.abc import Callable
 
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
+from services import system_feature_service as feature_service_module
 from services.entities.feature_entities import PluginInstallationScope, SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def test_get_plugin_installation_permission_defaults_to_all_for_non_enterprise(
@@ -14,7 +16,7 @@ def test_get_plugin_installation_permission_defaults_to_all_for_non_enterprise(
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
-    permission = FeatureService.get_plugin_installation_permission()
+    permission = SystemFeatureService.get_plugin_installation_permission()
 
     assert permission.plugin_installation_scope is PluginInstallationScope.ALL
     assert permission.restrict_to_marketplace_only is False
@@ -38,7 +40,7 @@ def test_get_plugin_installation_permission_parses_enterprise_policy(
         ),
     )
 
-    permission = FeatureService.get_plugin_installation_permission()
+    permission = SystemFeatureService.get_plugin_installation_permission()
 
     assert permission.plugin_installation_scope is PluginInstallationScope.OFFICIAL_ONLY
     assert permission.restrict_to_marketplace_only is True
@@ -62,8 +64,8 @@ def test_invalid_enterprise_policy_denies_all_plugin_installations(
     caplog: pytest.LogCaptureFixture,
     invalid_permission: dict[str, object],
 ) -> None:
-    with caplog.at_level(logging.ERROR, logger="services.feature_service"):
-        permission = FeatureService._resolve_plugin_installation_permission(
+    with caplog.at_level(logging.ERROR, logger="services.system_feature_service"):
+        permission = SystemFeatureService._resolve_plugin_installation_permission(
             {"PluginInstallationPermission": invalid_permission}
         )
 
@@ -89,7 +91,7 @@ def test_system_features_exposes_only_validated_plugin_installation_policy(
     )
     features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
 
-    FeatureService._fulfill_params_from_enterprise(features)
+    SystemFeatureService._fulfill_params_from_enterprise(features)
 
     assert features.plugin_installation_permission.plugin_installation_scope is PluginInstallationScope.NONE
     assert features.plugin_installation_permission.restrict_to_marketplace_only is True

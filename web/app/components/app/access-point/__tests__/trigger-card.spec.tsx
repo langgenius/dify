@@ -93,7 +93,7 @@ function renderCard(availability: 'available' | 'loading' | 'unavailable') {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <TriggerAccessPointCard appInfo={appInfo} availability={availability} canEdit />
+      <TriggerAccessPointCard appInfo={appInfo} availability={availability} canManageAccessPoint />
     </QueryClientProvider>,
   )
 }

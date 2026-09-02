@@ -1,5 +1,6 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
@@ -32,7 +33,7 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean

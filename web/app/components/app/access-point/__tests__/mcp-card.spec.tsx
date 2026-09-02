@@ -115,7 +115,7 @@ function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: Publis
     <QueryClientProvider client={queryClient}>
       <MCPAccessPointCard
         appInfo={cardAppInfo}
-        canEdit
+        canManageAccessPoint
         triggerModeDisabled={false}
         workflow={workflow}
         workflowLoading={false}

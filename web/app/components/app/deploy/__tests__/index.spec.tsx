@@ -739,6 +739,7 @@ function environmentTableProps(
 ): ComponentProps<typeof EnvironmentTable> {
   return {
     appId: APP_ID,
+    canViewAccessPoint: true,
     onChangeVersion: vi.fn(),
     onDeployLatest: vi.fn(),
     onDeployToEnvironment: vi.fn(),
@@ -748,7 +749,7 @@ function environmentTableProps(
   }
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
 let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
@@ -857,7 +858,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appPermissionKeys = [AppACLPermission.Deploy]
+    appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
     appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
@@ -1038,6 +1039,24 @@ describe('AppDeploy', () => {
       }),
     ).toBeDisabled()
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Bob')).toBeInTheDocument()
+  })
+
+  it('keeps Access Point status visible but removes links without view permission', () => {
+    appPermissionKeys = [AppACLPermission.Deploy]
+
+    render(<AppDeploy />)
+
+    const canaryRow = within(screen.getByRole('row', { name: /Canary/ }))
+    expect(
+      canaryRow.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeDisabled()
+    expect(
+      canaryRow.queryByRole('link', {
+        name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows only the trigger access point as active for a published trigger workflow', () => {
