@@ -1,8 +1,8 @@
 import type { ConditionValueMethodProps } from './condition-value-method'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import { Input } from '@langgenius/dify-ui/input'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
 import ConditionCommonVariableSelector from './condition-common-variable-selector'
 import ConditionValueMethod from './condition-value-method'
@@ -66,7 +66,10 @@ const ConditionString = ({
         <Input
           className="border-none bg-transparent outline-hidden hover:bg-transparent focus:bg-transparent focus:shadow-none"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onValueChange={onChange}
+          aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
+            ns: 'workflow',
+          })}
           placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
             ns: 'workflow',
           })}
