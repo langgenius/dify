@@ -43,10 +43,10 @@ class TestForgotPasswordSendEmailApi:
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features")
+    @patch("controllers.console.auth.forgot_password.SystemFeatureService.is_registration_allowed")
     def test_send_reset_email_success(
         self,
-        mock_get_features,
+        mock_is_registration_allowed,
         mock_send_email,
         mock_get_account,
         mock_is_ip_limit,
@@ -57,7 +57,7 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit.return_value = False
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "reset_token_123"
-        mock_get_features.return_value.is_allow_register = True
+        mock_is_registration_allowed.return_value = True
 
         # Act
         with app.test_request_context(
@@ -101,10 +101,10 @@ class TestForgotPasswordSendEmailApi:
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features")
+    @patch("controllers.console.auth.forgot_password.SystemFeatureService.is_registration_allowed")
     def test_send_reset_email_language_handling(
         self,
-        mock_get_features,
+        mock_is_registration_allowed,
         mock_send_email,
         mock_get_account,
         mock_is_ip_limit,
@@ -124,7 +124,7 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit.return_value = False
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token"
-        mock_get_features.return_value.is_allow_register = True
+        mock_is_registration_allowed.return_value = True
 
         # Act
         with app.test_request_context(
