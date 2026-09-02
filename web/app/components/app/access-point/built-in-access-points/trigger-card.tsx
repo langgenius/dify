@@ -123,7 +123,6 @@ export function TriggerAccessPointCard({
       status={status}
       highlighted={highlighted}
       showStatus={!active}
-      busy={statusUpdating}
     >
       {loading && (
         <div className="flex h-full min-h-40 flex-col gap-4 px-4 py-5">

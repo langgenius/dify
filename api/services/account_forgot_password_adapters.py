@@ -33,7 +33,7 @@ from services.entities.auth_entities import (
     ForgotPasswordTokenData,
     ForgotPasswordVerificationTokenData,
 )
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
@@ -262,7 +262,7 @@ class RedisForgotPasswordSecurityGateway(RedisAccountEmailSecurityGateway, Forgo
         )
 
 
-class FeatureServiceForgotPasswordRegistrationPolicy(ForgotPasswordRegistrationPolicy):
+class SystemFeatureServiceForgotPasswordRegistrationPolicy(ForgotPasswordRegistrationPolicy):
     @override
     def is_registration_allowed(self) -> bool:
-        return FeatureService.get_system_features().is_allow_register
+        return SystemFeatureService.is_registration_allowed()

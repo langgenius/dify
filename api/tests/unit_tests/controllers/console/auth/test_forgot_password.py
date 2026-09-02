@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 
-from controllers.console import wraps
 from controllers.console.auth import forgot_password
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -21,7 +20,6 @@ from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from enums import DeploymentEdition
 from services import account_errors
 from services.entities.account_entities import ForgotPasswordVerification
-from services.entities.feature_entities import SystemFeatureModel
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -75,14 +73,10 @@ class FakeForgotPasswordService:
 
 @pytest.fixture(autouse=True)
 def admit_forgot_password_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    monkeypatch.setattr(
-        wraps.FeatureService,
-        "get_system_features",
-        lambda: SystemFeatureModel(
-            deployment_edition=DeploymentEdition.CLOUD,
-            enable_email_password_login=True,
-        ),
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        ENABLE_EMAIL_PASSWORD_LOGIN=True,
     )
 
 

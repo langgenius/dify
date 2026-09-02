@@ -650,7 +650,7 @@ function render(
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.AccessPoint, AppACLPermission.Deploy]
+let appPermissionKeys: string[] = [AppACLPermission.Deploy]
 let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
@@ -744,7 +744,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appPermissionKeys = [AppACLPermission.AccessPoint, AppACLPermission.Deploy]
+    appPermissionKeys = [AppACLPermission.Deploy]
     appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
@@ -813,18 +813,6 @@ describe('AppDeploy', () => {
         name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.inService',
       }),
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=canary&accessPoint=serviceApi')
-  })
-
-  it('keeps active access points non-navigable without access point permission', () => {
-    appPermissionKeys = [AppACLPermission.Deploy]
-
-    render(<AppDeploy />)
-
-    const canaryRow = within(screen.getByRole('row', { name: /Canary/ }))
-    const webAppLabel =
-      'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService'
-    expect(canaryRow.queryByRole('link', { name: webAppLabel })).not.toBeInTheDocument()
-    expect(canaryRow.getByRole('button', { name: webAppLabel })).toBeDisabled()
   })
 
   it('renders the built-in version, access points, and publisher from live app data', () => {

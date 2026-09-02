@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Опис",
   "createTool.toolOutput.reserved": "Зарезервовано",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json та файли є зарезервованими змінними. Змінні з такими іменами не можуть з’являтися в схемі вихідних даних.",
+  "createTool.toolOutput.sourceNode": "Вихідний вузол",
   "createTool.toolOutput.title": "Вихідні дані інструменту",
   "createTool.urlError": "Введіть дійсну URL-адресу",
   "createTool.viewSchemaSpec": "Переглянути специфікацію OpenAPI-Swagger",

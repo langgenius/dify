@@ -78,7 +78,7 @@ export function EnvironmentServiceApiCard({
       highlighted={highlighted}
       switchDisabled={!canManage}
       onEnabledChange={apiQuery.isSuccess ? handleEnabledChange : undefined}
-      busy={apiMutation.isPending}
+      switchLoading={apiMutation.isPending}
     />
   )
 }

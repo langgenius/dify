@@ -174,7 +174,7 @@ export function EnvironmentWebAppCard({
         switchDisabled={!canManage}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
-        busy={siteMutation.isPending}
+        switchLoading={siteMutation.isPending}
         actions={
           <>
             <Button
