@@ -22,6 +22,7 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
+import { difyBuilderSessionBusyAtom } from '../dify-builder/session/state'
 import WorkflowPanel from '../workflow-panel'
 
 const api = vi.hoisted(() => ({

@@ -1,9 +1,9 @@
-import type { SessionView } from '@/app/components/dify-builder/types'
+import type { SessionView } from '../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
-import { difyBuilderSessionViewAtom } from '@/app/components/dify-builder/state'
 import DifyBuilderPanel from '../panel'
+import { difyBuilderSessionViewAtom } from '../session/state'
 import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
