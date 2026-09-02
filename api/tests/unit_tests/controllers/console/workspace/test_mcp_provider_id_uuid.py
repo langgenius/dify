@@ -23,7 +23,7 @@ _UUID = "11111111-2222-3333-4444-555555555555"
 
 
 class TestMCPProviderUpdatePayloadProviderIdIsUUID:
-    def test_accepts_valid_uuid(self):
+    def test_accepts_valid_uuid(self) -> None:
         payload = MCPProviderUpdatePayload(
             provider_id=_UUID,
             server_url="https://example.test",
@@ -34,7 +34,7 @@ class TestMCPProviderUpdatePayloadProviderIdIsUUID:
         )
         assert payload.provider_id == _UUID
 
-    def test_rejects_non_uuid_string(self):
+    def test_rejects_non_uuid_string(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             MCPProviderUpdatePayload(
                 provider_id="fast-mcp",
@@ -46,7 +46,7 @@ class TestMCPProviderUpdatePayloadProviderIdIsUUID:
             )
         assert "provider_id" in str(exc_info.value)
 
-    def test_rejects_empty_string(self):
+    def test_rejects_empty_string(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             MCPProviderUpdatePayload(
                 provider_id="",
@@ -60,20 +60,20 @@ class TestMCPProviderUpdatePayloadProviderIdIsUUID:
 
 
 class TestMCPProviderDeletePayloadProviderIdIsUUID:
-    def test_accepts_valid_uuid(self):
+    def test_accepts_valid_uuid(self) -> None:
         assert MCPProviderDeletePayload(provider_id=_UUID).provider_id == _UUID
 
-    def test_rejects_non_uuid_string(self):
+    def test_rejects_non_uuid_string(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             MCPProviderDeletePayload(provider_id="not-a-uuid")
         assert "provider_id" in str(exc_info.value)
 
 
 class TestMCPAuthPayloadProviderIdIsUUID:
-    def test_accepts_valid_uuid(self):
+    def test_accepts_valid_uuid(self) -> None:
         assert MCPAuthPayload(provider_id=_UUID).provider_id == _UUID
 
-    def test_rejects_non_uuid_string(self):
+    def test_rejects_non_uuid_string(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             MCPAuthPayload(provider_id="not-a-uuid")
         assert "provider_id" in str(exc_info.value)
