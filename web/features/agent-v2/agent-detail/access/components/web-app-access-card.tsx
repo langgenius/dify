@@ -161,7 +161,6 @@ export function WebAppAccessCard({
             }
           },
         )
-        toast.success(tCommon(($) => $['actionMsg.generatedSuccessfully']))
       },
       onError: () => {
         toast.error(tCommon(($) => $['actionMsg.generatedUnsuccessfully']))

@@ -74,11 +74,9 @@ vi.mock('@/utils/permission', () => ({
 
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    changeApiStatus: vi.fn(),
-    changeSiteStatus: vi.fn(),
+    handleAppStateChanged: vi.fn(),
     handleResult: vi.fn(),
     refreshAppDetail: vi.fn(),
-    regenerateSiteCode: vi.fn(),
     saveSiteConfig: vi.fn(),
   }),
 }))
