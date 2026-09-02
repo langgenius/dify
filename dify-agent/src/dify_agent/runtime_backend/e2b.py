@@ -22,6 +22,7 @@ from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
@@ -61,6 +62,10 @@ logger = logging.getLogger(__name__)
 
 class _E2BControlPlaneNotFoundError(RuntimeError):
     """Typed boundary error for SDK resources that no longer exist."""
+
+
+class _E2BControlPlaneCapacityExhaustedError(RuntimeError):
+    """Typed boundary error for provider-side Sandbox capacity exhaustion."""
 
 
 class _E2BFileEntry(Protocol):
@@ -135,7 +140,7 @@ class E2BSDKControlPlane:
         metadata: dict[str, str],
         on_timeout: Literal["kill", "pause"],
     ) -> _E2BSandbox:
-        from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
+        from e2b import AsyncSandbox, NotFoundException, RateLimitException, SandboxNotFoundException
 
         try:
             return cast(
@@ -154,6 +159,8 @@ class E2BSDKControlPlane:
             )
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+        except RateLimitException as exc:
+            raise _E2BControlPlaneCapacityExhaustedError(str(exc)) from exc
 
     async def connect(self, handle: str, *, timeout: int) -> _E2BSandbox:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
@@ -269,6 +276,8 @@ class E2BExecutionBindingBackend:
                 action=lambda: sandbox.pause(keep_memory=True),
             )
             return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
+        except _E2BControlPlaneCapacityExhaustedError as exc:
+            raise BindingCapacityExhaustedError(str(exc)) from exc
         except BaseException as exc:
             if sandbox is not None:
                 try:
