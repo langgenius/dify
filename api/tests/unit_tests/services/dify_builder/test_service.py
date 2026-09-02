@@ -854,6 +854,27 @@ def test_submit_action_update_model_rejects_missing_config(
         )
 
 
+def test_submit_action_stream_update_model_emits_terminal_state_frame(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``update_model`` settles synchronously and bumps the version. The stream
+    MUST emit a terminal ``state`` frame carrying the new version -- otherwise a
+    FE that tracks its held version off ``state`` frames keeps the stale value
+    and its next action 409s (regression class from the 409 review)."""
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    model_config = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, _config: None)
+
+    action = Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version)
+    frames = list(service.submit_action_stream(s.id, _actor(), action))
+
+    assert _business_event(frames[0]) == "snapshot"
+    state_frames = [f for f in frames if _business_event(f) == "state"]
+    assert state_frames, "update_model must emit a terminal state frame with the new version"
+
+
 def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDifyBuilderRepository) -> None:
     lock = FakeSessionLock()
     order: list[str] = []

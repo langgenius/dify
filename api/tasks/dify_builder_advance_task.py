@@ -137,11 +137,24 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     if terminal_error is not None:
         progress_bus.publish(session_id, terminal_error)
     elif completed is not None:
-        repo, dify, actor = completed
-        view = DifyBuilderService(
-            repo,
-            session_lock,
-            lambda *a, **k: None,
-            get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
-        ).get_session_view(session_id, actor)
-        progress_bus.publish(session_id, {"kind": "state", **asdict(view)})
+        # The advance already succeeded and the lock is released; the session is
+        # durable. But the view projection (read_graph) or the publish itself can
+        # still raise -- and if this block let that escape, NO terminal frame
+        # would reach the SSE client, hanging its stream to the deadline with a
+        # stale held version (-> 409 on its next action). Fall back to a terminal
+        # error frame so the client stream always ends.
+        try:
+            repo, dify, actor = completed
+            view = DifyBuilderService(
+                repo,
+                session_lock,
+                lambda *a, **k: None,
+                get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
+            ).get_session_view(session_id, actor)
+            progress_bus.publish(session_id, {"kind": "state", **asdict(view)})
+        except Exception:
+            logger.exception("dify_builder terminal state projection/publish failed for session %s", session_id)
+            try:
+                progress_bus.publish(session_id, {"kind": "error", "error": "step failed"})
+            except Exception:
+                logger.exception("dify_builder terminal error frame also failed to publish for session %s", session_id)
