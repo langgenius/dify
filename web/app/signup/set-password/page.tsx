@@ -2,7 +2,13 @@
 import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -49,28 +55,8 @@ const ChangePasswordForm = () => {
   const pageTitle = t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const showErrorMessage = useCallback((message: string) => {
-    toast.error(message)
-  }, [])
-
-  const valid = useCallback(() => {
-    if (!password.trim()) {
-      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
-      return false
-    }
-    return true
-  }, [password, confirmPassword, showErrorMessage, t])
-
   const handleSubmit = useCallback(async () => {
-    if (!valid()) return
+    if (isPending) return
     try {
       const res = await register({
         token,
@@ -104,7 +90,6 @@ const ChangePasswordForm = () => {
   }, [
     password,
     token,
-    valid,
     confirmPassword,
     register,
     locale,
@@ -112,6 +97,7 @@ const ChangePasswordForm = () => {
     router,
     searchParams,
     t,
+    isPending,
   ])
 
   return (
@@ -128,41 +114,66 @@ const ChangePasswordForm = () => {
 
         <div className="mx-auto mt-6 w-full">
           <Form onFormSubmit={() => void handleSubmit()}>
-            <Field name="password" className="mb-5">
-              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
-                {t(($) => $['account.newPassword'], { ns: 'common' })}
-              </FieldLabel>
+            <Field
+              name="password"
+              validate={(value) => {
+                const passwordValue = String(value)
+                if (!passwordValue.trim())
+                  return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                return validPassword.test(passwordValue)
+                  ? null
+                  : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
               <Input
                 type="password"
+                required
                 autoComplete="new-password"
                 spellCheck={false}
                 value={password}
                 onValueChange={setPassword}
                 placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
               />
-              <FieldDescription className="py-0 text-text-secondary">
-                {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-              </FieldDescription>
+              <FieldValidity>
+                {({ validity }) =>
+                  validity.valid !== false ? (
+                    <FieldDescription>
+                      {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                    </FieldDescription>
+                  ) : null
+                }
+              </FieldValidity>
+              <FieldError>
+                {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
+                  ns: 'login',
+                })}
+              </FieldError>
             </Field>
-            <Field name="confirmPassword" className="mb-5">
-              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
-                {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-              </FieldLabel>
+            <Field
+              name="confirmPassword"
+              validate={(value) => {
+                const confirmationValue = String(value)
+                return !confirmationValue || confirmationValue === password
+                  ? null
+                  : t(($) => $['account.notEqual'], { ns: 'common' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
               <Input
                 type="password"
+                required
                 autoComplete="new-password"
                 spellCheck={false}
                 value={confirmPassword}
                 onValueChange={setConfirmPassword}
                 placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
               />
+              <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
             </Field>
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              disabled={isPending || !password || !confirmPassword}
-            >
+            <Button type="submit" variant="primary" className="w-full" loading={isPending}>
               {t(($) => $.changePasswordBtn, { ns: 'login' })}
             </Button>
           </Form>

@@ -95,4 +95,21 @@ describe('Signup Check Code Page', () => {
     })
     expect(mockVerifyCode).toHaveBeenCalledTimes(1)
   })
+
+  it('associates one localized error with an incomplete verification code', async () => {
+    const user = userEvent.setup()
+    render(<CheckCode />)
+
+    const codeInput = screen.getByRole('textbox', {
+      name: 'login.checkCode.verificationCode',
+    })
+    await user.type(codeInput, '12345{Enter}')
+
+    const errors = await screen.findAllByText('login.checkCode.invalidCode')
+    expect(errors).toHaveLength(1)
+    expect(codeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
+    expect(codeInput).toHaveFocus()
+    expect(mockVerifyCode).not.toHaveBeenCalled()
+  })
 })

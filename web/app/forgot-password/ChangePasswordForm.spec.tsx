@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
@@ -65,17 +66,16 @@ describe('ChangePasswordForm', () => {
     })
 
     it('submits with T2 (from validity response), NOT T1 (from URL)', async () => {
+      const user = userEvent.setup()
       mockChangePassword.mockResolvedValue({ result: 'success' })
 
       render(<ChangePasswordForm />)
 
-      const inputs = Array.from(
-        document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
-      ) as [HTMLInputElement, HTMLInputElement]
-      fireEvent.change(inputs[0], { target: { value: VALID_PASSWORD } })
-      fireEvent.change(inputs[1], { target: { value: VALID_PASSWORD } })
-
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      await user.type(passwordInput, VALID_PASSWORD)
+      await user.type(confirmPasswordInput, VALID_PASSWORD)
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockChangePassword).toHaveBeenCalledWith({
@@ -90,21 +90,92 @@ describe('ChangePasswordForm', () => {
     })
 
     it('uses the success title after the password is changed', async () => {
+      const user = userEvent.setup()
       mockChangePassword.mockResolvedValue({ result: 'success' })
 
       render(<ChangePasswordForm />)
 
-      const inputs = Array.from(
-        document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
-      ) as [HTMLInputElement, HTMLInputElement]
-      fireEvent.change(inputs[0], { target: { value: VALID_PASSWORD } })
-      fireEvent.change(inputs[1], { target: { value: VALID_PASSWORD } })
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
+      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
+      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
+      await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
 
       expect(
         await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' }),
       ).toBeInTheDocument()
       expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+    })
+
+    it('keeps one associated error when an invalid password is cleared', async () => {
+      const user = userEvent.setup()
+      render(<ChangePasswordForm />)
+
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+
+      await user.type(passwordInput, 'weak')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
+
+      const invalidErrors = await screen.findAllByText('login.error.passwordInvalid')
+      expect(invalidErrors).toHaveLength(1)
+      expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+      expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+      expect(passwordInput).toHaveFocus()
+      expect(mockChangePassword).not.toHaveBeenCalled()
+
+      await user.clear(passwordInput)
+      await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
+
+      const emptyErrors = await screen.findAllByText('login.error.passwordEmpty')
+      expect(emptyErrors).toHaveLength(1)
+      expect(screen.queryByText('login.error.passwordInvalid')).not.toBeInTheDocument()
+      expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+      expect(passwordInput).toHaveAccessibleDescription('login.error.passwordEmpty')
+      expect(passwordInput).toHaveFocus()
+      expect(mockChangePassword).not.toHaveBeenCalled()
+    })
+
+    it('associates a password mismatch with the confirmation field', async () => {
+      const user = userEvent.setup()
+      render(<ChangePasswordForm />)
+
+      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
+
+      const error = await screen.findByText('common.account.notEqual')
+      expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
+      expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(confirmPasswordInput).toHaveFocus()
+      expect(mockChangePassword).not.toHaveBeenCalled()
+    })
+
+    it('prevents duplicate submissions while the password is changing', async () => {
+      const user = userEvent.setup()
+      let resolveRequest:
+        | ((value: Awaited<ReturnType<typeof changePasswordWithToken>>) => void)
+        | undefined
+      mockChangePassword.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRequest = resolve
+        }),
+      )
+
+      render(<ChangePasswordForm />)
+
+      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
+      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
+
+      const submitButton = screen.getByRole('button', { name: /common\.operation\.reset/ })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(submitButton).toHaveAttribute('aria-disabled', 'true')
+      })
+      await user.click(submitButton)
+      expect(mockChangePassword).toHaveBeenCalledTimes(1)
+
+      resolveRequest?.({ result: 'success' })
+      await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' })
     })
   })
 

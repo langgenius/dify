@@ -1,8 +1,15 @@
 'use client'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -12,7 +19,6 @@ import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { basePath } from '@/utils/var'
-import Input from '../components/base/input'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -24,6 +30,7 @@ const ChangePasswordForm = () => {
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const isVerifyingToken = !isTokenMissing && !verifyTokenRes
   const isTokenInvalid = isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)
@@ -36,30 +43,11 @@ const ChangePasswordForm = () => {
         : t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(documentTitle)
 
-  const showErrorMessage = useCallback((message: string) => {
-    toast.error(message)
-  }, [])
-
-  const valid = useCallback(() => {
-    if (!password.trim()) {
-      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
-      return false
-    }
-    return true
-  }, [password, confirmPassword, showErrorMessage, t])
-
   const handleChangePassword = useCallback(async () => {
+    if (isSubmitting) return
     const resetToken = verifyTokenRes?.token ?? ''
 
-    if (!valid()) return
+    setIsSubmitting(true)
     try {
       await changePasswordWithToken({
         url: '/forgot-password/resets',
@@ -72,8 +60,10 @@ const ChangePasswordForm = () => {
       setShowSuccess(true)
     } catch {
       await revalidateToken()
+    } finally {
+      setIsSubmitting(false)
     }
-  }, [confirmPassword, password, revalidateToken, verifyTokenRes?.token, valid])
+  }, [confirmPassword, isSubmitting, password, revalidateToken, verifyTokenRes?.token])
 
   return (
     <div
@@ -112,54 +102,80 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div className="relative">
-              {/* Password */}
-              <div className="mb-5">
-                <label
-                  htmlFor="password"
-                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                >
-                  {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </label>
+            <Form
+              className="relative"
+              onFormSubmit={() => {
+                void handleChangePassword()
+              }}
+            >
+              <Field
+                name="password"
+                validate={(value) => {
+                  const passwordValue = String(value)
+                  if (!passwordValue.trim())
+                    return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                  return validPassword.test(passwordValue)
+                    ? null
+                    : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
                 <Input
-                  id="password"
                   type="password"
+                  required
+                  autoComplete="new-password"
+                  spellCheck={false}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onValueChange={setPassword}
                   placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                  className="mt-1"
                 />
-                <div className="mt-1 text-xs text-text-secondary">
-                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-                </div>
-              </div>
-              {/* Confirm Password */}
-              <div className="mb-5">
-                <label
-                  htmlFor="confirmPassword"
-                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                >
-                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-                </label>
+                <FieldValidity>
+                  {({ validity }) =>
+                    validity.valid !== false ? (
+                      <FieldDescription>
+                        {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                      </FieldDescription>
+                    ) : null
+                  }
+                </FieldValidity>
+                <FieldError>
+                  {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
+                    ns: 'login',
+                  })}
+                </FieldError>
+              </Field>
+              <Field
+                name="confirmPassword"
+                validate={(value) => {
+                  const confirmationValue = String(value)
+                  return !confirmationValue || confirmationValue === password
+                    ? null
+                    : t(($) => $['account.notEqual'], { ns: 'common' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
                 <Input
-                  id="confirmPassword"
                   type="password"
+                  required
+                  autoComplete="new-password"
+                  spellCheck={false}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onValueChange={setConfirmPassword}
                   placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
-                  className="mt-1"
                 />
-              </div>
-              <div>
-                <Button
-                  variant="primary"
-                  className="w-full text-sm!"
-                  onClick={handleChangePassword}
-                >
-                  {t(($) => $['operation.reset'], { ns: 'common' })}
-                </Button>
-              </div>
-            </div>
+                <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
+              </Field>
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full text-sm!"
+                loading={isSubmitting}
+              >
+                {t(($) => $['operation.reset'], { ns: 'common' })}
+              </Button>
+            </Form>
           </div>
         </div>
       )}
@@ -167,7 +183,10 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
-              <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
+              <span
+                className="i-heroicons-check-circle-solid size-10 text-text-success"
+                aria-hidden="true"
+              />
             </div>
             <h1 className="text-[32px] font-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}

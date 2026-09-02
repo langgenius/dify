@@ -1,9 +1,9 @@
 'use client'
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,8 +34,8 @@ export default function CheckCode() {
   const token = decodeURIComponent(searchParams.get('token') as string)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const language = i18n.language
-  const [code, setVerifyCode] = useState('')
-  const [loading, setIsLoading] = useState(false)
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [verifyTurnstileToken, setVerifyTurnstileToken] = useState('')
   const [verifyTurnstileGeneration, setVerifyTurnstileGeneration] = useState(0)
@@ -55,17 +55,9 @@ export default function CheckCode() {
 
     let shouldResetTurnstile = false
     try {
-      if (!code.trim()) {
-        toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
-        return
-      }
-      if (!/^\d{6}$/.test(code)) {
-        toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
-        return
-      }
       if (isTurnstileRequired && !verifyTurnstileToken) return
 
-      setIsLoading(true)
+      setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
       const ret = await emailLoginWithCode({
         email,
@@ -90,21 +82,18 @@ export default function CheckCode() {
           await queryClient.fetchQuery(profileQueryOptions)
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
+      } else {
+        toast.error(ret.data)
       }
     } catch (error) {
       console.error(error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
       if (shouldResetTurnstile) {
         setVerifyTurnstileToken('')
         setVerifyTurnstileGeneration((value) => value + 1)
       }
     }
-  }
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    verify()
   }
 
   useEffect(() => {
@@ -148,7 +137,10 @@ export default function CheckCode() {
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
+        <span
+          className="i-ri-mail-send-fill size-6 text-text-accent-light-mode-only"
+          aria-hidden="true"
+        />
       </div>
       <div className="pt-2 pb-4">
         <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
@@ -162,24 +154,29 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
-          {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
-        </label>
-        <Input
-          ref={codeInputRef}
-          id="code"
-          name="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={(e) => setVerifyCode(e.target.value)}
-          maxLength={6}
-          className="mt-1"
-          placeholder={
-            t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
-          }
-        />
+      <Form onFormSubmit={() => void verify()}>
+        <Field name="code">
+          <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
+          <Input
+            ref={codeInputRef}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            pattern="[0-9]{6}"
+            value={code}
+            onValueChange={setCode}
+            maxLength={6}
+            placeholder={
+              t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
+            }
+          />
+          <FieldError match="valueMissing">
+            {t(($) => $['checkCode.emptyCode'], { ns: 'login' })}
+          </FieldError>
+          <FieldError match="patternMismatch">
+            {t(($) => $['checkCode.invalidCode'], { ns: 'login' })}
+          </FieldError>
+        </Field>
         {shouldRenderTurnstile && (
           <Turnstile
             action={showResendTurnstile ? 'signin_code' : 'signin_code_verify'}
@@ -208,10 +205,7 @@ export default function CheckCode() {
           type="submit"
           loading={loading}
           disabled={
-            loading ||
-            isResending ||
-            showResendTurnstile ||
-            (isTurnstileRequired && !verifyTurnstileToken)
+            isResending || showResendTurnstile || (isTurnstileRequired && !verifyTurnstileToken)
           }
           className="my-3 w-full"
           variant="primary"
@@ -229,7 +223,7 @@ export default function CheckCode() {
           }
           restartOnResend={false}
         />
-      </form>
+      </Form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
@@ -239,7 +233,7 @@ export default function CheckCode() {
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         <span className="inline-block rounded-full bg-background-default-dimmed p-1">
-          <RiArrowLeftLine aria-hidden size={12} />
+          <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </span>
         <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
