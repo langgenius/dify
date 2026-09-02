@@ -15,6 +15,7 @@ const systemFeaturesQueryKey = ['console', 'system-features']
 const getSystemFeatures = vi.fn()
 const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
+  scriptProps: vi.fn(),
 }))
 
 // Mock react's memo to just return the function
@@ -52,21 +53,15 @@ vi.mock('@/next/headers', () => ({
   headers: mocks.headers,
 }))
 
-// Mock next/script
-type ScriptProps = {
-  children?: ReactNode
-  id?: string
-  src?: string
+type ZendeskScriptProps = {
   nonce?: string
-  'data-testid'?: string
+  widgetKey: string
 }
-vi.mock('@/next/script', () => ({
-  __esModule: true,
-  default: vi.fn(({ children, id, src, nonce, 'data-testid': testId }: ScriptProps) => (
-    <div data-testid={testId} id={id} data-src={src} data-nonce={nonce}>
-      {children}
-    </div>
-  )),
+vi.mock('../script', () => ({
+  ZendeskScript: (props: ZendeskScriptProps) => {
+    mocks.scriptProps(props)
+    return <div data-testid="zendesk-runtime" data-nonce={props.nonce} />
+  },
 }))
 
 describe('Zendesk', () => {
@@ -118,25 +113,13 @@ describe('Zendesk', () => {
     expect(result).toBeNull()
   })
 
-  it('should render scripts correctly in non-production environment', async () => {
+  it('should mount the runtime without a nonce in non-production', async () => {
     mockIsProd = false
     const result = await renderZendesk()
     render(result as React.ReactElement) // result is ReactNode, which render accepts but types might be picky
 
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toBeInTheDocument()
-    expect(snippet).toHaveAttribute('id', 'ze-snippet')
-    expect(snippet).toHaveAttribute(
-      'data-src',
-      'https://static.zdassets.com/ekr/snippet.js?key=test-key',
-    )
-    expect(snippet).toHaveAttribute('data-nonce', '')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toBeInTheDocument()
-    expect(init).toHaveAttribute('id', 'ze-init')
-    expect(init).toHaveTextContent("window.zE('messenger', 'hide')")
-    expect(init).toHaveAttribute('data-nonce', '')
+    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', '')
+    expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: '', widgetKey: 'test-key' })
   })
 
   it('should render scripts with nonce in production environment', async () => {
@@ -145,11 +128,8 @@ describe('Zendesk', () => {
     const result = await renderZendesk()
     render(result as React.ReactElement)
 
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toHaveAttribute('data-nonce', 'prod-nonce')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toHaveAttribute('data-nonce', 'prod-nonce')
+    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', 'prod-nonce')
+    expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: 'prod-nonce', widgetKey: 'test-key' })
   })
 
   it('should render scripts with empty nonce in production when header is missing', async () => {
@@ -158,10 +138,6 @@ describe('Zendesk', () => {
     const result = await renderZendesk()
     render(result as React.ReactElement)
 
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toHaveAttribute('data-nonce', '')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toHaveAttribute('data-nonce', '')
+    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', '')
   })
 })
