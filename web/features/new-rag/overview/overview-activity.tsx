@@ -253,12 +253,12 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
           {t(($) => $['newKnowledge.overview.allActivity'])}
         </Button>
       </header>
-      <Panel className="flex h-63.5 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
+      <Panel className="flex max-h-76.25 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
         {loading || activities.length ? (
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
-            className="min-w-151"
+            className="min-h-0 min-w-151 overflow-x-hidden overflow-y-auto overscroll-contain"
           >
             <div
               role="row"
@@ -283,7 +283,7 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
                     <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
                   </div>
                 ))
-              : activities.slice(0, 5).map((activity) => (
+              : activities.map((activity) => (
                   <div
                     key={activity.id}
                     role="row"

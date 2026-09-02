@@ -16,6 +16,7 @@ const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'running',
 ])
 const TASK_PAGE_SIZE = 20
+const ACTIVITY_PREVIEW_PAGE_SIZE = 20
 
 export const overviewKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing overview knowledge space id')
@@ -184,7 +185,7 @@ const activityPreviewQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
     input: {
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
-      query: { limit: 5 },
+      query: { limit: ACTIVITY_PREVIEW_PAGE_SIZE },
     },
     refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
   }),

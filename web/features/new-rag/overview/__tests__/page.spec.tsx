@@ -385,6 +385,7 @@ describe('KnowledgeOverviewPage', () => {
     permissionState.workspaceKeys = ['dataset.external.connect']
     systemFeaturesState.uploadAvailable = true
     queryData.attention.data = []
+    queryData.activity.data.splice(1)
     queryData.activity.data[0]!.action = 'source.synced'
     queryData.activity.data[0]!.actor = { id: 'dify-account:member-1', type: 'member' }
     queryData.activity.data[0]!.details = { count: 1 }
@@ -541,6 +542,27 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(screen.getByText('Ada')).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.overview.system')).not.toBeInTheDocument()
+  })
+
+  it('keeps activities beyond the seventh row available in the recent activity list', () => {
+    const activity = queryData.activity.data[0]!
+    queryData.activity.data.push(
+      ...Array.from({ length: 7 }, (_, index) => ({
+        ...activity,
+        id: `activity-${index + 2}`,
+      })),
+    )
+
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const recentActivity = screen.getByRole('table', {
+      name: 'dataset.newKnowledge.overview.recentActivity',
+    })
+    const activityOptions = queryOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: { query: { limit: number } }
+    }
+    expect(activityOptions.input.query.limit).toBeGreaterThan(7)
+    expect(within(recentActivity).getAllByRole('row')).toHaveLength(9)
   })
 
   it('reveals resolved modules while waiting to decide the page empty state', () => {
