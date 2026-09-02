@@ -26,7 +26,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
-import { useRouter } from '@/next/navigation'
 import { marketplaceQuery } from '@/service/client'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import {
@@ -183,7 +182,6 @@ export function MarketplaceSearchAutocomplete({
   value,
 }: MarketplaceSearchAutocompleteProps) {
   const { t } = useTranslation()
-  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const searchRootRef = useRef<HTMLDivElement>(null)
   const resultsPanelRef = useRef<HTMLDivElement>(null)
@@ -208,7 +206,7 @@ export function MarketplaceSearchAutocomplete({
         ? getPluginDetailLinkInMarketplace(selection.plugin)
         : getTemplateDetailLinkInMarketplace(selection.template)
     setIsOpen(false)
-    router.push(href)
+    window.location.assign(href)
   }
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
