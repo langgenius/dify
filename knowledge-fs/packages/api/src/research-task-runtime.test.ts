@@ -957,6 +957,119 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("persists and resumes a text-plus-image Research checkpoint scoped by the expanded query", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const imageId = "00000000-0000-4000-8000-000000000001";
+    const expansion = "Image OCR: invoice 42";
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [QUERY_IMAGE_REFERENCES_METADATA_KEY]: [{ uploadFileId: imageId }],
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+      query: "What does this diagram show?",
+    });
+    const partials = createInMemoryResearchTaskPartialResultRepository({
+      maxListLimit: 10,
+      maxResults: 10,
+    });
+    const generationInputs: Array<Record<string, unknown>> = [];
+    let generationAttempt = 0;
+    let now = 1_000;
+    const durableCheckpoint = (retrievalQuery: string) => ({
+      evidenceBundle: {
+        ...evidenceBundle(),
+        query: "What does this diagram show?",
+        queryImages: [
+          {
+            byteSize: 3,
+            mimeType: "image/png" as const,
+            sha256: "a".repeat(64),
+            uploadFileId: imageId,
+          },
+        ],
+        retrievalQuery,
+        traceId: JOB_ID,
+      },
+      searchState: {
+        ...durableRetrievalCheckpoint(frozenRuntime).searchState,
+        query: retrievalQuery,
+      },
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      allowLegacyProfileFallback: false,
+      generator: {
+        stream: async function* (input) {
+          generationInputs.push(input as unknown as Record<string, unknown>);
+          generationAttempt += 1;
+          // Mirrors createQueryImageAwareQueryGenerator: expand once, then retrieve with the
+          // user's text joined to the expansion while the bundle keeps the raw text as `query`.
+          const persistedExpansion = input.queryImageExpansion ?? expansion;
+          if (!input.queryImageExpansion) await input.onQueryImageExpansion?.(expansion);
+          const retrievalQuery = [input.query.trim(), persistedExpansion].join("\n\n");
+          if (generationAttempt === 1) {
+            await input.onResearchDurableCheckpoint?.(durableCheckpoint(retrievalQuery));
+            throw new Error("answer provider timed out after retrieval");
+          }
+          expect(input.researchDurableCheckpoint).toEqual(durableCheckpoint(retrievalQuery));
+          yield traceStep("query.retrieve", { checkpointed: true, itemCount: 1 });
+          yield traceStep("query.answer");
+          yield { delta: "Diagram answer", type: "delta" as const };
+          yield {
+            finishReason: "retrieval-evidence",
+            metadata: { evidenceBundle: input.researchDurableCheckpoint?.evidenceBundle },
+            type: "done" as const,
+          };
+        },
+      },
+      maxRetryDelayMs: 1,
+      now: () => now,
+      partials,
+      projectionSnapshotResolver: { resolve: async () => frozenRuntime.projectionSnapshot },
+      queryImageResolver: {
+        resolve: async () => [
+          {
+            body: new Uint8Array([1, 2, 3]),
+            byteSize: 3,
+            mimeType: "image/png" as const,
+            sha256: "a".repeat(64),
+            uploadFileId: imageId,
+          },
+        ],
+      },
+      retryDelayMs: 1,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ retryScheduled: 1, succeeded: 0 });
+    expect(repository.job.error).toBe("answer provider timed out after retrieval");
+    expect(repository.job.metadata).toHaveProperty(
+      RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
+    );
+    expect(repository.job.metadata[QUERY_IMAGE_EXPANSION_METADATA_KEY]).toBe(expansion);
+
+    now = 1_002;
+    await expect(runtime.tick()).resolves.toMatchObject({ retryScheduled: 0, succeeded: 1 });
+    expect(repository.job.stage).toBe("completed");
+    expect(generationInputs).toHaveLength(2);
+    expect(generationInputs[1]).toMatchObject({
+      queryImageExpansion: expansion,
+      researchDurableCheckpoint: durableCheckpoint(`What does this diagram show?\n\n${expansion}`),
+    });
+    // The retrieval boundary is streamed as a partial result before the answer is persisted.
+    const persisted = await partials.list({
+      limit: 10,
+      researchTaskJobId: JOB_ID,
+      tenantId: "tenant-1",
+    });
+    expect(persisted.items.at(-1)).toMatchObject({
+      answer: "Diagram answer",
+      evidenceBundle: { query: "What does this diagram show?", retrievalQuery: expect.any(String) },
+    });
+  });
+
   it("reserves each Research model call and reconciles it with Dify token usage", async () => {
     const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
     const repository = new MemoryDurableRepository({

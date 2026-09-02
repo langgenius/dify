@@ -235,6 +235,72 @@ describe("Research retrieval durable search checkpoint", () => {
     ).toThrow("checkpoint trace mismatch");
   });
 
+  it("scopes the durable checkpoint by the vision-expanded retrieval query", () => {
+    const retrievalQuery = "invoice retention\n\nImage OCR: invoice 42";
+    const queryImage = {
+      byteSize: 3,
+      mimeType: "image/png" as const,
+      sha256: "a".repeat(64),
+      uploadFileId: "70000000-0000-4000-8000-000000000001",
+    };
+    // The first V3 boundary Research persists: planned, no judgement, no tree frontier.
+    const searchState = (query: string) => ({
+      budget: {
+        elapsedMs: 10,
+        exhaustedReasons: [],
+        modelCalls: 1,
+        openedResources: 0,
+        retrievalSteps: 0,
+        rounds: 0,
+        supplementalSearches: 0,
+      },
+      fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+      knowledgeSpaceId: SPACE_ID,
+      phase: "planned" as const,
+      publicationId: PUBLICATION_ID,
+      query,
+      queryPlan: {
+        evidenceDimensions: ["retention"],
+        intent: "direct" as const,
+        subqueries: [],
+        useGraph: false,
+      },
+      sequence: 0,
+      tenantId: "tenant-1",
+      traceId: TRACE_ID,
+      version: ResearchEvidenceRetrievalCheckpointVersion,
+    });
+
+    // A mixed text+image run keeps the user's text as `query` and retrieves with the expansion.
+    expect(
+      validateResearchRetrievalDurableCheckpoint({
+        evidenceBundle: { ...evidenceBundle(), queryImages: [queryImage], retrievalQuery },
+        searchState: searchState(retrievalQuery),
+      }).evidenceBundle,
+    ).toMatchObject({ query: "invoice retention", retrievalQuery });
+
+    // An image-only run has no user text at all.
+    expect(
+      validateResearchRetrievalDurableCheckpoint({
+        evidenceBundle: {
+          ...evidenceBundle(),
+          query: "",
+          queryImages: [queryImage],
+          retrievalQuery: "Image OCR: invoice 42",
+        },
+        searchState: searchState("Image OCR: invoice 42"),
+      }).searchState.query,
+    ).toBe("Image OCR: invoice 42");
+
+    // The search state must still match what was actually retrieved, not the raw text.
+    expect(() =>
+      validateResearchRetrievalDurableCheckpoint({
+        evidenceBundle: { ...evidenceBundle(), queryImages: [queryImage], retrievalQuery },
+        searchState: searchState("invoice retention"),
+      }),
+    ).toThrow("durable checkpoint scope mismatch");
+  });
+
   it("rehydrates checkpoint evidence with bounded citation and source fallbacks", () => {
     const base = evidenceBundle();
     const item = {

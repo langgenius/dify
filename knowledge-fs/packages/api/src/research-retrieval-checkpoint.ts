@@ -304,8 +304,12 @@ export function validateResearchRetrievalDurableCheckpoint(
   const envelope = durableCheckpointEnvelopeSchema.parse(value);
   const evidenceBundle = EvidenceBundleSchema.parse(envelope.evidenceBundle);
   const searchState = parseAnyResearchRetrievalSearchCheckpoint(envelope.searchState);
+  // The search state is scoped by the query that was actually retrieved. A query-image run keeps
+  // the user's text in `query` and records the vision-expanded text it retrieved with in
+  // `retrievalQuery`, so the scope must be compared against the latter when present.
+  const retrievedQuery = evidenceBundle.retrievalQuery ?? evidenceBundle.query;
   if (
-    evidenceBundle.query !== searchState.query ||
+    retrievedQuery !== searchState.query ||
     (evidenceBundle.traceId !== undefined && evidenceBundle.traceId !== searchState.traceId)
   ) {
     throw new Error("Research retrieval durable checkpoint scope mismatch");
