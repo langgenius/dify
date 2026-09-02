@@ -248,6 +248,22 @@ def test_every_way_authenticate_rejects_a_bearer_answers_the_same_401(
     assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
 
 
+def test_an_unresolvable_external_bearer_on_community_is_refused_as_a_bearer_not_an_edition(
+    app: Flask, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_RequiresEnterprise` runs after `authenticate`. A `dfoe_` string with no
+    live row must hear the same 401 as any bad bearer; a 403
+    `external_sso_requires_ee` first would let an unauthenticated caller
+    learn the deployment edition.
+    """
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    _authenticates_for_real(monkeypatch, _resolver_with_no_live_row(), token_type=TokenType.OAUTH_EXTERNAL_SSO)
+
+    refusal = _refuse(app, f"{TokenType.OAUTH_EXTERNAL_SSO.prefix}garbage")
+
+    assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
+
+
 def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Pins that the `expired` row above really took the expiry branch, rather
     than reaching the same answer as a token that was never minted.

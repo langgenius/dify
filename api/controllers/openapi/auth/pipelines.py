@@ -65,8 +65,9 @@ class AccountPipeline(Pipeline, serves=AccountSubject):
 
 
 class _RequiresEnterprise(Requirement):
-    """A gate on the token kind, not on a route, so no endpoint declares it and
-    it stays private to this module.
+    """A gate on the token kind, not on a route, so no endpoint declares it.
+    It runs after `authenticate` on purpose: a `dfoe_` string no row backs
+    answers 401 like any bad bearer, so the edition cannot be probed.
     """
 
     rank = Rank.FIRST
