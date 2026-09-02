@@ -1,10 +1,10 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -83,8 +83,13 @@ export default function CheckCode() {
           {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
         </label>
         <Input
+          id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
           value={code}
-          onChange={(e) => setVerifyCode(e.target.value)}
+          onValueChange={setVerifyCode}
           maxLength={6}
           className="mt-1"
           placeholder={

@@ -69,9 +69,9 @@ def check_credential_policy_compliance(
         CheckCredentialPolicyComplianceRequest,
         PluginManagerService,
     )
-    from services.feature_service import FeatureService
+    from services.system_feature_service import SystemFeatureService
 
-    if not FeatureService.is_plugin_manager_enabled() or not credential_id:
+    if not SystemFeatureService.is_plugin_manager_enabled() or not credential_id:
         return
 
     # Check if credential exists in database first (if requested)

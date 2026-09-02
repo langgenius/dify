@@ -55,7 +55,10 @@ def _patch_wraps(
     monkeypatch.setattr(console_wraps.db, "session", session_registry)
     with (
         patch("controllers.console.wraps.dify_config", console_dify),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+            return_value=wraps_features.enable_email_password_login,
+        ),
         patch("controllers.web.login.dify_config", web_dify),
     ):
         yield
