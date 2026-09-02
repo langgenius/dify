@@ -22,7 +22,13 @@ import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-a
 import { useUndeployWorkflow } from './use-undeploy-workflow'
 import { toDeploymentVersion } from './version'
 
-function AppDeployContent({ appId, canAccessPoint }: { appId: string; canAccessPoint: boolean }) {
+function AppDeployContent({
+  appId,
+  canViewAccessPoint,
+}: {
+  appId: string
+  canViewAccessPoint: boolean
+}) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -86,10 +92,10 @@ function AppDeployContent({ appId, canAccessPoint }: { appId: string; canAccessP
         </header>
 
         <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2">
-          <BuiltInEnvironmentCard canAccessPoint={canAccessPoint} />
+          <BuiltInEnvironmentCard canViewAccessPoint={canViewAccessPoint} />
           <EnvironmentTable
             appId={appId}
-            canAccessPoint={canAccessPoint}
+            canViewAccessPoint={canViewAccessPoint}
             onDeployToEnvironment={(environment) =>
               setDeploymentRequest({
                 environment: environment.display_name,
@@ -140,17 +146,17 @@ export default function AppDeploy() {
 
   if (!appDetail) return <Loading type="app" />
 
-  const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
+  const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail.maintainer,
     workspacePermissionKeys,
   })
 
-  if (appDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy) return null
+  if (appDetail.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
 
   return (
     <AppDeployStateBoundary appId={appDetail.id}>
-      <AppDeployContent appId={appDetail.id} canAccessPoint={appACLCapabilities.canAccessPoint} />
+      <AppDeployContent appId={appDetail.id} canViewAccessPoint={canViewAccessPoint} />
     </AppDeployStateBoundary>
   )
 }

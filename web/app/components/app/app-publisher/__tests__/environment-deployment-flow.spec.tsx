@@ -288,14 +288,17 @@ function seedPublishedWorkflowQueries(queryClient: QueryClient) {
 
 function renderFlow(
   deployment = createDeployment(),
-  { isDeploymentError = false }: { isDeploymentError?: boolean } = {},
+  {
+    canViewAccessPoint = true,
+    isDeploymentError = false,
+  }: { canViewAccessPoint?: boolean; isDeploymentError?: boolean } = {},
 ) {
   const queryClient = createFlowQueryClient(deployment.environment.id)
 
   return render(
     <PublisherEnvironmentFlow
       appId="app-1"
-      canAccessPoint
+      canViewAccessPoint={canViewAccessPoint}
       deployment={deployment}
       environmentId={deployment.environment.id}
       environmentName={deployment.environment.display_name}
@@ -335,7 +338,7 @@ function renderFlowWithPolling(deployment = createDeployment()) {
         <PublisherPollingObserver />
         <PublisherEnvironmentFlow
           appId="app-1"
-          canAccessPoint
+          canViewAccessPoint
           deployment={deployment}
           environmentId={deployment.environment.id}
           environmentName={deployment.environment.display_name}
@@ -480,6 +483,7 @@ describe('PublisherEnvironmentFlow', () => {
     render(
       <PublisherEnvironmentFlow
         appId="app-1"
+        canViewAccessPoint
         environmentId="development"
         environmentName="Development"
         environmentTabs={<div>Environment tabs</div>}
@@ -510,6 +514,7 @@ describe('PublisherEnvironmentFlow', () => {
     render(
       <PublisherEnvironmentFlow
         appId="app-1"
+        canViewAccessPoint
         environmentId="development"
         environmentName="Development"
         environmentTabs={<div>Environment tabs</div>}
@@ -578,6 +583,16 @@ describe('PublisherEnvironmentFlow', () => {
       )
     },
   )
+
+  it('hides the Access Point environment entry without view permission', () => {
+    renderFlow(createDeployment(), { canViewAccessPoint: false })
+
+    expect(screen.queryByRole('link', { name: 'Access Point' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Deploy' })).toHaveAttribute(
+      'href',
+      '/app/app-1/deploy?environment=staging',
+    )
+  })
 
   it('keeps the deployment target and progress controls when a deploying status refresh fails', () => {
     const deployment = createDeployment({

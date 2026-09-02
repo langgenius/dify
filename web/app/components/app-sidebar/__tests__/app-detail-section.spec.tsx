@@ -186,9 +186,8 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render access point navigation when access point permission is granted', () => {
-      // Arrange
-      mockAppPermissionKeys = [AppACLPermission.AccessPoint]
+    it('should render access point navigation using its app route', () => {
+      mockAppPermissionKeys = [AppACLPermission.AccessPointView]
 
       // Act
       render(<AppDetailSection />)
@@ -203,14 +202,9 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide access point navigation when access point permission is missing', () => {
-      // Arrange
-      mockAppPermissionKeys = [AppACLPermission.Monitor]
-
-      // Act
+    it('should hide access point navigation without view permission', () => {
       render(<AppDetailSection />)
 
-      // Assert
       expect(
         screen.queryByRole('link', { name: 'common.appMenus.accessPoint' }),
       ).not.toBeInTheDocument()

@@ -120,7 +120,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      ...(appACLCapabilities.canAccessPoint
+      ...(appACLCapabilities.canViewAccessPoint
         ? [
             {
               name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),

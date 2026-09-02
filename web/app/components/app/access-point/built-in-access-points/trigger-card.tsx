@@ -55,7 +55,7 @@ function TriggerIcon({
 type TriggerAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: 'available' | 'loading' | 'unavailable'
-  canEdit: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
   onToggleResult: (error: Error | null) => void
 }
@@ -63,7 +63,7 @@ type TriggerAccessPointCardProps = {
 export function TriggerAccessPointCard({
   appInfo,
   availability,
-  canEdit,
+  canManageAccessPoint,
   highlighted,
   onToggleResult,
 }: TriggerAccessPointCardProps) {
@@ -95,7 +95,7 @@ export function TriggerAccessPointCard({
   }, [setTriggerStatuses, triggers])
 
   const toggleTrigger = async (trigger: AppTrigger, enabled: boolean) => {
-    if (!canEdit) return
+    if (!canManageAccessPoint) return
     const status = enabled ? 'enabled' : 'disabled'
     setTriggerStatus(trigger.node_id, status)
 
@@ -123,7 +123,6 @@ export function TriggerAccessPointCard({
       status={status}
       highlighted={highlighted}
       showStatus={!active}
-      busy={statusUpdating}
     >
       {loading && (
         <div className="flex h-full min-h-40 flex-col gap-4 px-4 py-5">
@@ -193,7 +192,7 @@ export function TriggerAccessPointCard({
                   </span>
                   <Switch
                     checked={enabled}
-                    disabled={!canEdit || statusUpdating}
+                    disabled={!canManageAccessPoint || statusUpdating}
                     aria-label={trigger.title}
                     onCheckedChange={(nextEnabled) => void toggleTrigger(trigger, nextEnabled)}
                   />

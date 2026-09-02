@@ -2,6 +2,10 @@
 
 import type { AccessPointAvailability } from '../shared/access-point-status'
 import type { AccessPointAppInfo } from '../shared/utils'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import { getAccessPointStatus } from '../shared/access-point-status'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
@@ -11,7 +15,7 @@ type ServiceApiAccessPointCardProps = {
   availability: AccessPointAvailability
   canManage: boolean
   highlighted?: boolean
-  onChangeStatus: (enabled: boolean) => Promise<void>
+  onAppStateChanged: () => Promise<void>
 }
 
 export function ServiceApiAccessPointCard({
@@ -19,11 +23,29 @@ export function ServiceApiAccessPointCard({
   availability,
   canManage,
   highlighted,
-  onChangeStatus,
+  onAppStateChanged,
 }: ServiceApiAccessPointCardProps) {
+  const { t } = useTranslation()
+  const updateApiStatus = useMutation(
+    consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
+      onSuccess: onAppStateChanged,
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
   const { api: apiUrl } = getBuiltInAccessUrls(appInfo)
   const running = availability === 'available' && appInfo.enable_api
   const status = getAccessPointStatus(availability, running)
+
+  const handleStatusChange = (enabled: boolean) => {
+    if (!canManage) return
+
+    updateApiStatus.mutate({
+      params: { app_id: appInfo.id },
+      body: { enable_api: enabled },
+    })
+  }
 
   return (
     <ServiceApiCardView
@@ -38,7 +60,8 @@ export function ServiceApiAccessPointCard({
       status={status}
       highlighted={highlighted}
       switchDisabled={!canManage}
-      onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
+      switchLoading={updateApiStatus.isPending}
+      onEnabledChange={availability === 'available' ? handleStatusChange : undefined}
     />
   )
 }

@@ -6,7 +6,6 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
-import { PublisherEnvironmentActionsSection } from '../environment-deployment-flow/actions-section'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({
@@ -315,7 +314,7 @@ describe('app-publisher sections', () => {
           description: 'Workflow description',
         }}
         appURL="https://example.com/app"
-        canAccessPoint
+        canViewAccessPoint
         disabledFunctionButton={false}
         disabledFunctionTooltip="disabled"
         handleOpenRunConfig={handleOpenRunConfig}
@@ -378,6 +377,7 @@ describe('app-publisher sections', () => {
           name: 'Workflow App',
         }}
         appURL="https://example.com/app"
+        canViewAccessPoint
         disabledFunctionButton={false}
         hasHumanInputNode={false}
         hasTriggerNode={false}
@@ -410,6 +410,7 @@ describe('app-publisher sections', () => {
         mode: AppModeEnum.WORKFLOW,
       },
       appURL: 'https://example.com/app',
+      canViewAccessPoint: true,
       disabledFunctionButton: false,
       hasHumanInputNode: false,
       hasTriggerNode: false,
@@ -451,6 +452,7 @@ describe('app-publisher sections', () => {
         mode: AppModeEnum.WORKFLOW,
       },
       appURL: 'https://example.com/app',
+      canViewAccessPoint: true,
       disabledFunctionButton: false,
       hasHumanInputNode: false,
       hasTriggerNode: false,
@@ -496,7 +498,7 @@ describe('app-publisher sections', () => {
           mode: AppModeEnum.WORKFLOW,
         }}
         appURL="https://example.com/app"
-        canAccessPoint
+        canViewAccessPoint
         disabledFunctionButton={false}
         hasHumanInputNode={false}
         hasTriggerNode
@@ -520,15 +522,15 @@ describe('app-publisher sections', () => {
     )
   })
 
-  it('should hide the built-in Access Point action without permission', () => {
+  it('should hide the Access Point publisher entry without view permission', () => {
     render(
       <PublisherActionsSection
         appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
-        canAccessPoint={false}
+        canViewAccessPoint={false}
         disabledFunctionButton={false}
         hasHumanInputNode={false}
-        hasTriggerNode
+        hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
         workflowToolAvailable
@@ -537,24 +539,11 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.queryByText(/(?:^|\.)appMenus\.accessPoint(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /appMenus\.accessPoint\b/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /appMenus\.deploy\b/ })).toHaveAttribute(
       'href',
       '/app/workflow-app/deploy',
     )
-  })
-
-  it('should hide the environment Access Point action without permission', () => {
-    render(
-      <PublisherEnvironmentActionsSection
-        appId="workflow-app"
-        canAccessPoint={false}
-        environmentId="staging"
-      />,
-    )
-
-    expect(screen.queryByText(/(?:^|\.)appMenus\.accessPoint(?=$|:)/)).not.toBeInTheDocument()
-    expect(screen.getByText(/(?:^|\.)appMenus\.deploy(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should expose unavailable quick links as disabled buttons before the first publish', () => {
@@ -562,7 +551,7 @@ describe('app-publisher sections', () => {
       <PublisherActionsSection
         appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
-        canAccessPoint
+        canViewAccessPoint
         disabledFunctionButton
         hasHumanInputNode={false}
         hasTriggerNode={false}
@@ -591,6 +580,7 @@ describe('app-publisher sections', () => {
       <PublisherActionsSection
         appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
+        canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
         hasHumanInputNode={false}
@@ -614,6 +604,7 @@ describe('app-publisher sections', () => {
       <PublisherActionsSection
         appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
+        canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
         hasHumanInputNode={false}

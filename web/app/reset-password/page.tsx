@@ -1,11 +1,11 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -75,11 +75,14 @@ export default function CheckCode() {
           <div className="mt-1">
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="email"
+              spellCheck={false}
               disabled={loading}
               value={email}
               placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-              onChange={(e) => setEmail(e.target.value)}
+              onValueChange={setEmail}
             />
           </div>
           <div className="mt-3">

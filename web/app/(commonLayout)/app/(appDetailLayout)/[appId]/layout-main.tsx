@@ -78,28 +78,22 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
   const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
-  const isAppACLContextReady =
-    !!routeAppDetail &&
-    !!currentWorkspace.id &&
+  const shouldBlockAgentResourceAccess =
+    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
+  const canViewAccessPoint =
+    routeAppDetail?.id === appId &&
+    currentWorkspace.id &&
     !isLoadingCurrentWorkspace &&
     !isLoadingWorkspacePermissionKeys &&
     !isLoadingAppDetail
-  const appACLCapabilities = React.useMemo(
-    () =>
-      routeAppDetail && isAppACLContextReady
-        ? getAppACLCapabilities(routeAppDetail.permission_keys, {
-            currentUserId,
-            resourceMaintainer: routeAppDetail.maintainer,
-            workspacePermissionKeys,
-            isRbacEnabled,
-          })
-        : null,
-    [currentUserId, isAppACLContextReady, isRbacEnabled, routeAppDetail, workspacePermissionKeys],
-  )
-  const shouldBlockAgentResourceAccess =
-    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
-  const shouldBlockAccessPointAccess =
-    pathname.endsWith('/access-point') && !appACLCapabilities?.canAccessPoint
+      ? getAppACLCapabilities(routeAppDetail.permission_keys, {
+          currentUserId,
+          resourceMaintainer: routeAppDetail.maintainer,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        }).canViewAccessPoint
+      : false
+  const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
   useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
@@ -140,16 +134,29 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appId, router, setAppDetail])
 
   useEffect(() => {
-    if (!routeAppDetail || !isAppACLContextReady || !appACLCapabilities) return
+    if (
+      !routeAppDetail ||
+      !currentWorkspace.id ||
+      isLoadingCurrentWorkspace ||
+      isLoadingWorkspacePermissionKeys ||
+      isLoadingAppDetail
+    )
+      return
     if (routeAppDetail.id !== appId) return
 
+    const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
+      currentUserId,
+      resourceMaintainer: routeAppDetail.maintainer,
+      workspacePermissionKeys,
+      isRbacEnabled,
+    })
     const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
     const isLogsPath = pathname.endsWith('logs')
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
-    const isDeployPath = pathname.endsWith('deploy')
     const isAccessPointPath = pathname.endsWith('access-point')
+    const isDeployPath = pathname.endsWith('deploy')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
@@ -157,9 +164,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
       (isAccessConfigPath &&
         (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+      (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
       (isDeployPath &&
-        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy)) ||
-      (isAccessPointPath && !appACLCapabilities.canAccessPoint)
+        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {
@@ -189,12 +196,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
   }, [
-    appACLCapabilities,
     appDetail?.id,
     appDetailRes,
     appId,
     currentUserId,
-    isAppACLContextReady,
+    currentWorkspace.id,
+    isLoadingAppDetail,
+    isLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys,
     isRbacEnabled,
     pathname,
     routeAppDetail,
