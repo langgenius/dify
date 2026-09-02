@@ -1,6 +1,10 @@
 import type { Area } from 'react-easy-crop'
 import { createImage } from '@/app/components/base/app-icon-picker/utils'
-import { createCroppedAvatarImage, getBoundedAvatarImageSize } from '../avatar-image'
+import {
+  createAvatarImageFile,
+  createCroppedAvatarImage,
+  getBoundedAvatarImageSize,
+} from '../avatar-image'
 
 vi.mock('@/app/components/base/app-icon-picker/utils', async (importOriginal) => {
   const actual =
@@ -57,5 +61,14 @@ describe('avatar image', () => {
     expect(context.imageSmoothingQuality).toBe('high')
     expect(context.drawImage).toHaveBeenCalledWith(image, 40, 20, 1000, 1000, 0, 0, 256, 256)
     expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/png', 0.85)
+  })
+
+  it('matches the file extension to the browser output type', () => {
+    const blob = new Blob(['avatar'], { type: 'image/png' })
+
+    const file = createAvatarImageFile(blob, 'avatar.webp')
+
+    expect(file.name).toBe('avatar.png')
+    expect(file.type).toBe('image/png')
   })
 })

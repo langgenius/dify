@@ -16,7 +16,7 @@ import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { updateUserProfile } from '@/service/common'
-import { createCroppedAvatarImage } from './avatar-image'
+import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
 type InputImageInfo =
   | { file: File }
@@ -111,7 +111,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       inputImageInfo.croppedAreaPixels,
       inputImageInfo.fileName,
     )
-    const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
+    const file = createAvatarImageFile(blob, inputImageInfo.fileName)
     handleLocalFileUpload(file)
   }, [handleLocalFileUpload, inputImageInfo])
 
