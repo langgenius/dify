@@ -159,8 +159,8 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_se
         data_source_type="upload_file",
         indexing_technique="high_quality",
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    dataset.created_at = datetime(2024, 1, 1, tzinfo=UTC)
     dataset.permission_keys = ["dataset.acl.readonly"]  # type: ignore[attr-defined]
     with (
         app.test_request_context("/?page=1&limit=20&ids=dataset-1"),

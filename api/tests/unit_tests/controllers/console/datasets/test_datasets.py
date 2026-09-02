@@ -114,7 +114,12 @@ def make_dataset(**overrides) -> Dataset:
         "is_multimodal": False,
     }
     base.update(overrides)
-    return Dataset(**base)
+    created_at = base.pop("created_at")
+    updated_at = base.pop("updated_at")
+    dataset = Dataset(**base)
+    dataset.created_at = created_at
+    dataset.updated_at = updated_at
+    return dataset
 
 
 def make_account(role: TenantAccountRole = TenantAccountRole.EDITOR) -> Account:
