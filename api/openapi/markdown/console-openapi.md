@@ -5132,6 +5132,12 @@ Get dataset API keys
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/api-keys
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15303,6 +15309,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
+| dataset_ids | [ string ], <br>**Default:**  |  | No |
 | id | string |  | Yes |
 | last_used_at | integer |  | No |
 | token | string |  | Yes |
@@ -16800,6 +16807,12 @@ Model class for provider custom model configuration.
 | batch | string |  | Yes |
 | dataset | [DatasetResponse](#datasetresponse) |  | Yes |
 | documents | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+
+#### DatasetApiKeyCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_ids | [ string ] |  | No |
 
 #### DatasetCreatePayload
 

@@ -2380,7 +2380,22 @@ class Site(Base):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(Base):  # bug: this uses setattr so idk the field.
+class ApiToken(Base):
+    """API token for the service API.
+
+    Scoping rules:
+    - ``type`` = "app": ``app_id`` points at the app the key serves.
+    - ``type`` = "dataset": ``tenant_id`` is always set. Per-knowledge-base scoping is
+      expressed with ``DatasetApiTokenBinding`` rows (a key with no binding rows can
+      reach every dataset in the tenant — the default and the pre-scoping behavior; a
+      key with binding rows is limited to exactly those datasets). Enforcement lives in
+      ``validate_dataset_token`` (controllers/service_api/wraps.py).
+
+    Note: controllers/console/apikey.py assigns the ``*_id`` columns via ``setattr``
+    keyed on ``resource_id_field``, so renaming ``app_id`` requires updating those
+    controllers too.
+    """
+
     __tablename__ = "api_tokens"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -2404,6 +2419,35 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
             if session.scalar(select(exists().where(ApiToken.token == result))):
                 continue
             return result
+
+
+class DatasetApiTokenBinding(Base):
+    """Binds a dataset service-API key to a single knowledge base.
+
+    A dataset ``ApiToken`` may have zero or more of these rows:
+    - no rows  → the key can access every dataset in its tenant (default / back-compat).
+    - N rows   → the key is restricted to exactly those N datasets.
+
+    Both foreign keys cascade on delete, so removing a key or a dataset automatically
+    drops the corresponding bindings (no dangling scope).
+    """
+
+    __tablename__ = "dataset_api_token_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_api_token_binding_pkey"),
+        sa.UniqueConstraint("api_token_id", "dataset_id", name="dataset_api_token_binding_unique"),
+        sa.Index("dataset_api_token_binding_token_idx", "api_token_id"),
+        sa.Index("dataset_api_token_binding_dataset_idx", "dataset_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    api_token_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("api_tokens.id", ondelete="CASCADE"), nullable=False
+    )
+    dataset_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class UploadFile(TypeBase):
