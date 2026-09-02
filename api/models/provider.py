@@ -260,9 +260,7 @@ class ProviderModelSetting(TypeBase):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    load_balancing_enabled: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, default=False
-    )
+    load_balancing_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
