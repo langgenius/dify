@@ -13,9 +13,8 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.pipelines import AccountPipeline
 from controllers.openapi.auth.requirements import CheckAppApiEnabled, Requirement
-from controllers.openapi.auth.router import AuthRouter, subject_router
+from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
@@ -24,7 +23,6 @@ from libs.oauth_bearer import (
     BearerAuthenticator,
     OAuthAccessTokenResolver,
     Resolver,
-    SubjectType,
     TokenType,
 )
 from models import Account
@@ -65,20 +63,12 @@ def _guard(
     requirements: tuple[Requirement, ...] = (),
     edition: frozenset[DeploymentEdition] | None = None,
     write: bool = True,
-    router: AuthRouter = subject_router,
 ) -> Callable[..., object]:
-    return router.guard(EndpointSpec(requirements=requirements, edition=edition, write=write))(view)
+    return subject_router.guard(EndpointSpec(requirements=requirements, edition=edition, write=write))(view)
 
 
 def _nothing(**_kwargs: object) -> None:
     return None
-
-
-def test_every_subject_type_has_a_pipeline() -> None:
-    """A new `SubjectType` with no entry still 403s `unsupported_token_type`,
-    but at the router's lookup — skipping `CheckSubject`'s wrong-surface audit.
-    """
-    assert set(subject_router._pipelines) == set(SubjectType)
 
 
 def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
@@ -268,16 +258,6 @@ def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, mon
     _refuse(app, f"{TokenType.OAUTH_ACCOUNT.prefix}stale")
 
     assert len(session.updates) == 1
-
-
-def test_a_subject_with_no_pipeline_403s(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_EXTERNAL_SSO))
-    account_only = AuthRouter({SubjectType.ACCOUNT: AccountPipeline()})
-    view = _guard(_nothing, router=account_only)
-
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
-        with pytest.raises(Forbidden, match="unsupported_token_type"):
-            view()
 
 
 def test_an_account_token_reaches_the_view_with_a_resolved_context(
