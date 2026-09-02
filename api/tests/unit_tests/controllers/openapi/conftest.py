@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app_factory import create_flask_app_with_configs
 from controllers.openapi import bp as openapi_bp
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType
+from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
@@ -99,12 +99,10 @@ def admitted_bearer(
     sqlite_session.commit()
 
     token = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email=account.email,
         subject_issuer="dify:account",
         account_id=uuid.UUID(account_id),
         client_id="difyctl",
-        scopes=frozenset({Scope.FULL}),
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,

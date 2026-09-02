@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import dataclasses
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from controllers.openapi.auth.subjects import (
     AccountSubject,
     ExternalSsoSubject,
     subject_from_auth,
 )
-from libs.oauth_bearer import SubjectType
+from libs.oauth_bearer import TokenType
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType
@@ -31,26 +30,19 @@ from ._world import (
 )
 
 
-def test_subject_from_auth_rejects_an_unregistered_subject_type() -> None:
-    auth = dataclasses.replace(make_auth(SubjectType.ACCOUNT), subject_type="future_subject")  # type: ignore[arg-type]
-
-    with pytest.raises(Forbidden, match="unsupported_token_type"):
-        subject_from_auth(auth)
-
-
 @pytest.mark.parametrize(
-    ("subject_type", "has_app", "expected"),
+    ("token_type", "has_app", "expected"),
     [
-        (SubjectType.ACCOUNT, False, True),
-        (SubjectType.ACCOUNT, True, True),
-        (SubjectType.EXTERNAL_SSO, False, False),
-        (SubjectType.EXTERNAL_SSO, True, True),
+        (TokenType.OAUTH_ACCOUNT, False, True),
+        (TokenType.OAUTH_ACCOUNT, True, True),
+        (TokenType.OAUTH_EXTERNAL_SSO, False, False),
+        (TokenType.OAUTH_EXTERNAL_SSO, True, True),
     ],
 )
 def test_mounts_caller_tracks_todays_resolution_points(
-    subject_type: SubjectType, has_app: bool, expected: bool, sqlite_session: Session
+    token_type: TokenType, has_app: bool, expected: bool, sqlite_session: Session
 ) -> None:
-    subject = subject_from_auth(make_auth(subject_type))
+    subject = subject_from_auth(make_auth(token_type))
     view_args = {"app_id": APP_ID} if has_app else {}
 
     assert subject.mounts_caller(make_ctx(sqlite_session, subject, **view_args)) is expected
@@ -58,7 +50,7 @@ def test_mounts_caller_tracks_todays_resolution_points(
 
 class TestAccountResolveCaller:
     def test_rejects_a_token_whose_account_is_gone(self, sqlite_session: Session) -> None:
-        subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
+        subject = AccountSubject(make_auth(TokenType.OAUTH_ACCOUNT))
 
         with pytest.raises(Unauthorized, match="account not found"):
             subject.resolve_caller(make_ctx(sqlite_session, subject), sqlite_session)
@@ -81,7 +73,7 @@ class TestAccountResolveCaller:
                 role=TenantAccountRole.ADMIN,
             ),
         )
-        subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
+        subject = AccountSubject(make_auth(TokenType.OAUTH_ACCOUNT))
         ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
         ctx.workspace = tenant
 
@@ -93,7 +85,7 @@ class TestAccountResolveCaller:
 
     def test_never_resolves_a_workspace_the_request_did_not_need(self, sqlite_session: Session) -> None:
         persist(sqlite_session, make_account())
-        subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
+        subject = AccountSubject(make_auth(TokenType.OAUTH_ACCOUNT))
 
         caller = subject.resolve_caller(make_ctx(sqlite_session, subject, app_id=APP_ID), sqlite_session)
 
@@ -108,7 +100,7 @@ class TestExternalSsoResolveCaller:
         resolve an end user against nothing.
         """
         persist(sqlite_session, make_app(), make_tenant())
-        subject = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO))
+        subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO))
         ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
         end_user = EndUser(
             tenant_id=TENANT_ID,
@@ -132,7 +124,7 @@ class TestExternalSsoResolveCaller:
         )
 
     def test_rejects_a_token_without_an_external_identity(self, sqlite_session: Session) -> None:
-        subject = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO, subject_email=None))
+        subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, subject_email=None))
         ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
         with pytest.raises(Unauthorized, match="missing context for external user resolution"):
@@ -142,12 +134,12 @@ class TestExternalSsoResolveCaller:
 class TestExternalSsoWebappUserId:
     def test_resolves_the_account_behind_the_sso_email(self, sqlite_session: Session) -> None:
         persist(sqlite_session, make_account(email=SSO_EMAIL))
-        subject = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO))
+        subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO))
 
         assert subject.webapp_user_id(sqlite_session) == ACCOUNT_ID
 
     def test_refuses_to_guess_when_the_email_matches_no_account(self, sqlite_session: Session) -> None:
-        assert ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO)).webapp_user_id(sqlite_session) is None
+        assert ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO)).webapp_user_id(sqlite_session) is None
 
-        identityless = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO, subject_email=None))
+        identityless = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, subject_email=None))
         assert identityless.webapp_user_id(sqlite_session) is None

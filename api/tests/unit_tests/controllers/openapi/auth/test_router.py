@@ -25,8 +25,6 @@ from libs.oauth_bearer import (
     OAuthAccessTokenResolver,
     Resolver,
     SubjectType,
-    TokenKind,
-    TokenKindRegistry,
     TokenType,
 )
 from models import Account
@@ -157,7 +155,7 @@ class _FakeRedis:
 
 
 class _OneRowSession:
-    """Enough `Session` for `_VariantResolver` to read one row and expire it.
+    """Enough `Session` for `_TokenTypeResolver` to read one row and expire it.
 
     SQLite hands `expires_at` back naive while the resolver compares it against
     an aware `now`, so the expiry branch cannot be driven through the real
@@ -191,7 +189,7 @@ def _expired_row() -> OAuthAccessToken:
         subject_email="account@example.com",
         client_id="openapi-client",
         device_label="laptop",
-        prefix=SubjectType.ACCOUNT.prefix,
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
         expires_at=datetime.now(UTC) - timedelta(seconds=1),
         subject_issuer="dify:account",
         account_id=ACCOUNT_ID,
@@ -204,7 +202,7 @@ def _expired_row() -> OAuthAccessToken:
 def _expired_resolver() -> tuple[Resolver, _OneRowSession]:
     session = _OneRowSession(_expired_row())
     resolver = OAuthAccessTokenResolver(lambda: session, _FakeRedis())
-    return resolver.for_account(), session
+    return resolver.for_token_type(TokenType.OAUTH_ACCOUNT), session
 
 
 def _resolver_for_an_expired_row() -> Resolver:
@@ -213,7 +211,9 @@ def _resolver_for_an_expired_row() -> Resolver:
     return resolver
 
 
-def _authenticates_for_real(monkeypatch: pytest.MonkeyPatch, resolver: Resolver) -> None:
+def _authenticates_for_real(
+    monkeypatch: pytest.MonkeyPatch, resolver: Resolver, *, token_type: TokenType = TokenType.OAUTH_ACCOUNT
+) -> None:
     """The real `BearerAuthenticator`, so the refusals are its own, not a stub's."""
     monkeypatch.setattr(
         rate_limit_module,
@@ -224,18 +224,7 @@ def _authenticates_for_real(monkeypatch: pytest.MonkeyPatch, resolver: Resolver)
             rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
         ),
     )
-    registry = TokenKindRegistry(
-        [
-            TokenKind(
-                prefix=SubjectType.ACCOUNT.prefix,
-                subject_type=SubjectType.ACCOUNT,
-                scopes=SubjectType.ACCOUNT.scopes,
-                token_type=TokenType.OAUTH_ACCOUNT,
-                resolver=resolver,
-            )
-        ]
-    )
-    authenticator = BearerAuthenticator(registry)
+    authenticator = BearerAuthenticator({token_type: resolver})
     monkeypatch.setattr(f"{ROUTER}.get_authenticator", lambda: authenticator)
 
 
@@ -251,8 +240,8 @@ def _refuse(app: Flask, token: str) -> Unauthorized:
     ("resolver_factory", "token"),
     [
         (_resolver_never_asked, "zzz_notatokenkind"),
-        (_resolver_with_no_live_row, f"{SubjectType.ACCOUNT.prefix}revoked"),
-        (_resolver_for_an_expired_row, f"{SubjectType.ACCOUNT.prefix}stale"),
+        (_resolver_with_no_live_row, f"{TokenType.OAUTH_ACCOUNT.prefix}revoked"),
+        (_resolver_for_an_expired_row, f"{TokenType.OAUTH_ACCOUNT.prefix}stale"),
     ],
     ids=["unknown prefix", "no live row", "expired"],
 )
@@ -276,13 +265,13 @@ def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, mon
     resolver, session = _expired_resolver()
     _authenticates_for_real(monkeypatch, resolver)
 
-    _refuse(app, f"{SubjectType.ACCOUNT.prefix}stale")
+    _refuse(app, f"{TokenType.OAUTH_ACCOUNT.prefix}stale")
 
     assert len(session.updates) == 1
 
 
 def test_a_subject_with_no_pipeline_403s(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_EXTERNAL_SSO))
     account_only = AuthRouter({SubjectType.ACCOUNT: AccountPipeline()})
     view = _guard(_nothing, router=account_only)
 
@@ -297,7 +286,7 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persist(sqlite_session, make_account())
-    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
     mounted: list[object] = []
     monkeypatch.setattr(MOUNT, mounted.append)
     seen: dict[str, object] = {}
@@ -327,7 +316,7 @@ def test_path_params_reach_the_context(
     when the router has put the route's path params there.
     """
     persist(sqlite_session, make_app(enable_api=False))
-    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
     view = _guard(_nothing, requirements=(CheckAppApiEnabled(),))
 
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers={"Authorization": "Bearer tok"}):
@@ -348,7 +337,7 @@ def test_write_true_by_default_commits_a_mutation_on_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persist(sqlite_session, make_account())
-    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_handler)
 
@@ -366,7 +355,7 @@ def test_write_false_does_not_persist_a_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persist(sqlite_session, make_account())
-    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_handler, write=False)
 
