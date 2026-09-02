@@ -55,9 +55,9 @@ class Provider(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[ProviderType] = mapped_column(
-        EnumText(ProviderType, length=40), nullable=False, server_default=text("'custom'"), default=ProviderType.CUSTOM
+        EnumText(ProviderType, length=40), nullable=False, default=ProviderType.CUSTOM
     )
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
@@ -137,7 +137,7 @@ class ProviderModel(TypeBase):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -259,9 +259,9 @@ class ProviderModelSetting(TypeBase):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     load_balancing_enabled: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=text("false"), default=False
+        sa.Boolean, nullable=False, default=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -295,7 +295,7 @@ class LoadBalancingModelConfig(TypeBase):
     credential_source_type: Mapped[CredentialSourceType | None] = mapped_column(
         EnumText(CredentialSourceType, length=40), nullable=True, default=None
     )
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

@@ -109,19 +109,17 @@ class BuiltinToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[CredentialType] = mapped_column(
         EnumText(CredentialType, length=32),
         nullable=False,
-        server_default=sa.text("'api-key'"),
         default=CredentialType.API_KEY,
     )
-    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
     visibility: Mapped[PermissionEnum] = mapped_column(
         EnumText(PermissionEnum, length=40),
         nullable=False,
-        server_default=sa.text("'all_team_members'"),
         default=PermissionEnum.ALL_TEAM,
     )
 
