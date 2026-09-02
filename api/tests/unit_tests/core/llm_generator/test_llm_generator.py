@@ -19,7 +19,13 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+)
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message
 from models.workflow import (
@@ -267,6 +273,31 @@ class TestLLMGenerator:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
             questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
             assert questions == []
+
+    @pytest.mark.parametrize(
+        "model_resolution_error",
+        [
+            InvokeConnectionError("provider unreachable"),
+            InvokeRateLimitError("per-tenant rate limit"),
+            InvokeBadRequestError("malformed model config"),
+        ],
+    )
+    def test_generate_suggested_questions_after_answer_swallows_transient_invoke_errors(
+        self, mock_model_instance, model_resolution_error
+    ):
+        """#41592: model-resolution failures (unreachable provider, per-tenant
+        rate limit, malformed config) must degrade silently to an empty list,
+        matching the contract documented on
+        ``generate_workflow_instruction_suggestions`` and the existing
+        ``InvokeAuthorizationError`` handling at the same site.
+        """
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
+            mock_manager.return_value.get_default_model_instance.side_effect = model_resolution_error
+            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+            assert questions == []
+            # ``invoke_llm`` must NOT be called — we never even reached the
+            # generation step.
+            mock_model_instance.invoke_llm.assert_not_called()
 
     def test_generate_suggested_questions_after_answer_invoke_error(self, mock_model_instance):
         mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke failed")
