@@ -706,10 +706,7 @@ class AgentSoulDifyToolConfig(BaseModel):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
             provider_id = self.provider_id
-            if (
-                provider_id
-                and self.provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}
-            ):
+            if provider_id and self.provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
                 self.credential_ref = AgentSoulDifyToolCredentialRef(
                     type="provider",
                     id=provider_id,
