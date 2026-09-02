@@ -208,6 +208,25 @@ def test_new_user_default_models_reject_duplicate_model_types() -> None:
         _ = config.NEW_USER_DEFAULT_MODEL_LIST
 
 
+def test_tokener_new_tenant_bootstrap_config_is_parsed() -> None:
+    config = _make_config(
+        TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED="true",
+        TOKENER_BILLING_API_URL="http://dify-saas-billing:8081",
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener:0.1.2@checksum",
+        TOKENER_PLUGIN_INSTALL_SOURCE="package",
+        TOKENER_ENDPOINT_URL="https://api-staging.tokener.dev/v1",
+        TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL="7",
+        TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE="50",
+    )
+
+    assert config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED is True
+    assert config.TOKENER_BILLING_API_URL == "http://dify-saas-billing:8081"
+    assert config.TOKENER_PLUGIN_INSTALL_SOURCE == "package"
+    assert config.TOKENER_ENDPOINT_URL == "https://api-staging.tokener.dev/v1"
+    assert config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL == 7
+    assert config.TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE == 50
+
+
 def test_http_timeout_defaults():
     """Test that HTTP timeout defaults are correctly set"""
     config = _make_config()

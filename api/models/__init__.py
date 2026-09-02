@@ -116,6 +116,7 @@ from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, Skil
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
+from .tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
@@ -264,6 +265,8 @@ __all__ = [
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
+    "TenantTokenerIntegration",
+    "TenantTokenerIntegrationStatus",
     "TidbAuthBinding",
     "ToolConversationVariables",
     "ToolFile",

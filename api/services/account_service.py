@@ -47,6 +47,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from models.tokener import TenantTokenerIntegration
 from services.account_email import normalize_email
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
@@ -1146,6 +1147,13 @@ class TenantService:
         tenant = Tenant(name=name)
 
         session.add(tenant)
+        if dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED:
+            session.add(
+                TenantTokenerIntegration(
+                    tenant_id=tenant.id,
+                    plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
+                )
+            )
         session.commit()
 
         for category in TenantPluginAutoUpgradeCategory:

@@ -23,11 +23,12 @@ from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
 from models import Account, Tenant
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_service import BillingService, TokenerBootstrapUpstreamError, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
@@ -208,6 +209,75 @@ class TestBillingServiceSendRequest:
 
         with pytest.raises(json.JSONDecodeError):
             BillingService.ensure_new_agent_beta_revision("revision-1")
+
+    def test_tokener_bootstrap_uses_separate_base_url_and_sends_matching_tenant_id(self):
+        payload = {
+            "tenant_id": TENANT_ID,
+            "status": "ready",
+            "data_plane_api_key": "one-time-secret",
+            "retryable": False,
+        }
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081/"),
+            patch.object(BillingService, "_send_request", return_value=payload) as send_request,
+        ):
+            result = BillingService.bootstrap_tokener_tenant(TENANT_ID, "Test Tenant")
+
+        assert result == {
+            "tenant_id": TENANT_ID,
+            "status": "ready",
+            "data_plane_api_key": "one-time-secret",
+            "retryable": False,
+        }
+        assert "data_plane_api_key" not in payload
+        send_request.assert_called_once_with(
+            "POST",
+            f"/internal/v1/tokener/tenants/{TENANT_ID}/bootstrap",
+            json={"tenant_id": TENANT_ID, "display_name": "Test Tenant"},
+            base_url="http://dify-saas-billing:8081",
+        )
+
+    def test_tokener_bootstrap_rejects_missing_key_without_exposing_payload(self):
+        payload = {"tenant_id": TENANT_ID, "status": "ready", "retryable": False, "other": "secret-value"}
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+            pytest.raises(TokenerBootstrapUpstreamError) as exc_info,
+        ):
+            BillingService.bootstrap_tokener_tenant(TENANT_ID, "Test Tenant")
+
+        assert exc_info.value.error_code == "tokener_bootstrap_key_missing"
+        assert exc_info.value.retryable is True
+        assert "secret-value" not in str(exc_info.value)
+
+    def test_tokener_bootstrap_invalid_response_traceback_does_not_retain_key(self):
+        one_time_key = "key-that-must-not-enter-sentry"
+        payload = {
+            "tenant_id": "wrong-tenant",
+            "status": "ready",
+            "retryable": False,
+            "data_plane_api_key": one_time_key,
+        }
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+            pytest.raises(TokenerBootstrapUpstreamError) as exc_info,
+        ):
+            BillingService.bootstrap_tokener_tenant(TENANT_ID, "Test Tenant")
+
+        assert "data_plane_api_key" not in payload
+        traceback_cursor = exc_info.value.__traceback__
+        checked_parser_frame = False
+        while traceback_cursor is not None:
+            frame = traceback_cursor.tb_frame
+            if (
+                frame.f_code.co_filename.endswith("services/billing_service.py")
+                and frame.f_code.co_name == "bootstrap_tokener_tenant"
+            ):
+                checked_parser_frame = True
+                assert one_time_key not in repr(frame.f_locals)
+            traceback_cursor = traceback_cursor.tb_next
+        assert checked_parser_frame is True
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]

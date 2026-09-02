@@ -318,6 +318,41 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(
+        description="Provision and configure the managed Tokener model provider for newly created tenants",
+        default=False,
+    )
+
+    TOKENER_BILLING_API_URL: str = Field(
+        description="Internal dify-saas billing base URL used only by the Tokener bootstrap client",
+        default="",
+    )
+
+    TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
+        description="Pinned package identifier used for the managed Tokener plugin",
+        default="",
+    )
+
+    TOKENER_PLUGIN_INSTALL_SOURCE: Literal["marketplace", "package"] = Field(
+        description="Install the pinned Tokener plugin from Marketplace or a package pre-uploaded to plugin-daemon",
+        default="marketplace",
+    )
+
+    TOKENER_PROVIDER_NAME: str = Field(
+        description="Canonical model-provider name declared by the managed Tokener plugin",
+        default="langgenius/tokener/tokener",
+    )
+
+    TOKENER_DEFAULT_LLM_MODEL: str = Field(
+        description="Tokener LLM selected as the default for newly created tenants",
+        default="deepseek-v4-flash",
+    )
+
+    TOKENER_ENDPOINT_URL: str = Field(
+        description="Optional allowlisted Tokener data-plane endpoint passed to a compatible plugin package",
+        default="",
+    )
+
     @property
     def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
         default_models: list[tuple[str, str, str]] = []
@@ -1394,6 +1429,18 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK: bool = Field(
+        description="Enable periodic recovery of incomplete new-tenant Tokener bootstraps",
+        default=True,
+    )
+    TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL: PositiveInt = Field(
+        description="Minimum age and periodic recovery interval for incomplete Tokener bootstraps, in minutes",
+        default=5,
+    )
+    TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of incomplete Tokener bootstraps requeued per recovery sweep",
+        default=100,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
