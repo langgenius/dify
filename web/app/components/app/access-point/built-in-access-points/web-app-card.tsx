@@ -48,9 +48,9 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: AccessPointAvailability
-  canEdit: boolean
   canDeploy: boolean
   canManageAccess: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
   onChangeStatus: (enabled: boolean) => Promise<void>
@@ -63,9 +63,9 @@ type WebAppAccessPointCardProps = {
 export function WebAppAccessPointCard({
   appInfo,
   availability,
-  canEdit,
   canDeploy,
   canManageAccess,
+  canManageAccessPoint,
   highlighted,
   onChangeStatus,
   onRefreshApp,
@@ -127,7 +127,7 @@ export function WebAppAccessPointCard({
         }
         status={status}
         highlighted={highlighted}
-        switchDisabled={!canEdit}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
         actions={
@@ -147,7 +147,7 @@ export function WebAppAccessPointCard({
               <Button
                 className="flex items-center gap-1 px-3"
                 variant="secondary"
-                disabled={!running}
+                disabled={!running || !canManageAccessPoint}
                 onClick={() => setShowEmbedded(true)}
               >
                 <span aria-hidden className="i-ri-window-line size-4" />
@@ -157,7 +157,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!running}
+              disabled={!running || !canManageAccessPoint}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -168,7 +168,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={availability !== 'available' || !canEdit}
+              disabled={availability !== 'available' || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -194,7 +194,7 @@ export function WebAppAccessPointCard({
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canEdit}
+          regenerateDisabled={!canManageAccessPoint}
           regenerating={regenerating}
           onRegenerate={() => setShowRegenerate(true)}
         />

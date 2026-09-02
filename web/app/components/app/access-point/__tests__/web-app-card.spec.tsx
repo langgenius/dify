@@ -68,14 +68,15 @@ function renderCard(
   mode: AppModeEnum,
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   workflow?: PublishedWorkflow,
+  canManageAccessPoint = true,
 ) {
   render(
     <WebAppAccessPointCard
       appInfo={createAppInfo(mode)}
       availability={availability}
-      canEdit
       canDeploy
       canManageAccess
+      canManageAccessPoint={canManageAccessPoint}
       showAccessControl
       onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
@@ -196,5 +197,19 @@ describe('WebAppAccessPointCard', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+  })
+
+  it('disables Web App management actions without Access Point management', () => {
+    renderCard(AppModeEnum.CHAT, 'available', undefined, false)
+
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
+    ).toBeEnabled()
   })
 })

@@ -49,7 +49,13 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
-  BuiltInAccessPoints: (props: { appId: string; highlightedAccessPoint?: AccessPointType }) => {
+  BuiltInAccessPoints: (props: {
+    appId: string
+    canDeploy: boolean
+    canManageAccessPoint: boolean
+    canReleaseAndVersion: boolean
+    highlightedAccessPoint?: AccessPointType
+  }) => {
     accessPointMocks.builtIn(props)
     return null
   },
@@ -58,8 +64,8 @@ vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
 vi.mock('@/app/components/app/access-point/deployed-environment-access-points', () => ({
   DeployedEnvironmentAccessPoints: (props: {
     appId: string
-    canEdit: boolean
-    canManage: boolean
+    canDeploy: boolean
+    canManageAccessPoint: boolean
     environmentId: string
     highlightedAccessPoint?: AccessPointType
   }) => {
@@ -218,8 +224,8 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).toHaveBeenCalledWith(
       expect.objectContaining({
         appId: 'app-1',
-        canEdit: false,
-        canManage: true,
+        canDeploy: true,
+        canManageAccessPoint: false,
         environmentId: 'canary',
       }),
     )
@@ -259,5 +265,19 @@ describe('AccessPoint', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+  })
+
+  it('passes Access Point management independently from deploy permission', () => {
+    appPermissionKeys = [AppACLPermission.AccessPointManage]
+
+    renderAccessPoint()
+
+    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canDeploy: false,
+        canManageAccessPoint: true,
+        canReleaseAndVersion: false,
+      }),
+    )
   })
 })

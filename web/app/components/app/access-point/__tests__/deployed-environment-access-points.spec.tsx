@@ -39,8 +39,8 @@ describe('DeployedEnvironmentAccessPoints', () => {
         <DeployedEnvironmentAccessPoints
           appId="app-1"
           environmentId="staging"
-          canEdit
-          canManage
+          canDeploy
+          canManageAccessPoint
           highlightedAccessPoint={highlightedAccessPoint}
         />,
       )
@@ -56,7 +56,12 @@ describe('DeployedEnvironmentAccessPoints', () => {
 
   it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
     render(
-      <DeployedEnvironmentAccessPoints appId="app-1" environmentId="staging" canEdit canManage />,
+      <DeployedEnvironmentAccessPoints
+        appId="app-1"
+        environmentId="staging"
+        canDeploy
+        canManageAccessPoint
+      />,
     )
 
     const mcpCard = screen.getByRole('region', { name: /mcp\.server\.title/ })

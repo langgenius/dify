@@ -20,7 +20,7 @@ import {
 import { consoleQuery } from '@/service/client'
 import { asyncRunSafe } from '@/utils'
 
-export function useAccessPointActions(appId: string, canEdit: boolean) {
+export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setAppDetail = useAppStore((state) => state.setAppDetail)
@@ -67,7 +67,7 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
 
   const changeSiteStatus = useCallback(
     async (enabled: boolean) => {
-      if (!canEdit) return
+      if (!canManageAccessPoint) return
       const [error] = await asyncRunSafe<App>(
         updateAppSiteStatus({
           url: `/apps/${appId}/site-enable`,
@@ -76,11 +76,12 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       )
       handleResult(error)
     },
-    [appId, canEdit, handleResult],
+    [appId, canManageAccessPoint, handleResult],
   )
 
   const changeApiStatus = useCallback(
     async (enabled: boolean) => {
+      if (!canManageAccessPoint) return
       const [error] = await asyncRunSafe<App>(
         updateAppSiteStatus({
           url: `/apps/${appId}/api-enable`,
@@ -89,12 +90,12 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       )
       handleResult(error)
     },
-    [appId, handleResult],
+    [appId, canManageAccessPoint, handleResult],
   )
 
   const saveSiteConfig = useCallback(
     async (params: ConfigParams) => {
-      if (!canEdit) return
+      if (!canManageAccessPoint) return
       const [error] = await asyncRunSafe<App>(
         updateAppSiteConfig({
           url: `/apps/${appId}/site`,
@@ -108,18 +109,18 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       }
       handleResult(error)
     },
-    [appId, canEdit, handleResult, queryClient],
+    [appId, canManageAccessPoint, handleResult, queryClient],
   )
 
   const regenerateSiteCode = useCallback(async () => {
-    if (!canEdit) return
+    if (!canManageAccessPoint) return
     const [error] = await asyncRunSafe<UpdateAppSiteCodeResponse>(
       updateAppSiteAccessToken({
         url: `/apps/${appId}/site/access-token-reset`,
       }) as Promise<UpdateAppSiteCodeResponse>,
     )
     handleResult(error, error ? 'generatedUnsuccessfully' : 'generatedSuccessfully')
-  }, [appId, canEdit, handleResult])
+  }, [appId, canManageAccessPoint, handleResult])
 
   return {
     changeApiStatus,

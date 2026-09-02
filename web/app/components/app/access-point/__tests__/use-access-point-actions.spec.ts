@@ -35,8 +35,16 @@ describe('useAccessPointActions', () => {
     vi.clearAllMocks()
   })
 
-  it('allows the API status to be changed independently of app editing', async () => {
+  it('blocks API status changes without Access Point management permission', async () => {
     const { result } = renderHookWithConsoleQuery(() => useAccessPointActions('app-1', false))
+
+    await act(() => result.current.changeApiStatus(true))
+
+    expect(mocks.updateAppSiteStatus).not.toHaveBeenCalled()
+  })
+
+  it('allows API status changes with Access Point management permission', async () => {
+    const { result } = renderHookWithConsoleQuery(() => useAccessPointActions('app-1', true))
 
     await act(() => result.current.changeApiStatus(true))
 
