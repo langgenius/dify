@@ -230,7 +230,7 @@ def _make_conversation() -> Conversation:
         app_id="app",
         mode=AppMode.ADVANCED_CHAT,
         name="Pause Resume Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
@@ -240,7 +240,7 @@ def _make_message() -> Message:
         id="msg",
         app_id="app",
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         answer="answer",
