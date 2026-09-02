@@ -845,14 +845,16 @@ class TestAudioServiceTTS:
         )
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
 
-        with app.test_request_context("/text-to-audio", method="POST"):
-            with pytest.raises(InvokeBadRequestError, match="output MIME does not match"):
-                AudioService.transcript_tts(
-                    app_model=app_model,
-                    session=sqlite_session,
-                    text="Hello world",
-                    voice="en-US-Neural",
-                )
+        with (
+            app.test_request_context("/text-to-audio", method="POST"),
+            pytest.raises(InvokeBadRequestError, match="output MIME does not match"),
+        ):
+            AudioService.transcript_tts(
+                app_model=app_model,
+                session=sqlite_session,
+                text="Hello world",
+                voice="en-US-Neural",
+            )
 
     def test_transcript_tts_raises_error_when_text_missing(
         self,

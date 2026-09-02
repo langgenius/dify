@@ -273,15 +273,13 @@ def test_parse_openapi_to_tool_bundle_server_env_and_refs(app):
 
 def test_parse_openapi_to_tool_bundle_no_server_raises(app):
     openapi = {"info": {"title": "x"}, "servers": [], "paths": {}}
-    with app.test_request_context():
-        with pytest.raises(ToolProviderNotFoundError, match="No server found"):
-            ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+    with app.test_request_context(), pytest.raises(ToolProviderNotFoundError, match="No server found"):
+        ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
 
 
 def test_parse_openapi_yaml_to_tool_bundle_invalid_yaml(app):
-    with app.test_request_context():
-        with pytest.raises(ToolApiSchemaError, match="Invalid openapi yaml"):
-            ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle("null")
+    with app.test_request_context(), pytest.raises(ToolApiSchemaError, match="Invalid openapi yaml"):
+        ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle("null")
 
 
 def test_parse_swagger_to_openapi_branches():
@@ -327,32 +325,38 @@ def test_parse_openai_plugin_json_branches(app):
 def test_parse_openai_plugin_json_http_branches(app):
     with app.test_request_context():
         response = type("Resp", (), {"status_code": 500, "text": "", "close": Mock()})()
-        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response):
-            with pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"):
-                ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
-                    '{"api": {"url": "https://x", "type": "openapi"}}'
-                )
+        with (
+            patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response),
+            pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"),
+        ):
+            ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
+                '{"api": {"url": "https://x", "type": "openapi"}}'
+            )
         response.close.assert_called_once()
 
         success_response = type("Resp", (), {"status_code": 200, "text": "openapi: 3.0.0", "close": Mock()})()
-        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response):
-            with patch(
+        with (
+            patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response),
+            patch(
                 "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle",
                 return_value=["bundle"],
-            ) as mock_parse:
-                bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
-                    '{"api": {"url": "https://x", "type": "openapi"}}'
-                )
+            ) as mock_parse,
+        ):
+            bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
+                '{"api": {"url": "https://x", "type": "openapi"}}'
+            )
         assert bundles == ["bundle"]
         mock_parse.assert_called_once()
         success_response.close.assert_called_once()
 
 
 def test_auto_parse_json_yaml_failure():
-    with patch("core.tools.utils.parser.json_loads", side_effect=JSONDecodeError("bad", "x", 0)):
-        with patch("core.tools.utils.parser.safe_load", side_effect=YAMLError("bad yaml")):
-            with pytest.raises(ToolApiSchemaError, match="Invalid api schema, schema is neither json nor yaml"):
-                ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(":::")
+    with (
+        patch("core.tools.utils.parser.json_loads", side_effect=JSONDecodeError("bad", "x", 0)),
+        patch("core.tools.utils.parser.safe_load", side_effect=YAMLError("bad yaml")),
+        pytest.raises(ToolApiSchemaError, match="Invalid api schema, schema is neither json nor yaml"),
+    ):
+        ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(":::")
 
 
 def test_auto_parse_openapi_success():
@@ -382,15 +386,17 @@ def test_auto_parse_openapi_then_swagger():
         "paths": {},
     }
 
-    with patch(
-        "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle",
-        side_effect=[ToolApiSchemaError("openapi error"), ["swagger-bundle"]],
-    ) as mock_parse_openapi:
-        with patch(
+    with (
+        patch(
+            "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle",
+            side_effect=[ToolApiSchemaError("openapi error"), ["swagger-bundle"]],
+        ) as mock_parse_openapi,
+        patch(
             "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_swagger_to_openapi",
             return_value=converted_swagger,
-        ) as mock_parse_swagger:
-            bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(openapi_content)
+        ) as mock_parse_swagger,
+    ):
+        bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(openapi_content)
 
     assert bundles == ["swagger-bundle"]
     assert schema_type == ApiProviderSchemaType.SWAGGER
@@ -402,19 +408,21 @@ def test_auto_parse_openapi_then_swagger():
 
 def test_auto_parse_openapi_swagger_then_plugin():
     openapi_content = '{"openapi": "3.0.0", "servers": [{"url": "https://x"}], "info": {"title": "x"}, "paths": {}}'
-    with patch(
-        "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle",
-        side_effect=ToolApiSchemaError("openapi error"),
-    ):
-        with patch(
+    with (
+        patch(
+            "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle",
+            side_effect=ToolApiSchemaError("openapi error"),
+        ),
+        patch(
             "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_swagger_to_openapi",
             side_effect=ToolApiSchemaError("swagger error"),
-        ):
-            with patch(
-                "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle",
-                return_value=["plugin-bundle"],
-            ):
-                bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(openapi_content)
+        ),
+        patch(
+            "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle",
+            return_value=["plugin-bundle"],
+        ),
+    ):
+        bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(openapi_content)
 
     assert bundles == ["plugin-bundle"]
     assert schema_type == ApiProviderSchemaType.OPENAI_PLUGIN

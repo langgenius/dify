@@ -226,9 +226,11 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1"),
+        pytest.raises(NotFound, match="Snippet not found"),
+    ):
+        handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -385,9 +387,11 @@ def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkey
     api = snippets_module.CustomizedSnippetExportApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
-        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"),
+        pytest.raises(NotFound, match="Missing published workflow workflow-1"),
+    ):
+        handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -508,9 +512,11 @@ def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch:
     api = snippets_module.CustomizedSnippetCheckDependenciesApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"),
+        pytest.raises(NotFound, match="Snippet not found"),
+    ):
+        handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -548,12 +554,14 @@ def test_increment_use_count_raises_when_snippet_missing(app: Flask, monkeypatch
     api = snippets_module.CustomizedSnippetUseCountIncrementApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
+            method="POST",
+        ),
+        pytest.raises(NotFound, match="Snippet not found"),
     ):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+        handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_increment_use_count_returns_refreshed_count(app: Flask, monkeypatch: pytest.MonkeyPatch):

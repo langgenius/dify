@@ -411,9 +411,8 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             MagicMock(side_effect=exc.RateLimitExceededError("Rate limit exceeded")),
         )
 
-        with retrieval_database.session_maker() as caller_session:
-            with pytest.raises(exc.RateLimitExceededError):
-                retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["dataset-1"]))
+        with retrieval_database.session_maker() as caller_session, pytest.raises(exc.RateLimitExceededError):
+            retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["dataset-1"]))
 
     def test_no_available_datasets_skips_retrieval(
         self,

@@ -283,9 +283,8 @@ class TestErrorHandlingEnhanced(unittest.TestCase):
         ]
 
         for expr in invalid_expressions:
-            with self.subTest(expr=expr):
-                with pytest.raises((CroniterBadCronError, ValueError)):
-                    calculate_next_run_at(expr, "UTC", self.base_time)
+            with self.subTest(expr=expr), pytest.raises((CroniterBadCronError, ValueError)):
+                calculate_next_run_at(expr, "UTC", self.base_time)
 
     def test_boundary_values_with_enhanced_syntax(self):
         """Test boundary values work with enhanced syntax."""

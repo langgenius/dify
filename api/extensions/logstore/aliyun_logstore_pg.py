@@ -178,12 +178,11 @@ class AliyunLogStorePG:
 
         for attempt in range(max_retries):
             try:
-                with self._get_connection() as conn:
-                    with conn.cursor() as cursor:
-                        placeholders = ", ".join(["%s"] * len(fields))
-                        values_literal = cursor.mogrify(f"({placeholders})", values).decode("utf-8")
-                        insert_sql = f'INSERT INTO "{logstore}" ({field_list}) VALUES {values_literal}'
-                        cursor.execute(insert_sql)
+                with self._get_connection() as conn, conn.cursor() as cursor:
+                    placeholders = ", ".join(["%s"] * len(fields))
+                    values_literal = cursor.mogrify(f"({placeholders})", values).decode("utf-8")
+                    insert_sql = f'INSERT INTO "{logstore}" ({field_list}) VALUES {values_literal}'
+                    cursor.execute(insert_sql)
                 return
 
             except psycopg2.Error as e:
@@ -220,26 +219,25 @@ class AliyunLogStorePG:
 
         for attempt in range(max_retries):
             try:
-                with self._get_connection() as conn:
-                    with conn.cursor() as cursor:
-                        cursor.execute(sql)
-                        columns = [desc[0] for desc in cursor.description]
+                with self._get_connection() as conn, conn.cursor() as cursor:
+                    cursor.execute(sql)
+                    columns = [desc[0] for desc in cursor.description]
 
-                        result = []
-                        for row in cursor.fetchall():
-                            row_dict = {}
-                            for col, val in zip(columns, row):
-                                row_dict[col] = "" if val is None else str(val)
-                            result.append(row_dict)
+                    result = []
+                    for row in cursor.fetchall():
+                        row_dict = {}
+                        for col, val in zip(columns, row):
+                            row_dict[col] = "" if val is None else str(val)
+                        result.append(row_dict)
 
-                        if log_enabled:
-                            logger.info(
-                                "[LogStore-PG] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
-                                logstore,
-                                len(result),
-                            )
+                    if log_enabled:
+                        logger.info(
+                            "[LogStore-PG] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
+                            logstore,
+                            len(result),
+                        )
 
-                        return result
+                    return result
 
             except psycopg2.Error as e:
                 if not self._is_retriable_error(e):

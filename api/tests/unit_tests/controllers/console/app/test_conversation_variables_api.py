@@ -127,6 +127,8 @@ def test_get_conversation_variables_requires_conversation_id(app) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
     method = unwrap(api.get)
 
-    with app.test_request_context("/console/api/apps/app-1/conversation-variables", method="GET"):
-        with pytest.raises(ValidationError):
-            conversation_variables_module.ConversationVariablesQuery.model_validate({})
+    with (
+        app.test_request_context("/console/api/apps/app-1/conversation-variables", method="GET"),
+        pytest.raises(ValidationError),
+    ):
+        conversation_variables_module.ConversationVariablesQuery.model_validate({})

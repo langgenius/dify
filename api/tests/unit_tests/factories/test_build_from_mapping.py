@@ -419,9 +419,8 @@ def test_build_from_mapping_scopes_upload_file_to_end_user():
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    with bind_file_access_scope(unauthorized_scope):
-        with pytest.raises(ValueError, match="Invalid upload file"):
-            build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
+    with bind_file_access_scope(unauthorized_scope), pytest.raises(ValueError, match="Invalid upload file"):
+        build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
 
 
 def test_build_from_mapping_scopes_tool_file_to_end_user():
@@ -443,9 +442,11 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    with bind_file_access_scope(unauthorized_scope):
-        with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
-            build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+    with (
+        bind_file_access_scope(unauthorized_scope),
+        pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"),
+    ):
+        build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
 
 
 def test_disallowed_file_types():

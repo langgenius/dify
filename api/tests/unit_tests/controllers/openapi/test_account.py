@@ -211,6 +211,5 @@ def test_sessions_list_rejects_out_of_bounds_query(app: Flask, monkeypatch: pyte
     """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])
-    with app.test_request_context(f"/openapi/v1/account/sessions?{query}"):
-        with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, auth_data=_session_auth_data())
+    with app.test_request_context(f"/openapi/v1/account/sessions?{query}"), pytest.raises(UnprocessableEntity):
+        api.get.__wrapped__(api, auth_data=_session_auth_data())

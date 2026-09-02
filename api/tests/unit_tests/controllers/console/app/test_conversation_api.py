@@ -107,17 +107,19 @@ def test_completion_conversation_list_invalid_time_range(
         "parse_time_range",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad range")),
     )
-    with app.test_request_context(
-        "/console/api/apps/app-1/completion-conversations", method="GET", query_string={"start": "bad"}
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-1/completion-conversations", method="GET", query_string={"start": "bad"}
+        ),
+        pytest.raises(BadRequest),
     ):
-        with pytest.raises(BadRequest):
-            method(
-                api,
-                conversation_module.CompletionConversationQuery(),
-                unbound_session,
-                account,
-                app_model=_app(mode=AppMode.COMPLETION),
-            )
+        method(
+            api,
+            conversation_module.CompletionConversationQuery(),
+            unbound_session,
+            account,
+            app_model=_app(mode=AppMode.COMPLETION),
+        )
 
 
 def test_chat_conversation_list_advanced_chat_calls_paginate(

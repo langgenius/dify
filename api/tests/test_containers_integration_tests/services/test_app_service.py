@@ -860,20 +860,19 @@ class TestAppService:
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
 
-        with patch("services.app_service.current_user", mock_current_user):
-            with pytest.raises(ValueError):
-                app_service.update_app(
-                    app,
-                    {
-                        "name": "Updated App Name",
-                        "description": "Updated app description",
-                        "icon_type": "",
-                        "icon": "🔄",
-                        "icon_background": "#FF8C42",
-                        "use_icon_as_answer_icon": True,
-                    },
-                    session=db_session_with_containers,
-                )
+        with patch("services.app_service.current_user", mock_current_user), pytest.raises(ValueError):
+            app_service.update_app(
+                app,
+                {
+                    "name": "Updated App Name",
+                    "description": "Updated app description",
+                    "icon_type": "",
+                    "icon": "🔄",
+                    "icon_background": "#FF8C42",
+                    "use_icon_as_answer_icon": True,
+                },
+                session=db_session_with_containers,
+            )
 
     def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

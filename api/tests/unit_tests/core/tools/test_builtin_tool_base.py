@@ -110,22 +110,26 @@ def test_runtime_none_raises():
 def test_builtin_tool_summary_short_and_long_content_paths():
     tool = _build_tool()
 
-    with patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=100):
-        with patch.object(_BuiltinDummyTool, "get_prompt_tokens", return_value=10):
-            assert tool.summary(user_id="u1", content="short") == "short"
+    with (
+        patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=100),
+        patch.object(_BuiltinDummyTool, "get_prompt_tokens", return_value=10),
+    ):
+        assert tool.summary(user_id="u1", content="short") == "short"
 
-    with patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=10):
-        with patch.object(
+    with (
+        patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=10),
+        patch.object(
             _BuiltinDummyTool,
             "get_prompt_tokens",
             side_effect=lambda prompt_messages: len(prompt_messages[-1].content),
-        ):
-            with patch.object(
-                _BuiltinDummyTool,
-                "invoke_model",
-                return_value=SimpleNamespace(message=SimpleNamespace(content="S")),
-            ):
-                result = tool.summary(user_id="u1", content="x" * 30 + "\n" + "y" * 5)
+        ),
+        patch.object(
+            _BuiltinDummyTool,
+            "invoke_model",
+            return_value=SimpleNamespace(message=SimpleNamespace(content="S")),
+        ),
+    ):
+        result = tool.summary(user_id="u1", content="x" * 30 + "\n" + "y" * 5)
 
     assert result
     assert "S" in result
@@ -148,14 +152,16 @@ def test_builtin_tool_summary_does_not_duplicate_lines_when_merging_chunks():
 
     content = "\n".join(["a" * 20, "b" * 20, "c" * 20])
 
-    with patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=100):
-        with patch.object(
+    with (
+        patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=100),
+        patch.object(
             _BuiltinDummyTool,
             "get_prompt_tokens",
             side_effect=lambda prompt_messages: len(prompt_messages[-1].content),
-        ):
-            with patch.object(_BuiltinDummyTool, "invoke_model", side_effect=_record_invoke):
-                tool.summary(user_id="u1", content=content)
+        ),
+        patch.object(_BuiltinDummyTool, "invoke_model", side_effect=_record_invoke),
+    ):
+        tool.summary(user_id="u1", content=content)
 
     combined = "".join(captured_chunks)
     for line in ("a" * 20, "b" * 20, "c" * 20):

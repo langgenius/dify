@@ -60,15 +60,14 @@ class TestInstalledAppWorkflowRunApi:
         installed_app = make_installed_app(sqlite_session, mode=AppMode.CHAT)
         user = Account(name="User", email="user@example.com")
 
-        with app.test_request_context("/"):
-            with pytest.raises(NotWorkflowAppError):
-                method(
-                    api,
-                    WorkflowRunPayload.model_validate({"inputs": {}}),
-                    sqlite_session,
-                    user,
-                    installed_app,
-                )
+        with app.test_request_context("/"), pytest.raises(NotWorkflowAppError):
+            method(
+                api,
+                WorkflowRunPayload.model_validate({"inputs": {}}),
+                sqlite_session,
+                user,
+                installed_app,
+            )
 
     def test_success(self, app: Flask, sqlite_session: Session, payload):
         api = InstalledAppWorkflowRunApi()
@@ -103,9 +102,9 @@ class TestInstalledAppWorkflowRunApi:
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=InvokeRateLimitError("rate limit"),
             ),
+            pytest.raises(InvokeRateLimitHttpError),
         ):
-            with pytest.raises(InvokeRateLimitHttpError):
-                method(api, req_data, sqlite_session, user, installed_app)
+            method(api, req_data, sqlite_session, user, installed_app)
 
     def test_unexpected_exception(self, app: Flask, sqlite_session: Session, payload):
         api = InstalledAppWorkflowRunApi()
@@ -120,9 +119,9 @@ class TestInstalledAppWorkflowRunApi:
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=Exception("boom"),
             ),
+            pytest.raises(InternalServerError),
         ):
-            with pytest.raises(InternalServerError):
-                method(api, req_data, sqlite_session, user, installed_app)
+            method(api, req_data, sqlite_session, user, installed_app)
 
 
 class TestInstalledAppWorkflowTaskStopApi:

@@ -1531,16 +1531,13 @@ class ToolMCPAuthApi(Resource):
                 timeout=provider_entity.timeout,
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
-                # Update credentials in new transaction
-                with sessionmaker(db.engine).begin() as session:
-                    service = MCPToolManageService(session=session)
-                    service.update_provider_credentials(
-                        provider_id=provider_id,
-                        tenant_id=tenant_id,
-                        credentials=provider_entity.credentials,
-                        authed=True,
-                    )
-                    return MCPAuthResponse(result="success").model_dump(mode="json")
+                MCPToolManageService.update_provider_credentials_in_new_transaction(
+                    provider_id=provider_id,
+                    tenant_id=tenant_id,
+                    credentials=provider_entity.credentials,
+                    authed=True,
+                )
+                return MCPAuthResponse(result="success").model_dump(mode="json")
         except MCPAuthError as e:
             try:
                 # Pass the extracted OAuth metadata hints to auth()

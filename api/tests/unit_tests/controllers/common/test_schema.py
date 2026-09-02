@@ -359,9 +359,8 @@ def test_query_params_from_request_raises_for_malformed_ints_by_default():
     from controllers.common.schema import query_params_from_request
 
     app = Flask(__name__)
-    with app.test_request_context("/?page=bad&limit="):
-        with pytest.raises(ValueError):
-            query_params_from_request(HelperQueryModel, list_fields=("status",))
+    with app.test_request_context("/?page=bad&limit="), pytest.raises(ValueError):
+        query_params_from_request(HelperQueryModel, list_fields=("status",))
 
 
 def test_query_params_from_request_can_use_model_default_for_malformed_defaulted_ints():

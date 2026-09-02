@@ -216,9 +216,9 @@ def test_account_endpoint_preserves_client_validation_before_bearer_challenge() 
     with (
         app.test_request_context(json={"client_id": "missing"}),
         patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+        pytest.raises(NotFound, match="client_id is invalid"),
     ):
-        with pytest.raises(NotFound, match="client_id is invalid"):
-            unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
+        unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
 
 
 def test_oauth_provider_app_response_requires_auto_authorize() -> None:

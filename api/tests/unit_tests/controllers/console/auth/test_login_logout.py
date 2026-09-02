@@ -287,13 +287,15 @@ class TestLoginApi:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_get_freeze_type.return_value = "email_domain_suspended"
 
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "user@suspended.example", "password": encode_password("password")},
+        with (
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "user@suspended.example", "password": encode_password("password")},
+            ),
+            pytest.raises(EmailDomainSuspendedError),
         ):
-            with pytest.raises(EmailDomainSuspendedError):
-                LoginApi().post()
+            LoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -319,13 +321,15 @@ class TestLoginApi:
         )
         mock_get_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -357,13 +361,15 @@ class TestLoginApi:
         mock_get_account.return_value = None
         mock_create_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -384,13 +390,15 @@ class TestLoginApi:
     ):
         mock_get_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/reset-password",
-            method="POST",
-            json={"email": "User@Example.com"},
+        with (
+            app.test_request_context(
+                "/reset-password",
+                method="POST",
+                json={"email": "User@Example.com"},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                ResetPasswordSendEmailApi().post()
+            ResetPasswordSendEmailApi().post()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
@@ -606,13 +614,15 @@ class TestLoginApi:
         )
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(AccountBannedError),
         ):
-            with pytest.raises(AccountBannedError):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
         warn_records = [
             r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
@@ -650,13 +660,15 @@ class TestLoginApi:
         mock_create_account.side_effect = SeatsLimitExceededError("licensed seats limit exceeded")
 
         # Act & Assert
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(SeatsLimitExceeded),
         ):
-            with pytest.raises(SeatsLimitExceeded):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
         mock_create_account.assert_called_once()
 

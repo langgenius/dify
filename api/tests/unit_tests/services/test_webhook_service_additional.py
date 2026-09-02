@@ -66,9 +66,8 @@ class TestWebhookServiceExtractionFallbacks:
 
         apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
-        with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-            with pytest.raises(RequestEntityTooLarge):
-                WebhookService.extract_webhook_data(_workflow_trigger())
+        with flask_app.test_request_context("/webhook", method="POST", data="ab"), pytest.raises(RequestEntityTooLarge):
+            WebhookService.extract_webhook_data(_workflow_trigger())
 
     def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
         webhook_trigger = _workflow_trigger()

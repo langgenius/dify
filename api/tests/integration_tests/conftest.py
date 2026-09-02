@@ -87,9 +87,8 @@ def setup_account(request) -> Generator[Account, None, None]:
             session=db.session(),
         )
 
-    with _CACHED_APP.test_request_context():
-        with Session(bind=db.engine, expire_on_commit=False) as session:
-            account = session.scalars(select(Account).filter_by(email=email)).one()
+    with _CACHED_APP.test_request_context(), Session(bind=db.engine, expire_on_commit=False) as session:
+        account = session.scalars(select(Account).filter_by(email=email)).one()
 
     yield account
 

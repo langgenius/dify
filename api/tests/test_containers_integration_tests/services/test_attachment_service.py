@@ -73,8 +73,10 @@ class TestAttachmentService:
     def test_should_raise_not_found_when_file_missing(self, db_session_with_containers: Session):
         service = AttachmentService(session_factory=sessionmaker(bind=db.engine))
 
-        with patch.object(attachment_service_module.storage, "load_once") as mock_load:
-            with pytest.raises(NotFound, match="File not found"):
-                service.get_file_base64(str(uuid4()))
+        with (
+            patch.object(attachment_service_module.storage, "load_once") as mock_load,
+            pytest.raises(NotFound, match="File not found"),
+        ):
+            service.get_file_base64(str(uuid4()))
 
         mock_load.assert_not_called()

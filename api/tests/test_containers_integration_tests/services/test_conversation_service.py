@@ -1168,14 +1168,16 @@ class TestConversationServiceExport:
         conversation_id = conversation.id
 
         # Act — force an error during the soft-delete commit to exercise rollback
-        with patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")):
-            with pytest.raises(Exception, match="DB error"):
-                ConversationService.delete(
-                    app_model=app_model,
-                    conversation_id=conversation_id,
-                    user=user,
-                    session=db_session_with_containers,
-                )
+        with (
+            patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")),
+            pytest.raises(Exception, match="DB error"),
+        ):
+            ConversationService.delete(
+                app_model=app_model,
+                conversation_id=conversation_id,
+                user=user,
+                session=db_session_with_containers,
+            )
 
         # Assert — related-data deletion is not scheduled.
         mock_delete_task.delay.assert_not_called()

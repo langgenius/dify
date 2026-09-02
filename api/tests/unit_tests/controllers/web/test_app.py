@@ -90,9 +90,8 @@ class TestAppParameterApi:
         app_definitions.get_public_parameters.side_effect = service_error
         application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
 
-        with app.test_request_context("/parameters"):
-            with pytest.raises(http_error):
-                AppParameterApi().get(_make_app(), _make_end_user())
+        with app.test_request_context("/parameters"), pytest.raises(http_error):
+            AppParameterApi().get(_make_app(), _make_end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +117,8 @@ class TestAppMeta:
         app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
         application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
 
-        with app.test_request_context("/meta"):
-            with pytest.raises(AppUnavailableError) as raised:
-                AppMeta().get(_make_app(), _make_end_user())
+        with app.test_request_context("/meta"), pytest.raises(AppUnavailableError) as raised:
+            AppMeta().get(_make_app(), _make_end_user())
 
         assert raised.value.data == {
             "code": "app_unavailable",
@@ -185,9 +183,8 @@ class TestAppAccessMode:
         webapp_access.get_access_mode.side_effect = service_error
         application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
 
-        with app.test_request_context("/webapp/access-mode?appCode=code-1"):
-            with pytest.raises(http_error) as raised:
-                AppAccessMode().get()
+        with app.test_request_context("/webapp/access-mode?appCode=code-1"), pytest.raises(http_error) as raised:
+            AppAccessMode().get()
 
         assert raised.value.data == expected_data
 
@@ -339,8 +336,7 @@ class TestAppWebAuthPermission:
     def test_raises_when_app_reference_is_missing(
         self, application_services: MagicMock, path: str, headers: dict[str, str], app: Flask
     ) -> None:
-        with app.test_request_context(path, headers=headers):
-            with pytest.raises(ValueError, match="appId"):
-                AppWebAuthPermission().get()
+        with app.test_request_context(path, headers=headers), pytest.raises(ValueError, match="appId"):
+            AppWebAuthPermission().get()
 
         application_services.assert_not_called()

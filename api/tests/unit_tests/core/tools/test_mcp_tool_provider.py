@@ -59,9 +59,11 @@ def test_mcp_tool_provider_controller_from_entity_and_get_tools():
 
 def test_mcp_tool_provider_controller_from_entity_requires_icon():
     entity = _build_mcp_entity(icon="")
-    with patch("core.tools.mcp_tool.provider.ToolTransformService.convert_mcp_schema_to_parameter", return_value=[]):
-        with pytest.raises(ValueError, match="icon is required"):
-            MCPToolProviderController.from_entity(entity)
+    with (
+        patch("core.tools.mcp_tool.provider.ToolTransformService.convert_mcp_schema_to_parameter", return_value=[]),
+        pytest.raises(ValueError, match="icon is required"),
+    ):
+        MCPToolProviderController.from_entity(entity)
 
 
 def test_mcp_tool_provider_controller_from_db_delegates_to_entity():

@@ -46,12 +46,14 @@ def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
     manager = Mock()
     manager.invoke.return_value = iter([tool.create_text_message("ok")])
 
-    with patch("core.tools.plugin_tool.tool.PluginToolManager", return_value=manager):
-        with patch(
+    with (
+        patch("core.tools.plugin_tool.tool.PluginToolManager", return_value=manager),
+        patch(
             "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
             return_value={"converted": 1},
-        ):
-            messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
+        ),
+    ):
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     manager.invoke.assert_called_once()

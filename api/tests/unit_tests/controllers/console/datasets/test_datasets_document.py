@@ -339,9 +339,9 @@ class TestGetProcessRuleApi:
                 return_value=document,
             ),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=None),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, session, user)
+            method(api, session, user)
 
 
 class TestDatasetDocumentListApi:
@@ -455,9 +455,9 @@ class TestDatasetDocumentListApi:
             app.test_request_context("/", json={}),
             patch.object(type(console_ns), "payload", {}),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(), user, "ds-1")
+            method(api, MagicMock(), user, "ds-1")
 
     def test_get_with_fetch_true_and_invalid_fetch(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
@@ -597,9 +597,12 @@ class TestDocumentApi:
         api = DocumentApi()
         method = unwrap(api.get)
         user, tenant_id = patch_tenant
-        with app.test_request_context("/?metadata=wrong"), patch.object(api, "get_document", return_value=MagicMock()):
-            with pytest.raises(InvalidMetadataError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+        with (
+            app.test_request_context("/?metadata=wrong"),
+            patch.object(api, "get_document", return_value=MagicMock()),
+            pytest.raises(InvalidMetadataError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
     def test_delete_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentApi()
@@ -632,9 +635,9 @@ class TestDocumentApi:
                 "controllers.console.datasets.datasets_document.DocumentService.delete_document",
                 side_effect=services.errors.document.DocumentIndexingError(),
             ),
+            pytest.raises(DocumentIndexingError),
         ):
-            with pytest.raises(DocumentIndexingError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+            method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
 
 class TestDocumentDownloadApi:
@@ -660,9 +663,12 @@ class TestDocumentProcessingApi:
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
         user = MagicMock(is_dataset_editor=False)
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=MagicMock()):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "pause")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=MagicMock()),
+            pytest.raises(Forbidden),
+        ):
+            method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "pause")
 
     def test_resume_from_error_state(self, app: Flask, patch_tenant):
         api = DocumentProcessingApi()
@@ -699,9 +705,12 @@ class TestDocumentProcessingApi:
         method = unwrap(api.patch)
         user, tenant_id = patch_tenant
         document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(InvalidActionError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1", "pause")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document),
+            pytest.raises(InvalidActionError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1", "pause")
 
 
 class TestDocumentMetadataApi:
@@ -749,9 +758,12 @@ class TestDocumentMetadataApi:
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         req_data = DocumentMetadataUpdatePayload.model_validate({})
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=MagicMock()):
-            with pytest.raises(ValueError):
-                method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=MagicMock()),
+            pytest.raises(ValueError),
+        ):
+            method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
     def test_put_invalid_doc_type(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
@@ -766,9 +778,9 @@ class TestDocumentMetadataApi:
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"others": {}},
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+            method(api, req_data, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
 
 class TestDocumentStatusApi:
@@ -812,9 +824,9 @@ class TestDocumentStatusApi:
                 "controllers.console.datasets.datasets_document.DocumentService.batch_update_document_status",
                 side_effect=ValueError("x"),
             ),
+            pytest.raises(InvalidActionError),
         ):
-            with pytest.raises(InvalidActionError):
-                method(api, MagicMock(), user, "ds-1", "enable")
+            method(api, MagicMock(), user, "ds-1", "enable")
 
 
 class TestDocumentRetryApi:
@@ -923,9 +935,9 @@ class TestDocumentRetryApi:
                 return_value=None,
             ),
             patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_document,
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, req_data, session, tenant_id, user, "foreign-dataset")
+            method(api, req_data, session, tenant_id, user, "foreign-dataset")
 
         session.scalars.assert_not_called()
         bypass_knowledge_rate_limit.assert_not_called()
@@ -1006,9 +1018,9 @@ class TestWebsiteDocumentSyncApi:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.sync_website_document"
             ) as sync_document,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, session, "tenant-1", user, "ds-1", "doc-1")
+            method(api, session, "tenant-1", user, "ds-1", "doc-1")
 
         get_document.assert_not_called()
         sync_document.assert_not_called()
@@ -1048,9 +1060,9 @@ class TestDocumentGenerateSummaryApi:
                 "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
                 return_value=[MagicMock(id="doc-1")],
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, req_data, MagicMock(), user, "ds-1")
+            method(api, req_data, MagicMock(), user, "ds-1")
 
     def test_generate_not_enabled(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
@@ -1062,9 +1074,9 @@ class TestDocumentGenerateSummaryApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, req_data, MagicMock(), user, "ds-1")
+            method(api, req_data, MagicMock(), user, "ds-1")
 
     def test_generate_summary_success_with_qa_skip(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
@@ -1136,9 +1148,12 @@ class TestDocumentIndexingEstimateApi:
         )
         session = MagicMock()
         session.scalar.return_value = None
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(NotFound):
-                method(api, session, tenant_id, user, "ds-1", "doc-1")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document),
+            pytest.raises(NotFound),
+        ):
+            method(api, session, tenant_id, user, "ds-1", "doc-1")
 
     def test_indexing_estimate_generic_exception(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
@@ -1162,18 +1177,21 @@ class TestDocumentIndexingEstimateApi:
             patch.object(api, "get_document", return_value=document),
             patch("controllers.console.datasets.datasets_document.ExtractSetting", return_value=MagicMock()),
             patch("controllers.console.datasets.datasets_document.IndexingRunner", return_value=mock_indexing_runner),
+            pytest.raises(IndexingEstimateError),
         ):
-            with pytest.raises(IndexingEstimateError):
-                method(api, session, tenant_id, user, "ds-1", "doc-1")
+            method(api, session, tenant_id, user, "ds-1", "doc-1")
 
     def test_get_finished(self, app: Flask, patch_tenant):
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
         user, tenant_id = patch_tenant
         document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(DocumentAlreadyFinishedError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document),
+            pytest.raises(DocumentAlreadyFinishedError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1")
 
 
 class TestDocumentBatchDownloadZipApi:
@@ -1182,9 +1200,12 @@ class TestDocumentBatchDownloadZipApi:
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
         payload: dict[str, list[str]] = {"document_ids": []}
-        with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
-            with pytest.raises(ValueError):
-                method(api, MagicMock(), tenant_id, user, "ds-1")
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1")
 
 
 class TestDatasetDocumentListApiDelete:
@@ -1212,9 +1233,9 @@ class TestDatasetDocumentListApiDelete:
                 "controllers.console.datasets.datasets_document.DocumentService.delete_documents",
                 side_effect=services.errors.document.DocumentIndexingError(),
             ),
+            pytest.raises(DocumentIndexingError),
         ):
-            with pytest.raises(DocumentIndexingError):
-                method(api, MagicMock(), tenant_id, user, "ds-1")
+            method(api, MagicMock(), tenant_id, user, "ds-1")
 
     def test_delete_dataset_not_found(self, app: Flask, patch_tenant, bypass_knowledge_rate_limit):
         """Test deletion when dataset not found"""
@@ -1230,9 +1251,9 @@ class TestDatasetDocumentListApiDelete:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.delete_documents"
             ) as delete_documents,
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), tenant_id, user, "foreign-dataset")
+            method(api, MagicMock(), tenant_id, user, "foreign-dataset")
 
         bypass_knowledge_rate_limit.assert_not_called()
         delete_documents.assert_not_called()
@@ -1302,18 +1323,24 @@ class TestDocumentBatchIndexingEstimateApi:
             data_source_info_dict={},
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=[document]):
-            with pytest.raises(ValueError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "batch-1")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_batch_documents", return_value=[document]),
+            pytest.raises(ValueError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "batch-1")
 
     def test_get_batch_estimate_invalid_batch(self, app: Flask, patch_tenant):
         """Test batch estimation with invalid batch"""
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
         user, tenant_id = patch_tenant
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "invalid-batch")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_batch_documents", side_effect=NotFound()),
+            pytest.raises(NotFound),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "invalid-batch")
 
 
 class TestDocumentBatchIndexingStatusApi:
@@ -1366,9 +1393,12 @@ class TestDocumentBatchIndexingStatusApi:
         api = DocumentBatchIndexingStatusApi()
         method = unwrap(api.get)
         user, _ = patch_tenant
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), user, "ds-1", "invalid-batch")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_batch_documents", side_effect=NotFound()),
+            pytest.raises(NotFound),
+        ):
+            method(api, MagicMock(), user, "ds-1", "invalid-batch")
 
 
 class TestDocumentIndexingStatusApi:
@@ -1403,9 +1433,12 @@ class TestDocumentIndexingStatusApi:
         api = DocumentIndexingStatusApi()
         method = unwrap(api.get)
         user, tenant_id = patch_tenant
-        with app.test_request_context("/"), patch.object(api, "get_document", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "invalid-doc")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", side_effect=NotFound()),
+            pytest.raises(NotFound),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "invalid-doc")
 
 
 class TestDocumentRenameApi:
@@ -1482,9 +1515,9 @@ class TestDocumentGenerateSummaryApiSuccess:
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, req_data, MagicMock(), user, "ds-1")
+            method(api, req_data, MagicMock(), user, "ds-1")
 
 
 class TestDocumentProcessingApiResume:
@@ -1494,9 +1527,12 @@ class TestDocumentProcessingApiResume:
         method = unwrap(api.patch)
         user, tenant_id = patch_tenant
         document = MagicMock(indexing_status=IndexingStatus.COMPLETED, is_paused=False)
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(InvalidActionError):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1", "resume")
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document),
+            pytest.raises(InvalidActionError),
+        ):
+            method(api, MagicMock(), tenant_id, user, "ds-1", "doc-1", "resume")
 
 
 class TestDocumentPermissionCases:
@@ -1513,9 +1549,9 @@ class TestDocumentPermissionCases:
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
                 side_effect=services.errors.account.NoPermissionError("No permission"),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(), tenant_id, user, "ds-1", "batch-1")
+            method(api, MagicMock(), tenant_id, user, "ds-1", "batch-1")
 
     def test_document_batch_get_documents_not_found(self, app: Flask, patch_tenant):
         api = DocumentBatchIndexingEstimateApi()
@@ -1583,9 +1619,9 @@ class TestDocumentPermissionCases:
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
                 side_effect=services.errors.account.NoPermissionError("No permission"),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, session, user)
+            method(api, session, user)
 
 
 class TestDocumentListAdvancedCases:

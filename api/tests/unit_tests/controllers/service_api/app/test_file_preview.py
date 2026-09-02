@@ -150,32 +150,40 @@ class TestFilePreviewApi:
         assert upload_file.tenant_id == records.app.tenant_id
 
     def test_validate_file_ownership_file_not_found(self, file_preview_api: FilePreviewApi, database: _Database):
-        with patch("controllers.service_api.app.file_preview.db", database):
-            with pytest.raises(FileNotFoundError, match="File not found in message context"):
-                file_preview_api._validate_file_ownership(str(uuid4()), str(uuid4()))
+        with (
+            patch("controllers.service_api.app.file_preview.db", database),
+            pytest.raises(FileNotFoundError, match="File not found in message context"),
+        ):
+            file_preview_api._validate_file_ownership(str(uuid4()), str(uuid4()))
 
     def test_validate_file_ownership_access_denied(self, file_preview_api: FilePreviewApi, database: _Database):
         records = _persist_preview_records(database.session)
 
-        with patch("controllers.service_api.app.file_preview.db", database):
-            with pytest.raises(FileAccessDeniedError, match="not owned by requesting app"):
-                file_preview_api._validate_file_ownership(records.upload_file.id, str(uuid4()))
+        with (
+            patch("controllers.service_api.app.file_preview.db", database),
+            pytest.raises(FileAccessDeniedError, match="not owned by requesting app"),
+        ):
+            file_preview_api._validate_file_ownership(records.upload_file.id, str(uuid4()))
 
     def test_validate_file_ownership_upload_file_not_found(self, file_preview_api: FilePreviewApi, database: _Database):
         records = _persist_preview_records(database.session)
         database.session.delete(records.upload_file)
         database.session.commit()
 
-        with patch("controllers.service_api.app.file_preview.db", database):
-            with pytest.raises(FileNotFoundError, match="Upload file record not found"):
-                file_preview_api._validate_file_ownership(records.upload_file.id, records.app.id)
+        with (
+            patch("controllers.service_api.app.file_preview.db", database),
+            pytest.raises(FileNotFoundError, match="Upload file record not found"),
+        ):
+            file_preview_api._validate_file_ownership(records.upload_file.id, records.app.id)
 
     def test_validate_file_ownership_tenant_mismatch(self, file_preview_api: FilePreviewApi, database: _Database):
         records = _persist_preview_records(database.session, upload_tenant_id=str(uuid4()))
 
-        with patch("controllers.service_api.app.file_preview.db", database):
-            with pytest.raises(FileAccessDeniedError, match="tenant mismatch"):
-                file_preview_api._validate_file_ownership(records.upload_file.id, records.app.id)
+        with (
+            patch("controllers.service_api.app.file_preview.db", database),
+            pytest.raises(FileAccessDeniedError, match="tenant mismatch"),
+        ):
+            file_preview_api._validate_file_ownership(records.upload_file.id, records.app.id)
 
     def test_validate_file_ownership_invalid_input(self, file_preview_api: FilePreviewApi):
         with pytest.raises(FileAccessDeniedError, match="Invalid file or app identifier"):
@@ -269,10 +277,12 @@ class TestFilePreviewApi:
 
         event.listen(sqlite_engine, "before_cursor_execute", fail_statement)
         try:
-            with patch("controllers.service_api.app.file_preview.db", database):
-                with caplog.at_level(logging.ERROR, logger="controllers.service_api.app.file_preview"):
-                    with pytest.raises(FileAccessDeniedError, match="File access validation failed"):
-                        file_preview_api._validate_file_ownership(file_id, app_id)
+            with (
+                patch("controllers.service_api.app.file_preview.db", database),
+                caplog.at_level(logging.ERROR, logger="controllers.service_api.app.file_preview"),
+                pytest.raises(FileAccessDeniedError, match="File access validation failed"),
+            ):
+                file_preview_api._validate_file_ownership(file_id, app_id)
         finally:
             event.remove(sqlite_engine, "before_cursor_execute", fail_statement)
 

@@ -296,15 +296,15 @@ class TestBuiltinProviderApis:
 
         with (
             app.test_request_context("/", json={"credentials": empty_mapping(), "type": "invalid"}),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(
-                    api,
-                    BuiltinToolAddPayload(credentials=empty_mapping(), type="invalid"),
-                    "t",
-                    make_account(),
-                    "provider",
-                )
+            method(
+                api,
+                BuiltinToolAddPayload(credentials=empty_mapping(), type="invalid"),
+                "t",
+                make_account(),
+                "provider",
+            )
 
     def test_add_success(self, app: Flask) -> None:
         api = ToolBuiltinProviderAddApi()
@@ -594,11 +594,8 @@ class TestWorkflowApis:
         api = ToolWorkflowProviderGetApi()
         method = unwrap(api.get)
 
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "t", make_account())
+        with app.test_request_context("/"), pytest.raises(ValueError):
+            method(api, "t", make_account())
 
 
 class TestLists:
@@ -668,17 +665,16 @@ class TestOAuth:
                 "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_oauth_client",
                 return_value=None,
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, "t", make_account(), "provider")
+            method(api, "t", make_account(), "provider")
 
     def test_oauth_callback_no_cookie(self, app: Flask) -> None:
         api = ToolOAuthCallback()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, "provider")
+        with app.test_request_context("/"), pytest.raises(Forbidden):
+            method(api, "provider")
 
 
 class TestOAuthCustomClient:

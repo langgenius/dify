@@ -185,13 +185,12 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "yaml_content": "version: 0.6.0\n",
-                    "creator_email": "user@example.com",
-                }
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        with app.test_request_context(), patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
+            mock_ns.payload = {
+                "yaml_content": "version: 0.6.0\n",
+                "creator_email": "user@example.com",
+            }
+            result = unwrapped(api_instance, workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 200
@@ -208,10 +207,9 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        with app.test_request_context(), patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+            body, status_code = unwrapped(api_instance, workspace_id="ws-123")
 
         assert status_code == 202
         assert body["status"] == "pending"
@@ -225,10 +223,9 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        with app.test_request_context(), patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+            body, status_code = unwrapped(api_instance, workspace_id="ws-123")
 
         assert status_code == 400
         assert body["status"] == "failed"
@@ -239,10 +236,9 @@ class TestEnterpriseAppDSLImport:
         mock_get_account.return_value = None
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        with app.test_request_context(), patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
+            result = unwrapped(api_instance, workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 404
@@ -466,9 +462,11 @@ class TestEnterpriseAppDSLExport:
         )
 
         unwrapped = inspect.unwrap(api_instance.get)
-        with app.test_request_context():
-            with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
-                unwrapped(api_instance, app_id=app_model.id)
+        with (
+            app.test_request_context(),
+            pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"),
+        ):
+            unwrapped(api_instance, app_id=app_model.id)
 
         call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
         assert call_kwargs["app_model"].id == app_model.id

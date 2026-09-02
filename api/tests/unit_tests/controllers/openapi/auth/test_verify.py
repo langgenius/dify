@@ -78,9 +78,11 @@ def test_check_app_access_raises_when_not_member():
     tenant = Tenant(name="Test Tenant")
     tenant.id = "t1"
     data = _data(account_id=uuid.uuid4(), tenant=tenant)
-    with patch("controllers.openapi.auth.verify.TenantService.account_belongs_to_tenant", return_value=False):
-        with pytest.raises(Forbidden, match="subject_no_app_access"):
-            check_app_access(data)
+    with (
+        patch("controllers.openapi.auth.verify.TenantService.account_belongs_to_tenant", return_value=False),
+        pytest.raises(Forbidden, match="subject_no_app_access"),
+    ):
+        check_app_access(data)
 
 
 # --- check_rbac_permission ---
@@ -182,9 +184,8 @@ def test_check_private_app_permission_raises_when_user_not_allowed():
     )
     data = _data(account_id=uuid.uuid4(), app=app)
     target = "controllers.openapi.auth.verify.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp"
-    with patch(target, return_value=False):
-        with pytest.raises(Forbidden, match="user_not_allowed_for_private_app"):
-            check_private_app_permission(data)
+    with patch(target, return_value=False), pytest.raises(Forbidden, match="user_not_allowed_for_private_app"):
+        check_private_app_permission(data)
 
 
 def test_check_private_app_permission_passes_when_allowed():
@@ -224,9 +225,8 @@ def test_check_workspace_mismatch_raises_422_on_mismatch(flask_app):
     tenant = Tenant(name="Test Tenant")
     tenant.id = uuid.uuid4()
     other_id = uuid.uuid4()
-    with flask_app.test_request_context(f"/test?workspace_id={other_id}"):
-        with pytest.raises(UnprocessableEntity):
-            check_workspace_mismatch(_data(tenant=tenant, path_params={}))
+    with flask_app.test_request_context(f"/test?workspace_id={other_id}"), pytest.raises(UnprocessableEntity):
+        check_workspace_mismatch(_data(tenant=tenant, path_params={}))
 
 
 def test_check_workspace_mismatch_passes_when_no_request_workspace_id(flask_app):

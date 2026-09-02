@@ -347,9 +347,11 @@ def test_gateway_releases_reservation_when_provider_fails_before_delivery(
         raise RuntimeError("provider failed")
         yield
 
-    with patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()):
-        with pytest.raises(RuntimeError, match="provider failed"):
-            list(service.invoke(prepared))
+    with (
+        patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()),
+        pytest.raises(RuntimeError, match="provider failed"),
+    ):
+        list(service.invoke(prepared))
 
     reservation.commit.assert_not_called()
     reservation.release.assert_called_once_with()

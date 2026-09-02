@@ -81,9 +81,9 @@ def test_get_compliance_download_translates_rate_limit(
     with (
         app.test_request_context("/compliance/download"),
         patch("controllers.console.billing.compliance.extract_remote_ip", return_value="127.0.0.1"),
+        pytest.raises(ComplianceRateLimitError) as exc_info,
     ):
-        with pytest.raises(ComplianceRateLimitError) as exc_info:
-            method(resource, query, request_context)
+        method(resource, query, request_context)
 
     assert exc_info.value.data == {
         "code": "compliance_rate_limit",

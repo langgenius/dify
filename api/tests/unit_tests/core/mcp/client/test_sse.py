@@ -114,32 +114,33 @@ def test_sse_client_connection_validation():
     """Test SSE client validates endpoint URLs properly."""
     test_url = "http://test.example/sse"
 
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock the HTTP client
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock the HTTP client
+        mock_client = Mock()
+        mock_client_factory.return_value.__enter__.return_value = mock_client
 
-            # Mock the SSE connection
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
+        # Mock the SSE connection
+        mock_event_source = Mock()
+        mock_event_source.response.raise_for_status.return_value = None
+        mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            # Mock SSE events
-            class MockSSEEvent:
-                def __init__(self, event_type: str, data: str):
-                    self.event = event_type
-                    self.data = data
+        # Mock SSE events
+        class MockSSEEvent:
+            def __init__(self, event_type: str, data: str):
+                self.event = event_type
+                self.data = data
 
-            # Simulate endpoint event
-            endpoint_event = MockSSEEvent("endpoint", "/messages/?session_id=test-123")
-            mock_event_source.iter_sse.return_value = [endpoint_event]
+        # Simulate endpoint event
+        endpoint_event = MockSSEEvent("endpoint", "/messages/?session_id=test-123")
+        mock_event_source.iter_sse.return_value = [endpoint_event]
 
-            # Test connection
-            with contextlib.suppress(Exception):
-                with sse_client(test_url) as (read_queue, write_queue):
-                    assert read_queue is not None
-                    assert write_queue is not None
+        # Test connection
+        with contextlib.suppress(Exception), sse_client(test_url) as (read_queue, write_queue):
+            assert read_queue is not None
+            assert write_queue is not None
 
 
 def test_sse_client_error_handling():
@@ -147,30 +148,32 @@ def test_sse_client_error_handling():
     test_url = "http://test.example/sse"
 
     # Test 401 error handling
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock 401 HTTP error
-            mock_response = Mock(status_code=401)
-            mock_response.headers = {"WWW-Authenticate": 'Bearer realm="example"'}
-            mock_error = httpx.HTTPStatusError("Unauthorized", request=Mock(), response=mock_response)
-            mock_sse_connect.side_effect = mock_error
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock 401 HTTP error
+        mock_response = Mock(status_code=401)
+        mock_response.headers = {"WWW-Authenticate": 'Bearer realm="example"'}
+        mock_error = httpx.HTTPStatusError("Unauthorized", request=Mock(), response=mock_response)
+        mock_sse_connect.side_effect = mock_error
 
-            with pytest.raises(MCPAuthError):
-                with sse_client(test_url):
-                    pass
+        with pytest.raises(MCPAuthError), sse_client(test_url):
+            pass
 
     # Test other HTTP errors
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock other HTTP error
-            mock_response = Mock(status_code=500)
-            mock_response.headers = {}
-            mock_error = httpx.HTTPStatusError("Server Error", request=Mock(), response=mock_response)
-            mock_sse_connect.side_effect = mock_error
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock other HTTP error
+        mock_response = Mock(status_code=500)
+        mock_response.headers = {}
+        mock_error = httpx.HTTPStatusError("Server Error", request=Mock(), response=mock_response)
+        mock_sse_connect.side_effect = mock_error
 
-            with pytest.raises(MCPConnectionError):
-                with sse_client(test_url):
-                    pass
+        with pytest.raises(MCPConnectionError), sse_client(test_url):
+            pass
 
 
 def test_sse_client_timeout_configuration():
@@ -180,29 +183,33 @@ def test_sse_client_timeout_configuration():
     custom_sse_timeout = 300.0
     custom_headers = {"Authorization": "Bearer test-token"}
 
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock successful connection
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock successful connection
+        mock_client = Mock()
+        mock_client_factory.return_value.__enter__.return_value = mock_client
 
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_event_source.iter_sse.return_value = []
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
+        mock_event_source = Mock()
+        mock_event_source.response.raise_for_status.return_value = None
+        mock_event_source.iter_sse.return_value = []
+        mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            with contextlib.suppress(Exception):
-                with sse_client(
-                    test_url, headers=custom_headers, timeout=custom_timeout, sse_read_timeout=custom_sse_timeout
-                ) as (read_queue, write_queue):
-                    # Verify the configuration was passed correctly
-                    mock_client_factory.assert_called_with(headers=custom_headers)
+        with (
+            contextlib.suppress(Exception),
+            sse_client(
+                test_url, headers=custom_headers, timeout=custom_timeout, sse_read_timeout=custom_sse_timeout
+            ) as (read_queue, write_queue),
+        ):
+            # Verify the configuration was passed correctly
+            mock_client_factory.assert_called_with(headers=custom_headers)
 
-                    # Check that timeout was configured
-                    call_args = mock_sse_connect.call_args
-                    assert call_args is not None
-                    timeout_arg = call_args[1]["timeout"]
-                    assert timeout_arg.read == custom_sse_timeout
+            # Check that timeout was configured
+            call_args = mock_sse_connect.call_args
+            assert call_args is not None
+            timeout_arg = call_args[1]["timeout"]
+            assert timeout_arg.read == custom_sse_timeout
 
 
 def test_sse_transport_endpoint_validation():
@@ -256,18 +263,19 @@ def test_sse_client_queue_cleanup():
     read_queue = None
     write_queue = None
 
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock connection that raises an exception
-            mock_sse_connect.side_effect = Exception("Connection failed")
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock connection that raises an exception
+        mock_sse_connect.side_effect = Exception("Connection failed")
 
-            with contextlib.suppress(Exception):
-                with sse_client(test_url) as (rq, wq):
-                    read_queue = rq
-                    write_queue = wq
+        with contextlib.suppress(Exception), sse_client(test_url) as (rq, wq):
+            read_queue = rq
+            write_queue = wq
 
-            # Queues should be cleaned up even on exception
-            # Note: In real implementation, cleanup should put None to signal shutdown
+        # Queues should be cleaned up even on exception
+        # Note: In real implementation, cleanup should put None to signal shutdown
 
 
 def test_sse_client_headers_propagation():
@@ -279,24 +287,25 @@ def test_sse_client_headers_propagation():
         "User-Agent": "test-client/1.0",
     }
 
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock the client factory to capture headers
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory,
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        # Mock the client factory to capture headers
+        mock_client = Mock()
+        mock_client_factory.return_value.__enter__.return_value = mock_client
 
-            # Mock the SSE connection
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_event_source.iter_sse.return_value = []
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
+        # Mock the SSE connection
+        mock_event_source = Mock()
+        mock_event_source.response.raise_for_status.return_value = None
+        mock_event_source.iter_sse.return_value = []
+        mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            with contextlib.suppress(Exception):
-                with sse_client(test_url, headers=custom_headers):
-                    pass
+        with contextlib.suppress(Exception), sse_client(test_url, headers=custom_headers):
+            pass
 
-            # Verify headers were passed to client factory
-            mock_client_factory.assert_called_with(headers=custom_headers)
+        # Verify headers were passed to client factory
+        mock_client_factory.assert_called_with(headers=custom_headers)
 
 
 def test_sse_client_concurrent_access():
@@ -663,22 +672,23 @@ class TestSSEClientRuntimeError:
 
         endpoint_event = MockSSEEvent("endpoint", "/messages/?session_id=test-123")
 
-        with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sc:
-                mock_client = Mock()
-                mock_cf.return_value.__enter__.return_value = mock_client
+        with (
+            patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_cf,
+            patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sc,
+        ):
+            mock_client = Mock()
+            mock_cf.return_value.__enter__.return_value = mock_client
 
-                mock_es = Mock()
-                mock_es.response.raise_for_status.return_value = None
-                mock_es.iter_sse.return_value = [endpoint_event]
-                # Make close() raise RuntimeError to exercise line 307-308
-                mock_es.response.close.side_effect = RuntimeError("already closed")
-                mock_sc.return_value.__enter__.return_value = mock_es
+            mock_es = Mock()
+            mock_es.response.raise_for_status.return_value = None
+            mock_es.iter_sse.return_value = [endpoint_event]
+            # Make close() raise RuntimeError to exercise line 307-308
+            mock_es.response.close.side_effect = RuntimeError("already closed")
+            mock_sc.return_value.__enter__.return_value = mock_es
 
-                # Should NOT raise even though close() raises RuntimeError
-                with contextlib.suppress(Exception):
-                    with sse_client(test_url) as (rq, wq):
-                        pass
+            # Should NOT raise even though close() raises RuntimeError
+            with contextlib.suppress(Exception), sse_client(test_url) as (rq, wq):
+                pass
 
 
 class TestStandaloneSendMessage:

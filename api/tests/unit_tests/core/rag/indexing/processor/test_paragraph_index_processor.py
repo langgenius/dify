@@ -140,16 +140,18 @@ class TestParagraphIndexProcessor:
         rules_without_segmentation = SimpleNamespace(segmentation=None)
         session = self.session
 
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.Rule.model_validate",
-            return_value=rules_without_segmentation,
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.Rule.model_validate",
+                return_value=rules_without_segmentation,
+            ),
+            pytest.raises(ValueError, match="No segmentation found in rules"),
         ):
-            with pytest.raises(ValueError, match="No segmentation found in rules"):
-                processor.transform(
-                    [Document(page_content="text", metadata={})],
-                    process_rule={"mode": "custom", "rules": {"enabled": True}},
-                    session=session,
-                )
+            processor.transform(
+                [Document(page_content="text", metadata={})],
+                process_rule={"mode": "custom", "rules": {"enabled": True}},
+                session=session,
+            )
 
     def test_transform_builds_split_documents(
         self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
@@ -455,9 +457,9 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.AccountService.load_user",
                 return_value=None,
             ),
+            pytest.raises(ValueError, match="Invalid account"),
         ):
-            with pytest.raises(ValueError, match="Invalid account"):
-                processor.index(dataset, dataset_document, {"general_chunks": []}, session)
+            processor.index(dataset, dataset_document, {"general_chunks": []}, session)
 
     def test_format_preview_validates_chunk_shape(self, processor: ParagraphIndexProcessor) -> None:
         preview = processor.format_preview(["chunk-1", "chunk-2"])
@@ -492,11 +494,13 @@ class TestParagraphIndexProcessor:
             id(worker_session) for worker_session in worker_sessions
         }
 
-        with patch.object(processor, "generate_summary", side_effect=RuntimeError("summary failed")):
-            with pytest.raises(ValueError, match="Failed to generate summaries"):
-                processor.generate_summary_preview(
-                    "tenant-1", [PreviewDetail(content="chunk-1")], {"enable": True}, session=session
-                )
+        with (
+            patch.object(processor, "generate_summary", side_effect=RuntimeError("summary failed")),
+            pytest.raises(ValueError, match="Failed to generate summaries"),
+        ):
+            processor.generate_summary_preview(
+                "tenant-1", [PreviewDetail(content="chunk-1")], {"enable": True}, session=session
+            )
 
     def test_generate_summary_preview_fallback_without_flask_context(self, processor: ParagraphIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="chunk-1")]
@@ -522,9 +526,9 @@ class TestParagraphIndexProcessor:
         with (
             patch("concurrent.futures.ThreadPoolExecutor", return_value=executor),
             patch("concurrent.futures.wait", side_effect=[(set(), {future}), (set(), set())]),
+            pytest.raises(ValueError, match="timeout"),
         ):
-            with pytest.raises(ValueError, match="timeout"):
-                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
+            processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()
 
@@ -641,16 +645,16 @@ class TestParagraphIndexProcessor:
             ),
         ):
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
-            with pytest.raises(ValueError, match="Expected LLMResult"):
-                with caplog.at_level(
-                    logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
-                ):
-                    ParagraphIndexProcessor.generate_summary(
-                        "tenant-1",
-                        "text content",
-                        {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
-                        session=self.session,
-                    )
+            with (
+                pytest.raises(ValueError, match="Expected LLMResult"),
+                caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+            ):
+                ParagraphIndexProcessor.generate_summary(
+                    "tenant-1",
+                    "text content",
+                    {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                    session=self.session,
+                )
 
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
         assert any(

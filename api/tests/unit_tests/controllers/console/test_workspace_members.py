@@ -65,17 +65,17 @@ class TestMemberInviteEmailApi:
 
         with (
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-        ):
-            with app.test_request_context(
+            app.test_request_context(
                 "/workspaces/current/members/invite-email",
                 method="POST",
                 json={"emails": ["User@Example.com"], "role": TenantAccountRole.EDITOR.value, "language": "en-US"},
-            ):
-                account = Account(name="tester", email="tester@example.com")
-                account._current_tenant = tenant
-                g._login_user = account
-                g._current_tenant = tenant
-                response, status_code = MemberInviteEmailApi().post()
+            ),
+        ):
+            account = Account(name="tester", email="tester@example.com")
+            account._current_tenant = tenant
+            g._login_user = account
+            g._current_tenant = tenant
+            response, status_code = MemberInviteEmailApi().post()
 
         assert status_code == 201
         assert response["invitation_results"][0]["email"] == "user@example.com"

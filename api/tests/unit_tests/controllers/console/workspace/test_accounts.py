@@ -161,9 +161,9 @@ class TestAccountInitApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
             ),
+            pytest.raises(AccountAlreadyInitedError),
         ):
-            with pytest.raises(AccountAlreadyInitedError):
-                method(api, AccountInitPayload.model_validate(payload), request_context)
+            method(api, AccountInitPayload.model_validate(payload), request_context)
 
     def test_init_missing_invitation_code_is_mapped(self, app: Flask):
         api = AccountInitApi()
@@ -184,9 +184,9 @@ class TestAccountInitApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
             ),
+            pytest.raises(MissingInvitationCodeRequestError) as exc_info,
         ):
-            with pytest.raises(MissingInvitationCodeRequestError) as exc_info:
-                method(api, AccountInitPayload.model_validate(payload), request_context)
+            method(api, AccountInitPayload.model_validate(payload), request_context)
 
         assert exc_info.value.data == {
             "code": "missing_invitation_code",
@@ -413,9 +413,9 @@ class TestAccountAvatarApiGet:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(avatar=avatar)),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, AccountAvatarQuery(avatar=file_id), request_context)
+            method(api, AccountAvatarQuery(avatar=file_id), request_context)
 
     def test_get_avatar_missing_query_returns_unprocessable_entity(self, app: Flask):
         account = make_account()
@@ -432,9 +432,9 @@ class TestAccountAvatarApiGet:
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=SimpleNamespace(account=account, tenant_id="workspace-1"),
             ),
+            pytest.raises(UnprocessableEntity) as exc_info,
         ):
-            with pytest.raises(UnprocessableEntity) as exc_info:
-                AccountAvatarApi().get()
+            AccountAvatarApi().get()
 
         assert exc_info.value.code == 422
 
@@ -456,9 +456,9 @@ class TestConvertedPostDecorator:
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=SimpleNamespace(account=account, tenant_id="workspace-1"),
             ),
+            pytest.raises(UnprocessableEntity) as exc_info,
         ):
-            with pytest.raises(UnprocessableEntity) as exc_info:
-                AccountNameApi().post()
+            AccountNameApi().post()
 
         assert exc_info.value.code == 422
 
@@ -525,9 +525,9 @@ class TestAccountPasswordApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(password=password)),
             ),
+            pytest.raises(CurrentPasswordIncorrectError),
         ):
-            with pytest.raises(CurrentPasswordIncorrectError):
-                method(api, AccountPasswordPayload.model_validate(payload), request_context)
+            method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
     def test_password_policy_error_is_mapped(self, app: Flask):
         api = AccountPasswordApi()
@@ -554,9 +554,9 @@ class TestAccountPasswordApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(password=password)),
             ),
+            pytest.raises(InvalidAccountPasswordRequestError) as exc_info,
         ):
-            with pytest.raises(InvalidAccountPasswordRequestError) as exc_info:
-                method(api, AccountPasswordPayload.model_validate(payload), request_context)
+            method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
         assert exc_info.value.data == {
             "code": "invalid_account_password",
@@ -645,9 +645,9 @@ class TestAccountDeleteApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
             ),
+            pytest.raises(InvalidAccountDeletionCodeError),
         ):
-            with pytest.raises(InvalidAccountDeletionCodeError):
-                method(api, AccountDeletePayload.model_validate(payload), request_context)
+            method(api, AccountDeletePayload.model_validate(payload), request_context)
 
     def test_delete_verify_maps_rate_limit(self, app: Flask):
         api = AccountDeleteVerifyApi()
@@ -724,9 +724,9 @@ class TestChangeEmailApis:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
+            pytest.raises(EmailCodeError),
         ):
-            with pytest.raises(EmailCodeError):
-                method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
+            method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
 
     def test_reset_email_already_used(self, app: Flask):
         api = ChangeEmailResetApi()
@@ -755,9 +755,9 @@ class TestChangeEmailApis:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
+            pytest.raises(EmailAlreadyInUseError),
         ):
-            with pytest.raises(EmailAlreadyInUseError):
-                method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
+            method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
 
 
 class TestCheckEmailUniqueApi:
@@ -805,9 +805,9 @@ class TestCheckEmailUniqueApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
+            pytest.raises(AccountInFreezeError),
         ):
-            with pytest.raises(AccountInFreezeError):
-                method(api, CheckEmailUniquePayload.model_validate(payload))
+            method(api, CheckEmailUniquePayload.model_validate(payload))
 
     def test_email_domain_is_suspended(self, app: Flask):
         api = CheckEmailUnique()
@@ -829,6 +829,6 @@ class TestCheckEmailUniqueApi:
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
+            pytest.raises(EmailDomainSuspendedError),
         ):
-            with pytest.raises(EmailDomainSuspendedError):
-                method(api, CheckEmailUniquePayload.model_validate(payload))
+            method(api, CheckEmailUniquePayload.model_validate(payload))

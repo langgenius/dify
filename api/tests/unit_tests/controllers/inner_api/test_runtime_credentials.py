@@ -73,19 +73,18 @@ def test_runtime_model_credentials_resolve_returns_decrypted_values(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [
-                    {
-                        "credential_id": "credential-1",
-                        "provider": "langgenius/openai/openai",
-                        "kind": "model",
-                    }
-                ],
-            }
-            body, status_code = unwrapped(handler)
+    with app.test_request_context(), patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
+        mock_ns.payload = {
+            "tenant_id": "tenant-1",
+            "credentials": [
+                {
+                    "credential_id": "credential-1",
+                    "provider": "langgenius/openai/openai",
+                    "kind": "model",
+                }
+            ],
+        }
+        body, status_code = unwrapped(handler)
 
     assert status_code == 200
     assert body["credentials"][0]["kind"] == "model"
@@ -104,13 +103,12 @@ def test_runtime_model_credentials_resolve_rejects_unknown_provider(mock_provide
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "credential-1", "provider": "missing", "kind": "model"}],
-            }
-            body, status_code = unwrapped(handler)
+    with app.test_request_context(), patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
+        mock_ns.payload = {
+            "tenant_id": "tenant-1",
+            "credentials": [{"credential_id": "credential-1", "provider": "missing", "kind": "model"}],
+        }
+        body, status_code = unwrapped(handler)
 
     assert status_code == 404
     assert "provider" in body["message"]
@@ -152,19 +150,18 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [
-                    {
-                        "credential_id": "credential-1",
-                        "provider": "langgenius/tavily/tavily",
-                        "kind": "tool",
-                    }
-                ],
-            }
-            body, status_code = unwrapped(handler)
+    with app.test_request_context(), patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
+        mock_ns.payload = {
+            "tenant_id": "tenant-1",
+            "credentials": [
+                {
+                    "credential_id": "credential-1",
+                    "provider": "langgenius/tavily/tavily",
+                    "kind": "tool",
+                }
+            ],
+        }
+        body, status_code = unwrapped(handler)
 
     assert status_code == 200
     assert body["credentials"][0]["kind"] == "tool"
@@ -201,13 +198,12 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "missing", "provider": "langgenius/tavily/tavily", "kind": "tool"}],
-            }
-            body, status_code = unwrapped(handler)
+    with app.test_request_context(), patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
+        mock_ns.payload = {
+            "tenant_id": "tenant-1",
+            "credentials": [{"credential_id": "missing", "provider": "langgenius/tavily/tavily", "kind": "tool"}],
+        }
+        body, status_code = unwrapped(handler)
 
     assert status_code == 404
     assert "credential" in body["message"]
@@ -216,13 +212,12 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
 def test_runtime_credentials_resolve_rejects_unknown_kind(app: Flask):
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "credential-1", "provider": "x", "kind": "secret"}],
-            }
-            body, status_code = unwrapped(handler)
+    with app.test_request_context(), patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
+        mock_ns.payload = {
+            "tenant_id": "tenant-1",
+            "credentials": [{"credential_id": "credential-1", "provider": "x", "kind": "secret"}],
+        }
+        body, status_code = unwrapped(handler)
 
     assert status_code == 400
     assert "kind" in body["message"]

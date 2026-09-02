@@ -251,9 +251,9 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(ExternalDatasetService, "validate_api_list"),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
+            method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
     def test_post_duplicate_name(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
@@ -270,9 +270,9 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
                 "create_external_knowledge_api",
                 side_effect=services.errors.dataset.DatasetNameDuplicateError(),
             ),
+            pytest.raises(DatasetNameDuplicateError),
         ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
+            method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
 
 class TestExternalApiTemplateApi(_UsesSQLiteSession):
@@ -310,9 +310,9 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
                 "get_external_knowledge_api",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, self.session, "tenant-1", "api-id")
+            method(api, self.session, "tenant-1", "api-id")
 
     def test_patch_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateApi()
@@ -366,9 +366,8 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
         api = ExternalApiTemplateApi()
         method = inspect.unwrap(api.delete)
 
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, self.session, "tenant-1", current_user, "api-id")
+        with app.test_request_context("/"), pytest.raises(Forbidden):
+            method(api, self.session, "tenant-1", current_user, "api-id")
 
 
 class TestExternalApiUseCheckApi(_UsesSQLiteSession):
@@ -454,11 +453,9 @@ class TestExternalDatasetCreateApi(_UsesSQLiteSession):
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(
-                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
-                )
+            method(api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
@@ -473,9 +470,9 @@ class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
                 "get_dataset",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, ExternalHitTestingPayload(query="test"), self.session, current_user, "dataset-id")
+            method(api, ExternalHitTestingPayload(query="test"), self.session, current_user, "dataset-id")
 
     def test_hit_testing_success(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
@@ -551,9 +548,9 @@ class TestExternalApiTemplateListApiAdvanced(_UsesSQLiteSession):
                 "controllers.console.datasets.external.ExternalDatasetService.create_external_knowledge_api",
                 side_effect=services.errors.dataset.DatasetNameDuplicateError("Duplicate"),
             ),
+            pytest.raises(DatasetNameDuplicateError),
         ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
+            method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
     def test_get_with_pagination(self, app: Flask):
         api = ExternalApiTemplateListApi()
@@ -596,11 +593,12 @@ class TestExternalDatasetCreateApiAdvanced(_UsesSQLiteSession):
             "description": "A dataset",
         }
 
-        with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
-            with pytest.raises(Forbidden):
-                method(
-                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
-                )
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            pytest.raises(Forbidden),
+        ):
+            method(api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
@@ -621,9 +619,9 @@ class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
                 "controllers.console.datasets.external.DatasetService.get_dataset",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, ExternalHitTestingPayload.model_validate(payload), self.session, current_user, "ds-1")
+            method(api, ExternalHitTestingPayload.model_validate(payload), self.session, current_user, "ds-1")
 
     def test_hit_testing_with_custom_retrieval_model(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()

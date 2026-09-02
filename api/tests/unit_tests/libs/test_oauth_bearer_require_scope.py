@@ -72,9 +72,8 @@ def test_require_scope_rejects_when_scope_missing(app: Flask):
     def view():
         return "ok"
 
-    with app.test_request_context(), _publish_auth_ctx(_ctx(frozenset({"apps:read"}))):
-        with pytest.raises(Forbidden) as exc:
-            view()
+    with app.test_request_context(), _publish_auth_ctx(_ctx(frozenset({"apps:read"}))), pytest.raises(Forbidden) as exc:
+        view()
     assert "insufficient_scope: apps:write" in str(exc.value.description)
 
 
@@ -92,7 +91,6 @@ def test_require_scope_without_validate_bearer_raises_runtime_error(app: Flask):
     def view():
         return "ok"
 
-    with app.test_request_context():
-        # No auth ContextVar published — validate_bearer was forgotten.
-        with pytest.raises(RuntimeError, match="stack @validate_bearer above @require_scope"):
-            view()
+    # No auth ContextVar published — validate_bearer was forgotten.
+    with app.test_request_context(), pytest.raises(RuntimeError, match="stack @validate_bearer above @require_scope"):
+        view()

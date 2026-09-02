@@ -2573,33 +2573,33 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             # Mock _get_available_datasets
             mock_dataset1 = create_mock_dataset_methods(dataset_id=dataset_id1, tenant_id=tenant_id)
             mock_dataset2 = create_mock_dataset_methods(dataset_id=dataset_id2, tenant_id=tenant_id)
-            with patch.object(
-                dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2]
+            # Mock get_metadata_filter_condition
+            with (
+                patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2]),
+                patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             ):
-                # Mock get_metadata_filter_condition
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
-                    # Mock multiple_retrieve to return documents
-                    doc1 = create_mock_document_methods(
-                        "Python is great",
-                        "doc1",
-                        score=0.9,
-                        provider="external",
-                        additional_metadata={"dataset_name": "test dataset", "title": "Python"},
-                    )
-                    doc2 = create_mock_document_methods(
-                        "Python is awesome",
-                        "doc2",
-                        score=0.8,
-                        provider="external",
-                        additional_metadata={"dataset_name": "test dataset", "title": "Python 2"},
-                    )
-                    with patch.object(
-                        dataset_retrieval, "multiple_retrieve", return_value=[doc1, doc2]
-                    ) as mock_multiple_retrieve:
-                        result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+                # Mock multiple_retrieve to return documents
+                doc1 = create_mock_document_methods(
+                    "Python is great",
+                    "doc1",
+                    score=0.9,
+                    provider="external",
+                    additional_metadata={"dataset_name": "test dataset", "title": "Python"},
+                )
+                doc2 = create_mock_document_methods(
+                    "Python is awesome",
+                    "doc2",
+                    score=0.8,
+                    provider="external",
+                    additional_metadata={"dataset_name": "test dataset", "title": "Python 2"},
+                )
+                with patch.object(
+                    dataset_retrieval, "multiple_retrieve", return_value=[doc1, doc2]
+                ) as mock_multiple_retrieve:
+                    result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
-                        assert len(result) == 2
-                        mock_multiple_retrieve.assert_called_once()
+                    assert len(result) == 2
+                    mock_multiple_retrieve.assert_called_once()
 
     def test_knowledge_retrieval_metadata_filtering_disabled(self, sqlite_session: Session):
         """
@@ -2635,21 +2635,23 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         # Mock dependencies
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id)
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
-                # Mock get_metadata_filter_condition - should NOT be called when disabled
-                with patch.object(
+            # Mock get_metadata_filter_condition - should NOT be called when disabled
+            with (
+                patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]),
+                patch.object(
                     dataset_retrieval,
                     "get_metadata_filter_condition",
                     return_value=(None, None),
-                ) as mock_get_metadata:
-                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
-                        # Act
-                        result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+                ) as mock_get_metadata,
+                patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]),
+            ):
+                # Act
+                result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
-                        # Assert
-                        assert isinstance(result, list)
-                        # get_metadata_filter_condition should NOT be called when mode is "disabled"
-                        mock_get_metadata.assert_not_called()
+                # Assert
+                assert isinstance(result, list)
+                # get_metadata_filter_condition should NOT be called when mode is "disabled"
+                mock_get_metadata.assert_not_called()
 
     def test_knowledge_retrieval_with_external_documents(self, sqlite_session: Session):
         """
@@ -2685,29 +2687,31 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         # Mock dependencies
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id, provider="external")
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
-                    # Create external document
-                    external_doc = create_mock_document_methods(
-                        "External knowledge",
-                        "doc1",
-                        score=0.9,
-                        provider="external",
-                        additional_metadata={
-                            "dataset_id": dataset_id,
-                            "dataset_name": "external_kb",
-                            "document_id": "ext_doc1",
-                            "title": "External Document",
-                        },
-                    )
-                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[external_doc]):
-                        # Act
-                        result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+            with (
+                patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]),
+                patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            ):
+                # Create external document
+                external_doc = create_mock_document_methods(
+                    "External knowledge",
+                    "doc1",
+                    score=0.9,
+                    provider="external",
+                    additional_metadata={
+                        "dataset_id": dataset_id,
+                        "dataset_name": "external_kb",
+                        "document_id": "ext_doc1",
+                        "title": "External Document",
+                    },
+                )
+                with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[external_doc]):
+                    # Act
+                    result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
-                        # Assert
-                        assert isinstance(result, list)
-                        if result:
-                            assert result[0].metadata.data_source_type == "external"
+                    # Assert
+                    assert isinstance(result, list)
+                    if result:
+                        assert result[0].metadata.data_source_type == "external"
 
     def test_knowledge_retrieval_empty_results(self, sqlite_session: Session):
         """
@@ -2740,15 +2744,17 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         # Mock dependencies
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id)
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
-                    # Mock multiple_retrieve to return empty list
-                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
-                        # Act
-                        result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+            # Mock multiple_retrieve to return empty list
+            with (
+                patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]),
+                patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+                patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]),
+            ):
+                # Act
+                result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
-                        # Assert
-                        assert result == []
+                # Assert
+                assert result == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(self, sqlite_session: Session):
         """
@@ -2778,14 +2784,16 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock _check_knowledge_rate_limit to raise exception
-        with patch.object(
-            dataset_retrieval,
-            "_check_knowledge_rate_limit",
-            side_effect=exc.RateLimitExceededError("Rate limit exceeded"),
+        # Act & Assert
+        with (
+            patch.object(
+                dataset_retrieval,
+                "_check_knowledge_rate_limit",
+                side_effect=exc.RateLimitExceededError("Rate limit exceeded"),
+            ),
+            pytest.raises(exc.RateLimitExceededError),
         ):
-            # Act & Assert
-            with pytest.raises(exc.RateLimitExceededError):
-                dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+            dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
     def test_knowledge_retrieval_no_available_datasets(self, sqlite_session: Session):
         """
@@ -2815,14 +2823,16 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
-            # Mock _get_available_datasets to return empty list
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[]):
-                # Act
-                result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
+        # Mock _get_available_datasets to return empty list
+        with (
+            patch.object(dataset_retrieval, "_check_knowledge_rate_limit"),
+            patch.object(dataset_retrieval, "_get_available_datasets", return_value=[]),
+        ):
+            # Act
+            result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
-                # Assert
-                assert result == []
+            # Assert
+            assert result == []
 
     def test_knowledge_retrieval_handles_multiple_documents_with_different_scores(self):
         """
@@ -4233,16 +4243,16 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         with (
             patch.object(retrieval, "_fetch_model_config", side_effect=RuntimeError("boom")),
+            pytest.raises(RuntimeError, match="boom"),
         ):
-            with pytest.raises(RuntimeError, match="boom"):
-                retrieval._automatic_metadata_filter_func(
-                    sqlite_session,
-                    dataset_ids=[dataset_id],
-                    query="python",
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
-                )
+            retrieval._automatic_metadata_filter_func(
+                sqlite_session,
+                dataset_ids=[dataset_id],
+                query="python",
+                tenant_id=tenant_id,
+                user_id=user_id,
+                metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+            )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval, sqlite_session: Session) -> None:
         tenant_id = str(uuid4())
@@ -4532,9 +4542,9 @@ class TestKnowledgeRetrievalCoverage:
         with (
             patch.object(retrieval, "_check_knowledge_rate_limit"),
             patch.object(retrieval, "_get_available_datasets", return_value=[_dataset(id="d1")]),
+            pytest.raises(ValueError, match="metadata_model_config is required"),
         ):
-            with pytest.raises(ValueError, match="metadata_model_config is required"):
-                retrieval.knowledge_retrieval(self.orm_session, request)
+            retrieval.knowledge_retrieval(self.orm_session, request)
 
     @pytest.mark.parametrize(
         ("status", "error_cls"),
@@ -4925,33 +4935,33 @@ class TestSingleAndMultipleRetrieveCoverage:
         usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         self.orm_session.add(dataset)
         self.orm_session.commit()
-        with app.app_context():
-            with (
-                patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
-                patch(
-                    "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
-                ) as mock_external,
-                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
-                patch.object(retrieval, "_on_retrieval_end") as mock_end,
-                patch.object(retrieval, "_on_query"),
-            ):
-                mock_router_cls.return_value.invoke.return_value = (dataset_id, usage)
-                mock_external.return_value = [
-                    {"content": "ext result", "metadata": {"k": "v"}, "score": 0.9, "title": "Ext Doc"}
-                ]
-                result = retrieval.single_retrieve(
-                    self.orm_session,
-                    app_id="app-1",
-                    tenant_id=tenant_id,
-                    user_id="user-1",
-                    user_from="workflow",
-                    query="python",
-                    available_datasets=[dataset],
-                    model_instance=Mock(),
-                    model_config=Mock(),
-                    planning_strategy=PlanningStrategy.REACT_ROUTER,
-                    message_id="m1",
-                )
+        with (
+            app.app_context(),
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
+            ) as mock_external,
+            patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+            patch.object(retrieval, "_on_retrieval_end") as mock_end,
+            patch.object(retrieval, "_on_query"),
+        ):
+            mock_router_cls.return_value.invoke.return_value = (dataset_id, usage)
+            mock_external.return_value = [
+                {"content": "ext result", "metadata": {"k": "v"}, "score": 0.9, "title": "Ext Doc"}
+            ]
+            result = retrieval.single_retrieve(
+                self.orm_session,
+                app_id="app-1",
+                tenant_id=tenant_id,
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+                message_id="m1",
+            )
 
         assert len(result) == 1
         assert result[0].provider == "external"
@@ -4986,31 +4996,31 @@ class TestSingleAndMultipleRetrieveCoverage:
         result_doc = _doc(provider="dify", score=0.7, dataset_id=dataset_id, document_id=document_id, doc_id="node-1")
         self.orm_session.add(dataset)
         self.orm_session.commit()
-        with app.app_context():
-            with (
-                patch("core.rag.retrieval.dataset_retrieval.FunctionCallMultiDatasetRouter") as mock_router_cls,
-                patch(
-                    "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve", return_value=[result_doc]
-                ) as mock_retrieve,
-                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
-                patch.object(retrieval, "_on_retrieval_end"),
-                patch.object(retrieval, "_on_query"),
-            ):
-                mock_router_cls.return_value.invoke.return_value = (dataset_id, usage)
-                results = retrieval.single_retrieve(
-                    self.orm_session,
-                    app_id="app-1",
-                    tenant_id=tenant_id,
-                    user_id="user-1",
-                    user_from="workflow",
-                    query="python",
-                    available_datasets=[dataset],
-                    model_instance=Mock(),
-                    model_config=Mock(),
-                    planning_strategy=PlanningStrategy.ROUTER,
-                    metadata_filter_document_ids={dataset_id: [document_id]},
-                    metadata_condition=_metadata_condition(),
-                )
+        with (
+            app.app_context(),
+            patch("core.rag.retrieval.dataset_retrieval.FunctionCallMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve", return_value=[result_doc]
+            ) as mock_retrieve,
+            patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+            patch.object(retrieval, "_on_retrieval_end"),
+            patch.object(retrieval, "_on_query"),
+        ):
+            mock_router_cls.return_value.invoke.return_value = (dataset_id, usage)
+            results = retrieval.single_retrieve(
+                self.orm_session,
+                app_id="app-1",
+                tenant_id=tenant_id,
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.ROUTER,
+                metadata_filter_document_ids={dataset_id: [document_id]},
+                metadata_condition=_metadata_condition(),
+            )
 
         assert results == [result_doc]
         assert mock_retrieve.call_args.kwargs["document_ids_filter"] == [document_id]
@@ -5273,29 +5283,29 @@ class TestSingleAndMultipleRetrieveCoverage:
             if kwargs["attachment_id"]:
                 kwargs["all_documents"].append(doc_external)
 
-        with app.app_context():
-            with (
-                patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
-                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
-                patch.object(retrieval, "_multiple_retrieve_thread", side_effect=fake_multiple_thread),
-                patch.object(retrieval, "_on_query") as mock_on_query,
-                patch.object(retrieval, "_on_retrieval_end") as mock_end,
-            ):
-                result = retrieval.multiple_retrieve(
-                    app_id="app-1",
-                    tenant_id="tenant-1",
-                    user_id="user-1",
-                    user_from="workflow",
-                    available_datasets=datasets,
-                    query="python",
-                    top_k=2,
-                    score_threshold=0.0,
-                    reranking_mode=RerankMode.WEIGHTED_SCORE,
-                    reranking_enable=True,
-                    weights=weights,
-                    attachment_ids=["att-1"],
-                    message_id="m1",
-                )
+        with (
+            app.app_context(),
+            patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
+            patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+            patch.object(retrieval, "_multiple_retrieve_thread", side_effect=fake_multiple_thread),
+            patch.object(retrieval, "_on_query") as mock_on_query,
+            patch.object(retrieval, "_on_retrieval_end") as mock_end,
+        ):
+            result = retrieval.multiple_retrieve(
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                available_datasets=datasets,
+                query="python",
+                top_k=2,
+                score_threshold=0.0,
+                reranking_mode=RerankMode.WEIGHTED_SCORE,
+                reranking_enable=True,
+                weights=weights,
+                attachment_ids=["att-1"],
+                message_id="m1",
+            )
 
         assert len(result) == 2
         assert any(doc.provider == "external" for doc in result)
@@ -5318,24 +5328,24 @@ class TestSingleAndMultipleRetrieveCoverage:
         def failing_thread(**kwargs):
             raise RuntimeError("thread boom")
 
-        with app.app_context():
-            with (
-                patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
-                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
-                patch.object(retrieval, "_multiple_retrieve_thread", side_effect=failing_thread),
-            ):
-                with pytest.raises(RuntimeError, match="thread boom"):
-                    retrieval.multiple_retrieve(
-                        app_id="app-1",
-                        tenant_id="tenant-1",
-                        user_id="user-1",
-                        user_from="workflow",
-                        available_datasets=datasets,
-                        query="python",
-                        top_k=2,
-                        score_threshold=0.0,
-                        reranking_mode="reranking_model",
-                    )
+        with (
+            app.app_context(),
+            patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
+            patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+            patch.object(retrieval, "_multiple_retrieve_thread", side_effect=failing_thread),
+            pytest.raises(RuntimeError, match="thread boom"),
+        ):
+            retrieval.multiple_retrieve(
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                available_datasets=datasets,
+                query="python",
+                top_k=2,
+                score_threshold=0.0,
+                reranking_mode="reranking_model",
+            )
 
 
 class TestInternalHooksCoverage:
@@ -5755,20 +5765,20 @@ class TestInternalHooksCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ModelMode", return_value=object()),
             patch("core.rag.retrieval.dataset_retrieval.AdvancedPromptTransform"),
+            pytest.raises(ValueError, match="not support"),
         ):
-            with pytest.raises(ValueError, match="not support"):
-                retrieval._get_prompt_template(
-                    model_config=ModelConfigWithCredentialsEntity.model_construct(
-                        provider="openai",
-                        model="gpt",
-                        model_schema=Mock(),
-                        mode="chat",
-                        provider_model_bundle=Mock(),
-                        credentials={},
-                        parameters={},
-                        stop=[],
-                    ),
+            retrieval._get_prompt_template(
+                model_config=ModelConfigWithCredentialsEntity.model_construct(
+                    provider="openai",
+                    model="gpt",
+                    model_schema=Mock(),
                     mode="chat",
-                    metadata_fields=[],
-                    query="q",
-                )
+                    provider_model_bundle=Mock(),
+                    credentials={},
+                    parameters={},
+                    stop=[],
+                ),
+                mode="chat",
+                metadata_fields=[],
+                query="q",
+            )

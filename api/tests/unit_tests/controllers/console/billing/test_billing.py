@@ -102,9 +102,8 @@ class TestBillingPortal:
         method = unwrap(resource.get)
         billing_portal.get_invoices.side_effect = BillingUpstreamUnavailableError
 
-        with app.test_request_context("/billing/invoices"):
-            with pytest.raises(BillingUnavailableError) as exc_info:
-                method(resource, request_context)
+        with app.test_request_context("/billing/invoices"), pytest.raises(BillingUnavailableError) as exc_info:
+            method(resource, request_context)
 
         assert exc_info.value.data == {
             "code": "billing_unavailable",
@@ -123,9 +122,8 @@ class TestBillingPortal:
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
         billing_portal.get_subscription.side_effect = BillingUpstreamInvalidResponseError
 
-        with app.test_request_context("/billing/subscription"):
-            with pytest.raises(BillingOperationFailedError) as exc_info:
-                method(resource, query, request_context)
+        with app.test_request_context("/billing/subscription"), pytest.raises(BillingOperationFailedError) as exc_info:
+            method(resource, query, request_context)
 
         assert exc_info.value.data == {
             "code": "billing_operation_failed",
@@ -205,20 +203,20 @@ class TestPartnerTenants:
 
         partner_tenant_bindings.sync.return_value = expected_response
 
-        with app.test_request_context(
-            method="PUT",
-            json={"click_id": click_id},
-            path=f"/billing/partners/{partner_key_encoded}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={"click_id": click_id},
+                path=f"/billing/partners/{partner_key_encoded}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
-                result = resource.put(partner_key_encoded)
+            resource = PartnerTenants()
+            result = resource.put(partner_key_encoded)
 
         # Assert
         assert result == expected_response
@@ -234,48 +232,48 @@ class TestPartnerTenants:
         invalid_partner_key = "invalid-base64-!@#$"
         click_id = "click-id-789"
 
-        with app.test_request_context(
-            method="PUT",
-            json={"click_id": click_id},
-            path=f"/billing/partners/{invalid_partner_key}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={"click_id": click_id},
+                path=f"/billing/partners/{invalid_partner_key}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
+            resource = PartnerTenants()
 
-                # Act & Assert
-                with pytest.raises(BadRequest) as exc_info:
-                    resource.put(invalid_partner_key)
-                assert "Invalid partner_key" in str(exc_info.value)
+            # Act & Assert
+            with pytest.raises(BadRequest) as exc_info:
+                resource.put(invalid_partner_key)
+            assert "Invalid partner_key" in str(exc_info.value)
 
     def test_put_missing_click_id(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that missing click_id raises UnprocessableEntity (422)."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
 
-        with app.test_request_context(
-            method="PUT",
-            json={},
-            path=f"/billing/partners/{partner_key_encoded}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={},
+                path=f"/billing/partners/{partner_key_encoded}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
+            resource = PartnerTenants()
 
-                # Act & Assert
-                # Validation should raise UnprocessableEntity (422) for missing required field
-                with pytest.raises(UnprocessableEntity):
-                    resource.put(partner_key_encoded)
+            # Act & Assert
+            # Validation should raise UnprocessableEntity (422) for missing required field
+            with pytest.raises(UnprocessableEntity):
+                resource.put(partner_key_encoded)
 
     def test_put_billing_service_json_decode_error(
         self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators
@@ -300,30 +298,30 @@ class TestPartnerTenants:
         json_decode_error = json.JSONDecodeError("Expecting value", "", 0)
         partner_tenant_bindings.sync.side_effect = json_decode_error
 
-        with app.test_request_context(
-            method="PUT",
-            json={"click_id": click_id},
-            path=f"/billing/partners/{partner_key_encoded}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={"click_id": click_id},
+                path=f"/billing/partners/{partner_key_encoded}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
+            resource = PartnerTenants()
 
-                # Act & Assert
-                # JSONDecodeError will be raised from the controller
-                # In actual Flask app, this would be caught by handle_general_exception
-                # which returns: {"code": "unknown", "message": str(e), "status": 500}
-                with pytest.raises(json.JSONDecodeError) as exc_info:
-                    resource.put(partner_key_encoded)
+            # Act & Assert
+            # JSONDecodeError will be raised from the controller
+            # In actual Flask app, this would be caught by handle_general_exception
+            # which returns: {"code": "unknown", "message": str(e), "status": 500}
+            with pytest.raises(json.JSONDecodeError) as exc_info:
+                resource.put(partner_key_encoded)
 
-                # Verify the exception is JSONDecodeError
-                assert isinstance(exc_info.value, json.JSONDecodeError)
-                assert "Expecting value" in str(exc_info.value)
+            # Verify the exception is JSONDecodeError
+            assert isinstance(exc_info.value, json.JSONDecodeError)
+            assert "Expecting value" in str(exc_info.value)
 
     def test_put_empty_click_id(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that empty click_id raises BadRequest."""
@@ -331,24 +329,24 @@ class TestPartnerTenants:
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
         click_id = ""
 
-        with app.test_request_context(
-            method="PUT",
-            json={"click_id": click_id},
-            path=f"/billing/partners/{partner_key_encoded}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={"click_id": click_id},
+                path=f"/billing/partners/{partner_key_encoded}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
+            resource = PartnerTenants()
 
-                # Act & Assert
-                with pytest.raises(BadRequest) as exc_info:
-                    resource.put(partner_key_encoded)
-                assert "Invalid partner information" in str(exc_info.value)
+            # Act & Assert
+            with pytest.raises(BadRequest) as exc_info:
+                resource.put(partner_key_encoded)
+            assert "Invalid partner information" in str(exc_info.value)
 
     def test_put_empty_partner_key_after_decode(
         self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators
@@ -359,21 +357,21 @@ class TestPartnerTenants:
         empty_partner_key_encoded = base64.b64encode(b"").decode("utf-8")
         click_id = "click-id-789"
 
-        with app.test_request_context(
-            method="PUT",
-            json={"click_id": click_id},
-            path=f"/billing/partners/{empty_partner_key_encoded}/tenants",
+        with (
+            app.test_request_context(
+                method="PUT",
+                json={"click_id": click_id},
+                path=f"/billing/partners/{empty_partner_key_encoded}/tenants",
+            ),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(mock_account, mock_account.current_tenant_id),
+            ),
+            patch("libs.login._get_user", return_value=mock_account),
         ):
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, mock_account.current_tenant_id),
-                ),
-                patch("libs.login._get_user", return_value=mock_account),
-            ):
-                resource = PartnerTenants()
+            resource = PartnerTenants()
 
-                # Act & Assert
-                with pytest.raises(BadRequest) as exc_info:
-                    resource.put(empty_partner_key_encoded)
-                assert "Invalid partner information" in str(exc_info.value)
+            # Act & Assert
+            with pytest.raises(BadRequest) as exc_info:
+                resource.put(empty_partner_key_encoded)
+            assert "Invalid partner information" in str(exc_info.value)

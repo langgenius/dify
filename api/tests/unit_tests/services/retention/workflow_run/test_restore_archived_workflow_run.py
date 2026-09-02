@@ -343,9 +343,11 @@ class TestLoadManifestFromZip:
             zip_file.writestr("other.txt", "data")
         zip_buffer.seek(0)
 
-        with zipfile.ZipFile(zip_buffer, "r") as archive:
-            with pytest.raises(ValueError, match="manifest.json missing from archive bundle"):
-                WorkflowRunRestore._load_manifest_from_zip(archive)
+        with (
+            zipfile.ZipFile(zip_buffer, "r") as archive,
+            pytest.raises(ValueError, match="manifest.json missing from archive bundle"),
+        ):
+            WorkflowRunRestore._load_manifest_from_zip(archive)
 
     def test_invalid_json_raises_error(self):
         """Should raise ValueError when manifest contains invalid JSON."""
@@ -354,9 +356,8 @@ class TestLoadManifestFromZip:
             zip_file.writestr("manifest.json", "invalid json")
         zip_buffer.seek(0)
 
-        with zipfile.ZipFile(zip_buffer, "r") as archive:
-            with pytest.raises(ValidationError):
-                WorkflowRunRestore._load_manifest_from_zip(archive)
+        with zipfile.ZipFile(zip_buffer, "r") as archive, pytest.raises(ValidationError):
+            WorkflowRunRestore._load_manifest_from_zip(archive)
 
 
 # ---------------------------------------------------------------------------
@@ -823,14 +824,16 @@ class TestRestoreBatch:
         mock_executor_instance.map = Mock(return_value=[result1, result2])
         mock_executor.return_value = mock_executor_instance
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch.object(restore, "_restore_from_run", side_effect=[result1, result2]):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    results = restore.restore_batch(
-                        tenant_ids=["tenant-1"],
-                        start_date=datetime(2024, 1, 1),
-                        end_date=datetime(2024, 1, 2),
-                    )
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch.object(restore, "_restore_from_run", side_effect=[result1, result2]),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click,
+        ):
+            results = restore.restore_batch(
+                tenant_ids=["tenant-1"],
+                start_date=datetime(2024, 1, 1),
+                end_date=datetime(2024, 1, 2),
+            )
 
         assert len(results) == 2
         assert results[0].run_id == "run-1"
@@ -856,14 +859,16 @@ class TestRestoreBatch:
         mock_executor_instance.map = Mock(return_value=[result])
         mock_executor.return_value = mock_executor_instance
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    results = restore.restore_batch(
-                        tenant_ids=["tenant-1"],
-                        start_date=datetime(2024, 1, 1),
-                        end_date=datetime(2024, 1, 2),
-                    )
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch.object(restore, "_restore_from_run", return_value=result),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click,
+        ):
+            results = restore.restore_batch(
+                tenant_ids=["tenant-1"],
+                start_date=datetime(2024, 1, 1),
+                end_date=datetime(2024, 1, 2),
+            )
 
         assert len(results) == 1
         assert results[0].success is True
@@ -884,9 +889,11 @@ class TestRestoreByRunId:
         mock_repo = Mock()
         mock_repo.get_archived_log_by_run_id.return_value = None
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                result = restore.restore_by_run_id("nonexistent-run")
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click,
+        ):
+            result = restore.restore_by_run_id("nonexistent-run")
 
         assert result.success is False
         assert "not found" in result.error
@@ -904,10 +911,12 @@ class TestRestoreByRunId:
 
         result = RestoreResult(run_id="run-1", tenant_id="tenant-1", success=True, restored_counts={})
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    actual_result = restore.restore_by_run_id("run-1")
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch.object(restore, "_restore_from_run", return_value=result),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click,
+        ):
+            actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True
         assert actual_result.run_id == "run-1"
@@ -924,10 +933,12 @@ class TestRestoreByRunId:
 
         result = RestoreResult(run_id="run-1", tenant_id="tenant-1", success=True, restored_counts={"workflow_runs": 1})
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    actual_result = restore.restore_by_run_id("run-1")
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch.object(restore, "_restore_from_run", return_value=result),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click,
+        ):
+            actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True
         assert actual_result.run_id == "run-1"
@@ -1056,9 +1067,11 @@ class TestIntegration:
             delete(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id)
         )
 
-        with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
-                result = restore.restore_by_run_id("run-123")
+        with (
+            patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo),
+            patch("services.retention.workflow_run.restore_archived_workflow_run.click"),
+        ):
+            result = restore.restore_by_run_id("run-123")
 
         assert result.success is True
         assert result.restored_counts.get("workflow_runs") == 1

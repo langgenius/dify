@@ -38,9 +38,11 @@ class TestWorkflowEventsApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace(id="end-user-1")
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with (
+            app.test_request_context("/workflow/run-1/events?user=u1", method="GET"),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         _mock_repo_for_run(monkeypatch, workflow_run=None)
@@ -49,9 +51,8 @@ class TestWorkflowEventsApi:
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_permission_denied(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
@@ -67,9 +68,8 @@ class TestWorkflowEventsApi:
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(

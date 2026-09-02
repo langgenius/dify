@@ -553,9 +553,11 @@ class TestWorkspaceService:
         db_session_with_containers.commit()
 
         # No TenantAccountJoin created
-        with patch("services.workspace_service.current_user", account):
-            with pytest.raises(AssertionError, match="TenantAccountJoin not found"):
-                WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+        with (
+            patch("services.workspace_service.current_user", account),
+            pytest.raises(AssertionError, match="TenantAccountJoin not found"),
+        ):
+            WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
     def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent(
         self, db_session_with_containers: Session, mock_external_service_dependencies
