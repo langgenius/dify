@@ -19,7 +19,13 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+)
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message
 from models.workflow import (
@@ -265,6 +271,20 @@ class TestLLMGenerator:
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
         with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
+            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+            assert questions == []
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            InvokeConnectionError("Provider unreachable"),
+            InvokeRateLimitError("Rate limited"),
+            InvokeBadRequestError("Malformed model config"),
+        ],
+    )
+    def test_generate_suggested_questions_after_answer_model_resolution_error(self, mock_model_instance, error):
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
+            mock_manager.return_value.get_default_model_instance.side_effect = error
             questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
             assert questions == []
 
