@@ -23,6 +23,7 @@ from controllers.console.files import (
     upload_file_from_request,
 )
 from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import CreatorUserRole
@@ -54,6 +55,15 @@ def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFil
     )
     upload_file.id = file_id
     return upload_file
+
+
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
 
 
 @pytest.fixture
@@ -108,7 +118,7 @@ class TestFileApiGet:
                 return_value=50,
             ) as get_knowledge_file_size_limit,
         ):
-            data, status = get_method(api, "tenant-1")
+            data, status = get_method(api, _request_context())
 
         assert status == 200
         assert "file_size_limit" in data
@@ -328,7 +338,7 @@ class TestFilePreviewApi:
         mock_file_service.get_file_preview.return_value = "preview text"
 
         with app.test_request_context():
-            result = get_method(api, "tenant-123", "1234")
+            result = get_method(api, _request_context(workspace_id="tenant-123"), "1234")
 
         assert result == {"content": "preview text"}
         mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
@@ -340,6 +350,6 @@ class TestFileSupportTypeApi:
         get_method = unwrap(api.get)
 
         with app.test_request_context():
-            result = get_method(api)
+            result = get_method(api, _request_context())
 
         assert result == {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

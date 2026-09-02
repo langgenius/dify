@@ -19,17 +19,18 @@ from controllers.common.errors import (
 from controllers.common.fields import AllowedExtensionsResponse, TextContentResponse
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
-    with_current_tenant_id,
     with_current_user,
 )
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account, UploadFile
 from services.feature_service import FeatureService
 
@@ -106,15 +107,12 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
 
 @console_ns.route("/files/upload")
 class FileApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[UploadConfig.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str) -> JsonResponseWithStatus:
+    @console_account_admission()
+    def get(self, request_context: RequestContext) -> JsonResponseWithStatus:
         config = UploadConfig(
             file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
-            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(current_tenant_id),
+            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(request_context.active_workspace_id),
             batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
             file_upload_limit=dify_config.BATCH_UPLOAD_LIMIT,
             image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
@@ -143,12 +141,11 @@ class FileApi(Resource):
 
 @console_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, file_id: UUID) -> dict[str, object]:
+    @console_account_admission()
+    def get(self, request_context: RequestContext, file_id: UUID) -> dict[str, object]:
+        current_tenant_id = request_context.active_workspace_id
+        assert current_tenant_id is not None, "Console account admission did not resolve an active workspace"
         file_id_str = str(file_id)
         text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
         return dump_response(TextContentResponse, {"content": text})
@@ -156,11 +153,9 @@ class FilePreviewApi(Resource):
 
 @console_ns.route("/files/support-type")
 class FileSupportTypeApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
-    def get(self) -> dict[str, object]:
+    @console_account_admission()
+    def get(self, _request_context: RequestContext) -> dict[str, object]:
         return dump_response(
             AllowedExtensionsResponse,
             {"allowed_extensions": list(DOCUMENT_EXTENSIONS)},
