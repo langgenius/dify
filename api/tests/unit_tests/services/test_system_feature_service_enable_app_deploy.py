@@ -1,9 +1,11 @@
+"""Tests for the SystemFeatureService app-deployment policy."""
+
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
+from services import system_feature_service as feature_service_module
 from services.entities.feature_entities import SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 @pytest.mark.parametrize(
@@ -21,10 +23,10 @@ from services.feature_service import FeatureService
 )
 def test_fulfill_params_from_enterprise_enable_app_deploy(
     monkeypatch: pytest.MonkeyPatch,
-    enterprise_info: dict,
+    enterprise_info: dict[str, object],
     initial: bool,
     expected: bool,
-):
+) -> None:
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",
@@ -34,6 +36,6 @@ def test_fulfill_params_from_enterprise_enable_app_deploy(
     features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
     features.enable_app_deploy = initial
 
-    FeatureService._fulfill_params_from_enterprise(features)
+    SystemFeatureService._fulfill_params_from_enterprise(features)
 
     assert features.enable_app_deploy is expected

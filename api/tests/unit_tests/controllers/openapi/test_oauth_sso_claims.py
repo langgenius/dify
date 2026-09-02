@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -19,13 +19,11 @@ def app() -> Flask:
 def _ee_features():
     from services.entities.feature_entities import LicenseStatus
 
-    m = MagicMock()
-    m.license.status = LicenseStatus.ACTIVE
-    return m
+    return LicenseStatus.ACTIVE
 
 
 @patch("controllers.openapi.oauth_device_sso.jws")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_rejects_assertion_missing_email(ee_feat, jws_mod, app: Flask):
     ee_feat.return_value = _ee_features()
     jws_mod.verify.return_value = {"issuer": "https://idp.example", "user_code": "ABCD-EFGH", "nonce": "n"}
@@ -40,7 +38,7 @@ def test_sso_complete_rejects_assertion_missing_email(ee_feat, jws_mod, app: Fla
 
 
 @patch("controllers.openapi.oauth_device_sso.jws")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_rejects_assertion_empty_issuer(ee_feat, jws_mod, app: Flask):
     ee_feat.return_value = _ee_features()
     jws_mod.verify.return_value = {"email": "x@y.com", "issuer": "", "user_code": "ABCD-EFGH", "nonce": "n"}

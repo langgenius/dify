@@ -25,7 +25,10 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({ isShow, onHide, onRemove }) =
     <AlertDialog open={isShow} onOpenChange={(open) => !open && onHide()}>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogTitle
+            className="w-full truncate title-2xl-semi-bold text-text-primary"
+            title={title}
+          >
             {title}
           </AlertDialogTitle>
         </div>

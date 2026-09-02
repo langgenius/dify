@@ -90,7 +90,11 @@ export function AccessSurfaceCard({
             >
               <span aria-hidden className={cn(icon, 'size-4')} />
             </span>
-            <h3 id={titleId} className="truncate system-md-semibold text-text-secondary">
+            <h3
+              id={titleId}
+              className="truncate system-md-semibold text-text-secondary"
+              title={title}
+            >
               {title}
             </h3>
             {badge}
