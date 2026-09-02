@@ -10,6 +10,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
@@ -40,6 +41,15 @@ class _BillingHTTPStatusError(ValueError):
         self.status_code = status_code
 
 
+class TokenerBootstrapUpstreamError(RuntimeError):
+    """Sanitized failure returned by the billing-side Tokener bootstrap API."""
+
+    def __init__(self, error_code: str, *, retryable: bool) -> None:
+        super().__init__(error_code)
+        self.error_code = error_code
+        self.retryable = retryable
+
+
 class SubscriptionPlan(TypedDict):
     """Tenant subscriptionplan information."""
 
@@ -60,6 +70,14 @@ class EducationStatusResponseDict(TypedDict):
     is_student: bool
     expire_at: str
     allow_refresh: bool
+
+
+class TokenerTenantBootstrapResponse(TypedDict):
+    tenant_id: str
+    status: Literal["pending", "ready"]
+    data_plane_api_key: NotRequired[str]
+    retryable: bool
+    error_code: NotRequired[str]
 
 
 class EducationAutocompleteResponseDict(TypedDict):
@@ -244,6 +262,65 @@ class BillingService:
     @classmethod
     def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
         cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
+
+    @classmethod
+    def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
+        """Ensure the remote Tokener org and trial allowance without logging its one-time key."""
+        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        if not base_url:
+            raise TokenerBootstrapUpstreamError("tokener_billing_api_not_configured", retryable=False)
+        try:
+            payload = cls._send_request(
+                "POST",
+                f"/internal/v1/tokener/tenants/{tenant_id}/bootstrap",
+                json={"tenant_id": tenant_id, "display_name": display_name},
+                base_url=base_url,
+            )
+        except _BillingHTTPStatusError as error:
+            retryable = error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            )
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_http_error", retryable=retryable) from None
+        except httpx.RequestError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True) from None
+
+        if not isinstance(payload, dict):
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+
+        raw_data_plane_api_key = payload.pop("data_plane_api_key", None)
+        response_tenant_id = payload.get("tenant_id")
+        status = payload.get("status")
+        retryable = payload.get("retryable", status == "pending")
+        raw_error_code = payload.get("error_code")
+        error_code = (
+            raw_error_code
+            if isinstance(raw_error_code, str)
+            and raw_error_code
+            and len(raw_error_code) <= 100
+            and all(character.isalnum() or character in "_-" for character in raw_error_code)
+            else None
+        )
+
+        if response_tenant_id != tenant_id or status not in {"pending", "ready"} or not isinstance(retryable, bool):
+            raw_data_plane_api_key = None
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+
+        response: TokenerTenantBootstrapResponse = {
+            "tenant_id": tenant_id,
+            "status": status,
+            "retryable": retryable,
+        }
+        if error_code:
+            response["error_code"] = error_code
+
+        if status == "ready":
+            if not isinstance(raw_data_plane_api_key, str) or not raw_data_plane_api_key:
+                raw_data_plane_api_key = None
+                raise TokenerBootstrapUpstreamError("tokener_bootstrap_key_missing", retryable=True)
+            response["data_plane_api_key"] = raw_data_plane_api_key
+        raw_data_plane_api_key = None
+
+        return response
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:

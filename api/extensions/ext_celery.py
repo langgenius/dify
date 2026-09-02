@@ -172,6 +172,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
+        "tasks.bootstrap_tokener_tenant_task",  # managed Tokener setup for new tenants
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
@@ -182,6 +183,14 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if (
+        dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED
+        and dify_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK
+    ):
+        beat_schedule["tokener_bootstrap_recovery_sweeper"] = {
+            "task": "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task",
+            "schedule": timedelta(minutes=dify_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL),
+        }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
