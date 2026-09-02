@@ -26,9 +26,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
+import { useRouter } from '@/next/navigation'
 import { marketplaceQuery } from '@/service/client'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
-import { getPluginIconInMarketplace } from '../utils'
+import {
+  getPluginDetailLinkInMarketplace,
+  getPluginIconInMarketplace,
+  getTemplateDetailLinkInMarketplace,
+} from '../utils'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
@@ -93,17 +98,11 @@ const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): Marketpl
   selection: { kind: 'plugin', plugin },
 })
 
-type MarketplaceSuggestionListProps = {
-  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
-  onValueChange: (value: string) => void
-  setIsOpen: (isOpen: boolean) => void
-}
-
 function MarketplaceSuggestionList({
-  onSuggestionSelect,
-  onValueChange,
-  setIsOpen,
-}: MarketplaceSuggestionListProps) {
+  onSelect,
+}: {
+  onSelect: (selection: MarketplaceSearchSelection) => void
+}) {
   const groups = useAutocompleteFilteredItems<MarketplaceSuggestionGroup>()
 
   return (
@@ -120,17 +119,7 @@ function MarketplaceSuggestionList({
                 key={item.id}
                 value={item}
                 className="mx-0 items-start gap-1 rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
-                onClick={
-                  onSuggestionSelect
-                    ? () => {
-                        onSuggestionSelect(item.selection)
-                        queueMicrotask(() => {
-                          onValueChange('')
-                          setIsOpen(false)
-                        })
-                      }
-                    : undefined
-                }
+                onClick={() => onSelect(item.selection)}
               >
                 <span className="flex shrink-0 items-start py-1">
                   {item.iconUrl ? (
@@ -194,6 +183,7 @@ export function MarketplaceSearchAutocomplete({
   value,
 }: MarketplaceSearchAutocompleteProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const searchRootRef = useRef<HTMLDivElement>(null)
   const resultsPanelRef = useRef<HTMLDivElement>(null)
@@ -202,6 +192,23 @@ export function MarketplaceSearchAutocomplete({
   const submitSearchForm = () => {
     const form = searchRootRef.current?.closest('form')
     if (form instanceof HTMLFormElement) form.requestSubmit()
+  }
+  const openSuggestion = (selection: MarketplaceSearchSelection) => {
+    if (onSuggestionSelect) {
+      onSuggestionSelect(selection)
+      queueMicrotask(() => {
+        onValueChange('')
+        setIsOpen(false)
+      })
+      return
+    }
+
+    const href =
+      selection.kind === 'plugin'
+        ? getPluginDetailLinkInMarketplace(selection.plugin)
+        : getTemplateDetailLinkInMarketplace(selection.template)
+    setIsOpen(false)
+    router.push(href)
   }
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
@@ -327,7 +334,7 @@ export function MarketplaceSearchAutocomplete({
         }}
         open={isPopupOpen}
         openOnInputClick
-        submitOnItemClick={Boolean(inputName) && !onSuggestionSelect}
+        submitOnItemClick={false}
         value={value}
         onItemHighlighted={(item, details) => {
           keyboardHighlightedRef.current = Boolean(item) && details.reason === 'keyboard'
@@ -360,42 +367,19 @@ export function MarketplaceSearchAutocomplete({
           )}
         </AutocompleteInputGroup>
         <AutocompletePortal hidden={!isPopupOpen}>
-          <AutocompletePositioner sideOffset={8}>
+          <AutocompletePositioner anchor={searchRootRef} sideOffset={8}>
             <div
               ref={resultsPanelRef}
-              className="max-h-[min(710px,var(--available-height))] w-[472px] max-w-[min(calc(100vw-32px),var(--available-width))] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
+              className="max-h-[min(710px,var(--available-height))] w-(--anchor-width) max-w-(--available-width) overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
               aria-busy={isSearching || undefined}
             >
-              <MarketplaceSuggestionList
-                onSuggestionSelect={onSuggestionSelect}
-                onValueChange={onValueChange}
-                setIsOpen={setIsOpen}
-              />
+              <MarketplaceSuggestionList onSelect={openSuggestion} />
               <AutocompleteEmpty>
                 {!isSearching && suggestions.length === 0 ? emptyText : null}
               </AutocompleteEmpty>
               <AutocompleteStatus className="empty:h-0 empty:p-0">
                 {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
               </AutocompleteStatus>
-              {Boolean(inputName) && suggestions.length > 0 && !isSearching && (
-                <div className="border-t border-divider-subtle p-1">
-                  <button
-                    type="button"
-                    className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-                    onClick={submitSearchForm}
-                  >
-                    <span className="system-sm-medium text-text-accent">
-                      {t(($) => $['marketplace.viewMore'], { ns: 'plugin' })}
-                    </span>
-                    <span
-                      aria-hidden
-                      className="rounded-[5px] border border-divider-deep px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-hover:hidden"
-                    >
-                      Enter
-                    </span>
-                  </button>
-                </div>
-              )}
             </div>
           </AutocompletePositioner>
         </AutocompletePortal>

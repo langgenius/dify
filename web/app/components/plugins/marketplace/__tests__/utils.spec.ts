@@ -138,6 +138,34 @@ describe('getPluginDetailLinkInMarketplace', () => {
   })
 })
 
+describe('getTemplateDetailLinkInMarketplace', () => {
+  it('should return the local template detail link', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+
+    expect(
+      getTemplateDetailLinkInMarketplace({
+        id: 'template-1',
+        template_name: 'Legal Research Agent',
+        publisher_handle: 'dify',
+        publisher_unique_handle: 'dify-unique',
+      }),
+    ).toBe('/template/dify/Legal%20Research%20Agent?templateId=template-1')
+  })
+
+  it('should fall back to the unique publisher handle', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+
+    expect(
+      getTemplateDetailLinkInMarketplace({
+        id: 'template-2',
+        template_name: 'Inbox',
+        publisher_handle: '',
+        publisher_unique_handle: 'langgenius',
+      }),
+    ).toBe('/template/langgenius/Inbox?templateId=template-2')
+  })
+})
+
 describe('getMarketplaceListCondition', () => {
   it('should return category condition for tool', async () => {
     const { getMarketplaceListCondition } = await import('../utils')
