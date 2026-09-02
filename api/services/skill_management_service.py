@@ -114,7 +114,7 @@ _UNTITLED_SKILL_MD_BODY = """# Untitled skill
 
 Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.
 """
-_FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+_FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n)?", re.DOTALL)
 _FILE_EXTENSION_RE = re.compile(r"\.[A-Za-z0-9][A-Za-z0-9._+-]*\Z")
 _SKILL_ASSISTANT_SYSTEM_PROMPT = """You are Dify's Skill Authoring assistant.
 
@@ -3614,7 +3614,13 @@ class SkillManagementService:
             )
 
     @staticmethod
-    def _parse_frontmatter(content: str) -> dict[str, Any]:
+    def _normalize_newlines(content: str) -> str:
+        """Normalize Windows/Mac newlines so SKILL.md frontmatter parsing is stable."""
+        return content.replace("\r\n", "\n").replace("\r", "\n")
+
+    @classmethod
+    def _parse_frontmatter(cls, content: str) -> dict[str, Any]:
+        content = cls._normalize_newlines(content)
         match = _FRONTMATTER_RE.match(content)
         if match is None:
             return {}
@@ -3639,9 +3645,9 @@ class SkillManagementService:
             )
         return payload
 
-    @staticmethod
-    def _frontmatter_field_line(content: str, field: str) -> int:
-        match = _FRONTMATTER_RE.match(content)
+    @classmethod
+    def _frontmatter_field_line(cls, content: str, field: str) -> int:
+        match = _FRONTMATTER_RE.match(cls._normalize_newlines(content))
         if match is None:
             return 2
         frontmatter_start_line = 2
@@ -3784,6 +3790,7 @@ class SkillManagementService:
                     if path == _SKILL_MD:
                         if text is None:
                             raise SkillManagementServiceError("invalid_skill_md", "SKILL.md must be UTF-8 text")
+                        text = self._normalize_newlines(text)
                         metadata = self._parse_frontmatter(text)
                         skill_md_content = text
                     if text is not None:

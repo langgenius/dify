@@ -2664,6 +2664,38 @@ def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None
     assert exc_info.value.code == "skill_name_conflict"
 
 
+def test_import_skill_package_accepts_crlf_skill_md() -> None:
+    """Windows CRLF SKILL.md must not blank out the frontmatter name on import."""
+    skill_md = (
+        "---\r\n"
+        "name: expense-sop\r\n"
+        "description: Expenses\r\n"
+        "metadata:\r\n"
+        "  display-name: Expense SOP\r\n"
+        "---\r\n"
+        "\r\n"
+        "# Expenses\r\n"
+    )
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("expense-sop/SKILL.md", skill_md.encode("utf-8"))
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    assert imported["display_name"] == "Expense SOP"
+    assert imported["description"] == "Expenses"
+    skill_md_file = next(item for item in imported["files"] if item["path"] == "SKILL.md")
+    assert "\r" not in skill_md_file["content"]
+    assert skill_md_file["content"].startswith("---\nname: expense-sop\n")
+
+
 def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:

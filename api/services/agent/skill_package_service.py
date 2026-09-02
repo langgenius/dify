@@ -105,12 +105,18 @@ class SkillPackageService:
             )
             skill_md_member = normalized_members[_SKILL_MD_NAME]
             self._validate_skill_md_size(skill_md_member)
-            skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
-            skill_md = self._decode_skill_md(skill_md_bytes)
+            raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
+            skill_md = self._decode_skill_md(raw_skill_md_bytes)
+            skill_md_bytes = skill_md.encode('utf-8')
             normalized_archive_bytes = self._build_normalized_archive(
-                archive=archive, normalized_members=normalized_members
+                archive=archive,
+                normalized_members=normalized_members,
+                skill_md_bytes=skill_md_bytes,
             )
-            normalized_size = sum(max(info.file_size, 0) for info in normalized_members.values())
+            normalized_size = sum(
+                len(skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
+                for path, info in normalized_members.items()
+            )
 
         name, description = self._parse_skill_md(skill_md)
         try:
@@ -243,14 +249,19 @@ class SkillPackageService:
         *,
         archive: zipfile.ZipFile,
         normalized_members: dict[str, zipfile.ZipInfo],
+        skill_md_bytes: bytes,
     ) -> bytes:
         output = io.BytesIO()
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as normalized_archive:
             for normalized_path in sorted(normalized_members):
-                normalized_archive.writestr(
-                    normalized_path,
-                    self._read_member_bytes_from_archive(archive, member_info=normalized_members[normalized_path]),
+                payload = (
+                    skill_md_bytes
+                    if normalized_path == _SKILL_MD_NAME
+                    else self._read_member_bytes_from_archive(
+                        archive, member_info=normalized_members[normalized_path]
+                    )
                 )
+                normalized_archive.writestr(normalized_path, payload)
         return output.getvalue()
 
     @staticmethod
@@ -303,9 +314,11 @@ class SkillPackageService:
     @staticmethod
     def _decode_skill_md(raw: bytes) -> str:
         try:
-            return raw.decode("utf-8")
+            decoded = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise SkillPackageError("skill_md_not_utf8", "SKILL.md must be UTF-8 encoded", status_code=400) from exc
+        # Windows editors often save SKILL.md with CRLF; normalize before frontmatter parse.
+        return decoded.replace("\r\n", "\n").replace("\r", "\n")
 
     @classmethod
     def _parse_skill_md(cls, content: str) -> tuple[str, str]:
