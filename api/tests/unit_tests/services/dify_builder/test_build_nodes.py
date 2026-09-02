@@ -63,6 +63,62 @@ def test_build_nodes_grounds_model_and_dataset():
     assert by_type["knowledge-retrieval"]["dataset_ids"] == ["kb-real"]  # dataset injected by label match
 
 
+def test_build_nodes_instruction_states_workflow_topology():
+    """The instruction sent to the generator must explicitly require a workflow
+    topology (start + end node, no answer node). Otherwise the LLM, fed a
+    chatbot-shaped plan, emits a chatflow graph (answer node / no end node) that
+    fails MISSING_TERMINAL and yields an empty build."""
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=_GEN_GRAPH,
+        ) as gen,
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        build.build_nodes("t1", {}, ["Say hello to the model and return the reply"])
+
+    instruction = gen.call_args.kwargs["instruction"].lower()
+    assert "workflow" in instruction
+    assert "'end' node" in instruction  # explicitly requires an end node
+    assert "answer" in instruction  # explicitly warns off answer nodes
+    assert "say hello to the model and return the reply" in instruction  # plan preserved
+
+
+def test_build_nodes_retries_with_corrective_instruction_on_terminal_error():
+    """The shared generator does NOT retry a structurally-valid graph that fails
+    topology validation (e.g. MISSING_TERMINAL). build_nodes retries ONCE, feeding
+    the specific error back, and uses the second attempt's graph."""
+    terminal_error = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "Workflow must end with at least one 'end' node",
+        "errors": [],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=[terminal_error, _GEN_GRAPH],
+        ) as gen,
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        intents = build.build_nodes("t1", {}, ["Say hello and return result"])
+
+    assert gen.call_count == 2  # retried after the terminal-node failure
+    retry_instruction = gen.call_args_list[1].kwargs["instruction"]
+    assert "Workflow must end with at least one 'end' node" in retry_instruction  # error fed back
+    assert "end" in retry_instruction.lower()
+    assert any(i.op == "create_node" for i in intents)  # the retry's graph was used
+
+
 def test_build_nodes_degrades_to_empty_on_generator_error():
     with (
         patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
