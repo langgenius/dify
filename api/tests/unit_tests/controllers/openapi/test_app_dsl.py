@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Protocol
 from unittest.mock import Mock
 
 import pytest
@@ -14,8 +15,15 @@ from controllers.openapi.app_dsl import (
     AppDslImportApi,
     AppDslImportConfirmApi,
 )
+from controllers.openapi.auth.spec import EndpointSpec
 from models import Account
 from services.errors.account import NoPermissionError
+
+
+class _EndpointView(Protocol):
+    """Structural stand-in for a `view` carrying the `__spec__` `@endpoint` attaches."""
+
+    __spec__: EndpointSpec
 
 
 @pytest.mark.parametrize(
@@ -28,7 +36,7 @@ from services.errors.account import NoPermissionError
     ],
     ids=["import", "import_confirm", "export", "check_dependencies"],
 )
-def test_dsl_routes_leave_the_transaction_to_their_own_session(view, write: bool):
+def test_dsl_routes_leave_the_transaction_to_their_own_session(view: _EndpointView, write: bool) -> None:
     """None of the four carried `@with_session` before moving onto `@endpoint`:
     the imports open their own `Session` and commit or roll it back on the
     import's own outcome, and the two reads never had a router-owned
