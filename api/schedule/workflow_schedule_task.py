@@ -1,6 +1,6 @@
 import logging
 
-from celery import current_app, group, shared_task
+from celery import current_app, shared_task
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -102,8 +102,8 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], 
         tasks_to_dispatch.append(schedule.id)
 
     if tasks_to_dispatch:
-        job = group(run_schedule_trigger.s(schedule_id) for schedule_id in tasks_to_dispatch)
-        job.apply_async(producer=producer)
+        for schedule_id in tasks_to_dispatch:
+            run_schedule_trigger.s(schedule_id).apply_async(producer=producer)
 
         logger.debug("Dispatched %d tasks in parallel", len(tasks_to_dispatch))
 

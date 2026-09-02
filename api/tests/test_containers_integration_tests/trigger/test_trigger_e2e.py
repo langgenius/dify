@@ -47,7 +47,7 @@ from services.trigger.schedule_service import ScheduleService
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 
-from .conftest import MockCeleryGroup, MockCelerySignature, MockPluginSubscription
+from .conftest import MockCelerySignature, MockPluginSubscription
 
 # Test constants
 WEBHOOK_ID_PRODUCTION = "wh1234567890123456789012"
@@ -242,12 +242,11 @@ def test_schedule_poll_dispatches_due_plan(
     db_session_with_containers: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
-    mock_celery_group: MockCeleryGroup,
     mock_celery_signature: MockCelerySignature,
     monkeypatch: pytest.MonkeyPatch,
     schedule_type: str,
 ) -> None:
-    """Schedule plans (both visual and cron) should be polled and dispatched when due."""
+    """Schedule plans (both visual and cron) should be dispatched independently."""
     tenant, _ = tenant_and_account
 
     app_trigger = AppTrigger(
@@ -271,14 +270,12 @@ def test_schedule_poll_dispatches_due_plan(
 
     next_time = naive_utc_now() + timedelta(hours=1)
     monkeypatch.setattr(workflow_schedule_task, "calculate_next_run_at", lambda *_args, **_kwargs: next_time)
-    monkeypatch.setattr(workflow_schedule_task, "group", mock_celery_group)
     monkeypatch.setattr(workflow_schedule_task, "run_schedule_trigger", mock_celery_signature)
 
     poll_workflow_schedules()
 
-    assert mock_celery_group.collected, f"Should dispatch signatures for due {schedule_type} schedules"
-    scheduled_ids = {sig["schedule_id"] for sig in mock_celery_group.collected}
-    assert plan.id in scheduled_ids
+    dispatched = [item for item in mock_celery_signature.dispatched if isinstance(item, dict)]
+    assert any(item["schedule_id"] == plan.id for item in dispatched)
 
 
 def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPatch) -> None:
