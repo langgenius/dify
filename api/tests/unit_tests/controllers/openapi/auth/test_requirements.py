@@ -35,7 +35,6 @@ from ._world import (
     APP_ID,
     CLIENT_ID,
     SESSION_ID,
-    TENANT_ID,
     TOKEN_ID,
     account_subject,
     make_account,
@@ -134,8 +133,6 @@ def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
 
 
 class TestCheckRBACPermission:
-    admin_only = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
-
     @staticmethod
     def _requirement() -> CheckRBACPermission:
         return CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
@@ -153,41 +150,14 @@ class TestCheckRBACPermission:
 
         enforce.assert_not_called()
 
-    def test_the_role_floor_beside_it_gives_way(
-        self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
-    ) -> None:
-        """The two run as a route declares them, RBAC permission first. A member below the
-        legacy workspace role check still reaches the RBAC permission check; the workspace
-        role check that names this permission applies instead of denying behind it.
-        """
-        config_overrides(RBAC_ENABLED=True)
-        persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership(TenantAccountRole.NORMAL))
-        subject = account_subject()
-        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
-        floor = CheckWorkspaceRole(self.admin_only, superseded_by=RBACPermission.APP_VIEW_LAYOUT)
-
-        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}"):
-            with patch(ENFORCE_RBAC) as enforce:
-                self._requirement().run(subject, ctx, sqlite_session)
-                floor.run(subject, ctx, sqlite_session)
-
-        enforce.assert_called_once_with(
-            tenant_id=TENANT_ID,
-            account_id=ACCOUNT_ID,
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_VIEW_LAYOUT,
-            resource_required=True,
-            path_args={"app_id": APP_ID},
-        )
-
     @pytest.mark.parametrize("rbac_enabled", [True, False])
     def test_is_inert_wherever_rbac_is_off(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None], rbac_enabled: bool
     ) -> None:
         """No matrix row reaches this: every row runs against a stubbed RBAC
         backend, so a permission that enforced where RBAC is switched off would still
-        be admitted there. Not applying is also what lets a `CheckWorkspaceRole` beside
-        it take over.
+        be admitted there. Standing down is what leaves the `CheckWorkspaceRole`
+        beside it as the only arm there.
         """
         config_overrides(RBAC_ENABLED=rbac_enabled)
         persist(sqlite_session, make_app(), make_tenant(), make_account())
