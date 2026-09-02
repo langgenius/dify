@@ -36,11 +36,8 @@ def test_domain_packages_have_no_transport_or_persistence_imports() -> None:
     domain_files = sorted((_DOMAIN_ROOT / "contact_directory").glob("*.py"))
     domain_files.extend(sorted((_DOMAIN_ROOT / "im_integration").glob("*.py")))
     domain_files.extend(sorted((_DOMAIN_ROOT / "im_message_inbox").glob("*.py")))
-    approval_files = sorted((_DOMAIN_ROOT / "approval").glob("*.py"))
-    domain_files.extend(approval_files)
     domain_files.append(_DOMAIN_ROOT / "resolved_form.py")
 
-    assert approval_files, "the approval domain package must exist"
     for path in domain_files:
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
@@ -63,35 +60,6 @@ import sys
 import core.human_input_v2
 
 forbidden_prefixes = {_RESOLVED_FORM_FORBIDDEN_PREFIXES!r}
-violations = sorted(
-    module_name
-    for module_name in sys.modules
-    if any(
-        module_name == prefix or module_name.startswith(f"{{prefix}}.")
-        for prefix in forbidden_prefixes
-    )
-)
-if violations:
-    raise SystemExit(f"forbidden modules loaded: {{violations}}")
-"""
-    completed = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=_DOMAIN_ROOT.parents[1],
-        check=False,
-        capture_output=True,
-        env={**os.environ, "PYTHONPATH": str(_DOMAIN_ROOT.parents[1])},
-        text=True,
-    )
-
-    assert completed.returncode == 0, completed.stderr
-
-
-def test_approval_package_import_does_not_load_transport_persistence_or_provider_clients() -> None:
-    script = f"""
-import sys
-import core.human_input_v2.approval
-
-forbidden_prefixes = {_FORBIDDEN_PREFIXES!r}
 violations = sorted(
     module_name
     for module_name in sys.modules

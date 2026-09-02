@@ -1045,13 +1045,11 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
         "models.human_input",
         "services.human_input",
         "core.workflow",
-        "core.human_input_v2.approval",
         "repositories.human_input_v2.contact",
         "core.human_input_v2.im_integration.binding",
         "repositories",
     )
     current_dependency_prefixes = {
-        "core.human_input_v2.approval",
         "repositories.human_input_v2.contact",
         "core.human_input_v2.im_integration.binding",
     }
@@ -1104,11 +1102,6 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
             with pytest.raises(AssertionError, match="imported forbidden module family"):
                 builtins.__import__(module_prefix)
         assert not delegated_imports
-
-        with pytest.raises(AssertionError, match="imported forbidden module family"):
-            builtins.__import__("", {"__package__": "core.human_input_v2.approval"}, {}, (), 1)
-        assert imported_modules[-2:] == ["", "core.human_input_v2.approval"]
-        assert not delegated_imports
         imported_modules.clear()
 
         def no_op() -> None:
@@ -1116,7 +1109,7 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
 
         forbidden_no_op = FunctionType(
             no_op.__code__,
-            {"__name__": "core.human_input_v2.approval.sentinel"},
+            {"__name__": "repositories.human_input_v2.contact.sentinel"},
         )
         with pytest.raises(AssertionError, match="executed forbidden module family"):
             run_with_runtime_audit(forbidden_no_op)

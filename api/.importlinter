@@ -168,7 +168,6 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
-
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, domain, and shared-library layers
 type = layers

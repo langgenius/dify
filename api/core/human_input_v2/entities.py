@@ -14,72 +14,13 @@ class HumanInputContactType(StrEnum):
     EXTERNAL = "external"
 
 
-class HumanInputApproverGrantSubjectType(StrEnum):
-    """Business subject receiving approval authority for one Human Input form."""
-
-    CONTACT = "contact"
-    END_USER = "end_user"
-    EMAIL_ADDRESS = "email_address"
-
-
-class HumanInputSubmissionActorType(StrEnum):
-    """Business identity that completed one Human Input form submission."""
-
-    ACCOUNT = "account"
-    END_USER = "end_user"
-    EMAIL_ADDRESS = "email_address"
-
-
-class HumanInputV2FormKind(StrEnum):
-    """Persistence kind for an independently stored Human Input v2 form."""
-
-    RUNTIME = "runtime"
-    DELIVERY_TEST = "delivery_test"
-
-
-class HumanInputV2FormStatus(StrEnum):
-    """Lifecycle state of an independently stored Human Input v2 form."""
-
-    WAITING = "waiting"
-    EXPIRED = "expired"
-    SUBMITTED = "submitted"
-    TIMEOUT = "timeout"
-
-
-class HumanInputAuthorizationProofType(StrEnum):
-    """Verified evidence type retained for a Human Input authorization audit event."""
-
-    ACCOUNT_SESSION = "account_session"
-    EMAIL_OTP = "email_otp"
-    IM_IDENTITY = "im_identity"
-    TRUSTED_END_USER = "trusted_end_user"
-
-
 class HumanInputDeliveryChannel(StrEnum):
-    """Notification or interaction channel frozen for one form endpoint."""
+    """Human Input channel kind used by management contracts."""
 
     EMAIL = "email"
     IM = "im"
     WEB = "web"
     CONSOLE = "console"
-
-
-class HumanInputDeliveryAttemptStatus(StrEnum):
-    """Delivery lifecycle kept separate from the form state machine."""
-
-    QUEUED = "queued"
-    SENDING = "sending"
-    SENT = "sent"
-    FAILED = "failed"
-
-
-class HumanInputOTPChallengeStatus(StrEnum):
-    """Current usability of an email proof challenge."""
-
-    PENDING = "pending"
-    VERIFIED = "verified"
-    INVALIDATED = "invalidated"
-    EXPIRED = "expired"
 
 
 class IMProvider(StrEnum):
@@ -168,15 +109,8 @@ __all__ = [
     "AccountId",
     "ContactId",
     "EmailProviderType",
-    "HumanInputApproverGrantSubjectType",
-    "HumanInputAuthorizationProofType",
     "HumanInputContactType",
-    "HumanInputDeliveryAttemptStatus",
     "HumanInputDeliveryChannel",
-    "HumanInputOTPChallengeStatus",
-    "HumanInputSubmissionActorType",
-    "HumanInputV2FormKind",
-    "HumanInputV2FormStatus",
     "IMBindingId",
     "IMBindingScope",
     "IMIdentityBindingStatus",

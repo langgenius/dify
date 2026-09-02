@@ -1,6 +1,6 @@
 ## Context
 
-现有代码以 `HumanInputContact` 同时表示持久化 identity 与 mutable profile。`api/core/human_input_v2/contact_directory` 又定义 `ContactDirectorySnapshot`、`ContactDirectoryPolicy` 与 `ContactResolution`，SQLAlchemy adapter 为一次操作加载 Contact、membership、Platform entry 与 Account availability 集合。recipient resolution 随后再次查找 Contact、解释 `ABSENT` 并捕获 domain error；approval、submission 与 IM repositories 仍有路径直接 join `HumanInputContact`。
+现有代码以 `HumanInputContact` 同时表示持久化 identity 与 mutable profile。`api/core/human_input_v2/contact_directory` 又定义 `ContactDirectorySnapshot`、`ContactDirectoryPolicy` 与 `ContactResolution`，SQLAlchemy adapter 为一次操作加载 Contact、membership、Platform entry 与 Account availability 集合。Console 与 IM repositories 仍有路径直接 join `HumanInputContact`。
 
 该实现尚未发布，现有 migration 可以直接改为最终 schema。`schema.py` 定义 `HumanInputContactIdentity` 与 `HumanInputExternalContactProfile`；`domain.py` 定义 current `Contact`、`ExternalContact`、`ContactQuery`、`CandidateId`、`OrganizationCandidate`、`ContactRepository`、`EnterpriseContactRepository` 与 `ContactIMBindingRepository`。二者是本 change 的实现基准。
 
@@ -18,7 +18,7 @@
 
 **Non-Goals:**
 
-- 不修改 Console Contact route、response field、workflow recipient schema、grant、OTP、sync result 或 reconciliation history 的外部 shape。
+- 不修改 Console Contact route、response field、workflow recipient schema、sync result 或 reconciliation history 的外部 shape。
 - 不为 External Contact 添加 IM binding。
 - 不把历史 snapshot 改成 current Contact 查询。
 - 不增加兼容 column、dual read/write、旧 Contact row migration 或 rollback rehydration；旧 schema 未发布。
@@ -81,7 +81,7 @@ Protocol 分离只限制调用方可见能力：core code 接收 `ContactReposit
 
 ### 6. `ContactIMBindingRepository` 只提供 Contact-facing binding query
 
-Contact detail 与 recipient delivery 通过 `ContactIMBindingRepository.get_im_bindings` 批量读取指定 Contact IDs 在 tenant 中可见的 bindings。`Contact` 不包含 binding，Contact query 不隐式 eager-load binding。
+Contact detail 与 IM consumers 通过 `ContactIMBindingRepository.get_im_bindings` 批量读取指定 Contact IDs 在 tenant 中可见的 bindings。`Contact` 不包含 binding，Contact query 不隐式 eager-load binding。
 
 IM binding create/update/delete 继续由现有 IM control-plane repository 与 synchronization transaction 管理。本 change 不把 mutation methods 复制到 `ContactIMBindingRepository`。
 
@@ -97,15 +97,13 @@ IM synchronization 的 provider directory network read 在数据库 transaction 
 
 删除 `api/core/human_input_v2/contact_directory` 与 `api/repositories/human_input_v2/contact_directory`。同时删除旧 owner/source values、snapshot、policy、resolution enum、errors、ports、mappers 与 SQLAlchemy aggregate adapter。
 
-Console Contact services、recipient resolution、approval、submission authorization 与 IM code 通过注入的 Repository 读取 current Contact。EE candidate/Platform application code 依赖 `EnterpriseContactRepository`。除统一的 SQLAlchemy Contact implementation 外，任何 module 都不得组合 `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` 与 `HumanInputExternalContactProfile` 来重新实现 Contact rules。
+Console Contact services 与 IM code 通过注入的 Repository 读取 current Contact。EE candidate/Platform application code 依赖 `EnterpriseContactRepository`。除统一的 SQLAlchemy Contact implementation 外，任何 module 都不得组合 `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` 与 `HumanInputExternalContactProfile` 来重新实现 Contact rules。
 
-Recipient application orchestration 先调用 `ContactRepository.get_contacts_by_ids` 与 `ContactIMBindingRepository.get_im_bindings`，再把 immutable Contact、binding 与 delivery capability values 传给 pure resolver。Resolver 不导入 Repository、Session、ORM 或旧 snapshot/policy types。
-
-Historical grant、OTP、sync 与 audit readers 继续读取各自冻结字段。它们只有在执行 current authorization 时才调用 `ContactRepository`。
+历史 sync 与 reconciliation reader 继续读取各自冻结字段，不回查 current Contact。
 
 ### 9. 直接改写未发布 schema
 
-修改现有 Contact migration 与 ORM 为最终 shape，不新增迁移旧 `human_input_contacts` row 的 revision。所有 referencing column 保持 UUID shape，避免改写 workflow、grant、OTP、binding、sync 与 reconciliation 数据结构。
+修改现有 Contact migration 与 ORM 为最终 shape，不新增迁移旧 `human_input_contacts` row 的 revision。所有 referencing column 保持 UUID shape，避免改写 workflow、binding、sync 与 reconciliation 数据结构。
 
 ## Risks / Trade-offs
 

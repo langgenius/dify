@@ -9,9 +9,9 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
-_FORM_CORE_MIGRATION_PATH = (
+_EMAIL_PROVIDER_MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
-    / "migrations/versions/2026_07_25_1200-8a1c4e7f9b2d_add_human_input_v2_form_core.py"
+    / "migrations/versions/2026_07_25_1200-8a1c4e7f9b2d_add_human_input_email_provider.py"
 )
 _MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
@@ -73,7 +73,7 @@ def _insert_existing_email_provider(connection: sa.Connection) -> None:
 
 def test_upgrade_backfills_existing_email_configurations_without_a_database_check_constraint() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    _run_migration_step(_load_migration_module(_FORM_CORE_MIGRATION_PATH), engine, "upgrade")
+    _run_migration_step(_load_migration_module(_EMAIL_PROVIDER_MIGRATION_PATH), engine, "upgrade")
     with engine.begin() as connection:
         _insert_existing_email_provider(connection)
 

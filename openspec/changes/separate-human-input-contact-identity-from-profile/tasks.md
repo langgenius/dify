@@ -9,7 +9,7 @@
 
 - [x] 2.1 Rewrite the unreleased Contact ORM and schema revision to create `HumanInputContactIdentity`、`HumanInputExternalContactProfile`、`human_input_contact_identities` and `human_input_external_contact_profiles` directly.
 - [ ] 2.2 Add schema tests for valid `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` shapes、global `UNIQUE(account_id)`、one-to-one External profile ownership and `UNIQUE(tenant_id, normalized_email)`.
-- [x] 2.3 Retarget existing logical `contact_id` relationships, including Platform entries、IM bindings、grant、OTP、sync and reconciliation records, to `HumanInputContactIdentity.id` without changing UUID column shapes.
+- [x] 2.3 Retarget existing logical `contact_id` relationships, including Platform entries、IM bindings、sync and reconciliation records, to `HumanInputContactIdentity.id` without changing UUID column shapes.
 - [x] 2.4 Remove mutable profile columns and obsolete `ORGANIZATION_ACCOUNT / WORKSPACE_MEMBER` persistence values without compatibility columns、data-copy code or an additional migration revision.
 
 ## 3. Add Contact Values And Repository Ports
@@ -35,7 +35,6 @@
 ## 5. Migrate Existing Consumers
 
 - [x] 5.1 Rewrite Console Contact list、detail、batch、options and External management services to compose `ContactRepository` results and optional `ContactIMBindingRepository` results; route EE candidate and Platform management through `EnterpriseContactRepository`.
-- [ ] 5.2 Rewrite recipient-resolution application orchestration to batch-load current Contacts through `ContactRepository` and bindings through `ContactIMBindingRepository`, pass immutable values to the pure resolver, remove snapshot/policy inputs and preserve deterministic approval-plan behavior.
 - [ ] 5.4 Rewrite IM synchronization so that one caller-owned transaction and injected Session load every current `WORKSPACE` and `PLATFORM` Contact plus current IM facts、generate the in-memory plan、apply all mutations、persist sync results/reconciliation changes and update run status; add rollback coverage proving no step commits independently.
 - [ ] 5.5 Rewrite binding detail and delivery-capability reads to use `ContactIMBindingRepository` without changing IM control-plane mutation ownership.
 - [x] 5.6 Remove ORM relationships and helper mappers that assume Contact identity owns mutable profile fields.
@@ -51,7 +50,7 @@
 
 ## 7. Verification
 
-- [ ] 7.1 Run focused non-container backend unit suites through `uv run --project api`, including schema、Repository、recipient、authorization、IM matching and architecture coverage.
+- [ ] 7.1 Run focused non-container backend unit suites through `uv run --project api`, including schema、Repository、IM matching and architecture coverage.
 - [x] 7.2 Run backend formatter、lint and type checks for every changed module.
 - [x] 7.3 Run CI-owned PostgreSQL/MySQL tests for Account provisioning concurrency、External uniqueness races、IM reconciliation transaction atomicity、Session rollback、query parity and tenant isolation.
 - [x] 7.4 Run `openspec validate separate-human-input-contact-identity-from-profile --strict` and validate every revised dependent change.

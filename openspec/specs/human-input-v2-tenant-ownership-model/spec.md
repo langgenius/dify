@@ -9,7 +9,7 @@ Defines canonical tenant-owner terminology and boundary mapping for HITLv2 domai
 HITLv2 拥有或传递 Dify `Tenant.id` 的领域值、普通 model 属性、port、repository 和 service 内部契约 MUST 使用 `TenantId` / `tenant_id`。`WorkspaceId` / `workspace_id` MUST NOT 继续作为该内部 owner 的兼容名称。表示产品 workspace scope 的类型 MAY 保留 `WorkspaceScope` 名称和 `kind = "workspace"`；该 scope MUST 使用 `id: TenantId`，并明确说明 `id` 对应 Dify `Tenant.id`。`IMChannel` MUST 保持 owner-free；`WorkspaceIMChannelReader` 和 `WorkspaceIMChannelWriter` MUST 仅在构造时接收 `TenantId`，并在内部派生私有持久化键 `workspace:<tenant_id>`。
 
 #### Scenario: Tenant-owned model is constructed
-- **WHEN** 使用 Dify `Tenant.id` 构造 `FormRef`、workspace-owned Contact owner、`EmailChannelConfiguration`、tenant-owned `IMIntegration` 或 `RenderedEmailDeliveryRequest`
+- **WHEN** 使用 Dify `Tenant.id` 构造 workspace-owned Contact owner、`EmailChannelConfiguration` 或 tenant-owned `IMIntegration`
 - **THEN** 该 model MUST 将 owner 暴露为 `tenant_id: TenantId`
 - **AND** 该 model MUST NOT 暴露 `WorkspaceId` 或 `workspace_id`
 
@@ -43,7 +43,7 @@ HITLv2 composition layer MUST 在仍使用 workspace 产品术语的既有外部
 Dify `tenant_id`、共享 IM Provider namespace 的 `provider_tenant_id` 与 IM Provider adapter 中 provider-native credential/payload 的 `tenant_id` MUST 保持为不同概念。除明确表示 Dify `Tenant.id` 的 owner 字段外，本次内部 owner 重命名 MUST NOT 改写、合并或重解释 IM scope 内的 identifier、namespace、contract 或 adapter 行为。
 
 #### Scenario: IM-scoped provider contract is mapped
-- **WHEN** HITLv2 映射 IM Integration、identity、binding、event 或 authorization proof
+- **WHEN** HITLv2 映射 IM Integration、identity、binding 或 event
 - **THEN** Dify owner MUST 使用 `tenant_id`，共享 IM Provider namespace MUST 继续使用 `provider_tenant_id`，且其他 IM-scoped identifier 和 contract MUST 保持不变
 
 #### Scenario: IM Provider adapter decodes a native tenant field
@@ -60,14 +60,6 @@ Dify `tenant_id`、共享 IM Provider namespace 的 `provider_tenant_id` 与 IM 
 
 ### Requirement: HITLv2 serialized ownership MUST use only tenant terminology
 包含 Dify owner 的 HITLv2 structured JSON、primitive 和异步任务参数 MUST 使用 `tenant_id`。`WorkspaceScope` primitive 是唯一 scope-specific 例外，MUST 使用 `id` 表示对应的 Dify `Tenant.id`。Serializer、deserializer 和 model validation MUST NOT 接受或输出 `workspace_id` alias，也 MUST NOT 为本次重命名增加 legacy reader 或并行 schema version。
-
-#### Scenario: Email OTP proof is persisted
-- **WHEN** 验证成功的 Email OTP proof 写入 audit persistence
-- **THEN** model 与持久化 JSON MUST 使用 `tenant_id`，且 `workspace_id` 输入 MUST 被 strict validation 拒绝
-
-#### Scenario: Rendered Email request is serialized
-- **WHEN** producer 序列化或 worker 反序列化 rendered Email request
-- **THEN** 当前 schema MUST 只使用 `tenant_id`，且 `workspace_id` MUST 被视为 malformed input
 
 #### Scenario: Workspace scope primitive is emitted
 - **WHEN** `WorkspaceScope` 输出 primitive representation

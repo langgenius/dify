@@ -1,6 +1,6 @@
 ## Why
 
-当前 `HumanInputContact` 同时保存 Contact identity、Account profile 副本、External Contact profile 与 workspace 可见性来源，现有实现又通过 `ContactDirectorySnapshot` 和 `ContactDirectoryPolicy` 把这些表级事实暴露给 recipient、authorization 与 IM 调用方。这造成重复 profile 写入、全量 snapshot 查询、调用方重复解释可见性，以及跨模块直接访问 Contact ORM。
+当前 `HumanInputContact` 同时保存 Contact identity、Account profile 副本、External Contact profile 与 workspace 可见性来源，现有实现又通过 `ContactDirectorySnapshot` 和 `ContactDirectoryPolicy` 把这些表级事实暴露给调用方。这造成重复 profile 写入、全量 snapshot 查询、调用方重复解释可见性，以及跨模块直接访问 Contact ORM。
 
 新的 schema 已将 Contact identity 与 profile 分开；当前实现应直接围绕该 schema 重写，并删除未发布的 `ContactDirectory` 抽象。
 
@@ -17,7 +17,7 @@
 - External Contact profile 继续由 workspace 管理；同 workspace External Email 唯一，但 Account-backed Contact 与 External Contact 可以共享 normalized Email。
 - Repository implementation 接收调用方提供的同一个 SQLAlchemy `Session`。`Session` 直接承担 transaction boundary；不新增 Unit of Work abstraction，Repository 不自行创建 Session 或 commit。
 - IM synchronization 在 provider directory 读取完成后，使用一个 caller-owned transaction 完成 current Contact/IM facts loading、in-memory plan generation、mutation apply、sync result/change persistence 与 run status update。
-- recipient、authorization、submission、IM matching、Console Contact API 与 lifecycle code 改为依赖各自所需的 Repository Protocol，而不是 snapshot、policy 或 Contact ORM。
+- IM matching、Console Contact API 与 lifecycle code 改为依赖各自所需的 Repository Protocol，而不是 snapshot、policy 或 Contact ORM。
 
 ## Capabilities
 
@@ -30,12 +30,11 @@
 - `contact-directory-governance`: 移除全部 legacy requirements；不再保留该 capability 的 active semantics。
 - `human-input-v2-contact-directory-core`: 移除旧 domain、snapshot、policy 与 aggregate repository requirements；其替代 contract 由 `human-input-v2-contact-repository` 提供。
 - `human-input-console-management-api`: 将旧 Contact Directory/`ABSENT` transport 表述改为 current Contact API 的缺失/`404` 语义，并明确 EE implementation 继续拥有跨 tenant Platform candidate search。
-- `human-input-v2-recipient-resolution-core`: 让 application layer 通过两个 Repository 预加载 current Contact 与 binding values，pure resolver 不再接收旧 snapshot/policy input。
 
 ## Impact
 
 - ORM 与 migration：`api/models/human_input_v2.py` 及未发布的 Contact schema revision。
 - Domain 与 repositories：删除旧 Contact package，新增 Contact values、三个 Repository protocols，以及同时实现 core/enterprise Contact ports 的统一 SQLAlchemy adapter。
-- Current Contact consumers：Console list/detail/options、recipient resolution、form grant、OTP、submission authorization、IM matching、binding read 与 lifecycle hooks。
+- Current Contact consumers：Console list/detail/options、IM matching、binding read 与 lifecycle hooks。
 - Test suites：schema constraints、Repository query parity、concurrency、tenant isolation、consumer regression 与 import-boundary coverage。
-- External contracts：Console、workflow DSL、grant、OTP、IM、sync history 与 reconciliation 的 `contact_id` shape 保持不变。
+- External contracts：Console、workflow DSL、IM、sync history 与 reconciliation 的 `contact_id` shape 保持不变。
