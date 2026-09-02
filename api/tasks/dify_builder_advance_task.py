@@ -25,17 +25,19 @@ from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.dify_builder.contract import AgentMessageEventData
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import Action, Actor, NodeEvent, Turn
-from core.dify_builder.runner import Env, Runner
+from core.dify_builder.runner import CommittedTransition, Env, Runner
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.dify_builder import progress_bus, session_lock
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.errors import HashMismatchError
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 
@@ -56,6 +58,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     advance lock held under ``token``. Always releases the lock, even on a
     lost CAS race or an unexpected engine failure -- a stuck lock would wedge
     the session for its full TTL (``DIFY_BUILDER_MAX_ADVANCE_SECONDS``)."""
+    terminal_error: dict | None = None
+    completed: tuple[SqlDifyBuilderRepository, WorkflowServiceDifyPort, Actor] | None = None
     try:
         repo = _build_repo()
         dify = WorkflowServiceDifyPort()
@@ -74,23 +78,70 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         def emit_canvas(event: dict) -> None:
             progress_bus.publish(session_id, {"kind": "canvas", **event})
 
-        env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit, emit_canvas=emit_canvas)
+        def emit_commit(commit: CommittedTransition) -> None:
+            try:
+                progress_bus.publish(session_id, {"kind": "commit", **asdict(commit)})
+            except Exception:
+                # A commit event is an observer notification for state that is
+                # already durable. Losing the notification must not abort the
+                # engine or suppress the final authoritative state frame.
+                logger.exception(
+                    "dify_builder commit event publish failed for session %s version %s",
+                    session_id,
+                    commit.version,
+                )
+
+        def emit_message(message: AgentMessageEventData) -> None:
+            try:
+                progress_bus.publish(session_id, asdict(message))
+            except Exception:
+                # Streaming delivery is best effort. The complete answer is
+                # still persisted and delivered in commit/state frames.
+                logger.exception(
+                    "dify_builder agent_message event publish failed for session %s turn %s",
+                    session_id,
+                    message.id,
+                )
+
+        env = Env(
+            dify=dify,
+            agent=agent,
+            repo=repo,
+            now=naive_utc_now,
+            emit=emit,
+            emit_canvas=emit_canvas,
+            emit_commit=emit_commit,
+            emit_message=emit_message,
+        )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
-        runner.advance(session_id, Turn(action=Action(**action_dict), actor=actor))
-        # Project a SessionView (single source of truth for phase/run_status/
-        # actions) rather than recomputing those fields inline -- once Task 5
-        # fills in `actions`, this frame gets them for free. The no-op
-        # enqueue is never called by get_session_view; the actor is the
-        # session owner (they dispatched this action), so the owner-check
-        # inside get_session_view passes.
-        view = DifyBuilderService(repo, session_lock, lambda *a, **k: None).get_session_view(session_id, actor)
-        progress_bus.publish(session_id, {"kind": "state", **asdict(view)})
-    except ConflictError:
-        progress_bus.publish(session_id, {"kind": "error", "error": "conflict"})
+        action = Action(**action_dict)
+        if action.base_app_revision:
+            _graph, current_app_revision = dify.read_graph(_s.app_id, actor)
+            if action.base_app_revision != current_app_revision:
+                raise ConflictError(f"stale app revision for app {_s.app_id}")
+        runner.advance(session_id, Turn(action=action, actor=actor))
+        completed = (repo, dify, actor)
+    except (ConflictError, HashMismatchError):
+        terminal_error = {"kind": "error", "error": "conflict"}
     except Exception:
         # Generic message only -- never leak exception detail into the
         # progress event (it is relayed to the end user via SSE in P3c).
         logger.exception("dify_builder advance failed for session %s", session_id)
-        progress_bus.publish(session_id, {"kind": "error", "error": "step failed"})
+        terminal_error = {"kind": "error", "error": "step failed"}
     finally:
         session_lock.release(session_id, token)
+
+    # Publish terminal frames only after releasing the lock so the
+    # authoritative SSE state no longer projects a completed/waiting
+    # transition as executing.
+    if terminal_error is not None:
+        progress_bus.publish(session_id, terminal_error)
+    elif completed is not None:
+        repo, dify, actor = completed
+        view = DifyBuilderService(
+            repo,
+            session_lock,
+            lambda *a, **k: None,
+            get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
+        ).get_session_view(session_id, actor)
+        progress_bus.publish(session_id, {"kind": "state", **asdict(view)})

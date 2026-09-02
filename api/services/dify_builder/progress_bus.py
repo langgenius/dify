@@ -1,9 +1,9 @@
 """Session progress bus over the Redis broadcast channel.
 
-The Celery advance task (Task 4) publishes progress events here; the P3c
-SSE endpoint (not built yet) will subscribe to the same topic. In P3b this
-module is publish-only — there is no subscriber, so correctness is just
-"serialize the event and hand it to the right topic".
+The Celery advance task publishes progress events here and the POST-SSE
+endpoints subscribe to the same topic. A streaming request must establish its
+delivery boundary before dispatching the task; merely constructing the Redis
+subscription is not sufficient because subscriptions activate lazily.
 
 Uses ``extensions.ext_redis.get_pubsub_broadcast_channel()`` rather than
 constructing ``StreamsBroadcastChannel`` directly: that helper builds the
@@ -21,7 +21,7 @@ import json
 from typing import Any
 
 from extensions.ext_redis import get_pubsub_broadcast_channel
-from libs.broadcast_channel.channel import Subscription
+from libs.broadcast_channel.channel import Subscription, SupportsPreparedSubscription
 
 _TOPIC_FMT = "dify_builder:{session_id}"
 
@@ -36,9 +36,22 @@ def publish(session_id: str, event: dict[str, Any]) -> None:
 
 
 def subscribe(session_id: str) -> Subscription:
-    """Subscribe to ``session_id``'s progress topic.
+    """Establish a lossless delivery boundary for ``session_id`` progress.
 
-    Returns the channel's ``Subscription`` as-is; consumed by the P3c SSE
-    endpoint.
+    Redis Streams can fix the boundary without starting their listener, so use
+    ``prepare_subscription`` when the topic exposes that capability. Redis
+    Pub/Sub has no replay boundary and must be entered eagerly so its SUBSCRIBE
+    command completes before the Celery task can publish. The SSE generator
+    consumes the returned subscription as-is and owns closing it.
     """
-    return get_pubsub_broadcast_channel().topic(_topic(session_id)).subscribe()
+    subscriber = get_pubsub_broadcast_channel().topic(_topic(session_id)).as_subscriber()
+    if isinstance(subscriber, SupportsPreparedSubscription):
+        return subscriber.prepare_subscription()
+
+    subscription = subscriber.subscribe()
+    try:
+        subscription.__enter__()
+    except BaseException:
+        subscription.close()
+        raise
+    return subscription
