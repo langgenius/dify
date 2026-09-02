@@ -243,10 +243,6 @@ class Dataset(Base):
         }
         return self.retrieval_model or default_retrieval_model
 
-    @property
-    def created_by_account(self):
-        return self.get_created_by_account(session=db.session())
-
     def get_created_by_account(self, *, session: Session) -> Account | None:
         return session.get(Account, self.created_by)
 
@@ -264,10 +260,6 @@ class Dataset(Base):
             .limit(1)
         )
 
-    @property
-    def app_count(self) -> int:
-        return self.get_app_count(session=db.session())
-
     def get_app_count(self, *, session: Session) -> int:
         return (
             session.scalar(
@@ -278,17 +270,12 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def document_count(self) -> int:
-        return self.get_document_count(session=db.session())
-
     def get_document_count(self, *, session: Session) -> int:
         return session.scalar(select(func.count(Document.id)).where(Document.dataset_id == self.id)) or 0
 
-    @property
-    def available_document_count(self):
+    def get_available_document_count(self, *, session: Session) -> int:
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(Document.id)).where(
                     Document.dataset_id == self.id,
                     Document.indexing_status == "completed",
@@ -401,20 +388,12 @@ class Dataset(Base):
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
 
-    @property
-    def is_published(self) -> bool:
-        return self.get_is_published(session=db.session())
-
     def get_is_published(self, *, session: Session) -> bool:
         if self.pipeline_id:
             pipeline = session.scalar(select(Pipeline).where(Pipeline.id == self.pipeline_id))
             if pipeline:
                 return pipeline.is_published
         return False
-
-    @property
-    def doc_metadata(self) -> list[dict[str, str]]:
-        return self.get_doc_metadata(session=db.session())
 
     def get_doc_metadata(self, *, session: Session) -> list[dict[str, str]]:
         dataset_metadatas = session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)).all()
