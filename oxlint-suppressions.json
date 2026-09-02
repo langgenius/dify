@@ -2222,9 +2222,6 @@
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/formatted-text/flavours/__tests__/edit-slice.spec.tsx": {
