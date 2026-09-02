@@ -220,6 +220,44 @@ def test_terminal_state_is_published_after_the_advance_lock_is_released(
     assert timeline[-2:] == ["release", "publish:state"]
 
 
+def test_terminal_state_projection_failure_publishes_error_frame(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    """If the post-advance view projection (get_session_view -> read_graph) or
+    the final state publish raises after a SUCCESSFUL advance, the task must not
+    let the exception escape with no terminal frame -- that leaves the SSE client
+    hanging to the stream deadline with a stale held version (-> 409 on its next
+    action). It must fall back to publishing a terminal error frame."""
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+
+    class _BoomService:
+        def __init__(self, *_a, **_k) -> None: ...
+
+        def get_session_view(self, *_a, **_k):
+            raise RuntimeError("projection boom")
+
+    monkeypatch.setattr(mod, "DifyBuilderService", _BoomService)
+    s = _seed_fix_session(repo)
+
+    # Must NOT raise, and must still emit a terminal frame after releasing the lock.
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-boom")
+
+    assert timeline[-2:] == ["release", "publish:error"]
+
+
 def test_message_advance_publishes_assistant_delta_before_durable_reply(
     repo: SqlDifyBuilderRepository,
     wired,
