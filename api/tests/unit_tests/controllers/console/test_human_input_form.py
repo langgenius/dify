@@ -62,7 +62,7 @@ def _workflow_run(
     created_by: str = "user-1",
     finished_at: datetime | None = None,
 ) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="t1",
         app_id="app-1",
@@ -75,9 +75,10 @@ def _workflow_run(
         status=WorkflowExecutionStatus.SUCCEEDED if finished_at else WorkflowExecutionStatus.RUNNING,
         created_by_role=created_by_role,
         created_by=created_by,
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
         finished_at=finished_at,
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def test_jsonify_form_definition() -> None:
