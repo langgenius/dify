@@ -9,6 +9,7 @@ left alone.
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -54,6 +55,16 @@ def _persist_app_with_site(
     return app, site
 
 
+@pytest.fixture
+def account_and_tenant(sqlite_session: Session) -> tuple[str, str]:
+    """Reuse the existing helper from the test_app_service module."""
+    from tests.unit_tests.services.test_app_service import _persist_account
+
+    account = _persist_account(sqlite_session)
+    assert account.current_tenant is not None
+    return account.current_tenant.id, account.id
+
+
 class TestSyncSiteTitleIfMatchedOldAppName:
     def test_no_op_when_name_did_not_change(self, sqlite_session: Session, account_and_tenant: tuple[str, str]) -> None:
         tenant_id, _ = account_and_tenant
@@ -61,12 +72,14 @@ class TestSyncSiteTitleIfMatchedOldAppName:
             sqlite_session, tenant_id=tenant_id, name="Same Name", site_title="Same Name"
         )
         sqlite_session.commit()
+        assert site is not None
 
         AppService._sync_site_title_if_matched_old_app_name(app, "Same Name", session=sqlite_session)
         sqlite_session.commit()
 
-        site = sqlite_session.get(Site, site.id)
-        assert site.title == "Same Name"
+        reloaded = sqlite_session.get(Site, site.id)
+        assert reloaded is not None
+        assert reloaded.title == "Same Name"
 
     def test_no_op_when_no_site_exists(self, sqlite_session: Session, account_and_tenant: tuple[str, str]) -> None:
         tenant_id, _ = account_and_tenant
@@ -83,6 +96,7 @@ class TestSyncSiteTitleIfMatchedOldAppName:
         tenant_id, _ = account_and_tenant
         app, site = _persist_app_with_site(sqlite_session, tenant_id=tenant_id, name="Old Name", site_title="Old Name")
         sqlite_session.commit()
+        assert site is not None
 
         # The console renamed the app. The Site still mirrors the old
         # name, so we should sync it forward.
@@ -90,8 +104,9 @@ class TestSyncSiteTitleIfMatchedOldAppName:
         AppService._sync_site_title_if_matched_old_app_name(app, "Old Name", session=sqlite_session)
         sqlite_session.commit()
 
-        site = sqlite_session.get(Site, site.id)
-        assert site.title == "New Name"
+        reloaded = sqlite_session.get(Site, site.id)
+        assert reloaded is not None
+        assert reloaded.title == "New Name"
 
     def test_preserves_customized_site_title(
         self, sqlite_session: Session, account_and_tenant: tuple[str, str]
@@ -101,19 +116,12 @@ class TestSyncSiteTitleIfMatchedOldAppName:
             sqlite_session, tenant_id=tenant_id, name="Old Name", site_title="Marketing Title"
         )
         sqlite_session.commit()
+        assert site is not None
 
         app.name = "New Name"
         AppService._sync_site_title_if_matched_old_app_name(app, "Old Name", session=sqlite_session)
         sqlite_session.commit()
 
-        site = sqlite_session.get(Site, site.id)
-        assert site.title == "Marketing Title"
-
-
-@pytest.fixture
-def account_and_tenant(sqlite_session: Session) -> tuple[str, str]:
-    """Reuse the existing helper from the test_app_service module."""
-    from tests.unit_tests.services.test_app_service import _persist_account
-
-    account = _persist_account(sqlite_session)
-    return account.current_tenant.id, account.id
+        reloaded = sqlite_session.get(Site, site.id)
+        assert reloaded is not None
+        assert reloaded.title == "Marketing Title"
