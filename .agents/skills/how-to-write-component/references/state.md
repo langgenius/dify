@@ -9,10 +9,12 @@ Read this document when a change involves Jotai, form drafts, route identity, sh
 - Keep server and cache state in TanStack Query. Use existing feature stores for complex, high-frequency interaction state such as workflow canvas drag, resize, and runtime panels.
 - Use feature-owned storage only for low-frequency client preferences, dismissed notices, and UI defaults. Live application state does not belong in local storage.
 
-## Forms
+## Forms And Sessions
 
-- Prefer uncontrolled Dify UI form and field controls when values are only read at submit time. Initialize query-backed defaults with `defaultValue` and keyed remounts.
-- Promote form values to atoms only when another owner reacts to in-progress values, the draft must survive scoped unmounting, or several workflow steps edit the same draft.
+- Keep form state in the narrowest owner whose lifetime matches the draft. A draft scoped to one mounted surface belongs to that content or session owner; a draft that must survive its current owner's unmount belongs to an explicit longer-lived feature owner.
+- Prefer uncontrolled fields when values are only read at submit time. Use local controlled state only when React must own the current value to drive dependent UI or linked fields; track derived facts such as dirty state without mirroring the field value. Controlledness does not decide whether a draft is local or persisted.
+- For query-backed defaults, establish the form session after the required defaults are available. `defaultValue` initializes the current mount; a stable semantic identity key may create a fresh snapshot when the represented identity changes. Do not use a generated key as a routine reset command.
+- Promote drafts beyond the session only when another owner reacts to in-progress values, several workflow steps share one draft, or the draft must intentionally survive unmounting. Start with the lowest shared React owner; use feature-scoped atoms only when their coordination or persistence contract is needed.
 - Keep validation, source priority, fallback behavior, dirty checks, and payload assembly in the workflow that owns submission.
 
 ## Route And URL State

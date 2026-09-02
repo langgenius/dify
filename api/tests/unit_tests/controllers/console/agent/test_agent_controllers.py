@@ -55,7 +55,7 @@ from controllers.console.agent.roster import (
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
-from controllers.console.app.error import CompletionRequestError
+from controllers.console.app.error import AgentSessionConfigurationChangedError, CompletionRequestError
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
@@ -409,9 +409,9 @@ def test_agent_app_list_and_create_use_agent_route(
         get_or_create_debug_conversation,
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     with app.test_request_context(
         "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
@@ -565,9 +565,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 2
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     monkeypatch.setattr(
         roster_controller,
@@ -1025,9 +1025,9 @@ def test_agent_app_update_allows_empty_role(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
 
     class FakeAppService:
@@ -1630,6 +1630,38 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     with pytest.raises(CompletionRequestError) as exc_info:
         completion_controller._raise_agent_stream_error_before_response(stream)
     assert "Incorrect API key provided" in exc_info.value.description
+    assert stream.closed is True
+
+
+def test_agent_chat_stream_preflight_preserves_session_configuration_error() -> None:
+    class ClosableStream:
+        def __init__(self) -> None:
+            self.closed = False
+            self._chunks = iter(
+                [
+                    "event: ping\n\n",
+                    (
+                        'data: {"event":"error","message":"Start a new conversation to continue.",'
+                        '"code":"agent_session_configuration_changed","status":409}\n\n'
+                    ),
+                ]
+            )
+
+        def __iter__(self):
+            return self
+
+        def __next__(self) -> str:
+            return next(self._chunks)
+
+        def close(self) -> None:
+            self.closed = True
+
+    stream = ClosableStream()
+    with pytest.raises(AgentSessionConfigurationChangedError) as exc_info:
+        completion_controller._raise_agent_stream_error_before_response(stream)
+    assert exc_info.value.code == 409
+    assert exc_info.value.error_code == "agent_session_configuration_changed"
+    assert "Start a new conversation" in exc_info.value.description
     assert stream.closed is True
 
 

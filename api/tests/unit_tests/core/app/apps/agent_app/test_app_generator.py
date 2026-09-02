@@ -21,6 +21,7 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGenerator,
     AgentAppGeneratorError,
 )
+from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
@@ -426,6 +427,23 @@ class TestGenerateWorker:
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         assert queue_manager.publish_error.called
+
+    def test_session_configuration_change_is_published_without_unknown_error_log(
+        self,
+        generator: AgentAppGenerator,
+        mocker: MockerFixture,
+    ) -> None:
+        error = AgentSessionSnapshotIncompatibleError()
+        self._wire(generator, mocker, run_side_effect=error)
+        queue_manager = mocker.MagicMock()
+        info_log = mocker.patch(f"{MODULE}.logger.info")
+        exception_log = mocker.patch(f"{MODULE}.logger.exception")
+
+        self._call(generator, mocker, queue_manager)
+
+        queue_manager.publish_error.assert_called_once_with(error, module.PublishFrom.APPLICATION_MANAGER)
+        info_log.assert_called_once()
+        exception_log.assert_not_called()
 
 
 class TestResumeAfterFormSubmission:

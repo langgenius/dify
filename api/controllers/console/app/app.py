@@ -77,7 +77,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -516,7 +516,7 @@ class AppImportResponse(ResponseModel):
 
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_ids = [str(app.id) for app in apps]
         res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
         if len(res) != len(app_ids):
@@ -877,7 +877,7 @@ class AppApi(Resource):
 
         app_model = app_service.get_app(app_model, session=session)
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
 
@@ -1002,7 +1002,7 @@ class AppCopyApi(Resource):
             session.commit()
 
             # Inherit web app permission from original app
-            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
                 try:
                     # Get the original app's access mode
                     original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
@@ -1173,8 +1173,7 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)

@@ -18,7 +18,7 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
@@ -55,8 +55,7 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
             current_user, _ = current_account_with_tenant()
-            feature = FeatureService.get_system_features()
-            if feature.webapp_auth.enabled:
+            if SystemFeatureService.is_webapp_auth_enabled():
                 app_id = installed_app.app_id
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
                     user_id=str(current_user.id),
