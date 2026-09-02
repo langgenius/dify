@@ -17,11 +17,13 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate, with_current_user
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
@@ -55,8 +57,8 @@ class GetRemoteFileInfo(Resource):
         }
     )
     @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
-    @login_required
-    def get(self, url: str):
+    @console_account_admission()
+    def get(self, _request_context: RequestContext, url: str):
         decoded_url = helpers.decode_remote_url(url, request.query_string)
         try:
             file_info = application_services().remote_files.fetch_info(url=decoded_url)

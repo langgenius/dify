@@ -24,6 +24,7 @@ from controllers.common.errors import (
 )
 from controllers.console import remote_files as remote_files_module
 from libs.exception import BaseHTTPException
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from services.errors.file import (
@@ -82,6 +83,15 @@ def _upload_result() -> RemoteFileUploadResult:
     )
 
 
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="tenant-1",
+    )
+
+
 @contextmanager
 def _patch_application_services(remote_files: MagicMock) -> Generator[None]:
     with patch.object(
@@ -108,7 +118,7 @@ class TestGetRemoteFileInfo:
             app.test_request_context(f"/remote-files/{encoded_url}", method="GET"),
             _patch_application_services(remote_files),
         ):
-            response = handler(api, encoded_url)
+            response = handler(api, _request_context(), encoded_url)
 
         assert response == {"file_type": "text/plain", "file_length": 0}
         remote_files.fetch_info.assert_called_once_with(url=target_url)
@@ -133,7 +143,7 @@ class TestGetRemoteFileInfo:
             _patch_application_services(remote_files),
             pytest.raises(http_error) as error_info,
         ):
-            handler(api, "url")
+            handler(api, _request_context(), "url")
 
         assert error_info.value.__cause__ is service_error
         assert error_info.value.data is not None
