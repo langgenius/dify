@@ -486,7 +486,6 @@ type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlin
 function renderSetup(draft: ConnectedDraft = defaultDraft) {
   const queryClient = createTestQueryClient()
   const onCompleted = vi.fn()
-  const onDirtyChange = vi.fn()
   const onDraftChange = vi.fn()
   const onExit = vi.fn()
   const content = (nextDraft: ConnectedDraft) => (
@@ -495,7 +494,6 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
         draft={nextDraft}
         knowledgeSpaceId="space-1"
         onCompleted={onCompleted}
-        onDirtyChange={onDirtyChange}
         onDraftChange={onDraftChange}
         onExit={onExit}
       />
@@ -505,7 +503,6 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
   return {
     ...view,
     onCompleted,
-    onDirtyChange,
     onDraftChange,
     onExit,
     queryClient,
@@ -516,7 +513,6 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
 function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
   const queryClient = createTestQueryClient()
   const onCompleted = vi.fn()
-  const onDirtyChange = vi.fn()
   const onDraftChange = vi.fn()
   const onExit = vi.fn()
 
@@ -528,7 +524,6 @@ function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
           draft={currentDraft}
           knowledgeSpaceId="space-1"
           onCompleted={onCompleted}
-          onDirtyChange={onDirtyChange}
           onDraftChange={(nextDraft) => {
             onDraftChange(nextDraft)
             setCurrentDraft(nextDraft as ConnectedDraft)
