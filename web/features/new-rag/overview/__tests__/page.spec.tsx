@@ -1080,11 +1080,6 @@ describe('KnowledgeOverviewPage', () => {
     expect(
       within(inventorySection!).getByText('dataset.newKnowledge.detailErrorDescription'),
     ).toBeInTheDocument()
-    expect(
-      within(inventorySection!).queryByText(
-        'dataset.newKnowledge.overview.indexedSlices:{"indexed":0,"total":0}',
-      ),
-    ).not.toBeInTheDocument()
   })
 
   it('shows overview data when uploaded documents exist without a connected source', () => {
@@ -1101,14 +1096,18 @@ describe('KnowledgeOverviewPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('labels index coverage as slices rather than documents', () => {
+  it('omits graph metrics from the knowledge inventory', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
+    expect(screen.getByText('dataset.newKnowledge.overview.webCrawl')).toBeInTheDocument()
     expect(
-      screen.getByText('dataset.newKnowledge.overview.indexedSlices:{"indexed":4,"total":5}'),
-    ).toBeInTheDocument()
+      screen.queryByText('dataset.newKnowledge.overview.graphEntities'),
+    ).not.toBeInTheDocument()
     expect(
-      screen.queryByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":4,"total":5}'),
+      screen.queryByText('dataset.newKnowledge.overview.graphRelations'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.overview.indexCoverage'),
     ).not.toBeInTheDocument()
   })
 

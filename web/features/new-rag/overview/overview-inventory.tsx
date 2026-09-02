@@ -4,7 +4,6 @@ import type { KnowledgeFsOverviewInventoryResponse } from '@dify/contracts/api/c
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { compactNumber } from './overview-format'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
 import {
   overviewInventoryDataAtom,
@@ -99,7 +98,7 @@ export function InventoryPanel() {
       <h2 className="flex h-6 items-center text-[15px] leading-6 font-medium text-text-secondary">
         {t(($) => $['newKnowledge.overview.inventory'])}
       </h2>
-      <Panel className="h-44.25 overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <>
             <Skeleton className="h-6 w-full" />
@@ -143,39 +142,6 @@ export function InventoryPanel() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {[
-                {
-                  detail: `+${inventory?.graph_entities.added_last_7d ?? 0}`,
-                  label: t(($) => $['newKnowledge.overview.graphEntities']),
-                  value: compactNumber(inventory?.graph_entities.total ?? 0),
-                },
-                {
-                  detail: `+${inventory?.graph_relations.added_last_7d ?? 0}`,
-                  label: t(($) => $['newKnowledge.overview.graphRelations']),
-                  value: compactNumber(inventory?.graph_relations.total ?? 0),
-                },
-                {
-                  detail: t(($) => $['newKnowledge.overview.indexedSlices'], {
-                    indexed: inventory?.index_coverage.indexed ?? 0,
-                    total: inventory?.index_coverage.total ?? 0,
-                  }),
-                  label: t(($) => $['newKnowledge.overview.indexCoverage']),
-                  value: `${Math.round(inventory?.index_coverage.percentage ?? 0)}%`,
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex h-20 flex-col gap-1 rounded-lg bg-background-section p-3"
-                >
-                  <p className="system-2xs-medium text-text-tertiary">{item.label}</p>
-                  <p className="text-[18px] leading-5 font-semibold text-text-primary">
-                    {item.value}
-                  </p>
-                  <p className="system-2xs-regular text-text-tertiary">{item.detail}</p>
-                </div>
-              ))}
-            </div>
           </>
         )}
       </Panel>
