@@ -15,10 +15,6 @@ const { mockTemplateSearch } = vi.hoisted(() => ({
   mockTemplateSearch: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}))
-
 vi.mock('ahooks', async (importOriginal) => {
   const original = await importOriginal<typeof import('ahooks')>()
 
