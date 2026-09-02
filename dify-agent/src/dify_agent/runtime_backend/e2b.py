@@ -279,17 +279,13 @@ class E2BExecutionBindingBackend:
                         action=sandbox.kill,
                     )
                 except Exception as cleanup_exc:
-                    logger.warning(
+                    _log_e2b_cleanup_warning(
                         "failed to remove partial E2B Binding",
-                        exc_info=True,
-                        extra=_e2b_log_extra(
-                            operation="kill",
-                            sandbox_id=sandbox.sandbox_id,
-                            attempt=_e2b_failure_attempt(cleanup_exc),
-                            cleanup_stage="binding_create_compensation",
-                            exception=cleanup_exc,
-                            outcome="ignored_cleanup_failure",
-                        ),
+                        operation="kill",
+                        sandbox_id=sandbox.sandbox_id,
+                        attempt=_e2b_failure_attempt(cleanup_exc),
+                        cleanup_stage="binding_create_compensation",
+                        exception=cleanup_exc,
                     )
             if isinstance(exc, Exception):
                 if isinstance(exc, BindingCreateError):
@@ -333,17 +329,13 @@ class E2BExecutionBindingBackend:
         try:
             await lease.data_plane.close()
         except Exception as exc:
-            logger.warning(
+            _log_e2b_cleanup_warning(
                 "failed to close E2B RuntimeLease data plane",
-                exc_info=True,
-                extra=_e2b_log_extra(
-                    operation="close_data_plane",
-                    sandbox_id=lease.sandbox.sandbox_id,
-                    attempt=1,
-                    cleanup_stage="binding_release",
-                    exception=exc,
-                    outcome="ignored_cleanup_failure",
-                ),
+                operation="close_data_plane",
+                sandbox_id=lease.sandbox.sandbox_id,
+                attempt=1,
+                cleanup_stage="binding_release",
+                exception=exc,
             )
         except BaseException as exc:
             close_base_error = exc
@@ -356,17 +348,13 @@ class E2BExecutionBindingBackend:
                 action=lambda: lease.sandbox.pause(keep_memory=True),
             )
         except Exception as exc:
-            logger.warning(
+            _log_e2b_cleanup_warning(
                 "failed to pause E2B RuntimeLease",
-                exc_info=True,
-                extra=_e2b_log_extra(
-                    operation="pause",
-                    sandbox_id=lease.sandbox.sandbox_id,
-                    attempt=_e2b_failure_attempt(exc),
-                    cleanup_stage="binding_release",
-                    exception=exc,
-                    outcome="ignored_cleanup_failure",
-                ),
+                operation="pause",
+                sandbox_id=lease.sandbox.sandbox_id,
+                attempt=_e2b_failure_attempt(exc),
+                cleanup_stage="binding_release",
+                exception=exc,
             )
         except BaseException as exc:
             pause_base_error = exc
@@ -517,6 +505,30 @@ def _e2b_log_extra(
     }
 
 
+def _log_e2b_cleanup_warning(
+    message: str,
+    *,
+    operation: str,
+    sandbox_id: str,
+    attempt: int,
+    cleanup_stage: str,
+    exception: BaseException,
+) -> None:
+    logger.warning(
+        message,
+        exc_info=True,
+        stacklevel=2,
+        extra=_e2b_log_extra(
+            operation=operation,
+            sandbox_id=sandbox_id,
+            attempt=attempt,
+            cleanup_stage=cleanup_stage,
+            exception=exception,
+            outcome="ignored_cleanup_failure",
+        ),
+    )
+
+
 def _e2b_failure_attempt(exception: BaseException) -> int:
     if isinstance(exception, _RETRYABLE_E2B_TRANSPORT_ERRORS):
         return _E2B_CONTROL_PLANE_MAX_ATTEMPTS
@@ -529,17 +541,13 @@ async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
     try:
         await lease.data_plane.close()
     except BaseException as exc:
-        logger.warning(
+        _log_e2b_cleanup_warning(
             "failed to close E2B RuntimeLease data plane after acquire failure",
-            exc_info=True,
-            extra=_e2b_log_extra(
-                operation="close_data_plane",
-                sandbox_id=lease.sandbox.sandbox_id,
-                attempt=1,
-                cleanup_stage="binding_acquire_compensation",
-                exception=exc,
-                outcome="ignored_cleanup_failure",
-            ),
+            operation="close_data_plane",
+            sandbox_id=lease.sandbox.sandbox_id,
+            attempt=1,
+            cleanup_stage="binding_acquire_compensation",
+            exception=exc,
         )
 
 
@@ -554,17 +562,13 @@ async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
             action=lambda: sandbox.pause(keep_memory=True),
         )
     except BaseException as exc:
-        logger.warning(
+        _log_e2b_cleanup_warning(
             "failed to pause E2B Binding after acquire failure",
-            exc_info=True,
-            extra=_e2b_log_extra(
-                operation="pause",
-                sandbox_id=sandbox.sandbox_id,
-                attempt=_e2b_failure_attempt(exc),
-                cleanup_stage="binding_acquire_compensation",
-                exception=exc,
-                outcome="ignored_cleanup_failure",
-            ),
+            operation="pause",
+            sandbox_id=sandbox.sandbox_id,
+            attempt=_e2b_failure_attempt(exc),
+            cleanup_stage="binding_acquire_compensation",
+            exception=exc,
         )
 
 
