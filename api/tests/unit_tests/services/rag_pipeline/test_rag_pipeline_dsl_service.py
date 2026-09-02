@@ -107,11 +107,11 @@ def _workflow_for_dependencies(
         kind=WorkflowKind.STANDARD,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     workflow.environment_variables = environment_variables or []
     return workflow
