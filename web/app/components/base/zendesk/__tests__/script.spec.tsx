@@ -1,4 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createZendeskRuntime } from '../runtime'
 import { ZendeskScript } from '../script'
@@ -93,5 +94,45 @@ describe('ZendeskScript', () => {
     await stalledExpectation
     expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'error' })
     expect(remove).toHaveBeenCalledOnce()
+  })
+
+  it('fails the pending load when its loader unmounts', async () => {
+    const runtime = createZendeskRuntime(() => window.zE)
+    const appendChild = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
+    const loadPromise = runtime.requestLoad()
+    const loadExpectation = expect(loadPromise).rejects.toThrow('Failed to load Zendesk')
+    const { unmount } = render(<ZendeskScript runtime={runtime} widgetKey="test-key" />)
+    const script = appendChild.mock.calls.at(-1)![0] as HTMLScriptElement
+    const remove = vi.spyOn(script, 'remove')
+
+    await act(async () => {
+      unmount()
+      await Promise.resolve()
+    })
+
+    await loadExpectation
+    expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'error' })
+    expect(remove).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the first load active through Strict Mode effect replay', async () => {
+    const runtime = createZendeskRuntime(() => window.zE)
+    const appendChild = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
+    const loadPromise = runtime.requestLoad()
+
+    render(
+      <StrictMode>
+        <ZendeskScript runtime={runtime} widgetKey="test-key" />
+      </StrictMode>,
+    )
+    await act(() => Promise.resolve())
+
+    expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'loading' })
+    const activeScript = appendChild.mock.calls.at(-1)![0] as HTMLScriptElement
+    window.zE = vi.fn()
+    act(() => activeScript.dispatchEvent(new Event('load')))
+
+    await loadPromise
+    expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'ready' })
   })
 })
