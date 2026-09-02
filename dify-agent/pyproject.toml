@@ -46,6 +46,10 @@ pythonVersion = "3.12"
 extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 
 [tool.pytest.ini_options]
+# Several test modules share a basename across directories (test_layer.py,
+# test_client.py, ...). The default prepend import mode derives module names
+# from the basename, so collecting them together is an import file mismatch.
+addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 markers = ["integration: requires a real external service or exercises multiple concrete adapters"]

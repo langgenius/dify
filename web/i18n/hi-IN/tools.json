@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "विवरण",
   "createTool.toolOutput.reserved": "आरक्षित",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json, और फाइलें आरक्षित वेरिएबल हैं। इन नामों वाले वेरिएबल आउटपुट स्कीमा में दिखाई नहीं दे सकते।",
+  "createTool.toolOutput.sourceNode": "स्रोत नोड",
   "createTool.toolOutput.title": "उपकरण आउटपुट",
   "createTool.urlError": "कृपया एक मान्य URL दर्ज करें",
   "createTool.viewSchemaSpec": "OpenAPI-Swagger विनिर्देश देखें",

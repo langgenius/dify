@@ -65,7 +65,7 @@ ignore_imports =
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.datasource.datasource_manager -> services.datasource_provider_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
-    core.helper.credential_utils -> services.feature_service
+    core.helper.credential_utils -> services.system_feature_service
     core.indexing_runner -> services.vector_space_admission_service
     core.mcp.auth_client -> services
     core.provider_manager -> services.credential_permission_service
@@ -99,9 +99,9 @@ ignore_imports =
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
     libs.device_flow_security -> controllers.openapi._models
     libs.device_flow_security -> services.entities.feature_entities
-    libs.device_flow_security -> services.feature_service
+    libs.device_flow_security -> services.system_feature_service
     libs.email_i18n -> services.entities.feature_entities
-    libs.email_i18n -> services.feature_service
+    libs.email_i18n -> services.system_feature_service
     libs.external_api -> core
     libs.external_api -> core.errors.error
     libs.external_api -> extensions.ext_logging
@@ -117,7 +117,6 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
-    libs.workspace_permission -> services.feature_service
     services.account_service -> controllers
     services.account_service -> controllers.console.error
     services.app_generate_service -> controllers.console.app.workflow
@@ -208,6 +207,7 @@ source_modules =
     services.account_avatar_service
     services.account_change_email_ports
     services.account_change_email_service
+    services.account_email_registration_service
     services.account_deletion_service
     services.account_deletion_feedback_service
     services.account_education_service
@@ -388,6 +388,37 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:inner-mail-service-boundary]
+name = Inner mail application service is framework and implementation neutral
+type = forbidden
+source_modules =
+    services.inner_mail_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:web-passport-service-boundary]
+name = Web passport application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.web_passport_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:account-activation-service-boundary]
 name = Account activation application service is framework and persistence neutral
 type = forbidden
@@ -460,4 +491,21 @@ forbidden_modules =
     repositories
     services.billing_service
     sqlalchemy
+    werkzeug
+
+[importlinter:contract:workflow-run-archive-application-boundary]
+name = Workflow run archive application service and task domain are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retention.workflow_run.archive_download_task
+    services.retention.workflow_run.archive_log_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
     werkzeug

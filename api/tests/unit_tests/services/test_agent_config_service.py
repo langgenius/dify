@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -1162,7 +1163,10 @@ def test_resolve_skill_file_member_path_requires_existing_member() -> None:
     assert exc_info.value.status_code == 404
 
 
-def test_download_url_helpers_bind_shared_download_request_to_console_origin() -> None:
+def test_download_url_helpers_bind_shared_download_request_to_console_origin(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(FILES_URL="https://example.com")
     service = AgentConfigService()
 
     with (
@@ -1174,7 +1178,6 @@ def test_download_url_helpers_bind_shared_download_request_to_console_origin() -
                 ConfigDownloadRequest("guide.txt", "text/plain", 20, "/files/guide.txt?sign=2"),
             ],
         ),
-        patch(f"{MODULE}.dify_config.FILES_URL", "https://example.com"),
     ):
         assert (
             service.download_skill_url(
