@@ -7,6 +7,7 @@ shared conversion functions for legacy callers and tests.
 
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from configs import dify_config
 from core.workflow.llm_environment_variable import (
@@ -55,6 +56,26 @@ __all__ = [
 _MAX_VARIABLE_DESCRIPTION_LENGTH = 255
 
 
+def _with_uuid_id(mapping: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Return ``mapping`` with a UUID ``id`` when the provided one cannot be stored.
+
+    ``workflow_conversation_variables.id`` is a UUID column. Hand-authored DSL ids such
+    as ``opt-comp-prompt-var`` pass import and then fail on the first run. Conversation
+    variables are referenced by name, so a replacement id is safe. The replacement is
+    uuid5-stable for a given name so already-imported drafts do not mint a new PK every
+    load.
+    """
+    raw_id = mapping.get("id")
+    if raw_id in (None, ""):
+        return mapping
+    try:
+        UUID(str(raw_id))
+    except (ValueError, TypeError, AttributeError):
+        name = str(mapping.get("name") or "variable")
+        return {**dict(mapping), "id": str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{name}"))}
+    return mapping
+
+
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
@@ -64,7 +85,10 @@ def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> V
             f"description of variable '{mapping['name']}' is too long"
             f" (max {_MAX_VARIABLE_DESCRIPTION_LENGTH} characters)"
         )
-    return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
+    return _build_variable_from_mapping(
+        mapping=_with_uuid_id(mapping),
+        selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]],
+    )
 
 
 def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
