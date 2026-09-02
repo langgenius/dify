@@ -21,8 +21,6 @@ import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
-  datasourceParameterDefaults,
-  datasourceParameterSchemas,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
   websiteDatasourceParameterSchemas,
@@ -31,14 +29,15 @@ import {
 import {
   SourceNameField,
   SourceProviderCredentialRequiredCard,
+  SourceProviderEmptyState,
   SourceProviderIcon,
-  SourceProviderNotInstalledCard,
   SourceProviderRadioGroup,
   SourceSyncPolicyField,
   SourceTypeSelector,
 } from '../sources/setup/fields'
 import {
   discoverSourceProviderOptions,
+  sourceDraftForProviderOption,
   sourceProviderOptionForDraft,
 } from '../sources/setup/provider-options'
 
@@ -52,6 +51,13 @@ const CRAWL_POLL_INTERVAL_MS = 1500
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
+type CreateSourceSetupProps = {
+  disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onInitialSourceChange: (source?: InitialSource) => void
+  onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
+}
 
 function datasourceAuthForProvider(
   authProviders: DataSourceAuth[],
@@ -90,19 +96,106 @@ function websiteSourceUri(parameters: Record<string, boolean | number | string>,
   return `datasource://${encodeURIComponent(fallback)}`
 }
 
-export function CreateSourceSetup({
+export function CreateSourceSetup(props: CreateSourceSetupProps) {
+  const { disabled, draft, onDraftChange, onSourceTypeChange } = props
+  const { t } = useTranslation('dataset')
+  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const providerOptions = useMemo(
+    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, draft.sourceType],
+  )
+  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
+  const providerDraft = useMemo(
+    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
+    [draft, providerOption],
+  )
+  const datasourceAuth = providerOption
+    ? datasourceAuthForProvider(
+        datasourceAuthQuery.data?.result ?? [],
+        providerOption.plugin.plugin_id,
+        providerOption.plugin.provider,
+      )
+    : undefined
+  const credential = preferredCredential(datasourceAuth)
+  const sessionKey = [
+    draft.sourceType,
+    providerOption?.key ?? 'no-provider',
+    providerOption?.plugin.plugin_unique_identifier ?? 'no-plugin-version',
+    credential?.id ?? 'no-credential',
+  ].join(':')
+
+  const selectProvider = (providerKey: string) => {
+    const nextProvider = providerOptions.find((option) => option.key === providerKey)
+    if (!nextProvider) return
+    onDraftChange(sourceDraftForProviderOption(providerDraft, nextProvider))
+  }
+
+  return (
+    <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
+      <SourceTypeSelector
+        appearance="embedded"
+        disabled={disabled}
+        value={draft.sourceType}
+        onChange={onSourceTypeChange}
+      />
+
+      <Fieldset disabled={disabled}>
+        <FieldsetLegend className="sr-only">
+          {t(($) => $['newKnowledge.providerLabel'])}
+        </FieldsetLegend>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <span className="system-xs-medium text-text-secondary">
+            {t(($) => $['newKnowledge.providerLabel'])}
+          </span>
+          <Button
+            type="button"
+            variant="ghost-accent"
+            size="small"
+            disabled={disabled}
+            className="gap-0.5 px-2.75"
+            onClick={() =>
+              globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
+            }
+          >
+            {t(($) => $['newKnowledge.moreProviders'])}
+            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+          </Button>
+        </div>
+        {providerOptions.length > 0 ? (
+          <SourceProviderRadioGroup
+            value={providerOption?.key ?? ''}
+            disabled={disabled}
+            layout={draft.sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
+            options={providerOptions.map((option) => ({
+              icon: (
+                <SourceProviderIcon
+                  fallbackIcon={option.fallbackIcon}
+                  icon={option.datasource.identity.icon ?? option.plugin.declaration.identity.icon}
+                />
+              ),
+              label: option.label,
+              value: option.key,
+            }))}
+            surface="default"
+            onChange={selectProvider}
+          />
+        ) : !datasourcePluginsQuery.isPending && !datasourcePluginsQuery.error ? (
+          <SourceProviderEmptyState className="min-h-16" />
+        ) : null}
+      </Fieldset>
+
+      <CreateSourceSetupSession key={sessionKey} {...props} />
+    </div>
+  )
+}
+
+function CreateSourceSetupSession({
   disabled,
   draft,
   onDraftChange,
   onInitialSourceChange,
-  onSourceTypeChange,
-}: {
-  disabled: boolean
-  draft: NewKnowledgeSourceDraft
-  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onInitialSourceChange: (source?: InitialSource) => void
-  onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
-}) {
+}: CreateSourceSetupProps) {
   const { t } = useTranslation('dataset')
   const datasourcePluginsQuery = useDataSourceList(true)
   const datasourceAuthQuery = useGetDataSourceListAuth()
@@ -112,13 +205,16 @@ export function CreateSourceSetup({
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const crawlAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
-  const sourceType = draft.sourceType
   const providerOptions = useMemo(
-    () => discoverSourceProviderOptions(sourceType, datasourcePluginsQuery.data ?? []),
-    [datasourcePluginsQuery.data, sourceType],
+    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, draft.sourceType],
   )
   const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
-  const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const providerDraft = useMemo(
+    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
+    [draft, providerOption],
+  )
+  const installedProviderOption = providerOption
   const datasourceAuth = installedProviderOption
     ? datasourceAuthForProvider(
         datasourceAuthQuery.data?.result ?? [],
@@ -135,26 +231,26 @@ export function CreateSourceSetup({
     [draft.sourceType, installedProviderOption],
   )
   const parameters = useMemo(() => {
-    const current = withDatasourceParameterDefaults(parameterSchemas, draft.parameters)
+    const current = withDatasourceParameterDefaults(parameterSchemas, providerDraft.parameters)
     if (
-      draft.sourceType === 'websiteCrawl' &&
-      draft.rootUrl &&
+      providerDraft.sourceType === 'websiteCrawl' &&
+      providerDraft.rootUrl &&
       parameterSchemas.some((parameter) => parameter.name === 'url') &&
       current.url === undefined
     )
-      current.url = draft.rootUrl
+      current.url = providerDraft.rootUrl
     return current
-  }, [draft, parameterSchemas])
+  }, [parameterSchemas, providerDraft])
   const parametersValid =
     !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
     !invalidDatasourceParameters(parameterSchemas, parameters).length
   const selectionPages = previewPages
   const previewReady = Boolean(
-    draft.sourceType === 'websiteCrawl' &&
+    providerDraft.sourceType === 'websiteCrawl' &&
     credential &&
     installedProviderOption &&
     parametersValid &&
-    draft.sourceName.trim(),
+    providerDraft.sourceName.trim(),
   )
   const sourceUri = installedProviderOption
     ? websiteSourceUri(parameters, installedProviderOption.key)
@@ -227,25 +323,6 @@ export function CreateSourceSetup({
   const updateDraftWithoutReset = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
   }
-  const selectProvider = (providerKey: string) => {
-    const nextProvider = providerOptions.find((option) => option.key === providerKey)
-    if (!nextProvider) return
-    updateDraft({
-      ...draft,
-      parameters: nextProvider.installed
-        ? datasourceParameterDefaults(
-            draft.sourceType === 'websiteCrawl'
-              ? websiteDatasourceParameterSchemas(nextProvider.datasource)
-              : datasourceParameterSchemas(nextProvider.datasource),
-          )
-        : {},
-      provider: nextProvider.label,
-      providerKey: nextProvider.key,
-      sourceName: '',
-      ...(draft.sourceType === 'websiteCrawl' ? { rootUrl: '' } : {}),
-    })
-  }
-
   useEffect(
     () => () => {
       crawlAttemptRef.current += 1
@@ -256,13 +333,14 @@ export function CreateSourceSetup({
             params: { job_id: jobId },
           })
           .catch(() => {})
+      onInitialSourceChange(undefined)
     },
-    [],
+    [onInitialSourceChange],
   )
 
   const startPreview = async () => {
     if (
-      draft.sourceType !== 'websiteCrawl' ||
+      providerDraft.sourceType !== 'websiteCrawl' ||
       !previewReady ||
       !credential ||
       !installedProviderOption
@@ -342,7 +420,7 @@ export function CreateSourceSetup({
   }
 
   useEffect(() => {
-    if (draft.sourceType !== 'websiteCrawl') {
+    if (providerDraft.sourceType !== 'websiteCrawl') {
       if (!installedProviderOption || !credential) onInitialSourceChange(undefined)
       return
     }
@@ -368,7 +446,7 @@ export function CreateSourceSetup({
       credentialId: credential.id,
       datasource: installedProviderOption.datasource.identity.name,
       kind: 'website_crawl',
-      name: draft.sourceName.trim(),
+      name: providerDraft.sourceName.trim(),
       pluginId: installedProviderOption.plugin.plugin_id,
       provider: installedProviderOption.plugin.provider,
       providerDisplayName: installedProviderOption.label,
@@ -378,70 +456,25 @@ export function CreateSourceSetup({
         source_url: page.sourceUrl,
         ...(page.title ? { title: page.title } : {}),
       })),
-      ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
-        ? { custom_interval_seconds: draft.customIntervalSeconds }
+      ...(providerDraft.syncPolicy === 'custom' && providerDraft.customIntervalSeconds
+        ? { custom_interval_seconds: providerDraft.customIntervalSeconds }
         : {}),
-      sync_policy: draft.syncPolicy,
+      sync_policy: providerDraft.syncPolicy,
     })
   }, [
     crawlState,
     credential,
-    draft,
     installedProviderOption,
     onInitialSourceChange,
     parameters,
+    providerDraft,
     selectedPageIds,
     selectionPages,
     sourceUri,
   ])
 
   return (
-    <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
-      <SourceTypeSelector
-        appearance="embedded"
-        disabled={disabled}
-        value={sourceType}
-        onChange={(value) => {
-          onSourceTypeChange(value)
-        }}
-      />
-
-      <Fieldset disabled={disabled}>
-        <FieldsetLegend className="sr-only">
-          {t(($) => $['newKnowledge.providerLabel'])}
-        </FieldsetLegend>
-        <div className="mb-1.5 flex items-center justify-between gap-3">
-          <span className="system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.providerLabel'])}
-          </span>
-          <Button
-            type="button"
-            variant="ghost-accent"
-            size="small"
-            disabled={disabled}
-            className="gap-0.5 px-2.75"
-            onClick={() =>
-              globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
-            }
-          >
-            {t(($) => $['newKnowledge.moreProviders'])}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-          </Button>
-        </div>
-        <SourceProviderRadioGroup
-          value={providerOption?.key ?? ''}
-          disabled={disabled}
-          layout={sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
-          options={providerOptions.map((option) => ({
-            icon: <SourceProviderIcon fallbackIcon={option.fallbackIcon} />,
-            label: option.label,
-            value: option.key,
-          }))}
-          surface="default"
-          onChange={selectProvider}
-        />
-      </Fieldset>
-
+    <>
       {datasourcePluginsQuery.isPending || datasourceAuthQuery.isPending ? (
         <div className="flex min-h-44 items-center justify-center">
           <span aria-hidden className="i-ri-loader-4-line size-5 animate-spin text-text-tertiary" />
@@ -460,22 +493,18 @@ export function CreateSourceSetup({
             {t(($) => $['newKnowledge.retryProviderLoad'])}
           </Button>
         </div>
-      ) : providerOption && !providerOption.installed ? (
-        <SourceProviderNotInstalledCard
-          icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} />}
-          provider={providerOption.label}
-          onInstall={() =>
-            globalThis.open(
-              providerIntegrationPath(providerOption.packageId),
-              '_blank',
-              'noopener,noreferrer',
-            )
-          }
-        />
       ) : installedProviderOption && !credential ? (
         <SourceProviderCredentialRequiredCard
           disabled={disabled}
-          icon={<SourceProviderIcon fallbackIcon={installedProviderOption.fallbackIcon} />}
+          icon={
+            <SourceProviderIcon
+              fallbackIcon={installedProviderOption.fallbackIcon}
+              icon={
+                installedProviderOption.datasource.identity.icon ??
+                installedProviderOption.plugin.declaration.identity.icon
+              }
+            />
+          }
           provider={installedProviderOption.label}
           onConnect={() =>
             globalThis.open(
@@ -485,13 +514,13 @@ export function CreateSourceSetup({
             )
           }
         />
-      ) : draft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
+      ) : providerDraft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
         <div className="space-y-4">
           <WebsiteDatasourceParameterForm
             additionalPrimaryField={
               <SourceNameField
                 disabled={disabled}
-                draft={draft}
+                draft={providerDraft}
                 preventSubmitOnEnter
                 onDraftChange={updateDraft}
               />
@@ -501,7 +530,7 @@ export function CreateSourceSetup({
             schemas={parameterSchemas}
             onChange={(nextParameters) =>
               updateDraft({
-                ...draft,
+                ...providerDraft,
                 parameters: nextParameters,
                 rootUrl: typeof nextParameters.url === 'string' ? nextParameters.url : '',
               })
@@ -617,16 +646,16 @@ export function CreateSourceSetup({
           <SourceSyncPolicyField
             className="w-full sm:w-75.25"
             disabled={disabled}
-            draft={draft}
+            draft={providerDraft}
             onDraftChange={updateDraftWithoutReset}
             size="medium"
           />
         </div>
-      ) : draft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
+      ) : providerDraft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
         <ConnectedSourceConfiguration
-          key={`${draft.sourceType}:${installedProviderOption.key}:${credential.id}`}
+          key={`${providerDraft.sourceType}:${installedProviderOption.key}:${credential.id}`}
           disabled={disabled}
-          draft={draft}
+          draft={providerDraft}
           previewBinding={{
             credentialId: credential.id,
             datasource: installedProviderOption.datasource.identity.name,
@@ -639,6 +668,6 @@ export function CreateSourceSetup({
           onInitialSourceChange={onInitialSourceChange}
         />
       ) : null}
-    </div>
+    </>
   )
 }

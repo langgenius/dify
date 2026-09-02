@@ -1,5 +1,10 @@
 import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import {
+  datasourceParameterDefaults,
+  datasourceParameterSchemas,
+  websiteDatasourceParameterSchemas,
+} from './datasource-parameter-model'
 
 type Datasource = DataSourceItem['declaration']['datasources'][number]
 
@@ -15,7 +20,6 @@ type RecommendedProvider = {
 export type InstalledSourceProviderOption = {
   datasource: Datasource
   fallbackIcon: string
-  installed: true
   key: string
   label: string
   packageId: string
@@ -24,17 +28,7 @@ export type InstalledSourceProviderOption = {
   sourceType: NewKnowledgeSourceType
 }
 
-export type UninstalledSourceProviderOption = {
-  fallbackIcon: string
-  installed: false
-  key: string
-  label: string
-  packageId: string
-  providerType: DataSourceItem['declaration']['provider_type']
-  sourceType: NewKnowledgeSourceType
-}
-
-export type SourceProviderOption = InstalledSourceProviderOption | UninstalledSourceProviderOption
+export type SourceProviderOption = InstalledSourceProviderOption
 
 const recommendedProviders: RecommendedProvider[] = [
   {
@@ -185,7 +179,6 @@ function installedRecommendedProvider(
   return {
     datasource,
     fallbackIcon: definition.fallbackIcon,
-    installed: true,
     key: providerKey(definition.sourceType, plugin, datasource),
     label: definition.label,
     packageId: definition.packageId,
@@ -226,23 +219,11 @@ export function discoverSourceProviderOptions(
   const definitions = recommendedProviders.filter(
     (definition) => definition.sourceType === sourceType,
   )
-  const recommended: SourceProviderOption[] = definitions.map((definition) => {
+  const recommended = definitions.flatMap((definition) => {
     const installed = installedRecommendedProvider(definition, datasourcePlugins)
-    return (
-      installed ?? {
-        fallbackIcon: definition.fallbackIcon,
-        installed: false as const,
-        key: `${sourceType}:marketplace:${definition.packageId}`,
-        label: definition.label,
-        packageId: definition.packageId,
-        providerType: definition.providerType,
-        sourceType,
-      }
-    )
+    return installed ? [installed] : []
   })
-  const consumedKeys = new Set(
-    recommended.flatMap((option) => (option.installed ? [option.key] : [])),
-  )
+  const consumedKeys = new Set(recommended.map((option) => option.key))
   const labels = new Set(recommended.map((option) => option.label))
   const discovered: InstalledSourceProviderOption[] = []
 
@@ -261,7 +242,6 @@ export function discoverSourceProviderOptions(
       discovered.push({
         datasource,
         fallbackIcon: fallbackIcon(sourceType),
-        installed: true,
         key,
         label,
         packageId: plugin.plugin_id,
@@ -287,4 +267,33 @@ export function sourceProviderOptionForDraft(
     ) ??
     options[0]
   )
+}
+
+export function sourceDraftForProviderOption<T extends NewKnowledgeSourceDraft>(
+  draft: T,
+  option: SourceProviderOption,
+): T {
+  const providerMatches =
+    draft.providerKey !== undefined
+      ? draft.providerKey === option.key
+      : normalizeSourceProviderName(draft.provider) === normalizeSourceProviderName(option.label)
+  if (providerMatches)
+    return draft.provider === option.label && draft.providerKey === option.key
+      ? draft
+      : ({ ...draft, provider: option.label, providerKey: option.key } as T)
+
+  const schemas =
+    draft.sourceType === 'websiteCrawl'
+      ? websiteDatasourceParameterSchemas(option.datasource)
+      : datasourceParameterSchemas(option.datasource)
+  return {
+    ...draft,
+    parameters: datasourceParameterDefaults(schemas),
+    provider: option.label,
+    providerKey: option.key,
+    sourceName: '',
+    ...(draft.sourceType === 'websiteCrawl'
+      ? { includeSubpages: true, maxPages: 100, rootUrl: '' }
+      : {}),
+  } as T
 }

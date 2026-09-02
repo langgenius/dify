@@ -128,6 +128,26 @@ export function SourceProviderRadioGroup<T extends string>({
   )
 }
 
+export function SourceProviderEmptyState({ className }: { className?: string }) {
+  const { t } = useTranslation('plugin')
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn(
+        'flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-divider-regular bg-background-section px-4 py-3 text-center',
+        className,
+      )}
+    >
+      <span className="flex size-8 items-center justify-center rounded-lg bg-background-default">
+        <span aria-hidden className="i-ri-plug-line size-4 text-text-tertiary" />
+      </span>
+      <span className="system-xs-regular text-text-tertiary">{t(($) => $['list.notFound'])}</span>
+    </div>
+  )
+}
+
 type SourceProviderIconValue =
   | InstalledSourceProviderOption['datasource']['identity']['icon']
   | InstalledSourceProviderOption['plugin']['declaration']['identity']['icon']
@@ -174,6 +194,7 @@ export function SourceProviderSelector({
   layout = 'grid-three',
   options,
   providerKey,
+  showEmptyState = false,
   onChange,
 }: {
   appearance?: 'embedded' | 'page'
@@ -181,6 +202,7 @@ export function SourceProviderSelector({
   layout?: 'grid-four' | 'grid-three'
   options: SourceProviderOption[]
   providerKey: string
+  showEmptyState?: boolean
   onChange: (providerKey: string) => void
 }) {
   const { t } = useTranslation('dataset')
@@ -213,28 +235,28 @@ export function SourceProviderSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
         </Link>
       </div>
-      <SourceProviderRadioGroup
-        value={providerKey}
-        disabled={disabled}
-        layout={layout}
-        options={options.map((option) => ({
-          icon: (
-            <SourceProviderIcon
-              fallbackIcon={option.fallbackIcon}
-              icon={
-                option.installed
-                  ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
-                  : undefined
-              }
-            />
-          ),
-          label: option.label,
-          value: option.key,
-        }))}
-        size="medium"
-        surface="default"
-        onChange={onChange}
-      />
+      {options.length > 0 ? (
+        <SourceProviderRadioGroup
+          value={providerKey}
+          disabled={disabled}
+          layout={layout}
+          options={options.map((option) => ({
+            icon: (
+              <SourceProviderIcon
+                fallbackIcon={option.fallbackIcon}
+                icon={option.datasource.identity.icon ?? option.plugin.declaration.identity.icon}
+              />
+            ),
+            label: option.label,
+            value: option.key,
+          }))}
+          size="medium"
+          surface="default"
+          onChange={onChange}
+        />
+      ) : showEmptyState ? (
+        <SourceProviderEmptyState />
+      ) : null}
     </Fieldset>
   )
 }
@@ -382,33 +404,5 @@ export function SourceProviderCredentialRequiredCard({
       title={t(($) => $['newKnowledge.providerNotConfigured'], { provider })}
       onConnect={onConnect}
     />
-  )
-}
-
-export function SourceProviderNotInstalledCard({
-  icon,
-  provider,
-  onInstall,
-}: {
-  icon: ReactNode
-  provider: string
-  onInstall: () => void
-}) {
-  const { t: tPlugin } = useTranslation('plugin')
-  const { t: tWorkflow } = useTranslation('workflow')
-
-  return (
-    <section className="flex min-h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
-      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
-        {icon}
-      </span>
-      <h3 className="system-sm-semibold text-text-primary">{provider}</h3>
-      <p className="system-xs-regular text-text-tertiary">
-        {tWorkflow(($) => $['nodes.common.pluginNotInstalled'])}
-      </p>
-      <Button type="button" variant="primary" className="mt-auto" onClick={onInstall}>
-        {tPlugin(($) => $.installPlugin)}
-      </Button>
-    </section>
   )
 }

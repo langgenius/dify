@@ -224,7 +224,7 @@ function ConnectedSourceEditDialogContent({
   const providerOption = providerOptions.find(
     (option) => normalizeSourceProviderName(option.label) === normalizedProviderName,
   )
-  const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const installedProviderOption = providerOption
   const connections =
     connectionsData?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
   const connection = connections.find((item) => item.id === source.connectionId)
@@ -516,13 +516,10 @@ function WebsiteSourceEditDialogContent({
   const providerLoading = usesProviderDeclaration && datasourcePluginsQuery.isPending
   const providerLoadFailed = usesProviderDeclaration && datasourcePluginsQuery.isError
   const providerConfigurationReady =
-    !usesProviderDeclaration ||
-    (!providerLoading && !providerLoadFailed && providerOption?.installed === true)
+    !usesProviderDeclaration || (!providerLoading && !providerLoadFailed && Boolean(providerOption))
   const parameterSchemas = useMemo(() => {
     if (!usesProviderDeclaration) return websiteDatasourceParameterSchemas()
-    return providerOption?.installed
-      ? websiteDatasourceParameterSchemas(providerOption.datasource)
-      : []
+    return providerOption ? websiteDatasourceParameterSchemas(providerOption.datasource) : []
   }, [providerOption, usesProviderDeclaration])
   const displayedParameters = useMemo(
     () => sourceParametersForSchemas(initialSource, nextParameters, parameterSchemas),
@@ -577,7 +574,7 @@ function WebsiteSourceEditDialogContent({
   }
 
   const startPreview = async () => {
-    if (previewing || !parametersValid || !providerOption?.installed || !previewBindingReady) return
+    if (previewing || !parametersValid || !providerOption || !previewBindingReady) return
     const attempt = previewAttemptRef.current + 1
     previewAttemptRef.current = attempt
     setPreviewing(true)
@@ -735,7 +732,7 @@ function WebsiteSourceEditDialogContent({
                   pending ||
                   previewing ||
                   !parametersValid ||
-                  !providerOption?.installed ||
+                  !providerOption ||
                   !previewBindingReady
                 }
                 loading={previewing}

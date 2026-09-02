@@ -727,8 +727,7 @@ describe('AddSourcePage', () => {
     )
   })
 
-  it('keeps the exact website provider selected while loading website dependencies', async () => {
-    const user = userEvent.setup()
+  it('falls back to an installed website provider when the requested provider is not installed', () => {
     render(
       <AddSourcePage
         initialSourceDraft={{
@@ -744,28 +743,52 @@ describe('AddSourcePage', () => {
       />,
     )
 
-    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
-    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
-    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
-    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'plugin.installPlugin',
-      }),
-    )
-    expect(openMock).toHaveBeenCalledWith(
-      '/integrations/data-source?package-ids=%5B%22langgenius%2Fjina_datasource%22%5D',
-      '_blank',
-      'noopener,noreferrer',
-    )
-    await user.click(screen.getByRole('radio', { name: 'Firecrawl' }))
+    expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
     expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
     expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
   })
 
-  it('keeps crawl fields hidden until the selected website provider is configured', async () => {
+  it('clears provider-specific draft fields when falling back to another website provider', async () => {
     const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: false,
+          maxPages: 25,
+          parameters: {
+            crawl_sub_pages: false,
+            jinaOnly: 'stale-value',
+            url: 'https://jina.example.com',
+          },
+          provider: 'Jina Reader',
+          rootUrl: 'https://jina.example.com',
+          sourceName: 'Old Jina source',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'daily',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      '',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+    ).toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
+      100,
+    )
+  })
+
+  it('keeps crawl fields hidden until the selected website provider is configured', () => {
     render(
       <AddSourcePage
         initialSourceDraft={{
@@ -791,8 +814,8 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
 
-    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
     ).not.toBeInTheDocument()
@@ -1245,6 +1268,19 @@ describe('AddSourcePage', () => {
     expect(moreProvidersLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
+  it('prompts for provider installation when no datasource integration is installed', () => {
+    queryState.datasourcePlugins.data = []
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
+    expect(screen.queryByRole('radio', { name: 'Firecrawl' })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.moreProviders' }),
+    ).toHaveAttribute('href', '/integrations/data-source')
+    expect(screen.queryByText('dataset.newKnowledge.providerUnavailable')).not.toBeInTheDocument()
+  })
+
   it('keeps the handed-off website draft when the provider connection becomes active', async () => {
     const initialSourceDraft = {
       includeSubpages: true,
@@ -1578,7 +1614,7 @@ describe('AddSourcePage', () => {
     })
     expect(onlineDocuments).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
+    expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' }),
     ).toBeInTheDocument()
@@ -1613,7 +1649,6 @@ describe('AddSourcePage', () => {
   })
 
   it.each([
-    ['websiteCrawl', 'Jina Reader'],
     ['onlineDocuments', 'Confluence'],
     ['onlineDrive', 'OneDrive'],
   ] as const)('restores the %s provider from a shortcut URL', (initialSourceType, provider) => {
@@ -1626,6 +1661,19 @@ describe('AddSourcePage', () => {
     )
 
     expect(screen.getByRole('radio', { name: provider })).toBeChecked()
+  })
+
+  it('does not expose an uninstalled website provider from a shortcut URL', () => {
+    render(
+      <AddSourcePage
+        initialSourceProvider="Jina Reader"
+        initialSourceType="websiteCrawl"
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
   })
 
   it('disables the final Add source action while its backend dependency is missing', async () => {

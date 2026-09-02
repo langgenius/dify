@@ -39,7 +39,6 @@ import {
 } from '../connections/model'
 import { DatasourceParameterForm } from '../setup/datasource-parameter-form'
 import {
-  datasourceParameterDefaults,
   datasourceParameterSchemas,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
@@ -49,13 +48,13 @@ import {
   SourceNameField,
   SourceProviderCredentialRequiredCard,
   SourceProviderIcon,
-  SourceProviderNotInstalledCard,
   SourceProviderSelector,
   SourceSyncPolicyField,
 } from '../setup/fields'
 import {
   discoverSourceProviderOptions,
   normalizeSourceProviderName,
+  sourceDraftForProviderOption,
   sourceProviderOptionForDraft,
 } from '../setup/provider-options'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from '../setup/source-draft'
@@ -71,6 +70,13 @@ import {
 type ConnectedSourceDraft =
   | NewKnowledgeOnlineDocumentsSourceDraft
   | NewKnowledgeOnlineDriveSourceDraft
+type ConnectedSourceWorkflowProps = {
+  draft: ConnectedSourceDraft
+  knowledgeSpaceId: string
+  onCompleted: () => void
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onExit: () => void
+}
 type PageResource = {
   ancestorKeys: string[]
   depth: number
@@ -136,7 +142,7 @@ function providerForDraft(
 }
 
 function datasourceProviderForOption(option?: SourceProviderOption) {
-  return option?.installed
+  return option
     ? {
         datasource: option.datasource,
         plugin: option.plugin,
@@ -1493,19 +1499,62 @@ function AppliedResourceConfiguration({
   )
 }
 
-export function ConnectedSourceWorkflow({
+export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
+  const { draft, onDraftChange } = props
+  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const providerOptions = useMemo(
+    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, draft.sourceType],
+  )
+  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
+  const providerDraft = useMemo(
+    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
+    [draft, providerOption],
+  )
+  const datasourceProvider = datasourceProviderForOption(providerOption)
+  const datasourceAuth = datasourceAuthForProvider(
+    datasourceAuthQuery.data?.result ?? [],
+    datasourceProvider,
+  )
+  const credential = preferredCredential(datasourceAuth)
+  const sessionKey = [
+    draft.sourceType,
+    providerOption?.key ?? 'no-provider',
+    providerOption?.plugin.plugin_unique_identifier ?? 'no-plugin-version',
+    credential?.id ?? 'no-credential',
+  ].join(':')
+
+  const selectProvider = (providerKey: string) => {
+    const nextProvider = providerOptions.find((option) => option.key === providerKey)
+    if (!nextProvider) return
+    onDraftChange(sourceDraftForProviderOption(providerDraft, nextProvider))
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SourceProviderSelector
+        options={providerOptions}
+        providerKey={providerOption?.key ?? ''}
+        showEmptyState={
+          !datasourcePluginsQuery.error &&
+          !datasourcePluginsQuery.isPending &&
+          providerOptions.length === 0
+        }
+        onChange={selectProvider}
+      />
+      <ConnectedSourceWorkflowSession key={sessionKey} {...props} />
+    </div>
+  )
+}
+
+function ConnectedSourceWorkflowSession({
   draft,
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
   onExit,
-}: {
-  draft: ConnectedSourceDraft
-  knowledgeSpaceId: string
-  onCompleted: () => void
-  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onExit: () => void
-}) {
+}: ConnectedSourceWorkflowProps) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
   const providersQuery = useQuery(
@@ -1538,21 +1587,25 @@ export function ConnectedSourceWorkflow({
     [datasourcePluginsQuery.data, draft.sourceType],
   )
   const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
-  const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const providerDraft = useMemo(
+    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
+    [draft, providerOption],
+  )
+  const installedProviderOption = providerOption
   const parameterSchemas = useMemo(
     () =>
       installedProviderOption ? datasourceParameterSchemas(installedProviderOption.datasource) : [],
     [installedProviderOption],
   )
   const parameters = useMemo(
-    () => withDatasourceParameterDefaults(parameterSchemas, draft.parameters),
-    [draft.parameters, parameterSchemas],
+    () => withDatasourceParameterDefaults(parameterSchemas, providerDraft.parameters),
+    [parameterSchemas, providerDraft.parameters],
   )
   const parametersValid =
     !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
     !invalidDatasourceParameters(parameterSchemas, parameters).length
-  const provider = providerForDraft(providersQuery.data ?? [], draft, providerOption)
-  const driveTransport = usesDriveTransport(draft)
+  const provider = providerForDraft(providersQuery.data ?? [], providerDraft, providerOption)
+  const driveTransport = usesDriveTransport(providerDraft)
   const datasourceProvider = datasourceProviderForOption(installedProviderOption)
   const datasourceAuth = datasourceAuthForProvider(
     datasourceAuthQuery.data?.result ?? [],
@@ -1659,7 +1712,7 @@ export function ConnectedSourceWorkflow({
                   providerKind: driveTransport ? 'online-drive' : 'online-document',
                 },
                 credentials: {},
-                name: credential.name || draft.provider,
+                name: credential.name || providerDraft.provider,
                 providerId: provider.id,
               },
               params: { control_space_id: knowledgeSpaceId },
@@ -1687,9 +1740,9 @@ export function ConnectedSourceWorkflow({
       datasourceIdentity,
       datasourceProvider,
       driveTransport,
-      draft.provider,
       knowledgeSpaceId,
       provider,
+      providerDraft.provider,
       provisioningConnection,
       refetchConnections,
       rememberConnection,
@@ -1716,40 +1769,8 @@ export function ConnectedSourceWorkflow({
     providersQuery.isPending,
     provisionConnection,
   ])
-  const selectProvider = (providerKey: string) => {
-    const nextProvider = providerOptions.find((option) => option.key === providerKey)
-    if (!nextProvider) return
-    setConnectionOverride(undefined)
-    setProvisionError(false)
-    if (draft.sourceType === 'onlineDocuments') {
-      onDraftChange({
-        ...draft,
-        parameters: nextProvider.installed
-          ? datasourceParameterDefaults(datasourceParameterSchemas(nextProvider.datasource))
-          : {},
-        provider: nextProvider.label,
-        providerKey: nextProvider.key,
-        sourceName: '',
-      })
-      return
-    }
-    onDraftChange({
-      ...draft,
-      parameters: nextProvider.installed
-        ? datasourceParameterDefaults(datasourceParameterSchemas(nextProvider.datasource))
-        : {},
-      provider: nextProvider.label,
-      providerKey: nextProvider.key,
-      sourceName: '',
-    })
-  }
   return (
-    <div className="flex flex-col gap-4">
-      <SourceProviderSelector
-        options={providerOptions}
-        providerKey={providerOption?.key ?? ''}
-        onChange={selectProvider}
-      />
+    <>
       {providersQuery.isPending ||
       datasourcePluginsQuery.isPending ||
       datasourceAuthQuery.isPending ||
@@ -1776,21 +1797,13 @@ export function ConnectedSourceWorkflow({
             {t(($) => $['newKnowledge.retryProviderLoad'])}
           </Button>
         </div>
-      ) : providerOption && !providerOption.installed ? (
-        <SourceProviderNotInstalledCard
-          icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} />}
-          provider={providerOption.label}
-          onInstall={() =>
-            globalThis.open(
-              providerIntegrationPath(providerOption),
-              '_blank',
-              'noopener,noreferrer',
-            )
-          }
-        />
-      ) : !installedProviderOption || !provider ? (
+      ) : providerOptions.length === 0 ? null : !installedProviderOption ? (
+        <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.providerUnavailable'])}
+        </div>
+      ) : !provider ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{draft.provider}</p>
+          <p className="system-sm-semibold text-text-primary">{installedProviderOption.label}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.providerUnavailable'])}
           </p>
@@ -1806,7 +1819,7 @@ export function ConnectedSourceWorkflow({
         <AppliedResourceConfiguration
           key={`${provider.id}:${connection.id}`}
           connection={connection}
-          draft={draft}
+          draft={providerDraft}
           knowledgeSpaceId={knowledgeSpaceId}
           onCompleted={onCompleted}
           onDraftChange={onDraftChange}
@@ -1815,7 +1828,9 @@ export function ConnectedSourceWorkflow({
           parametersValid={parametersValid}
           parameterSchemas={parameterSchemas}
           provider={provider}
-          providerRegion={draft.provider === 'Amazon S3' ? credentialRegion(credential) : undefined}
+          providerRegion={
+            providerDraft.provider === 'Amazon S3' ? credentialRegion(credential) : undefined
+          }
         />
       ) : connection?.status === 'provisioning' ? (
         <div className="rounded-xl bg-background-section p-4">
@@ -1837,7 +1852,7 @@ export function ConnectedSourceWorkflow({
           </p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
-              provider: draft.provider,
+              provider: providerDraft.provider,
             })}
           </p>
           <div className="mt-3 flex gap-2">
@@ -1851,7 +1866,7 @@ export function ConnectedSourceWorkflow({
                 )
               }
             >
-              {t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
+              {t(($) => $['newKnowledge.connectProvider'], { provider: providerDraft.provider })}
             </Button>
             <Button loading={provisioningConnection} onClick={() => void provisionConnection(true)}>
               {t(($) => $['newKnowledge.retryProviderLoad'])}
@@ -1870,7 +1885,7 @@ export function ConnectedSourceWorkflow({
       ) : provisionError ? (
         <div className="rounded-xl bg-background-section p-4">
           <p role="alert" className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionFailed'], { provider: draft.provider })}
+            {t(($) => $['newKnowledge.connectionFailed'], { provider: providerDraft.provider })}
           </p>
           <Button
             className="mt-3"
@@ -1904,7 +1919,7 @@ export function ConnectedSourceWorkflow({
         />
       )}
       {connection?.status !== 'active' && (
-        <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
+        <ConnectedSourceSyncPolicyField draft={providerDraft} onDraftChange={onDraftChange} />
       )}
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
@@ -1916,6 +1931,6 @@ export function ConnectedSourceWorkflow({
           </Button>
         </div>
       )}
-    </div>
+    </>
   )
 }

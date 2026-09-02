@@ -37,18 +37,14 @@ import {
   sourceProviderUsesManagedConfiguration,
 } from '../connections/model'
 import {
-  datasourceParameterDefaults,
-  websiteDatasourceParameterSchemas,
-} from '../setup/datasource-parameter-model'
-import {
   SourceProviderIcon,
-  SourceProviderNotInstalledCard,
   SourceProviderSelector,
   SourceSyncPolicyField,
   SourceTypeSelector,
 } from '../setup/fields'
 import {
   discoverSourceProviderOptions,
+  sourceDraftForProviderOption,
   sourceProviderOptionForDraft,
 } from '../setup/provider-options'
 import {
@@ -571,10 +567,8 @@ function UnconfiguredProvider({
         <SourceProviderIcon
           fallbackIcon={providerOption.fallbackIcon}
           icon={
-            providerOption.installed
-              ? (providerOption.datasource.identity.icon ??
-                providerOption.plugin.declaration.identity.icon)
-              : undefined
+            providerOption.datasource.identity.icon ??
+            providerOption.plugin.declaration.identity.icon
           }
         />
       </span>
@@ -847,8 +841,15 @@ function AddSourcePageContent({
     [datasourcePluginsQuery.data],
   )
   const websiteProviderOption = sourceProviderOptionForDraft(websiteProviderOptions, sourceDraft)
-  const websiteProviderName = websiteProviderOption?.label ?? sourceDraft.provider
-  const datasourceProvider = websiteProviderOption?.installed ? websiteProviderOption : undefined
+  const providerDraft = useMemo(
+    () =>
+      sourceDraft.sourceType === 'websiteCrawl' && websiteProviderOption
+        ? sourceDraftForProviderOption(sourceDraft, websiteProviderOption)
+        : sourceDraft,
+    [sourceDraft, websiteProviderOption],
+  )
+  const websiteProviderName = websiteProviderOption?.label ?? providerDraft.provider
+  const datasourceProvider = websiteProviderOption
   const datasourceProviders = datasourceAuthQuery.data?.result ?? []
   const datasourceCredential = findDatasourceCredential(datasourceProviders, datasourceProvider)
   const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
@@ -1041,35 +1042,26 @@ function AddSourcePageContent({
             disabled={websiteSetupLocked}
             value={sourceType}
             onChange={(value) => {
-              sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+              sourceDraftsRef.current[providerDraft.sourceType] = providerDraft
               updateSourceDraft(
                 sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
               )
             }}
           />
-          {sourceDraft.sourceType === 'websiteCrawl' ? (
+          {providerDraft.sourceType === 'websiteCrawl' ? (
             <>
               <SourceProviderSelector
                 disabled={websiteSetupLocked}
                 layout="grid-four"
                 options={websiteProviderOptions}
                 providerKey={websiteProviderOption?.key ?? ''}
+                showEmptyState={!queryError && websiteProviderOptions.length === 0}
                 onChange={(providerKey) => {
                   const nextProvider = websiteProviderOptions.find(
                     (option) => option.key === providerKey,
                   )
                   if (!nextProvider) return
-                  updateSourceDraft({
-                    ...sourceDraft,
-                    parameters: nextProvider.installed
-                      ? datasourceParameterDefaults(
-                          websiteDatasourceParameterSchemas(nextProvider.datasource),
-                        )
-                      : {},
-                    provider: nextProvider.label,
-                    providerKey: nextProvider.key,
-                    rootUrl: '',
-                  })
+                  updateSourceDraft(sourceDraftForProviderOption(providerDraft, nextProvider))
                 }}
               />
               {queryError ? (
@@ -1091,19 +1083,7 @@ function AddSourcePageContent({
                     {t(($) => $['newKnowledge.retryProviderLoad'])}
                   </Button>
                 </div>
-              ) : websiteProviderOption && !websiteProviderOption.installed ? (
-                <SourceProviderNotInstalledCard
-                  icon={<SourceProviderIcon fallbackIcon={websiteProviderOption.fallbackIcon} />}
-                  provider={websiteProviderOption.label}
-                  onInstall={() =>
-                    globalThis.open(
-                      websiteProviderIntegrationPath(websiteProviderOption),
-                      '_blank',
-                      'noopener,noreferrer',
-                    )
-                  }
-                />
-              ) : !datasourceProvider || !provider ? (
+              ) : websiteProviderOptions.length === 0 ? null : !datasourceProvider || !provider ? (
                 <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.providerUnavailable'])}
                 </div>
@@ -1118,7 +1098,7 @@ function AddSourcePageContent({
                 <WebsiteCrawlPreview
                   key={`${datasourceProvider.key}:${activeConnection.id}`}
                   connection={activeConnection}
-                  initialDraft={sourceDraft}
+                  initialDraft={providerDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
                   onInteractionLockChange={setWebsiteSetupLocked}
@@ -1128,7 +1108,7 @@ function AddSourcePageContent({
                     <SourceSyncPolicyField
                       className="w-full sm:w-75.25"
                       disabled={websiteSetupLocked}
-                      draft={sourceDraft}
+                      draft={providerDraft}
                       size="medium"
                       onDraftChange={updateSourceDraft}
                     />
@@ -1174,7 +1154,7 @@ function AddSourcePageContent({
             </>
           ) : (
             <ConnectedSourceWorkflow
-              draft={sourceDraft}
+              draft={providerDraft}
               knowledgeSpaceId={knowledgeSpaceId}
               onCompleted={() => {
                 clearStoredSourceDraft()
@@ -1189,7 +1169,7 @@ function AddSourcePageContent({
           {sourceType === 'websiteCrawl' && !websiteReady && (
             <SourceSyncPolicyField
               className="w-full sm:w-75.25"
-              draft={sourceDraft}
+              draft={providerDraft}
               size="medium"
               onDraftChange={updateSourceDraft}
             />

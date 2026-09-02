@@ -1184,7 +1184,7 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('enables every atomic source type and distinguishes installed providers', async () => {
+  it('enables every atomic source type and only lists installed providers', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -1208,12 +1208,13 @@ describe('CreateKnowledgePage', () => {
     expect(onlineDocuments).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'WaterCrawl' })).toBeEnabled()
+    expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'WaterCrawl' })).not.toBeInTheDocument()
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Notion' })).toBeChecked()
-    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -1250,6 +1251,54 @@ describe('CreateKnowledgePage', () => {
     expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+  })
+
+  it('prompts for provider installation when source setup has no installed integration', async () => {
+    const user = userEvent.setup()
+    datasourceQueryMock.plugins.data = []
+    datasourceQueryMock.auth.data = { result: [] }
+
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
+    expect(screen.queryByRole('radio', { name: 'Firecrawl' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
+  })
+
+  it('clears a completed crawl when the installed provider changes during setup', async () => {
+    const user = userEvent.setup()
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
+    const view = renderPage()
+
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
+      ).toBeEnabled(),
+    )
+
+    datasourceQueryMock.plugins.data = [jinaDatasourcePlugin]
+    datasourceQueryMock.auth.data = { result: [jinaDatasourceAuth] }
+    view.rerender(<CreateKnowledgePage />)
+
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
+    expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
   })
 

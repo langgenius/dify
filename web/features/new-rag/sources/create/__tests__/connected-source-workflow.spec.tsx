@@ -631,25 +631,151 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.createConnection).not.toHaveBeenCalled()
   })
 
-  it('distinguishes an uninstalled provider from an installed provider without credentials', async () => {
-    const user = userEvent.setup()
+  it('falls back to an installed provider when the requested provider is not installed', async () => {
     renderSetup({
       ...defaultDraft,
       provider: 'Confluence',
     })
 
-    expect(await screen.findByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Confluence' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: 'Notion' })).toBeChecked()
     expect(
-      screen.queryByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
-    ).not.toBeInTheDocument()
+      await screen.findByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'plugin.installPlugin' }))
-    expect(openMock).toHaveBeenCalledWith(
-      '/integrations/data-source?package-ids=%5B%22langgenius%2Fconfluence_datasource%22%5D',
-      '_blank',
-      'noopener,noreferrer',
+  it('uses the fallback provider transport and clears stale provider parameters', async () => {
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.createConnection.mockResolvedValue(connectionResponse())
+
+    renderSetup({
+      ...defaultDraft,
+      parameters: { folderId: 'stale-google-folder' },
+      provider: 'Google Docs',
+      sourceName: 'Old Google source',
+    })
+
+    await waitFor(() =>
+      expect(clientMock.createConnection).toHaveBeenCalledWith({
+        body: {
+          authKind: 'endpoint',
+          configuration: {
+            credentialId: notionCredential.id,
+            datasource: 'notion',
+            pluginId: 'langgenius/notion_datasource',
+            provider: 'notion',
+            providerKind: 'online-document',
+          },
+          credentials: {},
+          name: notionCredential.name,
+          providerId: notionProvider.id,
+        },
+        params: { control_space_id: 'space-1' },
+      }),
     )
+    await waitFor(() =>
+      expect(clientMock.createSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            metadata: expect.objectContaining({
+              parameters: {},
+              providerKind: 'online-document',
+              providerName: 'Notion',
+            }),
+            name: 'Notion',
+          }),
+        }),
+      ),
+    )
+  })
+
+  it('prompts for provider installation when no matching integration is installed', async () => {
+    clientMock.listDatasourcePlugins.mockResolvedValue([s3DatasourcePlugin])
+
+    renderSetup()
+
+    const prompt = await screen.findByText('plugin.list.notFound')
+    expect(prompt.closest('[role="status"]')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.providerUnavailable')).not.toBeInTheDocument()
+  })
+
+  it('clears a failed connection attempt when a provider refresh selects another integration', async () => {
+    const outlineProvider: KnowledgeFsSourceProviderResponse = {
+      ...notionProvider,
+      display_name: 'Outline',
+      id: 'outline-provider',
+    }
+    const outlineDatasourcePlugin: DataSourceItem = {
+      ...notionDatasourcePlugin,
+      declaration: {
+        ...notionDatasourcePlugin.declaration,
+        datasources: [
+          {
+            ...notionDatasourcePlugin.declaration.datasources[0]!,
+            identity: {
+              ...notionDatasourcePlugin.declaration.datasources[0]!.identity,
+              label: { en_US: 'Outline', zh_Hans: 'Outline' },
+              name: 'outline',
+              provider: 'outline',
+            },
+          },
+        ],
+        identity: {
+          ...notionDatasourcePlugin.declaration.identity,
+          label: { en_US: 'Outline', zh_Hans: 'Outline' },
+          name: 'outline',
+        },
+      },
+      plugin_id: 'langgenius/outline_datasource',
+      plugin_unique_identifier: 'langgenius/outline_datasource:1.0.0@local',
+      provider: 'outline',
+    }
+    const outlineDatasourceAuth: DataSourceAuth = {
+      ...notionDatasourceAuth(),
+      label: { en_US: 'Outline', zh_Hans: 'Outline' },
+      name: 'outline',
+      plugin_id: outlineDatasourcePlugin.plugin_id,
+      plugin_unique_identifier: outlineDatasourcePlugin.plugin_unique_identifier,
+      provider: outlineDatasourcePlugin.provider,
+    }
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
+    const { queryClient } = renderSetup()
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.connectionFailed:{"provider":"Notion"}'),
+    ).toHaveAttribute('role', 'alert')
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [outlineProvider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    await act(async () => {
+      queryClient.setQueryData(['pipeline', 'datasource'], [outlineDatasourcePlugin])
+      queryClient.setQueryData(['data-source-auth', 'list'], {
+        result: [outlineDatasourceAuth],
+      })
+      await queryClient.refetchQueries({ queryKey: ['source-providers'] })
+    })
+
+    expect(await screen.findByRole('radio', { name: 'Outline' })).toBeChecked()
+    expect(
+      await screen.findByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Outline"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.connectionFailed:{"provider":"Outline"}'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.connectProvider:{"provider":"Outline"}',
+      }),
+    ).toBeEnabled()
   })
 
   it('starts the selected Notion import and completes setup without waiting for indexing', async () => {
