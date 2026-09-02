@@ -57,12 +57,10 @@ class AudioApi(Resource):
         responses={
             200: "Successfully converted audio to text.",
             400: (
-                "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `no_audio_uploaded` : Please upload your audio.\n"
                 "- `speech_to_text_disabled` : Speech-to-text is disabled for this app.\n"
                 "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
                 "- `provider_not_initialize` : No valid model provider credentials found.\n"
-                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
-                "- `model_currently_not_support` : Current model does not support this operation.\n"
                 "- `completion_request_error` : Speech recognition request failed."
             ),
             413: "`audio_too_large` : Audio file size exceeded the limit.",
