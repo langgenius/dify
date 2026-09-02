@@ -13,11 +13,11 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
-    RBACScene,
-    RequireWorkspaceMembership,
-    RoleFloor,
-    SubjectCheck,
-    TokenScope,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
@@ -30,31 +30,31 @@ from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 
-_ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
-_DSL_ROLE_FLOOR = RoleFloor(
+_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
+_DSL_WORKSPACE_ROLE = CheckWorkspaceRole(
     frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
     superseded_by=RBACPermission.APP_IMPORT_EXPORT_DSL,
 )
 
 _DSL_IMPORT_REQUIREMENTS = (
     _ACCOUNT_SUBJECT,
-    TokenScope(Scope.WORKSPACE_WRITE),
-    RequireWorkspaceMembership(),
-    RBACScene(
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(
         resource_type=RBACResourceScope.APP,
         scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
         resource_required=False,
     ),
-    _DSL_ROLE_FLOOR,
+    _DSL_WORKSPACE_ROLE,
 )
 
 _DSL_APP_REQUIREMENTS = (
     _ACCOUNT_SUBJECT,
     CheckAppApiEnabled(),
-    RequireWorkspaceMembership(),
-    TokenScope(Scope.APPS_READ),
-    RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
-    _DSL_ROLE_FLOOR,
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+    _DSL_WORKSPACE_ROLE,
 )
 
 

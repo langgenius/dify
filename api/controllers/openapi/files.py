@@ -20,11 +20,11 @@ from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
     CheckAppApiEnabled,
-    RequireWebappAccess,
-    RequireWorkspaceMembership,
-    SubjectCheck,
-    TokenScope,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from extensions.ext_database import db
@@ -48,11 +48,11 @@ class AppFileUploadApi(Resource):
     )
     @endpoint(
         requirements=(
-            SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
-            RequireWorkspaceMembership(),
-            TokenScope(Scope.APPS_RUN),
-            RequireWebappAccess(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckAppAccess(),
         ),
         returns=(201, FileResponse, "File uploaded"),
         write=False,

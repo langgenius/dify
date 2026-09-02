@@ -22,10 +22,10 @@ from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
     CheckAppApiEnabled,
-    RequireWebappAccess,
-    SubjectCheck,
-    TokenScope,
+    CheckScope,
+    CheckSubject,
 )
 from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
@@ -36,7 +36,7 @@ from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
 
-_EXTERNAL_SUBJECT = SubjectCheck(allowed=(ExternalSsoSubject,))
+_EXTERNAL_SUBJECT = CheckSubject(allowed=(ExternalSsoSubject,))
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
 
@@ -45,7 +45,7 @@ class PermittedExternalAppsListApi(Resource):
     @endpoint(
         requirements=(
             _EXTERNAL_SUBJECT,
-            TokenScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+            CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
         ),
         query=PermittedExternalAppsListQuery,
         returns=(200, PermittedExternalAppsListResponse, "Permitted external apps list"),
@@ -105,8 +105,8 @@ class PermittedExternalAppDescribeApi(Resource):
         requirements=(
             _EXTERNAL_SUBJECT,
             CheckAppApiEnabled(),
-            TokenScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
-            RequireWebappAccess(),
+            CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+            CheckAppAccess(),
         ),
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "Permitted external app description"),

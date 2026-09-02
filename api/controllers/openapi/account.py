@@ -17,7 +17,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
-from controllers.openapi.auth.requirements import CheckSessionOwnership, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import Scope, get_auth_ctx
@@ -25,7 +25,7 @@ from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from services.account_service import TenantService
 from services.oauth_device_flow import list_active_sessions, revoke_oauth_token
 
-_ACCOUNT_REQUIREMENTS = (SubjectCheck(allowed=(AccountSubject,)), TokenScope(Scope.FULL))
+_ACCOUNT_REQUIREMENTS = (CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL))
 
 
 @openapi_ns.route("/account")

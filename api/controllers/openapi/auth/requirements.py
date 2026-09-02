@@ -54,7 +54,7 @@ class Requirement(ABC):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None: ...
 
 
-class SubjectCheck(Requirement):
+class CheckSubject(Requirement):
     rank = Rank.FIRST
 
     def __init__(self, *, allowed: Sequence[type[Subject]]) -> None:
@@ -91,7 +91,7 @@ class CheckAppApiEnabled(Requirement):
             raise Forbidden("service_api_disabled")
 
 
-class RequireWorkspaceMembership(Requirement):
+class CheckWorkspaceMember(Requirement):
     """Resolving the role *is* the check: `load_workspace_role` 404s a non-member.
 
     Which workspace that is follows from the route — the app's on an app-scoped
@@ -110,7 +110,7 @@ class RequireWorkspaceMembership(Requirement):
         load_workspace_role(ctx)
 
 
-class TokenScope(Requirement):
+class CheckScope(Requirement):
     def __init__(self, scope: Scope) -> None:
         self.scope = scope
 
@@ -121,9 +121,9 @@ class TokenScope(Requirement):
         raise Forbidden("insufficient_scope")
 
 
-class RBACScene(Requirement):
+class CheckRBACPermission(Requirement):
     """One RBAC permission point. Inert wherever RBAC is switched off, which is
-    also what lets the `RoleFloor` beside it take over there.
+    also what lets the `CheckWorkspaceRole` beside it take over there.
     """
 
     def __init__(
@@ -153,10 +153,10 @@ class RBACScene(Requirement):
         )
 
 
-class RoleFloor(Requirement):
+class CheckWorkspaceRole(Requirement):
     """The coarse workspace-role gate that predates RBAC.
 
-    `superseded_by` names the `RBACScene` declared beside it on the same route:
+    `superseded_by` names the `CheckRBACPermission` declared beside it on the same route:
     where RBAC is on, that scene is the authority and this floor stands down
     rather than double-enforcing. A floor that names nothing applies
     unconditionally, which is what keeps workspace administration guarded on an
@@ -165,11 +165,11 @@ class RoleFloor(Requirement):
 
     def __init__(
         self,
-        roles: frozenset[TenantAccountRole],
+        allowed_roles: frozenset[TenantAccountRole],
         *,
         superseded_by: RBACPermission | None = None,
     ) -> None:
-        self.roles = roles
+        self.allowed_roles = allowed_roles
         self.superseded_by = superseded_by
 
     @override
@@ -178,7 +178,7 @@ class RoleFloor(Requirement):
             return
         if dify_config.RBAC_ENABLED and self.superseded_by is not None:
             return
-        if load_workspace_role(ctx) not in self.roles:
+        if load_workspace_role(ctx) not in self.allowed_roles:
             raise Forbidden("insufficient workspace role")
 
 
@@ -197,7 +197,7 @@ class CheckSessionOwnership(Requirement):
             raise NotFound("session not found")
 
 
-class RequireWebappAccess(Requirement):
+class CheckAppAccess(Requirement):
     """Run-scope comes from the declaration site, so it is not re-checked here.
 
     The ACL is gated on `webapp_auth.enabled` and the private-app check is not:

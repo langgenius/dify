@@ -5,8 +5,8 @@ endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
 that matches /openapi/v1/account.
 
-Member-management endpoints declare ``RequireWorkspaceMembership`` and, where
-the console gates on role, a ``RoleFloor``. That floor names no superseding
+Member-management endpoints declare ``CheckWorkspaceMember`` and, where
+the console gates on role, a ``CheckWorkspaceRole``. That floor names no superseding
 scene: nothing in the RBAC scene set covers member management on this surface,
 so it stands whether or not RBAC is enabled.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
@@ -41,10 +41,10 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.requirements import (
-    RequireWorkspaceMembership,
-    RoleFloor,
-    SubjectCheck,
-    TokenScope,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from libs.oauth_bearer import Scope
@@ -63,15 +63,15 @@ from services.errors.account import (
 )
 from services.feature_service import FeatureService
 
-_ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
+_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
 
-_WORKSPACE_READ = (_ACCOUNT_SUBJECT, TokenScope(Scope.WORKSPACE_READ))
-_WORKSPACE_MEMBER_READ = (*_WORKSPACE_READ, RequireWorkspaceMembership())
+_WORKSPACE_READ = (_ACCOUNT_SUBJECT, CheckScope(Scope.WORKSPACE_READ))
+_WORKSPACE_MEMBER_READ = (*_WORKSPACE_READ, CheckWorkspaceMember())
 _WORKSPACE_MEMBER_ADMIN = (
     _ACCOUNT_SUBJECT,
-    TokenScope(Scope.WORKSPACE_WRITE),
-    RequireWorkspaceMembership(),
-    RoleFloor(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
 )
 
 

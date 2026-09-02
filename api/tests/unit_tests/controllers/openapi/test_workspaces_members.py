@@ -154,7 +154,7 @@ def _persist_workspace(
 
 
 def _persist_caller(session: Session, account_id: uuid.UUID) -> None:
-    """These routes all declare `RequireWorkspaceMembership`, which resolves the
+    """These routes all declare `CheckWorkspaceMember`, which resolves the
     caller, so a handler reached through `__handler__` needs the caller's row
     even when its own body only reads the workspace.
     """
@@ -393,7 +393,7 @@ def test_members_list_paginates_with_query_params(database_session: Session):
 def test_members_list_404s_on_an_archived_workspace(database_session: Session):
     """Member management against an archived workspace → 404, raised by
     `load_workspace` before the handler is entered — which is where the real
-    route raises it too, since `RequireWorkspaceMembership` loads the workspace
+    route raises it too, since `CheckWorkspaceMember` loads the workspace
     at `EARLY`. The handler body is no longer reached, so this no longer pins
     anything about it.
     """
