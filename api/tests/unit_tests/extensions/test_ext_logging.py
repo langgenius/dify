@@ -8,7 +8,6 @@ import pytest
 from extensions import ext_logging
 from tests.unit_tests.config_override import apply_config_overrides
 
-
 # Captures a fixed instant so the test is timezone-independent of the host clock.
 _FIXED_TS = 1_700_000_000  # 2023-11-14T22:13:20Z
 
@@ -46,9 +45,7 @@ class TestApplyTimezoneToSqlalchemyLoggers:
         finally:
             log.removeHandler(handler)
 
-    def test_applies_timezone_converter_to_sqlalchemy_engine_handler(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_applies_timezone_converter_to_sqlalchemy_engine_handler(self, monkeypatch: pytest.MonkeyPatch):
         apply_config_overrides(monkeypatch, LOG_OUTPUT_FORMAT="text", LOG_TZ="Asia/Tokyo")
         handler = _make_handler_with_formatter()
         log = logging.getLogger("sqlalchemy.engine")
