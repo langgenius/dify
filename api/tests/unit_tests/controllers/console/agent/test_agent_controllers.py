@@ -234,7 +234,12 @@ def _app_detail_obj(**overrides: object) -> App:
     overrides.pop("bound_agent_id", None)
     data.update(overrides)
     data["icon_type"] = IconType(data["icon_type"])
-    return App(**data)
+    created_at = data.pop("created_at")
+    updated_at = data.pop("updated_at")
+    app = App(**data)
+    app.created_at = created_at
+    app.updated_at = updated_at
+    return app
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:
