@@ -56,11 +56,6 @@ class AccountPipeline(Pipeline):
 class _RequiresEnterprise(Requirement):
     """A gate on the token kind, not on a route, so no endpoint declares it and
     it stays private to this module.
-
-    Its rank puts it behind the route's own `SubjectCheck` at the same band, so
-    a token the route never accepted is refused as the wrong subject rather than
-    the wrong edition — and the wrong-surface audit still fires. Edition before
-    licence, mirroring the router's endpoint-level gate.
     """
 
     rank = Rank.FIRST
@@ -81,17 +76,6 @@ class ExternalSsoPipeline(Pipeline):
 
 @contextmanager
 def mounted(subject: Subject, auth: AuthContext, ctx: Context) -> Generator[None]:
-    """Effects, not policy: the identity ContextVar is published for every
-    subject, but flask-login is mounted only for a subject whose own
-    `mounts_caller` says so. Reading whatever `ctx.caller` happens to hold would
-    mount what a membership check resolved, which is the same answer today and
-    would stop being one for a subject that declines conditionally.
-
-    `ResolveCaller` is a requirement, so the caller is resolved *before*
-    `set_auth_ctx`, because resolution raises on a token that outlived its
-    account. Raising after the ContextVar is set would strand the identity
-    there, and `libs/rate_limit` buckets on it.
-    """
     user = load_caller(ctx) if subject.mounts_caller(ctx) else None
     reset_token = set_auth_ctx(auth)
     try:
