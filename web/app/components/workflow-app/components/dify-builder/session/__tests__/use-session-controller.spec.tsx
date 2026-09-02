@@ -1,14 +1,19 @@
-import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
-import type { ReactNode } from 'react'
-import type { SessionView } from '../types'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { createStore, Provider } from 'jotai'
+import { act, waitFor } from '@testing-library/react'
 import {
   difyBuilderActiveSessionIdAtom,
+  difyBuilderSessionBusyAtom,
   difyBuilderSessionLastCanvasEventAtom,
+  difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from '../state'
-import { useDifyBuilderSession } from '../use-dify-builder-session'
+import {
+  createControlledEventStream,
+  createSessionView,
+  renderSessionHook,
+  snapshotEvent,
+  stateEvent,
+  streamOf,
+} from './fixtures'
 
 const clientMocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -32,89 +37,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
-  session_id: 'session-1',
-  app_id: 'app-1',
-  version: 1,
-  state: 'fix.diagnose',
-  canvas_read_only: true,
-  run_status: 'executing',
-  interrupted: false,
-  conversation: [],
-  app_revision: { observed: 'revision-1', current: 'revision-1', conflicted: false },
-  ...overrides,
-})
-
-const snapshotEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
-  event: 'snapshot',
-  data: view,
-})
-
-const stateEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
-  event: 'state',
-  data: { kind: 'state', ...view },
-})
-
-async function* streamOf(
-  ...events: DifyBuilderStreamEventResponse[]
-): AsyncGenerator<DifyBuilderStreamEventResponse> {
-  yield* events
-}
-
-type ControlledItem =
-  | { event: DifyBuilderStreamEventResponse }
-  | { done: true }
-  | { error: unknown }
-
-const createControlledEventStream = () => {
-  const queue: ControlledItem[] = []
-  let waiter: ((item: ControlledItem) => void) | undefined
-
-  const send = (item: ControlledItem) => {
-    if (waiter) {
-      const resolve = waiter
-      waiter = undefined
-      resolve(item)
-    } else {
-      queue.push(item)
-    }
-  }
-
-  const next = () => {
-    const item = queue.shift()
-    return item
-      ? Promise.resolve(item)
-      : new Promise<ControlledItem>((resolve) => (waiter = resolve))
-  }
-
-  const iterable = (async function* () {
-    while (true) {
-      const item = await next()
-      if ('error' in item) throw item.error
-      if ('done' in item) return
-      yield item.event
-    }
-  })()
-
-  return {
-    iterable,
-    push: (event: DifyBuilderStreamEventResponse) => send({ event }),
-    close: () => send({ done: true }),
-    error: (error: unknown) => send({ error }),
-  }
-}
-
-const renderSessionHook = () => {
-  const store = createStore()
-  const rendered = renderHook(() => useDifyBuilderSession(), {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <Provider store={store}>{children}</Provider>
-    ),
-  })
-  return { ...rendered, store }
-}
-
-describe('useDifyBuilderSession', () => {
+describe('useDifyBuilderSessionController lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -161,17 +84,12 @@ describe('useDifyBuilderSession', () => {
       },
       { signal: expect.any(AbortSignal) },
     )
-    expect(result.current.progressLog.map(({ event }) => event)).toEqual([
-      'snapshot',
-      'canvas',
-      'state',
-    ])
     expect(store.get(difyBuilderSessionLastCanvasEventAtom)).toEqual({
       id: 1,
       data: { kind: 'canvas', event: 'add_llm_node', node_id: 'node-1' },
     })
-    expect(result.current.view).toEqual(terminal)
-    expect(result.current.isBusy).toBe(false)
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
   })
 
   it('merges commits by sequence and waits for the terminal state', async () => {
@@ -194,13 +112,13 @@ describe('useDifyBuilderSession', () => {
     })
     const stream = createControlledEventStream()
     clientMocks.create.mockResolvedValue(stream.iterable)
-    const { result } = renderSessionHook()
+    const { result, store } = renderSessionHook()
 
-    let startPromise: Promise<boolean> | undefined
+    let startPromise!: Promise<boolean>
     act(() => {
       startPromise = result.current.startFix('app-1', 'run-1')
     })
-    await waitFor(() => expect(result.current.isBusy).toBe(true))
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
     act(() => {
       stream.push(snapshotEvent(snapshot))
       stream.push({
@@ -216,78 +134,17 @@ describe('useDifyBuilderSession', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.view?.version).toBe(2))
-    expect(result.current.view?.conversation.map((item) => item.seq)).toEqual([0, 1])
-    expect(result.current.isBusy).toBe(true)
+    await waitFor(() => expect(store.get(difyBuilderSessionViewAtom)?.version).toBe(2))
+    expect(store.get(difyBuilderSessionViewAtom)?.conversation.map((item) => item.seq)).toEqual([
+      0, 1,
+    ])
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(true)
 
     await act(async () => {
       stream.push(stateEvent(terminal))
       expect(await startPromise).toBe(true)
     })
-    expect(result.current.isBusy).toBe(false)
-  })
-
-  it('renders assistant deltas before applying the authoritative state', async () => {
-    const waiting = createSessionView({
-      version: 2,
-      state: 'fix.await_approval',
-      run_status: 'waiting_input',
-    })
-    const terminal = createSessionView({
-      ...waiting,
-      version: 4,
-      conversation: [
-        {
-          seq: 1,
-          at_version: 4,
-          kind: 'assistant_turn',
-          payload: {
-            turn_id: 'turn-1',
-            stage_id: 'fix.await_approval',
-            trace: { status: 'completed' },
-            reply_text: 'A smaller repair',
-          },
-        },
-      ],
-    })
-    clientMocks.message.mockResolvedValue(
-      streamOf(
-        snapshotEvent(waiting),
-        {
-          event: 'agent_message',
-          data: {
-            kind: 'agent_message',
-            session_id: 'session-1',
-            id: 'turn-1',
-            answer: 'A smaller repair',
-            seq: 1,
-            at_version: 4,
-            stage_id: 'fix.await_approval',
-          },
-        },
-        stateEvent(terminal),
-      ),
-    )
-    const { result, store } = renderSessionHook()
-    act(() => store.set(difyBuilderSessionViewAtom, waiting))
-    act(() => store.set(difyBuilderActiveSessionIdAtom, waiting.session_id))
-
-    await act(async () => {
-      expect(await result.current.sendMessage('  Try a smaller repair  ')).toBe(true)
-    })
-
-    expect(clientMocks.message).toHaveBeenCalledWith(
-      {
-        params: { session_id: 'session-1' },
-        body: {
-          text: 'Try a smaller repair',
-          base_version: 2,
-          client_turn_id: expect.any(String),
-        },
-      },
-      { signal: expect.any(AbortSignal) },
-    )
-    expect(result.current.view).toEqual(terminal)
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
   })
 
   it('accepts snapshot-only streams for settle-only actions', async () => {
@@ -303,8 +160,10 @@ describe('useDifyBuilderSession', () => {
     })
     clientMocks.action.mockResolvedValue(streamOf(snapshotEvent(updated)))
     const { result, store } = renderSessionHook()
-    act(() => store.set(difyBuilderSessionViewAtom, waiting))
-    act(() => store.set(difyBuilderActiveSessionIdAtom, waiting.session_id))
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
 
     await act(async () => {
       expect(await result.current.updateModel({ provider: 'openai', name: 'gpt-5' })).toBe(true)
@@ -319,7 +178,7 @@ describe('useDifyBuilderSession', () => {
         base_app_revision: 'revision-1',
       },
     })
-    expect(result.current.view?.model?.name).toBe('gpt-5')
+    expect(store.get(difyBuilderSessionViewAtom)?.model?.name).toBe('gpt-5')
   })
 
   it('reconciles command failures through the generated GET stream', async () => {
@@ -335,8 +194,10 @@ describe('useDifyBuilderSession', () => {
     })
     clientMocks.get.mockResolvedValue(streamOf(snapshotEvent(latest)))
     const { result, store } = renderSessionHook()
-    act(() => store.set(difyBuilderSessionViewAtom, waiting))
-    act(() => store.set(difyBuilderActiveSessionIdAtom, waiting.session_id))
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
 
     await act(async () => {
       expect(await result.current.runAction('approve_plan')).toBe(false)
@@ -346,8 +207,8 @@ describe('useDifyBuilderSession', () => {
       { params: { session_id: 'session-1' } },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
-    expect(result.current.view).toEqual(latest)
-    expect(result.current.lastError).toBe('HTTP 409: conflict')
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(latest)
+    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('HTTP 409: conflict')
   })
 
   it('reconciles an unexpected command EOF through GET SSE', async () => {
@@ -359,15 +220,15 @@ describe('useDifyBuilderSession', () => {
     })
     clientMocks.create.mockResolvedValue(streamOf(snapshotEvent(snapshot)))
     clientMocks.get.mockResolvedValue(streamOf(snapshotEvent(latest)))
-    const { result } = renderSessionHook()
+    const { result, store } = renderSessionHook()
 
     await act(async () => {
       expect(await result.current.startBuild('app-1', 'Build a support workflow')).toBe(false)
     })
 
     expect(clientMocks.get).toHaveBeenCalledOnce()
-    expect(result.current.view).toEqual(latest)
-    expect(result.current.lastError).toContain('terminal event')
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(latest)
+    expect(store.get(difyBuilderSessionLastErrorAtom)).toContain('terminal event')
   })
 
   it('restores and resumes an executing session with one GET SSE request', async () => {
@@ -379,7 +240,7 @@ describe('useDifyBuilderSession', () => {
       run_status: 'waiting_input',
     })
     clientMocks.get.mockResolvedValue(streamOf(snapshotEvent(executing), stateEvent(terminal)))
-    const { result } = renderSessionHook()
+    const { result, store } = renderSessionHook()
 
     await act(async () => {
       expect(await result.current.restore('  session-restored  ')).toBe(true)
@@ -390,7 +251,7 @@ describe('useDifyBuilderSession', () => {
       { params: { session_id: 'session-restored' } },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
-    expect(result.current.view).toEqual(terminal)
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
   })
 
   it('clears a persisted pointer after a definitive restore failure', async () => {
@@ -405,31 +266,6 @@ describe('useDifyBuilderSession', () => {
     })
 
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
-    expect(result.current.lastError).toBe('HTTP 404: not_found')
-  })
-
-  it('aborts an in-flight generated client call when reset', async () => {
-    clientMocks.create.mockImplementation(
-      (_input: unknown, options: { signal: AbortSignal }) =>
-        new Promise((_resolve, reject) => {
-          options.signal.addEventListener('abort', () => reject(options.signal.reason))
-        }),
-    )
-    const { result, store } = renderSessionHook()
-
-    let startPromise: Promise<boolean> | undefined
-    act(() => {
-      startPromise = result.current.startBuild('app-1', 'Build a support workflow')
-    })
-    await waitFor(() => expect(result.current.isBusy).toBe(true))
-
-    act(() => result.current.reset())
-
-    await act(async () => {
-      expect(await startPromise).toBe(false)
-    })
-    expect(result.current.isBusy).toBe(false)
-    expect(result.current.lastError).toBe('')
-    expect(store.get(difyBuilderSessionLastCanvasEventAtom)).toBeNull()
+    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('HTTP 404: not_found')
   })
 })

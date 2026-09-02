@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import * as React from 'react'
-import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
+import { difyBuilderSessionBusyAtom } from '../dify-builder/session/state'
 import { difyBuilderRuntimeAtom } from '../dify-builder/store'
 import WorkflowPanel from '../workflow-panel'
 
