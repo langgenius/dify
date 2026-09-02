@@ -22,7 +22,6 @@ from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
 from core.human_input import ButtonStyle
-from core.human_input_v2.approval.recipient_plan import RecipientSourceKind as _RecipientSourceKind
 from core.human_input_v2.entities import (
     EmailProviderType as _EmailProviderType,
 )
@@ -80,6 +79,16 @@ from repositories.human_input_v2.im_channel_repository import IMChannelStatus
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
+
+
+class RecipientSourceKind(StrEnum):
+    """Persistence discriminator for frozen recipient source snapshots."""
+
+    STATIC_CONTACT = "static_contact"
+    ONE_TIME_EMAIL = "one_time_email"
+    DYNAMIC_EMAIL = "dynamic_email"
+    CURRENT_INITIATOR = "current_initiator"
+    DEBUG_REPLACEMENT = "debug_replacement"
 
 
 class _ImmutableJSONModel(BaseModel):
@@ -187,7 +196,7 @@ _IM_RECONCILIATION_SNAPSHOT_ADAPTER: TypeAdapter[IMReconciliationChangeSnapshot]
 class FormApproverGrantMatchedSource(_ImmutableJSONModel):
     """One ordered recipient source retained by a historical grant."""
 
-    kind: _RecipientSourceKind = Field(strict=False, description="Stable recipient source discriminator.")
+    kind: RecipientSourceKind = Field(strict=False, description="Stable recipient source discriminator.")
     position: int = Field(ge=0, description="Original recipient configuration position.")
     reference: str | None = Field(default=None, description="Saved source reference when one existed.")
 
@@ -2113,6 +2122,7 @@ __all__ = [
     "IMSyncContactSnapshot",
     "IMSyncDirectoryEntryPayload",
     "IMSyncIdentitySnapshot",
+    "RecipientSourceKind",
     "ResendEmailProviderEncryptedCredentials",
     "ResolvedFormAction",
     "ResolvedFormBlock",
