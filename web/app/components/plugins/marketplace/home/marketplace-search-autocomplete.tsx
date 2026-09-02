@@ -197,6 +197,12 @@ export function MarketplaceSearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const searchRootRef = useRef<HTMLDivElement>(null)
   const resultsPanelRef = useRef<HTMLDivElement>(null)
+  const keyboardHighlightedRef = useRef(false)
+
+  const submitSearchForm = () => {
+    const form = searchRootRef.current?.closest('form')
+    if (form instanceof HTMLFormElement) form.requestSubmit()
+  }
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
   const searchesPlugins = scope === 'all' || scope === 'plugins'
@@ -323,6 +329,9 @@ export function MarketplaceSearchAutocomplete({
         openOnInputClick
         submitOnItemClick={Boolean(inputName) && !onSuggestionSelect}
         value={value}
+        onItemHighlighted={(item, details) => {
+          keyboardHighlightedRef.current = Boolean(item) && details.reason === 'keyboard'
+        }}
       >
         <AutocompleteInputGroup size="large">
           <span
@@ -335,6 +344,13 @@ export function MarketplaceSearchAutocomplete({
             placeholder={placeholder}
             size="large"
             type="text"
+            onKeyDownCapture={(event) => {
+              if (event.key !== 'Enter' || !inputName) return
+              if (keyboardHighlightedRef.current) return
+              event.preventDefault()
+              event.stopPropagation()
+              if (value.trim()) submitSearchForm()
+            }}
           />
           {!!value && (
             <AutocompleteClear
@@ -366,10 +382,7 @@ export function MarketplaceSearchAutocomplete({
                   <button
                     type="button"
                     className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-                    onClick={() => {
-                      const form = searchRootRef.current?.closest('form')
-                      if (form instanceof HTMLFormElement) form.requestSubmit()
-                    }}
+                    onClick={submitSearchForm}
                   >
                     <span className="system-sm-medium text-text-accent">
                       {t(($) => $['marketplace.viewMore'], { ns: 'plugin' })}
