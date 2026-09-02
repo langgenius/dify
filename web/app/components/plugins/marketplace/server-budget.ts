@@ -21,7 +21,7 @@
  * instead of letting `HydrateQueryClient` own it, which is a wider change than
  * bounding the waits.
  */
-const SERVER_PREFETCH_BUDGET_MS = 2_500
+export const SERVER_PREFETCH_BUDGET_MS = 2_500
 
 export async function withinServerBudget(work: Promise<unknown>): Promise<void> {
   let cancelBudget = () => {}

@@ -3,7 +3,6 @@
   "api_extension.manage": "API uzantısı yapılandırmasını yönet",
   "app.access_config": "Uygulama erişim izinlerini yapılandır",
   "app.acl.access_config": "Erişim izinlerini görüntüle ve yönet",
-  "app.acl.access_point_manage": "Erişim noktalarını görüntüle ve yönet",
   "app.acl.delete": "Uygulamayı sil",
   "app.acl.deploy": "Uygulamayı dağıt",
   "app.acl.edit": "Uygulama bilgilerini düzenle ve uygulamayı orkestre et",

@@ -69,7 +69,7 @@ from services.enterprise.plugin_manager_service import (
 )
 from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[PluginModelProviderDeclaration]] = TypeAdapter(
@@ -667,7 +667,7 @@ class PluginService:
     @staticmethod
     def _get_plugin_installation_permission() -> PluginInstallationPermissionModel:
         """Resolve the validated policy and reject deny-all before any installation side effect."""
-        permission = FeatureService.get_plugin_installation_permission()
+        permission = SystemFeatureService.get_plugin_installation_permission()
         if permission.plugin_installation_scope == PluginInstallationScope.NONE:
             raise PluginInstallationForbiddenError("Installing plugins is not allowed")
         return permission

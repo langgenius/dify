@@ -42,6 +42,7 @@ describe('AccessSurfaceCard', () => {
       )
 
       expect(screen.getByRole('article', { name: 'Web app' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Web app' })).toHaveAttribute('title', 'Web app')
     })
 
     it('should copy the endpoint and render copied state from the clipboard hook', async () => {

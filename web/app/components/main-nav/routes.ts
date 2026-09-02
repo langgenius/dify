@@ -71,15 +71,6 @@ export const MAIN_NAV_ROUTES = [
     feature: 'agentV2',
   },
   {
-    key: 'skills',
-    href: '/skills',
-    labelKey: 'mainNav.skills',
-    active: (path: string) => isPathUnderRoute(path, '/skills'),
-    icon: 'i-custom-vender-main-nav-skill',
-    activeIcon: 'i-custom-vender-main-nav-skill-active',
-    visibility: SKILL_ENABLED_FOR_WORKSPACE,
-  },
-  {
     key: 'datasets',
     href: '/datasets',
     labelKey: 'menus.datasets',
@@ -87,6 +78,15 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-knowledge-v2',
     activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
+  },
+  {
+    key: 'skills',
+    href: '/skills',
+    labelKey: 'mainNav.skills',
+    active: (path: string) => isPathUnderRoute(path, '/skills'),
+    icon: 'i-custom-vender-main-nav-skill',
+    activeIcon: 'i-custom-vender-main-nav-skill-active',
+    visibility: SKILL_ENABLED_FOR_WORKSPACE,
   },
   {
     key: 'integrations',

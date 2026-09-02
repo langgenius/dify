@@ -1,11 +1,13 @@
+"""Tests for SystemFeatureService SSO protocol parsing."""
+
 import logging
 
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
+from services import system_feature_service as feature_service_module
 from services.entities.feature_entities import SSOProtocol, SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def test_system_features_exposes_valid_enterprise_sso_protocols(
@@ -24,7 +26,7 @@ def test_system_features_exposes_valid_enterprise_sso_protocols(
     )
     features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
 
-    FeatureService._fulfill_params_from_enterprise(features)
+    SystemFeatureService._fulfill_params_from_enterprise(features)
 
     assert features.sso_enforced_for_signin_protocol is SSOProtocol.SAML
     assert features.webapp_auth.sso_config.protocol is SSOProtocol.OIDC
@@ -48,7 +50,7 @@ def test_system_features_normalizes_empty_enterprise_sso_protocols_to_none(
     )
     features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
 
-    FeatureService._fulfill_params_from_enterprise(features)
+    SystemFeatureService._fulfill_params_from_enterprise(features)
 
     assert features.sso_enforced_for_signin_protocol is None
     assert features.webapp_auth.sso_config.protocol is None
@@ -73,8 +75,8 @@ def test_system_features_rejects_invalid_enterprise_sso_protocols(
     )
     features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
 
-    with caplog.at_level(logging.ERROR, logger="services.feature_service"):
-        FeatureService._fulfill_params_from_enterprise(features)
+    with caplog.at_level(logging.ERROR, logger="services.system_feature_service"):
+        SystemFeatureService._fulfill_params_from_enterprise(features)
 
     assert features.sso_enforced_for_signin_protocol is None
     assert features.webapp_auth.sso_config.protocol is None

@@ -2,6 +2,7 @@ import type {
   MarketplaceTemplate,
   MarketplaceTemplateCollection,
 } from '@dify/contracts/marketplace'
+import { SERVER_PREFETCH_BUDGET_MS } from '@/app/components/plugins/marketplace/server-budget'
 import { marketplaceClient } from './client'
 
 export type MarketplaceTemplateCollectionsResult = {
@@ -42,45 +43,64 @@ let collectionsCache: {
 let collectionsInFlight: Promise<MarketplaceTemplateCollectionsResult> | null = null
 
 async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollectionsResult> {
-  const response = await marketplaceClient.templateCollections({
-    query: {
-      page: 1,
-      page_size: 100,
-    },
-  })
-  const collections = response.data?.collections ?? []
-  const entries: (readonly [string, MarketplaceTemplate[]])[] = []
+  const budget = AbortSignal.timeout(SERVER_PREFETCH_BUDGET_MS)
 
-  // Bounded fan-out: fetch collection previews in small batches instead of
-  // firing one uncached request per collection all at once.
-  for (
-    let batchStart = 0;
-    batchStart < collections.length;
-    batchStart += COLLECTION_FETCH_BATCH_SIZE
-  ) {
-    const batch = collections.slice(batchStart, batchStart + COLLECTION_FETCH_BATCH_SIZE)
-    entries.push(
-      ...(await Promise.all(
-        batch.map(async (collection) => {
-          try {
-            const collectionResponse = await marketplaceClient.templateCollectionTemplates({
-              params: { collectionName: collection.name },
-              body: { limit: COLLECTION_PREVIEW_TEMPLATE_LIMIT },
-            })
-
-            return [collection.name, collectionResponse.data?.templates ?? []] as const
-          } catch {
-            return [collection.name, [] as MarketplaceTemplate[]] as const
-          }
-        }),
-      )),
+  try {
+    const response = await marketplaceClient.templateCollections(
+      {
+        query: {
+          page: 1,
+          page_size: 100,
+        },
+      },
+      { signal: budget },
     )
-  }
+    const collections = response.data?.collections ?? []
+    const entries: (readonly [string, MarketplaceTemplate[]])[] = []
+    let hadCollectionFailure = false
 
-  return {
-    collections,
-    templatesByCollection: Object.fromEntries(entries),
-    ok: true,
+    // Bounded fan-out: fetch collection previews in small batches instead of
+    // firing one uncached request per collection all at once. The route budget
+    // aborts leftover work so `/templates` cannot wait N batches × 15s.
+    for (
+      let batchStart = 0;
+      batchStart < collections.length;
+      batchStart += COLLECTION_FETCH_BATCH_SIZE
+    ) {
+      if (budget.aborted) return FAILED_COLLECTIONS_RESULT
+
+      const batch = collections.slice(batchStart, batchStart + COLLECTION_FETCH_BATCH_SIZE)
+      entries.push(
+        ...(await Promise.all(
+          batch.map(async (collection) => {
+            try {
+              const collectionResponse = await marketplaceClient.templateCollectionTemplates(
+                {
+                  params: { collectionName: collection.name },
+                  body: { limit: COLLECTION_PREVIEW_TEMPLATE_LIMIT },
+                },
+                { signal: budget },
+              )
+
+              return [collection.name, collectionResponse.data?.templates ?? []] as const
+            } catch (error) {
+              if (budget.aborted) throw error
+              hadCollectionFailure = true
+              return [collection.name, [] as MarketplaceTemplate[]] as const
+            }
+          }),
+        )),
+      )
+    }
+
+    return {
+      collections,
+      templatesByCollection: Object.fromEntries(entries),
+      ok: !hadCollectionFailure,
+    }
+  } catch (error) {
+    if (budget.aborted) return FAILED_COLLECTIONS_RESULT
+    throw error
   }
 }
 
@@ -97,7 +117,7 @@ export async function getMarketplaceTemplateCollectionsAndTemplates(): Promise<M
 
   collectionsInFlight = fetchCollectionsAndTemplates()
     .then((result) => {
-      collectionsCache = { expiresAt: Date.now() + COLLECTIONS_CACHE_TTL_MS, result }
+      if (result.ok) collectionsCache = { expiresAt: Date.now() + COLLECTIONS_CACHE_TTL_MS, result }
       return result
     })
     .catch(() => FAILED_COLLECTIONS_RESULT)

@@ -6,9 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
 
 const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
-  <span aria-hidden className={cn('flex size-5 shrink-0 items-center justify-center', className)}>
-    <span className={cn(icon, 'size-[18px]')} />
-  </span>
+  <span aria-hidden className={cn(icon, 'h-5 w-5 shrink-0', className)} />
 )
 
 type MainNavLinkProps = {
@@ -32,10 +30,7 @@ const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
       )}
     >
       <NavIcon icon={item.icon} className="group-aria-[current=page]:hidden" />
-      <NavIcon
-        icon={item.activeIcon}
-        className="hidden drop-shadow-[0_0_4px_rgba(49,70,255,0.18)] group-aria-[current=page]:flex"
-      />
+      <NavIcon icon={item.activeIcon} className="hidden group-aria-[current=page]:block" />
       <span className="min-w-0 truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]">
         {item.label}
       </span>

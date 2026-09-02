@@ -1,3 +1,4 @@
+import type { UseQueryOptions } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -18,8 +19,13 @@ import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './
 
 const NAME_SPACE = 'workflow'
 
-export const useAppWorkflow = (appID: string) => {
-  return useQuery(appWorkflowQueryOptions(appID))
+type UseAppWorkflowOptions = Pick<UseQueryOptions, 'retry'>
+
+export const useAppWorkflow = (appID: string, options?: UseAppWorkflowOptions) => {
+  return useQuery({
+    ...appWorkflowQueryOptions(appID),
+    ...options,
+  })
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
