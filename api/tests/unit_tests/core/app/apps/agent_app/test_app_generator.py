@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import contextlib
 import inspect
-import json
 
 import pytest
 from pytest_mock import MockerFixture
@@ -25,7 +24,6 @@ from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
-from core.workflow.file_reference import build_file_reference
 from models import Account, AppModelConfig
 
 MODULE = "core.app.apps.agent_app.app_generator"
@@ -113,6 +111,10 @@ class TestGenerateSuccess:
             return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
         )
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        file_upload_config = mocker.MagicMock()
+        mocker.patch(f"{MODULE}.FileUploadConfigManager.convert", return_value=file_upload_config)
+        parsed_file = mocker.MagicMock()
+        build_files = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[parsed_file])
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
@@ -152,7 +154,10 @@ class TestGenerateSuccess:
             conversation=None,
         )
         session.get.assert_called_once_with(AppModelConfig, "config-1")
-        assert generate_entity.call_args.kwargs["prompt_file_mappings"] == file_mappings
+        build_files.assert_called_once()
+        assert build_files.call_args.kwargs["mappings"] == file_mappings
+        assert generate_entity.call_args.kwargs["files"] == [parsed_file]
+        assert generate_entity.call_args.kwargs["file_upload_config"] is file_upload_config
         assert "agent_runtime_exit_intent" not in generate_entity.call_args.kwargs
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
@@ -294,7 +299,8 @@ class TestGenerateWorker:
         is_resume=False,
         query="query",
         session_scope_config_version_id="s",
-        prompt_file_mappings=(),
+        files=(),
+        file_upload_config=None,
     ):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -305,7 +311,8 @@ class TestGenerateWorker:
                 agent_session_scope_config_version_id=session_scope_config_version_id,
                 model_conf=mocker.MagicMock(model="m"),
                 query=query,
-                prompt_file_mappings=prompt_file_mappings,
+                files=files,
+                file_upload_config=file_upload_config,
             ),
             queue_manager=queue_manager,
             conversation_id="conv",
@@ -333,48 +340,22 @@ class TestGenerateWorker:
         assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
         assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
 
-    def test_worker_appends_prompt_files_to_backend_query(self, generator, mocker: MockerFixture):
+    def test_worker_passes_files_to_backend_runner_without_rewriting_query(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
         queue_manager = mocker.MagicMock()
-        file_mappings = [
-            {
-                "type": "image",
-                "transfer_method": "local_file",
-                "url": "",
-                "upload_file_id": "upload-file-1",
-            },
-            {
-                "type": "document",
-                "transfer_method": "remote_url",
-                "url": "https://example.com/source.pdf",
-                "upload_file_id": "ignored",
-            },
-        ]
-        expected_file_mappings = [
-            {
-                "transfer_method": "local_file",
-                "reference": build_file_reference(record_id="upload-file-1"),
-            },
-            {
-                "transfer_method": "remote_url",
-                "url": "https://example.com/source.pdf",
-            },
-        ]
+        files = [mocker.MagicMock(), mocker.MagicMock()]
 
         self._call(
             generator,
             mocker,
             queue_manager,
             query="你看得见这张图片吗",
-            prompt_file_mappings=file_mappings,
+            files=files,
         )
 
-        assert runner.run.call_args.kwargs["query"] == (
-            "你看得见这张图片吗\nUser provided files: "
-            "use dify-agent file download with the listed transfer_method and reference/url "
-            "to get the files and investigate them\n"
-            f"{json.dumps(expected_file_mappings, ensure_ascii=False, separators=(',', ':'))}"
-        )
+        assert runner.run.call_args.kwargs["query"] == "你看得见这张图片吗"
+        assert runner.run.call_args.kwargs["files"] == files
+        assert runner.run.call_args.kwargs["image_detail_config"] is None
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker, handled=True)

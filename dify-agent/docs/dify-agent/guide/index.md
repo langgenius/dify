@@ -359,6 +359,37 @@ whose Agenton layers provide user input. With the MVP provider set, use
 effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
+Agent App callers can use the `dify.user_prompt` layer to send text and images
+in the same model turn. Each image must provide exactly one transport: an
+HTTP(S) `url` or unprefixed Base64 data in `base64_data`. The image is passed as
+structured multimodal content; it is not interpolated into `config.text`.
+
+```json
+{
+  "name": "agent_app_user_prompt",
+  "type": "dify.user_prompt",
+  "config": {
+    "text": "Describe this image.",
+    "files": [
+      {
+        "type": "image",
+        "filename": "earth.png",
+        "mime_type": "image/png",
+        "format": "png",
+        "url": "https://files.example.com/earth.png",
+        "base64_data": null,
+        "detail": "high"
+      }
+    ]
+  }
+}
+```
+
+The `dify.user_prompt` layer currently accepts images only. Dify API chooses
+URL or Base64 delivery according to `MULTIMODAL_SEND_FORMAT`. For Agent App
+models without the Vision feature, and for non-image files, Dify API keeps the
+sandbox file-download locator flow instead of populating `config.files`.
+
 The optional Pydantic AI history layer uses the reserved name `history` and
 persists captured messages in session snapshots for later resume. Resume from a
 terminal event's `session_snapshot` using the same layer composition, names, and

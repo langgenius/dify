@@ -10,6 +10,7 @@ used by workflow runs.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -19,6 +20,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
+from dify_agent.layers.user_prompt import DifyUserPromptFileConfig
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 
 from clients.agent_backend import (
@@ -29,8 +31,9 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window
+from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
     WorkflowAgentDifyToolsBuilder,
@@ -46,6 +49,8 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import expand_prompt_mentions
@@ -72,6 +77,8 @@ class AgentAppRuntimeBuildContext:
     idempotency_key: str
     binding_id: str
     backend_binding_ref: str
+    files: tuple[File, ...] = ()
+    image_detail_config: ImagePromptMessageContent.DETAIL | None = None
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
@@ -150,6 +157,14 @@ class AgentAppRuntimeRequestBuilder:
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
         )
+        user_prompt, user_files = self._build_user_prompt(
+            text=context.user_query,
+            files=context.files,
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+            image_detail_config=context.image_detail_config,
+        )
 
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
@@ -179,7 +194,8 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 agent_config_version_kind=context.agent_config_version_kind,
-                user_prompt=context.user_query,
+                user_prompt=user_prompt,
+                user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
@@ -201,6 +217,29 @@ class AgentAppRuntimeRequestBuilder:
             metadata=metadata,
             binding_id=context.binding_id,
         )
+
+    @staticmethod
+    def _build_user_prompt(
+        *,
+        text: str,
+        files: tuple[File, ...],
+        run_context: DifyRunContext,
+        provider_name: str,
+        model_name: str,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None,
+    ) -> tuple[str, list[DifyUserPromptFileConfig]]:
+        images = [file for file in files if file.type == FileType.IMAGE]
+        supports_vision = bool(images) and resolve_model_supports_vision(
+            run_context=run_context,
+            provider_name=provider_name,
+            model_name=model_name,
+        )
+        direct_images = images if supports_vision else []
+        direct_image_ids = {id(file) for file in direct_images}
+        fallback_files = [file for file in files if id(file) not in direct_image_ids]
+        return _append_file_locators(text, fallback_files), [
+            _build_user_file(file, image_detail_config=image_detail_config) for file in direct_images
+        ]
 
     @staticmethod
     def _validate_session_snapshot_layers(request: CreateRunRequest) -> None:
@@ -249,6 +288,56 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
+
+
+def _build_user_file(
+    file: File,
+    *,
+    image_detail_config: ImagePromptMessageContent.DETAIL | None,
+) -> DifyUserPromptFileConfig:
+    content = file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+    if not isinstance(content, ImagePromptMessageContent):
+        raise AgentAppRuntimeRequestBuildError(
+            "agent_user_file_unsupported",
+            f"Agent App cannot send file '{file.filename or 'image'}' as vision content.",
+        )
+    detail = getattr(content.detail, "value", content.detail)
+    return DifyUserPromptFileConfig(
+        filename=content.filename or file.filename or f"image.{content.format}",
+        mime_type=content.mime_type,
+        format=content.format,
+        url=content.url or None,
+        base64_data=content.base64_data or None,
+        detail=detail if detail in {"low", "high"} else None,
+    )
+
+
+def _append_file_locators(text: str, files: list[File]) -> str:
+    locators = [_file_locator(file) for file in files]
+    if not locators:
+        return text
+    payload = json.dumps(locators, ensure_ascii=False, separators=(",", ":"))
+    return (
+        f"{text}\n"
+        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+        "to get the files and investigate them\n"
+        f"{payload}"
+    )
+
+
+def _file_locator(file: File) -> dict[str, str]:
+    if file.transfer_method == FileTransferMethod.REMOTE_URL:
+        if file.remote_url is None:
+            raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")
+        return {"transfer_method": FileTransferMethod.REMOTE_URL.value, "url": file.remote_url}
+    if file.reference is None:
+        raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
+    reference = file.reference
+    if not reference.startswith("dify-file-ref:"):
+        reference = build_file_reference(record_id=reference)
+    elif not is_canonical_file_reference(reference):
+        raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file reference is invalid.")
+    return {"transfer_method": file.transfer_method.value, "reference": reference}
 
 
 __all__ = [
