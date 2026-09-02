@@ -2,7 +2,7 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import httpx
@@ -45,6 +45,7 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
+from services.entities.mail_entities import InnerMailMessage
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
@@ -469,6 +470,59 @@ def test_build_application_services_wires_data_source_api_key_auth(
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
 
 
+@pytest.mark.parametrize(
+    ("substitutions", "expected_substitutions"),
+    [
+        pytest.param({"name": "Ada"}, {"name": "Ada"}, id="configured"),
+        pytest.param(None, {}, id="omitted-or-null"),
+    ],
+)
+def test_build_application_services_wires_inner_mail_dispatcher(
+    sqlite_session_factory: sessionmaker[Session],
+    substitutions: dict[str, object] | None,
+    expected_substitutions: dict[str, object],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    message = InnerMailMessage(
+        recipients=("one@example.com", "two@example.com"),
+        subject="Subject",
+        body="Body",
+        substitutions=substitutions,
+    )
+
+    with patch("tasks.mail_inner_task.send_inner_email_task.delay") as delay:
+        services.inner_mail.send(message)
+
+    delay.assert_called_once_with(
+        to=["one@example.com", "two@example.com"],
+        subject="Subject",
+        body="Body",
+        substitutions=expected_substitutions,
+    )
+
+
+def test_build_application_services_uses_passed_edition_for_webapp_auth(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
+    with patch("extensions.ext_application_services.DeploymentWebPassportAuthGateway") as auth_gateway:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    assert auth_gateway.call_args.kwargs["webapp_auth_enabled"] is True
+
+
 def test_build_application_services_wires_trial_app_usage(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -498,7 +552,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="private_all"),
@@ -535,7 +589,7 @@ def test_build_application_services_maps_known_enterprise_errors(
     enterprise_error: Exception,
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=enterprise_error,
@@ -558,7 +612,7 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="invalid"),
@@ -582,7 +636,7 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
 ) -> None:
     failure = TypeError("adapter bug")
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=failure,
@@ -606,7 +660,7 @@ def test_build_application_services_wires_webapp_permission(
 ) -> None:
     with (
         patch(
-            "extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True
+            "extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True
         ) as enabled,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
@@ -628,7 +682,12 @@ def test_build_application_services_wires_webapp_permission(
 
     assert requires_permission is True
     assert allowed is False
-    enabled.assert_called_once_with()
+    enabled.assert_has_calls(
+        [
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+        ]
+    )
     get_access_mode.assert_called_once_with("app-1")
     is_user_allowed.assert_called_once_with("user-1", "app-1")
 

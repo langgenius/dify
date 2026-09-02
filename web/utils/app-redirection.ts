@@ -34,7 +34,7 @@ export const getRedirectionPath = (
   if (app.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canDeploy)
     return `/app/${app.id}/deploy`
 
-  if (appACLCapabilities.canAccessPoint) return `/app/${app.id}/access-point`
+  if (appACLCapabilities.canViewAccessPoint) return `/app/${app.id}/access-point`
 
   return '/apps'
 }

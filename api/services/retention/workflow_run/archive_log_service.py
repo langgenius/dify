@@ -126,7 +126,7 @@ class WorkflowRunArchiveService:
 
     def list_archives(self, context: RequestContext) -> WorkflowRunArchiveList:
         """Return monthly archive metadata for the active workspace."""
-        tenant_id = self._active_workspace_id(context)
+        tenant_id = context.active_workspace_id
         records_by_month: dict[tuple[int, int], list[WorkflowRunArchiveBundleRecord]] = {}
         for record in self._bundles.list_for_tenant(tenant_id):
             records_by_month.setdefault((record.year, record.month), []).append(record)
@@ -172,7 +172,7 @@ class WorkflowRunArchiveService:
         month: int,
     ) -> WorkflowRunArchiveDownloadTask:
         """Create or return the idempotent download task for one workspace/month."""
-        tenant_id = self._active_workspace_id(context)
+        tenant_id = context.active_workspace_id
         bundles = self._bundles.list_for_tenant_month(tenant_id, year=year, month=month)
         if not bundles:
             raise WorkflowRunArchiveNotFoundError(f"Workflow run archive not found: {year:04d}-{month:02d}")
@@ -217,7 +217,7 @@ class WorkflowRunArchiveService:
 
     def get_download(self, context: RequestContext, *, download_id: str) -> WorkflowRunArchiveDownloadTask:
         """Return a cached download task or raise after its TTL expires."""
-        tenant_id = self._active_workspace_id(context)
+        tenant_id = context.active_workspace_id
         task = self._tasks.get(tenant_id=tenant_id, download_id=download_id)
         if task is None:
             raise WorkflowRunArchiveDownloadTaskNotFoundError(f"Workflow run archive download not found: {download_id}")
@@ -284,10 +284,3 @@ class WorkflowRunArchiveService:
         expires_at_utc = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=datetime.UTC)
         remaining_seconds = int((expires_at_utc - datetime.datetime.now(datetime.UTC)).total_seconds())
         return max(1, min(3600, remaining_seconds))
-
-    @staticmethod
-    def _active_workspace_id(context: RequestContext) -> str:
-        workspace_id = context.active_workspace_id
-        if workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return workspace_id

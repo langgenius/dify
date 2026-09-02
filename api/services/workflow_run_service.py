@@ -130,7 +130,7 @@ class WorkflowRunService:
         status = args.get("status")
 
         return self._workflow_runs.get_paginated_workflow_runs(
-            tenant_id=self._workspace_id(context),
+            tenant_id=context.active_workspace_id,
             app_id=app_id,
             triggered_from=triggered_from,
             limit=limit,
@@ -147,7 +147,7 @@ class WorkflowRunService:
         :param run_id: workflow run id
         """
         return self._workflow_runs.get_workflow_run_by_id(
-            tenant_id=self._workspace_id(context),
+            tenant_id=context.active_workspace_id,
             app_id=app_id,
             run_id=run_id,
         )
@@ -172,7 +172,7 @@ class WorkflowRunService:
         :return: dict with total and status counts
         """
         return self._workflow_runs.get_workflow_runs_count(
-            tenant_id=self._workspace_id(context),
+            tenant_id=context.active_workspace_id,
             app_id=app_id,
             triggered_from=triggered_from,
             status=status,
@@ -198,7 +198,7 @@ class WorkflowRunService:
             return []
 
         node_executions = self._node_executions.get_executions_by_workflow_run(
-            tenant_id=self._workspace_id(context),
+            tenant_id=context.active_workspace_id,
             app_id=app_id,
             workflow_run_id=run_id,
         )
@@ -211,7 +211,7 @@ class WorkflowRunService:
         workflow_run_id: str,
     ) -> WorkflowRunPauseDetails | None:
         pause_record = self._workflow_runs.get_pause_record(
-            workspace_id=self._workspace_id(context),
+            workspace_id=context.active_workspace_id,
             workflow_run_id=workflow_run_id,
         )
         if pause_record is None:
@@ -237,9 +237,3 @@ class WorkflowRunService:
                 for reason in human_input_reasons
             ),
         )
-
-    @staticmethod
-    def _workspace_id(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return context.active_workspace_id

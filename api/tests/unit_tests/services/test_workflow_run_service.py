@@ -27,7 +27,7 @@ def _service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
     )
 
 
-def _request_context(*, workspace_id: str | None = "tenant-1") -> RequestContext:
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
@@ -214,12 +214,3 @@ class TestWorkflowRunServiceQueries:
             workflow_run_id="run-1",
         )
         mock_assemble.assert_called_once_with(expected_executions, node_executions)
-
-    def test_query_requires_active_workspace(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
-    ) -> None:
-        service = _service(service_dependencies)
-
-        with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-            service.get_workflow_run(_request_context(workspace_id=None), app_id="app-1", run_id="run-1")

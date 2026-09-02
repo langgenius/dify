@@ -3,7 +3,9 @@
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import cast
+from uuid import uuid4
 
 import httpx
 from flask import Flask, current_app
@@ -19,6 +21,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
+from libs.passport import PassportService
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
@@ -36,6 +39,7 @@ from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourSt
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
+from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
@@ -102,10 +106,10 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
-from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.inner_mail_service import InnerMailService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -127,9 +131,15 @@ from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
+from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
+from services.web_passport_gateways import (
+    DeploymentWebPassportAuthGateway,
+    PassportTokenGateway,
+)
+from services.web_passport_service import WebPassportService
 from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
@@ -140,6 +150,7 @@ from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
+from tasks.mail_inner_task import enqueue_inner_mail
 
 _EXTENSION_KEY = "application_services"
 
@@ -203,6 +214,8 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    inner_mail: InnerMailService
+    web_passport: WebPassportService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
 
@@ -260,7 +273,7 @@ def build_application_services(
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
-    trial_app_enabled = FeatureService.is_trial_app_enabled()
+    trial_app_enabled = SystemFeatureService.is_trial_app_enabled()
     database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
     builtin_catalog = BuiltinRecommendedAppCatalogGateway()
     remote_catalog = RemoteRecommendedAppCatalogGateway()
@@ -416,7 +429,7 @@ def build_application_services(
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
-            webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
+            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
             access_mode_for_app=_get_enterprise_webapp_access_mode,
             is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
         ),
@@ -428,7 +441,7 @@ def build_application_services(
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(session_factory=database_client),
-            enabled=FeatureService.is_explore_banner_enabled(),
+            enabled=SystemFeatureService.is_explore_banner_enabled(),
         ),
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
@@ -485,6 +498,20 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
+        web_passport=WebPassportService(
+            passports=WebPassportRepository(
+                session_factory=database_client,
+                generate_session_id=lambda: str(uuid4()),
+            ),
+            auth=DeploymentWebPassportAuthGateway(
+                webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+                get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
+            ),
+            tokens=PassportTokenGateway(passport=PassportService()),
+            now=lambda: datetime.now(UTC),
+            access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),

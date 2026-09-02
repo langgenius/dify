@@ -10,7 +10,7 @@ import { EnvironmentRowActions } from './row-actions'
 
 export function EnvironmentRow({
   appId,
-  canAccessPoint = false,
+  canViewAccessPoint,
   row,
   onChangeVersion,
   onDeployLatest,
@@ -18,7 +18,7 @@ export function EnvironmentRow({
   onUndeploy,
 }: {
   appId: string
-  canAccessPoint?: boolean
+  canViewAccessPoint: boolean
   row: EnvironmentDeployment
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
@@ -63,7 +63,7 @@ export function EnvironmentRow({
               accessPoint={accessPoint}
               active={isAccessPointActive(accessPoint)}
               href={
-                canAccessPoint
+                canViewAccessPoint
                   ? getAccessPointHref(appId, row.environment.id, accessPoint)
                   : undefined
               }

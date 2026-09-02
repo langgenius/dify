@@ -149,10 +149,6 @@ def _account() -> Account:
 @pytest.mark.parametrize(
     "method",
     [
-        module.AgentAppSandboxInfoResource.get,
-        module.AgentAppSandboxListResource.get,
-        module.AgentAppSandboxReadResource.get,
-        module.AgentAppSandboxDownloadResource.post,
         module.WorkflowAgentSandboxListResource.get,
         module.WorkflowAgentSandboxReadResource.get,
         module.WorkflowAgentSandboxDownloadResource.post,
