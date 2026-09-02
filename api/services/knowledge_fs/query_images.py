@@ -156,23 +156,23 @@ def issue_workflow_query_image_reference(
     file_kind: Literal["tool_file", "upload_file"]
     with session_factory.create_session() as session:
         if file.transfer_method is FileTransferMethod.TOOL_FILE:
-            stored = controller.get_tool_file(session=session, file_id=reference.record_id)
+            tool_file = controller.get_tool_file(session=session, file_id=reference.record_id)
             file_kind = "tool_file"
-            if stored is None or stored.tenant_id != normalized_tenant_id:
+            if tool_file is None or tool_file.tenant_id != normalized_tenant_id:
                 raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
-            mime_type = _validate_image_metadata(mime_type=stored.mimetype, size=stored.size)
-            byte_size = stored.size
+            mime_type = _validate_image_metadata(mime_type=tool_file.mimetype, size=tool_file.size)
+            byte_size = tool_file.size
         elif file.transfer_method in {
             FileTransferMethod.LOCAL_FILE,
             FileTransferMethod.DATASOURCE_FILE,
             FileTransferMethod.REMOTE_URL,
         }:
-            stored = controller.get_upload_file(session=session, file_id=reference.record_id)
+            upload_file = controller.get_upload_file(session=session, file_id=reference.record_id)
             file_kind = "upload_file"
-            if stored is None or stored.tenant_id != normalized_tenant_id:
+            if upload_file is None or upload_file.tenant_id != normalized_tenant_id:
                 raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
-            mime_type = _validate_image_metadata(mime_type=stored.mime_type, size=stored.size)
-            byte_size = stored.size
+            mime_type = _validate_image_metadata(mime_type=upload_file.mime_type, size=upload_file.size)
+            byte_size = upload_file.size
         else:  # pragma: no cover - FileTransferMethod is exhaustive, retained for forward compatibility.
             raise KnowledgeFSQueryImageError(
                 "QUERY_IMAGE_REFERENCE_UNSUPPORTED",
@@ -316,25 +316,25 @@ def _validate_image_metadata(*, mime_type: str | None, size: int) -> str:
 def _load_granted_query_image_record(grant: _WorkflowQueryImageGrant) -> _QueryImageStorageRecord:
     with session_factory.create_session() as session:
         if grant.file_kind == "tool_file":
-            stored = session.get(ToolFile, grant.file_id)
-            if stored is None or stored.tenant_id != grant.tenant_id:
+            tool_file = session.get(ToolFile, grant.file_id)
+            if tool_file is None or tool_file.tenant_id != grant.tenant_id:
                 raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
             return _QueryImageStorageRecord(
-                key=stored.file_key,
-                mime_type=_validate_image_metadata(mime_type=stored.mimetype, size=stored.size),
-                size=stored.size,
+                key=tool_file.file_key,
+                mime_type=_validate_image_metadata(mime_type=tool_file.mimetype, size=tool_file.size),
+                size=tool_file.size,
             )
-        stored = FileService.get_upload_files_by_ids(
+        upload_file = FileService.get_upload_files_by_ids(
             grant.tenant_id,
             [grant.file_id],
             session=session,
         ).get(grant.file_id)
-        if stored is None:
+        if upload_file is None:
             raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
         return _QueryImageStorageRecord(
-            key=stored.key,
-            mime_type=_validate_metadata(stored),
-            size=stored.size,
+            key=upload_file.key,
+            mime_type=_validate_metadata(upload_file),
+            size=upload_file.size,
         )
 
 

@@ -324,7 +324,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         service = self._service()
         payload = KnowledgeFSRetrievalTestPayload(
             query=query,
-            query_images=list(query_images),
+            queryImages=list(query_images),
             mode=self._node_data.mode,
             include_text=True,
             filters=self._resolved_retrieval_filters(),
