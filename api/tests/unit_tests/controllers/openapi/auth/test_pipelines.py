@@ -9,7 +9,6 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
-from configs import dify_config
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
@@ -39,6 +38,7 @@ from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import apply_config_overrides
 
 from ._world import (
     APP_ID,
@@ -166,7 +166,7 @@ def test_the_external_sso_gate_refuses_a_non_enterprise_edition(
     on the routes an account shares with it - the ones no `edition=` can cover,
     because the account still has to reach them.
     """
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
     subject = sso_subject()
 
     with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.ACTIVE)):
@@ -183,7 +183,7 @@ def test_the_external_sso_gate_checks_the_edition_before_the_licence(
     """Same order as the router's endpoint-level gate: a CE deployment answers
     about the edition and never reaches the licence.
     """
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     subject = sso_subject()
 
     with patch(FEATURES, side_effect=never_reached):

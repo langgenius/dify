@@ -43,7 +43,7 @@ def test_mounts_caller_tracks_todays_resolution_points(
     token_type: TokenType, has_app: bool, expected: bool, sqlite_session: Session
 ) -> None:
     subject = subject_from_auth(make_auth(token_type))
-    view_args = {"app_id": APP_ID} if has_app else {}
+    view_args: dict[str, str] = {"app_id": APP_ID} if has_app else {}
 
     assert subject.mounts_caller(make_ctx(sqlite_session, subject, **view_args)) is expected
 

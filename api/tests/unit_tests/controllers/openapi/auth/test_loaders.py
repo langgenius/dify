@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast, get_args, get_type_hints
+from typing import cast, get_args, get_type_hints, override
 
 import pytest
 from flask import Flask
@@ -122,7 +122,8 @@ class TestWorkspaceFromRequest:
             assert load_workspace(ctx).id == TENANT_ID
 
     def test_not_found_when_workspace_id_is_missing_or_malformed(self, app: Flask, sqlite_session: Session) -> None:
-        for view_args in ({}, {"workspace_id": "not-a-uuid"}):
+        view_args_cases: list[dict[str, str]] = [{}, {"workspace_id": "not-a-uuid"}]
+        for view_args in view_args_cases:
             ctx = Context(_subject(), sqlite_session, view_args)
             with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
                 load_workspace(ctx)
@@ -220,6 +221,7 @@ class TestLoadWorkspaceRole:
         loaded_when_called: list[bool] = []
 
         class _Recording(_StubSubject):
+            @override
             def resolve_caller(self, ctx: object, session: Session) -> object:
                 loaded_when_called.append(cast(Context, ctx).workspace is not None)
                 return super().resolve_caller(ctx, session)
