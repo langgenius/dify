@@ -30,12 +30,14 @@ from services.account_errors import AccountNotFoundError, AccountSessionNotFound
 from services.entities.account_access_entities import AccountSessionSnapshot, AccountWorkspaceSnapshot
 from services.entities.account_entities import AccountSnapshot
 
-_ACCOUNT_REQUIREMENTS = (CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL))
-
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, AccountResponse, "Account info"), write=False)
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
+        returns=(200, AccountResponse, "Account info"),
+        write=False,
+    )
     def get(self, ctx: Context):
         request_context = _request_context(ctx)
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{request_context.account_id}")
@@ -55,7 +57,10 @@ class AccountApi(Resource):
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
-    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, RevokeResponse, "Session revoked"))
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
+        returns=(200, RevokeResponse, "Session revoked"),
+    )
     def delete(self, ctx: Context):
         application_services().accounts.access.revoke_current_session(_request_context(ctx))
         return RevokeResponse(status="revoked")
@@ -64,7 +69,7 @@ class AccountSessionsSelfApi(Resource):
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
     @endpoint(
-        requirements=_ACCOUNT_REQUIREMENTS,
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         query=SessionListQuery,
         returns=(200, SessionListResponse, "Session list"),
         write=False,
@@ -87,7 +92,7 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @endpoint(
-        requirements=(*_ACCOUNT_REQUIREMENTS, CheckSessionOwnership()),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL), CheckSessionOwnership()),
         returns=(200, RevokeResponse, "Session revoked"),
     )
     def delete(self, ctx: Context, session_id: str):

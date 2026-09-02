@@ -30,32 +30,6 @@ from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 
-_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
-_DSL_WORKSPACE_ROLE = CheckWorkspaceRole(
-    frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
-)
-
-_DSL_IMPORT_REQUIREMENTS = (
-    _ACCOUNT_SUBJECT,
-    CheckScope(Scope.WORKSPACE_WRITE),
-    CheckWorkspaceMember(),
-    CheckRBACPermission(
-        resource_type=RBACResourceScope.APP,
-        scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-        resource_required=False,
-    ),
-    _DSL_WORKSPACE_ROLE,
-)
-
-_DSL_APP_REQUIREMENTS = (
-    _ACCOUNT_SUBJECT,
-    CheckAppApiEnabled(),
-    CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_READ),
-    CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
-    _DSL_WORKSPACE_ROLE,
-)
-
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
 class AppDslImportApi(Resource):
@@ -72,7 +46,17 @@ class AppDslImportApi(Resource):
     """
 
     @endpoint(
-        requirements=_DSL_IMPORT_REQUIREMENTS,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.APP,
+                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
         body=AppDslImportPayload,
         returns=(
             (200, Import, "Import completed"),
@@ -128,7 +112,17 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
-        requirements=_DSL_IMPORT_REQUIREMENTS,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.APP,
+                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
         returns=((200, Import, "Import confirmed"), (400, Import, "Import failed")),
         write=False,
     )
@@ -165,7 +159,14 @@ class AppDslExportApi(Resource):
     """
 
     @endpoint(
-        requirements=_DSL_APP_REQUIREMENTS,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
         query=AppDslExportQuery,
         returns=(200, AppDslExportResponse, "Export successful"),
         write=False,
@@ -194,7 +195,14 @@ class AppDslCheckDependenciesApi(Resource):
     """
 
     @endpoint(
-        requirements=_DSL_APP_REQUIREMENTS,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
         returns=(200, CheckDependenciesResult, "Dependencies checked"),
         write=False,
     )
