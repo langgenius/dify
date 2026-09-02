@@ -4244,6 +4244,91 @@ class TestDatasetRetrievalAdditionalHelpers:
                     metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
                 )
 
+    def test_automatic_metadata_filter_func_normalizes_time_values(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session
+    ) -> None:
+        """A date the model answers with must be converted to the stored Unix timestamp."""
+        tenant_id = str(uuid4())
+        dataset_id = str(uuid4())
+        user_id = str(uuid4())
+        sqlite_session.add(
+            DatasetMetadata(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                type="time",
+                name="release_date",
+                created_by=user_id,
+            )
+        )
+        sqlite_session.commit()
+        model_instance = Mock()
+        model_instance.invoke_llm.return_value = iter([Mock()])
+        model_config = ModelConfigWithCredentialsEntity.model_construct(
+            provider="openai",
+            model="gpt",
+            model_schema=Mock(),
+            mode="chat",
+            provider_model_bundle=Mock(),
+            credentials={},
+            parameters={},
+            stop=[],
+        )
+        usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
+
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, model_config)),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])) as mock_prompt_template,
+            patch.object(retrieval, "_handle_invoke_result", return_value=("{}", usage)),
+            patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown") as mock_parse,
+            patch.object(retrieval, "_record_usage"),
+        ):
+            mock_parse.return_value = {
+                "metadata_map": [
+                    {
+                        "metadata_field_name": "release_date",
+                        "metadata_field_value": "2024-01-01T00:00:00+00:00",
+                        "comparison_operator": "after",
+                    },
+                    {
+                        "metadata_field_name": "release_date",
+                        "metadata_field_value": "sometime last year",
+                        "comparison_operator": "after",
+                    },
+                ]
+            }
+            result = retrieval._automatic_metadata_filter_func(
+                sqlite_session,
+                dataset_ids=[dataset_id],
+                query="what was released after 2024-01-01?",
+                tenant_id=tenant_id,
+                user_id=user_id,
+                metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+            )
+
+        # The parsable date becomes a timestamp; the unparsable one is dropped instead of
+        # being compared against the numeric value and failing the query.
+        assert result == [{"metadata_name": "release_date", "value": 1704067200.0, "condition": "after"}]
+        # The field type has to reach the prompt, otherwise the model cannot know the expected format.
+        assert mock_prompt_template.call_args.kwargs["metadata_fields"] == [{"name": "release_date", "type": "time"}]
+
+    @pytest.mark.parametrize(
+        ("metadata_type", "value", "expected"),
+        [
+            ("string", "2024-01-01", "2024-01-01"),
+            ("number", "9", "9"),
+            ("time", 1704067200, 1704067200),
+            ("time", 1704067200.0, 1704067200.0),
+            ("time", "2024-01-01T00:00:00+00:00", 1704067200.0),
+            ("time", "not a date", None),
+            ("time", True, None),
+            ("time", None, None),
+        ],
+    )
+    def test_normalize_metadata_filter_value(
+        self, retrieval: DatasetRetrieval, metadata_type: str, value: object, expected: object
+    ) -> None:
+        assert retrieval._normalize_metadata_filter_value(metadata_type, value) == expected
+
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval, sqlite_session: Session) -> None:
         tenant_id = str(uuid4())
         dataset_id = str(uuid4())
