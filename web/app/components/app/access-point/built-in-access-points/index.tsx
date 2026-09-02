@@ -122,9 +122,8 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           canDeploy={capabilities.canDeploy}
           canManageAccess={capabilities.canReleaseAndVersion}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onChangeStatus={actions.changeSiteStatus}
+          onAppStateChanged={actions.handleAppStateChanged}
           onRefreshApp={actions.refreshAppDetail}
-          onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}
@@ -133,7 +132,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           appInfo={appInfo}
           availability={appCardAvailability}
           canManage={capabilities.canReleaseAndVersion}
-          onChangeStatus={actions.changeApiStatus}
+          onAppStateChanged={actions.handleAppStateChanged}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard

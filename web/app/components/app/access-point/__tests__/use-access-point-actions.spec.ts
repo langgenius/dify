@@ -1,17 +1,15 @@
-import { act, renderHook } from '@testing-library/react'
+import type { ConfigParams } from '@/app/components/app/overview/settings'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 
 const mocks = vi.hoisted(() => ({
-  apiEnableMutation: vi.fn().mockResolvedValue({}),
   emit: vi.fn(),
   fetchAppDetail: vi.fn().mockResolvedValue({ id: 'app-1' }),
   getSocket: vi.fn(),
   onAppStateUpdate: vi.fn(() => vi.fn()),
-  resetSiteAccessTokenMutation: vi.fn().mockResolvedValue({}),
   setAppDetail: vi.fn(),
-  siteEnableMutation: vi.fn().mockResolvedValue({}),
   toast: vi.fn(),
   updateAppSiteConfig: vi.fn().mockResolvedValue({}),
 }))
@@ -49,27 +47,27 @@ vi.mock('@/service/client', () => ({
             input.params.app_id,
           ],
         },
-        apiEnable: {
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.apiEnableMutation }),
-          },
-        },
-        siteEnable: {
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.siteEnableMutation }),
-          },
-        },
-        site: {
-          accessTokenReset: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.resetSiteAccessTokenMutation }),
-            },
-          },
-        },
       },
     },
   },
 }))
+
+const siteConfig = {
+  chat_color_theme: '#000000',
+  chat_color_theme_inverted: false,
+  copyright: '',
+  custom_disclaimer: '',
+  default_language: 'en-US',
+  description: 'Description',
+  icon: '🤖',
+  icon_type: 'emoji',
+  input_placeholder: '',
+  privacy_policy: '',
+  prompt_public: false,
+  show_workflow_steps: false,
+  title: 'App',
+  use_icon_as_answer_icon: false,
+} satisfies ConfigParams
 
 function renderActions(appId = 'app-1', canEdit = true) {
   const queryClient = createTestQueryClient()
@@ -86,21 +84,15 @@ describe('useAccessPointActions', () => {
     mocks.getSocket.mockReturnValue({ emit: mocks.emit })
   })
 
-  it('updates API status through the generated contract independently of app editing', async () => {
-    const { queryClient, result } = renderActions('app-1', false)
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+  it('refreshes and broadcasts a successful access point result', async () => {
+    const { result } = renderActions()
 
-    await act(async () => {
-      await result.current.changeApiStatus(true)
-    })
+    act(() => result.current.handleResult(null))
 
-    expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
-      params: { app_id: 'app-1' },
-      body: { enable_api: true },
+    await waitFor(() => {
+      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mocks.setAppDetail).toHaveBeenCalledWith({ id: 'app-1' })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-detail', 'app-1'] })
-    expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-    expect(mocks.setAppDetail).toHaveBeenCalledWith({ id: 'app-1' })
     expect(mocks.emit).toHaveBeenCalledWith(
       'collaboration_event',
       expect.objectContaining({
@@ -113,58 +105,43 @@ describe('useAccessPointActions', () => {
     })
   })
 
-  it('keeps site status changes behind app editing permission', async () => {
-    const { result } = renderActions('app-1', false)
-
-    await act(async () => {
-      await result.current.changeSiteStatus(true)
-    })
-
-    expect(mocks.siteEnableMutation).not.toHaveBeenCalled()
-  })
-
-  it('updates site status through the generated contract', async () => {
+  it('reports a failed result without refreshing or broadcasting stale state', () => {
     const { result } = renderActions()
 
-    await act(async () => {
-      await result.current.changeSiteStatus(false)
-    })
+    act(() => result.current.handleResult(new Error('request failed')))
 
-    expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
-      params: { app_id: 'app-1' },
-      body: { enable_site: false },
-    })
-  })
-
-  it('resets the site access token through the generated contract', async () => {
-    const { result } = renderActions()
-
-    await act(async () => {
-      await result.current.regenerateSiteCode()
-    })
-
-    expect(mocks.resetSiteAccessTokenMutation.mock.calls[0]?.[0]).toEqual({
-      params: { app_id: 'app-1' },
-    })
-    expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.generatedSuccessfully', {
-      type: 'success',
-    })
-  })
-
-  it('reports mutation failure without refreshing or broadcasting stale state', async () => {
-    mocks.apiEnableMutation.mockRejectedValueOnce(new Error('request failed'))
-    const { queryClient, result } = renderActions()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-
-    await act(async () => {
-      await result.current.changeApiStatus(true)
-    })
-
-    expect(invalidateQueries).not.toHaveBeenCalled()
     expect(mocks.fetchAppDetail).not.toHaveBeenCalled()
     expect(mocks.getSocket).not.toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully', {
       type: 'error',
     })
+  })
+
+  it('invalidates app detail and lists after saving legacy site configuration', async () => {
+    const { queryClient, result } = renderActions()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await act(async () => {
+      await result.current.saveSiteConfig(siteConfig)
+    })
+
+    expect(mocks.updateAppSiteConfig).toHaveBeenCalledWith({
+      url: '/apps/app-1/site',
+      body: siteConfig,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-detail', 'app-1'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'starred'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'recent'] })
+  })
+
+  it('keeps site configuration behind app editing permission', async () => {
+    const { result } = renderActions('app-1', false)
+
+    await act(async () => {
+      await result.current.saveSiteConfig(siteConfig)
+    })
+
+    expect(mocks.updateAppSiteConfig).not.toHaveBeenCalled()
   })
 })
