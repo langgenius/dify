@@ -39,8 +39,8 @@ describe('DeployedEnvironmentAccessPoints', () => {
         <DeployedEnvironmentAccessPoints
           appId="app-1"
           environmentId="staging"
-          canDeploy
           canManageAccessPoint
+          canReleaseAndVersion
           highlightedAccessPoint={highlightedAccessPoint}
         />,
       )
@@ -59,8 +59,8 @@ describe('DeployedEnvironmentAccessPoints', () => {
       <DeployedEnvironmentAccessPoints
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion
       />,
     )
 
@@ -80,5 +80,26 @@ describe('DeployedEnvironmentAccessPoints', () => {
       expect(card).not.toHaveAttribute('aria-busy')
       expect(card.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
     }
+  })
+
+  it('passes the Built-in permission split to deployed environment cards', () => {
+    render(
+      <DeployedEnvironmentAccessPoints
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint
+        canReleaseAndVersion={false}
+      />,
+    )
+
+    expect(mocks.webAppCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canManageAccessPoint: true,
+        canReleaseAndVersion: false,
+      }),
+    )
+    expect(mocks.serviceApiCard).toHaveBeenCalledWith(
+      expect.objectContaining({ canManageAccessPoint: true }),
+    )
   })
 })

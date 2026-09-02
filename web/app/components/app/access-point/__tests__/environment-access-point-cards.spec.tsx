@@ -232,8 +232,8 @@ describe('environment access point cards', () => {
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion
       />,
     )
 
@@ -260,8 +260,8 @@ describe('environment access point cards', () => {
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion
       />,
     )
 
@@ -279,8 +279,8 @@ describe('environment access point cards', () => {
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion
       />,
     )
 
@@ -298,8 +298,8 @@ describe('environment access point cards', () => {
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion
       />,
     )
 
@@ -345,8 +345,8 @@ describe('environment access point cards', () => {
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint
+        canReleaseAndVersion={false}
       />,
     )
 
@@ -360,27 +360,67 @@ describe('environment access point cards', () => {
     expect(screen.getByRole('dialog', { name: 'environment settings' })).toBeInTheDocument()
   })
 
-  it('uses Access Point management only for deployed Web App settings', async () => {
+  it('keeps view actions available while disabling deployed Web App management', async () => {
     renderCard(
       <EnvironmentWebAppCard
         appId="app-1"
         environmentId="staging"
-        canDeploy
         canManageAccessPoint={false}
+        canReleaseAndVersion={false}
+      />,
+    )
+
+    expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
+  })
+
+  it('uses Access Point management for deployed Web App operations without access management', async () => {
+    renderCard(
+      <EnvironmentWebAppCard
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint
+        canReleaseAndVersion={false}
       />,
     )
 
     expect(await screen.findByRole('switch')).toBeEnabled()
     expect(screen.getByRole('button', { name: /regenerate/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+    ).toBeDisabled()
+  })
+
+  it('uses Web App access management independently from Access Point management', async () => {
+    renderCard(
+      <EnvironmentWebAppCard
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint={false}
+        canReleaseAndVersion
+      />,
+    )
+
+    expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
     ).toBeEnabled()
-    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
   })
 
   it('renders the real Service API endpoint, environment keys entry, docs entry, and API toggle', async () => {
     const user = userEvent.setup()
-    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+    renderCard(
+      <EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManageAccessPoint />,
+    )
 
     expect(await screen.findByText(api.base_url)).toBeInTheDocument()
     expect(mocks.apiKeyButtonProps).toHaveBeenLastCalledWith(
@@ -418,7 +458,9 @@ describe('environment access point cards', () => {
       enabled: false,
     })
 
-    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+    renderCard(
+      <EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManageAccessPoint />,
+    )
 
     await screen.findByText(api.base_url)
     expect(await screen.findByRole('button', { name: 'environment-api-keys' })).toBeEnabled()
@@ -432,7 +474,9 @@ describe('environment access point cards', () => {
   it('distinguishes the Service API loading and failed query states', async () => {
     mocks.getApi.mockRejectedValue(new Error('API unavailable'))
 
-    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+    renderCard(
+      <EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManageAccessPoint />,
+    )
 
     const card = screen.getByRole('region', { name: /serviceApi\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
@@ -448,5 +492,23 @@ describe('environment access point cards', () => {
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeDisabled()
     expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
+  })
+
+  it('disables deployed Service API management without Access Point management', async () => {
+    renderCard(
+      <EnvironmentServiceApiCard
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint={false}
+      />,
+    )
+
+    expect(await screen.findByText(api.base_url)).toBeInTheDocument()
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeDisabled()
+    expect(screen.getByRole('link', { name: /apiInfo\.doc/ })).toBeEnabled()
+    expect(mocks.apiKeyButtonProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ canManage: false }),
+    )
   })
 })

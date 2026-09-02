@@ -119,8 +119,8 @@ function AccessPointContent({
           <DeployedEnvironmentAccessPoints
             appId={appId}
             environmentId={selectedEnvironment}
-            canDeploy={canDeploy}
             canManageAccessPoint={canManageAccessPoint}
+            canReleaseAndVersion={canReleaseAndVersion}
             highlightedAccessPoint={selectedHighlightedAccessPoint}
           />
         )}
@@ -141,7 +141,8 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
-  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canDeploy
+  const showEnvironmentTabs =
+    appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canViewAccessPoint
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
