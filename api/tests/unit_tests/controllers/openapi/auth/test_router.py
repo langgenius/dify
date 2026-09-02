@@ -78,7 +78,7 @@ def _nothing(**_kwargs: object) -> None:
 
 def test_every_subject_type_has_a_pipeline() -> None:
     """A new `SubjectType` with no entry still 403s `unsupported_token_type`,
-    but at the router's lookup — skipping `SubjectCheck`'s wrong-surface audit.
+    but at the router's lookup — skipping `CheckSubject`'s wrong-surface audit.
     """
     assert set(subject_router._pipelines) == set(SubjectType)
 

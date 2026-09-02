@@ -27,12 +27,12 @@ from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
     CheckAppApiEnabled,
-    RBACScene,
-    RequireWebappAccess,
-    RequireWorkspaceMembership,
-    SubjectCheck,
-    TokenScope,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.service_api.app.error import (
@@ -74,12 +74,12 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 _APP_RUN = (
-    SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
     CheckAppApiEnabled(),
-    RequireWorkspaceMembership(),
-    TokenScope(Scope.APPS_RUN),
-    RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
-    RequireWebappAccess(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    CheckAppAccess(),
 )
 
 

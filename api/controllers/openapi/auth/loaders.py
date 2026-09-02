@@ -73,7 +73,7 @@ def _fetch_app(ctx: Context) -> App:
 
 
 def _fetch_workspace(ctx: Context) -> Tenant:
-    """Not a check that stands down, a source that follows the route: an
+    """Not a check that can be skipped, a source that follows the route: an
     app-scoped route takes its workspace from the app, every other one from the
     request. Both raise when their own source is absent.
     """

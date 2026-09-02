@@ -28,10 +28,10 @@ from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
-    RBACScene,
-    RequireWorkspaceMembership,
-    SubjectCheck,
-    TokenScope,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.service_api.app.error import AppUnavailableError
@@ -44,7 +44,7 @@ from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
-_ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
+_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
 
 
 def _is_listable(app: App) -> bool:
@@ -110,9 +110,9 @@ class AppDescribeApi(Resource):
         requirements=(
             _ACCOUNT_SUBJECT,
             CheckAppApiEnabled(),
-            RequireWorkspaceMembership(),
-            TokenScope(Scope.APPS_READ),
-            RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
         ),
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "App description"),
@@ -128,8 +128,8 @@ class AppListApi(Resource):
     @endpoint(
         requirements=(
             _ACCOUNT_SUBJECT,
-            TokenScope(Scope.APPS_READ),
-            RequireWorkspaceMembership(),
+            CheckScope(Scope.APPS_READ),
+            CheckWorkspaceMember(),
         ),
         query=AppListQuery,
         returns=(200, AppListResponse, "App list"),

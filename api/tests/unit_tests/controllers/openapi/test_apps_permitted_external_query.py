@@ -7,7 +7,7 @@ as AppListQuery.
 
 The allow/deny answers live in `test_auth_matrix.py`; what is pinned here is what
 each route declares — the transaction boundary, and which of the two carries
-`RequireWebappAccess`.
+`CheckAppAccess`.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from controllers.openapi.apps_permitted_external import (
     PermittedExternalAppsListApi,
     PermittedExternalAppsListQuery,
 )
-from controllers.openapi.auth.requirements import RequireWebappAccess
+from controllers.openapi.auth.requirements import CheckAppAccess
 from models.model import App, AppMode
 
 from ._mode_constants import NON_LISTABLE_MODES
@@ -92,16 +92,16 @@ def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: b
 def test_describe_requires_webapp_access():
     """SSO-only and app-scoped, but not run-scoped — and the web-app ACL and the
     private-app check are gated on the app and its access mode, neither on the run
-    scope. Omitting `RequireWebappAccess` here would silently drop both.
+    scope. Omitting `CheckAppAccess` here would silently drop both.
     """
     requirements = PermittedExternalAppDescribeApi.get.__spec__.requirements
-    assert any(isinstance(requirement, RequireWebappAccess) for requirement in requirements)
+    assert any(isinstance(requirement, CheckAppAccess) for requirement in requirements)
 
 
 def test_list_does_not_require_webapp_access():
     """No `app_id` in the path, so there is no app to run an ACL against."""
     requirements = PermittedExternalAppsListApi.get.__spec__.requirements
-    assert not any(isinstance(requirement, RequireWebappAccess) for requirement in requirements)
+    assert not any(isinstance(requirement, CheckAppAccess) for requirement in requirements)
 
 
 def test_describe_forwards_request_session_to_response_builder(unbound_session: Session):

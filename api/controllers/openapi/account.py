@@ -19,7 +19,7 @@ from controllers.openapi._models import (
     WorkspacePayload,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import CheckSessionOwnership, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
@@ -30,7 +30,7 @@ from services.account_errors import AccountNotFoundError, AccountSessionNotFound
 from services.entities.account_access_entities import AccountSessionSnapshot, AccountWorkspaceSnapshot
 from services.entities.account_entities import AccountSnapshot
 
-_ACCOUNT_REQUIREMENTS = (SubjectCheck(allowed=(AccountSubject,)), TokenScope(Scope.FULL))
+_ACCOUNT_REQUIREMENTS = (CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL))
 
 
 @openapi_ns.route("/account")
