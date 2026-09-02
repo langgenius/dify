@@ -12,11 +12,11 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
-import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { updateUserProfile } from '@/service/common'
+import { createCroppedAvatarImage } from './avatar-image'
 
 type InputImageInfo =
   | { file: File }
@@ -106,7 +106,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       handleLocalFileUpload(inputImageInfo.file)
       return
     }
-    const blob = await getCroppedImg(
+    const blob = await createCroppedAvatarImage(
       inputImageInfo.tempUrl,
       inputImageInfo.croppedAreaPixels,
       inputImageInfo.fileName,
