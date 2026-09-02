@@ -1,5 +1,6 @@
 import io
 import logging
+import uuid
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import Any, Literal, cast
@@ -299,6 +300,22 @@ def _resolve_identity_mode(requested: IdentityMode | None, *, current: IdentityM
     return mode
 
 
+def _validate_uuid(value: str) -> str:
+    """Validate that a string is a UUID and return it unchanged.
+
+    Used by the MCP provider Pydantic payloads so the API layer fails with
+    a clean 400 (Pydantic ValidationError) instead of letting a non-UUID
+    ``provider_id`` reach SQLAlchemy and bubble up as a 500
+    ``psycopg2.errors.InvalidTextRepresentation: invalid input syntax for
+    type uuid: "fast-mcp"`` from the Postgres backend — see #41649.
+    """
+    try:
+        uuid.UUID(value)
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise ValueError(f"invalid uuid: {value!r}") from exc
+    return value
+
+
 class MCPProviderCreatePayload(MCPProviderBasePayload):
     pass
 
@@ -306,14 +323,29 @@ class MCPProviderCreatePayload(MCPProviderBasePayload):
 class MCPProviderUpdatePayload(MCPProviderBasePayload):
     provider_id: str
 
+    @field_validator("provider_id")
+    @classmethod
+    def _validate_provider_id(cls, value: str) -> str:
+        return _validate_uuid(value)
+
 
 class MCPProviderDeletePayload(BaseModel):
     provider_id: str
+
+    @field_validator("provider_id")
+    @classmethod
+    def _validate_provider_id(cls, value: str) -> str:
+        return _validate_uuid(value)
 
 
 class MCPAuthPayload(BaseModel):
     provider_id: str
     authorization_code: str | None = None
+
+    @field_validator("provider_id")
+    @classmethod
+    def _validate_provider_id(cls, value: str) -> str:
+        return _validate_uuid(value)
 
 
 class MCPCallbackQuery(BaseModel):
