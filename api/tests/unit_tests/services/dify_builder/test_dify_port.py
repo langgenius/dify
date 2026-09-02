@@ -507,7 +507,10 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls,
         patch("services.dify_builder.dify_port.naive_utc_now") as mock_naive_utc_now,
     ):
-        mock_ws_cls.return_value.publish_workflow.return_value = (published_workflow, set())
+        # WorkflowService.publish_workflow returns a single Workflow (-> Workflow),
+        # NOT a (workflow, retirement_candidates) tuple. Mock the real signature so
+        # this test catches the tuple-unpack regression that crashed the publish step.
+        mock_ws_cls.return_value.publish_workflow.return_value = published_workflow
         mock_naive_utc_now.return_value = "the-now"
 
         WorkflowServiceDifyPort().publish("app-1", _actor())
