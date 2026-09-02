@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dify Agent benchmark model">
+  <rect width="64" height="64" rx="12" fill="#155EEF"/>
+  <path d="M17 20h30v24H17z" fill="none" stroke="#fff" stroke-width="4"/>
+  <path d="M24 28h16M24 36h10" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>

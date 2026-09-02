@@ -1,0 +1,8 @@
+services:
+  fake-deps:
+    ports:
+      - "127.0.0.1:${BENCH_E2B_PUBLIC_FILES_HOST_PORT:-15002}:5002"
+
+  agent:
+    ports:
+      - "127.0.0.1:${BENCH_E2B_PUBLIC_STUB_HOST_PORT:-15050}:5050"

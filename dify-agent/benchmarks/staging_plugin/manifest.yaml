@@ -1,0 +1,32 @@
+version: 0.1.4
+type: plugin
+author: dify-agent-benchmark
+name: dify_agent_benchmark_model
+description:
+  en_US: Deterministic model used only by the Dify Agent staging benchmark.
+  zh_Hans: 仅用于 Dify Agent Staging 性能测试的确定性模型。
+label:
+  en_US: Dify Agent Benchmark Model
+  zh_Hans: Dify Agent Benchmark Model
+created_at: "2026-08-11T00:00:00Z"
+icon: icon.svg
+resource:
+  memory: 67108864
+  permission:
+    model:
+      enabled: true
+      llm: true
+    tool:
+      enabled: false
+plugins:
+  models:
+    - provider/dify_agent_benchmark.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main

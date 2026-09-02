@@ -176,8 +176,11 @@ func TestUploadFileStreamsMultipartBody(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ContentLength != -1 {
-			t.Errorf("content length = %d, want -1 for streamed request", r.ContentLength)
+		if r.ContentLength <= int64(len(payload)) {
+			t.Errorf("content length = %d, want multipart length larger than payload %d", r.ContentLength, len(payload))
+		}
+		if len(r.TransferEncoding) != 0 {
+			t.Errorf("transfer encoding = %v, want fixed-length request", r.TransferEncoding)
 		}
 		reader, err := r.MultipartReader()
 		if err != nil {
@@ -238,6 +241,9 @@ func TestUploadFileStartsRequestBeforeSourceEOF(t *testing.T) {
 	requestStarted := make(chan struct{})
 	continueSource := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength != -1 {
+			t.Errorf("content length = %d, want -1 for FIFO stream", r.ContentLength)
+		}
 		close(requestStarted)
 		reader, err := r.MultipartReader()
 		if err != nil {
