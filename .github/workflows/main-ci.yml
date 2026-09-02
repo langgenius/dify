@@ -37,8 +37,6 @@ jobs:
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
-    needs: pre_job
-    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
@@ -49,6 +47,10 @@ jobs:
       migration-changed: ${{ steps.changes.outputs.migration }}
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
       dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
+      python-style-changed: ${{ steps.changes.outputs.python-style }}
+      web-style-changed: ${{ steps.changes.outputs.web-style }}
+      ts-common-style-changed: ${{ steps.changes.outputs.ts-common-style }}
+      superlinter-changed: ${{ steps.changes.outputs.superlinter }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -150,6 +152,54 @@ jobs:
               - 'docker/generate_docker_compose'
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
+            python-style:
+              - 'api/**'
+              - 'scripts/ast_grep_guard.py'
+              - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/lint_controller_sqlalchemy.py'
+              - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
+            web-style:
+              - 'web/**'
+              - 'e2e/**'
+              - 'sdks/nodejs-client/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'knip.config.ts'
+              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
+              - '.github/workflows/style.yml'
+              - '.github/actions/setup-web/**'
+            ts-common-style:
+              - 'web/**'
+              - 'cli/**'
+              - 'e2e/**'
+              - 'sdks/nodejs-client/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'vite.config.ts'
+              - 'lint.config.ts'
+              - 'eslint.config.mjs'
+              - 'knip.config.ts'
+              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
+              - 'oxlint-suppressions.json'
+              - 'eslint-suppressions.json'
+              - '.vscode/**'
+              - '.github/**'
+            superlinter:
+              - '**.sh'
+              - '**.yaml'
+              - '**.yml'
+              - '**Dockerfile'
+              - 'dev/**'
+              - '.editorconfig'
+              - '.vite-hooks/**'
 
   # Run tests in parallel while always emitting stable required checks.
   api-tests-run:
@@ -396,10 +446,18 @@ jobs:
 
   style-check:
     name: Style Check
-    needs: pre_job
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
     uses: ./.github/workflows/style.yml
     with:
       base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      classification-succeeded: ${{ needs.check-changes.result == 'success' }}
+      run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}
+      run-web-style: ${{ needs.check-changes.outputs.web-style-changed == 'true' }}
+      run-ts-common-style: ${{ needs.check-changes.outputs.ts-common-style-changed == 'true' }}
+      run-superlinter: ${{ needs.check-changes.outputs.superlinter-changed == 'true' }}
       skip-checks: ${{ needs.pre_job.outputs.should_skip == 'true' }}
 
   vdb-tests-run:
