@@ -34,7 +34,11 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
-| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records and per-run event streams after their last write; defaults to 2 hours. |
+| `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
+| `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
+| `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Soft debounce interval for compatible text deltas. Already-ready source events may continue to merge after this interval; a waiting source triggers the timed flush. Must be greater than zero; use `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED=false` to disable coalescing. |
+| `DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS` | `4096` | Character threshold that flushes a buffered text-delta event immediately. |
 | `DIFY_AGENT_RUN_TIMEOUT_SECONDS` | `3600` | Wall-clock deadline in seconds for the Pydantic AI `agent.run(...)` model/tool loop. Deadline failures use `agent_run_limit_exceeded`. Its default intentionally matches `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS`, but the settings are independently configurable. |
 | `DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` | `210` | Shell command deadline for running the sandbox `dify-agent file upload --no-download-link` conversion. Keep it above the CLI's 180-second upload deadline. |
 | `DIFY_AGENT_API_TOKEN` | empty | Optional Bearer token required by private run, Execution Binding, Home Snapshot, and Binding file control-plane routes. Must match Dify API `AGENT_BACKEND_API_TOKEN`. |
@@ -75,7 +79,10 @@ Example `.env`:
 DIFY_AGENT_REDIS_URL=redis://localhost:6379/0
 DIFY_AGENT_REDIS_PREFIX=dify-agent-dev
 DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
-DIFY_AGENT_RUN_RETENTION_SECONDS=259200
+DIFY_AGENT_RUN_RETENTION_SECONDS=7200
+DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH=5000
+DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS=100
+DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS=4096
 DIFY_AGENT_RUN_TIMEOUT_SECONDS=3600
 DIFY_AGENT_API_TOKEN=replace-with-agent-backend-token
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
@@ -138,7 +145,15 @@ and lifecycle contract.
 
 Run records and event streams use the same retention. Status writes refresh the
 record TTL, and event writes refresh both the stream TTL and the corresponding
-record TTL so active runs that keep producing events remain observable.
+record TTL so active runs that keep producing events remain observable. Text
+deltas for the same response part and provider metadata are coalesced within a
+soft debounce/size window before being published. The debounce timer flushes
+when reading the next source event would block; already-ready events may keep
+merging until the character threshold or a non-compatible event is reached.
+Every Redis Stream write also applies the configured approximate maximum length. A reconnect cursor older than the
+retained window resumes from the oldest remaining event, so callers must treat
+the terminal snapshot and application-owned history as authoritative rather
+than relying on the Agent event stream as long-term history.
 
 ## Validate the E2B Compose deployment
 
@@ -226,11 +241,13 @@ Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
 Run the disposable Local contract from the `dify-agent` directory. The script
 starts one local-sandbox container on an unused port and removes that exact
-container on exit:
+container on exit. It intentionally has no image fallback: provide a Local
+Sandbox image built from the same commit as the code under test so an older
+shellctl implementation cannot make the lifecycle contract pass incorrectly:
 
 ```bash
 cd dify-agent
-DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE=langgenius/dify-agent-local-sandbox:1.16.0 \
+DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE=<same-commit-local-sandbox-image> \
   tests/integration/dify_agent/runtime_backend/run_local_integration.sh
 ```
 

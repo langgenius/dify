@@ -137,12 +137,15 @@ describe('InSiteMessageNotification', () => {
       await waitFor(() => {
         expect(screen.getByText('Parsed body main')).toBeInTheDocument()
       })
-      expect(screen.getByRole('button', { name: 'Visit docs' })).toBeInTheDocument()
+      const docsLink = screen.getByRole('link', { name: 'Visit docs' })
+      expect(docsLink).toHaveAttribute('href', 'https://example.com/docs')
+      expect(docsLink).toHaveAttribute('target', '_blank')
+      expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer')
       expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Visit docs' }))
+      fireEvent.click(docsLink)
       expect(mockNotificationDismiss).not.toHaveBeenCalled()
 
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss now' }))

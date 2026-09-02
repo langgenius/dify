@@ -21,9 +21,8 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.account_oauth_service import AccountOAuthService
-from services.entities.account_entities import AccountSnapshot
+from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
 from services.entities.account_oauth_entities import (
-    AccountSessionTokens,
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
@@ -544,8 +543,8 @@ def test_concurrent_callbacks_claim_identity_before_creating_account_or_workspac
 
 def test_concurrent_provider_callbacks_claim_normalized_email_before_registration() -> None:
     harness = _harness(
-        identity=OAuthIdentity("github-user", "User", "Shared@Example.com"),
-        additional_identities={"google": OAuthIdentity("google-user", "User", "shared@example.COM")},
+        identity=OAuthIdentity("github-user", "User", "Shared.User+github@GoogleMail.com"),
+        additional_identities={"google": OAuthIdentity("google-user", "User", "shareduser@gmail.COM")},
     )
     harness.accounts.stored["new-account"] = _account(account_id="new-account", email="shared@example.com")
     harness.memberships.workspace_ids = ()
@@ -566,8 +565,8 @@ def test_concurrent_provider_callbacks_claim_normalized_email_before_registratio
 
     assert len(harness.registration.registrations) == 1
     assert sorted(harness.account_claims.claims) == [
-        ("github", "github-user", "shared@example.com"),
-        ("google", "google-user", "shared@example.com"),
+        ("github", "github-user", "shareduser@gmail.com"),
+        ("google", "google-user", "shareduser@gmail.com"),
     ]
     assert sorted(harness.integrations.links) == [
         ("new-account", "github", "github-user"),

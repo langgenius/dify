@@ -4,18 +4,18 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import override
 
-from langfuse import Langfuse
+import httpx
+from langfuse import __version__ as langfuse_version
 from langfuse.api import (
     CreateGenerationBody,
     CreateSpanBody,
     IngestionEvent_GenerationCreate,
     IngestionEvent_SpanCreate,
     IngestionEvent_TraceCreate,
+    LangfuseAPI,
     TraceBody,
 )
 from langfuse.api.commons.types.usage import Usage
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -55,36 +55,29 @@ class LangFuseDataTrace(BaseTraceInstance):
         langfuse_config: LangfuseConfig,
     ):
         super().__init__(langfuse_config)
-        # Isolated TracerProvider prevents the langfuse v3 SDK from attaching its
-        # SpanProcessor to the global OpenTelemetry TracerProvider, which would
-        # otherwise siphon every Flask/Celery/SQLAlchemy span in the process into
-        # this tenant's Langfuse project. See langfuse upgrade guide v2 -> v3.
-        self._tracer_provider: TracerProvider | None = TracerProvider(
-            resource=Resource.create({"service.name": "dify-langfuse-app-trace"}),
-        )
-        self.langfuse_client = Langfuse(
-            public_key=langfuse_config.public_key,
-            secret_key=langfuse_config.secret_key,
-            host=langfuse_config.host,
-            tracer_provider=self._tracer_provider,
+        timeout = int(os.environ.get("LANGFUSE_TIMEOUT", 5))
+        self._http_client: httpx.Client | None = httpx.Client(timeout=timeout)
+        self.langfuse_client = LangfuseAPI(
+            base_url=langfuse_config.host,
+            username=langfuse_config.public_key,
+            password=langfuse_config.secret_key,
+            x_langfuse_sdk_name="python",
+            x_langfuse_sdk_version=langfuse_version,
+            x_langfuse_public_key=langfuse_config.public_key,
+            timeout=timeout,
+            httpx_client=self._http_client,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
     def close(self) -> None:
-        """Flush and shut down the isolated TracerProvider.
-
-        Called explicitly when the trace instance is evicted from the cache, or
-        implicitly via ``__del__`` on garbage collection. Idempotent.
-        """
-        provider = getattr(self, "_tracer_provider", None)
-        if provider is None:
+        client = getattr(self, "_http_client", None)
+        if client is None:
             return
+        self._http_client = None
         try:
-            provider.shutdown()
+            client.close()
         except Exception:
-            logger.debug("Failed to shut down Langfuse TracerProvider", exc_info=True)
-        finally:
-            self._tracer_provider = None
+            logger.debug("Failed to close Langfuse HTTP client", exc_info=True)
 
     def __del__(self) -> None:
         self.close()
@@ -500,7 +493,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
@@ -527,7 +520,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}")
@@ -576,7 +569,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
@@ -590,15 +583,18 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            return self.langfuse_client.auth_check()
+            projects = self.langfuse_client.projects.get()
         except Exception as e:
-            logger.debug("LangFuse API check failed: %s", str(e))
+            logger.debug("LangFuse API check failed", exc_info=True)
             raise ValueError(f"LangFuse API check failed: {str(e)}")
+        if not projects.data:
+            raise ValueError("LangFuse API check failed: no project found for the provided credentials")
+        return True
 
     def get_project_key(self):
         try:
-            projects = self.langfuse_client.api.projects.get()
+            projects = self.langfuse_client.projects.get()
             return projects.data[0].id
         except Exception as e:
-            logger.debug("LangFuse get project key failed: %s", str(e))
+            logger.debug("LangFuse get project key failed", exc_info=True)
             raise ValueError(f"LangFuse get project key failed: {str(e)}")

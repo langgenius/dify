@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from services.entities.account_entities import AccountSessionTokens as _AccountSessionTokens
+
 
 @dataclass(frozen=True, slots=True)
 class OAuthAuthorizationRequest:
@@ -46,21 +48,14 @@ class OAuthAccountRegistration:
 
 
 @dataclass(frozen=True, slots=True)
-class AccountSessionTokens:
-    access_token: str
-    refresh_token: str
-    csrf_token: str
-
-
-@dataclass(frozen=True, slots=True)
 class OAuthSignInResult:
-    tokens: AccountSessionTokens
+    tokens: _AccountSessionTokens
     oauth_new_user: bool
 
 
 @dataclass(frozen=True, slots=True)
 class OAuthInvitationResult:
-    tokens: AccountSessionTokens
+    tokens: _AccountSessionTokens
     invite_token: str
 
 

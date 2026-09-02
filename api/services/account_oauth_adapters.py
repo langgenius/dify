@@ -27,7 +27,7 @@ from services.account_oauth_service import (
 )
 from services.billing_service import BillingService
 from services.entities.account_oauth_entities import OAuthAuthorizationRequest, OAuthIdentity
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ class DeploymentOAuthPolicyGateway(OAuthRegistrationPolicyGateway, OAuthWorkspac
 
     @override
     def is_registration_allowed(self) -> bool:
-        return FeatureService.get_system_features().is_allow_register
+        return SystemFeatureService.is_registration_allowed()
 
     @override
     def get_freeze_type(self, email: str) -> str | None:
@@ -200,4 +200,4 @@ class DeploymentOAuthPolicyGateway(OAuthRegistrationPolicyGateway, OAuthWorkspac
 
     @override
     def is_creation_allowed(self) -> bool:
-        return FeatureService.is_workspace_creation_allowed()
+        return SystemFeatureService.is_workspace_creation_allowed()

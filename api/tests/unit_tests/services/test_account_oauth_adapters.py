@@ -198,7 +198,7 @@ def test_registration_gateway_creates_only_the_account(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[tuple[str, str, str, str | None, str | None]] = []
+    calls: list[tuple[str, str, str, str | None, str | None, bool]] = []
 
     def create_account(
         email: str,
@@ -209,11 +209,12 @@ def test_registration_gateway_creates_only_the_account(
         is_setup: bool | None = False,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = False,
         *,
         session: Session,
     ) -> Account:
         del password, interface_theme, is_setup
-        calls.append((email, name, interface_language, timezone, ip_address))
+        calls.append((email, name, interface_language, timezone, ip_address, check_normalized_email))
         account = Account(
             email=email,
             name=name,
@@ -242,7 +243,7 @@ def test_registration_gateway_creates_only_the_account(
         )
     )
 
-    assert calls == [("user@example.com", "User", "en-US", "Asia/Singapore", "203.0.113.10")]
+    assert calls == [("user@example.com", "User", "en-US", "Asia/Singapore", "203.0.113.10", True)]
     with sqlite_session_factory() as session:
         account = session.get(Account, account_id)
         assert account is not None

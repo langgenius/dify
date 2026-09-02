@@ -19,15 +19,15 @@ from services.account_errors import (
     OAuthProviderRequestError,
     OAuthRegistrationError,
 )
+from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_oauth_entities import (
-    AccountSessionTokens,
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
     OAuthCallbackResult,
     OAuthInvitationResult,
     OAuthSignInResult,
 )
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 CONSOLE_WEB_URL = "https://console.example.com"
 
@@ -127,7 +127,7 @@ def test_oauth_admission_does_not_query_enterprise_features(
     def unexpected_feature_query() -> NoReturn:
         raise AssertionError("OAuth admission must not query Enterprise features")
 
-    monkeypatch.setattr(FeatureService, "get_system_features", unexpected_feature_query)
+    monkeypatch.setattr(SystemFeatureService, "get_license", unexpected_feature_query)
 
     with app.test_request_context("/oauth/login/github"):
         response = OAuthLogin().get("github")

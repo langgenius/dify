@@ -36,8 +36,8 @@ from services.account_errors import (
     OAuthSeatsLimitExceededError,
     OAuthWorkspaceCreationNotAllowedError,
 )
+from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_oauth_entities import (
-    AccountSessionTokens,
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
     OAuthCallbackResult,

@@ -23,10 +23,11 @@ import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
 import { TagTriggerContent } from './tag-trigger-content'
 
+const normalizeTagName = (name: string) => name.trim().toLocaleLowerCase()
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (
   tag,
   query,
-) => tag.name.includes(query)
+) => normalizeTagName(tag.name).includes(normalizeTagName(query))
 const tagToString = (tag: TagComboboxItem) => tag.name
 const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 
@@ -52,6 +53,7 @@ type TagSelectorRootProps = Omit<
 export type TagSelectorProps = TagSelectorRootProps &
   Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
+    contextLabel?: string
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
@@ -61,6 +63,7 @@ export type TagSelectorProps = TagSelectorRootProps &
 
 export const TagSelector = ({
   targetId,
+  contextLabel,
   type,
   value,
   canBindOrUnbindTags,
@@ -105,10 +108,12 @@ export const TagSelector = ({
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
   const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
+  const accessibleTriggerLabel = contextLabel ? `${triggerLabel}: ${contextLabel}` : triggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
     const nextItems: TagComboboxItem[] = []
+    const normalizedInputValue = normalizeTagName(inputValue)
 
     for (const tag of tagList) {
       if (tag.type !== type) continue
@@ -121,10 +126,15 @@ export const TagSelector = ({
       if (tag.type === type && !tagIds.has(tag.id)) nextItems.push(tag)
     }
 
-    if (canManageTags && inputValue && nextItems.every((tag) => tag.name !== inputValue)) {
+    if (
+      canManageTags &&
+      normalizedInputValue &&
+      nextItems.every((tag) => normalizeTagName(tag.name) !== normalizedInputValue)
+    ) {
+      const trimmedInputValue = inputValue.trim()
       nextItems.push({
-        id: `__create_tag__:${inputValue}`,
-        name: inputValue,
+        id: `__create_tag__:${trimmedInputValue}`,
+        name: trimmedInputValue,
         type,
         binding_count: '0',
         isCreateOption: true,
@@ -244,7 +254,7 @@ export const TagSelector = ({
     >
       <ComboboxTrigger
         disabled={!canManageTags && !canBindOrUnbindTags}
-        aria-label={triggerLabel}
+        aria-label={accessibleTriggerLabel}
         className={cn(
           'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
           className,
@@ -261,7 +271,7 @@ export const TagSelector = ({
       <ComboboxPortal>
         <ComboboxPositioner placement="bottom-start" sideOffset={4}>
           <ComboboxPopup
-            aria-label={triggerLabel}
+            aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
             <TagSearchContent

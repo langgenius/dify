@@ -9,6 +9,7 @@ export type AgentAppPagination = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
@@ -465,6 +466,11 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type AgentPublicationCountsResponse = {
+  drafts: number
+  published: number
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
@@ -1733,6 +1739,7 @@ export type AgentAppPaginationWritable = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
@@ -1854,6 +1861,7 @@ export type GetAgentData = {
       | 'workflow'
     name?: string
     page?: number
+    publication_status?: 'drafts' | 'published'
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
   }

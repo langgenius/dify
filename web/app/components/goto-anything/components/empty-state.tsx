@@ -3,7 +3,7 @@
 import type { ActionItem } from '../actions/types'
 import { useTranslation } from 'react-i18next'
 
-type EmptyStateVariant = 'no-results' | 'error' | 'default' | 'loading'
+type EmptyStateVariant = 'no-results' | 'error' | 'loading'
 
 type EmptyStateProps = {
   variant: EmptyStateVariant
@@ -43,23 +43,6 @@ export function EmptyState({
           <div className="mt-1 text-xs text-text-quaternary">
             {error?.message ||
               t(($) => $['gotoAnything.servicesUnavailableMessage'], { ns: 'app' })}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (variant === 'default') {
-    return (
-      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-          </div>
-          <div className="mt-3 space-y-1 text-xs text-text-quaternary">
-            <div>{t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}</div>
-            <div>{t(($) => $['gotoAnything.commandHint'], { ns: 'app' })}</div>
-            <div>{t(($) => $['gotoAnything.slashHint'], { ns: 'app' })}</div>
           </div>
         </div>
       </div>

@@ -80,8 +80,8 @@ def enable_annotation_reply_task(
                         )
                         try:
                             old_vector.delete()
-                        except Exception as e:
-                            logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
+                        except Exception:
+                            logger.info("Delete annotation index error", exc_info=True)
                 annotation_setting.score_threshold = score_threshold
                 annotation_setting.collection_binding_id = dataset_collection_binding.id
                 annotation_setting.updated_user_id = user_id
@@ -116,8 +116,8 @@ def enable_annotation_reply_task(
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                 try:
                     vector.delete_by_metadata_field("app_id", app_id)
-                except Exception as e:
-                    logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
+                except Exception:
+                    logger.info("Delete annotation index error", exc_info=True)
                 vector.create(documents)
             session.commit()
             redis_client.setex(enable_app_annotation_job_key, 600, "completed")

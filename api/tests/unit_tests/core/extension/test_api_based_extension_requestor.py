@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import httpx
 import pytest
 from pytest_mock import MockerFixture
@@ -29,10 +31,8 @@ def test_request_success(mocker: MockerFixture):
     )
 
 
-def test_request_with_ssrf_proxy(mocker: MockerFixture):
-    # Mock dify_config
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", "https://proxy:8081")
+def test_request_with_ssrf_proxy(mocker: MockerFixture, config_overrides: Callable[..., None]):
+    config_overrides(SSRF_PROXY_HTTP_URL="http://proxy:8080", SSRF_PROXY_HTTPS_URL="https://proxy:8081")
 
     # Mock httpx.Client
     mock_client = mocker.MagicMock()
@@ -60,10 +60,8 @@ def test_request_with_ssrf_proxy(mocker: MockerFixture):
     assert mock_transport.call_count == 2
 
 
-def test_request_with_only_one_proxy_config(mocker: MockerFixture):
-    # Mock dify_config with only one proxy
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", None)
+def test_request_with_only_one_proxy_config(mocker: MockerFixture, config_overrides: Callable[..., None]):
+    config_overrides(SSRF_PROXY_HTTP_URL="http://proxy:8080", SSRF_PROXY_HTTPS_URL=None)
 
     # Mock httpx.Client
     mock_client = mocker.MagicMock()

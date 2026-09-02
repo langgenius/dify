@@ -5,6 +5,7 @@ from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
+from services.account_email import normalize_email
 from services.account_errors import (
     AccountEmailDomainSuspendedError,
     AccountEmailFrozenError,
@@ -17,9 +18,8 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.account_ports import AccountIntegrationRepository, AccountRepository, AccountWorkspaceMembershipQuery
-from services.entities.account_entities import AccountSnapshot
+from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
 from services.entities.account_oauth_entities import (
-    AccountSessionTokens,
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
@@ -116,12 +116,12 @@ class AccountOAuthService:
     def complete_authorization(self, command: OAuthCallbackCommand) -> OAuthCallbackResult:
         provider = self._provider(command.provider)
         identity = provider.get_identity(command.code)
-        normalized_email = self._normalize_email(identity.email)
+        identity_email_key = self._identity_email_key(identity.email)
 
         with self._account_claims.acquire(
             provider=command.provider,
             open_id=identity.id,
-            email=normalized_email,
+            email=identity_email_key,
         ) as identity_claim:
             return self._complete_claimed_authorization(command, identity, identity_claim)
 
@@ -266,6 +266,10 @@ class AccountOAuthService:
     @staticmethod
     def _normalize_email(email: str) -> str:
         return email.strip().lower()
+
+    @staticmethod
+    def _identity_email_key(email: str) -> str:
+        return normalize_email(email.strip())
 
     @staticmethod
     def _ensure_account_can_login(account: AccountSnapshot) -> None:

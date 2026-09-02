@@ -21,8 +21,8 @@ from services.account_oauth_service import (
 )
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise.enterprise_service import try_join_default_workspace
+from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_oauth_entities import (
-    AccountSessionTokens,
     OAuthAccountRegistration,
     OAuthInvitation,
 )
@@ -68,6 +68,7 @@ class AccountServiceOAuthAccountRegistrationGateway(OAuthAccountRegistrationGate
                     password=None,
                     timezone=registration.timezone,
                     ip_address=registration.ip_address,
+                    check_normalized_email=True,
                     session=session,
                 )
                 account.status = AccountStatus.ACTIVE

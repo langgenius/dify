@@ -45,6 +45,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class MemberInvitePayload(BaseModel):
@@ -185,7 +186,7 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_accou
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
         if new_account_count > 0:
-            seats = FeatureService.get_license().seats
+            seats = SystemFeatureService.get_license().seats
             if not seats.is_available(new_account_count):
                 raise SeatsLimitExceeded()
         return

@@ -953,7 +953,7 @@ Returns Server-Sent Events stream.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
 
 #### AppAccessModeQuery
 
@@ -1019,7 +1019,7 @@ Button styles for user actions.
 | inputs | object | Input variables for the chat | Yes |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### CompletionMessagePayload
@@ -1029,7 +1029,7 @@ Button styles for user actions.
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### ConversationInfiniteScrollPagination
@@ -1121,7 +1121,7 @@ Enum representing the deployment edition of the platform.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -1266,12 +1266,6 @@ Parsed multipart form fields for HITL uploads.
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
 
-#### JSONObject
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONObject | object |  |  |
-
 #### JSONValue
 
 | Name | Type | Description | Required |
@@ -1328,7 +1322,7 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -1336,7 +1330,7 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | belongs_to | string |  | No |
 | filename | string |  | Yes |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
 | transfer_method | string |  | Yes |
@@ -1364,7 +1358,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -1372,18 +1366,18 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
-| file_upload | [JSONObject](#jsonobject) |  | Yes |
-| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement |  |  | No |
-| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
-| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
-| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
-| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
-| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### PassportAccessTokenResponse
 
@@ -1441,9 +1435,9 @@ Form input definition.
 | document_id | string |  | No |
 | document_name | string |  | No |
 | hit_count | integer |  | No |
-| id | string |  | No |
+| id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
-| message_id | string |  | No |
+| message_id | string (uuid) |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
 | segment_id | string |  | No |
@@ -1494,7 +1488,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -1503,7 +1497,7 @@ Form input definition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | introduction | string |  | No |
 | name | string |  | Yes |
@@ -1527,15 +1521,15 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### StringListSource
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [ValueSourceType](#valuesourcetype) |  | Yes |
-| value | [ string ] |  | No |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
 
 #### StringSource
 
@@ -1681,19 +1675,19 @@ in form definition, or a variable while the workflow is running.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
@@ -1737,5 +1731,5 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
