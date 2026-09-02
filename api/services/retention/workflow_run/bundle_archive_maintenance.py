@@ -31,7 +31,12 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import (
+    ArchiveStorage,
+    ArchiveStorageError,
+    ArchiveStorageNotConfiguredError,
+    get_archive_storage,
+)
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -1195,11 +1200,97 @@ class WorkflowRunBundleArchiveMaintenance:
         payload = json.dumps({"created_at": datetime.datetime.now(datetime.UTC).isoformat()}).encode("utf-8")
         storage.put_object(f"{object_prefix}/{marker_name}", payload)
 
+    # Bounded retry for the post-delete HEAD check on the marker. The
+    # archive storage may transiently fail (or return stale state) right
+    # after a delete; we retry a few times before declaring the delete
+    # failed. This is a marker-only path so the budget is tight.
+    _MARKER_DELETE_VERIFY_ATTEMPTS = 5
+    _MARKER_DELETE_VERIFY_BASE_DELAY = 0.5
+
     @staticmethod
     def _delete_marker(storage: ArchiveStorage, object_prefix: str, marker_name: str) -> None:
+        """Delete a transition marker, verifying the post-delete state.
+
+        Issue #41620: a transport timeout on the DeleteObject call cannot
+        tell us whether the remote object store applied the delete. The
+        pre-fix code did a pre-delete existence check, then a single
+        delete, and called it a day — a successful remote delete that the
+        client didn't see still failed the bundle. The new code treats
+        the post-delete state as the success criterion:
+
+        1. If the marker is already absent, no-op.
+        2. Otherwise, call ``delete_object`` (the call may raise on
+           transport error; we retry that path with bounded backoff).
+        3. After a successful ``delete_object`` (or a retryable error
+           followed by another attempt), do a HEAD via
+           ``object_exists()``. Only return when the marker is
+           authoritatively absent.
+        4. If the marker still exists after the budget is exhausted, or
+           a non-retryable error is raised, fail closed.
+
+        Failure here blocks a single shard from advancing; the rest of
+        the retention pipeline is unaffected. The whole call is
+        fail-closed (raises on any uncertainty) — this PR is the
+        "trust the remote state, not the client outcome" half of the
+        fix; the "retry transport errors" half is what makes the path
+        recover from a transient outage without manual intervention.
+        """
         marker_key = f"{object_prefix}/{marker_name}"
-        if storage.object_exists(marker_key):
-            storage.delete_object(marker_key)
+
+        attempts = WorkflowRunBundleArchiveMaintenance._MARKER_DELETE_VERIFY_ATTEMPTS
+        base_delay = WorkflowRunBundleArchiveMaintenance._MARKER_DELETE_VERIFY_BASE_DELAY
+
+        last_error: Exception | None = None
+        for attempt in range(attempts):
+            # Step 1: short-circuit if the marker is already gone.
+            if not storage.object_exists(marker_key):
+                return
+
+            # Step 2: try the delete. ``ArchiveStorageError`` from
+            # ``delete_object`` covers both ``ClientError`` (non-404)
+            # and ``BotoCoreError`` (network, timeouts, etc.). The
+            # ``is_retryable`` predicate keeps transient transport
+            # errors in the retry loop and lets real failures out
+            # immediately (fail-closed).
+            try:
+                storage.delete_object(marker_key)
+            except ArchiveStorageError as exc:
+                if not _is_retryable_archive_error(exc):
+                    raise
+                last_error = exc
+                time.sleep(base_delay * (2**attempt))
+                continue
+
+            # Step 3: verify the post-delete state via HEAD. A
+            # transport error here is also retryable.
+            try:
+                still_exists = storage.object_exists(marker_key)
+            except ArchiveStorageError as exc:
+                if not _is_retryable_archive_error(exc):
+                    raise
+                last_error = exc
+                time.sleep(base_delay * (2**attempt))
+                continue
+
+            if not still_exists:
+                return
+
+            # The delete call succeeded but the marker is still there.
+            # Either the delete was a no-op (already absent before the
+            # HEAD returned) and a concurrent caller re-created it, or
+            # the storage layer's eventual consistency is lagging.
+            # Either way: retry. Only fail after the budget is gone.
+            time.sleep(base_delay * (2**attempt))
+
+        # Step 4: budget exhausted. The marker is still on the server
+        # (or we kept getting retryable errors). Fail closed so the
+        # caller can decide whether to retry the whole bundle.
+        raise ArchiveStorageError(
+            f"Failed to confirm deletion of marker '{marker_name}' at "
+            f"'{object_prefix}' after {attempts} attempts; refusing to "
+            f"advance the bundle while the marker is still on the server. "
+            f"Last error: {last_error!r}"
+        )
 
     @staticmethod
     def _chunks(values: Sequence[Any], size: int) -> list[Sequence[Any]]:
@@ -1226,3 +1317,48 @@ class WorkflowRunBundleArchiveMaintenance:
                 summary.table_counts[table_name] = summary.table_counts.get(table_name, 0) + count
         else:
             summary.bundles_failed += 1
+
+
+# Module-level helper used by ``_delete_marker`` to distinguish transient
+# transport errors (worth retrying) from real failures (fail-closed).
+def _is_retryable_archive_error(exc: ArchiveStorageError) -> bool:
+    """Return True when an ``ArchiveStorageError`` looks like a transient
+    transport failure that the next attempt might succeed against.
+
+    The error is the one ``ArchiveStorage.delete_object`` and
+    ``ArchiveStorage.object_exists`` raise — they wrap both
+    ``botocore.exceptions.ClientError`` (a 5xx S3/R2 response, a
+    throttling SlowDown, or a RequestTimeout) and
+    ``botocore.exceptions.BotoCoreError`` (DNS, connect, read-timeout,
+    etc.). Boto does not surface a typed "retryable" flag, so we look at
+    the wrapped ``ClientError`` response code when one is present and
+    fall back to True for the network-level ``BotoCoreError`` family —
+    the same family botocore's own retry layer would normally retry.
+    """
+    cause = exc.__cause__ or exc.__context__
+    if cause is None:
+        return False
+
+    response = getattr(cause, "response", None)
+    if response is not None:
+        code = response.get("Error", {}).get("Code")
+        retryable_codes = {
+            "InternalError",
+            "RequestTimeout",
+            "RequestTimeoutException",
+            "ServiceUnavailable",
+            "SlowDown",
+            "ThrottlingException",
+            "TooManyRequests",
+            "TransientError",
+        }
+        if code in retryable_codes:
+            return True
+        if code is not None:
+            # A non-retryable 4xx error (NoSuchKey, AccessDenied, etc.) —
+            # retrying will not help.
+            return False
+
+    # BotoCoreError covers connection, timeout, SSL, EOF, etc. These are
+    # transient by their nature; treat them as retryable.
+    return True
