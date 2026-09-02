@@ -1,22 +1,9 @@
-'use client'
-
-import type { ReactNode } from 'react'
-import type { DifyBuilderCanvasNode } from './utils'
-import type { CanvasEventData } from '@/app/components/dify-builder/types'
-import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
-import { ScopeProvider } from 'jotai-scope'
-import { useHydrateAtoms } from 'jotai/utils'
-import { useEffect, useMemo, useRef } from 'react'
-import {
-  difyBuilderActiveSessionIdAtom,
-  difyBuilderSessionBusyAtom,
-  difyBuilderSessionLastCanvasEventAtom,
-  difyBuilderSessionScopedAtoms,
-} from '@/app/components/dify-builder/state'
-import { useDifyBuilderSessionController } from '@/app/components/dify-builder/use-dify-builder-session'
+import type { CanvasEventData } from '../types'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useEffect, useRef } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { difyBuilderSessionBusyAtom, difyBuilderSessionLastCanvasEventAtom } from '../session/state'
 import {
   difyBuilderCanvasLockedAtom,
   difyBuilderCanvasRefreshFailedAtom,
@@ -25,31 +12,11 @@ import {
   difyBuilderCanvasRefreshRetryRequestAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderPhaseAtom,
-  difyBuilderRuntimeAtom,
-  difyBuilderScopedAtoms,
   difyBuilderSessionIdAtom,
   difyBuilderViewVersionAtom,
-} from './store'
-
-type DifyBuilderProviderProps = {
-  appId?: string
-  canEdit: boolean
-  children: ReactNode
-  getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
-  onFocusCanvas: () => void
-  onRefreshCanvas: () => Promise<boolean>
-  onSyncDraft: () => Promise<unknown>
-  tenantId?: string
-  userId?: string
-}
+} from '../store'
 
 const CANVAS_REFRESH_PHASES = new Set(['modify', 'test', 'review', 'publish', 'complete'])
-const SESSION_STORAGE_PREFIX = 'dify-builder:v1:'
-
-const getSessionStorageKey = (tenantId?: string, userId?: string, appId?: string) => {
-  if (!tenantId || !userId || !appId) return null
-  return `${SESSION_STORAGE_PREFIX}${encodeURIComponent(tenantId)}:${encodeURIComponent(userId)}:${encodeURIComponent(appId)}:active-session-id`
-}
 
 type CanvasInstruction = {
   focus: 'canvas' | 'node_now' | 'node_after_refresh' | 'none'
@@ -92,7 +59,7 @@ const getCanvasInstruction = (data: CanvasEventData): CanvasInstruction => {
   }
 }
 
-const DifyBuilderCanvasLockSync = () => {
+export const DifyBuilderCanvasLockSync = () => {
   const locked = useAtomValue(difyBuilderCanvasLockedAtom)
   const setCanvasReadOnly = useStore((state) => state.setCanvasReadOnly)
 
@@ -107,84 +74,13 @@ const DifyBuilderCanvasLockSync = () => {
   return null
 }
 
-const DifyBuilderSessionPersistence = ({
-  appId,
-  enabled,
-  restore,
-  tenantId,
-  userId,
-}: {
-  appId?: string
-  enabled: boolean
-  restore: (sessionId: string) => Promise<boolean>
-  tenantId?: string
-  userId?: string
-}) => {
-  const activeSessionId = useAtomValue(difyBuilderActiveSessionIdAtom)
-  const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
-  const jotaiStore = useJotaiStore()
-  const storageKey = getSessionStorageKey(tenantId, userId, appId)
-  const attemptedStorageKeyRef = useRef<string | null>(null)
-  const persistedSessionIdRef = useRef<string | null>(null)
-  const restoringRef = useRef(false)
-
-  useEffect(() => {
-    if (!enabled || !storageKey || attemptedStorageKeyRef.current === storageKey) return
-    attemptedStorageKeyRef.current = storageKey
-
-    let storedSessionId: string | null = null
-    try {
-      storedSessionId = window.sessionStorage.getItem(storageKey)?.trim() || null
-    } catch {
-      return
-    }
-    if (!storedSessionId) return
-
-    persistedSessionIdRef.current = storedSessionId
-    restoringRef.current = true
-    setActiveSessionId(storedSessionId)
-    void restore(storedSessionId)
-      .catch(() => undefined)
-      .finally(() => {
-        restoringRef.current = false
-        const currentSessionId = jotaiStore.get(difyBuilderActiveSessionIdAtom)
-        try {
-          if (currentSessionId) {
-            window.sessionStorage.setItem(storageKey, currentSessionId)
-            persistedSessionIdRef.current = currentSessionId
-          } else if (window.sessionStorage.getItem(storageKey) === storedSessionId) {
-            window.sessionStorage.removeItem(storageKey)
-            persistedSessionIdRef.current = null
-          }
-        } catch {
-          // Session persistence is optional and must not block Builder recovery.
-        }
-      })
-  }, [enabled, jotaiStore, restore, setActiveSessionId, storageKey])
-
-  useEffect(() => {
-    if (!enabled || !storageKey || restoringRef.current) return
-    try {
-      if (activeSessionId) {
-        window.sessionStorage.setItem(storageKey, activeSessionId)
-        persistedSessionIdRef.current = activeSessionId
-      } else if (persistedSessionIdRef.current) {
-        window.sessionStorage.removeItem(storageKey)
-        persistedSessionIdRef.current = null
-      }
-    } catch {
-      // Session persistence is a recovery enhancement; storage failures must
-      // not block the active Builder flow.
-    }
-  }, [activeSessionId, enabled, storageKey])
-
-  return null
-}
-
-const DifyBuilderCanvasRefreshSync = ({
+export const DifyBuilderCanvasRefreshSync = ({
   onFocusCanvas,
   onRefreshCanvas,
-}: Pick<DifyBuilderProviderProps, 'onFocusCanvas' | 'onRefreshCanvas'>) => {
+}: {
+  onFocusCanvas: () => void
+  onRefreshCanvas: () => Promise<boolean>
+}) => {
   const busy = useAtomValue(difyBuilderSessionBusyAtom)
   const lastCanvasEvent = useAtomValue(difyBuilderSessionLastCanvasEventAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
@@ -283,67 +179,4 @@ const DifyBuilderCanvasRefreshSync = ({
   ])
 
   return null
-}
-
-const DifyBuilderProviderContent = ({
-  appId,
-  canEdit,
-  children,
-  getCanvasSnapshot,
-  onFocusCanvas,
-  onRefreshCanvas,
-  onSyncDraft,
-  tenantId,
-  userId,
-}: DifyBuilderProviderProps) => {
-  const enabled = useProviderContextSelector((context) => context.difyBuilderEnabled)
-  const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
-  const session = useDifyBuilderSessionController()
-  const runtime = useMemo(
-    () => ({
-      appId,
-      canEdit,
-      enabled,
-      getCanvasSnapshot,
-      onSyncDraft,
-      session,
-      setShowPanel,
-    }),
-    [appId, canEdit, enabled, getCanvasSnapshot, onSyncDraft, session, setShowPanel],
-  )
-
-  useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {
-    dangerouslyForceHydrate: true,
-  })
-
-  return (
-    <>
-      <DifyBuilderSessionPersistence
-        appId={appId}
-        enabled={enabled}
-        restore={session.restore}
-        tenantId={tenantId}
-        userId={userId}
-      />
-      <DifyBuilderCanvasLockSync />
-      <DifyBuilderCanvasRefreshSync
-        onFocusCanvas={onFocusCanvas}
-        onRefreshCanvas={onRefreshCanvas}
-      />
-      {children}
-    </>
-  )
-}
-
-export const DifyBuilderProvider = (props: DifyBuilderProviderProps) => {
-  const scopeKey = getSessionStorageKey(props.tenantId, props.userId, props.appId) ?? 'unscoped'
-  return (
-    <ScopeProvider
-      key={scopeKey}
-      atoms={[...difyBuilderSessionScopedAtoms, ...difyBuilderScopedAtoms]}
-      name="DifyBuilder"
-    >
-      <DifyBuilderProviderContent {...props} />
-    </ScopeProvider>
-  )
 }

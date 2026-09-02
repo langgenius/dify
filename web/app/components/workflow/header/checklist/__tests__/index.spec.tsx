@@ -2,7 +2,7 @@ import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
-import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
+import { difyBuilderSessionBusyAtom } from '@/app/components/workflow-app/components/dify-builder/session/state'
 import {
   difyBuilderChecklistErrorsAtom,
   difyBuilderRuntimeAtom,

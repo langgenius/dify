@@ -1,17 +1,17 @@
-import type { DifyBuilderCanvasNode } from './utils'
 import type {
   Action,
   ChecklistErrorPayload,
   ConversationItem,
+  DifyBuilderSessionController,
   SessionModel,
-} from '@/app/components/dify-builder/types'
-import type { DifyBuilderSessionController } from '@/app/components/dify-builder/use-dify-builder-session'
+} from './types'
+import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import {
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
-} from '@/app/components/dify-builder/state'
+} from './session/state'
 import { shouldStartBuildSession } from './utils'
 
 export type DifyBuilderRuntime = {

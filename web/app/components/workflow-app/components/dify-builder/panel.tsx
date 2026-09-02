@@ -1,4 +1,4 @@
-import type { Action } from '@/app/components/dify-builder/types'
+import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -27,6 +27,7 @@ import {
 } from './store'
 
 const FORM_ACTION_IDS = new Set(['provide_testdata', 'submit_edit_rules', 'submit_requirements'])
+const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 
 const DifyBuilderActionBar = ({
   actionValidity,
@@ -101,10 +102,36 @@ const DifyBuilderPanel = () => {
   const [actionPayloads, setActionPayloads] = useState<Record<string, Record<string, unknown>>>({})
   const [actionValidity, setActionValidity] = useState<Record<string, boolean>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pinnedToBottomRef = useRef(true)
+
+  const scrollToBottomIfPinned = useCallback(() => {
+    const scrollContainer = scrollRef.current
+    if (!scrollContainer || !pinnedToBottomRef.current) return
+    scrollContainer.scrollTo({ top: scrollContainer.scrollHeight })
+  }, [])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [conversation.length, interactionBusy, viewVersion])
+    scrollToBottomIfPinned()
+  }, [conversation.length, interactionBusy, scrollToBottomIfPinned, viewVersion])
+
+  const handleScroll = useCallback(() => {
+    const scrollContainer = scrollRef.current
+    if (!scrollContainer) return
+    const distanceFromBottom =
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight
+    pinnedToBottomRef.current = distanceFromBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD
+  }, [])
+
+  const handleActionPayloadChange = useCallback(
+    (actionId: string, payload: Record<string, unknown>) => {
+      setActionPayloads((current) => ({ ...current, [actionId]: payload }))
+    },
+    [],
+  )
+
+  const handleActionValidityChange = useCallback((actionId: string, valid: boolean) => {
+    setActionValidity((current) => ({ ...current, [actionId]: valid }))
+  }, [])
 
   const send = useCallback(async () => {
     const prompt = draft.trim()
@@ -147,6 +174,7 @@ const DifyBuilderPanel = () => {
 
   const handleReset = () => {
     reset()
+    pinnedToBottomRef.current = true
     setDraft('')
     setPendingActionId(null)
     setChangesExpanded(false)
@@ -195,19 +223,20 @@ const DifyBuilderPanel = () => {
           </div>
         </header>
 
-        <div ref={scrollRef} className="relative z-10 min-h-0 grow overflow-y-auto">
+        <div
+          ref={scrollRef}
+          className="relative z-10 min-h-0 grow overflow-y-auto"
+          onScroll={handleScroll}
+        >
           {hasSession ? (
             <DifyBuilderConversation
               items={conversation}
               busy={interactionBusy}
               changesExpanded={changesExpanded}
               interrupted={interrupted}
-              onActionPayloadChange={(actionId, payload) =>
-                setActionPayloads((current) => ({ ...current, [actionId]: payload }))
-              }
-              onActionValidityChange={(actionId, valid) =>
-                setActionValidity((current) => ({ ...current, [actionId]: valid }))
-              }
+              onActionPayloadChange={handleActionPayloadChange}
+              onActionValidityChange={handleActionValidityChange}
+              onStreamingContentChange={scrollToBottomIfPinned}
             />
           ) : (
             <div className="flex min-h-full flex-col items-center justify-center px-8 pb-8 text-center">
