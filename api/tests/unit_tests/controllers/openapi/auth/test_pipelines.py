@@ -58,7 +58,7 @@ from ._world import (
 )
 
 MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
-FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
+FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features"
 ACCESS_MODE = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth.get_app_access_mode_by_id"
 
 

@@ -43,7 +43,7 @@ from ._world import (
 )
 
 ROUTER = "controllers.openapi.auth.router"
-FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
+FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features"
 MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
 ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
