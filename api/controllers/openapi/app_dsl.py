@@ -32,8 +32,7 @@ from services.errors.app import WorkflowNotFoundError
 
 _ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
 _DSL_WORKSPACE_ROLE = CheckWorkspaceRole(
-    frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-    superseded_by=RBACPermission.APP_IMPORT_EXPORT_DSL,
+    frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
 )
 
 _DSL_IMPORT_REQUIREMENTS = (
