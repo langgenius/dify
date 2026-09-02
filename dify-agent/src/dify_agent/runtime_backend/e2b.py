@@ -51,6 +51,7 @@ _SHELLCTL_READY_MAX_ATTEMPTS = 3
 _SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
 _RETRYABLE_E2B_TRANSPORT_ERRORS = (
     e2b_httpx.ConnectError,
+    e2b_httpx.ReadTimeout,
     e2b_httpx.ReadError,
     e2b_httpx.WriteError,
     e2b_httpx.RemoteProtocolError,
