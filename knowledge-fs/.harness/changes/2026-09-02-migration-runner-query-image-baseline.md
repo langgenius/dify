@@ -4,6 +4,9 @@
 
 - Added `0049_answer_trace_query_images` to the adapters migration-runner test's ordered migration baseline.
 - Kept replay and TiDB preflight fixtures derived from that shared baseline.
+- Updated the API migration entrypoint's expected operation sequence for the same migration.
+- Removed one redundant blank line from the gateway integration test after its new query-image fixture
+  exceeded the existing code-health line budget by one line.
 
 ## Why
 
@@ -14,6 +17,8 @@ as unexpectedly pending.
 ## Verification
 
 - `pnpm --filter @knowledge/adapters test -- src/migration-runner.test.ts`: passed.
+- `pnpm --filter @knowledge/api-app test -- src/code-health.test.ts`: passed.
+- `pnpm --filter @knowledge/api-app test`: passed.
 - `git diff --check`: passed.
 
 The repository-wide check, build, lint, and coverage gates were left to CI because this correction only

@@ -12852,7 +12852,6 @@ describe("createKnowledgeGateway", () => {
       throw new Error("Expected persisted trace");
     }
     await databaseRepository.create(persistedTrace);
-
     let persistedWrites = fake.calls.filter((call) => call.operation === "insert");
     expect(persistedWrites).toHaveLength(2);
     expect(persistedWrites[0]).toEqual(
