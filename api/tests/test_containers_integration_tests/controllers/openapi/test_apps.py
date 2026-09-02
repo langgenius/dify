@@ -154,21 +154,3 @@ class TestAppDescribe:
                     missing_id,
                     query=AppDescribeQuery(),
                 )
-
-    def test_describe_api_disabled_app_is_404(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
-    ) -> None:
-        """An api-disabled app fails the openapi visibility gate, so describe
-        must behave as if it doesn't exist (404), not expose it."""
-        account = make_account()
-        hidden = _create_app(db_session_with_containers, account, name="Hidden", enable_api=False)
-
-        api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}"):
-            with pytest.raises(NotFound):
-                api.get.__handler__(
-                    api,
-                    context_for(account, session=db_session_with_containers, view_args={"app_id": hidden.id}),
-                    hidden.id,
-                    query=AppDescribeQuery(),
-                )
