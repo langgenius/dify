@@ -41,7 +41,7 @@ class AccountApi(Resource):
         memberships = TenantService.get_account_memberships(account_id_str, session=ctx.session)
 
         return AccountResponse(
-            subject_type="account",
+            subject_type=ctx.subject.subject_type,
             subject_email=account.email,
             account=_account_payload(account),
             workspaces=[_workspace_payload(m) for m in memberships],

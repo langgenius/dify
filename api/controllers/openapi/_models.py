@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
+from libs.oauth_bearer import SubjectType
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -123,7 +124,7 @@ class WorkspacePayload(BaseModel):
 class DeviceTokenResponse(BaseModel):
     token: str
     expires_at: str
-    subject_type: Literal["account", "external_sso"]
+    subject_type: SubjectType
     account: AccountPayload | None = None
     workspaces: list[WorkspacePayload] = []
     default_workspace_id: str | None = None
@@ -133,7 +134,7 @@ class DeviceTokenResponse(BaseModel):
 
 
 class AccountResponse(BaseModel):
-    subject_type: str
+    subject_type: SubjectType
     subject_email: str | None = None
     subject_issuer: str | None = None
     account: AccountPayload | None = None
