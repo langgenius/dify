@@ -87,6 +87,7 @@ export default function CheckCode() {
           name="code"
           inputMode="numeric"
           autoComplete="one-time-code"
+          spellCheck={false}
           value={code}
           onValueChange={setVerifyCode}
           maxLength={6}
