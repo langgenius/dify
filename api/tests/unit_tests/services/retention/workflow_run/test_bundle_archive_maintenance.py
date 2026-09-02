@@ -4,9 +4,11 @@ from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from botocore.exceptions import ClientError, ReadTimeoutError
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
+from libs.archive_storage import ArchiveStorageError
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.bundle_archive_maintenance import (
     ARCHIVED_TABLES,
@@ -28,6 +30,12 @@ from services.retention.workflow_run.constants import (
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
 CATALOG_ID = "019f63b7-5ca4-7681-9ce0-800283608f39"
 BUNDLE_ID = "bundle-a"
+
+
+def _archive_storage_error(cause: BaseException) -> ArchiveStorageError:
+    error = ArchiveStorageError("marker delete failed")
+    error.__cause__ = cause
+    return error
 
 
 def _table_records(
@@ -815,4 +823,133 @@ def test_mark_restored_clears_stale_delete_marker_before_releasing_restore_fence
         call.put(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME),
         call.delete(storage, object_prefix, ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME),
         call.delete(storage, object_prefix, ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME),
+    ]
+
+
+@pytest.mark.parametrize(
+    "delete_cause",
+    [
+        ReadTimeoutError(endpoint_url="https://storage.example.com"),
+        ClientError({"Error": {"Code": "SlowDown"}}, "DeleteObject"),
+        ClientError(
+            {
+                "Error": {"Code": "Unknown"},
+                "ResponseMetadata": {"HTTPStatusCode": 503},
+            },
+            "DeleteObject",
+        ),
+    ],
+    ids=["read-timeout", "slow-down", "http-503"],
+)
+def test_delete_marker_accepts_retryable_delete_error_when_head_confirms_absent(
+    delete_cause: BaseException,
+) -> None:
+    storage = MagicMock()
+    storage.delete_object.side_effect = _archive_storage_error(delete_cause)
+    storage.object_exists.return_value = False
+
+    with patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep:
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+
+    storage.delete_object.assert_called_once_with("bundle-prefix/_MARKER")
+    storage.object_exists.assert_called_once_with("bundle-prefix/_MARKER")
+    sleep.assert_not_called()
+
+
+def test_delete_marker_retries_when_marker_remains_then_succeeds() -> None:
+    storage = MagicMock()
+    storage.delete_object.side_effect = [
+        _archive_storage_error(ReadTimeoutError(endpoint_url="https://storage.example.com")),
+        None,
+    ]
+    storage.object_exists.side_effect = [True, False]
+
+    with patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep:
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+
+    assert storage.delete_object.call_count == 2
+    assert storage.object_exists.call_count == 2
+    sleep.assert_called_once_with(0.5)
+
+
+def test_delete_marker_fails_closed_when_marker_persists() -> None:
+    storage = MagicMock()
+    storage.object_exists.return_value = True
+
+    with (
+        patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep,
+        pytest.raises(ArchiveStorageError, match="still exists after 3 delete attempts"),
+    ):
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+
+    assert storage.delete_object.call_count == 3
+    assert storage.object_exists.call_count == 3
+    assert sleep.call_args_list == [call(0.5), call(1.0)]
+
+
+def test_delete_marker_fails_closed_when_head_fails() -> None:
+    storage = MagicMock()
+    storage.object_exists.side_effect = ArchiveStorageError("marker HEAD failed")
+
+    with (
+        patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep,
+        pytest.raises(ArchiveStorageError, match="marker HEAD failed"),
+    ):
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+
+    storage.delete_object.assert_called_once_with("bundle-prefix/_MARKER")
+    storage.object_exists.assert_called_once_with("bundle-prefix/_MARKER")
+    sleep.assert_not_called()
+
+
+def test_delete_marker_does_not_retry_non_retryable_delete_error() -> None:
+    storage = MagicMock()
+    storage.delete_object.side_effect = _archive_storage_error(
+        ClientError(
+            {
+                "Error": {"Code": "AccessDenied"},
+                "ResponseMetadata": {"HTTPStatusCode": 403},
+            },
+            "DeleteObject",
+        )
+    )
+
+    with pytest.raises(ArchiveStorageError, match="marker delete failed"):
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+
+    storage.delete_object.assert_called_once_with("bundle-prefix/_MARKER")
+    storage.object_exists.assert_not_called()
+
+
+def test_delete_bundle_with_deleted_marker_clears_stale_delete_started_marker(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    entry = _catalog_entry()
+    _persist_catalog(sqlite_session, entry)
+    archive_records = _sample_archive_records()
+    bundle_ref = _bundle_reference(entry, table_records=archive_records)
+    storage = MagicMock()
+    existing_markers = {
+        f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETED_MARKER_NAME}",
+        f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME}",
+    }
+    storage.object_exists.side_effect = lambda key: key in existing_markers
+    storage.delete_object.side_effect = lambda key: existing_markers.discard(key)
+    maintenance = WorkflowRunBundleArchiveMaintenance(session_factory=sqlite_session_factory)
+
+    with (
+        patch.object(
+            maintenance,
+            "_validate_archive_object",
+            return_value=(bundle_ref.manifest, archive_records, 123),
+        ),
+        patch.object(maintenance, "_load_live_bundle_records", return_value=_table_records()),
+    ):
+        result = maintenance._delete_bundle(sqlite_session, storage, bundle_ref)
+
+    assert result.success
+    assert existing_markers == {f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETED_MARKER_NAME}"}
+    assert storage.delete_object.call_args_list == [
+        call(f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME}"),
+        call(f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_RESTORED_MARKER_NAME}"),
     ]
