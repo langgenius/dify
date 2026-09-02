@@ -19,7 +19,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [
-    "e2b>=2.34.0,<3.0.0",
+    "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
