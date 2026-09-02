@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 from urllib.parse import urlparse
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
@@ -32,6 +33,15 @@ UNCHANGED_SERVER_URL_PLACEHOLDER = "[__HIDDEN__]"
 CLIENT_NAME = "Dify"
 EMPTY_TOOLS_JSON = "[]"
 EMPTY_CREDENTIALS_JSON = "{}"
+
+
+def _is_uuid(value: str) -> bool:
+    """Return whether a provider reference is a valid UUID string."""
+    try:
+        UUID(str(value))
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return True
 
 
 class OAuthDataType(StrEnum):
@@ -89,8 +99,13 @@ class MCPToolManageService:
         """
         Get MCP provider by ID or server identifier.
 
+        ``server_identifier`` was returned as ``id`` by the legacy MCP tools
+        list endpoint. Keep accepting that value through ``provider_id`` so
+        older clients can continue to open, refresh, edit, and delete MCP
+        providers after the management endpoints switched to UUIDs.
+
         Args:
-            provider_id: Provider ID (UUID)
+            provider_id: Provider ID (UUID), or a legacy server identifier
             server_identifier: Server identifier
             tenant_id: Tenant ID
 
@@ -105,9 +120,10 @@ class MCPToolManageService:
                 MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
             )
         else:
-            stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id
-            )
+            predicates = [MCPToolProvider.server_identifier == provider_id]
+            if provider_id and _is_uuid(provider_id):
+                predicates.append(MCPToolProvider.id == provider_id)
+            stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates))
 
         provider = self._session.scalar(stmt)
         if not provider:
@@ -213,7 +229,7 @@ class MCPToolManageService:
             stmt = select(MCPToolProvider).where(
                 MCPToolProvider.tenant_id == tenant_id,
                 MCPToolProvider.name == name,
-                MCPToolProvider.id != provider_id,
+                MCPToolProvider.id != mcp_provider.id,
             )
             existing_provider = self._session.scalar(stmt)
             if existing_provider:
