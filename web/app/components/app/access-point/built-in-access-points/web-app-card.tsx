@@ -14,6 +14,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
@@ -24,6 +26,7 @@ import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-lau
 import AppIcon from '@/app/components/base/app-icon'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { AccessPointCard } from '../shared/access-point-card'
 import { getAccessPointStatus } from '../shared/access-point-status'
@@ -53,9 +56,8 @@ type WebAppAccessPointCardProps = {
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
-  onChangeStatus: (enabled: boolean) => Promise<void>
+  onAppStateChanged: () => Promise<void>
   onRefreshApp: () => Promise<void>
-  onRegenerate: () => Promise<void>
   onSaveSiteConfig: (params: ConfigParams) => Promise<void>
   workflow: PublishedWorkflow
 }
@@ -67,9 +69,8 @@ export function WebAppAccessPointCard({
   canManageAccess,
   canManageAccessPoint,
   highlighted,
-  onChangeStatus,
+  onAppStateChanged,
   onRefreshApp,
-  onRegenerate,
   onSaveSiteConfig,
   showAccessControl,
   workflow,
@@ -81,7 +82,26 @@ export function WebAppAccessPointCard({
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
-  const [regenerating, setRegenerating] = useState(false)
+  const updateSiteStatus = useMutation(
+    consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
+      onSuccess: onAppStateChanged,
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
+  const resetSiteAccessToken = useMutation(
+    consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
+      onSuccess: async () => {
+        await onAppStateChanged()
+        setShowRegenerate(false)
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        setShowRegenerate(false)
+      },
+    }),
+  )
   const { webApp: webAppUrl } = getBuiltInAccessUrls(appInfo)
   const running = availability === 'available' && appInfo.enable_site
   const supportsEmbedded =
@@ -100,11 +120,19 @@ export function WebAppAccessPointCard({
     appInfo.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
     Boolean(accessSubjects?.groups?.length || accessSubjects?.members?.length)
 
-  const handleRegenerate = async () => {
-    setRegenerating(true)
-    await onRegenerate()
-    setRegenerating(false)
-    setShowRegenerate(false)
+  const handleStatusChange = (enabled: boolean) => {
+    if (!canManageAccessPoint) return
+
+    updateSiteStatus.mutate({
+      params: { app_id: appInfo.id },
+      body: { enable_site: enabled },
+    })
+  }
+
+  const handleRegenerate = () => {
+    if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
+
+    resetSiteAccessToken.mutate({ params: { app_id: appInfo.id } })
   }
 
   const status = getAccessPointStatus(availability, running)
@@ -129,7 +157,8 @@ export function WebAppAccessPointCard({
         highlighted={highlighted}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
-        onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
+        switchLoading={updateSiteStatus.isPending}
+        onEnabledChange={availability === 'available' ? handleStatusChange : undefined}
         actions={
           <>
             {hiddenLaunchVariables.length > 0 && (
@@ -195,7 +224,7 @@ export function WebAppAccessPointCard({
             ns: 'appOverview',
           })}
           regenerateDisabled={!canManageAccessPoint}
-          regenerating={regenerating}
+          regenerating={resetSiteAccessToken.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
         {showAccessControl && (
@@ -265,7 +294,10 @@ export function WebAppAccessPointCard({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => void handleRegenerate()}>
+            <AlertDialogConfirmButton
+              disabled={resetSiteAccessToken.isPending}
+              onClick={handleRegenerate}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

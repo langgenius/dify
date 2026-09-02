@@ -4,10 +4,51 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
+import { createQueryClientWrapper } from '@/test/console/query-client'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { WebAppAccessPointCard } from '../built-in-access-points/web-app-card'
+
+const mocks = vi.hoisted(() => ({
+  resetSiteAccessToken: vi.fn().mockResolvedValue({}),
+  toastError: vi.fn(),
+  updateSiteStatus: vi.fn().mockResolvedValue({}),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: mocks.toastError,
+  },
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        siteEnable: {
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.updateSiteStatus,
+              ...options,
+            }),
+          },
+        },
+        site: {
+          accessTokenReset: {
+            post: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mocks.resetSiteAccessToken,
+                ...options,
+              }),
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({
@@ -68,8 +109,15 @@ function renderCard(
   mode: AppModeEnum,
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   workflow?: PublishedWorkflow,
-  canManageAccessPoint = true,
+  {
+    canManageAccessPoint = true,
+    onAppStateChanged = vi.fn().mockResolvedValue(undefined),
+  }: {
+    canManageAccessPoint?: boolean
+    onAppStateChanged?: () => Promise<void>
+  } = {},
 ) {
+  const queryClient = createTestQueryClient()
   render(
     <WebAppAccessPointCard
       appInfo={createAppInfo(mode)}
@@ -78,12 +126,12 @@ function renderCard(
       canManageAccess
       canManageAccessPoint={canManageAccessPoint}
       showAccessControl
-      onChangeStatus={vi.fn().mockResolvedValue(undefined)}
+      onAppStateChanged={onAppStateChanged}
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
-      onRegenerate={vi.fn().mockResolvedValue(undefined)}
       onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
       workflow={workflow}
     />,
+    { wrapper: createQueryClientWrapper(queryClient) },
   )
 }
 
@@ -129,6 +177,10 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
 }
 
 describe('WebAppAccessPointCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -160,6 +212,88 @@ describe('WebAppAccessPointCard', () => {
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     expect(screen.getByRole('dialog', { name: 'embed into site' })).toBeInTheDocument()
+  })
+
+  it('updates site status through the generated contract', async () => {
+    const user = userEvent.setup()
+    const onAppStateChanged = vi.fn().mockResolvedValue(undefined)
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { onAppStateChanged })
+
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(mocks.updateSiteStatus.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-1' },
+        body: { enable_site: false },
+      })
+      expect(onAppStateChanged).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('keeps the status switch pending until the app state refresh completes', async () => {
+    const user = userEvent.setup()
+    let resolveRefresh: (() => void) | undefined
+    const refresh = new Promise<void>((resolve) => {
+      resolveRefresh = resolve
+    })
+    const onAppStateChanged = vi.fn(() => refresh)
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { onAppStateChanged })
+
+    const statusSwitch = screen.getByRole('switch')
+    await user.click(statusSwitch)
+
+    await waitFor(() => {
+      expect(onAppStateChanged).toHaveBeenCalledTimes(1)
+      expect(statusSwitch).toHaveAttribute('aria-busy', 'true')
+      expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    resolveRefresh?.()
+
+    await waitFor(() => {
+      expect(statusSwitch).not.toHaveAttribute('aria-busy', 'true')
+      expect(statusSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    })
+  })
+
+  it('keeps site status changes behind Access Point management permission', async () => {
+    const user = userEvent.setup()
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
+
+    await user.click(screen.getByRole('switch'))
+
+    expect(mocks.updateSiteStatus).not.toHaveBeenCalled()
+  })
+
+  it('resets the site access token through the generated contract', async () => {
+    const user = userEvent.setup()
+    const onAppStateChanged = vi.fn().mockResolvedValue(undefined)
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { onAppStateChanged })
+
+    await user.click(screen.getByRole('button', { name: /overview\.appInfo\.regenerate/ }))
+    await user.click(screen.getByRole('button', { name: /operation\.confirm/ }))
+
+    await waitFor(() => {
+      expect(mocks.resetSiteAccessToken.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-1' },
+      })
+      expect(onAppStateChanged).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('keeps generated mutation failures inside the card owner', async () => {
+    const user = userEvent.setup()
+    const error = new Error('request failed')
+    const onAppStateChanged = vi.fn().mockResolvedValue(undefined)
+    mocks.updateSiteStatus.mockRejectedValueOnce(error)
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { onAppStateChanged })
+
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    })
+    expect(onAppStateChanged).not.toHaveBeenCalled()
   })
 
   it('passes hidden Chatflow inputs to the embed dialog', async () => {
@@ -200,7 +334,7 @@ describe('WebAppAccessPointCard', () => {
   })
 
   it('disables Web App management actions without Access Point management', () => {
-    renderCard(AppModeEnum.CHAT, 'available', undefined, false)
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
 
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()

@@ -9,6 +9,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
+from controllers.console.app.wraps import enforce_agent_manage_or_app_scene
 from controllers.console.wraps import (
     account_initialization_required,
     enable_change_email,
@@ -52,6 +53,7 @@ def console_account_admission[T, **P, R](
     rbac_resource_scope: RBACResourceScope | None = None,
     rbac_permission: RBACPermission | None = None,
     rbac_resource_required: bool = True,
+    agent_manage_fallback: bool = False,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
@@ -66,6 +68,10 @@ def console_account_admission[T, **P, R](
 
     if (rbac_resource_scope is None) != (rbac_permission is None):
         raise AdmissionConfigurationError("RBAC resource scope and permission must be configured together")
+    if agent_manage_fallback and rbac_resource_scope != RBACResourceScope.APP:
+        raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_scope=RBACResourceScope.APP")
+    if agent_manage_fallback and not rbac_resource_required:
+        raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_required=True")
 
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
@@ -78,14 +84,22 @@ def console_account_admission[T, **P, R](
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
             if rbac_resource_scope is not None and rbac_permission is not None:
-                enforce_rbac_access(
-                    tenant_id=tenant_id,
-                    account_id=account.id,
-                    resource_type=rbac_resource_scope,
-                    scene=rbac_permission,
-                    resource_required=rbac_resource_required,
-                    path_args=kwargs,
-                )
+                if agent_manage_fallback:
+                    enforce_agent_manage_or_app_scene(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        scene=rbac_permission,
+                        path_args=kwargs,
+                    )
+                else:
+                    enforce_rbac_access(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        resource_type=rbac_resource_scope,
+                        scene=rbac_permission,
+                        resource_required=rbac_resource_required,
+                        path_args=kwargs,
+                    )
             request_context = RequestContext(
                 account_id=account.id,
                 active_workspace_id=tenant_id,

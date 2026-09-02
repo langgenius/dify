@@ -145,9 +145,9 @@ export function MCPAccessPointCard({
         icon="i-custom-vender-integrations-mcp"
         status={status}
         highlighted={highlighted}
-        busy={statusUpdating}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['mcp.server.title'], { ns: 'tools' })}
+        switchLoading={statusUpdating}
         onEnabledChange={loading || unavailable ? undefined : handleStatusChange}
         actions={
           <Button
