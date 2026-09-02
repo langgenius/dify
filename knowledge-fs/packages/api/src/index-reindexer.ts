@@ -587,6 +587,7 @@ export function createIncrementalReindexer({
             for (const nodeBatch of chunkNodes(storedNodes, projectionBatchSize)) {
               input.signal?.throwIfAborted();
               const built = await visualBuilder.build({
+                ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
                 model: input.visualModel,
                 ...(input.modelBudget ? { modelBudget: input.modelBudget } : {}),
                 nodes: nodeBatch,

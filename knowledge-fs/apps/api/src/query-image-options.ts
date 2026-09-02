@@ -18,7 +18,7 @@ export interface ApiQueryImageEnv {
 const DEFAULT_DIFY_INNER_API_URL = "http://localhost:5001";
 const DEFAULT_DIFY_INNER_API_KEY = "QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1";
 
-/** Resolves actor-owned UploadFile references without giving KnowledgeFS direct storage access. */
+/** Resolves authorized Dify file references without giving KnowledgeFS direct storage access. */
 export function createApiQueryImageResolver({
   env = process.env,
   fetch = globalThis.fetch,
@@ -47,7 +47,12 @@ export function createApiQueryImageResolver({
         let response: Response;
         try {
           response = await fetch(url, {
-            headers: { "X-Inner-Api-Key": apiKey },
+            headers: {
+              "X-Inner-Api-Key": apiKey,
+              ...(reference.accessGrant
+                ? { "X-Knowledge-FS-Query-Image-Grant": reference.accessGrant }
+                : {}),
+            },
             ...(signal ? { signal } : {}),
           });
         } catch (error) {

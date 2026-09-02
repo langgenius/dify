@@ -10,6 +10,9 @@ from pydantic import JsonValue
 
 from services.knowledge_fs.product_dto import KnowledgeFSPublicFailureResponse, KnowledgeFSTechnicalSummary
 
+KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER = "X-Knowledge-FS-Query-Image-Grants"
+KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES = 6 * 1024
+
 
 class KnowledgeFSProductRemoteError(RuntimeError):
     """KnowledgeFS could not provide an authoritative product response."""
@@ -163,6 +166,8 @@ class UnavailableKnowledgeFSProductRemote:
 
 
 __all__ = [
+    "KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER",
+    "KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES",
     "KnowledgeFSOperationUnavailableError",
     "KnowledgeFSProductRemoteError",
     "KnowledgeFSProductRemotePort",

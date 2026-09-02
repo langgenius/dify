@@ -1,7 +1,11 @@
-import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { afterEach, describe, expect, it } from "vitest";
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
+import type { ConcurrencyGate } from "@knowledge/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApiMultimodalAnswerOptions } from "./multimodal-answer-options";
+import {
+  createApiMultimodalAnswerOptions,
+  createApiProfileMultimodalAnswerOptions,
+} from "./multimodal-answer-options";
 
 const originalFetch = globalThis.fetch;
 
@@ -10,24 +14,109 @@ afterEach(() => {
 });
 
 describe("createApiMultimodalAnswerOptions", () => {
-  it("leaves multimodal answer generation disabled by default or explicitly off", () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+  it("routes profile multimodal answers through the active reasoning selection without model env", async () => {
+    const objectStorage = memoryObjectStorage();
+    const requests: Request[] = [];
+    globalThis.fetch = (async (input, init) => {
+      requests.push(new Request(input, init).clone());
+      return difyLlmResponse([
+        { data: { delta: { message: { content: "Profile answer." } } }, error: "" },
+        { data: { delta: { finish_reason: "stop" } }, error: "" },
+      ]);
+    }) as typeof fetch;
+    const modelGateRun = vi.fn();
+    const modelRequestGate: ConcurrencyGate = {
+      run: async (operation) => {
+        modelGateRun();
+        return operation();
+      },
+    };
+    const options = createApiProfileMultimodalAnswerOptions({
+      env: {},
+      modelRequestGate,
+      objectStorage,
+    });
 
-    expect(
-      createApiMultimodalAnswerOptions({ env: {}, objectStorage: adapter.objectStorage }),
-    ).toEqual({});
+    await expect(
+      options
+        .multimodalAnswerProviderFactory({
+          model: "profile-vision",
+          pluginId: "langgenius/profile-plugin",
+          provider: "profile-provider",
+        })
+        .generate({ evidence: [], multimodalEvidence: [], query: "What is shown?", tenantId: "t" }),
+    ).resolves.toMatchObject({ text: "Profile answer." });
+
+    await expect(requests[0]?.json()).resolves.toMatchObject({
+      model: "profile-vision",
+      provider: "langgenius/profile-plugin/profile-provider",
+    });
+    expect(modelGateRun).toHaveBeenCalledOnce();
+  });
+
+  it("bounds the whole answer-image lifecycle and removes canceled queued requests", async () => {
+    const objectStorage = memoryObjectStorage();
+    let resolveFirst: (response: Response) => void = () => undefined;
+    const firstResponse = new Promise<Response>((resolve) => {
+      resolveFirst = resolve;
+    });
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementationOnce(async () => firstResponse)
+      .mockResolvedValue(
+        difyLlmResponse([{ data: { delta: { message: { content: "unexpected" } } }, error: "" }]),
+      ) as typeof fetch;
+    const provider = createApiProfileMultimodalAnswerOptions({
+      env: { KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY: "1" },
+      objectStorage,
+    }).multimodalAnswerProviderFactory({
+      model: "profile-vision",
+      pluginId: "langgenius/profile-plugin",
+      provider: "profile-provider",
+    });
+    const first = provider.generate({
+      evidence: [],
+      multimodalEvidence: [],
+      query: "first",
+      tenantId: "tenant",
+    });
+    await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce());
+    const controller = new AbortController();
+    const canceled = new Error("client disconnected");
+    const second = provider.generate({
+      evidence: [],
+      multimodalEvidence: [],
+      query: "second",
+      signal: controller.signal,
+      tenantId: "tenant",
+    });
+
+    controller.abort(canceled);
+
+    await expect(second).rejects.toBe(canceled);
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    resolveFirst(
+      difyLlmResponse([{ data: { delta: { message: { content: "first answer" } } }, error: "" }]),
+    );
+    await expect(first).resolves.toMatchObject({ text: "first answer" });
+  });
+
+  it("leaves multimodal answer generation disabled by default or explicitly off", () => {
+    const objectStorage = memoryObjectStorage();
+
+    expect(createApiMultimodalAnswerOptions({ env: {}, objectStorage })).toEqual({});
     expect(
       createApiMultimodalAnswerOptions({
         env: { KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "off" },
-        objectStorage: adapter.objectStorage,
+        objectStorage,
       }),
     ).toEqual({});
   });
 
   it("creates a Dify-backed multimodal answer provider", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const objectStorage = memoryObjectStorage();
     const requests: Request[] = [];
-    await adapter.objectStorage.putObject({
+    await objectStorage.putObject({
       body: new Uint8Array([1, 2, 3]),
       contentType: "image/png",
       key: "tenant/spaces/space/documents/doc/assets/chart-thumbnail.png",
@@ -56,7 +145,7 @@ describe("createApiMultimodalAnswerOptions", () => {
         KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER: "openai",
         KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "dify-model-runtime",
       },
-      objectStorage: adapter.objectStorage,
+      objectStorage,
     });
 
     await expect(
@@ -107,17 +196,17 @@ describe("createApiMultimodalAnswerOptions", () => {
   });
 
   it("validates multimodal answer environment values", () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const objectStorage = memoryObjectStorage();
     expect(() =>
       createApiMultimodalAnswerOptions({
         env: { KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "dify-model-runtime" },
-        objectStorage: adapter.objectStorage,
+        objectStorage,
       }),
     ).toThrow("KNOWLEDGE_MULTIMODAL_ANSWER_MODEL is required for multimodal answer generation");
     expect(() =>
       createApiMultimodalAnswerOptions({
         env: { KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "local" },
-        objectStorage: adapter.objectStorage,
+        objectStorage,
       }),
     ).toThrow("KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER must be dify-model-runtime");
     expect(() =>
@@ -129,11 +218,35 @@ describe("createApiMultimodalAnswerOptions", () => {
           KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER: "openai",
           KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "dify-model-runtime",
         },
-        objectStorage: adapter.objectStorage,
+        objectStorage,
       }),
     ).toThrow("KNOWLEDGE_MULTIMODAL_ANSWER_IMAGE_DETAIL must be auto, high, or low");
+    expect(() =>
+      createApiProfileMultimodalAnswerOptions({
+        env: { KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY: "0" },
+        objectStorage,
+      }),
+    ).toThrow("KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY must be a positive integer");
+    const profile = createApiProfileMultimodalAnswerOptions({
+      env: {
+        KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES: "10",
+        KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES: "9",
+      },
+      objectStorage,
+    });
+    expect(() =>
+      profile.multimodalAnswerProviderFactory({
+        model: "vision",
+        pluginId: "vendor/plugin",
+        provider: "vendor",
+      }),
+    ).toThrow("maxTotalImageBytes must be at least maxImageBytes");
   });
 });
+
+function memoryObjectStorage() {
+  return createMemoryObjectStorageAdapter({ kind: "memory", maxObjectBytes: 20 * 1024 * 1024 });
+}
 
 function difyLlmResponse(frames: readonly unknown[]): Response {
   const encoded = frames.map(lengthPrefixedFrame);

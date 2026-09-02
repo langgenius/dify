@@ -1,11 +1,14 @@
 import {
+  type ConcurrencyGate,
   type GenerateMultimodalAnswerContentResult,
   type LlmMultimodalContentBlock,
   type LlmMultimodalContentBlockMessage,
   type MultimodalAnswerContentProvider,
   type MultimodalAnswerProvider,
+  createConcurrencyGate,
   createObjectStorageContentBlockMultimodalAnswerProvider,
 } from "@knowledge/api";
+import type { KnowledgeSpaceModelSelection } from "@knowledge/core";
 
 import {
   type DifyModelRuntimeClientEnv,
@@ -14,10 +17,12 @@ import {
   difyModelRuntimeRequired,
 } from "./dify-model-runtime-options";
 
+/** @deprecated Production model routing is profile-driven; retained only for source compatibility. */
 export interface ApiMultimodalAnswerEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_IMAGE_DETAIL?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MODEL?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_ID?: string | undefined;
@@ -26,11 +31,108 @@ export interface ApiMultimodalAnswerEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_TEMPERATURE?: string | undefined;
 }
 
+/** @deprecated Use `ApiProfileMultimodalAnswerOptions`. */
 export interface ApiMultimodalAnswerOptions {
   readonly multimodalAnswerProvider?: MultimodalAnswerProvider | undefined;
 }
 
+export interface ApiProfileMultimodalAnswerEnv extends DifyModelRuntimeClientEnv {
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_IMAGE_DETAIL?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ANSWER_TEMPERATURE?: string | undefined;
+}
+
+export interface ApiProfileMultimodalAnswerOptions {
+  readonly multimodalAnswerProviderFactory: (
+    selection: KnowledgeSpaceModelSelection,
+  ) => MultimodalAnswerProvider;
+}
+
 /**
+ * Creates the bounded multimodal answer data plane. Model routing comes exclusively from the
+ * immutable reasoning profile selected by the knowledge space; environment values only bound the
+ * amount of image data and generated output retained by one request.
+ */
+export function createApiProfileMultimodalAnswerOptions({
+  env = process.env,
+  modelRequestGate,
+  objectStorage,
+}: {
+  readonly env?: ApiProfileMultimodalAnswerEnv | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly objectStorage: Parameters<
+    typeof createObjectStorageContentBlockMultimodalAnswerProvider
+  >[0]["objectStorage"];
+}): ApiProfileMultimodalAnswerOptions {
+  const client = createApiDifyModelRuntimeClient(env);
+  const lifecycleGate = createConcurrencyGate(
+    positiveIntegerEnv(
+      env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY,
+      2,
+      "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY",
+    ),
+  );
+  const imageDetail = imageDetailEnv(env.KNOWLEDGE_MULTIMODAL_ANSWER_IMAGE_DETAIL);
+  const maxImageAttachments = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS,
+    8,
+    "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS",
+  );
+  const maxImageBytes = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES,
+    10 * 1024 * 1024,
+    "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES",
+  );
+  const maxTotalImageBytes = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES,
+    32 * 1024 * 1024,
+    "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES",
+  );
+  const maxOutputTokens = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS,
+    1_000,
+    "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS",
+  );
+  const temperature = nonNegativeNumberEnv(
+    env.KNOWLEDGE_MULTIMODAL_ANSWER_TEMPERATURE,
+    0,
+    "KNOWLEDGE_MULTIMODAL_ANSWER_TEMPERATURE",
+  );
+
+  return {
+    multimodalAnswerProviderFactory: (selection) => {
+      const provider = createObjectStorageContentBlockMultimodalAnswerProvider({
+        imageDetail,
+        maxImageAttachments,
+        maxImageBytes,
+        maxTotalImageBytes,
+        maxOutputTokens,
+        model: selection.model,
+        objectStorage,
+        provider: createDifyMultimodalAnswerContentProvider({
+          client,
+          modelRequestGate,
+          pluginId: selection.pluginId,
+          provider: selection.provider,
+        }),
+        temperature,
+      });
+      return {
+        generate: (input) =>
+          lifecycleGate.run(() => provider.generate(input), { signal: input.signal }),
+      };
+    },
+  };
+}
+
+/**
+ * @deprecated Production assembly uses `createApiProfileMultimodalAnswerOptions`. This legacy
+ * helper remains temporarily source-compatible but is not read by the running service.
+ *
  * Resolves the multimodal (VLM) answer provider. Opt-in: returns `{}` unless
  * `KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER=dify-model-runtime`. Vision routes through Dify's
  * tenant-bound LLM model instance with image content blocks.
@@ -60,6 +162,11 @@ export function createApiMultimodalAnswerOptions({
         env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES,
         10 * 1024 * 1024,
         "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES",
+      ),
+      maxTotalImageBytes: positiveIntegerEnv(
+        env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES,
+        32 * 1024 * 1024,
+        "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES",
       ),
       maxOutputTokens: positiveIntegerEnv(
         env.KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS,
@@ -96,12 +203,14 @@ export function createApiMultimodalAnswerOptions({
 
 interface DifyMultimodalAnswerContentProviderOptions {
   readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly pluginId: string;
   readonly provider: string;
 }
 
 function createDifyMultimodalAnswerContentProvider({
   client,
+  modelRequestGate,
   pluginId,
   provider,
 }: DifyMultimodalAnswerContentProviderOptions): MultimodalAnswerContentProvider {
@@ -113,16 +222,23 @@ function createDifyMultimodalAnswerContentProvider({
         throw new Error("Dify model runtime multimodal answer requires a tenantId");
       }
 
-      const result = await difyLlmCompletion({
-        client,
-        ...(input.maxOutputTokens === undefined ? {} : { maxOutputTokens: input.maxOutputTokens }),
-        model: input.model,
-        pluginId,
-        promptMessages: input.messages.map(toDifyPromptMessage),
-        provider,
-        tenantId,
-        ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-      });
+      const request = () =>
+        difyLlmCompletion({
+          client,
+          ...(input.maxOutputTokens === undefined
+            ? {}
+            : { maxOutputTokens: input.maxOutputTokens }),
+          model: input.model,
+          pluginId,
+          promptMessages: input.messages.map(toDifyPromptMessage),
+          provider,
+          ...(input.signal ? { signal: input.signal } : {}),
+          tenantId,
+          ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
+        });
+      const result = modelRequestGate
+        ? await modelRequestGate.run(request, { signal: input.signal })
+        : await request();
 
       if (!result.text.trim()) {
         throw new Error("Dify multimodal answer returned empty text");

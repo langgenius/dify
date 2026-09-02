@@ -1,6 +1,7 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { KnowledgeRetrievalV2NodeType } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
@@ -244,6 +245,23 @@ describe('variable utils', () => {
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
     })
+
+    it('reads both text and image selectors from a KnowledgeFS retrieval node', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'images'],
+        top_n: 10,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([
+        ['start', 'query'],
+        ['start', 'images'],
+      ])
+    })
   })
 
   describe('updateNodeVars', () => {
@@ -304,6 +322,25 @@ describe('variable utils', () => {
       const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
 
       expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
+    })
+
+    it('renames the KnowledgeFS retrieval image selector independently', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'images'],
+        top_n: 10,
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'images'], ['start', 'screenshots'])
+
+      expect(updatedNode.data as KnowledgeRetrievalV2NodeType).toMatchObject({
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'screenshots'],
+      })
     })
 
     it('should replace human input email template references', () => {

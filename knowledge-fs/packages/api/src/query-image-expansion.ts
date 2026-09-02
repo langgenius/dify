@@ -21,6 +21,7 @@ export interface QueryImageExpansionInput {
   readonly images: readonly ResolvedQueryImage[];
   readonly model: KnowledgeSpaceModelSelection;
   readonly query: string;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId: string;
   readonly traceId: string;
 }
@@ -45,7 +46,7 @@ export class QueryImageExpansionUnavailableError extends Error {
   }
 }
 
-/** Adds one bounded vision expansion before Deep/Research; Fast remains model-call free. */
+/** Adds one bounded vision expansion before Deep/Research and for image-only Fast fallback. */
 export function createQueryImageAwareQueryGenerator({
   generator,
   provider,
@@ -56,7 +57,49 @@ export function createQueryImageAwareQueryGenerator({
   return {
     stream: async function* (input): AsyncGenerator<QueryGenerationEvent> {
       const images = input.resolvedQueryImages ?? [];
-      if (images.length === 0 || input.mode === "fast") {
+      const requestedImageCount = input.queryImages?.length ?? images.length;
+      if (requestedImageCount === 0) {
+        yield* generator.stream(input);
+        return;
+      }
+      if (images.length === 0) {
+        if (
+          input.embeddingInputModalities?.includes("image") ||
+          input.reasoningInputModalities?.includes("image")
+        ) {
+          throw new QueryImageExpansionUnavailableError(
+            "Query image bytes are unavailable for a vision-capable knowledge space",
+          );
+        }
+        if (!input.query.trim()) {
+          throw new QueryImageExpansionUnavailableError(
+            "Pure-image retrieval requires a vision-capable embedding or reasoning model",
+          );
+        }
+        const startedAt = Date.now();
+        yield traceStepEvent("query.image-expand", startedAt, "skipped", {
+          degradationReason: QUERY_IMAGE_IGNORED_NO_VISION_MODEL,
+          imageCount: requestedImageCount,
+        });
+        yield* withQueryImageDegradation(
+          generator.stream(input),
+          QUERY_IMAGE_IGNORED_NO_VISION_MODEL,
+        );
+        return;
+      }
+      const fastCanRetrieveDirectly =
+        input.mode === "fast" && input.embeddingInputModalities?.includes("image");
+      if (fastCanRetrieveDirectly) {
+        yield* generator.stream(input);
+        return;
+      }
+      const canExpand = Boolean(
+        input.queryImageExpansion?.trim() ||
+          (provider &&
+            input.retrievalProfile?.reasoningModel &&
+            input.reasoningInputModalities?.includes("image")),
+      );
+      if (input.embeddingInputModalities?.includes("image") && !canExpand) {
         yield* generator.stream(input);
         return;
       }
@@ -64,7 +107,7 @@ export function createQueryImageAwareQueryGenerator({
       const startedAt = Date.now();
       let expansion = input.queryImageExpansion?.trim();
       let degradationReason: string | undefined;
-      if (!expansion && provider && input.retrievalProfile?.reasoningModel) {
+      if (!expansion && provider && input.retrievalProfile?.reasoningModel && canExpand) {
         const model = input.retrievalProfile.reasoningModel;
         const modelCall = {
           callId: `query-image-expand:${input.traceId}:${input.researchExecutionAttempt ?? 0}`,
@@ -87,6 +130,7 @@ export function createQueryImageAwareQueryGenerator({
               images,
               model,
               query: input.query,
+              ...(input.signal ? { signal: input.signal } : {}),
               tenantId: input.subject.tenantId,
               traceId: input.traceId,
             });
@@ -102,7 +146,7 @@ export function createQueryImageAwareQueryGenerator({
             ...(result.metadata === undefined ? {} : { metadata: result.metadata }),
             status: "succeeded",
           });
-          expansion = formatQueryImageExpansion(result);
+          expansion = formatQueryImageExpansionResult(result);
           if (!expansion) {
             throw new QueryImageExpansionUnavailableError(
               "Query image expansion returned no usable text",
@@ -115,9 +159,10 @@ export function createQueryImageAwareQueryGenerator({
           });
         } catch (error) {
           if (error instanceof ResearchModelCallObserverError) throw error;
-          if (input.mode === "research" && !input.query.trim()) {
+          input.signal?.throwIfAborted();
+          if (!input.query.trim() && !input.embeddingInputModalities?.includes("image")) {
             throw new QueryImageExpansionUnavailableError(
-              "Pure-image Research requires a vision-capable reasoning model",
+              "Pure-image retrieval requires a vision-capable embedding or reasoning model",
               { cause: error },
             );
           }
@@ -132,9 +177,9 @@ export function createQueryImageAwareQueryGenerator({
           });
         }
       } else if (!expansion) {
-        if (input.mode === "research" && !input.query.trim()) {
+        if (!input.query.trim() && !input.embeddingInputModalities?.includes("image")) {
           throw new QueryImageExpansionUnavailableError(
-            "Pure-image Research requires a configured vision expansion provider",
+            "Pure-image retrieval requires a vision-capable embedding or reasoning model",
           );
         }
         degradationReason = QUERY_IMAGE_IGNORED_NO_VISION_MODEL;
@@ -193,7 +238,8 @@ export class QueryImageExpansionTimeoutError extends Error {
   }
 }
 
-function formatQueryImageExpansion(result: QueryImageExpansionResult): string {
+/** Canonical bounded text projection shared by query-stream and retrieval-test execution. */
+export function formatQueryImageExpansionResult(result: QueryImageExpansionResult): string {
   const description = result.description.trim();
   const ocrText = result.ocrText.trim();
   const keywords = [...new Set(result.keywords.map((keyword) => keyword.trim()).filter(Boolean))]

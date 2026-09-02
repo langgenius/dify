@@ -27,6 +27,7 @@ const apiMock = vi.hoisted(() => ({
   streamCapability: vi.fn(),
   streamQuery: vi.fn(),
   streamResearchEvents: vi.fn(),
+  uploadFile: vi.fn(),
   evidence: undefined as Record<string, unknown> | undefined,
   evidenceError: false,
   evidenceFetchNextPageError: false,
@@ -296,6 +297,13 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    files: {
+      upload: {
+        post: {
+          mutationOptions: () => ({ mutationFn: apiMock.uploadFile }),
+        },
+      },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -439,6 +447,7 @@ describe('RetrievalTestPage', () => {
       reconnect: false,
       terminal: false,
     })
+    apiMock.uploadFile.mockResolvedValue({ id: 'upload-image-1' })
     apiMock.queryAdmission.mockResolvedValue({})
     apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
@@ -493,6 +502,38 @@ describe('RetrievalTestPage', () => {
       },
       params: { control_space_id: 'space-1' },
     })
+  })
+
+  it('uploads a query image and sends an image-only retrieval request', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const user = userEvent.setup()
+    const rendered = renderPage()
+
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    expect(await screen.findByRole('img', { name: 'diagram.png' })).toHaveAttribute(
+      'src',
+      'blob:query-image',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: {
+          mode: 'fast',
+          query: '',
+          queryImages: [{ uploadFileId: 'upload-image-1' }],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    rendered.unmount()
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:query-image')
+    createObjectUrl.mockRestore()
+    revokeObjectUrl.mockRestore()
   })
 
   it.each([

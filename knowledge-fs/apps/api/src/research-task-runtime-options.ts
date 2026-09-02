@@ -7,6 +7,7 @@ import {
   type KnowledgeGatewayOptions,
   type KnowledgeSpaceAccessService,
   type KnowledgeSpaceManifestRepository,
+  type ModelInputModalityResolver,
   type PublishedProjectionReadSnapshotResolver,
   type QueryGenerator,
   type QueryImageResolver,
@@ -37,6 +38,7 @@ export interface CreateApiResearchTaskRuntimeOptions {
   readonly generator: QueryGenerator;
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
   readonly onError?:
     | ((input: {
         readonly error: unknown;
@@ -84,6 +86,7 @@ export function createApiResearchTaskRuntime({
   generator,
   manifests,
   metrics,
+  modelInputModalityResolver,
   onError,
   partials,
   progress,
@@ -114,6 +117,7 @@ export function createApiResearchTaskRuntime({
     jobs: adapter.jobs,
     maxExecutionAttempts,
     ...(metrics ? { metrics } : {}),
+    ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
     ...(onError ? { onError } : {}),
     repository,
   });

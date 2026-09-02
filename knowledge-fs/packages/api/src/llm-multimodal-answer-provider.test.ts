@@ -1,5 +1,6 @@
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type GenerateMultimodalAnswerContentInput,
@@ -332,6 +333,159 @@ describe("createObjectStorageContentBlockMultimodalAnswerProvider", () => {
         }),
       ]),
     );
+  });
+
+  it("streams evidence images under the per-image hard limit without calling getObject", async () => {
+    const objectStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1024,
+    });
+    await objectStorage.putObject({
+      body: new Uint8Array([1, 2, 3, 4]),
+      contentType: "image/png",
+      key: "oversized.png",
+    });
+    const getObject = vi.spyOn(objectStorage, "getObject");
+    const getObjectStream = vi.spyOn(objectStorage, "getObjectStream");
+    const calls: GenerateMultimodalAnswerContentInput[] = [];
+    const provider = createObjectStorageContentBlockMultimodalAnswerProvider({
+      maxImageBytes: 3,
+      maxTotalImageBytes: 3,
+      model: "vision-native-answer",
+      objectStorage,
+      provider: {
+        generate: async (input) => {
+          calls.push(input);
+          return { text: "text-only fallback evidence" };
+        },
+      },
+    });
+
+    await provider.generate({
+      evidence: [],
+      multimodalEvidence: [
+        {
+          assetRef: { contentType: "image/png", objectKey: "oversized.png" },
+          documentAssetId: "doc-1",
+          modality: "image",
+          parseElementId: "image-1",
+          sectionPath: [],
+        },
+      ],
+      query: "describe",
+    });
+
+    expect(getObject).not.toHaveBeenCalled();
+    expect(getObjectStream).toHaveBeenCalledWith("oversized.png");
+    expect(calls[0]?.messages.flatMap((message) => message.content)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: "image_url" })]),
+    );
+  });
+
+  it("bounds an evidence stream by the aggregate bytes remaining after query images", async () => {
+    const objectStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1024,
+    });
+    const cancel = vi.fn();
+    objectStorage.getObjectStream = async () =>
+      new ReadableStream<Uint8Array>({
+        cancel,
+        start: (controller) => {
+          controller.enqueue(new Uint8Array([7, 8]));
+        },
+      });
+    const calls: GenerateMultimodalAnswerContentInput[] = [];
+    const provider = createObjectStorageContentBlockMultimodalAnswerProvider({
+      maxImageBytes: 3,
+      maxTotalImageBytes: 3,
+      model: "vision-native-answer",
+      objectStorage,
+      provider: {
+        generate: async (input) => {
+          calls.push(input);
+          return { text: "query image only" };
+        },
+      },
+    });
+
+    await provider.generate({
+      evidence: [],
+      multimodalEvidence: [
+        {
+          assetRef: { contentType: "image/png", objectKey: "evidence.png" },
+          documentAssetId: "doc-1",
+          modality: "image",
+          parseElementId: "image-1",
+          sectionPath: [],
+        },
+      ],
+      query: "find this",
+      queryImages: [
+        {
+          body: new Uint8Array([1, 2]),
+          byteSize: 2,
+          mimeType: "image/png",
+          sha256: "a".repeat(64),
+          uploadFileId: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+    });
+
+    expect(cancel).toHaveBeenCalled();
+    expect(calls[0]?.messages.flatMap((message) => message.content)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          imageUrl: { detail: "auto", url: "data:image/png;base64,AQI=" },
+          type: "image_url",
+        }),
+      ]),
+    );
+    expect(calls[0]?.messages.flatMap((message) => message.content)).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          imageUrl: expect.objectContaining({ url: "data:image/png;base64,Bwg=" }),
+        }),
+      ]),
+    );
+  });
+
+  it("cancels a stalled object stream before invoking the vision model", async () => {
+    const objectStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1024,
+    });
+    const cancel = vi.fn();
+    objectStorage.getObjectStream = async () =>
+      new ReadableStream<Uint8Array>({ cancel, start: () => undefined });
+    const generate = vi.fn(async () => ({ text: "unexpected" }));
+    const provider = createObjectStorageContentBlockMultimodalAnswerProvider({
+      model: "vision-native-answer",
+      objectStorage,
+      provider: { generate },
+    });
+    const controller = new AbortController();
+    const aborted = new Error("lease lost");
+    const pending = provider.generate({
+      evidence: [],
+      multimodalEvidence: [
+        {
+          assetRef: { contentType: "image/png", objectKey: "stalled.png" },
+          documentAssetId: "doc-1",
+          modality: "image",
+          parseElementId: "image-1",
+          sectionPath: [],
+        },
+      ],
+      query: "describe",
+      signal: controller.signal,
+    });
+
+    controller.abort(aborted);
+
+    await expect(pending).rejects.toBe(aborted);
+    expect(cancel).toHaveBeenCalledWith(aborted);
+    expect(generate).not.toHaveBeenCalled();
   });
 
   it("validates object-backed image block configuration", () => {

@@ -53,6 +53,8 @@ export interface BuildFtsProjectionInput {
 }
 
 export interface BuildVisualEmbeddingProjectionInput {
+  /** Immutable profile selected for this publication generation. */
+  readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly model: string;
   readonly modelBudget?: DocumentModelBudget | undefined;
   readonly nodes: readonly KnowledgeNode[];
@@ -88,6 +90,7 @@ export interface VisualEmbeddingAssetInput {
 
 export interface EmbedVisualAssetsInput {
   readonly assets: readonly VisualEmbeddingAssetInput[];
+  readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly model: string;
   /** Called immediately before each physical provider request for admission and accounting. */
   readonly reserveProviderCall?: ((itemCount: number) => void) | undefined;
@@ -203,10 +206,10 @@ export function createDenseVectorProjectionBuilder({
 
   return {
     build: async ({
+      embeddingProfile,
       model,
       modelBudget,
       nodes,
-      embeddingProfile,
       projectionVersion,
       publicationGenerationId,
       signal,
@@ -641,6 +644,7 @@ export function createVisualEmbeddingProjectionBuilder({
 }: VisualEmbeddingProjectionBuilderOptions): VisualEmbeddingProjectionBuilder {
   return {
     build: async ({
+      embeddingProfile,
       model,
       modelBudget,
       nodes,
@@ -726,6 +730,7 @@ export function createVisualEmbeddingProjectionBuilder({
       try {
         result = await provider.embedAssets({
           assets: candidatesToEmbed.map((candidate) => candidate.asset),
+          ...(embeddingProfile ? { embeddingProfile } : {}),
           model,
           ...(providerOwnsCallAdmission
             ? {
@@ -1257,7 +1262,7 @@ async function readBoundedVisualEmbeddingStream(
     }
   } finally {
     signal?.removeEventListener("abort", onAbort);
-    await cancel();
+    await cancel(signal?.aborted ? signal.reason : undefined);
     reader.releaseLock();
   }
 

@@ -32,6 +32,7 @@ import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
+  retrievalComposerImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalResearchEventsAtom,
@@ -88,6 +89,7 @@ export function RetrievalRuntimeController() {
   const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
   const query = useAtomValue(retrievalComposerQueryAtom)
+  const queryImages = useAtomValue(retrievalComposerImagesAtom)
   const mode = useAtomValue(retrievalComposerModeAtom)
   const localRun = useAtomValue(retrievalLocalRunAtom)
   const selected = useAtomValue(retrievalSelectedAtom)
@@ -215,7 +217,9 @@ export function RetrievalRuntimeController() {
   const runFastQuery = useCallback(
     async (input?: { mode: RetrievalTestMode; query: string }) => {
       const cleanQuery = (input?.query ?? query).trim()
-      if (!cleanQuery || runInFlightRef.current) return
+      const activeImages = input ? [] : queryImages
+      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
       const requestedMode = input?.mode ?? mode
       const runMode = requestedMode === 'deep' ? 'deep' : 'fast'
@@ -250,7 +254,11 @@ export function RetrievalRuntimeController() {
       try {
         const admission =
           await consoleClient.knowledgeFs.spaces.byControlSpaceId.queries.admission.post({
-            body: { mode: runMode, query: cleanQuery },
+            body: {
+              mode: runMode,
+              query: cleanQuery,
+              ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            },
             params: { control_space_id: knowledgeSpaceId },
           })
         await streamKnowledgeQuery({
@@ -318,6 +326,7 @@ export function RetrievalRuntimeController() {
       knowledgeSpaceId,
       mode,
       query,
+      queryImages,
       refetchTraces,
       setComposerDraft,
       setLocalRun,
@@ -329,7 +338,9 @@ export function RetrievalRuntimeController() {
   const startResearch = useCallback(
     async (input?: { query: string }) => {
       const cleanQuery = (input?.query ?? query).trim()
-      if (!cleanQuery || runInFlightRef.current) return
+      const activeImages = input ? [] : queryImages
+      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
       try {
         if (
@@ -339,7 +350,11 @@ export function RetrievalRuntimeController() {
           return
         const plan =
           await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
-            body: { mode: 'research', query: cleanQuery },
+            body: {
+              mode: 'research',
+              query: cleanQuery,
+              ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            },
             params: { control_space_id: knowledgeSpaceId },
           })
         const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post({
@@ -347,6 +362,7 @@ export function RetrievalRuntimeController() {
             budgetUsd: plan.budget.budget_usd,
             mode: 'research',
             query: cleanQuery,
+            ...(imageReferences.length ? { queryImages: imageReferences } : {}),
             topK: plan.retrieval_plan.top_k,
           },
           params: { control_space_id: knowledgeSpaceId },
@@ -374,6 +390,7 @@ export function RetrievalRuntimeController() {
       ensureModelReady,
       knowledgeSpaceId,
       query,
+      queryImages,
       refetchResearchTasks,
       setAdmittedResearchTasks,
       setComposerDraft,

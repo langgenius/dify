@@ -15,6 +15,7 @@ export interface DocumentMultimodalUnderstandingProviderInput {
   readonly item: DocumentMultimodalEnrichmentProviderInput["item"];
   readonly model: string;
   readonly promptVersion: string;
+  readonly signal?: AbortSignal | undefined;
   readonly sourceText?: string | undefined;
   readonly task: DocumentMultimodalUnderstandingTask;
   readonly tenantId?: string | undefined;
@@ -55,6 +56,7 @@ export function createCompositeDocumentMultimodalEnrichmentProvider({
       let result: DocumentMultimodalEnrichmentProviderResult = {};
 
       for (const provider of providers) {
+        input.signal?.throwIfAborted();
         result = mergeProviderResults(result, await provider.enrich(input));
       }
 
@@ -85,6 +87,7 @@ export function createUnderstandingDocumentMultimodalEnrichmentProvider({
           item: input.item,
           model: input.model,
           promptVersion: input.promptVersion,
+          ...(input.signal ? { signal: input.signal } : {}),
           ...(input.sourceText ? { sourceText: input.sourceText } : {}),
           task,
           ...(input.tenantId ? { tenantId: input.tenantId } : {}),
@@ -111,6 +114,7 @@ export function createUnderstandingDocumentMultimodalEnrichmentProvider({
           ...(result.title ? { title: result.title } : {}),
         };
       } catch (error) {
+        input.signal?.throwIfAborted();
         if (!recoverProviderErrors) {
           throw error;
         }

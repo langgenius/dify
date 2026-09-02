@@ -523,7 +523,9 @@ export function RecordButton({
       onClick={onClick}
     >
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-1 system-sm-semibold text-text-secondary">{record.query}</span>
+        <span className="line-clamp-1 system-sm-semibold text-text-secondary">
+          {record.query || t(($) => $['newKnowledge.retrievalTest.queryImages'])}
+        </span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
           <span className={cn('min-w-0 flex-1 truncate', failed && 'text-text-destructive')}>
             {activeResearchStage ? (

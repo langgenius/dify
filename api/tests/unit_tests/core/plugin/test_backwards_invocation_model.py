@@ -16,7 +16,7 @@ from core.plugin.entities.request import (
     RequestListModels,
 )
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from models.account import Tenant
 
 
@@ -180,7 +180,7 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity()
     provider = SimpleNamespace(provider="langgenius/openai/openai")
     active_model = SimpleNamespace(
         deprecated=False,
-        features=[],
+        features=[ModelFeature.VISION],
         fetch_from="predefined-model",
         label={"en_US": "Embedding"},
         model="text-embedding-3-small",
@@ -210,6 +210,7 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity()
     assert result.items[0].plugin_id == "langgenius/openai"
     assert result.items[0].provider == "openai"
     assert result.items[0].plugin_unique_identifier == installed_plugin.plugin_unique_identifier
+    assert result.items[0].capabilities["features"] == ["vision"]
     configurations.get_models.assert_called_once_with(
         model_type=ModelType.TEXT_EMBEDDING,
         only_active=True,

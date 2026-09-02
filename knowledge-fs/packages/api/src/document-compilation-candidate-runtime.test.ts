@@ -507,8 +507,10 @@ describe("document compilation candidate runtime factories", () => {
     const execution = executionContext();
     const processor = createDocumentCompilationWorkerAttemptProcessor({
       coordinator: { composeCandidate: vi.fn() as never },
-      createWorker: ({ jobs }) =>
-        ({
+      createWorker: ({ jobs, signal, tenantId: workerTenantId }) => {
+        expect(signal).toBe(execution.signal);
+        expect(workerTenantId).toBe(tenantId);
+        return {
           process: vi.fn(
             async (
               _payload: unknown,
@@ -535,7 +537,8 @@ describe("document compilation candidate runtime factories", () => {
               );
             },
           ),
-        }) as never,
+        } as never;
+      },
       fingerprintMaterial: { resolve: vi.fn() as never },
     });
 
@@ -769,6 +772,33 @@ function profileRevision(
   snapshot: Record<string, unknown>,
 ) {
   return {
+    capabilitySnapshot:
+      kind === "embedding"
+        ? {
+            capabilityDigest: `sha256:${"3".repeat(64)}`,
+            checkedAt: createdAt,
+            dimension: 768,
+            inputModalities: ["text"],
+            kind: "embedding",
+            pluginUniqueIdentifier: "embedding-plugin@1",
+            schemaFingerprint: `sha256:${"4".repeat(64)}`,
+            selection: {
+              model: "embedding-model",
+              pluginId: "embedding-plugin",
+              provider: "embedding-provider",
+            },
+          }
+        : {
+            reasoning: {
+              capabilityDigest: `sha256:${"5".repeat(64)}`,
+              checkedAt: createdAt,
+              inputModalities: ["text"],
+              kind: "reasoning",
+              pluginUniqueIdentifier: "reasoning-plugin@1",
+              schemaFingerprint: `sha256:${"6".repeat(64)}`,
+              selection: retrievalProfile().reasoningModel,
+            },
+          },
     id,
     kind,
     knowledgeSpaceId: spaceId,

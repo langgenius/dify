@@ -8,6 +8,7 @@ import {
   type ModelCatalogEntry,
   type ReasoningModelPreflightProvider,
   createModelCapabilityPreflight,
+  modelCapabilitySupportsInput,
 } from "./model-capability-preflight";
 
 const selection: KnowledgeSpaceModelSelection = {
@@ -63,6 +64,57 @@ describe("createModelCapabilityPreflight", () => {
       });
     },
   );
+
+  it("probes a declared vision embedding with image bytes and enforces one shared dimension", async () => {
+    const embedImages = vi.fn(async (input) => ({
+      dense: [[0, 1]],
+      metadata: { model: input.model, provider: "dify-model-runtime:image-bytes" },
+      model: input.model,
+    }));
+    const preflight = createModelCapabilityPreflight({
+      catalog: catalog({ ...entry("embedding"), capabilities: { features: ["vision"] } }),
+      embeddingProviderFactory: () => embeddingProvider(),
+      imageEmbeddingProviderFactory: () => ({ embedImages, kind: "dify-model-runtime" }),
+      reasoningProviderFactory: () => reasoningProvider(),
+      rerankerProviderFactory: () => rerankerProvider(),
+    });
+
+    await expect(
+      preflight.verify({ kind: "embedding", selection, tenantId: "tenant-1" }),
+    ).resolves.toMatchObject({ inputModalities: ["text", "image"] });
+    expect(embedImages).toHaveBeenCalledTimes(2);
+    expect(embedImages).toHaveBeenNthCalledWith(1, {
+      images: [
+        expect.objectContaining({
+          body: expect.any(Uint8Array),
+          contentType: "image/png",
+          nodeId: "model-capability-preflight-image",
+        }),
+      ],
+      inputType: "document",
+      model: selection.model,
+      signal: expect.any(AbortSignal),
+      tenantId: "tenant-1",
+    });
+    expect(embedImages).toHaveBeenNthCalledWith(2, expect.objectContaining({ inputType: "query" }));
+
+    const mismatch = createModelCapabilityPreflight({
+      catalog: catalog({ ...entry("embedding"), capabilities: { features: ["vision"] } }),
+      embeddingProviderFactory: () => embeddingProvider(),
+      imageEmbeddingProviderFactory: () => ({
+        embedImages: async (input) => ({
+          dense: [[0, 1, 2]],
+          metadata: { model: input.model, provider: "dify-model-runtime:image-bytes" },
+          model: input.model,
+        }),
+      }),
+      reasoningProviderFactory: () => reasoningProvider(),
+      rerankerProviderFactory: () => rerankerProvider(),
+    });
+    await expect(
+      mismatch.verify({ kind: "embedding", selection, tenantId: "tenant-1" }),
+    ).rejects.toMatchObject({ code: "EMBEDDING_DIMENSION_INVALID" });
+  });
 
   it.each([
     { acceptedDimension: 4096, dialect: "postgres" as const, rejectedDimension: 16_001 },
@@ -310,6 +362,43 @@ describe("createModelCapabilityPreflight", () => {
     expect(validate).not.toHaveBeenCalled();
     expect(generate).not.toHaveBeenCalled();
     expect(rerank).not.toHaveBeenCalled();
+  });
+
+  it("freezes normalized input modalities from the tenant model catalog", async () => {
+    const visionReasoning = createModelCapabilityPreflight({
+      catalog: catalog({
+        ...entry("reasoning"),
+        capabilities: { features: ["multi-tool-call", "vision", "vision"] },
+      }),
+      embeddingProviderFactory: () => embeddingProvider(),
+      reasoningProviderFactory: () => reasoningProvider(),
+      rerankerProviderFactory: () => rerankerProvider(),
+    });
+    const textEmbedding = createModelCapabilityPreflight({
+      catalog: catalog({
+        ...entry("embedding"),
+        capabilities: { features: [] },
+      }),
+      embeddingProviderFactory: () => embeddingProvider(),
+      reasoningProviderFactory: () => reasoningProvider(),
+      rerankerProviderFactory: () => rerankerProvider(),
+    });
+
+    const reasoning = await visionReasoning.resolveConfigured?.({
+      kind: "reasoning",
+      selection,
+      tenantId: "tenant-1",
+    });
+    const embedding = await textEmbedding.verify({
+      kind: "embedding",
+      selection,
+      tenantId: "tenant-1",
+    });
+
+    expect(reasoning?.inputModalities).toEqual(["text", "image"]);
+    expect(modelCapabilitySupportsInput(reasoning, "image")).toBe(true);
+    expect(embedding.inputModalities).toEqual(["text"]);
+    expect(modelCapabilitySupportsInput(embedding, "image")).toBe(false);
   });
 
   it.each(["catalog", "credential-validation", "probe"] as const)(

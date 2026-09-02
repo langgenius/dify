@@ -3,6 +3,7 @@ import type {
   KnowledgeSpaceRetrievalProfile,
 } from "@knowledge/core";
 import type { ConcurrencyGate } from "./bounded-concurrency";
+import type { ModelInputModality } from "./model-capability-preflight";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
@@ -115,6 +116,7 @@ export interface RetrievalPlan {
 }
 
 export interface RetrieveHybridInput extends SearchDenseInput {
+  readonly embeddingInputModalities?: readonly ModelInputModality[] | undefined;
   /** Frozen embedding identity used for Research supplemental-query embeddings. */
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly limit: number;

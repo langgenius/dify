@@ -31,6 +31,8 @@ import {
   type KnowledgeSpacePermissionSnapshot,
 } from "./knowledge-space-access-control";
 import type { KnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
+import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import {
   type DurableTaskOperationalMetrics,
   recordDurableTaskOperationalMetric,
@@ -101,6 +103,7 @@ export interface ResearchTaskRuntimeOptions {
   readonly maxBatchSize: number;
   readonly maxRetryDelayMs?: number | undefined;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
   readonly now?: (() => number) | undefined;
   readonly onError?:
     | ((input: {
@@ -164,6 +167,7 @@ export function createResearchTaskRuntime({
   maxBatchSize,
   maxRetryDelayMs = 5 * 60_000,
   metrics,
+  modelInputModalityResolver,
   now = Date.now,
   onError,
   partials,
@@ -334,6 +338,7 @@ export function createResearchTaskRuntime({
         getCurrent: () => current,
         manifests,
         llmPricing,
+        modelInputModalityResolver,
         now,
         partials,
         projectionSnapshotResolver,
@@ -624,6 +629,7 @@ async function runResearchTask({
   getCurrent,
   manifests,
   llmPricing,
+  modelInputModalityResolver,
   now,
   partials,
   projectionSnapshotResolver,
@@ -646,6 +652,7 @@ async function runResearchTask({
   readonly getCurrent: () => ResearchTaskJob;
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly llmPricing: ResearchModelPricing;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
   readonly now: () => number;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -734,6 +741,37 @@ async function runResearchTask({
         tenantId: current.tenantId,
       });
   const retrievalProfile = frozenRuntime?.retrievalProfile ?? manifest?.retrievalProfile;
+  let embeddingInputModalities: readonly ("text" | "image")[] | undefined;
+  let reasoningInputModalities: readonly ("text" | "image")[] | undefined;
+  if (frozenRuntime) {
+    if (modelInputModalityResolver) {
+      [embeddingInputModalities, reasoningInputModalities] = await Promise.all([
+        modelInputModalityResolver.resolve({
+          signal: abortSignal,
+          snapshot: frozenRuntime.embeddingCapabilitySnapshot,
+          tenantId: current.tenantId,
+        }),
+        modelInputModalityResolver.resolve({
+          signal: abortSignal,
+          snapshot: frozenRuntime.retrievalCapabilitySnapshot.reasoning,
+          tenantId: current.tenantId,
+        }),
+      ]);
+    } else {
+      const embeddingCapability = ModelCapabilitySnapshotSchema.safeParse(
+        frozenRuntime.embeddingCapabilitySnapshot,
+      );
+      const reasoningCapability = ModelCapabilitySnapshotSchema.safeParse(
+        frozenRuntime.retrievalCapabilitySnapshot.reasoning,
+      );
+      embeddingInputModalities = embeddingCapability.success
+        ? (embeddingCapability.data.inputModalities ?? ["text"])
+        : undefined;
+      reasoningInputModalities = reasoningCapability.success
+        ? (reasoningCapability.data.inputModalities ?? ["text"])
+        : undefined;
+    }
+  }
   const queryImageReferences = queryImageReferencesFromMetadata(current.metadata);
   if (queryImageReferences.length > 0 && !queryImageResolver) {
     throw new Error("Research query images require a configured Dify UploadFile resolver");
@@ -925,6 +963,7 @@ async function runResearchTask({
       ...(frozenRuntime?.embeddingProfile
         ? { embeddingProfile: frozenRuntime.embeddingProfile }
         : {}),
+      ...(embeddingInputModalities ? { embeddingInputModalities } : {}),
       knowledgeSpaceId: current.knowledgeSpaceId,
       mode,
       permissionScope: [...authorizationContext.permissionScopes],
@@ -952,7 +991,9 @@ async function runResearchTask({
         : {}),
       ...(researchDurableCheckpoint ? { researchDurableCheckpoint } : {}),
       requestedMode: durableRequestedMode(current, mode),
+      ...(reasoningInputModalities ? { reasoningInputModalities } : {}),
       ...(retrievalProfile ? { retrievalProfile } : {}),
+      signal: abortSignal,
       subject: {
         // Authentication scopes are intentionally absent. Candidate filtering uses only the
         // server-issued, revalidated permission snapshot above.

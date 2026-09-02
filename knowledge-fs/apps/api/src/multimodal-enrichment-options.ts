@@ -1,13 +1,20 @@
 import {
+  type ConcurrencyGate,
   type DocumentMultimodalUnderstandingProvider,
   type DocumentMultimodalUnderstandingProviderInput,
   type DocumentMultimodalUnderstandingProviderResult,
+  type EnhanceDocumentMultimodalManifestInput,
   type KnowledgeGatewayOptions,
+  ModelCapabilitySnapshotSchema,
+  type ModelInputModalityResolver,
+  type PublishedKnowledgeSpaceRuntimeSnapshotResolver,
   createCompositeDocumentMultimodalEnrichmentProvider,
+  createConcurrencyGate,
   createDocumentMultimodalManifestEnhancer,
   createMetadataDocumentMultimodalEnrichmentProvider,
   createUnderstandingDocumentMultimodalEnrichmentProvider,
 } from "@knowledge/api";
+import { DocumentMultimodalManifestSchema } from "@knowledge/core";
 
 import {
   type DifyModelRuntimeClientEnv,
@@ -16,6 +23,7 @@ import {
   difyModelRuntimeRequired,
 } from "./dify-model-runtime-options";
 
+/** @deprecated Production model routing is profile-driven; retained only for source compatibility. */
 export interface ApiMultimodalEnrichmentEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY?: string | undefined;
@@ -31,6 +39,21 @@ export interface ApiMultimodalEnrichmentEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_TEMPERATURE?: string | undefined;
 }
 
+export interface ApiProfileMultimodalEnrichmentEnv extends DifyModelRuntimeClientEnv {
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_ITEMS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_OUTPUT_TOKENS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SOURCE_TEXT_CHARS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SUMMARY_CHARS?: string | undefined;
+  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_TEMPERATURE?: string | undefined;
+}
+
+/**
+ * @deprecated Production assembly uses `createApiProfileMultimodalEnrichmentOptions`. This legacy
+ * helper remains temporarily source-compatible but is not read by the running service.
+ */
 export function createApiMultimodalEnrichmentOptions({
   env = process.env,
   objectStorage,
@@ -114,11 +137,199 @@ export function createApiMultimodalEnrichmentOptions({
   };
 }
 
+/**
+ * Builds profile-scoped document image understanding. Model/provider identity is read from the
+ * publication-bound reasoning profile; deployment variables only provide resource ceilings.
+ */
+export function createApiProfileMultimodalEnrichmentOptions({
+  env = process.env,
+  modelInputModalityResolver,
+  modelRequestGate,
+  objectStorage,
+  runtimeSnapshots,
+}: {
+  readonly env?: ApiProfileMultimodalEnrichmentEnv | undefined;
+  readonly modelInputModalityResolver: ModelInputModalityResolver;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly objectStorage: KnowledgeGatewayOptions["adapter"]["objectStorage"];
+  readonly runtimeSnapshots: PublishedKnowledgeSpaceRuntimeSnapshotResolver;
+}): Partial<KnowledgeGatewayOptions> {
+  const client = createApiDifyModelRuntimeClient(env);
+  const promptVersion = "multimodal-understanding-v1";
+  const maxConcurrency = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY,
+    4,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY",
+  );
+  const maxItems = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_ITEMS,
+    100,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_ITEMS",
+  );
+  const maxSourceTextChars = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SOURCE_TEXT_CHARS,
+    4_000,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SOURCE_TEXT_CHARS",
+  );
+  const maxSummaryChars = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SUMMARY_CHARS,
+    2_000,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SUMMARY_CHARS",
+  );
+  const imageDetail = imageDetailEnv(env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL);
+  const maxImageBytes = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES,
+    10 * 1024 * 1024,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES",
+  );
+  const maxOutputTokens = positiveIntegerEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_OUTPUT_TOKENS,
+    1_000,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_OUTPUT_TOKENS",
+  );
+  const temperature = nonNegativeNumberEnv(
+    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_TEMPERATURE,
+    0,
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_TEMPERATURE",
+  );
+  // Unlike the per-manifest worker pool below, this gate is shared by the entire API process so
+  // several documents cannot multiply the configured number of simultaneous VLM requests.
+  const modelCallGate = createConcurrencyGate(maxConcurrency);
+  const resolve = async (input: {
+    readonly knowledgeSpaceId: string;
+    readonly signal?: AbortSignal | undefined;
+    readonly tenantId?: string | undefined;
+  }) => {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      return {
+        cacheModel: "profile-reasoning:tenant-unavailable",
+        inputModalities: ["text"] as const,
+      };
+    }
+    const runtime = await runtimeSnapshots.resolve({
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      tenantId,
+    });
+    const capability = ModelCapabilitySnapshotSchema.safeParse(
+      runtime.retrievalCapabilitySnapshot.reasoning,
+    );
+    if (!capability.success) {
+      return {
+        cacheModel: "profile-reasoning:capability-invalid:text",
+        inputModalities: ["text"] as const,
+      };
+    }
+    const inputModalities = await modelInputModalityResolver.resolve({
+      ...(input.signal ? { signal: input.signal } : {}),
+      snapshot: capability.data,
+      tenantId,
+    });
+    return {
+      // Include the resolved modality set so a transient fail-closed legacy catalog lookup does
+      // not make a text-only cache entry permanently mask later verified image capability.
+      cacheModel: `profile-reasoning:${capability.data.capabilityDigest}:${inputModalities.join("+")}`,
+      inputModalities,
+      selection: runtime.retrievalProfile.reasoningModel,
+    };
+  };
+  const resolvedByInput = new WeakMap<
+    EnhanceDocumentMultimodalManifestInput,
+    Awaited<ReturnType<typeof resolve>>
+  >();
+
+  return {
+    documentMultimodalManifestEnhancer: {
+      cacheIdentity: async (input) => {
+        const resolved = await resolve({
+          knowledgeSpaceId: input.manifest.knowledgeSpaceId,
+          ...(input.signal ? { signal: input.signal } : {}),
+          tenantId: input.tenantId,
+        });
+        resolvedByInput.set(input, resolved);
+        return { model: resolved.cacheModel, promptVersion };
+      },
+      enhance: async (input) => {
+        const resolved =
+          resolvedByInput.get(input) ??
+          (await resolve({
+            knowledgeSpaceId: input.manifest.knowledgeSpaceId,
+            ...(input.signal ? { signal: input.signal } : {}),
+            tenantId: input.tenantId,
+          }));
+        resolvedByInput.delete(input);
+        if (!resolved.selection || !resolved.inputModalities.includes("image")) {
+          const manifest = DocumentMultimodalManifestSchema.parse(input.manifest);
+          return DocumentMultimodalManifestSchema.parse({
+            ...manifest,
+            metadata: {
+              ...manifest.metadata,
+              enrichment: {
+                attemptedItems: 0,
+                enhancedItems: 0,
+                failedItems: 0,
+                model: resolved.cacheModel,
+                promptVersion,
+                skippedItems: manifest.items.length,
+                skippedReason: "reasoning-model-text-only",
+                source: "profile-capability",
+              },
+            },
+          });
+        }
+        return createDocumentMultimodalManifestEnhancer({
+          maxConcurrency,
+          maxItems,
+          maxSourceTextChars,
+          model: resolved.cacheModel,
+          promptVersion,
+          provider: createCompositeDocumentMultimodalEnrichmentProvider({
+            providers: [
+              createMetadataDocumentMultimodalEnrichmentProvider(),
+              createUnderstandingDocumentMultimodalEnrichmentProvider({
+                maxSummaryChars,
+                provider: concurrencyBoundUnderstandingProvider(
+                  createDifyMultimodalUnderstandingProvider({
+                    client,
+                    imageDetail,
+                    maxImageBytes,
+                    maxOutputTokens,
+                    modelRequestGate,
+                    objectStorage,
+                    pluginId: resolved.selection.pluginId,
+                    provider: resolved.selection.provider,
+                    temperature,
+                  }),
+                  modelCallGate,
+                ),
+              }),
+            ],
+          }),
+          providerModel: resolved.selection.model,
+        }).enhance(input);
+      },
+      model: "profile-reasoning",
+      promptVersion,
+    },
+  };
+}
+
+function concurrencyBoundUnderstandingProvider(
+  provider: DocumentMultimodalUnderstandingProvider,
+  gate: ReturnType<typeof createConcurrencyGate>,
+): DocumentMultimodalUnderstandingProvider {
+  return {
+    kind: provider.kind,
+    understand: (input) => gate.run(() => provider.understand(input), { signal: input.signal }),
+  };
+}
+
 interface DifyMultimodalUnderstandingProviderOptions {
   readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
   readonly imageDetail: "auto" | "high" | "low";
   readonly maxImageBytes: number;
   readonly maxOutputTokens: number;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly objectStorage: KnowledgeGatewayOptions["adapter"]["objectStorage"];
   readonly pluginId: string;
   readonly provider: string;
@@ -130,6 +341,7 @@ function createDifyMultimodalUnderstandingProvider({
   imageDetail,
   maxImageBytes,
   maxOutputTokens,
+  modelRequestGate,
   objectStorage,
   pluginId,
   provider,
@@ -152,16 +364,21 @@ function createDifyMultimodalUnderstandingProvider({
         maxImageBytes,
         objectStorage,
       });
-      const result = await difyLlmCompletion({
-        client,
-        maxOutputTokens,
-        model: input.model,
-        pluginId,
-        promptMessages: messages,
-        provider,
-        temperature,
-        tenantId,
-      });
+      const request = () =>
+        difyLlmCompletion({
+          client,
+          maxOutputTokens,
+          model: input.model,
+          pluginId,
+          promptMessages: messages,
+          provider,
+          ...(input.signal ? { signal: input.signal } : {}),
+          temperature,
+          tenantId,
+        });
+      const result = modelRequestGate
+        ? await modelRequestGate.run(request, { signal: input.signal })
+        : await request();
 
       return parseUnderstandingResult(result.text);
     },
@@ -242,12 +459,66 @@ async function objectBackedImageSource({
     return undefined;
   }
 
-  const body = await objectStorage.getObject(objectKey);
-  if (!body || body.byteLength > maxImageBytes) {
+  input.signal?.throwIfAborted();
+  const stream = await objectStorage.getObjectStream(objectKey);
+  input.signal?.throwIfAborted();
+  if (!stream) {
     return undefined;
   }
+  const body = await readBoundedEnrichmentImageStream(stream, maxImageBytes, input.signal);
+  if (!body) return undefined;
 
   return { base64Data: Buffer.from(body).toString("base64"), mimeType: contentType };
+}
+
+async function readBoundedEnrichmentImageStream(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+  signal: AbortSignal | undefined,
+): Promise<Uint8Array | undefined> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let closed = false;
+  let totalBytes = 0;
+  const cancel = async (reason?: unknown): Promise<void> => {
+    if (closed) return;
+    closed = true;
+    await reader.cancel(reason).catch(() => undefined);
+  };
+  const onAbort = () => void cancel(signal?.reason);
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    signal?.throwIfAborted();
+    while (true) {
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) {
+        closed = true;
+        break;
+      }
+      if (value.byteLength > maxBytes - totalBytes) {
+        await cancel(new Error(`Multimodal enrichment image exceeds maxImageBytes=${maxBytes}`));
+        return undefined;
+      }
+      chunks.push(value);
+      totalBytes += value.byteLength;
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    await cancel(signal?.aborted ? signal.reason : undefined);
+    reader.releaseLock();
+  }
+
+  if (chunks.length === 0) return new Uint8Array();
+  if (chunks.length === 1) return chunks[0] as Uint8Array;
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
 function parseUnderstandingResult(text: string): DocumentMultimodalUnderstandingProviderResult {

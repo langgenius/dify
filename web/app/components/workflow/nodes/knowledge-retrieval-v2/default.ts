@@ -16,6 +16,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
   defaultValue: {
     control_space_ids: [],
     metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
+    query_attachment_selector: [],
     query_variable_selector: [],
     score_threshold: null,
     top_n: 10,

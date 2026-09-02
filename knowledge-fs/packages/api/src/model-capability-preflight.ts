@@ -8,10 +8,25 @@ import {
 import type { EmbeddingProvider, RerankerProvider } from "@knowledge/embeddings";
 import { z } from "zod";
 
+import type { ImageBytesVisualEmbeddingProvider } from "./index-projection-builders";
 import { resolveVectorIndexCapability } from "./vector-index-capability";
 
 export const ModelCapabilityKindSchema = z.enum(["embedding", "reasoning", "rerank"]);
 export type ModelCapabilityKind = z.infer<typeof ModelCapabilityKindSchema>;
+
+export const ModelInputModalitySchema = z.enum(["text", "image"]);
+export type ModelInputModality = z.infer<typeof ModelInputModalitySchema>;
+
+const ModelInputModalitiesSchema = z
+  .array(ModelInputModalitySchema)
+  .min(1)
+  .max(2)
+  .refine((modalities) => modalities[0] === "text", {
+    message: "Model input modalities must start with text",
+  })
+  .refine((modalities) => new Set(modalities).size === modalities.length, {
+    message: "Model input modalities must be unique",
+  });
 
 export const ModelCatalogEntrySchema = z
   .object({
@@ -61,6 +76,11 @@ export const ModelCapabilitySnapshotSchema = z
     checkedAt: z.string().datetime({ offset: true }),
     dimension: z.number().int().positive().optional(),
     distanceMetric: z.enum(["cosine", "dot", "l2"]).optional(),
+    /**
+     * Normalized input modalities frozen from the tenant-active model catalog. Optional only for
+     * capability snapshots created before modality-aware profiles were introduced.
+     */
+    inputModalities: ModelInputModalitiesSchema.optional(),
     kind: ModelCapabilityKindSchema,
     pluginUniqueIdentifier: z.string().trim().min(1).max(1024),
     pluginVersion: z.string().trim().min(1).max(256).optional(),
@@ -85,6 +105,13 @@ export const ModelCapabilitySnapshotSchema = z
     }
   });
 export type ModelCapabilitySnapshot = z.infer<typeof ModelCapabilitySnapshotSchema>;
+
+export function modelCapabilitySupportsInput(
+  snapshot: Pick<ModelCapabilitySnapshot, "inputModalities"> | null | undefined,
+  modality: ModelInputModality,
+): boolean {
+  return snapshot?.inputModalities?.includes(modality) === true;
+}
 
 export type ModelCapabilityPreflightErrorCode =
   | "EMBEDDING_DIMENSION_INVALID"
@@ -131,6 +158,10 @@ export interface ModelCapabilityPreflight {
 export interface ModelCapabilityPreflightOptions {
   readonly catalog: ModelCapabilityCatalog;
   readonly embeddingProviderFactory: (selection: KnowledgeSpaceModelSelection) => EmbeddingProvider;
+  /** Required when the catalog declares `vision` for an embedding model. */
+  readonly imageEmbeddingProviderFactory?:
+    | ((selection: KnowledgeSpaceModelSelection) => ImageBytesVisualEmbeddingProvider)
+    | undefined;
   readonly now?: (() => string) | undefined;
   readonly reasoningProviderFactory: (
     selection: KnowledgeSpaceModelSelection,
@@ -163,6 +194,14 @@ export interface ReasoningModelPreflightProvider {
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 15_000;
 const PREFLIGHT_EMBEDDING_SENTINEL = "knowledge-fs model capability preflight";
+// 1x1 transparent PNG. A real image payload verifies the provider's multimodal dispatch and
+// catches models that advertise `vision` but only implement text embedding.
+const PREFLIGHT_IMAGE_PNG = new Uint8Array(
+  Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  ),
+);
 
 /**
  * Verifies that a catalog declaration is actually invokable before a profile revision can be
@@ -171,6 +210,7 @@ const PREFLIGHT_EMBEDDING_SENTINEL = "knowledge-fs model capability preflight";
 export function createModelCapabilityPreflight({
   catalog,
   embeddingProviderFactory,
+  imageEmbeddingProviderFactory,
   now = () => new Date().toISOString(),
   reasoningProviderFactory,
   rerankerProviderFactory,
@@ -273,7 +313,9 @@ export function createModelCapabilityPreflight({
             }
 
             const observed = await invokePreflight({
+              catalogEntry,
               embeddingProviderFactory,
+              imageEmbeddingProviderFactory,
               kind,
               reasoningProviderFactory,
               rerankerProviderFactory,
@@ -376,6 +418,7 @@ function capabilitySnapshot({
   const capabilityMaterial = {
     ...(observed.dimension === undefined ? {} : { dimension: observed.dimension }),
     ...(observed.distanceMetric === undefined ? {} : { distanceMetric: observed.distanceMetric }),
+    inputModalities: modelInputModalitiesFromCatalogCapabilities(catalogEntry.capabilities),
     kind,
     pluginUniqueIdentifier: catalogEntry.pluginUniqueIdentifier,
     ...(catalogEntry.pluginVersion ? { pluginVersion: catalogEntry.pluginVersion } : {}),
@@ -389,6 +432,16 @@ function capabilitySnapshot({
       .digest("hex")}`,
     checkedAt,
   });
+}
+
+export function modelInputModalitiesFromCatalogCapabilities(
+  capabilities: Readonly<Record<string, unknown>>,
+): ModelInputModality[] {
+  const features = Array.isArray(capabilities.features) ? capabilities.features : [];
+  const supportsVision = features.some(
+    (feature) => typeof feature === "string" && feature.trim().toLowerCase() === "vision",
+  );
+  return supportsVision ? ["text", "image"] : ["text"];
 }
 
 function assertCatalogIdentity({
@@ -419,7 +472,9 @@ function assertCatalogIdentity({
 }
 
 async function invokePreflight({
+  catalogEntry,
   embeddingProviderFactory,
+  imageEmbeddingProviderFactory,
   kind,
   reasoningProviderFactory,
   rerankerProviderFactory,
@@ -427,7 +482,9 @@ async function invokePreflight({
   signal,
   tenantId,
 }: {
+  readonly catalogEntry: ModelCatalogEntry;
   readonly embeddingProviderFactory: ModelCapabilityPreflightOptions["embeddingProviderFactory"];
+  readonly imageEmbeddingProviderFactory: ModelCapabilityPreflightOptions["imageEmbeddingProviderFactory"];
   readonly kind: ModelCapabilityKind;
   readonly reasoningProviderFactory: ModelCapabilityPreflightOptions["reasoningProviderFactory"];
   readonly rerankerProviderFactory: ModelCapabilityPreflightOptions["rerankerProviderFactory"];
@@ -466,6 +523,54 @@ async function invokePreflight({
         "EMBEDDING_DIMENSION_INVALID",
         "The embedding model returned a dimension that conflicts with its capability declaration",
       );
+    }
+    if (modelInputModalitiesFromCatalogCapabilities(catalogEntry.capabilities).includes("image")) {
+      if (!imageEmbeddingProviderFactory) {
+        throw new ModelCapabilityPreflightError(
+          "MODEL_CAPABILITY_MISMATCH",
+          "The vision embedding model cannot be verified with image input",
+        );
+      }
+      const imageProvider = imageEmbeddingProviderFactory(selection);
+      // Document indexing and image-query retrieval use distinct provider input types. Verify both
+      // before activation so a catalog-level `vision` declaration cannot publish an index that the
+      // interactive query path is unable to search.
+      for (const inputType of ["document", "query"] as const) {
+        const imageResult = await imageProvider.embedImages({
+          images: [
+            {
+              assetRef: {},
+              body: PREFLIGHT_IMAGE_PNG,
+              contentType: "image/png",
+              documentAssetId: "model-capability-preflight-document",
+              metadata: {},
+              modality: "image",
+              nodeId: "model-capability-preflight-image",
+              objectKey: "model-capability-preflight.png",
+              sourceText: "",
+            },
+          ],
+          inputType,
+          model: selection.model,
+          signal,
+          tenantId,
+        });
+        assertPreflightActive(signal);
+        assertObservedIdentity(selection.model, imageResult.model);
+        assertObservedIdentity(selection.model, imageResult.metadata.model);
+        const imageVector = imageResult.dense[0];
+        if (
+          imageResult.dense.length !== 1 ||
+          !imageVector ||
+          imageVector.length !== vector.length ||
+          !imageVector.every(Number.isFinite)
+        ) {
+          throw new ModelCapabilityPreflightError(
+            "EMBEDDING_DIMENSION_INVALID",
+            "The vision embedding model returned an image vector outside its text vector space",
+          );
+        }
+      }
     }
     return { dimension: vector.length, distanceMetric: modelInfo?.distanceMetric ?? "cosine" };
   }

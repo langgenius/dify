@@ -14,8 +14,23 @@ import {
   assertEmbeddingModelMatchesProfile,
   assertObservedEmbeddingDimension,
 } from "./knowledge-space-embedding-resolver";
-import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
+import {
+  ModelCapabilitySnapshotSchema,
+  type ModelInputModality,
+} from "./model-capability-preflight";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import {
+  type QueryImageExpansionProvider,
+  QueryImageExpansionTimeoutError,
+  formatQueryImageExpansionResult,
+} from "./query-image-expansion";
+import {
+  QUERY_IMAGE_EXPANSION_TIMEOUT,
+  QUERY_IMAGE_IGNORED_NO_VISION_MODEL,
+  QUERY_IMAGE_MAX_COUNT,
+  QueryImageDegradationReasonSchema,
+  type ResolvedQueryImage,
+} from "./query-images";
 import type { RetrievalMetadataFilters } from "./retrieval-candidates";
 import type { RetrievalSource } from "./retrieval-candidates";
 import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
@@ -89,6 +104,7 @@ export interface RetrievalTestRuntimeCapabilitiesInput {
 }
 
 export interface RetrievalTestExecutorInput {
+  readonly embeddingInputModalities?: readonly ModelInputModality[] | undefined;
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly filters?: RetrievalMetadataFilters | undefined;
   readonly includeText?: boolean | undefined;
@@ -97,6 +113,10 @@ export interface RetrievalTestExecutorInput {
   readonly permissionScope: readonly string[];
   readonly projectionSnapshot: PublishedProjectionReadSnapshot;
   readonly query: string;
+  /** Number of validated wire references, retained even when a text-only space skips byte I/O. */
+  readonly queryImageReferenceCount?: number | undefined;
+  readonly queryImages?: readonly ResolvedQueryImage[] | undefined;
+  readonly reasoningInputModalities?: readonly ModelInputModality[] | undefined;
   readonly retrievalProfile: KnowledgeSpaceRetrievalProfile;
   readonly subject: AuthSubject;
   readonly signal?: AbortSignal | undefined;
@@ -111,6 +131,7 @@ export interface RetrievalTestExecutorOptions {
   readonly embeddingModel?: string | undefined;
   readonly embeddingResolver?: KnowledgeSpaceEmbeddingResolver | undefined;
   readonly embeddings?: EmbeddingProvider | undefined;
+  readonly queryImageExpansionProvider?: QueryImageExpansionProvider | undefined;
   readonly retriever: BasicHybridRetriever;
 }
 
@@ -180,6 +201,7 @@ export function createRetrievalTestExecutor({
   embeddingModel,
   embeddingResolver,
   embeddings,
+  queryImageExpansionProvider,
   retriever,
 }: RetrievalTestExecutorOptions): RetrievalTestExecutor {
   return {
@@ -195,9 +217,14 @@ export function createRetrievalTestExecutor({
         if (input.signal?.aborted) {
           throw new RetrievalTestUnavailableError("Retrieval test execution lease is unavailable");
         }
+        const preparedQuery = await prepareRetrievalTestQuery({
+          input,
+          provider: queryImageExpansionProvider,
+        });
         const plan = retrievalTestPlanner.plan({
+          hasQueryImages: preparedQuery.queryImages.length > 0,
           mode: input.mode,
-          query: input.query,
+          query: preparedQuery.query,
           topK: input.retrievalProfile.topK,
           traceId: input.traceId,
         });
@@ -208,7 +235,7 @@ export function createRetrievalTestExecutor({
           embeddingResolver,
           embeddings,
           knowledgeSpaceId: input.knowledgeSpaceId,
-          query: input.query,
+          query: preparedQuery.query,
           signal: input.signal,
           tenantId: input.subject.tenantId,
         });
@@ -222,6 +249,9 @@ export function createRetrievalTestExecutor({
                     embeddingProfile: input.embeddingProfile,
                   }
                 : {}),
+              ...(input.embeddingInputModalities
+                ? { embeddingInputModalities: input.embeddingInputModalities }
+                : {}),
               knowledgeSpaceId: input.knowledgeSpaceId,
               ...(input.filters === undefined
                 ? {}
@@ -230,7 +260,10 @@ export function createRetrievalTestExecutor({
               mode: input.mode,
               permissionScope: input.permissionScope,
               projectionSnapshot: input.projectionSnapshot,
-              query: input.query,
+              query: preparedQuery.query,
+              ...(preparedQuery.queryImages.length > 0
+                ? { queryImages: preparedQuery.queryImages }
+                : {}),
               queryVector,
               retrievalProfile: input.retrievalProfile,
               ...(input.signal ? { signal: input.signal } : {}),
@@ -250,9 +283,13 @@ export function createRetrievalTestExecutor({
             "Production retrieval returned a plan that does not match the active profile",
           );
         }
+        const metrics = appendQueryImageDegradationFlags(
+          retrieval.metrics,
+          preparedQuery.degradationFlags,
+        );
         assertRetrievalTestModeEvidence({
           items: retrieval.items,
-          metrics: retrieval.metrics,
+          metrics,
           mode: input.mode,
           permissionScope: input.permissionScope,
           profile: input.retrievalProfile,
@@ -261,7 +298,7 @@ export function createRetrievalTestExecutor({
           items: retrieval.items.map((item) =>
             safeRetrievalTestItem(item, input.includeText === true),
           ),
-          metrics: cloneRetrievalTestMetrics(retrieval.metrics),
+          metrics: cloneRetrievalTestMetrics(metrics),
           plan: {
             ...retrieval.plan,
             requestedMode: input.mode,
@@ -269,7 +306,7 @@ export function createRetrievalTestExecutor({
           },
           stages: retrievalTestStages({
             embeddingMs,
-            metrics: retrieval.metrics,
+            metrics,
             mode: input.mode,
             profile: input.retrievalProfile,
             resultCount: retrieval.items.length,
@@ -309,6 +346,7 @@ async function resolveRetrievalTestEmbedding({
   readonly signal?: AbortSignal | undefined;
   readonly tenantId: string;
 }): Promise<readonly number[]> {
+  if (!query.trim()) return [];
   if (!embeddingProfile) {
     throw new RetrievalTestUnavailableError(
       "Fast, Deep, and Research retrieval tests require an active embedding profile",
@@ -351,6 +389,112 @@ async function resolveRetrievalTestEmbedding({
     profile: embeddingProfile,
   });
   return [...vector];
+}
+
+async function prepareRetrievalTestQuery({
+  input,
+  provider,
+}: {
+  readonly input: RetrievalTestExecutorInput;
+  readonly provider?: QueryImageExpansionProvider | undefined;
+}): Promise<{
+  readonly degradationFlags: readonly string[];
+  readonly query: string;
+  readonly queryImages: readonly ResolvedQueryImage[];
+}> {
+  const images = input.queryImages ?? [];
+  const requestedImageCount = input.queryImageReferenceCount ?? images.length;
+  const query = input.query.trim();
+  if (
+    !Number.isInteger(requestedImageCount) ||
+    requestedImageCount < images.length ||
+    requestedImageCount > QUERY_IMAGE_MAX_COUNT
+  ) {
+    throw new RetrievalTestUnavailableError("Query image reference count is invalid");
+  }
+  if (requestedImageCount === 0) {
+    return { degradationFlags: [], query, queryImages: [] };
+  }
+
+  const embeddingSupportsImages = input.embeddingInputModalities?.includes("image") === true;
+  const reasoningSupportsImages = input.reasoningInputModalities?.includes("image") === true;
+  if (
+    (embeddingSupportsImages || reasoningSupportsImages) &&
+    images.length !== requestedImageCount
+  ) {
+    throw new RetrievalTestUnavailableError(
+      "Query image bytes were not resolved for a vision-capable space",
+    );
+  }
+  const queryImages = embeddingSupportsImages ? images : [];
+  const shouldExpand =
+    !(input.mode === "fast" && embeddingSupportsImages) &&
+    reasoningSupportsImages &&
+    provider !== undefined;
+  if (!shouldExpand) {
+    if (embeddingSupportsImages) {
+      return { degradationFlags: [], query, queryImages };
+    }
+    if (!query) {
+      throw new RetrievalTestUnavailableError(
+        "Pure-image retrieval requires a vision-capable embedding or reasoning model",
+      );
+    }
+    return {
+      degradationFlags: [QUERY_IMAGE_IGNORED_NO_VISION_MODEL],
+      query,
+      queryImages: [],
+    };
+  }
+
+  try {
+    const result = await runWithAbortSignal(
+      () =>
+        provider.expand({
+          images,
+          model: input.retrievalProfile.reasoningModel,
+          query,
+          ...(input.signal ? { signal: input.signal } : {}),
+          tenantId: input.subject.tenantId,
+          traceId: input.traceId,
+        }),
+      input.signal,
+    );
+    const expansion = formatQueryImageExpansionResult(result);
+    if (!expansion) {
+      throw new RetrievalTestUnavailableError("Query image expansion returned no usable text");
+    }
+    return {
+      degradationFlags: [],
+      query: [query, expansion].filter(Boolean).join("\n\n"),
+      queryImages,
+    };
+  } catch (error) {
+    input.signal?.throwIfAborted();
+    if (!query && !embeddingSupportsImages) {
+      throw new RetrievalTestUnavailableError(
+        "Pure-image retrieval requires a vision-capable embedding or reasoning model",
+        { cause: error },
+      );
+    }
+    return {
+      degradationFlags: [
+        error instanceof QueryImageExpansionTimeoutError
+          ? QUERY_IMAGE_EXPANSION_TIMEOUT
+          : QUERY_IMAGE_IGNORED_NO_VISION_MODEL,
+      ],
+      query,
+      queryImages,
+    };
+  }
+}
+
+function appendQueryImageDegradationFlags(
+  metrics: HybridRetrievalMetrics,
+  flags: readonly string[],
+): HybridRetrievalMetrics {
+  const degradationFlags = [...new Set([...(metrics.degradationFlags ?? []), ...flags])];
+  return degradationFlags.length > 0 ? { ...metrics, degradationFlags } : metrics;
 }
 
 function retrievalTestStages({
@@ -464,7 +608,10 @@ function assertRetrievalTestModeEvidence({
   readonly permissionScope: readonly string[];
   readonly profile: KnowledgeSpaceRetrievalProfile;
 }): void {
-  if (items.length > profile.topK || (metrics.degradationFlags?.length ?? 0) > 0) {
+  const unexpectedDegradation = (metrics.degradationFlags ?? []).filter(
+    (flag) => !QueryImageDegradationReasonSchema.safeParse(flag).success,
+  );
+  if (items.length > profile.topK || unexpectedDegradation.length > 0) {
     throw new RetrievalTestUnavailableError(
       "Production retrieval did not satisfy the active profile without degradation",
     );

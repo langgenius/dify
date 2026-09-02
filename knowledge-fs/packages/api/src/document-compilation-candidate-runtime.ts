@@ -404,13 +404,25 @@ export interface DocumentCompilationWorkerAttemptProcessorOptions {
   readonly createWorker: (input: {
     readonly baseHeadRevision: number;
     readonly candidateComposer: DocumentCompilationWorkerCandidateComposer;
+    readonly frozenEmbeddingCapabilitySnapshot?:
+      | Awaited<
+          ReturnType<typeof loadDocumentCompilationFrozenProfiles>
+        >["embeddingCapabilitySnapshot"]
+      | undefined;
     readonly frozenEmbeddingProfile?:
       | Awaited<ReturnType<typeof loadDocumentCompilationFrozenProfiles>>["embeddingProfile"]
       | undefined;
     readonly frozenRetrievalProfile?:
       | Awaited<ReturnType<typeof loadDocumentCompilationFrozenProfiles>>["retrievalProfile"]
       | undefined;
+    readonly frozenReasoningCapabilitySnapshot?:
+      | Awaited<
+          ReturnType<typeof loadDocumentCompilationFrozenProfiles>
+        >["reasoningCapabilitySnapshot"]
+      | undefined;
     readonly jobs: DocumentCompilationJobStateMachine;
+    readonly signal: AbortSignal;
+    readonly tenantId: string;
   }) => DocumentCompilationWorker | Promise<DocumentCompilationWorker>;
   readonly fingerprintMaterial: DocumentCompilationFingerprintMaterialResolver;
   readonly initialProfiles?: DocumentCompilationInitialProfileCoordinator | undefined;
@@ -475,11 +487,17 @@ export function createDocumentCompilationWorkerAttemptProcessor({
       candidateComposer,
       ...(frozenProfiles
         ? {
+            frozenEmbeddingCapabilitySnapshot: frozenProfiles.embeddingCapabilitySnapshot,
             frozenEmbeddingProfile: frozenProfiles.embeddingProfile,
+            ...(frozenProfiles.reasoningCapabilitySnapshot
+              ? { frozenReasoningCapabilitySnapshot: frozenProfiles.reasoningCapabilitySnapshot }
+              : {}),
             frozenRetrievalProfile: frozenProfiles.retrievalProfile,
           }
         : {}),
       jobs,
+      signal: execution.signal,
+      tenantId: execution.attempt.tenantId,
     });
     await worker.process(
       {

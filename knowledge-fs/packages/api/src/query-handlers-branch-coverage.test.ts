@@ -250,6 +250,78 @@ describe("query handler branch coverage", () => {
     await response.body?.cancel();
   });
 
+  it("freezes profile model modalities into the query generator under the retrieval lease", async () => {
+    const controller = new AbortController();
+    const stream = vi.fn(async function* () {
+      yield { finishReason: "stop", type: "done" } as const;
+    });
+    let routedSignal: AbortSignal | undefined;
+    const resolve = vi.fn(
+      async ({ signal, snapshot }: { signal?: AbortSignal; snapshot: { kind: string } }) => {
+        routedSignal = signal;
+        return snapshot.kind === "embedding" ? (["text", "image"] as const) : (["text"] as const);
+      },
+    );
+    const fixture = queryFixture({
+      lease: {
+        assertActive: vi.fn(async () => undefined),
+        release: vi.fn(async () => undefined),
+        signal: controller.signal,
+      },
+      modelInputModalityResolver: { resolve },
+      queryGenerator: { stream },
+      runtimeSnapshot: runtimeSnapshotFixture(),
+    });
+
+    const response = await fixture.invoke();
+    expect(response.status).toBe(200);
+    await response.text();
+
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(resolve).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal), tenantId: SUBJECT.tenantId }),
+    );
+    expect(stream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeddingInputModalities: ["text", "image"],
+        reasoningInputModalities: ["text"],
+        signal: routedSignal,
+      }),
+    );
+    controller.abort(new Error("lease lost"));
+    expect(routedSignal?.aborted).toBe(true);
+  });
+
+  it("does not materialize query images for a known text-only space", async () => {
+    const resolveImages = vi.fn();
+    let generatorInput: unknown;
+    const stream = vi.fn(async function* (input: unknown) {
+      generatorInput = input;
+      yield { finishReason: "stop", type: "done" } as const;
+    });
+    const fixture = queryFixture({
+      body: { queryImages: [{ uploadFileId: "00000000-0000-4000-8000-000000000001" }] },
+      modelInputModalityResolver: { resolve: async () => ["text"] },
+      queryGenerator: { stream },
+      queryImageResolver: { resolve: resolveImages },
+      runtimeSnapshot: runtimeSnapshotFixture(),
+    });
+
+    const response = await fixture.invoke();
+    expect(response.status).toBe(200);
+    await response.text();
+
+    expect(resolveImages).not.toHaveBeenCalled();
+    expect(generatorInput).toEqual(
+      expect.objectContaining({
+        embeddingInputModalities: ["text"],
+        queryImages: [{ uploadFileId: "00000000-0000-4000-8000-000000000001" }],
+        reasoningInputModalities: ["text"],
+      }),
+    );
+    expect(generatorInput).not.toHaveProperty("resolvedQueryImages");
+  });
+
   it("records only the query request and releases after session failure", async () => {
     const release = vi.fn(async () => undefined);
     const appendActivity = vi.fn(async () => ({}));
@@ -371,11 +443,14 @@ interface QueryFixtureOptions {
   readonly lease?: unknown;
   readonly leaseAcquireError?: Error;
   readonly manifest?: unknown;
+  readonly modelInputModalityResolver?: unknown;
   readonly overview?: unknown;
   readonly permissionSnapshotTtlMs?: number;
   readonly projectionError?: Error;
   readonly projectionSnapshot?: unknown;
-  readonly queryGenerator?: boolean;
+  readonly queryGenerator?: boolean | unknown;
+  readonly queryImageResolver?: unknown;
+  readonly requestSignal?: AbortSignal;
   readonly readinessError?: Error;
   readonly runtimeError?: Error;
   readonly runtimeSnapshot?: unknown;
@@ -435,6 +510,9 @@ function queryFixture(options: QueryFixtureOptions = {}) {
       get: vi.fn(async () => (options.manifest === undefined ? null : options.manifest)),
     } as never,
     ...(options.overview ? { overview: options.overview as never } : {}),
+    ...(options.modelInputModalityResolver
+      ? { modelInputModalityResolver: options.modelInputModalityResolver as never }
+      : {}),
     ...(options.permissionSnapshotTtlMs === undefined
       ? {}
       : { permissionSnapshotTtlMs: options.permissionSnapshotTtlMs }),
@@ -444,11 +522,16 @@ function queryFixture(options: QueryFixtureOptions = {}) {
     queryGenerator:
       options.queryGenerator === false
         ? undefined
-        : ({
-            stream: async function* () {
-              yield { finishReason: "stop", type: "done" } as const;
-            },
-          } as never),
+        : ((options.queryGenerator && typeof options.queryGenerator === "object"
+            ? options.queryGenerator
+            : {
+                stream: async function* () {
+                  yield { finishReason: "stop", type: "done" } as const;
+                },
+              }) as never),
+    ...(options.queryImageResolver
+      ? { queryImageResolver: options.queryImageResolver as never }
+      : {}),
     ...(options.lease || options.leaseAcquireError
       ? {
           retrievalExecutionLeases: {
@@ -502,6 +585,7 @@ function queryContext(options: QueryFixtureOptions) {
         status,
       }),
     req: {
+      raw: { signal: options.requestSignal ?? new AbortController().signal },
       valid: () => ({
         activeDocumentIds: [],
         activeEntityIds: [],
@@ -533,5 +617,36 @@ function retrievalProfile(overrides: Record<string, unknown> = {}) {
     scoreThreshold: { enabled: false, stage: "mode-final" },
     topK: 8,
     ...overrides,
+  };
+}
+
+function runtimeSnapshotFixture() {
+  const selection = {
+    model: "profile-model",
+    pluginId: "profile-plugin/profile",
+    provider: "profile",
+  };
+  const capability = (kind: "embedding" | "reasoning") => ({
+    capabilityDigest: `sha256:${(kind === "embedding" ? "a" : "b").repeat(64)}`,
+    checkedAt: "2026-09-01T00:00:00.000Z",
+    ...(kind === "embedding" ? { dimension: 1_536 } : {}),
+    inputModalities: kind === "embedding" ? ["text", "image"] : ["text"],
+    kind,
+    pluginUniqueIdentifier: "profile-plugin/profile@1",
+    schemaFingerprint: `sha256:${"c".repeat(64)}`,
+    selection,
+  });
+  return {
+    embeddingCapabilitySnapshot: capability("embedding"),
+    embeddingProfile: {
+      dimension: 1_536,
+      distanceMetric: "cosine",
+      model: selection,
+      normalization: "l2",
+      revision: 1,
+    },
+    projectionSnapshot: { publicationId: "publication-1" },
+    retrievalCapabilitySnapshot: { reasoning: capability("reasoning") },
+    retrievalProfile: retrievalProfile(),
   };
 }

@@ -30,7 +30,15 @@ export type ComposerDraft = {
   selectionKey?: string
 }
 
+export type RetrievalComposerImage = {
+  name: string
+  previewUrl: string
+  sizeBytes: number
+  uploadFileId: string
+}
+
 export const retrievalComposerDraftAtom = atom<ComposerDraft>({ mode: 'fast', query: '' })
+export const retrievalComposerImagesAtom = atom<RetrievalComposerImage[]>([])
 export const retrievalLocalRunAtom = atom<LocalQueryRun | undefined>()
 export const retrievalLocalSelectedAtom = atom<SelectedRun | undefined>()
 export const retrievalResearchPlansAtom = atom<Record<string, KnowledgeFsResearchTaskPlanResponse>>(
@@ -43,6 +51,7 @@ export const retrievalAdmittedResearchTasksAtom = atom<
 
 export const retrievalScopedAtoms = [
   retrievalComposerDraftAtom,
+  retrievalComposerImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalResearchPlansAtom,

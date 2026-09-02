@@ -93,6 +93,10 @@ export interface LlmAnswerQueryGeneratorOptions {
   readonly model?: string | undefined;
   /** Optional VLM answer provider; used when the retrieval has multimodal evidence. */
   readonly multimodalAnswerProvider?: MultimodalAnswerProvider | undefined;
+  /** Resolves a VLM provider from the immutable active reasoning profile when it supports images. */
+  readonly multimodalAnswerProviderFactory?:
+    | ((selection: KnowledgeSpaceModelSelection) => MultimodalAnswerProvider)
+    | undefined;
   /** Optional resolver that enriches multimodal citations with manifest/asset/page/bbox. */
   readonly multimodalCandidateResolver?: DocumentMultimodalCandidateResolver | undefined;
   /** Deployment-level provider for legacy spaces without a retrieval profile. */
@@ -124,6 +128,7 @@ export function createLlmAnswerQueryGenerator({
   maxOutputTokens,
   model,
   multimodalAnswerProvider,
+  multimodalAnswerProviderFactory,
   multimodalCandidateResolver,
   provider,
   reasoningProviderFactory,
@@ -177,6 +182,11 @@ export function createLlmAnswerQueryGenerator({
         reasoningProviderFactory,
         reasoningSelection,
       });
+      const effectiveMultimodalAnswerProvider = multimodalAnswerProviderFactory
+        ? reasoningSelection && input.reasoningInputModalities?.includes("image")
+          ? multimodalAnswerProviderFactory(reasoningSelection)
+          : undefined
+        : multimodalAnswerProvider;
       const retrieveStartedAt = Date.now();
       const retrievalTopK = input.topK ?? input.retrievalProfile?.topK ?? topK;
       const restoredCheckpoint = input.researchRetrievalCheckpoint
@@ -252,6 +262,9 @@ export function createLlmAnswerQueryGenerator({
             ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
             : {}),
           ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
+          ...(input.embeddingInputModalities
+            ? { embeddingInputModalities: input.embeddingInputModalities }
+            : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
           limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
           mode: input.mode,
@@ -423,7 +436,7 @@ export function createLlmAnswerQueryGenerator({
       // to the text LLM below (which still receives the visual OCR/caption evidence in its prompt).
       let multimodalAnswerFailure: string | undefined;
       let queryImageAnswerDegraded =
-        (input.resolvedQueryImages?.length ?? 0) > 0 && !multimodalAnswerProvider;
+        (input.resolvedQueryImages?.length ?? 0) > 0 && !effectiveMultimodalAnswerProvider;
       await beginGenerationStage();
       const answerStartedAt = Date.now();
       if (queryImageAnswerDegraded) {
@@ -432,7 +445,7 @@ export function createLlmAnswerQueryGenerator({
         });
       }
       if (
-        multimodalAnswerProvider &&
+        effectiveMultimodalAnswerProvider &&
         (multimodalEvidence.length > 0 || (input.resolvedQueryImages?.length ?? 0) > 0)
       ) {
         const multimodalCall = {
@@ -448,7 +461,7 @@ export function createLlmAnswerQueryGenerator({
         };
         try {
           await notifyResearchModelCallBefore(input.researchModelCallObserver, multimodalCall);
-          const generated = await multimodalAnswerProvider.generate({
+          const generated = await effectiveMultimodalAnswerProvider.generate({
             evidence: retrieval.items.map((item) => ({
               citation: item.citation,
               nodeId: item.nodeId,
@@ -459,6 +472,7 @@ export function createLlmAnswerQueryGenerator({
             ...(input.resolvedQueryImages?.length
               ? { queryImages: input.resolvedQueryImages }
               : {}),
+            ...(input.signal ? { signal: input.signal } : {}),
             ...(tenantId ? { tenantId } : {}),
             ...(input.traceId ? { traceId: input.traceId } : {}),
           });
@@ -512,6 +526,7 @@ export function createLlmAnswerQueryGenerator({
             ...multimodalCall,
             status: "failed",
           });
+          input.signal?.throwIfAborted();
           multimodalAnswerFailure =
             error instanceof Error ? error.message : "multimodal-answer-failed";
           if ((input.resolvedQueryImages?.length ?? 0) > 0) {
@@ -558,6 +573,7 @@ export function createLlmAnswerQueryGenerator({
           messages,
           model: answerModel,
           ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+          ...(input.signal ? { signal: input.signal } : {}),
           ...(temperature === undefined ? {} : { temperature }),
           ...(tenantId ? { tenantId } : {}),
         })) {

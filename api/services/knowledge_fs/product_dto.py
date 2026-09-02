@@ -2686,6 +2686,19 @@ class KnowledgeFSQueryImageReference(BaseModel):
         return value
 
 
+class KnowledgeFSRetrievalQueryImageReference(KnowledgeFSQueryImageReference):
+    """Transient workflow file authorization forwarded only by retrieval-test requests."""
+
+    access_grant: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=2_048,
+        alias="accessGrant",
+        exclude_if=lambda value: value is None,
+        repr=False,
+    )
+
+
 class _KnowledgeFSQueryModalities(BaseModel):
     query: str | None = Field(default=None, max_length=16_000)
     query_images: list[KnowledgeFSQueryImageReference] = Field(
@@ -2933,7 +2946,13 @@ class KnowledgeFSRetrievalMetadataFilters(BaseModel):
 
 
 class KnowledgeFSRetrievalTestPayload(BaseModel):
-    query: str = Field(min_length=1, max_length=16_000)
+    query: str = Field(default="", max_length=16_000)
+    query_images: list[KnowledgeFSRetrievalQueryImageReference] = Field(
+        default_factory=list,
+        max_length=4,
+        alias="queryImages",
+        exclude_if=lambda value: not value,
+    )
     mode: Literal["deep", "fast", "research"] | None = None
     include_text: bool = Field(
         default=False,
@@ -2947,10 +2966,15 @@ class KnowledgeFSRetrievalTestPayload(BaseModel):
     @field_validator("query")
     @classmethod
     def normalize_query(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("Retrieval query is required")
-        return normalized
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_query_modality(self) -> KnowledgeFSRetrievalTestPayload:
+        if not self.query and not self.query_images:
+            raise ValueError("At least one of query or queryImages is required")
+        if len({image.upload_file_id for image in self.query_images}) != len(self.query_images):
+            raise ValueError("queryImages must not contain duplicate uploadFileId values")
+        return self
 
 
 class KnowledgeFSRetrievalCitationResponse(ResponseModel):

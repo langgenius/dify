@@ -52,6 +52,33 @@ describe("createApiQueryImageResolver", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it("forwards a workflow file grant in a header instead of the logged URL", async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      expect(new URL(request.url).searchParams.has("accessGrant")).toBe(false);
+      expect(request.headers.get("x-knowledge-fs-query-image-grant")).toBe("short-lived-grant");
+      return new Response(PNG, {
+        headers: {
+          "content-length": String(PNG.byteLength),
+          "content-type": "image/png",
+          "x-query-image-sha256": createHash("sha256").update(PNG).digest("hex"),
+        },
+      });
+    });
+    const resolver = createApiQueryImageResolver({
+      env: { DIFY_INNER_API_KEY: "inner-secret", DIFY_INNER_API_URL: "http://api:5001" },
+      fetch: fetch as typeof globalThis.fetch,
+    });
+
+    await resolver.resolve({
+      references: [{ accessGrant: "short-lived-grant", uploadFileId: IMAGE_ID }],
+      subjectId: "dify-app:app-1",
+      tenantId: "tenant-1",
+    });
+
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it("maps hidden files, invalid MIME, and checksum drift to typed failures", async () => {
     const resolveWith = (response: Response) =>
       createApiQueryImageResolver({

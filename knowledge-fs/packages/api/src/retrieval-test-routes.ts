@@ -11,6 +11,7 @@ import {
   RetrievalProfileModeErrorResponseSchema,
 } from "./gateway-route-schemas";
 import { KnowledgeSpaceParamsSchema } from "./knowledge-space-golden-question-schemas";
+import { QueryImageReferencesSchema, hasQueryInput } from "./query-images";
 import {
   RetrievalCustomMetadataComparisonOperators,
   RetrievalCustomMetadataFieldTypes,
@@ -22,7 +23,6 @@ import { RetrievalTestStageNames } from "./retrieval-test";
 const RetrievalQuerySchema = z
   .string()
   .trim()
-  .min(1)
   .max(32_000)
   .refine((value) => Array.from(value).length <= 16_000, "Query exceeds 16000 Unicode characters");
 const RetrievalTextSchema = z
@@ -106,9 +106,19 @@ export const RetrievalTestRequestSchema = z
       .optional(),
     includeText: z.boolean().default(false),
     mode: KnowledgeSpaceRetrievalModeSchema.optional(),
-    query: RetrievalQuerySchema,
+    query: RetrievalQuerySchema.default(""),
+    queryImages: QueryImageReferencesSchema.default([]),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!hasQueryInput(value)) {
+      context.addIssue({
+        code: "custom",
+        message: "At least one of query or queryImages is required",
+        path: ["query"],
+      });
+    }
+  });
 
 const BoundedIdentifierSchema = z.string().min(1).max(512);
 const CandidateCountSchema = z.number().int().nonnegative();
@@ -310,6 +320,14 @@ export const runRetrievalTestRoute = createRoute({
         },
       },
       description: "Retrieval blocked by knowledge-space deletion",
+    },
+    413: {
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+      description: "Query image count or size exceeds retrieval-test limits",
     },
     503: {
       content: {

@@ -52,6 +52,8 @@ import type {
   KnowledgeSpaceProfileRepository,
   KnowledgeSpaceProfileRevision,
 } from "./knowledge-space-profile-repository";
+import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import type { PublishedPageIndexBuildRepository } from "./page-index-build-repository";
 import type { ParseArtifactRepository } from "./parse-artifact-repository";
 import {
@@ -271,6 +273,7 @@ export interface RepositoryKnowledgeSpaceProfileMigrationCandidateBuilderOptions
   readonly maxPathsPerDocument?: number | undefined;
   readonly maxProjectionBatchSize: number;
   readonly members: Pick<ProjectionSetPublicationMemberRepository, "listByFingerprint">;
+  readonly modelInputModalityResolver?: Pick<ModelInputModalityResolver, "resolve"> | undefined;
   readonly now?: (() => string) | undefined;
   readonly outlineBuilder: DocumentOutlineBuilder;
   readonly outlineSummaryEnhancer: DocumentOutlineSummaryEnhancer;
@@ -321,6 +324,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
   maxPathsPerDocument = 20_000,
   maxProjectionBatchSize,
   members,
+  modelInputModalityResolver,
   now = () => new Date().toISOString(),
   outlineBuilder,
   outlineSummaryEnhancer,
@@ -700,6 +704,12 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
       "candidate",
     );
     const profile = KnowledgeSpaceEmbeddingProfileSchema.parse(embedding.snapshot);
+    const visualModel = await profileVisualModel({
+      modelInputModalityResolver,
+      profile,
+      revision: embedding,
+      tenantId: input.tenantId,
+    });
     const projectionMembers = candidateMembers.filter(
       (member) => member.componentType === "index-projection",
     );
@@ -727,7 +737,11 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
     const baseById = new Map(baseLoaded.map((projection) => [projection.id, projection]));
     const preservedProjectionMembers = baseProjectionMembers.filter((member) => {
       const projection = baseById.get(member.componentKey);
-      return projection !== undefined && !isOrdinarySearchProjection(projection);
+      return (
+        projection !== undefined &&
+        !isOrdinarySearchProjection(projection) &&
+        !isVisualProjection(projection)
+      );
     });
     const preservedProjectionIds = new Set(
       preservedProjectionMembers.map((member) => member.componentKey),
@@ -756,11 +770,12 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
       const owned = (membersByDocument.get(document.documentAssetId) ?? []).map((member) => {
         const projection = projectionsById.get(member.componentKey);
         const preserved = preservedProjectionIds.has(member.componentKey);
+        const rebuiltVisual = isExpectedVisualProjection(projection, visualModel);
         if (
           !projection ||
           projection.publicationGenerationId !== member.generationId ||
           (!preserved &&
-            (!isOrdinarySearchProjection(projection) ||
+            ((!isOrdinarySearchProjection(projection) && !rebuiltVisual) ||
               member.generationId !== expectedGeneration)) ||
           projectionDocumentAssetId(projection) !== document.documentAssetId ||
           projection.status !== (preserved ? "ready" : "building")
@@ -825,7 +840,8 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
           !preservedProjectionIds.has(member.componentKey) &&
           (!member.documentAssetId ||
             !baseDocumentIds.has(member.documentAssetId) ||
-            !isOrdinarySearchProjection(projectionsById.get(member.componentKey))),
+            (!isOrdinarySearchProjection(projectionsById.get(member.componentKey)) &&
+              !isExpectedVisualProjection(projectionsById.get(member.componentKey), visualModel))),
       )
     ) {
       throw candidateError(
@@ -1075,6 +1091,12 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
           "candidate",
         );
         const embeddingProfile = KnowledgeSpaceEmbeddingProfileSchema.parse(embedding.snapshot);
+        const visualModel = await profileVisualModel({
+          modelInputModalityResolver,
+          profile: embeddingProfile,
+          revision: embedding,
+          tenantId: input.tenantId,
+        });
         const retrieval = await requireProfile(
           profiles,
           input,
@@ -1107,7 +1129,10 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
         }
         const preservedProjectionIds = new Set(
           baseProjections
-            .filter((projection) => !isOrdinarySearchProjection(projection))
+            .filter(
+              (projection) =>
+                !isOrdinarySearchProjection(projection) && !isVisualProjection(projection),
+            )
             .map((projection) => projection.id),
         );
         const rebuilt: KnowledgeSpaceProfileMigrationCandidateMemberInput[] = [];
@@ -1139,7 +1164,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             publicationGenerationId: generationId,
             retrievalProfile,
             reuseNodeGenerationId,
-            skipVisual: true,
+            ...(visualModel ? { visualModel } : { skipVisual: true as const }),
             tenantId: input.tenantId,
           });
           if (
@@ -1241,6 +1266,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
 export interface RepositoryKnowledgeSpaceProfileMigrationEvaluatorOptions {
   readonly maxProjectionBatchSize: number;
   readonly members: Pick<ProjectionSetPublicationMemberRepository, "listByFingerprint">;
+  readonly modelInputModalityResolver?: Pick<ModelInputModalityResolver, "resolve"> | undefined;
   readonly outlines: Pick<DocumentOutlineRepository, "getById">;
   readonly pageIndexBuild: Pick<PublishedPageIndexBuildRepository, "hasCompleteBuild">;
   readonly profiles: Pick<KnowledgeSpaceProfileRepository, "getRevision">;
@@ -1251,6 +1277,7 @@ export interface RepositoryKnowledgeSpaceProfileMigrationEvaluatorOptions {
 export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
   maxProjectionBatchSize,
   members,
+  modelInputModalityResolver,
   outlines,
   pageIndexBuild,
   profiles,
@@ -1366,7 +1393,19 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
             },
           };
         }
-        const embedding = await evaluationEmbeddingProfile(profiles, run);
+        const embeddingRevision = await evaluationEmbeddingRevision(profiles, run);
+        const embedding = embeddingRevision
+          ? KnowledgeSpaceEmbeddingProfileSchema.parse(embeddingRevision.snapshot)
+          : undefined;
+        const visualModel =
+          run.rebuildScope === "full-vector-space" && embedding && embeddingRevision
+            ? await profileVisualModel({
+                modelInputModalityResolver,
+                profile: embedding,
+                revision: embeddingRevision,
+                tenantId: run.tenantId,
+              })
+            : undefined;
         const reasoningProfile =
           run.rebuildScope === "full-page-index-summary-outline"
             ? KnowledgeSpaceRetrievalProfileSchema.parse(
@@ -1413,7 +1452,11 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
         if (run.rebuildScope === "full-vector-space") {
           const preservedProjectionMembers = baseProjectionMembers.filter((member) => {
             const projection = baseById.get(member.componentKey);
-            return projection !== undefined && !isOrdinarySearchProjection(projection);
+            return (
+              projection !== undefined &&
+              !isOrdinarySearchProjection(projection) &&
+              !isVisualProjection(projection)
+            );
           });
           preservedProjectionIds = new Set(
             preservedProjectionMembers.map((member) => member.componentKey),
@@ -1431,7 +1474,8 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
               return (
                 !member.documentAssetId ||
                 !baseDocuments.has(member.documentAssetId) ||
-                !isOrdinarySearchProjection(projection) ||
+                (!isOrdinarySearchProjection(projection) &&
+                  !isExpectedVisualProjection(projection, visualModel)) ||
                 member.generationId !==
                   migrationGenerationId(run.id, "vector-space", member.documentAssetId)
               );
@@ -1504,6 +1548,15 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
               denseProjections += 1;
               hasDense = true;
             }
+            if (
+              run.rebuildScope === "full-vector-space" &&
+              isVisualProjection(projection) &&
+              !isExpectedVisualProjection(projection, visualModel)
+            ) {
+              return failedEvaluation(
+                `document ${documentAssetId} contains a visual projection from the wrong embedding profile`,
+              );
+            }
           }
           if (run.rebuildScope === "full-vector-space") {
             const baseOwned = baseProjectionsByDocument.get(documentAssetId) ?? [];
@@ -1556,21 +1609,39 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
   };
 }
 
-async function evaluationEmbeddingProfile(
+async function evaluationEmbeddingRevision(
   profiles: Pick<KnowledgeSpaceProfileRepository, "getRevision">,
   run: KnowledgeSpaceProfileMigrationRun,
-): Promise<KnowledgeSpaceEmbeddingProfile | undefined> {
+): Promise<KnowledgeSpaceProfileRevision | undefined> {
   const reference =
     run.changedKind === "embedding" ? run.candidateProfile : run.baseEmbeddingProfile;
   if (!reference) return undefined;
-  const revision = await requireProfile(
+  return requireProfile(
     profiles,
     run,
     "embedding",
     reference,
     run.changedKind === "embedding" ? "candidate" : "active",
   );
-  return KnowledgeSpaceEmbeddingProfileSchema.parse(revision.snapshot);
+}
+
+async function profileVisualModel({
+  modelInputModalityResolver,
+  profile,
+  revision,
+  tenantId,
+}: {
+  readonly modelInputModalityResolver?: Pick<ModelInputModalityResolver, "resolve"> | undefined;
+  readonly profile: KnowledgeSpaceEmbeddingProfile;
+  readonly revision: KnowledgeSpaceProfileRevision;
+  readonly tenantId: string;
+}): Promise<string | undefined> {
+  const capability = ModelCapabilitySnapshotSchema.safeParse(revision.capabilitySnapshot);
+  if (!capability.success) return undefined;
+  const modalities = modelInputModalityResolver
+    ? await modelInputModalityResolver.resolve({ snapshot: capability.data, tenantId })
+    : (capability.data.inputModalities ?? ["text"]);
+  return modalities.includes("image") ? profile.model : undefined;
 }
 
 async function requireProfile(
@@ -1777,6 +1848,15 @@ function isVisualProjection(projection: IndexProjection): boolean {
     ? projection.metadata.multimodal
     : undefined;
   return multimodal?.vectorSpace === "visual";
+}
+
+function isExpectedVisualProjection(
+  projection: IndexProjection | undefined,
+  model: string | undefined,
+): boolean {
+  return Boolean(
+    model && projection && isVisualProjection(projection) && projection.model === model,
+  );
 }
 
 function isOrdinarySearchProjection(projection: IndexProjection | undefined): boolean {

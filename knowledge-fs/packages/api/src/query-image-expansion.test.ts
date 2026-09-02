@@ -32,16 +32,147 @@ describe("createQueryImageAwareQueryGenerator", () => {
     expect(observed[0]?.resolvedQueryImages).toBeUndefined();
   });
 
-  it("keeps Fast model-call free", async () => {
+  it("does not load bytes for a mixed text query when the selected space is text-only", async () => {
+    const observed: QueryGenerationInput[] = [];
+    const wrapped = createQueryImageAwareQueryGenerator({
+      generator: capturingGenerator(observed),
+    });
+
+    const events = await collect(wrapped, {
+      ...input({
+        embeddingInputModalities: ["text"],
+        query: "find this diagram",
+        reasoningInputModalities: ["text"],
+        resolvedQueryImages: undefined,
+      }),
+      queryImages: [{ uploadFileId: IMAGE_ID }],
+    });
+
+    expect(observed[0]?.resolvedQueryImages).toBeUndefined();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        step: expect.objectContaining({
+          metadata: expect.objectContaining({
+            degradationReason: "query-image-ignored-no-vision-model",
+            imageCount: 1,
+          }),
+          status: "skipped",
+        }),
+      }),
+    );
+    expect(events.at(-1)).toEqual(
+      expect.objectContaining({
+        metadata: {
+          queryImageDegradationReasons: ["query-image-ignored-no-vision-model"],
+        },
+      }),
+    );
+  });
+
+  it("rejects unresolved image bytes when the selected space claims vision capability", async () => {
+    const wrapped = createQueryImageAwareQueryGenerator({ generator: capturingGenerator([]) });
+
+    await expect(
+      collect(wrapped, {
+        ...input({
+          embeddingInputModalities: ["text", "image"],
+          query: "find this diagram",
+          resolvedQueryImages: undefined,
+        }),
+        queryImages: [{ uploadFileId: IMAGE_ID }],
+      }),
+    ).rejects.toThrow("Query image bytes are unavailable for a vision-capable knowledge space");
+  });
+
+  it("rejects an unresolved pure-image request for a text-only space", async () => {
+    const wrapped = createQueryImageAwareQueryGenerator({ generator: capturingGenerator([]) });
+
+    await expect(
+      collect(wrapped, {
+        ...input({
+          embeddingInputModalities: ["text"],
+          query: "",
+          reasoningInputModalities: ["text"],
+          resolvedQueryImages: undefined,
+        }),
+        queryImages: [{ uploadFileId: IMAGE_ID }],
+      }),
+    ).rejects.toThrow(
+      "Pure-image retrieval requires a vision-capable embedding or reasoning model",
+    );
+  });
+
+  it("keeps Fast model-call free when direct visual retrieval is available", async () => {
     const expand = vi.fn();
     const observed: QueryGenerationInput[] = [];
     const generator = capturingGenerator(observed);
     const wrapped = createQueryImageAwareQueryGenerator({ generator, provider: { expand } });
 
-    await collect(wrapped, input({ mode: "fast", query: "", retrievalProfile: PROFILE }));
+    await collect(
+      wrapped,
+      input({
+        embeddingInputModalities: ["text", "image"],
+        mode: "fast",
+        query: "find this",
+        retrievalProfile: PROFILE,
+      }),
+    );
 
     expect(expand).not.toHaveBeenCalled();
     expect(observed[0]?.retrievalQuery).toBeUndefined();
+  });
+
+  it("expands a mixed Fast query when only the reasoning model can see the image", async () => {
+    const expand = vi.fn(async () => ({
+      description: "A circuit diagram",
+      keywords: ["circuit"],
+      ocrText: "R1 10K",
+    }));
+    const observed: QueryGenerationInput[] = [];
+    const wrapped = createQueryImageAwareQueryGenerator({
+      generator: capturingGenerator(observed),
+      provider: { expand },
+    });
+
+    await collect(
+      wrapped,
+      input({
+        embeddingInputModalities: ["text"],
+        mode: "fast",
+        query: "find this component",
+        reasoningInputModalities: ["text", "image"],
+      }),
+    );
+
+    expect(expand).toHaveBeenCalledOnce();
+    expect(observed[0]?.retrievalQuery).toContain("find this component");
+    expect(observed[0]?.retrievalQuery).toContain("Image OCR: R1 10K");
+  });
+
+  it("expands a pure-image Fast query when the embedding profile is text-only", async () => {
+    const expand = vi.fn(async () => ({
+      description: "A circuit diagram",
+      keywords: ["circuit"],
+      ocrText: "R1 10K",
+    }));
+    const observed: QueryGenerationInput[] = [];
+    const wrapped = createQueryImageAwareQueryGenerator({
+      generator: capturingGenerator(observed),
+      provider: { expand },
+    });
+
+    await collect(
+      wrapped,
+      input({
+        embeddingInputModalities: ["text"],
+        mode: "fast",
+        query: "",
+        reasoningInputModalities: ["text", "image"],
+      }),
+    );
+
+    expect(expand).toHaveBeenCalledOnce();
+    expect(observed[0]?.retrievalQuery).toContain("Image OCR: R1 10K");
   });
 
   it("expands once, persists the result, and preserves the original query", async () => {
@@ -65,6 +196,7 @@ describe("createQueryImageAwareQueryGenerator", () => {
         mode: "research",
         onQueryImageExpansion: persist,
         query: "find total",
+        reasoningInputModalities: ["text", "image"],
         researchModelCallObserver: { after, before },
       }),
     );
@@ -100,7 +232,10 @@ describe("createQueryImageAwareQueryGenerator", () => {
 
     const events = await collect(
       wrapped,
-      input({ researchModelCallObserver: { after, before: async () => undefined } }),
+      input({
+        reasoningInputModalities: ["text", "image"],
+        researchModelCallObserver: { after, before: async () => undefined },
+      }),
     );
 
     expect(after).toHaveBeenCalledWith(expect.objectContaining({ metadata }));
@@ -122,8 +257,13 @@ describe("createQueryImageAwareQueryGenerator", () => {
       },
     });
 
-    await expect(collect(wrapped, input({ mode: "research", query: "" }))).rejects.toThrow(
-      "Pure-image Research requires a vision-capable reasoning model",
+    await expect(
+      collect(
+        wrapped,
+        input({ mode: "research", query: "", reasoningInputModalities: ["text", "image"] }),
+      ),
+    ).rejects.toThrow(
+      "Pure-image retrieval requires a vision-capable embedding or reasoning model",
     );
   });
 
@@ -139,6 +279,7 @@ describe("createQueryImageAwareQueryGenerator", () => {
         wrapped,
         input({
           query: "invoice",
+          reasoningInputModalities: ["text", "image"],
           researchModelCallObserver: {
             after: async () => undefined,
             before: async () => Promise.reject(new Error("budget unavailable")),
@@ -173,10 +314,18 @@ describe("createQueryImageAwareQueryGenerator", () => {
       provider,
     });
 
-    await expect(collect(wrapped, input({ mode: "research", query: "" }))).rejects.toBeInstanceOf(
-      QueryImageExpansionUnavailableError,
-    );
-    await expect(collect(wrapped, input({ mode: "deep", query: "invoice" }))).resolves.toEqual(
+    await expect(
+      collect(
+        wrapped,
+        input({ mode: "research", query: "", reasoningInputModalities: ["text", "image"] }),
+      ),
+    ).rejects.toBeInstanceOf(QueryImageExpansionUnavailableError);
+    await expect(
+      collect(
+        wrapped,
+        input({ mode: "deep", query: "invoice", reasoningInputModalities: ["text", "image"] }),
+      ),
+    ).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ step: expect.objectContaining({ status: "error" }) }),
         expect.objectContaining({
@@ -204,8 +353,14 @@ describe("createQueryImageAwareQueryGenerator", () => {
       provider: { expand: async () => Promise.reject("vision unavailable") },
     });
 
-    const timeoutEvents = await collect(timeout, input({ mode: "deep", query: "invoice" }));
-    const nonErrorEvents = await collect(nonError, input({ mode: "deep", query: "invoice" }));
+    const timeoutEvents = await collect(
+      timeout,
+      input({ mode: "deep", query: "invoice", reasoningInputModalities: ["text", "image"] }),
+    );
+    const nonErrorEvents = await collect(
+      nonError,
+      input({ mode: "deep", query: "invoice", reasoningInputModalities: ["text", "image"] }),
+    );
 
     expect(timeoutEvents).toContainEqual(
       expect.objectContaining({
@@ -223,29 +378,64 @@ describe("createQueryImageAwareQueryGenerator", () => {
     );
   });
 
-  it("allows Deep pure-image visual retrieval to continue without a text expansion", async () => {
+  it("allows Deep pure-image visual retrieval without a misleading degradation", async () => {
     const observed: QueryGenerationInput[] = [];
     const wrapped = createQueryImageAwareQueryGenerator({
       generator: capturingGenerator(observed),
     });
 
-    const events = await collect(wrapped, input({ mode: "deep", query: "" }));
+    const events = await collect(
+      wrapped,
+      input({ embeddingInputModalities: ["text", "image"], mode: "deep", query: "" }),
+    );
 
     expect(observed[0]?.retrievalQuery).toBeUndefined();
-    expect(events.at(-1)).toEqual(
-      expect.objectContaining({
-        metadata: { queryImageDegradationReasons: ["query-image-ignored-no-vision-model"] },
-        type: "done",
-      }),
-    );
+    expect(events.at(-1)).toEqual(expect.objectContaining({ type: "done" }));
+    expect(events.at(-1)).not.toHaveProperty("metadata.queryImageDegradationReasons");
   });
 
-  it("requires a configured expansion provider for pure-image Research", async () => {
+  it("requires a vision-capable reasoning model for pure-image Research", async () => {
     const wrapped = createQueryImageAwareQueryGenerator({ generator: capturingGenerator([]) });
 
     await expect(collect(wrapped, input({ mode: "research", query: "" }))).rejects.toThrow(
-      "Pure-image Research requires a configured vision expansion provider",
+      "Pure-image retrieval requires a vision-capable embedding or reasoning model",
     );
+  });
+
+  it("does not call the expansion provider for a text-only reasoning profile", async () => {
+    const expand = vi.fn();
+    const wrapped = createQueryImageAwareQueryGenerator({
+      generator: capturingGenerator([]),
+      provider: { expand },
+    });
+
+    await collect(
+      wrapped,
+      input({ mode: "deep", query: "invoice", reasoningInputModalities: ["text"] }),
+    );
+
+    expect(expand).not.toHaveBeenCalled();
+  });
+
+  it("propagates cancellation instead of degrading into a text-only query", async () => {
+    const controller = new AbortController();
+    const aborted = new Error("retrieval lease lost");
+    const observed: QueryGenerationInput[] = [];
+    const wrapped = createQueryImageAwareQueryGenerator({
+      generator: capturingGenerator(observed),
+      provider: {
+        expand: async ({ signal }) => {
+          controller.abort(aborted);
+          signal?.throwIfAborted();
+          return { description: "unexpected", keywords: [], ocrText: "" };
+        },
+      },
+    });
+
+    await expect(
+      collect(wrapped, input({ mode: "deep", query: "invoice", signal: controller.signal })),
+    ).rejects.toBe(aborted);
+    expect(observed).toHaveLength(0);
   });
 
   it("merges a degradation reason with existing terminal metadata without duplicates", async () => {
@@ -281,6 +471,7 @@ function input(overrides: Partial<QueryGenerationInput>): QueryGenerationInput {
     mode: "research",
     permissionScope: [],
     query: "",
+    reasoningInputModalities: ["text", "image"],
     resolvedQueryImages: [
       {
         body: new Uint8Array([1, 2, 3]),

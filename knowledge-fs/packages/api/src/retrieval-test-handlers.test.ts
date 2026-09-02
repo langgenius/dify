@@ -7,6 +7,7 @@ import type { QueryGenerator } from "./gateway-sse-responses";
 import { createKnowledgeGateway } from "./index";
 import { createInMemoryKnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
+import { KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER } from "./query-images";
 import { RetrievalExecutionAdmissionError } from "./retrieval-execution-lease";
 import {
   type RetrievalTestExecutor,
@@ -46,6 +47,113 @@ const retrievalProfile: KnowledgeSpaceRetrievalProfile = {
 };
 
 describe("retrieval test route", () => {
+  it("resolves workflow-granted images and freezes each space's model modalities", async () => {
+    const image = {
+      body: new Uint8Array([1, 2, 3]),
+      byteSize: 3,
+      mimeType: "image/png" as const,
+      sha256: "e".repeat(64),
+      uploadFileId: "00000000-0000-4000-8000-000000000001",
+    };
+    const execute = vi.fn<RetrievalTestExecutor["execute"]>(async () => retrievalResult("fast"));
+    const resolveModalities = vi.fn(async ({ snapshot }: { snapshot: unknown }) =>
+      (snapshot as { kind?: string }).kind === "embedding"
+        ? (["text", "image"] as const)
+        : (["text"] as const),
+    );
+    const resolveImages = vi.fn(async () => [image]);
+    const app = gateway({
+      executor: { execute },
+      modelInputModalityResolver: { resolve: resolveModalities },
+      queryImageResolver: { resolve: resolveImages },
+      subjectId: "dify-app:app-1",
+      retrievalExecutionLeases: {
+        acquire: async () => ({
+          assertActive: async () => undefined,
+          release: async () => undefined,
+          signal: new AbortController().signal,
+        }),
+      },
+      runtimeSnapshotResolver: {
+        assertReady: async () => undefined,
+        resolve: async () => runtimeSnapshot(),
+      },
+    });
+    await createSpace(app);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({
+        query: "find this diagram",
+        queryImages: [{ uploadFileId: image.uploadFileId }],
+      }),
+      headers: {
+        ...jsonBearer(),
+        [KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER]: encodeQueryImageGrants(["short-lived-grant"]),
+      },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(resolveImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        references: [{ accessGrant: "short-lived-grant", uploadFileId: image.uploadFileId }],
+        subjectId: "dify-app:app-1",
+        tenantId: "tenant-1",
+      }),
+    );
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeddingInputModalities: ["text", "image"],
+        queryImageReferenceCount: 1,
+        queryImages: [image],
+        reasoningInputModalities: ["text"],
+      }),
+    );
+    expect(resolveModalities).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not materialize image bytes for a text-only space", async () => {
+    const execute = vi.fn<RetrievalTestExecutor["execute"]>(async () => retrievalResult("fast"));
+    const resolveImages = vi.fn();
+    const app = gateway({
+      executor: { execute },
+      modelInputModalityResolver: { resolve: async () => ["text"] },
+      queryImageResolver: { resolve: resolveImages },
+      retrievalExecutionLeases: {
+        acquire: async () => ({
+          assertActive: async () => undefined,
+          release: async () => undefined,
+          signal: new AbortController().signal,
+        }),
+      },
+      runtimeSnapshotResolver: {
+        assertReady: async () => undefined,
+        resolve: async () => runtimeSnapshot(),
+      },
+    });
+    await createSpace(app);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({
+        query: "find this diagram",
+        queryImages: [{ uploadFileId: "00000000-0000-4000-8000-000000000001" }],
+      }),
+      headers: jsonBearer(),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(resolveImages).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeddingInputModalities: ["text"],
+        queryImageReferenceCount: 1,
+        reasoningInputModalities: ["text"],
+      }),
+    );
+    expect(execute.mock.calls[0]?.[0]).not.toHaveProperty("queryImages");
+  });
+
   it("uses one atomic runtime snapshot, middleware-issued candidate ACL, and deletion lease without answer generation", async () => {
     const execute = vi.fn(async (): Promise<RetrievalTestResult> => retrievalResult("deep"));
     const resolve = vi.fn(async () => runtimeSnapshot());
@@ -249,6 +357,17 @@ describe("retrieval test route", () => {
   });
 
   it("keeps request filters bounded and rejects unsupported auto mode", () => {
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        query: "camera",
+        queryImages: [
+          {
+            accessGrant: "must-not-enter-the-public-body",
+            uploadFileId: "00000000-0000-4000-8000-000000000001",
+          },
+        ],
+      }).success,
+    ).toBe(false);
     expect(
       RetrievalTestRequestSchema.safeParse({
         filters: { tags: Array.from({ length: 101 }, (_, index) => `tag-${index}`) },
@@ -489,18 +608,26 @@ describe("retrieval test route", () => {
 
 function gateway({
   executor,
+  modelInputModalityResolver,
   queryGenerator,
+  queryImageResolver,
   retrievalExecutionLeases,
   runtimeSnapshotResolver,
+  subjectId = "owner-1",
 }: {
   readonly executor?: RetrievalTestExecutor;
+  readonly modelInputModalityResolver?: Parameters<
+    typeof createKnowledgeGateway
+  >[0]["modelInputModalityResolver"];
   readonly queryGenerator?: QueryGenerator;
+  readonly queryImageResolver?: Parameters<typeof createKnowledgeGateway>[0]["queryImageResolver"];
   readonly retrievalExecutionLeases?: Parameters<
     typeof createKnowledgeGateway
   >[0]["retrievalExecutionLeases"];
   readonly runtimeSnapshotResolver?: Parameters<
     typeof createKnowledgeGateway
   >[0]["runtimeSnapshotResolver"];
+  readonly subjectId?: string;
 }) {
   return createKnowledgeGateway({
     adapter: createNodePlatformAdapter({ env: {} }),
@@ -508,7 +635,7 @@ function gateway({
       subjectsByToken: {
         [TOKEN]: {
           scopes: ["knowledge-spaces:*"],
-          subjectId: "owner-1",
+          subjectId,
           tenantId: "tenant-1",
         },
       },
@@ -518,7 +645,9 @@ function gateway({
       maxListLimit: 10,
       maxSpaces: 10,
     }),
+    ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
     ...(queryGenerator ? { queryGenerator } : {}),
+    ...(queryImageResolver ? { queryImageResolver } : {}),
     ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
     ...(executor ? { retrievalTestExecutor: executor } : {}),
     ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
@@ -536,6 +665,10 @@ async function createSpace(app: ReturnType<typeof createKnowledgeGateway>): Prom
 
 function jsonBearer() {
   return { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" };
+}
+
+function encodeQueryImageGrants(grants: readonly (string | null)[]): string {
+  return Buffer.from(JSON.stringify({ g: grants, v: 1 }), "utf8").toString("base64url");
 }
 
 function runtimeSnapshot(): PublishedKnowledgeSpaceRuntimeSnapshot {

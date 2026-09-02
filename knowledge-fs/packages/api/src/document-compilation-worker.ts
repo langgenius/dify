@@ -159,7 +159,11 @@ export interface DocumentCompilationWorkerOptions {
     | undefined;
   readonly semanticPostProcessor?: SemanticIngestionPostProcessor | undefined;
   readonly smokeEvaluation?: IngestionSmokeEvaluationGate | undefined;
+  /** Frozen profile decision: extract image assets only when embedding or reasoning accepts them. */
+  readonly profileImageExtractionEnabled?: boolean | undefined;
   readonly visualEmbeddingModel?: string | undefined;
+  /** Profile-driven visual indexing state resolved from the frozen capability snapshot. */
+  readonly visualEmbeddingMode?: "disabled" | "profile" | undefined;
 }
 
 export interface DocumentCompilationIndexOverrides {
@@ -302,7 +306,9 @@ export function createDocumentCompilationWorker({
   semanticEnrichmentAdmission,
   semanticPostProcessor,
   smokeEvaluation,
+  profileImageExtractionEnabled,
   visualEmbeddingModel,
+  visualEmbeddingMode,
 }: DocumentCompilationWorkerOptions): DocumentCompilationWorker {
   const effectiveMaterializationGate =
     materializationGate ??
@@ -459,9 +465,14 @@ export function createDocumentCompilationWorker({
               signal ? { signal } : undefined,
             );
           } else {
-            const requiresImages = Boolean(
-              visualEmbeddingModel || multimodalImageVariantGenerator || pdfRasterizer,
-            );
+            const requiresImages =
+              profileImageExtractionEnabled ??
+              Boolean(
+                visualEmbeddingMode === "profile" ||
+                  visualEmbeddingModel ||
+                  multimodalImageVariantGenerator ||
+                  pdfRasterizer,
+              );
             const externalPdfImages = Boolean(pdfRasterizer) && isPdfDocument(activeAsset.mimeType);
             const primaryParserHints = documentParserHints({
               assetMetadata: activeAsset.metadata,
@@ -936,6 +947,15 @@ export function createDocumentCompilationWorker({
             ? resolvedEmbedding?.vectorSpaceId
             : (resolvedEmbedding?.vectorSpaceId ?? denseEmbeddingModel);
           await assertWritable();
+          const resolvedVisualEmbeddingModel =
+            visualEmbeddingMode === "profile"
+              ? frozenEmbeddingProfile?.model
+              : visualEmbeddingMode === "disabled"
+                ? undefined
+                : visualEmbeddingModel;
+          if (visualEmbeddingMode === "profile" && !resolvedVisualEmbeddingModel) {
+            throw new Error("Profile-driven visual embedding requires a frozen embedding profile");
+          }
           const reindexResult = await reindexer.reindex({
             ...(documentIndexOverrides.chunkConfig
               ? { chunkConfig: documentIndexOverrides.chunkConfig }
@@ -963,7 +983,11 @@ export function createDocumentCompilationWorker({
             ...(signal ? { signal } : {}),
             ...(frozenRetrievalProfile && !resolvedEmbedding ? { skipDense: true as const } : {}),
             tenantId: input.tenantId,
-            ...(visualEmbeddingModel ? { visualModel: visualEmbeddingModel } : {}),
+            ...(resolvedVisualEmbeddingModel
+              ? { visualModel: resolvedVisualEmbeddingModel }
+              : visualEmbeddingMode === "disabled"
+                ? { skipVisual: true as const }
+                : {}),
           });
           if (
             deferOutlineUntilSemanticNodes &&

@@ -35,6 +35,7 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
     type: NodeType = KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
     control_space_ids: list[ControlSpaceId] = Field(min_length=1, max_length=10)
     query_variable_selector: list[VariableSelectorPart] = Field(min_length=2, max_length=10)
+    query_attachment_selector: list[VariableSelectorPart] | None = Field(default=None, max_length=10)
     mode: Literal["deep", "fast", "research"] | None = None
     reranking_model: RerankingModelConfig | None = None
     score_threshold: float | None = Field(default=None, ge=0, le=1)
@@ -57,6 +58,20 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
         normalized = [value.strip() for value in values]
         if any(not value for value in normalized):
             raise ValueError("KnowledgeFS query variable selector must be non-empty")
+        return normalized
+
+    @field_validator("query_attachment_selector")
+    @classmethod
+    def normalize_query_attachment_selector(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        normalized = [value.strip() for value in values]
+        if not normalized:
+            return None
+        if len(normalized) < 2:
+            raise ValueError("KnowledgeFS query attachment selector must contain at least two parts")
+        if any(not value for value in normalized):
+            raise ValueError("KnowledgeFS query attachment selector must be non-empty")
         return normalized
 
 

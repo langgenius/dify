@@ -548,6 +548,85 @@ describe("llm answer query generator", () => {
     );
   });
 
+  it("derives VLM answers from the active vision-capable reasoning profile", async () => {
+    const selection = {
+      model: "profile-vision",
+      pluginId: "profile-plugin",
+      provider: "profile-provider",
+    };
+    const factory = vi.fn(() => ({
+      generate: async () => ({ text: "Profile visual answer." }),
+    }));
+    const generator = createLlmAnswerQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      multimodalAnswerProviderFactory: factory,
+      reasoningProviderFactory: () => ({
+        stream: async function* () {
+          yield { delta: "text fallback", type: "delta" };
+          yield { type: "done" };
+        },
+      }),
+      retriever: multimodalRetriever({ caption: "Revenue chart" }),
+      topK: 10,
+    });
+
+    const events = [];
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      reasoningInputModalities: ["text", "image"],
+      retrievalProfile: {
+        defaultMode: "research",
+        reasoningModel: selection,
+        rerank: { enabled: false },
+        revision: 1,
+        scoreThreshold: { enabled: false, stage: "mode-final" },
+        topK: 10,
+      },
+    })) {
+      if (event.type !== "trace-step") events.push(event);
+    }
+
+    expect(factory).toHaveBeenCalledWith(selection);
+    expect(events[0]).toEqual({ delta: "Profile visual answer.", type: "delta" });
+  });
+
+  it("does not send images when the active reasoning profile is text-only", async () => {
+    const factory = vi.fn();
+    const generator = createLlmAnswerQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      multimodalAnswerProviderFactory: factory,
+      reasoningProviderFactory: () => ({
+        stream: async function* () {
+          yield { delta: "Text answer.", type: "delta" };
+          yield { type: "done" };
+        },
+      }),
+      retriever: multimodalRetriever({ caption: "Revenue chart" }),
+      topK: 10,
+    });
+
+    const events = [];
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      reasoningInputModalities: ["text"],
+      retrievalProfile: {
+        defaultMode: "research",
+        reasoningModel: { model: "text", pluginId: "plugin", provider: "provider" },
+        rerank: { enabled: false },
+        revision: 1,
+        scoreThreshold: { enabled: false, stage: "mode-final" },
+        topK: 10,
+      },
+    })) {
+      if (event.type !== "trace-step") events.push(event);
+    }
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(events[0]).toEqual({ delta: "Text answer.", type: "delta" });
+  });
+
   it("falls back to the text LLM (with visual evidence in the prompt) when the VLM fails", async () => {
     const textCalls: GenerateAnswerStreamInput[] = [];
     const provider: LlmAnswerProvider = {
@@ -598,6 +677,42 @@ describe("llm answer query generator", () => {
         type: "done",
       }),
     );
+  });
+
+  it("propagates cancellation instead of falling back after a VLM abort", async () => {
+    const controller = new AbortController();
+    const aborted = new Error("retrieval lease lost");
+    const textProvider = vi.fn(async function* () {
+      yield { delta: "unexpected", type: "delta" as const };
+    });
+    const generator = createLlmAnswerQueryGenerator({
+      limit: 3,
+      maxAnswerChars: 1_000,
+      model: "gemini-2.5-flash",
+      multimodalAnswerProvider: {
+        generate: async (input) => {
+          expect(input.signal).toBe(controller.signal);
+          controller.abort(aborted);
+          input.signal?.throwIfAborted();
+          return { text: "unexpected" };
+        },
+      },
+      provider: { stream: textProvider },
+      retriever: multimodalRetriever({ caption: "Revenue chart" }),
+      topK: 10,
+    });
+
+    await expect(
+      (async () => {
+        for await (const _event of generator.stream({
+          ...QUERY_INPUT,
+          signal: controller.signal,
+        })) {
+          // consume
+        }
+      })(),
+    ).rejects.toBe(aborted);
+    expect(textProvider).not.toHaveBeenCalled();
   });
 
   it("skips the LLM and reports no evidence when retrieval is empty", async () => {

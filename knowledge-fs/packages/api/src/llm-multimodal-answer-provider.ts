@@ -34,6 +34,7 @@ export interface GenerateMultimodalAnswerTextInput {
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmMultimodalAnswerMessage[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }
@@ -54,6 +55,7 @@ export interface GenerateMultimodalAnswerContentInput {
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmMultimodalContentBlockMessage[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }
@@ -131,6 +133,7 @@ export function createLlmMultimodalAnswerProvider({
         maxOutputTokens,
         messages: multimodalAnswerMessages(input),
         model,
+        ...(input.signal ? { signal: input.signal } : {}),
         temperature,
         ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       });
@@ -227,6 +230,7 @@ export function createContentBlockMultimodalAnswerProvider({
         maxOutputTokens,
         messages,
         model,
+        ...(input.signal ? { signal: input.signal } : {}),
         temperature,
         ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       });
@@ -268,6 +272,7 @@ async function loadObjectBackedImageDataUrls({
   // The user's images define the question and therefore own the byte/attachment budget before
   // retrieved evidence images. They have already passed the gateway's MIME and checksum checks.
   for (const image of input.queryImages ?? []) {
+    input.signal?.throwIfAborted();
     if (
       image.body.byteLength > maxImageBytes ||
       totalBytes + image.body.byteLength > maxTotalImageBytes
@@ -282,6 +287,7 @@ async function loadObjectBackedImageDataUrls({
   }
 
   for (const attachment of input.multimodalEvidence) {
+    input.signal?.throwIfAborted();
     if (!isVisualAttachment(attachment)) {
       continue;
     }
@@ -291,15 +297,25 @@ async function loadObjectBackedImageDataUrls({
       continue;
     }
 
-    const body = await objectStorage.getObject(asset.objectKey);
-    if (!body || body.byteLength > maxImageBytes) {
-      continue;
+    // Apply the aggregate budget before reading: a late evidence object must not temporarily
+    // retain a full per-image body when only a smaller remainder can reach the model request.
+    // Raw bytes are bounded here; base64 adds a deterministic ~33% transport overhead.
+    const remainingBytes = maxTotalImageBytes - totalBytes;
+    if (remainingBytes < 1) {
+      break;
     }
 
-    // Stop once the cumulative image payload would exceed the total budget (base64 inflates ~33%,
-    // so the raw-byte budget is a conservative bound on the request size).
-    if (totalBytes + body.byteLength > maxTotalImageBytes) {
-      break;
+    const stream = await objectStorage.getObjectStream(asset.objectKey);
+    if (!stream) {
+      continue;
+    }
+    const body = await readBoundedMultimodalImageStream(
+      stream,
+      Math.min(maxImageBytes, remainingBytes),
+      input.signal,
+    );
+    if (!body) {
+      continue;
     }
 
     totalBytes += body.byteLength;
@@ -310,6 +326,56 @@ async function loadObjectBackedImageDataUrls({
   }
 
   return { evidence: evidenceUrls, query: queryUrls };
+}
+
+async function readBoundedMultimodalImageStream(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+  signal: AbortSignal | undefined,
+): Promise<Uint8Array | undefined> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let closed = false;
+  let totalBytes = 0;
+  const cancel = async (reason?: unknown): Promise<void> => {
+    if (closed) return;
+    closed = true;
+    await reader.cancel(reason).catch(() => undefined);
+  };
+  const onAbort = () => void cancel(signal?.reason);
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    signal?.throwIfAborted();
+    while (true) {
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) {
+        closed = true;
+        break;
+      }
+      if (value.byteLength > maxBytes - totalBytes) {
+        await cancel(new Error(`Multimodal answer image exceeds maxImageBytes=${maxBytes}`));
+        return undefined;
+      }
+      chunks.push(value);
+      totalBytes += value.byteLength;
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    await cancel(signal?.aborted ? signal.reason : undefined);
+    reader.releaseLock();
+  }
+
+  if (chunks.length === 0) return new Uint8Array();
+  if (chunks.length === 1) return chunks[0] as Uint8Array;
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
 function objectBackedImageAssetRef({

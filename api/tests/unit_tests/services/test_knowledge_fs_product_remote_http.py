@@ -8,6 +8,7 @@ import pytest
 from core.helper import ssrf_proxy
 from services.knowledge_fs import product_remote_http
 from services.knowledge_fs.product_remote import (
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
@@ -340,6 +341,41 @@ def test_remote_client_allows_only_validated_idempotency_headers(monkeypatch: py
 
     with pytest.raises(KnowledgeFSProductRemoteError, match="header binding"):
         client.execute_json(request._replace(headers=(("Cookie", "browser-cookie"),)))
+
+
+def test_remote_client_forwards_query_image_grants_only_for_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        200,
+        json={"items": [], "metrics": {"totalMs": 1}, "mode": "fast", "traceId": "trace-1"},
+        headers={"Content-Type": "application/json"},
+    )
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **kwargs: captured.update(kwargs) or response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    encoded_grants = "eyJnIjpbInNob3J0LWxpdmVkLWdyYW50Il0sInYiOjF9"
+    retrieval_request = KnowledgeFSRemoteJSONRequest(
+        operation_id="retrieveEvidence",
+        method="POST",
+        path="/knowledge-spaces/space-1/retrieval-tests",
+        namespace_id="tenant-1",
+        knowledge_space_id="space-1",
+        capability_token="capability-token",
+        trace_id="trace-1",
+        payload={"query": "camera", "queryImages": [{"uploadFileId": "00000000-0000-4000-8000-000000000001"}]},
+        headers=((KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER, encoded_grants),),
+    )
+
+    assert client.execute_json(retrieval_request)["mode"] == "fast"  # type: ignore[index]
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert headers[KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER] == encoded_grants
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match="header binding"):
+        client.execute_json(_json_request(headers=((KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER, encoded_grants),)))
 
 
 def test_remote_client_rejects_operation_request_limit_before_io(monkeypatch: pytest.MonkeyPatch) -> None:

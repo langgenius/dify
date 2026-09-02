@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from graphon.file import File, FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 from services.knowledge_fs import query_images
 
@@ -22,6 +23,7 @@ def _upload(
     account_id: str = "account-1",
     mime_type: str = "image/png",
     size: int = 12,
+    tenant_id: str = "tenant-1",
 ) -> SimpleNamespace:
     return SimpleNamespace(
         created_by=account_id,
@@ -30,6 +32,7 @@ def _upload(
         key=f"uploads/{upload_file_id}",
         mime_type=mime_type,
         size=size,
+        tenant_id=tenant_id,
         used=False,
         used_at=None,
         used_by=None,
@@ -144,6 +147,92 @@ def test_load_query_image_stops_when_stream_exceeds_declared_size(monkeypatch: p
         )
 
     assert error.value.code == "QUERY_IMAGE_SIZE_INVALID"
+
+
+def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ownership(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = b"\x89PNG\r\n\x1a\nrest"
+    upload = _upload(account_id="another-account", size=len(body))
+    _install_files(monkeypatch, [upload])
+
+    class _Controller:
+        def get_upload_file(self, **_kwargs: object) -> SimpleNamespace:
+            return upload
+
+    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
+    monkeypatch.setattr(query_images.dify_config, "SECRET_KEY", "test-secret")
+    monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
+    monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
+    reference = query_images.issue_workflow_query_image_reference(
+        app_id="app-1",
+        file=File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=upload.id,
+            filename="diagram.png",
+        ),
+        now=1_000,
+        tenant_id="tenant-1",
+    )
+
+    resolved = query_images.load_query_image(
+        access_grant=reference.access_grant,
+        subject_id="dify-app:app-1",
+        tenant_id="tenant-1",
+        upload_file_id=upload.id,
+    )
+
+    assert resolved.body == body
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as wrong_subject:
+        query_images.load_query_image(
+            access_grant=reference.access_grant,
+            subject_id="dify-app:app-2",
+            tenant_id="tenant-1",
+            upload_file_id=upload.id,
+        )
+    assert wrong_subject.value.code == "QUERY_IMAGE_GRANT_INVALID"
+
+
+def test_workflow_grant_rejects_cross_tenant_files_and_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    upload = _upload(tenant_id="other-tenant")
+
+    class _Controller:
+        def get_upload_file(self, **_kwargs: object) -> SimpleNamespace:
+            return upload
+
+    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as cross_tenant:
+        query_images.issue_workflow_query_image_reference(
+            app_id="app-1",
+            file=File(
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=upload.id,
+            ),
+            now=1_000,
+            tenant_id="tenant-1",
+        )
+    assert cross_tenant.value.code == "QUERY_IMAGE_NOT_FOUND"
+
+    grant = query_images._encode_workflow_query_image_grant(
+        query_images._WorkflowQueryImageGrant(
+            expires_at=1_000,
+            file_id=upload.id,
+            file_kind="upload_file",
+            subject_id="dify-app:app-1",
+            tenant_id="tenant-1",
+        )
+    )
+    monkeypatch.setattr(query_images.time, "time", lambda: 1_000)
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as expired:
+        query_images._decode_workflow_query_image_grant(
+            grant,
+            expected_file_id=upload.id,
+            expected_subject_id="dify-app:app-1",
+            expected_tenant_id="tenant-1",
+        )
+    assert expired.value.code == "QUERY_IMAGE_GRANT_EXPIRED"
 
 
 def test_reference_shape_rejects_duplicates_and_over_count() -> None:

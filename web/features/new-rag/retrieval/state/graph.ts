@@ -1,4 +1,5 @@
 import type { RetrievalTestMode, RetrievalTestRecord } from '../model'
+import type { RetrievalComposerImage } from './scoped'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
@@ -16,6 +17,7 @@ import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './i
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
+  retrievalComposerImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalResearchEventsAtom,
@@ -327,11 +329,16 @@ export const retrievalComposerFactsAtom = atom((get) => {
   const localRun = get(retrievalLocalRunAtom)
   const selectedResearchActive = researchTaskIsActive(get(retrievalSelectedResearchTaskAtom))
   const query = get(retrievalComposerQueryAtom)
+  const images = get(retrievalComposerImagesAtom)
   return {
     disabled: selectedResearchActive || localRun?.status === 'running',
+    images,
     mode: get(retrievalComposerModeAtom),
     query,
-    runnable: Boolean(query.trim()) && !selectedResearchActive && localRun?.status !== 'running',
+    runnable:
+      (Boolean(query.trim()) || images.length > 0) &&
+      !selectedResearchActive &&
+      localRun?.status !== 'running',
   }
 })
 
@@ -457,6 +464,11 @@ export const updateRetrievalComposerModeAtom = atom(null, (get, set, mode: Retri
   })
 })
 
+export const updateRetrievalComposerImagesAtom = atom(
+  null,
+  (_get, set, images: RetrievalComposerImage[]) => set(retrievalComposerImagesAtom, images),
+)
+
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
   if (record.kind === 'local') {
     set(retrievalLocalSelectedAtom, { id: record.id, kind: record.kind })
@@ -482,6 +494,7 @@ export const selectRetrievalRecordAtom = atom(null, (get, set, record: Retrieval
     query: record.query,
     ...(record.kind === 'local' ? {} : { selectionKey: `${record.kind}:${record.id}` }),
   })
+  set(retrievalComposerImagesAtom, [])
 })
 
 export const loadMoreRetrievalHistoryAtom = atom(null, (get) => {

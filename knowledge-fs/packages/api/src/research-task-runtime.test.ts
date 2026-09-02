@@ -12,6 +12,7 @@ import {
   type KnowledgeSpacePermissionSnapshot,
 } from "./knowledge-space-access-control";
 import { createInMemoryKnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
 import {
   QUERY_IMAGE_EXPANSION_METADATA_KEY,
@@ -305,6 +306,60 @@ describe("research task production runtime", () => {
     );
     expect(repository.job.metadata[QUERY_IMAGE_EXPANSION_METADATA_KEY]).toBe(
       "Image OCR: invoice 42",
+    );
+  });
+
+  it("freezes embedding and reasoning modalities into durable query generation", async () => {
+    const base = publishedRuntimeSnapshot(SPACE_ID);
+    const embeddingProfile = base.embeddingProfile;
+    if (!embeddingProfile) throw new Error("test runtime must include an embedding profile");
+    const snapshot: PublishedKnowledgeSpaceRuntimeSnapshot = {
+      ...base,
+      embeddingCapabilitySnapshot: capabilitySnapshot({
+        dimension: embeddingProfile.dimension,
+        kind: "embedding",
+        selection: {
+          model: embeddingProfile.model,
+          pluginId: embeddingProfile.pluginId,
+          provider: embeddingProfile.provider,
+        },
+      }),
+      retrievalCapabilitySnapshot: {
+        reasoning: capabilitySnapshot({
+          kind: "reasoning",
+          selection: base.retrievalProfile.reasoningModel,
+        }),
+      },
+    };
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(snapshot),
+      },
+    });
+    const resolve = vi.fn(async (input: Parameters<ModelInputModalityResolver["resolve"]>[0]) => {
+      const frozen = input.snapshot as { readonly kind?: string | undefined };
+      return frozen.kind === "embedding" ? (["text", "image"] as const) : (["text"] as const);
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      allowLegacyProfileFallback: false,
+      generator: {
+        stream: async function* (input) {
+          expect(input.embeddingInputModalities).toEqual(["text", "image"]);
+          expect(input.reasoningInputModalities).toEqual(["text"]);
+          expect(input.signal).toBeInstanceOf(AbortSignal);
+          yield traceStep("query.retrieve");
+        },
+      },
+      modelInputModalityResolver: { resolve },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(resolve).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal), tenantId: "tenant-1" }),
     );
   });
 
@@ -2177,6 +2232,31 @@ function publishedRuntimeSnapshot(
       scoreThreshold: { enabled: true, stage: "mode-final", value: 0.42 },
       topK: 37,
     },
+  };
+}
+
+function capabilitySnapshot({
+  dimension,
+  kind,
+  selection,
+}: {
+  readonly dimension?: number | undefined;
+  readonly kind: "embedding" | "reasoning";
+  readonly selection: {
+    readonly model: string;
+    readonly pluginId: string;
+    readonly provider: string;
+  };
+}) {
+  return {
+    capabilityDigest: `sha256:${(kind === "embedding" ? "d" : "e").repeat(64)}`,
+    checkedAt: "2026-09-01T00:00:00.000Z",
+    ...(dimension === undefined ? {} : { dimension }),
+    inputModalities: kind === "embedding" ? (["text", "image"] as const) : (["text"] as const),
+    kind,
+    pluginUniqueIdentifier: `${selection.pluginId}@1`,
+    schemaFingerprint: `sha256:${"f".repeat(64)}`,
+    selection,
   };
 }
 

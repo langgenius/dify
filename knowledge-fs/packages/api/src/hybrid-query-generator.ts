@@ -66,6 +66,7 @@ export interface MultimodalAnswerProviderInput {
   readonly multimodalEvidence: readonly MultimodalEvidenceAttachment[];
   readonly query: string;
   readonly queryImages?: readonly ResolvedQueryImage[] | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
 }
@@ -191,6 +192,9 @@ export function createHybridQueryGenerator({
             ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
             : {}),
           ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
+          ...(input.embeddingInputModalities
+            ? { embeddingInputModalities: input.embeddingInputModalities }
+            : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
           limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
           mode: input.mode,
@@ -359,6 +363,7 @@ export function createHybridQueryGenerator({
             ...(input.resolvedQueryImages?.length
               ? { queryImages: input.resolvedQueryImages }
               : {}),
+            ...(input.signal ? { signal: input.signal } : {}),
             tenantId,
             traceId: input.traceId,
           });

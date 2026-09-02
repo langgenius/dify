@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import type { ConcurrencyGate } from "@knowledge/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApiQueryImageExpansionProvider } from "./query-image-expansion-options";
 
@@ -33,10 +34,20 @@ describe("createApiQueryImageExpansionProvider", () => {
         { data: { delta: { finish_reason: "stop" } }, error: "" },
       ]);
     }) as typeof fetch;
-    const provider = createApiQueryImageExpansionProvider({
-      DIFY_INNER_API_KEY: "inner-key",
-      DIFY_INNER_API_URL: "http://api:5001",
-    });
+    const modelGateRun = vi.fn();
+    const modelRequestGate: ConcurrencyGate = {
+      run: async (operation) => {
+        modelGateRun();
+        return operation();
+      },
+    };
+    const provider = createApiQueryImageExpansionProvider(
+      {
+        DIFY_INNER_API_KEY: "inner-key",
+        DIFY_INNER_API_URL: "http://api:5001",
+      },
+      modelRequestGate,
+    );
 
     await expect(
       provider.expand({
@@ -71,6 +82,7 @@ describe("createApiQueryImageExpansionProvider", () => {
     const prompt = JSON.stringify(payload.prompt_messages);
     expect(prompt).toContain("Optional text query: find total");
     expect(prompt).toContain('"base64_data":"AQID"');
+    expect(modelGateRun).toHaveBeenCalledOnce();
   });
 
   it("rejects invalid structured output and timeout configuration", async () => {
@@ -91,6 +103,40 @@ describe("createApiQueryImageExpansionProvider", () => {
     expect(() =>
       createApiQueryImageExpansionProvider({ KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS: "0" }),
     ).toThrow("must be a positive integer");
+  });
+
+  it("propagates the owning retrieval cancellation into the Dify model request", async () => {
+    let requestSignal: AbortSignal | undefined;
+    globalThis.fetch = vi.fn(
+      async (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          requestSignal = init?.signal as AbortSignal | undefined;
+          requestSignal?.addEventListener("abort", () => reject(requestSignal?.reason), {
+            once: true,
+          });
+        }),
+    ) as typeof fetch;
+    const provider = createApiQueryImageExpansionProvider({
+      DIFY_INNER_API_KEY: "inner-key",
+      DIFY_INNER_API_URL: "http://api:5001",
+    });
+    const controller = new AbortController();
+    const canceled = new Error("retrieval lease lost");
+    const pending = provider.expand({
+      images: [],
+      model: { model: "vision", pluginId: "organization/plugin", provider: "provider" },
+      query: "query",
+      signal: controller.signal,
+      tenantId: "tenant",
+      traceId: "trace",
+    });
+    await vi.waitFor(() => expect(requestSignal).toBeDefined());
+
+    controller.abort(canceled);
+
+    await expect(pending).rejects.toBeDefined();
+    expect(requestSignal?.aborted).toBe(true);
+    expect(requestSignal?.reason).toBe(canceled);
   });
 });
 

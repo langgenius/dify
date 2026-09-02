@@ -48,6 +48,7 @@ export type KnowledgeRetrievalV2MetadataFilteringConditions = Omit<
 
 export type KnowledgeRetrievalV2NodeType = CommonNodeType & {
   control_space_ids: string[]
+  query_attachment_selector?: ValueSelector
   query_variable_selector: ValueSelector
   mode?: KnowledgeRetrievalV2Mode
   reranking_model?: KnowledgeRetrievalV2RerankingModel

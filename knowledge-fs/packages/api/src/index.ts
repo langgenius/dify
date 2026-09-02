@@ -162,6 +162,7 @@ export * from "./upload-session-routes";
 export * from "./profile-aware-query-generator";
 export * from "./model-capability-handlers";
 export * from "./model-capability-preflight";
+export * from "./model-input-modality-resolver";
 export * from "./model-capability-routes";
 export * from "./knowledge-space-creation";
 export * from "./knowledge-space-profile-backfill";
@@ -802,6 +803,7 @@ export function createKnowledgeGateway({
   maxUploadBytes = DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES,
   modelCapabilityCatalog,
   modelCapabilityPreflight,
+  modelInputModalityResolver,
   now = () => new Date().toISOString(),
   onlineDocumentConnector,
   onlineDriveConnector,
@@ -1907,6 +1909,7 @@ export function createKnowledgeGateway({
     ...(queryImageResolver ? { queryImageResolver } : {}),
     ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
     ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
+    ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
     sessionRepository,
     spaces,
     ...(tidbFtsPostingReadiness ? { tidbFtsPostingReadiness } : {}),
@@ -1915,6 +1918,8 @@ export function createKnowledgeGateway({
   registerRetrievalTestHandlers({
     app,
     ...(retrievalTestExecutor ? { executor: retrievalTestExecutor } : {}),
+    ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
+    ...(queryImageResolver ? { queryImageResolver } : {}),
     ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
     ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
     spaces,

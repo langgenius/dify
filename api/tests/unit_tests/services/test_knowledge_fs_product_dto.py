@@ -438,6 +438,32 @@ def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() ->
         KnowledgeFSRetrievalMetadataFilters(tags=[f"tag-{index}" for index in range(101)])
 
 
+def test_retrieval_test_payload_accepts_transient_workflow_image_grants() -> None:
+    upload_file_id = "00000000-0000-4000-8000-000000000001"
+    payload = KnowledgeFSRetrievalTestPayload.model_validate(
+        {
+            "query": "find this diagram",
+            "queryImages": [{"accessGrant": "short-lived-grant", "uploadFileId": upload_file_id}],
+        }
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "includeText": False,
+        "query": "find this diagram",
+        "queryImages": [{"accessGrant": "short-lived-grant", "uploadFileId": upload_file_id}],
+    }
+    with pytest.raises(ValidationError, match="duplicate"):
+        KnowledgeFSRetrievalTestPayload.model_validate(
+            {
+                "query": "find this diagram",
+                "queryImages": [
+                    {"uploadFileId": upload_file_id},
+                    {"accessGrant": "another", "uploadFileId": upload_file_id},
+                ],
+            }
+        )
+
+
 def test_retrieval_test_payload_serializes_typed_custom_metadata_conditions() -> None:
     payload = KnowledgeFSRetrievalTestPayload.model_validate(
         {

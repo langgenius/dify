@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -19,7 +21,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError, KnowledgeFSRemoteJSONRequest
+from services.knowledge_fs.product_remote import (
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSRemoteJSONRequest,
+)
 
 
 class Admission:
@@ -302,28 +308,40 @@ def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operatio
         run_context=run_context,
         caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
         resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
-        payload=KnowledgeFSRetrievalTestPayload(
-            include_text=True,
-            mode="fast",
-            query="camera",
+        payload=KnowledgeFSRetrievalTestPayload.model_validate(
+            {
+                "includeText": True,
+                "mode": "fast",
+                "query": "camera",
+                "queryImages": [
+                    {
+                        "accessGrant": "short-lived-grant",
+                        "uploadFileId": "00000000-0000-4000-8000-000000000001",
+                    }
+                ],
+            }
         ),
     )
 
     assert result.items[0].text == "Camera evidence"
     assert admission.calls[0]["operation_id"] == "retrieveEvidence"
     assert broker.calls[0]["operation_id"] == "retrieveEvidence"
-    assert remote.calls == [
-        KnowledgeFSRemoteJSONRequest(
-            operation_id="retrieveEvidence",
-            method="POST",
-            path="/knowledge-spaces/space-1/retrieval-tests",
-            namespace_id="tenant-1",
-            knowledge_space_id="space-1",
-            capability_token="token",
-            trace_id="trace-1",
-            payload={"includeText": True, "mode": "fast", "query": "camera"},
-        )
-    ]
+    assert len(remote.calls) == 1
+    request = remote.calls[0]
+    assert request.payload == {
+        "includeText": True,
+        "mode": "fast",
+        "query": "camera",
+        "queryImages": [{"uploadFileId": "00000000-0000-4000-8000-000000000001"}],
+    }
+    assert len(request.headers) == 1
+    assert request.headers[0][0] == KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER
+    encoded_grants = request.headers[0][1]
+    padded_grants = encoded_grants + "=" * (-len(encoded_grants) % 4)
+    assert json.loads(base64.urlsafe_b64decode(padded_grants)) == {
+        "g": ["short-lived-grant"],
+        "v": 1,
+    }
 
 
 def test_capture_workflow_failed_retrieval_uses_fresh_transport_trace_and_business_event_id() -> None:

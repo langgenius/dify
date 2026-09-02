@@ -16,9 +16,10 @@ from core.workflow.nodes.knowledge_retrieval_v2.entities import KnowledgeRetriev
 from core.workflow.nodes.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import StringSegment
+from graphon.variables import FileSegment, StringSegment
 from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppAdmissionError,
     KnowledgeFSAppAuthorizationNotReadyError,
@@ -27,6 +28,7 @@ from services.knowledge_fs.app_admission_service import (
 )
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalTestResponse
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from services.knowledge_fs.query_images import KnowledgeFSWorkflowQueryImageReference
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -338,6 +340,86 @@ def test_multi_space_retrieval_uses_one_system_reranker_and_returns_mixed_metric
         call["payload"].filters.document_types == ["handbook"]  # type: ignore[attr-defined]
         for call in service.calls
     )
+
+
+def test_workflow_query_image_is_forwarded_to_every_space_with_independent_degradation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_state = _runtime_state()
+    runtime_state.variable_pool.add(
+        ["start", "image"],
+        FileSegment(
+            value=File(
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference="00000000-0000-4000-8000-000000000001",
+                filename="diagram.png",
+                mime_type="image/png",
+                size=12,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        node_module,
+        "issue_workflow_query_image_reference",
+        lambda **_kwargs: KnowledgeFSWorkflowQueryImageReference(
+            upload_file_id="00000000-0000-4000-8000-000000000001",
+            access_grant="short-lived-grant",
+            byte_size=12,
+            mime_type="image/png",
+        ),
+    )
+    service = RecordingCapabilityService(
+        {
+            "vision-space": _response(mode="fast", score=0.9, space="vision-space", text="visual"),
+            "text-space": _response(mode="fast", score=0.8, space="text-space", text="text"),
+        }
+    )
+
+    result = _node(
+        service=service,
+        spaces=["vision-space", "text-space"],
+        runtime_state=runtime_state,
+        node_data_overrides={"query_attachment_selector": ["start", "image"]},
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert len(service.calls) == 2
+    for call in service.calls:
+        assert call["payload"].model_dump(by_alias=True, exclude_none=True)["queryImages"] == [  # type: ignore[attr-defined]
+            {
+                "accessGrant": "short-lived-grant",
+                "uploadFileId": "00000000-0000-4000-8000-000000000001",
+            }
+        ]
+    assert result.inputs == {
+        "query": "camera",
+        "query_images": [{"filename": "diagram.png", "mime_type": "image/png", "size": 12}],
+    }
+    assert "short-lived-grant" not in str(result.inputs)
+    assert result.outputs["metrics"].value["degradation_flags"] == [
+        "degraded-vision-space",
+        "degraded-text-space",
+    ]
+
+
+def test_workflow_query_attachment_selector_is_part_of_the_variable_mapping() -> None:
+    data = KnowledgeRetrievalV2NodeData.model_validate(
+        {
+            "control_space_ids": ["space-a"],
+            "query_attachment_selector": ["start", "image"],
+            "query_variable_selector": ["start", "query"],
+            "title": "KnowledgeFS Retrieval",
+            "type": "knowledge-retrieval-v2",
+        }
+    )
+
+    assert KnowledgeRetrievalV2Node._extract_variable_selector_to_variable_mapping(
+        graph_config={}, node_id="node-1", node_data=data
+    ) == {
+        "node-1.query": ["start", "query"],
+        "node-1.queryAttachment": ["start", "image"],
+    }
 
 
 def test_manual_user_metadata_conditions_are_resolved_and_sent_with_legacy_filters() -> None:

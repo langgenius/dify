@@ -23,6 +23,7 @@ describe('knowledge-retrieval-v2/default', () => {
   it('follows each space retrieval profile by default', () => {
     expect(nodeDefault.defaultValue).toMatchObject({
       query_variable_selector: [],
+      query_attachment_selector: [],
       control_space_ids: [],
       metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
       score_threshold: null,

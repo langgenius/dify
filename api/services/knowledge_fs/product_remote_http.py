@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from http import HTTPStatus
 from typing import Literal, cast
 from urllib.parse import urlencode
@@ -20,6 +21,8 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES,
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
@@ -47,6 +50,7 @@ _SSE_RESPONSE_HEADERS = (
     "x-session-id",
     "x-trace-id",
 )
+_BASE64URL_HEADER_VALUE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class HTTPKnowledgeFSProductRemoteClient:
@@ -410,8 +414,6 @@ class HTTPKnowledgeFSProductRemoteClient:
                 )
             except (TypeError, ValueError) as exc:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS request payload is invalid") from exc
-        if request_size > max_request_bytes:
-            raise KnowledgeFSProductRemoteError("KnowledgeFS request exceeds its operation byte limit")
         response_limit = min(self._max_response_bytes, max_response_bytes)
         if response_limit <= 0:
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS operation response limit is unavailable")
@@ -422,10 +424,37 @@ class HTTPKnowledgeFSProductRemoteClient:
             "X-Trace-Id": trace_id,
             _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
+        seen_extra_headers: set[str] = set()
         for name, value in extra_headers:
-            if name.lower() != "idempotency-key" or not 8 <= len(value.strip()) <= 255:
+            if not isinstance(name, str) or not isinstance(value, str):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS request header binding is invalid")
-            headers["Idempotency-Key"] = value.strip()
+            normalized_name = name.strip().lower()
+            normalized_value = value.strip()
+            if normalized_name in seen_extra_headers:
+                raise KnowledgeFSProductRemoteError("KnowledgeFS request header binding is invalid")
+            seen_extra_headers.add(normalized_name)
+            if (
+                normalized_name == "idempotency-key"
+                and normalized_value == value
+                and "\r" not in value
+                and "\n" not in value
+                and 8 <= len(normalized_value) <= 255
+            ):
+                headers["Idempotency-Key"] = normalized_value
+            elif (
+                normalized_name == KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER.lower()
+                and operation_id == "retrieveEvidence"
+                and normalized_value == value
+                and len(normalized_value.encode("ascii", errors="ignore"))
+                <= KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES
+                and _BASE64URL_HEADER_VALUE.fullmatch(normalized_value)
+            ):
+                headers[KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER] = normalized_value
+            else:
+                raise KnowledgeFSProductRemoteError("KnowledgeFS request header binding is invalid")
+            request_size += len(name.encode("utf-8")) + len(value.encode("utf-8")) + 4
+        if request_size > max_request_bytes:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS request exceeds its operation byte limit")
         request_kwargs: dict[str, object] = {
             "headers": headers,
             "params": query,

@@ -4,8 +4,20 @@ import { validateKnowledgeSpaceRetrievalProfileForMode } from "@knowledge/core";
 import { currentCandidateGrants } from "./candidate-content-authorization";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
+import {
+  ModelCapabilitySnapshotSchema,
+  type ModelInputModality,
+} from "./model-capability-preflight";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import type { PublishedKnowledgeSpaceRuntimeSnapshotResolver } from "./published-knowledge-space-runtime-snapshot";
 import { PublishedProjectionReadUnavailableError } from "./published-projection-read-snapshot";
+import {
+  KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
+  QueryImageResolutionError,
+  type QueryImageResolutionReference,
+  type QueryImageResolver,
+  queryImageResolutionReferencesFromHeader,
+} from "./query-images";
 import {
   RetrievalExecutionAdmissionError,
   type RetrievalExecutionLeaseCoordinator,
@@ -24,6 +36,8 @@ const RETRIEVAL_TEST_UNAVAILABLE = "Published retrieval test is unavailable";
 export interface RegisterRetrievalTestHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly executor?: RetrievalTestExecutor | undefined;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
+  readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly retrievalExecutionLeases?: RetrievalExecutionLeaseCoordinator | undefined;
   readonly runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
   readonly spaces: Pick<KnowledgeSpaceRepository, "get">;
@@ -32,6 +46,8 @@ export interface RegisterRetrievalTestHandlersOptions {
 export function registerRetrievalTestHandlers({
   app,
   executor,
+  modelInputModalityResolver,
+  queryImageResolver,
   retrievalExecutionLeases,
   runtimeSnapshotResolver,
   spaces,
@@ -128,11 +144,69 @@ export function registerRetrievalTestHandlers({
         });
         await executionLease.assertActive();
         const executionSignal = AbortSignal.any([executionLease.signal, context.req.raw.signal]);
+        let queryImageReferences: readonly QueryImageResolutionReference[];
+        try {
+          queryImageReferences = queryImageResolutionReferencesFromHeader({
+            encodedGrants: context.req.header(KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER),
+            references: body.queryImages,
+            subjectId: subject.subjectId,
+          });
+        } catch (error) {
+          if (error instanceof QueryImageResolutionError) {
+            return context.json({ code: error.code, error: error.message }, error.status);
+          }
+          throw error;
+        }
+        const [embeddingInputModalities, reasoningInputModalities] = modelInputModalityResolver
+          ? await Promise.all([
+              modelInputModalityResolver.resolve({
+                signal: executionSignal,
+                snapshot: runtimeSnapshot.embeddingCapabilitySnapshot,
+                tenantId: subject.tenantId,
+              }),
+              modelInputModalityResolver.resolve({
+                signal: executionSignal,
+                snapshot: runtimeSnapshot.retrievalCapabilitySnapshot.reasoning,
+                tenantId: subject.tenantId,
+              }),
+            ])
+          : [
+              snapshotInputModalities(runtimeSnapshot.embeddingCapabilitySnapshot),
+              snapshotInputModalities(runtimeSnapshot.retrievalCapabilitySnapshot.reasoning),
+            ];
+        let resolvedQueryImages: Awaited<ReturnType<QueryImageResolver["resolve"]>> = [];
+        const spaceUsesQueryImageBytes =
+          embeddingInputModalities.includes("image") || reasoningInputModalities.includes("image");
+        if (body.queryImages.length > 0 && spaceUsesQueryImageBytes) {
+          if (!queryImageResolver) {
+            return context.json(
+              {
+                code: "QUERY_IMAGE_RESOLVER_UNAVAILABLE",
+                error: "Query image resolution is unavailable",
+              },
+              503,
+            );
+          }
+          try {
+            resolvedQueryImages = await queryImageResolver.resolve({
+              references: queryImageReferences,
+              signal: executionSignal,
+              subjectId: subject.subjectId,
+              tenantId: subject.tenantId,
+            });
+          } catch (error) {
+            if (error instanceof QueryImageResolutionError) {
+              return context.json({ code: error.code, error: error.message }, error.status);
+            }
+            throw error;
+          }
+        }
 
         const result = await executor.execute({
           ...(runtimeSnapshot.embeddingProfile
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
             : {}),
+          embeddingInputModalities,
           knowledgeSpaceId,
           ...(body.filters ? { filters: normalizeRetrievalMetadataFilters(body.filters) } : {}),
           includeText: body.includeText,
@@ -140,6 +214,13 @@ export function registerRetrievalTestHandlers({
           permissionScope,
           projectionSnapshot: runtimeSnapshot.projectionSnapshot,
           query: body.query,
+          queryImageReferenceCount: body.queryImages.length,
+          ...(resolvedQueryImages.length > 0
+            ? {
+                queryImages: resolvedQueryImages,
+              }
+            : {}),
+          reasoningInputModalities,
           retrievalProfile: runtimeSnapshot.retrievalProfile,
           signal: executionSignal,
           subject,
@@ -198,4 +279,9 @@ export function registerRetrievalTestHandlers({
       await executionLease.release().catch(() => undefined);
     }
   });
+}
+
+function snapshotInputModalities(value: unknown): readonly ModelInputModality[] {
+  const parsed = ModelCapabilitySnapshotSchema.safeParse(value);
+  return parsed.success ? (parsed.data.inputModalities ?? ["text"]) : ["text"];
 }

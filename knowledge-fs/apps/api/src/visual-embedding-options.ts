@@ -17,6 +17,7 @@ import {
   difyModelRuntimeRequired,
 } from "./dify-model-runtime-options";
 
+/** @deprecated Production model routing is profile-driven; retained only for source compatibility. */
 export interface ApiVisualEmbeddingEnv extends DifyModelRuntimeClientEnv {
   /** @deprecated Dify vector dimensions are inferred from each response. */
   readonly KNOWLEDGE_VISUAL_EMBEDDING_DIMENSION?: string | undefined;
@@ -34,6 +35,7 @@ export interface ApiVisualEmbeddingEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED?: string | undefined;
 }
 
+/** @deprecated Use `ApiProfileVisualEmbeddingOptions`. */
 export interface ApiVisualEmbeddingOptions {
   readonly model: string;
   readonly provider: NonNullable<KnowledgeGatewayOptions["visualEmbeddingProvider"]>;
@@ -44,6 +46,9 @@ export interface ApiVisualEmbeddingOptions {
 }
 
 /**
+ * @deprecated Production assembly uses `createApiProfileVisualEmbeddingOptions`. This legacy
+ * helper remains temporarily source-compatible but is not read by the running service.
+ *
  * Resolves the image-byte visual embedding provider. Opt-in: returns `undefined` unless
  * `KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER=dify-model-runtime`.
  *
@@ -154,7 +159,7 @@ export function createApiVisualEmbeddingOptions({
   };
 }
 
-interface DifyImageBytesVisualEmbeddingProviderOptions {
+export interface DifyImageBytesVisualEmbeddingProviderOptions {
   readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly pluginId: string;
@@ -167,7 +172,7 @@ interface DifyImageBytesVisualEmbeddingProviderOptions {
  * `{content: <base64>, content_type: "image", file_id}` with `input_type: "document"`, and the
  * daemon replies with an EmbeddingResult (`{model, embeddings, usage:{tokens,total_tokens}}`).
  */
-function createDifyImageBytesVisualEmbeddingProvider({
+export function createDifyImageBytesVisualEmbeddingProvider({
   client,
   modelRequestGate,
   pluginId,
@@ -196,9 +201,12 @@ function createDifyImageBytesVisualEmbeddingProvider({
           model: input.model,
           pluginId,
           provider,
+          ...(input.signal ? { signal: input.signal } : {}),
           tenantId,
         });
-      const data = modelRequestGate ? await modelRequestGate.run(invoke) : await invoke();
+      const data = modelRequestGate
+        ? await modelRequestGate.run(invoke, { signal: input.signal })
+        : await invoke();
 
       const parsed = parseMultimodalEmbeddingResult(data, input.images.length);
       const model = parsed.model ?? input.model;

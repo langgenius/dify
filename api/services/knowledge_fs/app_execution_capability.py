@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from typing import Literal, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
@@ -20,7 +22,10 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
+    KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES,
     KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
     KnowledgeFSProductRemotePort,
     KnowledgeFSRemoteJSONRequest,
 )
@@ -167,6 +172,7 @@ class KnowledgeFSAppExecutionCapabilityService:
             dict[str, JsonValue],
             payload.model_dump(mode="json", exclude_none=True, by_alias=True),
         )
+        query_image_headers = _move_query_image_grants_to_internal_header(remote_payload)
         raw = self._remote.execute_json(
             KnowledgeFSRemoteJSONRequest(
                 operation_id=operation_id,
@@ -177,6 +183,7 @@ class KnowledgeFSAppExecutionCapabilityService:
                 capability_token=issued.token,
                 trace_id=issued.trace_id,
                 payload=remote_payload,
+                headers=query_image_headers,
             )
         )
         return KnowledgeFSRetrievalTestResponse.model_validate(raw)
@@ -226,6 +233,36 @@ class KnowledgeFSAppExecutionCapabilityService:
             )
         )
         return KnowledgeFSWorkflowFailedRetrievalCaptureResponse.model_validate(raw)
+
+
+def _move_query_image_grants_to_internal_header(
+    payload: dict[str, JsonValue],
+) -> tuple[tuple[str, str], ...]:
+    raw_images = payload.get("queryImages")
+    if not isinstance(raw_images, list) or not raw_images:
+        return ()
+
+    clean_images: list[JsonValue] = []
+    grants: list[str | None] = []
+    for raw_image in raw_images:
+        if not isinstance(raw_image, dict):  # Payload validation should make this unreachable.
+            raise KnowledgeFSProductRemoteError("KnowledgeFS query image transport is invalid")
+        clean_image = dict(raw_image)
+        raw_grant = clean_image.pop("accessGrant", None)
+        if raw_grant is not None and not isinstance(raw_grant, str):
+            raise KnowledgeFSProductRemoteError("KnowledgeFS query image transport is invalid")
+        clean_images.append(cast(JsonValue, clean_image))
+        grants.append(raw_grant)
+
+    payload["queryImages"] = clean_images
+    if not any(grant is not None for grant in grants):
+        return ()
+
+    envelope = json.dumps({"g": grants, "v": 1}, ensure_ascii=True, separators=(",", ":")).encode("ascii")
+    encoded = base64.urlsafe_b64encode(envelope).decode("ascii").rstrip("=")
+    if len(encoded.encode("ascii")) > KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES:
+        raise KnowledgeFSProductRemoteError("KnowledgeFS query image grant header is too large")
+    return ((KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER, encoded),)
 
 
 __all__ = [

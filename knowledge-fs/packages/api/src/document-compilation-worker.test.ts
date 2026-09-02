@@ -175,6 +175,97 @@ describe("createDocumentCompilationWorker lease integration", () => {
     },
   );
 
+  it.each([false, true])(
+    "uses the frozen profile image capability=%s instead of installed image tooling",
+    async (profileImageExtractionEnabled) => {
+      const adapter = createTestPlatformAdapter();
+      const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+      const asset = await assets.create({
+        filename: "Profile-images.pdf",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a15",
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        mimeType: "application/pdf",
+        objectKey: "tenant-1/spaces/space/documents/profile-images.pdf",
+        sha256: "a".repeat(64),
+        sizeBytes: 8,
+      });
+      await adapter.objectStorage.putObject({
+        body: new TextEncoder().encode("%PDF-1.7"),
+        contentType: asset.mimeType,
+        key: asset.objectKey,
+        metadata: {},
+      });
+      const jobs = createDocumentCompilationJobStateMachine({
+        generateId: () => `profile-image-job-${profileImageExtractionEnabled}`,
+        jobs: adapter.jobs,
+        repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+      });
+      const job = await jobs.start({
+        documentAssetId: asset.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      });
+      const parserHints: (ParserRouteHints | undefined)[] = [];
+      const worker = createDocumentCompilationWorker({
+        assets,
+        jobs,
+        multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+          maxManifests: 1,
+        }),
+        objectStorage: adapter.objectStorage,
+        parser: {
+          kind: "unstructured",
+          parse: async (input) => {
+            parserHints.push(input.parserHints);
+            return ParseArtifactSchema.parse({
+              artifactHash: "c".repeat(64),
+              contentType: "text",
+              createdAt: "2026-09-01T12:00:00.000Z",
+              documentAssetId: input.documentAssetId,
+              elements: [],
+              id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a16",
+              metadata: {},
+              parser: "unstructured",
+              version: input.version,
+            });
+          },
+        },
+        pdfRasterizer: {
+          render: async () => {
+            throw new Error("Empty artifact must not rasterize a page");
+          },
+        },
+        profileImageExtractionEnabled,
+        reindexer: {
+          reindex: async (input) => ({
+            artifact: input.parseArtifact,
+            nodesCreated: 0,
+            projectionIds: [],
+            projectionsCreated: 0,
+            status: "rebuilt",
+          }),
+        },
+      });
+
+      await expect(
+        worker.process({
+          documentAssetId: asset.id,
+          documentCompilationJobId: job.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        }),
+      ).resolves.toMatchObject({ stage: "published" });
+      expect(parserHints).toEqual([
+        expect.objectContaining({
+          imagesHandledExternally: true,
+          requiresImages: profileImageExtractionEnabled,
+        }),
+      ]);
+    },
+  );
+
   it("does not checkpoint parser output after the execution loses its protected lease", async () => {
     const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });

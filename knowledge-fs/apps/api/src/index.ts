@@ -27,6 +27,7 @@ import {
   createLlmAutoRetrievalModeResolver,
   createLlmSemanticChunker,
   createModelCapabilityPreflight,
+  createModelInputModalityResolver,
   createPageIndexFindabilityEvaluator,
   createPageIndexLayeredTreeSearch,
   createPageIndexSemanticTreeSearch,
@@ -81,13 +82,14 @@ import {
   createApiKnowledgeSpaceSemanticIngestionOptions,
   createApiSemanticEntityExtractionOptions,
 } from "./llm-options";
-import { createApiMultimodalAnswerOptions } from "./multimodal-answer-options";
-import { createApiMultimodalEnrichmentOptions } from "./multimodal-enrichment-options";
+import { createApiProfileMultimodalAnswerOptions } from "./multimodal-answer-options";
+import { createApiProfileMultimodalEnrichmentOptions } from "./multimodal-enrichment-options";
 import { createApiMultimodalOptions } from "./multimodal-options";
 import { createApiOnlineDocumentOptions } from "./online-document-options";
 import { createApiOnlineDriveOptions } from "./online-drive-options";
 import { createApiKnowledgeFsOperationalMetrics } from "./operational-metrics";
 import { createApiDocumentParser } from "./parser-options";
+import { createApiProfileVisualEmbeddingOptions } from "./profile-visual-embedding-options";
 import { createApiQueryImageExpansionProvider } from "./query-image-expansion-options";
 import { createApiQueryImageResolver } from "./query-image-options";
 import { createApiDeploymentReadinessChecks } from "./readiness-options";
@@ -117,7 +119,6 @@ import {
   createApiUploadSessionAssembly,
   createApiUploadSessionOptions,
 } from "./upload-session-options";
-import { createApiVisualEmbeddingOptions } from "./visual-embedding-options";
 import { createApiWebsiteCrawlOptions } from "./website-crawl-options";
 
 const documentCompilationOptions = createApiDocumentCompilationOptions();
@@ -132,7 +133,6 @@ const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
 const adapter = createNodePlatformAdapter();
 const documentRemoteAssetFetcher = createNodeRemoteDocumentImageFetcher();
 const queryImageResolver = createApiQueryImageResolver({ env: process.env });
-const queryImageExpansionProvider = createApiQueryImageExpansionProvider(process.env);
 const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
   emit: (metric) => {
     process.stdout.write(`${JSON.stringify(metric)}\n`);
@@ -141,6 +141,10 @@ const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
 const ingestionModelRuntimeOptions = createApiIngestionModelRuntimeOptions(
   process.env,
   operationalMetrics.ingestionModel,
+);
+const queryImageExpansionProvider = createApiQueryImageExpansionProvider(
+  process.env,
+  ingestionModelRuntimeOptions.modelRequestGate,
 );
 const capabilityV2 = createApiCapabilityV2Assembly({
   audit: {
@@ -171,7 +175,7 @@ const embeddingOptions = createApiEmbeddingOptions(
   ingestionModelRuntimeOptions.modelRequestGate,
 );
 const parser = createApiDocumentParser();
-const visualEmbeddingOptions = createApiVisualEmbeddingOptions({
+const visualEmbeddingOptions = createApiProfileVisualEmbeddingOptions({
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   objectStorage: adapter.objectStorage,
 });
@@ -179,10 +183,8 @@ const multimodalOptions = {
   ...createApiMultimodalOptions(),
   documentMultimodalRemoteAssetFetcher: documentRemoteAssetFetcher,
 };
-const multimodalAnswerOptions = createApiMultimodalAnswerOptions({
-  objectStorage: adapter.objectStorage,
-});
-const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
+const multimodalAnswerOptions = createApiProfileMultimodalAnswerOptions({
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   objectStorage: adapter.objectStorage,
 });
 const rerankerOptions = createApiRerankerOptions();
@@ -247,6 +249,9 @@ const knowledgeSpaceSemanticIngestionOptions = createApiKnowledgeSpaceSemanticIn
 const modelCapabilityCatalog = createDifyModelCapabilityCatalog({
   client: createApiDifyModelRuntimeClient(process.env),
 });
+const modelInputModalityResolver = createModelInputModalityResolver({
+  catalog: modelCapabilityCatalog,
+});
 const modelCapabilityPreflight = createModelCapabilityPreflight({
   catalog: modelCapabilityCatalog,
   embeddingProviderFactory: (selection) => {
@@ -255,6 +260,7 @@ const modelCapabilityPreflight = createModelCapabilityPreflight({
     }
     return embeddingOptions.knowledgeSpaceEmbeddingProviderFactory(selection);
   },
+  imageEmbeddingProviderFactory: visualEmbeddingOptions.imageEmbeddingProviderFactory,
   reasoningProviderFactory: profileReasoningCapability.providerFactory,
   rerankerProviderFactory: (selection) => {
     if (!rerankerOptions?.providerFactory) {
@@ -570,6 +576,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
     : { heavyMaterializationMaxConcurrency: parser.heavyWorkloadMaxConcurrency }),
   modelCallMetrics: operationalMetrics.ingestionModelCalls,
   modelCapabilityPreflight,
+  modelInputModalityResolver,
   metrics: operationalMetrics.durableTasks,
   multimodal: multimodalOptions,
   outlineSummaryEnhancer: documentOutlineSummaryEnhancer,
@@ -642,14 +649,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   },
   semanticMetrics: operationalMetrics.semanticEnrichment,
   semanticChunker: documentSemanticChunker,
-  ...(visualEmbeddingOptions
-    ? {
-        visual: {
-          model: visualEmbeddingOptions.model,
-          provider: visualEmbeddingOptions.provider,
-        },
-      }
-    : {}),
+  visual: { provider: visualEmbeddingOptions.provider },
 });
 const sourceProductAuthorization = repositoryOptions.knowledgeSpaceAccess
   ? createKnowledgeSpaceAuthorizationGuard({
@@ -709,12 +709,6 @@ if (process.env.NODE_ENV === "production" && !sourceProduct) {
     "Production Source product requires durable connections/workflows, credential ownership, logical documents, and compilation publication",
   );
 }
-const visualQueryEmbeddingOptions = visualEmbeddingOptions?.queryEmbeddingProvider
-  ? {
-      embeddingModel: visualEmbeddingOptions.queryEmbeddingModel ?? visualEmbeddingOptions.model,
-      embeddings: visualEmbeddingOptions.queryEmbeddingProvider,
-    }
-  : undefined;
 const retrievalPlanner = createRetrievalPlanner({
   maxTopK: RETRIEVAL_MAX_TOP_K,
 });
@@ -760,41 +754,32 @@ const retriever = retrievalRepository
           }
         : {}),
       repository: retrievalRepository,
-      ...(visualEmbeddingOptions?.queryImageEmbeddingProvider &&
-      visualEmbeddingOptions.queryMode !== "off"
-        ? {
-            imageQuery: {
-              model: visualEmbeddingOptions.model,
-              mode: visualEmbeddingOptions.queryMode,
-              provider: visualEmbeddingOptions.queryImageEmbeddingProvider,
-            },
-          }
-        : {}),
+      imageQuery: {
+        mode: visualEmbeddingOptions.queryMode,
+        providerFactory: visualEmbeddingOptions.imageEmbeddingProviderFactory,
+      },
       // Production retrieval is profile-only. Keep the provider factory, but never expose the
       // optional deployment compatibility provider as an implicit rerank fallback.
       rerankerOptions: rerankerOptions
         ? { ...rerankerOptions, legacyDefaultConfigured: false }
         : undefined,
       strictPublishedReads: true,
-      ...(visualQueryEmbeddingOptions && visualEmbeddingOptions?.queryMode !== "off"
-        ? {
-            visualQuery: {
-              model: visualQueryEmbeddingOptions.embeddingModel,
-              mode: visualEmbeddingOptions?.queryMode ?? "fallback",
-              provider: visualQueryEmbeddingOptions.embeddings,
-            },
-          }
-        : {}),
+      visualQuery: {
+        mode: visualEmbeddingOptions.queryMode,
+        useInputQueryVector: true,
+      },
     })
   : undefined;
-// Text dense and visual dense are separate vector spaces. Query generators produce only the
-// text-space vector; createApiRetriever embeds the query independently for the visual leg.
+// Text and visual projections are stored separately, but a verified multimodal embedding profile
+// places both modalities in one compatible vector space. Reuse the already profile-bound text
+// query vector for the visual leg instead of paying for a duplicate embedding request.
 const embeddingGeneratorOptions = {
   ...(embeddingResolver ? { embeddingResolver } : {}),
 };
 const retrievalTestExecutor = retriever
   ? createRetrievalTestExecutor({
       ...(embeddingResolver ? { embeddingResolver } : {}),
+      queryImageExpansionProvider,
       retriever,
     })
   : undefined;
@@ -905,6 +890,14 @@ const runtimeSnapshotResolver =
           : {}),
       })
     : undefined;
+const multimodalEnrichmentOptions = runtimeSnapshotResolver
+  ? createApiProfileMultimodalEnrichmentOptions({
+      modelInputModalityResolver,
+      modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+      objectStorage: adapter.objectStorage,
+      runtimeSnapshots: runtimeSnapshotResolver,
+    })
+  : {};
 const goldenQuestionEvidenceMatcher =
   embeddingResolver && retrievalRepository && runtimeSnapshotResolver
     ? createGoldenQuestionEvidenceMatcher({
@@ -929,6 +922,7 @@ const researchTaskRuntime =
         generator: durableResearchAnswerQueryGenerator,
         manifests: knowledgeSpaceManifests,
         metrics: operationalMetrics.durableTasks,
+        modelInputModalityResolver,
         onError: ({ error, researchTaskJob }) => {
           process.stderr.write(
             `${JSON.stringify({
@@ -1026,12 +1020,6 @@ const app = createKnowledgeGateway({
   // Without a dedicated visual model, the regular dense builder already embeds OCR/caption/image
   // nodes through the space-selected text profile. A global text-surrogate visual builder would
   // write those nodes under the deployment model instead of the space's canonical vectorSpaceId.
-  ...(visualEmbeddingOptions
-    ? {
-        visualEmbeddingModel: visualEmbeddingOptions.model,
-        visualEmbeddingProvider: visualEmbeddingOptions.provider,
-      }
-    : {}),
   parser,
   ...(documentCompilationRuntime
     ? {
@@ -1105,6 +1093,7 @@ const app = createKnowledgeGateway({
   legacyAuthorizationTrafficMetrics: operationalMetrics.legacyAuthorization,
   modelCapabilityCatalog,
   modelCapabilityPreflight,
+  modelInputModalityResolver,
   ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
   ...multimodalEnrichmentOptions,
   ...semanticEntityExtractionOptions,

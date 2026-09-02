@@ -4,6 +4,8 @@ import type { JobPayload } from "@knowledge/core";
 export const QUERY_IMAGE_MAX_COUNT = 4;
 export const QUERY_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const QUERY_IMAGE_MAX_TOTAL_BYTES = 32 * 1024 * 1024;
+export const KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER = "x-knowledge-fs-query-image-grants";
+export const KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES = 6 * 1024;
 
 export const QueryImageMimeTypeSchema = z.enum([
   "image/gif",
@@ -39,6 +41,13 @@ export const QueryImageReferencesSchema = z
 
 export type QueryImageReference = z.infer<typeof QueryImageReferenceSchema>;
 
+/** Transient resolver input. accessGrant is never copied into traces, checkpoints, or evidence. */
+export const QueryImageResolutionReferenceSchema = QueryImageReferenceSchema.extend({
+  accessGrant: z.string().min(1).max(2_048).optional(),
+}).strict();
+
+export type QueryImageResolutionReference = z.infer<typeof QueryImageResolutionReferenceSchema>;
+
 export interface QueryImageMetadata extends QueryImageReference {
   readonly byteSize: number;
   readonly mimeType: QueryImageMimeType;
@@ -52,7 +61,7 @@ export interface ResolvedQueryImage extends QueryImageMetadata {
 
 export interface QueryImageResolver {
   resolve(input: {
-    readonly references: readonly QueryImageReference[];
+    readonly references: readonly QueryImageResolutionReference[];
     readonly signal?: AbortSignal | undefined;
     readonly subjectId: string;
     readonly tenantId: string;
@@ -88,6 +97,52 @@ export class QueryImageResolutionError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+const QueryImageGrantEnvelopeSchema = z
+  .object({
+    g: z.array(z.string().min(1).max(2_048).nullable()).max(QUERY_IMAGE_MAX_COUNT),
+    v: z.literal(1),
+  })
+  .strict();
+
+export function queryImageResolutionReferencesFromHeader(input: {
+  readonly encodedGrants?: string | undefined;
+  readonly references: readonly QueryImageReference[];
+  readonly subjectId: string;
+}): readonly QueryImageResolutionReference[] {
+  if (!input.encodedGrants) return input.references;
+  if (
+    !input.subjectId.startsWith("dify-app:") ||
+    Buffer.byteLength(input.encodedGrants, "ascii") >
+      KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES ||
+    !/^[A-Za-z0-9_-]+$/u.test(input.encodedGrants)
+  ) {
+    throw invalidQueryImageGrantHeader();
+  }
+
+  try {
+    const parsed = QueryImageGrantEnvelopeSchema.parse(
+      JSON.parse(Buffer.from(input.encodedGrants, "base64url").toString("utf8")) as unknown,
+    );
+    if (parsed.g.length !== input.references.length) throw invalidQueryImageGrantHeader();
+    return input.references.map((reference, index) => {
+      const accessGrant = parsed.g[index];
+      return accessGrant ? { ...reference, accessGrant } : reference;
+    });
+  } catch (error) {
+    if (error instanceof QueryImageResolutionError) throw error;
+    throw invalidQueryImageGrantHeader(error);
+  }
+}
+
+function invalidQueryImageGrantHeader(cause?: unknown): QueryImageResolutionError {
+  return new QueryImageResolutionError(
+    "QUERY_IMAGE_GRANT_INVALID",
+    "Workflow query image grant is invalid",
+    400,
+    cause === undefined ? undefined : { cause },
+  );
 }
 
 export function hasQueryInput(input: {

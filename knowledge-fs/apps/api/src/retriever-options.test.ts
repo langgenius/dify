@@ -479,6 +479,65 @@ describe("createApiRetriever final rerank wiring", () => {
 });
 
 describe("createApiRetriever dense and visual wiring", () => {
+  it("uses the active vision embedding profile for text-to-image retrieval", async () => {
+    const profile = embeddingProfile();
+    const visualVectors: (readonly number[])[] = [];
+    const visualModels: string[] = [];
+    const retriever = createApiRetriever({
+      embeddingEnabled: true,
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: {
+        searchDense: async () => [],
+        searchFts: async () => [],
+        searchVisualDense: async (input) => {
+          visualVectors.push(input.queryVector);
+          visualModels.push(input.denseProjectionModel ?? "");
+          return [];
+        },
+      },
+      visualQuery: { mode: "primary", useInputQueryVector: true },
+    });
+
+    await retriever.retrieve({
+      embeddingInputModalities: ["text", "image"],
+      embeddingProfile: profile,
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "fast",
+      query: "architecture diagram",
+      queryVector: [0.1, 0.2],
+      topK: 10,
+    });
+
+    expect(visualVectors).toEqual([[0.1, 0.2]]);
+    expect(visualModels).toEqual([profile.model]);
+  });
+
+  it("skips profile visual retrieval cleanly for a text-only embedding model", async () => {
+    const retriever = createApiRetriever({
+      embeddingEnabled: true,
+      repository: {
+        searchDense: async () => [],
+        searchFts: async () => [],
+        searchVisualDense: async () => [],
+      },
+      visualQuery: { mode: "primary", useInputQueryVector: true },
+    });
+
+    const result = await retriever.retrieve({
+      embeddingInputModalities: ["text"],
+      embeddingProfile: embeddingProfile(),
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "fast",
+      query: "policy renewal",
+      queryVector: [0.1, 0.2],
+      topK: 10,
+    });
+
+    expect(result.metrics?.degradationFlags).toBeUndefined();
+  });
+
   it("embeds each query image as a query and fuses independent visual searches", async () => {
     const dense = vi.fn(async () => []);
     const fts = vi.fn(async () => []);
@@ -846,6 +905,17 @@ function resolvedQueryImage(suffix: string, bytes: number[]) {
     mimeType: "image/png" as const,
     sha256: suffix.padEnd(64, "a"),
     uploadFileId: `00000000-0000-4000-8000-0000000000${suffix}`,
+  };
+}
+
+function embeddingProfile() {
+  return {
+    dimension: 2,
+    model: "vision-embedding",
+    pluginId: "vendor/vision-embedding",
+    provider: "vendor",
+    revision: 1,
+    vectorSpaceId: `embedding-space-sha256:${"a".repeat(64)}`,
   };
 }
 

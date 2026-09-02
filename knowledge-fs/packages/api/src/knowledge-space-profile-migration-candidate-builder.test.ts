@@ -43,6 +43,28 @@ const now = "2026-07-14T12:00:00.000Z";
 const candidatePublicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f5a0a";
 const candidateFingerprint = `projection-set-sha256:${"b".repeat(64)}`;
 
+function embeddingCapabilitySnapshot(
+  model: string,
+  inputModalities: readonly ("image" | "text")[],
+) {
+  return {
+    capabilityDigest: `sha256:${"f".repeat(64)}`,
+    checkedAt: now,
+    dimension: 3072,
+    distanceMetric: "cosine" as const,
+    inputModalities: [...inputModalities],
+    kind: "embedding" as const,
+    pluginUniqueIdentifier: "plugin-embedding:1.0.0@sha256:installed",
+    pluginVersion: "1.0.0",
+    schemaFingerprint: `sha256:${"e".repeat(64)}`,
+    selection: {
+      model,
+      pluginId: "plugin-embedding",
+      provider: "plugin-daemon",
+    },
+  };
+}
+
 describe.each(["postgres", "tidb"] as const)(
   "profile migration candidate snapshot repository (%s)",
   (dialect) => {
@@ -407,7 +429,7 @@ describe("profile migration candidate builder", () => {
     expect(fixture.published().fingerprint).toBe(baseFingerprint);
   });
 
-  it("rebuilds the ordinary vector space from the exact receipt and preserves path/visual members", async () => {
+  it("rebuilds text and visual vectors from the candidate vision embedding profile", async () => {
     const fixture = builderFixture("full-vector-space");
     const built = await fixture.builder.build(fixture.input);
 
@@ -420,7 +442,7 @@ describe("profile migration candidate builder", () => {
       expect.objectContaining({
         projectionStatus: "building",
         reuseNodeGenerationId: baseGenerationId,
-        skipVisual: true,
+        visualModel: "embedding-v2",
         retrievalProfile: expect.objectContaining({
           reasoningModel: expect.objectContaining({ model: "reasoning-v1" }),
         }),
@@ -435,7 +457,7 @@ describe("profile migration candidate builder", () => {
     expect(fixture.candidateMembers()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ componentKey: pathId, componentType: "knowledge-path" }),
-        expect.objectContaining({ componentKey: fixture.visualProjectionId }),
+        expect.objectContaining({ componentKey: fixture.rebuiltVisualId }),
         expect.objectContaining({ componentKey: fixture.rebuiltFtsId }),
         expect.objectContaining({ componentKey: fixture.rebuiltDenseId }),
         expect.objectContaining({
@@ -448,6 +470,11 @@ describe("profile migration candidate builder", () => {
     expect(
       fixture.candidateMembers().some((member) => member.componentKey === fixture.baseDenseId),
     ).toBe(false);
+    expect(
+      fixture
+        .candidateMembers()
+        .some((member) => member.componentKey === fixture.visualProjectionId),
+    ).toBe(false);
     await expect(
       fixture.builder.getBuiltCandidate({
         ...fixture.input,
@@ -455,6 +482,25 @@ describe("profile migration candidate builder", () => {
         publicationId: built.publicationId,
       }),
     ).resolves.toEqual(built);
+  });
+
+  it("drops stale visual vectors when the candidate embedding profile is text-only", async () => {
+    const fixture = builderFixture("full-vector-space", {
+      candidateEmbeddingModalities: ["text"],
+    });
+
+    await fixture.builder.build(fixture.input);
+
+    expect(fixture.reindex).toHaveBeenCalledWith(expect.objectContaining({ skipVisual: true }));
+    expect(
+      fixture
+        .candidateMembers()
+        .some(
+          (member) =>
+            member.componentKey === fixture.visualProjectionId ||
+            member.componentKey === fixture.rebuiltVisualId,
+        ),
+    ).toBe(false);
   });
 
   it("rejects an incomplete vector reindex receipt without freezing a member snapshot", async () => {
@@ -788,6 +834,7 @@ function migrationCandidate(
 function builderFixture(
   scope: "full-page-index-summary-outline" | "full-vector-space",
   options: {
+    readonly candidateEmbeddingModalities?: readonly ("image" | "text")[];
     readonly completePageIndex?: boolean;
     readonly failValidation?: boolean;
     readonly incompleteReindexReceipt?: boolean;
@@ -801,6 +848,7 @@ function builderFixture(
   const visualProjectionId = deterministicChildId(documentAssetId, "base-visual");
   const rebuiltFtsId = deterministicChildId(runId, "rebuilt-fts");
   const rebuiltDenseId = deterministicChildId(runId, "rebuilt-dense");
+  const rebuiltVisualId = deterministicChildId(runId, "rebuilt-visual");
   const baseGraphEntityId = deterministicChildId(documentAssetId, "base-graph-entity");
   const rebuiltGraphEntityId = deterministicChildId(runId, "rebuilt-graph-entity");
   const rebuiltGraphRelationId = deterministicChildId(runId, "rebuilt-graph-relation");
@@ -917,9 +965,11 @@ function builderFixture(
     async ({
       projectionStatus,
       publicationGenerationId,
+      visualModel,
     }: {
       readonly projectionStatus?: IndexProjection["status"];
       readonly publicationGenerationId?: string;
+      readonly visualModel?: string;
     }) => {
       if (options.incompleteReindexReceipt) {
         return {
@@ -947,6 +997,26 @@ function builderFixture(
           projectionStatus,
         ),
       );
+      if (visualModel) {
+        projections.set(rebuiltVisualId, {
+          ...projection(
+            rebuiltVisualId,
+            publicationGenerationId,
+            "dense-vector",
+            visualModel,
+            projectionStatus,
+          ),
+          metadata: {
+            documentAssetId,
+            multimodal: { vectorSpace: "visual" },
+          },
+        });
+      }
+      const projectionIds = [
+        rebuiltFtsId,
+        rebuiltDenseId,
+        ...(visualModel ? [rebuiltVisualId] : []),
+      ];
       return {
         artifact: {} as never,
         nodeIds: [deterministicChildId(publicationGenerationId, "semantic-node")],
@@ -961,8 +1031,8 @@ function builderFixture(
           parser: "semantic",
           version: 1,
         } as never,
-        projectionIds: [rebuiltFtsId, rebuiltDenseId],
-        projectionsCreated: 2,
+        projectionIds,
+        projectionsCreated: projectionIds.length,
         status: "rebuilt" as const,
       };
     },
@@ -1025,6 +1095,9 @@ function builderFixture(
       listByFingerprint: async ({ fingerprint }) =>
         fingerprint === baseFingerprint ? baseMembers : candidateMembers,
     },
+    modelInputModalityResolver: {
+      resolve: async () => options.candidateEmbeddingModalities ?? ["text", "image"],
+    },
     now: () => now,
     outlineBuilder: {
       build: buildOutline,
@@ -1066,6 +1139,7 @@ function builderFixture(
         kind === "embedding"
           ? revision === 1
             ? ({
+                capabilitySnapshot: embeddingCapabilitySnapshot("embedding-v1", ["text", "image"]),
                 id: "embedding-1",
                 revision: 1,
                 snapshot: {
@@ -1080,6 +1154,10 @@ function builderFixture(
                 state: "active",
               } as never)
             : ({
+                capabilitySnapshot: embeddingCapabilitySnapshot(
+                  "embedding-v2",
+                  options.candidateEmbeddingModalities ?? ["text", "image"],
+                ),
                 id: "embedding-2",
                 revision: 2,
                 snapshot: {
@@ -1182,6 +1260,7 @@ function builderFixture(
     rebuiltGraphEntityId,
     rebuiltGraphRelationId,
     rebuiltOutlineId,
+    rebuiltVisualId,
     reindex,
     replace,
     validate,
@@ -1250,6 +1329,46 @@ describe("profile migration structural evaluator", () => {
     expect(result).toMatchObject({ passed: true });
   });
 
+  it("accepts a rebuilt visual projection owned by the candidate vision embedding profile", async () => {
+    const generationId = deterministicChildId(
+      runId,
+      `profile-migration:vector-space:${documentAssetId}`,
+    );
+    const oldVisualId = deterministicChildId(documentAssetId, "old-visual");
+    const newVisualId = deterministicChildId(documentAssetId, "new-visual");
+    const visual = {
+      ...projection(newVisualId, generationId, "dense-vector", "embedding-v2", "building"),
+      metadata: { documentAssetId, multimodal: { vectorSpace: "visual" } },
+    };
+    const result = await evaluator({
+      baseMembers: [
+        member("document-outline", outlineId, baseGenerationId),
+        member("index-projection", oldVisualId, baseGenerationId),
+      ],
+      candidateMembers: [
+        member("document-outline", outlineId, baseGenerationId),
+        member("index-projection", ftsId, generationId),
+        member("index-projection", denseId, generationId),
+        member("index-projection", newVisualId, generationId),
+      ],
+      embeddingModalities: ["text", "image"],
+      projections: [
+        {
+          ...projection(oldVisualId, baseGenerationId, "dense-vector", "old-visual"),
+          metadata: { documentAssetId, multimodal: { vectorSpace: "visual" } },
+        },
+        projection(ftsId, generationId, "fts", undefined, "building"),
+        projection(denseId, generationId, "dense-vector", vectorSpaceId, "building"),
+        visual,
+      ],
+    }).evaluate({
+      candidate: candidateResult(),
+      run: migrationRun("full-vector-space", "embedding"),
+    });
+
+    expect(result).toMatchObject({ passed: true });
+  });
+
   it("fails closed when a reasoning candidate drops a preserved multimodal member", async () => {
     const rebuiltGenerationId = deterministicChildId(
       runId,
@@ -1274,6 +1393,7 @@ describe("profile migration structural evaluator", () => {
 function evaluator(input: {
   readonly baseMembers: readonly ProjectionSetPublicationMember[];
   readonly candidateMembers: readonly ProjectionSetPublicationMember[];
+  readonly embeddingModalities?: readonly ("image" | "text")[];
   readonly outlineGenerationId?: string;
   readonly projections?: readonly IndexProjection[];
   readonly summaryModel?: string;
@@ -1284,6 +1404,9 @@ function evaluator(input: {
     members: {
       listByFingerprint: async ({ fingerprint }) =>
         fingerprint === baseFingerprint ? input.baseMembers : input.candidateMembers,
+    },
+    modelInputModalityResolver: {
+      resolve: async () => input.embeddingModalities ?? ["text"],
     },
     outlines: {
       getById: async () =>
@@ -1299,6 +1422,10 @@ function evaluator(input: {
       getRevision: async ({ kind, revision }) =>
         kind === "embedding"
           ? ({
+              capabilitySnapshot: embeddingCapabilitySnapshot(
+                revision === 1 ? "embedding-v1" : "embedding-v2",
+                input.embeddingModalities ?? ["text"],
+              ),
               id: revision === 1 ? "embedding-1" : "embedding-2",
               revision,
               snapshot: {

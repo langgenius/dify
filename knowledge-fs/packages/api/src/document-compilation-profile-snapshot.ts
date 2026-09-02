@@ -10,6 +10,10 @@ import type {
   KnowledgeSpaceProfileRepository,
   KnowledgeSpaceProfileRevision,
 } from "./knowledge-space-profile-repository";
+import {
+  type ModelCapabilitySnapshot,
+  ModelCapabilitySnapshotSchema,
+} from "./model-capability-preflight";
 
 export interface DocumentCompilationFrozenProfileScope {
   readonly embeddingProfile?: DocumentCompilationProfileReference | undefined;
@@ -19,7 +23,9 @@ export interface DocumentCompilationFrozenProfileScope {
 }
 
 export interface DocumentCompilationFrozenProfiles {
+  readonly embeddingCapabilitySnapshot?: ModelCapabilitySnapshot | undefined;
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
+  readonly reasoningCapabilitySnapshot?: ModelCapabilitySnapshot | undefined;
   readonly retrievalProfile: KnowledgeSpaceRetrievalProfile;
 }
 
@@ -64,10 +70,24 @@ export async function loadDocumentCompilationFrozenProfiles(
     assertRevisionIdentity(embeddingRevision, embeddingReference, scope);
   }
   assertRevisionIdentity(retrievalRevision, retrievalReference, scope);
+  const embeddingCapability = ModelCapabilitySnapshotSchema.safeParse(
+    embeddingRevision?.capabilitySnapshot,
+  );
+  const reasoningCapability = ModelCapabilitySnapshotSchema.safeParse(
+    retrievalRevision.capabilitySnapshot?.reasoning,
+  );
 
   return {
     ...(embeddingReference && embeddingRevision
-      ? { embeddingProfile: KnowledgeSpaceEmbeddingProfileSchema.parse(embeddingRevision.snapshot) }
+      ? {
+          ...(embeddingCapability.success
+            ? { embeddingCapabilitySnapshot: embeddingCapability.data }
+            : {}),
+          embeddingProfile: KnowledgeSpaceEmbeddingProfileSchema.parse(embeddingRevision.snapshot),
+        }
+      : {}),
+    ...(reasoningCapability.success
+      ? { reasoningCapabilitySnapshot: reasoningCapability.data }
       : {}),
     retrievalProfile: KnowledgeSpaceRetrievalProfileSchema.parse(retrievalRevision.snapshot),
   };

@@ -1,4 +1,8 @@
-import { type QueryImageExpansionProvider, QueryImageExpansionTimeoutError } from "@knowledge/api";
+import {
+  type ConcurrencyGate,
+  type QueryImageExpansionProvider,
+  QueryImageExpansionTimeoutError,
+} from "@knowledge/api";
 
 import {
   type DifyModelRuntimeClientEnv,
@@ -12,6 +16,7 @@ export interface ApiQueryImageExpansionEnv extends DifyModelRuntimeClientEnv {
 
 export function createApiQueryImageExpansionProvider(
   env: ApiQueryImageExpansionEnv = process.env,
+  modelRequestGate?: ConcurrencyGate,
 ): QueryImageExpansionProvider {
   const client = createApiDifyModelRuntimeClient(env);
   const timeoutMs = positiveIntegerEnv(
@@ -27,42 +32,50 @@ export function createApiQueryImageExpansionProvider(
         () => controller.abort(new QueryImageExpansionTimeoutError()),
         timeoutMs,
       );
+      const signal = input.signal
+        ? AbortSignal.any([input.signal, controller.signal])
+        : controller.signal;
       try {
-        const result = await difyLlmCompletion({
-          client,
-          maxOutputTokens: 512,
-          model: input.model.model,
-          pluginId: input.model.pluginId,
-          promptMessages: [
-            {
-              content:
-                "Return only strict JSON with keys description (string), ocrText (string), and keywords (string array). Describe the user's images and transcribe useful visible text for document retrieval. Do not answer the user's question.",
-              role: "system",
-            },
-            {
-              content: [
-                {
-                  data: input.query.trim()
-                    ? `Optional text query: ${input.query.trim()}`
-                    : "Build a semantic navigation query from these images.",
-                  type: "text",
-                },
-                ...input.images.map((image) => ({
-                  base64_data: Buffer.from(image.body).toString("base64"),
-                  detail: "low",
-                  format: image.mimeType === "image/jpeg" ? "jpeg" : image.mimeType.split("/")[1],
-                  mime_type: image.mimeType,
-                  type: "image",
-                })),
-              ],
-              role: "user",
-            },
-          ],
-          provider: input.model.provider,
-          signal: controller.signal,
-          temperature: 0,
-          tenantId: input.tenantId,
-        });
+        signal.throwIfAborted();
+        const request = () =>
+          difyLlmCompletion({
+            client,
+            maxOutputTokens: 512,
+            model: input.model.model,
+            pluginId: input.model.pluginId,
+            promptMessages: [
+              {
+                content:
+                  "Return only strict JSON with keys description (string), ocrText (string), and keywords (string array). Describe the user's images and transcribe useful visible text for document retrieval. Do not answer the user's question.",
+                role: "system",
+              },
+              {
+                content: [
+                  {
+                    data: input.query.trim()
+                      ? `Optional text query: ${input.query.trim()}`
+                      : "Build a semantic navigation query from these images.",
+                    type: "text",
+                  },
+                  ...input.images.map((image) => ({
+                    base64_data: Buffer.from(image.body).toString("base64"),
+                    detail: "low",
+                    format: image.mimeType === "image/jpeg" ? "jpeg" : image.mimeType.split("/")[1],
+                    mime_type: image.mimeType,
+                    type: "image",
+                  })),
+                ],
+                role: "user",
+              },
+            ],
+            provider: input.model.provider,
+            signal,
+            temperature: 0,
+            tenantId: input.tenantId,
+          });
+        const result = modelRequestGate
+          ? await modelRequestGate.run(request, { signal })
+          : await request();
         const parsed = parseQueryImageExpansionOutput(result.text);
         return {
           ...parsed,

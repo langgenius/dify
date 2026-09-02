@@ -35,10 +35,12 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
     availableNumberVars,
     availableStringNodesWithParent,
     availableStringVars,
+    filterFileVar,
     filterStringVar,
     handleAddCondition,
     handleMetadataFilterModeChange,
     handleModeChange,
+    handleQueryAttachmentChange,
     handleQueryVarChange,
     handleRerankingModelChange,
     handleRemoveCondition,
@@ -98,6 +100,17 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
             filterVar={filterStringVar}
+          />
+        </Field>
+
+        <Field title={t(($) => $['nodes.knowledgeRetrieval.queryAttachment'], { ns: 'workflow' })}>
+          <VarReferencePicker
+            nodeId={id}
+            readonly={readOnly}
+            isShowNodeName
+            value={inputs.query_attachment_selector ?? []}
+            onChange={handleQueryAttachmentChange}
+            filterVar={filterFileVar}
           />
         </Field>
 

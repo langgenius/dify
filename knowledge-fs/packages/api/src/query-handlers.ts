@@ -28,6 +28,8 @@ import {
   deterministicKnowledgeSpaceActivityId,
 } from "./knowledge-space-overview";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
+import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import type { PublishedKnowledgeSpaceRuntimeSnapshotResolver } from "./published-knowledge-space-runtime-snapshot";
 import {
   type PublishedProjectionReadSnapshot,
@@ -65,6 +67,7 @@ export interface RegisterQueryHandlersOptions {
   readonly failedQueryRecorder?: FailedQueryRecorder | undefined;
   readonly generateQueryRunId: () => string;
   readonly manifests: KnowledgeSpaceManifestRepository;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
   readonly queryGenerator: QueryGenerator | undefined;
   readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly retrievalExecutionLeases?: RetrievalExecutionLeaseCoordinator | undefined;
@@ -88,6 +91,7 @@ export function registerQueryHandlers({
   failedQueryRecorder,
   generateQueryRunId,
   manifests,
+  modelInputModalityResolver,
   queryGenerator,
   queryImageResolver,
   retrievalExecutionLeases,
@@ -219,11 +223,59 @@ export function registerQueryHandlers({
       }
       throw error;
     }
+    const executionSignal = executionLease
+      ? AbortSignal.any([executionLease.signal, context.req.raw.signal])
+      : context.req.raw.signal;
     const releaseEarlyExecutionLease = async (): Promise<void> => {
       await executionLease?.release().catch(() => undefined);
     };
+    let embeddingInputModalities: readonly ("text" | "image")[] | undefined;
+    let reasoningInputModalities: readonly ("text" | "image")[] | undefined;
+    try {
+      if (runtimeSnapshot) {
+        if (modelInputModalityResolver) {
+          [embeddingInputModalities, reasoningInputModalities] = await Promise.all([
+            modelInputModalityResolver.resolve({
+              signal: executionSignal,
+              snapshot: runtimeSnapshot.embeddingCapabilitySnapshot,
+              tenantId: subject.tenantId,
+            }),
+            modelInputModalityResolver.resolve({
+              signal: executionSignal,
+              snapshot: runtimeSnapshot.retrievalCapabilitySnapshot.reasoning,
+              tenantId: subject.tenantId,
+            }),
+          ]);
+        } else {
+          const embeddingCapability = ModelCapabilitySnapshotSchema.safeParse(
+            runtimeSnapshot.embeddingCapabilitySnapshot,
+          );
+          const reasoningCapability = ModelCapabilitySnapshotSchema.safeParse(
+            runtimeSnapshot.retrievalCapabilitySnapshot?.reasoning,
+          );
+          embeddingInputModalities = embeddingCapability.success
+            ? (embeddingCapability.data.inputModalities ?? ["text"])
+            : undefined;
+          reasoningInputModalities = reasoningCapability.success
+            ? (reasoningCapability.data.inputModalities ?? ["text"])
+            : undefined;
+        }
+      }
+    } catch (error) {
+      await releaseEarlyExecutionLease();
+      if (executionLease?.signal.aborted) {
+        const leaseLost = new RetrievalExecutionLeaseLostError();
+        return context.json({ code: leaseLost.code, error: leaseLost.message }, 409);
+      }
+      throw error;
+    }
     let resolvedQueryImages = [] as Awaited<ReturnType<QueryImageResolver["resolve"]>>;
-    if (queryImages.length > 0) {
+    const spaceUsesQueryImageBytes =
+      embeddingInputModalities === undefined ||
+      reasoningInputModalities === undefined ||
+      embeddingInputModalities.includes("image") ||
+      reasoningInputModalities.includes("image");
+    if (queryImages.length > 0 && spaceUsesQueryImageBytes) {
       if (!queryImageResolver) {
         await releaseEarlyExecutionLease();
         return context.json(
@@ -237,7 +289,7 @@ export function registerQueryHandlers({
       try {
         resolvedQueryImages = await queryImageResolver.resolve({
           references: queryImages,
-          ...(executionLease ? { signal: executionLease.signal } : {}),
+          signal: executionSignal,
           subjectId: subject.subjectId,
           tenantId: subject.tenantId,
         });
@@ -259,7 +311,7 @@ export function registerQueryHandlers({
         reasoningModel: retrievalProfile?.reasoningModel,
         requestedMode,
         resolver: autoRetrievalModeResolver,
-        ...(executionLease ? { signal: executionLease.signal } : {}),
+        signal: executionSignal,
         tenantId: subject.tenantId,
         traceId: queryRunId,
       });
@@ -451,6 +503,7 @@ export function registerQueryHandlers({
           ...(runtimeSnapshot?.embeddingProfile
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
             : {}),
+          ...(embeddingInputModalities ? { embeddingInputModalities } : {}),
           mode: resolvedMode,
           ...(permissionSnapshot
             ? {
@@ -473,6 +526,8 @@ export function registerQueryHandlers({
             : {}),
           requestedMode: modeResolution.requestedMode,
           ...(retrievalProfile ? { retrievalProfile } : {}),
+          ...(reasoningInputModalities ? { reasoningInputModalities } : {}),
+          signal: executionSignal,
           sessionContext: session.context,
           subject,
           traceId: queryRunId,

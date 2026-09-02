@@ -42,6 +42,7 @@ import {
   type LegacySpacePublicationBootstrapService,
   type LogicalDocumentRepository,
   type ModelCapabilityPreflight,
+  type ModelInputModalityResolver,
   type PageIndexFindabilityEvaluator,
   type PageIndexFindabilityRepository,
   type PageIndexFindabilityRuntime,
@@ -145,6 +146,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
     | KnowledgeSpaceUnpublishedProfileActivationRepository
     | undefined;
   readonly modelCapabilityPreflight?: ModelCapabilityPreflight | undefined;
+  readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
   readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly outlineSummaryEnhancer?:
@@ -195,7 +197,6 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
   readonly semanticChunker?: SemanticChunker | undefined;
   readonly visual?:
     | {
-        readonly model: string;
         readonly provider: Parameters<typeof createVisualEmbeddingProjectionBuilder>[0]["provider"];
       }
     | undefined;
@@ -286,6 +287,7 @@ export function createApiDocumentCompilationRuntime({
   heavyMaterializationMaxConcurrency,
   initialProfileActivations,
   modelCapabilityPreflight,
+  modelInputModalityResolver,
   modelCallMetrics,
   metrics,
   multimodal,
@@ -541,6 +543,7 @@ export function createApiDocumentCompilationRuntime({
             maxMembers: maxCandidateComponents,
             maxProjectionBatchSize,
             members: repositories.members,
+            ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
             outlineBuilder,
             outlineSummaryEnhancer,
             outlines: repositories.outlines,
@@ -564,6 +567,7 @@ export function createApiDocumentCompilationRuntime({
           evaluator: createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
             maxProjectionBatchSize,
             members: repositories.members,
+            ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
             outlines: repositories.outlines,
             pageIndexBuild,
             profiles: repositories.profiles,
@@ -600,89 +604,130 @@ export function createApiDocumentCompilationRuntime({
     createWorker: ({
       baseHeadRevision,
       candidateComposer,
+      frozenEmbeddingCapabilitySnapshot,
       frozenEmbeddingProfile,
+      frozenReasoningCapabilitySnapshot,
       frozenRetrievalProfile,
       jobs,
-    }) =>
-      createDocumentCompilationWorker({
-        assertDocumentAvailable: async (input) => {
-          if (!(await repositories.logicalDocuments.isAssetEnabled?.(input)))
-            throw new DocumentCompilationProcessingError(
-              "Document was disabled before compilation started",
-              { code: "DOCUMENT_DISABLED", retryable: false },
-            );
-        },
-        assets: repositories.assets,
-        candidateComposer,
-        ...(deletionFence ? { deletionFence } : {}),
-        ...(objectWriteAdmission ? { objectWriteAdmission } : {}),
-        embeddingResolver,
-        ...(frozenEmbeddingProfile ? { frozenEmbeddingProfile } : {}),
-        ...(frozenRetrievalProfile ? { frozenRetrievalProfile } : {}),
-        failureManagement: "caller",
-        generateKnowledgePathId: randomUUID,
-        jobs,
-        ...(jointSemanticGraph ? { jointSemanticGraph } : {}),
-        indexOverrides: documentIndexOverrides,
-        knowledgePaths: repositories.paths,
-        materializationGate: documentMaterializationGate,
-        ...(multimodal?.documentMultimodalImageVariantGenerator
-          ? {
-              multimodalImageVariantGenerator: multimodal.documentMultimodalImageVariantGenerator,
-            }
-          : {}),
-        ...(multimodal?.documentMultimodalLocalAssetAllowlist
-          ? {
-              multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist,
-            }
-          : {}),
-        ...(multimodal?.documentMultimodalMaxExtractedAssets
-          ? {
-              multimodalMaxExtractedAssets: multimodal.documentMultimodalMaxExtractedAssets,
-            }
-          : {}),
-        ...(multimodal
-          ? { multimodalMaxConcurrency: multimodal.documentMultimodalMaxConcurrency }
-          : {}),
-        ...(multimodal?.documentMultimodalMaxLocalAssetBytes
-          ? {
-              multimodalMaxLocalAssetBytes: multimodal.documentMultimodalMaxLocalAssetBytes,
-            }
-          : {}),
-        ...(multimodal?.documentMultimodalMaxPdfRasterizedAssets
-          ? {
-              multimodalMaxPdfRasterizedAssets: multimodal.documentMultimodalMaxPdfRasterizedAssets,
-            }
-          : {}),
-        ...(multimodal?.documentMultimodalRemoteAssetFetcher
-          ? {
-              multimodalRemoteAssetFetcher: multimodal.documentMultimodalRemoteAssetFetcher,
-            }
-          : {}),
-        multimodalManifests: repositories.multimodalManifests,
-        ...(createModelBudget ? { modelBudget: createModelBudget() } : {}),
-        objectStorage: adapter.objectStorage,
-        outlineBuilder,
-        ...(outlineSummaryEnhancer ? { outlineSummaryEnhancer } : {}),
-        outlines: repositories.outlines,
-        pageIndexBuild,
-        parser,
-        heavyMaterializationPreAdmission,
-        ...(multimodal?.documentPdfRasterizer
-          ? { pdfRasterizer: multimodal.documentPdfRasterizer }
-          : {}),
-        reindexer,
-        retainedArtifactAdmission,
-        ...(semanticEnrichment
-          ? {
-              semanticEnrichmentAdmission: {
-                enqueue: (input) =>
-                  semanticEnrichment.admission.enqueue({ ...input, baseHeadRevision }),
-              },
-            }
-          : {}),
-        ...(visual ? { visualEmbeddingModel: visual.model } : {}),
-      }),
+      signal,
+      tenantId,
+    }) => {
+      const buildWorker = async () => {
+        const [embeddingInputModalities, reasoningInputModalities] = modelInputModalityResolver
+          ? await Promise.all([
+              frozenEmbeddingCapabilitySnapshot
+                ? modelInputModalityResolver.resolve({
+                    signal,
+                    snapshot: frozenEmbeddingCapabilitySnapshot,
+                    tenantId,
+                  })
+                : undefined,
+              frozenReasoningCapabilitySnapshot
+                ? modelInputModalityResolver.resolve({
+                    signal,
+                    snapshot: frozenReasoningCapabilitySnapshot,
+                    tenantId,
+                  })
+                : undefined,
+            ])
+          : [undefined, undefined];
+        return createDocumentCompilationWorker({
+          assertDocumentAvailable: async (input) => {
+            if (!(await repositories.logicalDocuments.isAssetEnabled?.(input)))
+              throw new DocumentCompilationProcessingError(
+                "Document was disabled before compilation started",
+                { code: "DOCUMENT_DISABLED", retryable: false },
+              );
+          },
+          assets: repositories.assets,
+          candidateComposer,
+          ...(deletionFence ? { deletionFence } : {}),
+          ...(objectWriteAdmission ? { objectWriteAdmission } : {}),
+          embeddingResolver,
+          ...(frozenEmbeddingProfile ? { frozenEmbeddingProfile } : {}),
+          ...(frozenRetrievalProfile ? { frozenRetrievalProfile } : {}),
+          failureManagement: "caller",
+          generateKnowledgePathId: randomUUID,
+          jobs,
+          ...(jointSemanticGraph ? { jointSemanticGraph } : {}),
+          indexOverrides: documentIndexOverrides,
+          knowledgePaths: repositories.paths,
+          materializationGate: documentMaterializationGate,
+          ...(modelInputModalityResolver
+            ? {
+                profileImageExtractionEnabled: Boolean(
+                  embeddingInputModalities?.includes("image") ||
+                    reasoningInputModalities?.includes("image"),
+                ),
+              }
+            : {}),
+          ...(multimodal?.documentMultimodalImageVariantGenerator
+            ? {
+                multimodalImageVariantGenerator: multimodal.documentMultimodalImageVariantGenerator,
+              }
+            : {}),
+          ...(multimodal?.documentMultimodalLocalAssetAllowlist
+            ? {
+                multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist,
+              }
+            : {}),
+          ...(multimodal?.documentMultimodalMaxExtractedAssets
+            ? {
+                multimodalMaxExtractedAssets: multimodal.documentMultimodalMaxExtractedAssets,
+              }
+            : {}),
+          ...(multimodal
+            ? { multimodalMaxConcurrency: multimodal.documentMultimodalMaxConcurrency }
+            : {}),
+          ...(multimodal?.documentMultimodalMaxLocalAssetBytes
+            ? {
+                multimodalMaxLocalAssetBytes: multimodal.documentMultimodalMaxLocalAssetBytes,
+              }
+            : {}),
+          ...(multimodal?.documentMultimodalMaxPdfRasterizedAssets
+            ? {
+                multimodalMaxPdfRasterizedAssets:
+                  multimodal.documentMultimodalMaxPdfRasterizedAssets,
+              }
+            : {}),
+          ...(multimodal?.documentMultimodalRemoteAssetFetcher
+            ? {
+                multimodalRemoteAssetFetcher: multimodal.documentMultimodalRemoteAssetFetcher,
+              }
+            : {}),
+          multimodalManifests: repositories.multimodalManifests,
+          ...(createModelBudget ? { modelBudget: createModelBudget() } : {}),
+          objectStorage: adapter.objectStorage,
+          outlineBuilder,
+          ...(outlineSummaryEnhancer ? { outlineSummaryEnhancer } : {}),
+          outlines: repositories.outlines,
+          pageIndexBuild,
+          parser,
+          heavyMaterializationPreAdmission,
+          ...(multimodal?.documentPdfRasterizer
+            ? { pdfRasterizer: multimodal.documentPdfRasterizer }
+            : {}),
+          reindexer,
+          retainedArtifactAdmission,
+          ...(semanticEnrichment
+            ? {
+                semanticEnrichmentAdmission: {
+                  enqueue: (input) =>
+                    semanticEnrichment.admission.enqueue({ ...input, baseHeadRevision }),
+                },
+              }
+            : {}),
+          ...(visual
+            ? {
+                visualEmbeddingMode: embeddingInputModalities?.includes("image")
+                  ? ("profile" as const)
+                  : ("disabled" as const),
+              }
+            : {}),
+        });
+      };
+      return buildWorker();
+    },
     fingerprintMaterial,
     initialProfiles,
     profiles: repositories.profiles,

@@ -21,6 +21,7 @@ export interface DocumentMultimodalEnrichmentProviderInput {
   readonly model: string;
   readonly parseArtifactId: string;
   readonly promptVersion: string;
+  readonly signal?: AbortSignal | undefined;
   readonly sourceText?: string | undefined;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
@@ -50,6 +51,8 @@ export interface DocumentMultimodalManifestEnhancerOptions {
   readonly maxItems: number;
   readonly maxSourceTextChars: number;
   readonly model: string;
+  /** Provider-facing model when `model` is a capability-bound cache identity. */
+  readonly providerModel?: string | undefined;
   readonly promptVersion: string;
   readonly provider: DocumentMultimodalEnrichmentProvider;
 }
@@ -59,11 +62,17 @@ const DEFAULT_ENRICHMENT_MAX_CONCURRENCY = 4;
 export interface EnhanceDocumentMultimodalManifestInput {
   readonly manifest: DocumentMultimodalManifest;
   readonly parseArtifact: ParseArtifact;
+  /** Cancels profile resolution before any optional model call is admitted. */
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
 }
 
 export interface DocumentMultimodalManifestEnhancer {
+  /** Optional dynamic cache identity for profile-scoped enhancers. */
+  cacheIdentity?(
+    input: EnhanceDocumentMultimodalManifestInput,
+  ): Promise<{ readonly model: string; readonly promptVersion: string }>;
   enhance(input: EnhanceDocumentMultimodalManifestInput): Promise<DocumentMultimodalManifest>;
   /** Enrichment model this enhancer applies (used for cache freshness). */
   readonly model: string;
@@ -81,6 +90,7 @@ export function createDocumentMultimodalManifestEnhancer({
   maxItems,
   maxSourceTextChars,
   model,
+  providerModel = model,
   promptVersion,
   provider,
 }: DocumentMultimodalManifestEnhancerOptions): DocumentMultimodalManifestEnhancer {
@@ -95,7 +105,8 @@ export function createDocumentMultimodalManifestEnhancer({
   return {
     model,
     promptVersion,
-    enhance: async ({ manifest, parseArtifact, tenantId, traceId }) => {
+    enhance: async ({ manifest, parseArtifact, signal, tenantId, traceId }) => {
+      signal?.throwIfAborted();
       const parsedManifest = DocumentMultimodalManifestSchema.parse(manifest);
       const artifact = ParseArtifactSchema.parse(parseArtifact);
       const attemptedItems = Math.min(parsedManifest.items.length, maxItems);
@@ -103,6 +114,7 @@ export function createDocumentMultimodalManifestEnhancer({
         parsedManifest.items,
         maxConcurrency,
         async (item, index) => {
+          signal?.throwIfAborted();
           if (index >= maxItems) {
             return { changed: false, item };
           }
@@ -113,9 +125,10 @@ export function createDocumentMultimodalManifestEnhancer({
             knowledgeSpaceId: parsedManifest.knowledgeSpaceId,
             manifestId: parsedManifest.id,
             manifestVersion: parsedManifest.manifestVersion,
-            model,
+            model: providerModel,
             parseArtifactId: parsedManifest.parseArtifactId,
             promptVersion,
+            ...(signal ? { signal } : {}),
             sourceText: sourceTextForItem({ artifact, item, maxSourceTextChars }),
             ...(tenantId ? { tenantId } : {}),
             traceId,
@@ -214,6 +227,10 @@ export function createCachedDocumentMultimodalManifestEnhancer({
     promptVersion,
     enhance: async (input) => {
       const manifest = DocumentMultimodalManifestSchema.parse(input.manifest);
+      const scopedInput = { ...input, manifest };
+      const cacheIdentity = enhancer.cacheIdentity
+        ? await enhancer.cacheIdentity(scopedInput)
+        : { model, promptVersion };
       const cached = await manifests.getByDocumentVersion({
         documentAssetId: manifest.documentAssetId,
         ...(manifest.publicationGenerationId
@@ -224,12 +241,17 @@ export function createCachedDocumentMultimodalManifestEnhancer({
 
       if (
         cached &&
-        isFreshCachedDocumentMultimodalManifest({ cached, manifest, model, promptVersion })
+        isFreshCachedDocumentMultimodalManifest({
+          cached,
+          manifest,
+          model: cacheIdentity.model,
+          promptVersion: cacheIdentity.promptVersion,
+        })
       ) {
         return cached;
       }
 
-      const key = `${manifest.documentAssetId}:${manifest.version}:${manifest.publicationGenerationId ?? "legacy"}`;
+      const key = `${manifest.documentAssetId}:${manifest.version}:${manifest.publicationGenerationId ?? "legacy"}:${cacheIdentity.model}:${cacheIdentity.promptVersion}`;
       const pending = inFlight.get(key);
 
       if (pending) {
@@ -237,7 +259,7 @@ export function createCachedDocumentMultimodalManifestEnhancer({
       }
 
       const run = (async () => {
-        const enhanced = await enhancer.enhance({ ...input, manifest });
+        const enhanced = await enhancer.enhance(scopedInput);
 
         return manifests.upsert(enhanced);
       })();

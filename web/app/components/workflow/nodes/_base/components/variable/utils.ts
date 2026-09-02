@@ -1277,7 +1277,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.KnowledgeRetrievalV2: {
-      res = [(data as KnowledgeRetrievalV2NodeType).query_variable_selector]
+      const { query_variable_selector, query_attachment_selector = [] } =
+        data as KnowledgeRetrievalV2NodeType
+      res = [query_variable_selector, query_attachment_selector]
       break
     }
     case BlockEnum.IfElse: {
@@ -1631,6 +1633,8 @@ export const updateNodeVars = (
         const payload = data as KnowledgeRetrievalV2NodeType
         if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
           payload.query_variable_selector = newVarSelector
+        if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
+          payload.query_attachment_selector = newVarSelector
         break
       }
       case BlockEnum.IfElse: {

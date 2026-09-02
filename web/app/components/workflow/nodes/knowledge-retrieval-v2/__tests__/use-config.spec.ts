@@ -7,7 +7,7 @@ import {
   MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 
 const mockSetInputs = vi.fn()
@@ -58,6 +58,19 @@ describe('knowledge-retrieval-v2/use-config', () => {
         query_variable_selector: ['start', 'question'],
       }),
     )
+  })
+
+  it('updates an optional image selector and only accepts file variables', () => {
+    const { result } = setup()
+
+    act(() => result.current.handleQueryAttachmentChange(['start', 'images']))
+
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ query_attachment_selector: ['start', 'images'] }),
+    )
+    expect(result.current.filterFileVar({ type: VarType.file } as never)).toBe(true)
+    expect(result.current.filterFileVar({ type: VarType.arrayFile } as never)).toBe(true)
+    expect(result.current.filterFileVar({ type: VarType.string } as never)).toBe(false)
   })
 
   it('keeps the selected space summary with the graph configuration', () => {

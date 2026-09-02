@@ -115,7 +115,7 @@ register_response_schema_models(
 
 @inner_api_ns.route("/knowledge-fs/query-image")
 class KnowledgeFSQueryImageApi(Resource):
-    """Resolve one actor-owned Dify UploadFile for a bounded KnowledgeFS query run."""
+    """Resolve one actor-owned or workflow-granted Dify file for a bounded KFS query run."""
 
     @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSQueryImageQuery))
@@ -123,10 +123,15 @@ class KnowledgeFSQueryImageApi(Resource):
     def get(self) -> Response:
         try:
             query = KnowledgeFSQueryImageQuery.model_validate(request.args.to_dict(flat=True))
-            account_id = _query_image_account_id(query.subject_id)
+            access_grant = request.headers.get("X-Knowledge-FS-Query-Image-Grant")
+            if access_grant is not None and (not access_grant or len(access_grant) > 2_048):
+                raise KnowledgeFSQueryImageError("QUERY_IMAGE_GRANT_INVALID", "Workflow query image grant is invalid")
+            account_id = None if access_grant else _query_image_account_id(query.subject_id)
             image = load_query_image(
                 tenant_id=query.tenant_id,
+                subject_id=query.subject_id,
                 account_id=account_id,
+                access_grant=access_grant,
                 upload_file_id=query.upload_file_id,
             )
         except ValidationError as exc:

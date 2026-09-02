@@ -69,10 +69,19 @@ the service:
 | `KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS` | Poppler subprocess timeout; the deployment default is `30000`. |
 | `KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS` | Maximum PDF assets rasterized for one document; the deployment default is `500`. |
 | `KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY` | Maximum concurrent Poppler page batches per API replica; defaults to `2` and accepts `1..8`. |
+| `KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES` | Per-image raw-byte ceiling for profile-driven visual embedding; defaults to 20 MiB. |
+| `KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS` | Maximum images in one physical embedding request; defaults to `8`. |
+| `KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES` | Aggregate raw image bytes in one physical embedding request; defaults to 32 MiB. |
+| `KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY` | Process-wide visual embedding lifecycle concurrency; defaults to `2` and accepts `1..8`. |
+| `KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY` | Process-wide reasoning-model image-understanding concurrency; defaults to `4`. |
+| `KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES` | Per-image raw-byte ceiling for document image understanding; defaults to 10 MiB. |
+| `KNOWLEDGE_MULTIMODAL_ANSWER_MAX_CONCURRENCY` | Process-wide lifecycle concurrency for loading answer images and calling the active vision reasoning model; defaults to `2`. Calls also share the global model-request gate. |
+| `KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS` | Maximum query/evidence image blocks in one answer request; defaults to `8`. |
+| `KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES` | Per-image raw-byte ceiling for answer generation; defaults to 10 MiB. |
+| `KNOWLEDGE_MULTIMODAL_ANSWER_MAX_TOTAL_IMAGE_BYTES` | Aggregate raw image-byte ceiling for one answer request; defaults to 32 MiB and must be at least the per-image ceiling. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_ENABLED` | Capability-v2 verifier rollout. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS` | Public verification key set issued by Dify. |
-| `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED` | Opt in to query-image visual retrieval; requires an enabled visual-embedding provider/index and a query mode other than `off`. |
-| `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single Deep/Research vision expansion call; defaults to 8000 ms. |
+| `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single bounded vision expansion used by Deep/Research or image-only Fast fallback; defaults to 8000 ms. |
 | `KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS` | Structured planner/judge output ceiling; defaults to `8192` so hidden reasoning tokens do not force a second model call. |
 | `KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS` | Per-call Research planner/judge deadline; defaults to `60000`. Caller cancellation and the request-wide Research deadline remain authoritative. |
 | `KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES` | Initial cross-encoder pool shared fairly across the original query and up to three planned intents. Defaults to and is capped at `200`; lower it to trade multi-intent recall depth for latency/cost. A durable evidence judge may add one separately plan-bounded supplemental list. The response reports the initial pool and every selected list count, so total provider work remains observable. |
@@ -180,6 +189,12 @@ and every success or failure releases the lease.
 
 ## Visual embedding memory bounds
 
+Image-byte visual embedding is activated by the immutable embedding capability snapshot of each
+knowledge space, not by a deployment-selected model. A profile that declares image input is
+validated with a real text probe plus 1x1 PNG document and query probes before activation; every
+probe must return the same model identity and vector dimension. Text-only profiles skip visual
+projection work.
+
 Image-byte visual embedding is microbatched independently of the 128-node projection batch. The
 default request limits are eight assets and 32 MiB of raw image bytes
 (`KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS=8` and
@@ -217,17 +232,38 @@ does not receive storage credentials or persist a second copy of the bytes: Dify
 and account ownership, MIME, size, count, and aggregate size, then KnowledgeFS resolves each file
 through the authenticated inner API for the lifetime of one query run.
 
-Image-to-visual retrieval is independently disabled by default. Enable
-`KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED=true` only when all of the existing
-`KNOWLEDGE_VISUAL_EMBEDDING_*` settings select the same multimodal embedding space used to build
-the published `visual_vector` projections, and `KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE` is
-`fallback` or `primary`. An explicit query mode of `off` remains authoritative.
+There is no separate visual model or image-retrieval feature flag. The active published embedding
+profile is authoritative:
 
-Fast performs no vision-LLM expansion. Deep and Research perform at most one bounded image-to-text
-expansion through Dify's selected reasoning model; durable Research persists the derived text so
-retry/replay does not repeat that call. Research then uses the derived text for document selection
-and level-by-level PageIndex navigation before final synthesis. Model calls are included in the
-Research dry-run estimate and durable budget accounting.
+- if its frozen capability supports image input, document images and query images are embedded by
+  that exact profile model and searched in the matching visual vector space;
+- an embedding-profile migration rebuilds visual projections with the candidate model, or removes
+  stale visual projections when the candidate is text-only;
+- a legacy capability snapshot is granted image input only when the current catalog identity and
+  full frozen digest still match. Catalog drift or outage fails closed to text.
+
+The active published reasoning profile independently controls image understanding. When its frozen
+capability supports image input, the same reasoning LLM handles bounded query-image expansion,
+document image enrichment, and final answers with query/retrieved image blocks. A text-only LLM
+receives only OCR, caption, and ordinary text evidence; image bytes are never sent to it.
+
+Fast uses direct visual retrieval without a reasoning call when the embedding model supports image
+input. For an image-only Fast request with a text-only embedding profile, a vision-capable reasoning
+model may perform one bounded text expansion; a pure-image request is rejected explicitly when
+neither selected model supports images. Deep and Research perform at most one bounded image-to-text
+expansion when useful. Durable Research persists the derived text so retry/replay does not repeat
+that call. Research model calls remain in dry-run estimates and durable budget accounting.
+
+The production assembly no longer reads
+`KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER`, `KNOWLEDGE_VISUAL_EMBEDDING_MODEL`,
+`KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE`, `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED`,
+`KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER`, or `KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER`.
+Only byte, count, concurrency, timeout, and image-detail settings remain operator-owned.
+
+Publications activated through the current profile-migration runtime receive the correct visual
+rebuild automatically. A vision profile that was already active before this release must run one
+ordinary profile reindex/migration (or recompile its documents) to backfill visual projections; the
+query path never mixes a new profile query vector with an old visual vector space.
 
 The request bounds are four images, 10 MiB per image, 32 MiB in aggregate, with MIME restricted to
 PNG, JPEG, WebP, and GIF. Operational traces and terminal metadata use these stable degradation

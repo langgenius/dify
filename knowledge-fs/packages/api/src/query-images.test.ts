@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES,
   QUERY_IMAGE_EXPANSION_METADATA_KEY,
   QUERY_IMAGE_REFERENCES_METADATA_KEY,
   QueryImageReferencesSchema,
@@ -9,6 +10,7 @@ import {
   hasQueryInput,
   queryImageExpansionFromMetadata,
   queryImageReferencesFromMetadata,
+  queryImageResolutionReferencesFromHeader,
 } from "./query-images";
 
 const IMAGE_ID = "00000000-0000-4000-8000-000000000001";
@@ -112,5 +114,52 @@ describe("query image contracts", () => {
     expect(
       queryImageReferencesFromMetadata({ [QUERY_IMAGE_REFERENCES_METADATA_KEY]: "invalid" }),
     ).toEqual([]);
+  });
+
+  it("keeps workflow grants in one bounded app-only transport header", () => {
+    const encoded = Buffer.from(
+      JSON.stringify({ g: ["short-lived-grant"], v: 1 }),
+      "utf8",
+    ).toString("base64url");
+    expect(
+      queryImageResolutionReferencesFromHeader({
+        encodedGrants: encoded,
+        references: [{ uploadFileId: IMAGE_ID }],
+        subjectId: "dify-app:app-1",
+      }),
+    ).toEqual([{ accessGrant: "short-lived-grant", uploadFileId: IMAGE_ID }]);
+    expect(
+      queryImageResolutionReferencesFromHeader({
+        references: [{ uploadFileId: IMAGE_ID }],
+        subjectId: "dify-account:actor-1",
+      }),
+    ).toEqual([{ uploadFileId: IMAGE_ID }]);
+
+    for (const invalid of [
+      {
+        encodedGrants: encoded,
+        references: [{ uploadFileId: IMAGE_ID }],
+        subjectId: "dify-account:actor-1",
+      },
+      {
+        encodedGrants: encoded,
+        references: [],
+        subjectId: "dify-app:app-1",
+      },
+      {
+        encodedGrants: "!not-base64url!",
+        references: [{ uploadFileId: IMAGE_ID }],
+        subjectId: "dify-app:app-1",
+      },
+      {
+        encodedGrants: "a".repeat(KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES + 1),
+        references: [{ uploadFileId: IMAGE_ID }],
+        subjectId: "dify-app:app-1",
+      },
+    ]) {
+      expect(() => queryImageResolutionReferencesFromHeader(invalid)).toThrow(
+        QueryImageResolutionError,
+      );
+    }
   });
 });

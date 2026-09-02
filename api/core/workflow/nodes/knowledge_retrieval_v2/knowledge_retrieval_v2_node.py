@@ -22,7 +22,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.rerank_entities import RerankResult
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
-from graphon.variables import StringSegment
+from graphon.variables import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from graphon.variables.template_resolution import convert_template
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
@@ -41,6 +41,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRetrievalCustomMetadataCondition,
     KnowledgeFSRetrievalCustomMetadataFilter,
     KnowledgeFSRetrievalMetadataFilters,
+    KnowledgeFSRetrievalQueryImageReference,
     KnowledgeFSRetrievalTestItemResponse,
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
@@ -49,6 +50,12 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
+)
+from services.knowledge_fs.query_images import (
+    QUERY_IMAGE_MAX_COUNT,
+    QUERY_IMAGE_MAX_TOTAL_BYTES,
+    KnowledgeFSQueryImageError,
+    issue_workflow_query_image_reference,
 )
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from tasks.knowledge_fs_failed_retrieval_tasks import enqueue_workflow_failed_retrieval_capture
@@ -160,8 +167,13 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         try:
             query = self._resolve_query()
             run_context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+            query_images, query_image_inputs = self._resolve_query_images(run_context)
             self._ensure_draft_bindings(run_context)
-            responses = self._retrieve_all_spaces(run_context=run_context, query=query)
+            responses = self._retrieve_all_spaces(
+                run_context=run_context,
+                query=query,
+                query_images=query_images,
+            )
             result_items, rerank_metrics = self._merge_items(
                 responses,
                 query=query,
@@ -180,7 +192,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"query": query},
+                inputs={"query": query, **({"query_images": query_image_inputs} if query_image_inputs else {})},
                 process_data={"knowledge_fs": metrics},
                 outputs={
                     "result": ArrayObjectSegment(value=result_items),
@@ -209,6 +221,67 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 "KnowledgeFS query variable must contain at most 16000 characters"
             )
         return query
+
+    def _resolve_query_images(
+        self,
+        run_context: DifyRunContext,
+    ) -> tuple[list[KnowledgeFSRetrievalQueryImageReference], list[dict[str, object]]]:
+        selector = self._node_data.query_attachment_selector
+        if not selector:
+            return [], []
+        variable = self.graph_runtime_state.variable_pool.get(selector)
+        if isinstance(variable, FileSegment):
+            files = [variable.value]
+        elif isinstance(variable, ArrayFileSegment):
+            files = list(variable.value)
+        else:
+            raise KnowledgeFSRetrievalConfigurationError(
+                "KnowledgeFS query attachment variable must be a file or array of files"
+            )
+        if len(files) > QUERY_IMAGE_MAX_COUNT:
+            raise KnowledgeFSRetrievalConfigurationError(
+                f"KnowledgeFS query attachments must contain at most {QUERY_IMAGE_MAX_COUNT} images"
+            )
+
+        references: list[KnowledgeFSRetrievalQueryImageReference] = []
+        inputs: list[dict[str, object]] = []
+        total_bytes = 0
+        seen_ids: set[str] = set()
+        try:
+            for file in files:
+                reference = issue_workflow_query_image_reference(
+                    app_id=run_context.app_id,
+                    file=file,
+                    tenant_id=run_context.tenant_id,
+                )
+                if reference.upload_file_id in seen_ids:
+                    raise KnowledgeFSQueryImageError(
+                        "QUERY_IMAGE_REFERENCE_DUPLICATE",
+                        "Workflow query images must not contain duplicate files",
+                    )
+                seen_ids.add(reference.upload_file_id)
+                total_bytes += reference.byte_size
+                if total_bytes > QUERY_IMAGE_MAX_TOTAL_BYTES:
+                    raise KnowledgeFSQueryImageError(
+                        "QUERY_IMAGE_TOTAL_TOO_LARGE",
+                        f"Workflow query images exceed aggregate max bytes {QUERY_IMAGE_MAX_TOTAL_BYTES}",
+                    )
+                references.append(
+                    KnowledgeFSRetrievalQueryImageReference(
+                        accessGrant=reference.access_grant,
+                        uploadFileId=reference.upload_file_id,
+                    )
+                )
+                inputs.append(
+                    {
+                        "filename": file.filename or reference.upload_file_id,
+                        "mime_type": reference.mime_type,
+                        "size": reference.byte_size,
+                    }
+                )
+        except KnowledgeFSQueryImageError as exc:
+            raise KnowledgeFSRetrievalConfigurationError(str(exc)) from exc
+        return references, inputs
 
     def _service(self) -> _RetrievalCapability:
         if self._capability_service is not None:
@@ -246,10 +319,12 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         *,
         run_context: DifyRunContext,
         query: str,
+        query_images: Sequence[KnowledgeFSRetrievalQueryImageReference],
     ) -> list[tuple[str, KnowledgeFSRetrievalTestResponse]]:
         service = self._service()
         payload = KnowledgeFSRetrievalTestPayload(
             query=query,
+            query_images=list(query_images),
             mode=self._node_data.mode,
             include_text=True,
             filters=self._resolved_retrieval_filters(),
@@ -590,7 +665,10 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         node_data: KnowledgeRetrievalV2NodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
-        return {f"{node_id}.query": node_data.query_variable_selector}
+        mapping: dict[str, Sequence[str]] = {f"{node_id}.query": node_data.query_variable_selector}
+        if node_data.query_attachment_selector:
+            mapping[f"{node_id}.queryAttachment"] = node_data.query_attachment_selector
+        return mapping
 
 
 __all__ = ["KnowledgeRetrievalV2Node"]

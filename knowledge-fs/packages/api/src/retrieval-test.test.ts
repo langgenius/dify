@@ -7,6 +7,7 @@ import type { EmbeddingProvider } from "@knowledge/embeddings";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ModelCapabilitySnapshot } from "./model-capability-preflight";
+import { QUERY_IMAGE_IGNORED_NO_VISION_MODEL } from "./query-images";
 import { createRetrievalPlanner } from "./retrieval-planner";
 import {
   RetrievalTestUnavailableError,
@@ -64,6 +65,110 @@ const subject = {
 };
 
 describe("createRetrievalTestExecutor", () => {
+  it("uses the selected space's vision embedding for direct image retrieval", async () => {
+    const calls: RetrieveHybridInput[] = [];
+    const expand = vi.fn();
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: embeddingProvider(),
+      queryImageExpansionProvider: { expand },
+      retriever: recordingRetriever("fast", calls, ordinaryMetrics({ rerank: true })),
+    });
+
+    await executor.execute({
+      embeddingInputModalities: ["text", "image"],
+      embeddingProfile,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "fast",
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot,
+      query: "find the matching diagram",
+      queryImages: [queryImage()],
+      reasoningInputModalities: ["text"],
+      retrievalProfile,
+      subject,
+      traceId: "trace-visual-direct",
+    });
+
+    expect(expand).not.toHaveBeenCalled();
+    expect(calls[0]).toMatchObject({
+      embeddingInputModalities: ["text", "image"],
+      query: "find the matching diagram",
+      queryImages: [expect.objectContaining({ uploadFileId: queryImage().uploadFileId })],
+    });
+  });
+
+  it("uses the selected space's vision reasoning model as a text-embedding fallback", async () => {
+    const calls: RetrieveHybridInput[] = [];
+    const expand = vi.fn(async () => ({
+      description: "A red circuit diagram",
+      keywords: ["circuit", "red"],
+      ocrText: "INPUT OUTPUT",
+    }));
+    const embed = vi.fn<EmbeddingProvider["embed"]>(async () => ({
+      dense: [[0.1, 0.2, 0.3]],
+      metadata: { dimension: 3, model: embeddingSelection.model, provider: "static" },
+      model: embeddingSelection.model,
+    }));
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: { embed, kind: "static", models: async () => [] },
+      queryImageExpansionProvider: { expand },
+      retriever: recordingRetriever("deep", calls, ordinaryMetrics({ graph: true, rerank: true })),
+    });
+
+    const result = await executor.execute({
+      embeddingInputModalities: ["text"],
+      embeddingProfile,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "deep",
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot,
+      query: "find this architecture",
+      queryImages: [queryImage()],
+      reasoningInputModalities: ["text", "image"],
+      retrievalProfile,
+      subject,
+      traceId: "trace-vision-expansion",
+    });
+
+    expect(expand).toHaveBeenCalledWith(
+      expect.objectContaining({ images: [expect.any(Object)], model: reasoningSelection }),
+    );
+    expect(calls[0]?.queryImages).toBeUndefined();
+    expect(calls[0]?.query).toContain("Image description: A red circuit diagram");
+    expect(embed.mock.calls[0]?.[0]).toMatchObject({ texts: [calls[0]?.query] });
+    expect(result.metrics.degradationFlags).toBeUndefined();
+  });
+
+  it("keeps text retrieval available and reports per-space degradation without vision models", async () => {
+    const calls: RetrieveHybridInput[] = [];
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: embeddingProvider(),
+      retriever: recordingRetriever("fast", calls, ordinaryMetrics({ rerank: true })),
+    });
+
+    const result = await executor.execute({
+      embeddingInputModalities: ["text"],
+      embeddingProfile,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "fast",
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot,
+      query: "camera evidence",
+      queryImageReferenceCount: 1,
+      reasoningInputModalities: ["text"],
+      retrievalProfile,
+      subject,
+      traceId: "trace-text-fallback",
+    });
+
+    expect(calls[0]).toMatchObject({ query: "camera evidence" });
+    expect(calls[0]?.queryImages).toBeUndefined();
+    expect(result.metrics.degradationFlags).toEqual([QUERY_IMAGE_IGNORED_NO_VISION_MODEL]);
+  });
+
   it("runs Fast with the frozen embedding/profile, server ACL, threshold, and one final rerank", async () => {
     const embeddingCalls: unknown[] = [];
     const embeddings: EmbeddingProvider = {
@@ -520,7 +625,12 @@ function recordingRetriever(
           },
         ],
         metrics,
-        plan: planner.plan({ mode, query: input.query, topK: input.topK }),
+        plan: planner.plan({
+          hasQueryImages: (input.queryImages?.length ?? 0) > 0,
+          mode,
+          query: input.query,
+          topK: input.topK,
+        }),
       };
     },
   };
@@ -590,6 +700,16 @@ function embeddingProvider(): EmbeddingProvider {
     }),
     kind: "dify-model-runtime",
     models: async () => [],
+  };
+}
+
+function queryImage() {
+  return {
+    body: new Uint8Array([1, 2, 3]),
+    byteSize: 3,
+    mimeType: "image/png" as const,
+    sha256: "d".repeat(64),
+    uploadFileId: "00000000-0000-4000-8000-000000000001",
   };
 }
 

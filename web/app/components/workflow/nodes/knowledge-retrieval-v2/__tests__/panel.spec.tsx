@@ -16,10 +16,14 @@ const mockHandleRerankingModelChange = vi.hoisted(() => vi.fn())
 const mockHandleScoreThresholdChange = vi.hoisted(() => vi.fn())
 const mockRecallSettingsProps = vi.hoisted(() => vi.fn())
 const mockKnowledgeSpaceListProps = vi.hoisted(() => vi.fn())
+const mockVarReferencePickerProps = vi.hoisted(() => vi.fn())
+const mockHandleQueryAttachmentChange = vi.hoisted(() => vi.fn())
+const mockFilterFileVar = vi.hoisted(() => vi.fn())
 const mockInputs = vi.hoisted(() => ({
   title: 'Knowledge Retrieval v2',
   desc: '',
   type: 'knowledge-retrieval-v2',
+  query_attachment_selector: ['start', 'images'],
   query_variable_selector: ['start', 'query'],
   control_space_ids: ['space-1'],
   mode: 'research',
@@ -52,12 +56,14 @@ vi.mock('../use-config', () => ({
     availableNumberVars: [],
     availableStringNodesWithParent: [],
     availableStringVars: [],
+    filterFileVar: mockFilterFileVar,
     filterStringVar: vi.fn(),
     handleAddCondition: vi.fn(),
     handleMetadataFilterChange: mockHandleMetadataFilterChange,
     handleMetadataFilterModeChange: vi.fn(),
     handleModeChange: vi.fn(),
     handleNodeKindToggle: vi.fn(),
+    handleQueryAttachmentChange: mockHandleQueryAttachmentChange,
     handleQueryVarChange: vi.fn(),
     handleRerankingModelChange: mockHandleRerankingModelChange,
     handleRemoveCondition: vi.fn(),
@@ -134,7 +140,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({ default: () => null }))
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: () => <div data-testid="variable-picker" />,
+  default: (props: unknown) => {
+    mockVarReferencePickerProps(props)
+    return <div data-testid="variable-picker" />
+  },
 }))
 
 const panelProps: PanelProps = {
@@ -229,6 +238,15 @@ describe('KnowledgeRetrievalV2Panel', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'recall-10' })).toBeInTheDocument()
+
+    expect(mockVarReferencePickerProps).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        filterVar: mockFilterFileVar,
+        onChange: mockHandleQueryAttachmentChange,
+        value: ['start', 'images'],
+      }),
+    )
 
     expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
     expect(screen.queryByText('workflow.nodes.knowledgeRetrievalV2.filters.tags')).toBeNull()

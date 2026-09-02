@@ -44,6 +44,17 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     [inputs, setInputs],
   )
 
+  const handleQueryAttachmentChange = useCallback(
+    (selector: ValueSelector | string) => {
+      setInputs(
+        produce(inputs, (draft) => {
+          draft.query_attachment_selector = selector as ValueSelector
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
   const handleSpaceToggle = useCallback(
     (space: KnowledgeRetrievalV2SpaceSummary) => {
       setInputs(
@@ -242,6 +253,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
 
   const filterStringVar = useCallback((variable: Var) => variable.type === VarType.string, [])
   const filterNumberVar = useCallback((variable: Var) => variable.type === VarType.number, [])
+  const filterFileVar = useCallback(
+    (variable: Var) => variable.type === VarType.file || variable.type === VarType.arrayFile,
+    [],
+  )
 
   const {
     availableVars: availableStringVars,
@@ -259,12 +274,14 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     availableNumberVars,
     availableStringNodesWithParent,
     availableStringVars,
+    filterFileVar,
     filterStringVar,
     handleAddCondition,
     handleMetadataFilterChange,
     handleMetadataFilterModeChange,
     handleModeChange,
     handleNodeKindToggle,
+    handleQueryAttachmentChange,
     handleQueryVarChange,
     handleRerankingModelChange,
     handleRemoveCondition,

@@ -39,6 +39,7 @@ import {
   recordRetrievalOperationalMetric,
   runWithAbortSignal,
 } from "@knowledge/api";
+import type { KnowledgeSpaceEmbeddingProfile } from "@knowledge/core";
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 
 import {
@@ -105,17 +106,25 @@ export interface ApiRetrieverOptions {
   /** Text-to-visual query embedding for the separate visual_vector search leg. */
   readonly visualQuery?:
     | {
-        readonly model: string;
+        readonly model?: string | undefined;
         readonly mode: "fallback" | "primary";
-        readonly provider: EmbeddingProvider;
+        readonly provider?: EmbeddingProvider | undefined;
+        readonly providerFactory?:
+          | ((profile: KnowledgeSpaceEmbeddingProfile) => EmbeddingProvider)
+          | undefined;
+        /** Reuse the already profile-bound text query vector instead of invoking the same model twice. */
+        readonly useInputQueryVector?: boolean | undefined;
       }
     | undefined;
   /** Query-image embeddings in the same visual vector space; separately feature-gated. */
   readonly imageQuery?:
     | {
-        readonly model: string;
+        readonly model?: string | undefined;
         readonly mode: "fallback" | "primary";
-        readonly provider: ImageBytesVisualEmbeddingProvider;
+        readonly provider?: ImageBytesVisualEmbeddingProvider | undefined;
+        readonly providerFactory?:
+          | ((profile: KnowledgeSpaceEmbeddingProfile) => ImageBytesVisualEmbeddingProvider)
+          | undefined;
       }
     | undefined;
 }
@@ -485,6 +494,25 @@ function createVisualDenseRetrievalPath({
       };
       const retrieveVisual = async () => {
         try {
+          const profileDriven = Boolean(
+            visualQuery?.providerFactory ||
+              visualQuery?.useInputQueryVector ||
+              imageQuery?.providerFactory,
+          );
+          const embeddingProfile = input.embeddingProfile;
+          if (
+            profileDriven &&
+            (!embeddingProfile || !input.embeddingInputModalities?.includes("image"))
+          ) {
+            if ((input.queryImages?.length ?? 0) === 0) {
+              return { candidateLists: [] as RetrievalCandidate[][], ok: true as const };
+            }
+            return {
+              candidateLists: [] as RetrievalCandidate[][],
+              degradationFlag: QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
+              ok: false as const,
+            };
+          }
           if ((input.queryImages?.length ?? 0) > 0) {
             if (!imageQuery) {
               return {
@@ -494,9 +522,18 @@ function createVisualDenseRetrievalPath({
               };
             }
             const images = input.queryImages ?? [];
+            const imageProvider = imageQuery.providerFactory
+              ? imageQuery.providerFactory(assertEmbeddingProfile(embeddingProfile))
+              : imageQuery.provider;
+            const imageModel = imageQuery.providerFactory
+              ? assertEmbeddingProfile(embeddingProfile).model
+              : imageQuery.model;
+            if (!imageProvider || !imageModel?.trim()) {
+              throw new Error("Visual image query provider is unavailable");
+            }
             const embedding = await runWithAbortSignal(
               () =>
-                imageQuery.provider.embedImages({
+                imageProvider.embedImages({
                   images: images.map((image) => ({
                     assetRef: { uploadFileId: image.uploadFileId },
                     body: image.body,
@@ -509,7 +546,7 @@ function createVisualDenseRetrievalPath({
                     sourceText: "",
                   })),
                   inputType: "query",
-                  model: imageQuery.model,
+                  model: imageModel,
                   ...(input.signal ? { signal: input.signal } : {}),
                   ...(snapshot
                     ? { tenantId: snapshot.tenantId }
@@ -534,11 +571,31 @@ function createVisualDenseRetrievalPath({
           if (!visualQuery || !input.query.trim()) {
             return { candidateLists: [] as RetrievalCandidate[][], ok: true as const };
           }
+          if (visualQuery.useInputQueryVector) {
+            return {
+              candidateLists: [
+                await searchVector(
+                  input.queryVector,
+                  assertEmbeddingProfile(embeddingProfile).model,
+                ),
+              ],
+              ok: true as const,
+            };
+          }
+          const queryProvider = visualQuery.providerFactory
+            ? visualQuery.providerFactory(assertEmbeddingProfile(embeddingProfile))
+            : visualQuery.provider;
+          const queryModel = visualQuery.providerFactory
+            ? assertEmbeddingProfile(embeddingProfile).model
+            : visualQuery.model;
+          if (!queryProvider || !queryModel?.trim()) {
+            throw new Error("Visual text query provider is unavailable");
+          }
           const embedding = await runWithAbortSignal(
             () =>
-              visualQuery.provider.embed({
+              queryProvider.embed({
                 inputType: "search_query",
-                model: visualQuery.model,
+                model: queryModel,
                 ...(input.signal ? { signal: input.signal } : {}),
                 texts: [input.query],
                 ...(snapshot
@@ -646,6 +703,13 @@ function createVisualDenseRetrievalPath({
       };
     },
   };
+}
+
+function assertEmbeddingProfile(
+  value: KnowledgeSpaceEmbeddingProfile | undefined,
+): KnowledgeSpaceEmbeddingProfile {
+  if (!value) throw new Error("Profile visual query requires an embedding profile");
+  return value;
 }
 
 function mergeVisualDenseItems({

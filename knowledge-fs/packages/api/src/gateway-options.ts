@@ -81,6 +81,7 @@ import type {
   ModelCapabilityCatalog,
   ModelCapabilityPreflight,
 } from "./model-capability-preflight";
+import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
 import type { OnlineDocumentConnector } from "./online-document-connector";
 import type { OnlineDriveConnector } from "./online-drive-connector";
 import type { PageIndexUpgradeBackfillRepository } from "./page-index-upgrade-backfill";
@@ -277,6 +278,8 @@ export interface KnowledgeGatewayOptions {
   maxUploadBytes?: number;
   modelCapabilityCatalog?: ModelCapabilityCatalog;
   modelCapabilityPreflight?: ModelCapabilityPreflight;
+  /** Resolves frozen or legacy model capability snapshots without deployment-owned model flags. */
+  modelInputModalityResolver?: ModelInputModalityResolver;
   now?: () => string;
   onlineDocumentConnector?: OnlineDocumentConnector;
   onlineDriveConnector?: OnlineDriveConnector;

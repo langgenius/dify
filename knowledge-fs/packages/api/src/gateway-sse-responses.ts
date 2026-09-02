@@ -12,6 +12,7 @@ import {
   readTopScore,
 } from "./failed-query-recorder";
 import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
+import type { ModelInputModality } from "./model-capability-preflight";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { QueryImageMetadata, QueryImageReference, ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
@@ -37,6 +38,7 @@ export type QueryGenerationMode = "deep" | "fast" | "research";
 export interface QueryGenerationInput {
   readonly capabilityGrantId?: string | undefined;
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
+  readonly embeddingInputModalities?: readonly ModelInputModality[] | undefined;
   readonly knowledgeSpaceId: string;
   readonly mode: QueryGenerationMode;
   readonly permissionSnapshot?:
@@ -61,6 +63,9 @@ export interface QueryGenerationInput {
   /** Text actually used by text retrieval; never overwrites the caller's `query`. */
   readonly retrievalQuery?: string | undefined;
   readonly requestedMode?: QueryGenerationMode | "auto" | undefined;
+  readonly reasoningInputModalities?: readonly ModelInputModality[] | undefined;
+  /** Per-run cancellation propagated by interactive lease or durable task ownership. */
+  readonly signal?: AbortSignal | undefined;
   /** Durable-only replay boundary writer. Interactive callers never supply this callback. */
   readonly onResearchRetrievalCheckpoint?:
     | ((checkpoint: EvidenceBundle) => Promise<void>)
