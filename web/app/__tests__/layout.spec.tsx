@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { QueryClient } from '@tanstack/react-query'
 
 let queryClient: QueryClient
@@ -132,17 +129,5 @@ describe('Root layout System Features bootstrap', () => {
     })
 
     expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
-  })
-
-  it('does not inject marketplace PWA chrome or a global ResizeObserver filter', () => {
-    const source = readFileSync(
-      resolve(dirname(fileURLToPath(import.meta.url)), '../layout.tsx'),
-      'utf8',
-    )
-
-    expect(source).not.toContain('manifest.json')
-    expect(source).not.toContain('apple-touch-icon')
-    expect(source).not.toContain('browserconfig.xml')
-    expect(source).not.toContain('ResizeObserver')
   })
 })

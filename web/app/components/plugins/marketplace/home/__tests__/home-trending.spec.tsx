@@ -1,5 +1,5 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -736,6 +736,25 @@ describe('HomeTrending', () => {
       'href',
       '/templates?tid=tpl-1',
     )
+  })
+
+  it('clamps the active slide when a refetch shrinks the banner list', async () => {
+    const { rerender } = render(
+      <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
+    expect(screen.getByRole('button', { name: 'Duck Duck Go' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+
+    rerender(<HomeTrending banners={[banners[0]!]} isMarketplacePlatform page="plugins" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Trending' })).not.toHaveAttribute('inert')
+    })
+    expect(screen.queryByRole('button', { name: 'Duck Duck Go' })).not.toBeInTheDocument()
   })
 
   it('renders no carousel when the API returns no banners', () => {
