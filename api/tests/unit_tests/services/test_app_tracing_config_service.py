@@ -12,8 +12,8 @@ from services.app_tracing_config_service import (
 )
 
 
-def _context(workspace_id: str | None = "workspace-1") -> RequestContext:
-    return RequestContext("request-1", None, "account-1", workspace_id)
+def _context() -> RequestContext:
+    return RequestContext("request-1", None, "account-1", "workspace-1")
 
 
 def _record(*, tracing_config: dict[str, object] | None = None) -> AppTracingConfigRecord:
@@ -227,13 +227,3 @@ def test_delete_validates_provider_before_store_delete() -> None:
     service.delete(_context(), "app-1", "arize")
 
     assert events == ["provider.validate", "store.delete"]
-
-
-def test_service_rejects_context_without_active_workspace() -> None:
-    configs = MagicMock()
-    service = AppTracingConfigService(configs=configs, provider=MagicMock())
-
-    with pytest.raises(RuntimeError, match="active workspace"):
-        service.get(_context(None), "app-1", "arize")
-
-    configs.get.assert_not_called()

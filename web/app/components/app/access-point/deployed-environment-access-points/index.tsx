@@ -31,16 +31,16 @@ const UNSUPPORTED_ACCESS_POINTS = ['mcp', 'trigger'] as const
 type DeployedEnvironmentAccessPointsProps = {
   appId: string
   environmentId: string
-  canEdit: boolean
-  canManage: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
 export function DeployedEnvironmentAccessPoints({
   appId,
   environmentId,
-  canEdit,
-  canManage,
+  canManageAccessPoint,
+  canReleaseAndVersion,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
   const { t } = useTranslation()
@@ -67,14 +67,14 @@ export function DeployedEnvironmentAccessPoints({
       <EnvironmentWebAppCard
         appId={appId}
         environmentId={environmentId}
-        canEdit={canEdit}
-        canManage={canManage}
+        canManageAccessPoint={canManageAccessPoint}
+        canReleaseAndVersion={canReleaseAndVersion}
         highlighted={highlightedAccessPoint === 'webApp'}
       />
       <EnvironmentServiceApiCard
         appId={appId}
         environmentId={environmentId}
-        canManage={canManage}
+        canManageAccessPoint={canManageAccessPoint}
         highlighted={highlightedAccessPoint === 'serviceApi'}
       />
       {UNSUPPORTED_ACCESS_POINTS.map((accessPoint) => {

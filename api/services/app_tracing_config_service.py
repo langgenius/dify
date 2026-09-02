@@ -139,7 +139,7 @@ class AppTracingConfigService:
         app_id: str,
         tracing_provider: str,
     ) -> AppTracingConfigRecord | None:
-        workspace_id = self._workspace_id(context)
+        workspace_id = context.active_workspace_id
         self._provider.validate_provider(tracing_provider)
         record = self._configs.get(
             workspace_id=workspace_id,
@@ -163,7 +163,7 @@ class AppTracingConfigService:
         tracing_provider: str,
         tracing_config: dict[str, Any],
     ) -> None:
-        workspace_id = self._workspace_id(context)
+        workspace_id = context.active_workspace_id
         current = self._configs.get(
             workspace_id=workspace_id,
             app_id=app_id,
@@ -194,7 +194,7 @@ class AppTracingConfigService:
         tracing_provider: str,
         tracing_config: dict[str, Any],
     ) -> None:
-        workspace_id = self._workspace_id(context)
+        workspace_id = context.active_workspace_id
         current = self._configs.get(
             workspace_id=workspace_id,
             app_id=app_id,
@@ -222,15 +222,9 @@ class AppTracingConfigService:
     def delete(self, context: RequestContext, app_id: str, tracing_provider: str) -> None:
         self._provider.validate_provider(tracing_provider)
         deleted = self._configs.delete(
-            workspace_id=self._workspace_id(context),
+            workspace_id=context.active_workspace_id,
             app_id=app_id,
             tracing_provider=tracing_provider,
         )
         if not deleted:
             raise AppTracingConfigNotFoundError
-
-    @staticmethod
-    def _workspace_id(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return context.active_workspace_id

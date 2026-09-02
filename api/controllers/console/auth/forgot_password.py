@@ -25,7 +25,7 @@ from services.entities.auth_entities import (
     ForgotPasswordResetPayload,
     ForgotPasswordSendPayload,
 )
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class ForgotPasswordEmailResponse(BaseModel):
@@ -87,7 +87,7 @@ class ForgotPasswordSendEmailApi(Resource):
             account=account,
             email=normalized_email,
             language=language,
-            is_allow_register=FeatureService.get_system_features().is_allow_register,
+            is_allow_register=SystemFeatureService.is_registration_allowed(),
         )
 
         return {"result": "success", "data": token}
@@ -198,6 +198,6 @@ class ForgotPasswordResetApi(Resource):
         # Create workspace if needed
         if (
             not TenantService.get_join_tenants(account, session=db.session())
-            and FeatureService.is_workspace_creation_allowed()
+            and SystemFeatureService.is_workspace_creation_allowed()
         ):
             TenantService.create_owner_tenant(account, session=db.session())

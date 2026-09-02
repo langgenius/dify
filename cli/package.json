@@ -66,7 +66,7 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   },
   "difyctl": {
     "channel": "stable",
