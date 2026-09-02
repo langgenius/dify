@@ -299,7 +299,6 @@ def test_published_workflow_post_returns_400_when_publish_fails(
 def test_published_workflow_post_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     user = _account("account-1")
@@ -307,7 +306,6 @@ def test_published_workflow_post_returns_success(
     sqlite_session.add(snippet)
     sqlite_session.commit()
     workflow = SimpleNamespace(created_at=datetime(2026, 8, 17, 12, 0, 0))
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
         snippet_workflow_module,
         "_snippet_service",
@@ -317,7 +315,7 @@ def test_published_workflow_post_returns_success(
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.post)
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response = handler(api, user, snippet)
+        response = handler(api, sqlite_session, user, snippet)
 
     assert response["result"] == "success"
 
