@@ -8,7 +8,7 @@ import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentType, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
@@ -392,20 +392,10 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/next/dynamic', async () => {
-  const { lazy, Suspense } = await import('react')
+  const { default: WebAppsSection } = await import('../components/web-apps-section')
 
   return {
-    default: <Props extends object>(loader: () => Promise<{ default: ComponentType<Props> }>) => {
-      const LazyComponent = lazy(loader)
-
-      return function DynamicComponent(props: Props) {
-        return (
-          <Suspense fallback={null}>
-            <LazyComponent {...props} />
-          </Suspense>
-        )
-      }
-    },
+    default: () => WebAppsSection,
   }
 })
 
@@ -556,41 +546,6 @@ const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   enable_step_by_step_tour: true,
 }
 
-const stubViewport = (initialDesktop: boolean) => {
-  let matches = initialDesktop
-  const listeners = new Set<(event: MediaQueryListEvent) => void>()
-  const mediaQueryList = {
-    get matches() {
-      return matches
-    },
-    media: '(min-width: 40rem)',
-    onchange: null,
-    addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
-      listeners.add(listener)
-    },
-    removeEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
-      listeners.delete(listener)
-    },
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  } as MediaQueryList
-  const matchMedia = vi.fn((_query: string) => mediaQueryList)
-  vi.stubGlobal('matchMedia', matchMedia)
-
-  return {
-    matchMedia,
-    setDesktop(nextDesktop: boolean) {
-      matches = nextDesktop
-      listeners.forEach((listener) => {
-        listener({ matches } as MediaQueryListEvent)
-      })
-    },
-  }
-}
-
-const stubMobileViewport = () => stubViewport(false)
-
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
   options: {
@@ -733,10 +688,6 @@ describe('MainNav', () => {
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
@@ -785,95 +736,6 @@ describe('MainNav', () => {
       '/integrations/model-provider',
       '/marketplace',
     ])
-  })
-
-  it('opens the named mobile navigation drawer', async () => {
-    stubMobileViewport()
-    const user = userEvent.setup()
-    renderMainNav()
-    const trigger = screen.getByRole('button', {
-      name: 'common.operation.moreActionsFor:{"name":"Dify"}',
-    })
-
-    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
-    expect(mockInstalledAppsRequest).not.toHaveBeenCalled()
-
-    await user.click(trigger)
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-
-    const drawer = await screen.findByRole('dialog', { name: 'Dify' })
-
-    expect(drawer).toBeInTheDocument()
-    expect(within(drawer).getByRole('navigation')).toBeInTheDocument()
-    expect(screen.getAllByRole('navigation')).toHaveLength(1)
-  })
-
-  it('mounts one Step-by-step Tour owner when the mobile drawer opens', async () => {
-    stubMobileViewport()
-    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
-    const user = userEvent.setup()
-    renderMainNav()
-
-    expect(screen.queryByRole('button', { name: 'Open step-by-step tour' })).not.toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
-      }),
-    )
-
-    expect(
-      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
-    ).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
-    await waitFor(() => {
-      expect(
-        mockTrackEvent.mock.calls.filter(
-          ([event, properties]) => event === 'step_tour' && properties.action === 'tour_shown',
-        ),
-      ).toHaveLength(1)
-    })
-  })
-
-  it('restores focus to the mobile navigation trigger when the drawer closes', async () => {
-    stubMobileViewport()
-    const user = userEvent.setup()
-    renderMainNav()
-    const trigger = screen.getByRole('button', {
-      name: 'common.operation.moreActionsFor:{"name":"Dify"}',
-    })
-
-    await user.click(trigger)
-    const drawer = await screen.findByRole('dialog', { name: 'Dify' })
-    await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Dify' })).not.toBeInTheDocument()
-      expect(trigger).toHaveFocus()
-    })
-  })
-
-  it('closes the mobile navigation drawer when the viewport enters the desktop breakpoint', async () => {
-    const viewport = stubMobileViewport()
-    const user = userEvent.setup()
-    renderMainNav()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
-      }),
-    )
-    expect(await screen.findByRole('dialog', { name: 'Dify' })).toBeInTheDocument()
-    expect(viewport.matchMedia).toHaveBeenCalledWith('(min-width: 40rem)')
-
-    act(() => {
-      viewport.setDesktop(true)
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Dify' })).not.toBeInTheDocument()
-      expect(screen.getAllByRole('navigation')).toHaveLength(1)
-    })
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {

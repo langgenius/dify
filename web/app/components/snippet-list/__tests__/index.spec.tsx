@@ -293,20 +293,6 @@ describe('SnippetList', () => {
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
-  it('lays out snippet cards as one column before enabling auto-fill on wider screens', () => {
-    renderList()
-
-    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
-    const grid = card?.parentElement
-
-    expect(grid).toHaveClass(
-      'grid',
-      'grid-cols-1',
-      'sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-    )
-    expect(screen.getByRole('searchbox').parentElement).toHaveClass('w-full', 'sm:w-50')
-  })
-
   it('passes creator, tag, and search filters to the snippets list query', () => {
     mockQueryState.tagIDs = ['tag-1', 'tag-2']
     mockQueryState.keywords = 'sales'

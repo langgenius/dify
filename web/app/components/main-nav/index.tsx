@@ -2,10 +2,9 @@
 
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -26,19 +25,9 @@ import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
-import {
-  MAIN_NAV_DESKTOP_CLASS_NAME,
-  MAIN_NAV_MOBILE_HEADER_CLASS_NAME,
-} from './responsive-classes'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
-import { useIsMainNavDesktopViewport } from './use-desktop-viewport'
 
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
-const MobileNavDrawer = dynamic(() => import('./components/mobile-nav-drawer'), { ssr: false })
-
-function preloadMobileNavDrawer() {
-  void import('./components/mobile-nav-drawer')
-}
 
 export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
@@ -54,16 +43,7 @@ export function MainNav({ className }: MainNavProps) {
   const canViewSkills = useCanViewSkills()
   const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
-  const desktopHelpMenuTriggerRef = useRef<HTMLButtonElement>(null)
-  const mobileHelpMenuTriggerRef = useRef<HTMLButtonElement>(null)
-  const mobileNavTriggerRef = useRef<HTMLButtonElement>(null)
-  const [hasActivatedMobileNav, setHasActivatedMobileNav] = useState(false)
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const isDesktopViewport = useIsMainNavDesktopViewport()
-  const appTitle =
-    systemFeatures.branding.enabled && systemFeatures.branding.application_title
-      ? systemFeatures.branding.application_title
-      : 'Dify'
+  const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -95,6 +75,11 @@ export function MainNav({ className }: MainNavProps) {
   )
 
   const renderLogo = () => {
+    const appTitle =
+      systemFeatures.branding.enabled && systemFeatures.branding.application_title
+        ? systemFeatures.branding.application_title
+        : 'Dify'
+
     return (
       <Link
         href="/"
@@ -114,108 +99,56 @@ export function MainNav({ className }: MainNavProps) {
     )
   }
 
-  const renderNavigationPanel = (mobile = false) => {
-    const helpMenuTriggerRef = mobile ? mobileHelpMenuTriggerRef : desktopHelpMenuTriggerRef
-
-    return (
-      <aside
-        className={cn(
-          'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
-          mobile ? 'w-full' : cn(MAIN_NAV_DESKTOP_CLASS_NAME, className),
-        )}
-      >
-        <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
-          <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
-            {renderLogo()}
-            <div className="flex items-center gap-1">
-              <MainNavSearchButton />
-              {mobile && (
-                <IconButton
-                  size="lg"
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  onClick={() => setIsMobileNavOpen(false)}
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              )}
-            </div>
-          </div>
-          <div className="p-2">
-            <WorkspaceCard />
-          </div>
-          <nav className="isolate flex flex-col gap-px p-2">
-            {navItems.map((item) => (
-              <MainNavLink key={item.href} item={item} pathname={pathname}>
-                {item.href === '/agents' && (
-                  <Badge
-                    size="xs"
-                    variant="dimm"
-                    text={t(($) => $['menus.status'], { ns: 'common' })}
-                    className="ml-auto shrink-0"
-                  />
-                )}
-              </MainNavLink>
-            ))}
-          </nav>
-          {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
-          {showEnvTag && (
-            <div className="mt-auto shrink-0 px-3 pb-2">
-              <EnvNav />
-            </div>
-          )}
-        </div>
-        <div className="isolate w-60 shrink-0">
-          <StepByStepTourMount
-            recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
-            className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
-          />
-          <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
-            <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-              <AccountSection />
-            </div>
-            <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-              <HelpMenu triggerRef={helpMenuTriggerRef} />
-            </div>
-          </div>
-        </div>
-      </aside>
-    )
-  }
-
   return (
-    <>
-      {isDesktopViewport && renderNavigationPanel()}
-      <header className={MAIN_NAV_MOBILE_HEADER_CLASS_NAME}>
-        {renderLogo()}
-        <IconButton
-          ref={mobileNavTriggerRef}
-          size="lg"
-          aria-label={t(($) => $['operation.moreActionsFor'], {
-            ns: 'common',
-            name: appTitle,
-          })}
-          aria-expanded={isMobileNavOpen}
-          aria-haspopup="dialog"
-          onClick={() => {
-            setHasActivatedMobileNav(true)
-            setIsMobileNavOpen(true)
-          }}
-          onFocus={preloadMobileNavDrawer}
-          onMouseEnter={preloadMobileNavDrawer}
-        >
-          <span aria-hidden className="i-ri-menu-line size-5" />
-        </IconButton>
-      </header>
-      {hasActivatedMobileNav && !isDesktopViewport && (
-        <MobileNavDrawer
-          finalFocusRef={mobileNavTriggerRef}
-          open={isMobileNavOpen}
-          onOpenChange={setIsMobileNavOpen}
-          title={appTitle}
-        >
-          {renderNavigationPanel(true)}
-        </MobileNavDrawer>
+    <aside
+      className={cn(
+        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
+        className,
       )}
-    </>
+    >
+      <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+          {renderLogo()}
+          <MainNavSearchButton />
+        </div>
+        <div className="p-2">
+          <WorkspaceCard />
+        </div>
+        <nav className="isolate flex flex-col gap-px p-2">
+          {navItems.map((item) => (
+            <MainNavLink key={item.href} item={item} pathname={pathname}>
+              {item.href === '/agents' && (
+                <Badge
+                  size="xs"
+                  variant="dimm"
+                  text={t(($) => $['menus.status'], { ns: 'common' })}
+                  className="ml-auto shrink-0"
+                />
+              )}
+            </MainNavLink>
+          ))}
+        </nav>
+        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {showEnvTag && (
+          <div className="mt-auto shrink-0 px-3 pb-2">
+            <EnvNav />
+          </div>
+        )}
+      </div>
+      <div className="isolate w-60 shrink-0">
+        <StepByStepTourMount
+          recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
+          className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
+        />
+        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <AccountSection />
+          </div>
+          <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+            <HelpMenu triggerRef={helpMenuTriggerRef} />
+          </div>
+        </div>
+      </div>
+    </aside>
   )
 }

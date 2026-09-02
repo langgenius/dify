@@ -83,16 +83,6 @@ describe('MainNavLayout', () => {
     expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
   })
 
-  it('stacks navigation above content on narrow screens', () => {
-    const { container } = render(
-      <MainNavLayout>
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    expect(container.firstElementChild).toHaveClass('flex-col', 'sm:flex-row')
-  })
-
   it('renders one main landmark as the skip navigation target', () => {
     render(
       <MainNavLayout>
@@ -155,7 +145,7 @@ describe('MainNavLayout', () => {
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
 
-      const { container } = render(
+      render(
         <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
           <div>dataset detail</div>
         </MainNavLayout>,
@@ -169,8 +159,6 @@ describe('MainNavLayout', () => {
       expect(main).toHaveAttribute('id', 'main-content')
       expect(main).toHaveTextContent('dataset detail')
       expect(main).not.toContainElement(detailSidebar)
-      expect(container.firstElementChild).toHaveClass('flex-row')
-      expect(container.firstElementChild).not.toHaveClass('flex-col')
     },
   )
 

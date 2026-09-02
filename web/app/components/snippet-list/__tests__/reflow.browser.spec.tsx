@@ -1,78 +1,227 @@
-import { cn } from '@langgenius/dify-ui/cn'
+import type { SnippetListItem } from '@/types/snippet'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createStore, Provider } from 'jotai'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { StudioListHeader } from '@/app/components/apps/studio-list-header'
-import {
-  MAIN_NAV_DESKTOP_CLASS_NAME,
-  MAIN_NAV_LAYOUT_CLASS_NAME,
-  MAIN_NAV_MOBILE_HEADER_CLASS_NAME,
-} from '@/app/components/main-nav/responsive-classes'
-import {
-  SNIPPET_LIST_FILTER_GROUP_CLASS_NAME,
-  SNIPPET_LIST_GRID_CLASS_NAME,
-  SNIPPET_LIST_SEARCH_CLASS_NAME,
-} from '../constants'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import SnippetList from '..'
 
-function SnippetReflowHarness() {
-  return (
-    <section className={cn(MAIN_NAV_LAYOUT_CLASS_NAME, 'h-dvh w-full')} aria-label="Page shell">
-      <aside
-        aria-label="Desktop navigation"
-        className={cn(MAIN_NAV_DESKTOP_CLASS_NAME, 'h-full w-62 shrink-0')}
-      />
-      <header
-        role="banner"
-        aria-label="Mobile navigation"
-        className={MAIN_NAV_MOBILE_HEADER_CLASS_NAME}
-      />
-      <main className="flex min-h-0 min-w-0 grow flex-col overflow-hidden">
-        <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto">
-          <StudioListHeader title={<h1>Snippets</h1>}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className={SNIPPET_LIST_FILTER_GROUP_CLASS_NAME}>
-                <button type="button">Creators</button>
-                <button type="button">Status</button>
-                <button type="button">Tags</button>
-                <div className={SNIPPET_LIST_SEARCH_CLASS_NAME} role="search">
-                  Search
-                </div>
-              </div>
-              <button type="button">Create</button>
-            </div>
-          </StudioListHeader>
-          <section aria-label="Snippet cards" className={SNIPPET_LIST_GRID_CLASS_NAME}>
-            <article className="h-40 w-full" aria-label="Snippet card" />
-          </section>
-        </div>
-      </main>
-    </section>
+const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
+const mockQueryState = vi.hoisted(() => ({
+  creatorIDs: [] as string[],
+  keywords: '',
+  tagIDs: [] as string[],
+}))
+
+vi.mock('@/service/use-snippets', () => ({
+  useConfirmSnippetImportMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useCreateSnippetMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useDeleteSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
+  useExportSnippetMutation: () => ({ mutateAsync: vi.fn() }),
+  useImportSnippetDSLMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useInfiniteSnippetList: (params: unknown, options: unknown) =>
+    mockUseInfiniteSnippetList(params, options),
+  useUpdateSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
+}))
+
+vi.mock('../hooks/use-snippets-query-state', () => ({
+  useSnippetsQueryState: () => ({
+    query: mockQueryState,
+    setCreatorIDs: vi.fn(),
+    setKeywords: vi.fn(),
+    setTagIDs: vi.fn(),
+  }),
+}))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+  }))
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['snippets.create_and_modify'],
+  }))
+})
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        {
+          avatar_url: null,
+          id: 'creator-1',
+          name: 'Alice',
+          status: 'active',
+        },
+      ],
+    },
+  }),
+}))
+
+vi.mock('@/features/account-profile/client', () => ({
+  userProfileQueryOptions: () => ({
+    queryFn: async () => ({ profile: { id: 'creator-1' } }),
+    queryKey: ['account-profile'],
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    snippets: {
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: vi.fn(),
+          },
+        },
+      },
+    },
+  },
+  consoleQuery: {
+    tags: {
+      get: {
+        key: () => ['tags'],
+        queryOptions: ({ input }: { input: { query: { type: string } } }) => ({
+          queryFn: async () => [],
+          queryKey: ['tags', input.query.type],
+        }),
+      },
+      post: {
+        mutationOptions: () => ({ mutationFn: vi.fn() }),
+      },
+    },
+  },
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock('@/next/dynamic', () => ({
+  default: () => () => null,
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
+const snippet: SnippetListItem = {
+  created_at: 1704067200,
+  created_by: 'creator-1',
+  description: 'Builds a sales follow-up.',
+  id: 'snippet-1',
+  is_published: true,
+  name: 'Sales Snippet',
+  tags: [],
+  type: 'node',
+  updated_at: 1704153600,
+  updated_by: 'creator-1',
+  use_count: 12,
+  version: 1,
+}
+
+const expectWithinHorizontalBounds = (element: Element, container: Element) => {
+  const elementRect = element.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
+
+  expect(elementRect.left).toBeGreaterThanOrEqual(containerRect.left - 0.5)
+  expect(elementRect.right).toBeLessThanOrEqual(containerRect.right + 0.5)
+}
+
+const renderSnippetList = async () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+  queryClient.setQueryData(['account-profile'], { profile: { id: 'creator-1' } })
+  queryClient.setQueryData(['tags', 'snippet'], [])
+
+  const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <main
+          aria-label="Snippet list page"
+          className="flex h-dvh w-full min-w-0 flex-col overflow-hidden"
+        >
+          <SnippetList />
+        </main>
+      </Provider>
+    </QueryClientProvider>,
   )
 }
 
 describe('Snippet list reflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseInfiniteSnippetList.mockReturnValue({
+      data: {
+        pages: [
+          {
+            data: [snippet],
+            has_more: false,
+            limit: 30,
+            page: 1,
+            total: 1,
+          },
+        ],
+      },
+      error: null,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetching: false,
+      isFetchingNextPage: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    })
+  })
+
   afterEach(async () => {
     await page.viewport(1280, 720)
   })
 
-  it('keeps navigation, filters, and cards overflow-free at 320 CSS pixels', async () => {
-    // Chromium owns media-query resolution and layout geometry; happy-dom cannot prove reflow.
+  it('keeps the real filters, search, create action, and card overflow-free at 320 CSS pixels', async () => {
+    // Chromium owns responsive wrapping and layout geometry; happy-dom cannot prove 320px reflow.
     await page.viewport(320, 800)
-    const screen = await render(<SnippetReflowHarness />)
-    const shell = screen.getByRole('region', { name: 'Page shell' }).element()
-    const main = screen.getByRole('main').element()
-    const search = screen.getByRole('search').element()
-    const grid = screen.getByRole('region', { name: 'Snippet cards' }).element()
-    const card = screen.getByRole('article', { name: 'Snippet card' }).element()
-    const desktopNavigation = shell.querySelector<HTMLElement>('[aria-label="Desktop navigation"]')
-    if (!desktopNavigation) throw new Error('Desktop navigation was not rendered')
+    const screen = await renderSnippetList()
+    const main = screen.getByRole('main', { name: 'Snippet list page' })
+    const creatorFilter = screen.getByRole('combobox', {
+      name: 'app.studio.filters.creators',
+    })
+    const statusFilter = screen.getByRole('button', {
+      name: /workflow\.common\.published \/ snippet\.draft/i,
+    })
+    const tagFilter = screen.getByRole('combobox', { name: 'common.tag.placeholder' })
+    const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    const createAction = screen.getByRole('button', { name: 'snippet.create' })
+    const card = screen.getByRole('article')
 
-    await expect.element(screen.getByRole('banner', { name: 'Mobile navigation' })).toBeVisible()
-    expect(getComputedStyle(desktopNavigation).display).toBe('none')
-    expect(shell.scrollWidth).toBe(shell.clientWidth)
-    expect(search.getBoundingClientRect().right).toBeLessThanOrEqual(
-      main.getBoundingClientRect().right,
-    )
-    expect(grid.scrollWidth).toBe(grid.clientWidth)
-    expect(card.getBoundingClientRect().width).toBeLessThanOrEqual(grid.clientWidth)
+    await expect
+      .element(screen.getByRole('heading', { name: 'workflow.tabs.snippets' }))
+      .toBeVisible()
+    await expect.element(creatorFilter).toBeVisible()
+    await expect.element(statusFilter).toBeVisible()
+    await expect.element(tagFilter).toBeVisible()
+    await expect.element(search).toBeVisible()
+    await expect.element(createAction).toBeVisible()
+    await expect.element(card).toBeVisible()
+
+    const mainElement = main.element()
+    const listElement = mainElement.firstElementChild
+    if (!listElement) throw new Error('SnippetList did not render its root owner')
+
+    expect(listElement.scrollWidth).toBe(listElement.clientWidth)
+    ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {
+      expectWithinHorizontalBounds(locator.element(), listElement)
+    })
   })
 })
