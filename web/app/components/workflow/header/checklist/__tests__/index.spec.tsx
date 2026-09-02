@@ -4,7 +4,7 @@ import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
-import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
+import { difyBuilderSessionBusyAtom } from '@/app/components/workflow-app/components/dify-builder/session/state'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'

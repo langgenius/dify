@@ -1,5 +1,5 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
-import type { SessionView } from '@/app/components/dify-builder/types'
+import type { SessionView } from '../types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetAtom } from 'jotai'

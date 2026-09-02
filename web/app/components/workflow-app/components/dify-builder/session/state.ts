@@ -1,4 +1,4 @@
-import type { CanvasEventData, ProgressEntry, SessionView } from './types'
+import type { CanvasEventData, DifyBuilderStreamingTurn, SessionView } from '../types'
 import { atom } from 'jotai'
 
 export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
@@ -7,9 +7,8 @@ export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
 // authoritative SSE frames while a command is live.
 export const difyBuilderActiveSessionIdAtom = atom<string | null>(null)
 export const difyBuilderSessionBusyAtom = atom(false)
-export const difyBuilderSessionLastRawAtom = atom<unknown>(null)
 export const difyBuilderSessionLastErrorAtom = atom('')
-export const difyBuilderSessionProgressLogAtom = atom<ProgressEntry[]>([])
+export const difyBuilderStreamingTurnAtom = atom<DifyBuilderStreamingTurn | null>(null)
 export const difyBuilderSessionLastCanvasEventAtom = atom<{
   id: number
   data: CanvasEventData
@@ -19,8 +18,7 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderSessionViewAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderSessionBusyAtom,
-  difyBuilderSessionLastRawAtom,
   difyBuilderSessionLastErrorAtom,
-  difyBuilderSessionProgressLogAtom,
+  difyBuilderStreamingTurnAtom,
   difyBuilderSessionLastCanvasEventAtom,
 ] as const
