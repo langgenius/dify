@@ -30,8 +30,8 @@ from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
-from services.feature_service import FeatureService
 from services.oauth_device_flow import token_belongs_to_subject
+from services.system_feature_service import SystemFeatureService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
 
@@ -78,7 +78,7 @@ def assert_license_valid() -> None:
     `extract_bearer`, and by `ExternalSsoPipeline`'s own gate. One function, so
     the two cannot drift apart.
     """
-    if FeatureService.get_system_features().license.status in _DEAD_LICENSE_STATUSES:
+    if SystemFeatureService.get_public_system_features().license.status in _DEAD_LICENSE_STATUSES:
         raise Forbidden("license_invalid")
 
 
@@ -198,7 +198,7 @@ class CheckAppAccess(Requirement):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
         access_mode = self._access_mode(str(load_app(ctx).id))
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.get_public_system_features().webapp_auth.enabled:
             self._assert_mode_allowed(subject, access_mode)
         if access_mode == WebAppAccessMode.PRIVATE:
             self._assert_private_app_permission(subject, ctx, session)

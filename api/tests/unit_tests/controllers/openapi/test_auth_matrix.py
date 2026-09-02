@@ -85,7 +85,7 @@ from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
 ADMITTED = 418
@@ -1139,7 +1139,6 @@ def _run_case(
     token_rows: dict[str, ResolvedRow],
     monkeypatch: pytest.MonkeyPatch,
 ) -> TestResponse:
-    from configs import dify_config
 
     edition = scenario.edition or (
         DeploymentEdition.ENTERPRISE if Trait.ENTERPRISE_ONLY in route.traits else DeploymentEdition.COMMUNITY
@@ -1165,7 +1164,7 @@ def _run_case(
         headers["Authorization"] = f"Bearer {world.tokens[bearer]}"
 
     with ExitStack() as stack:
-        stack.enter_context(patch.object(FeatureService, "get_system_features", return_value=features))
+        stack.enter_context(patch.object(SystemFeatureService, "get_public_system_features", return_value=features))
         stack.enter_context(
             patch.object(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", return_value=settings)
         )

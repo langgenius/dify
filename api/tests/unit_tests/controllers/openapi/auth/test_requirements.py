@@ -50,7 +50,7 @@ from ._world import (
     webapp_settings,
 )
 
-FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
+FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features"
 WEBAPP_AUTH = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth"
 ACCESS_MODE = f"{WEBAPP_AUTH}.get_app_access_mode_by_id"
 WEBAPP_PERMISSION = f"{WEBAPP_AUTH}.is_user_allowed_to_access_webapp"
