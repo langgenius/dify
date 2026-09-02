@@ -54,8 +54,13 @@ cancelled runs. A failure or cancellation before the capture contains any
 messages preserves the previously restored history. An interrupted capture can
 include a partial response or tool-return request marked `state="interrupted"`;
 pydantic-ai repairs that state when the snapshot is used by a later independent
-run. Without this layer, compaction and interrupted messages affect only the
-current run.
+run. If the run was cancelled, timed out, or failed while tool calls were still
+executing and none of them had returned yet, Dify Agent marks the trailing
+tool-calling response `state="interrupted"` before persisting; pydantic-ai then
+closes every unanswered call with a synthesized `outcome="interrupted"` tool
+return when the next run starts, so the model is never sent a tool call without
+a result. Without this layer, compaction and interrupted messages affect only
+the current run.
 
 ## Resume a conversation
 
@@ -102,7 +107,12 @@ Dify Agent handles memory conservatively:
 6. Run-level system instructions are removed before history is persisted.
 7. Interrupted partial messages retain pydantic-ai's `state="interrupted"` marker
    so a later independent run can repair and continue from the checkpoint.
-8. Failed and cancelled runs keep their terminal status; their snapshot is a
+8. A failed, timed-out, or cancelled run whose history ends in a tool-calling
+   response is persisted with that response marked `state="interrupted"`, so
+   the next run receives synthesized `outcome="interrupted"` tool returns for
+   those calls. Pending `ask_human` deferred tool calls from a successful run
+   are not affected; they stay open for `deferred_tool_results`.
+9. Failed and cancelled runs keep their terminal status; their snapshot is a
    checkpoint, not a successful continuation of the interrupted run.
 
 ## Persist snapshots outside the client process

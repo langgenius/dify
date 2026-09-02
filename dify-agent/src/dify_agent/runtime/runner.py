@@ -82,6 +82,7 @@ from dify_agent.runtime.event_sink import (
 )
 from dify_agent.runtime.history import (
     get_history_layer,
+    mark_interrupted_tool_calls,
     replace_run_history,
     validate_history_layer_composition,
 )
@@ -402,9 +403,12 @@ class AgentRunRunner:
                                     capabilities=[compaction] if compaction is not None else None,
                                     usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                                 )
-                        finally:
+                        except BaseException:
                             if captured_messages:
-                                replace_run_history(history_layer, captured_messages)
+                                replace_run_history(history_layer, mark_interrupted_tool_calls(captured_messages))
+                            raise
+                        if captured_messages:
+                            replace_run_history(history_layer, captured_messages)
                 except TimeoutError as exc:
                     if not run_timeout.expired():
                         raise

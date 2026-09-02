@@ -21,7 +21,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
-from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.models.function import DeltaToolCall, DeltaToolCalls, FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 from pydantic_ai.usage import UsageLimits
@@ -1007,6 +1007,74 @@ def test_runner_captures_interrupted_history_when_task_is_cancelled(monkeypatch:
     assert runner.terminal_session_snapshot is not None
     assert all(layer.lifecycle_state is LifecycleState.SUSPENDED for layer in runner.terminal_session_snapshot.layers)
     _assert_interrupted_history(runner.terminal_session_snapshot, stored_history)
+
+
+def test_runner_marks_interrupted_tool_calls_when_cancelled_during_tool_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tool_started = asyncio.Event()
+    stored_history = [
+        ModelRequest(parts=[UserPromptPart(content="old user")]),
+        ModelResponse(parts=[TextPart(content="old assistant")]),
+    ]
+
+    async def slow_tool(query: str) -> str:
+        del query
+        tool_started.set()
+        await asyncio.Event().wait()
+        return "never"
+
+    async def stream_response(_messages: list[ModelMessage], _info: object) -> AsyncIterator[str | DeltaToolCalls]:
+        yield {0: DeltaToolCall(name="slow_tool", json_args='{"query": "q"}', tool_call_id="call-1")}
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        return FunctionModel(stream_function=stream_response)
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    static_tools_provider = LayerProvider.from_factory(
+        layer_type=StaticToolsTestLayer,
+        create=lambda _config: StaticToolsTestLayer(tool_entries=(slow_tool,)),
+    )
+    request = _request("current user", include_history=True)
+    request.composition.layers.insert(1, RunLayerSpec(name="static-tools", type=cast(str, StaticToolsTestLayer.type_id)))
+    request.session_snapshot = _history_session_snapshot(stored_history)
+    request.session_snapshot.layers.insert(
+        1, LayerSessionSnapshot(name="static-tools", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> AgentRunRunner:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-cancel-tool-call",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=(*create_default_layer_providers(), static_tools_provider),
+            )
+            task = asyncio.create_task(runner.run())
+            await asyncio.wait_for(tool_started.wait(), timeout=1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            return runner
+
+    runner = asyncio.run(scenario())
+
+    assert runner.terminal_session_snapshot is not None
+    saved_history = _history_messages_from_snapshot(runner.terminal_session_snapshot)
+    assert saved_history[: len(stored_history)] == stored_history
+    assert len(saved_history) == len(stored_history) + 2
+    current_request = saved_history[-2]
+    assert isinstance(current_request, ModelRequest)
+    assert len(current_request.parts) == 1
+    assert isinstance(current_request.parts[0], UserPromptPart)
+    assert current_request.parts[0].content == "current user"
+    tool_call_response = saved_history[-1]
+    assert isinstance(tool_call_response, ModelResponse)
+    assert tool_call_response.state == "interrupted"
+    assert [part.tool_call_id for part in tool_call_response.tool_calls] == ["call-1"]
 
 
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from typing import Protocol
 
-from pydantic_ai.messages import ModelMessage, ModelRequest
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse
 
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryLayer
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID
@@ -78,9 +78,21 @@ def replace_run_history(
     history_layer.replace_messages(persistent_messages)
 
 
+def mark_interrupted_tool_calls(messages: Sequence[ModelMessage]) -> list[ModelMessage]:
+    """Mark tool calls as interrupt and let pydantic-ai close them with synthesized outcome."""
+    marked = list(messages)
+    if not marked:
+        return marked
+    trailing = marked[-1]
+    if isinstance(trailing, ModelResponse) and trailing.tool_calls and trailing.state != "interrupted":
+        marked[-1] = replace(trailing, state="interrupted")
+    return marked
+
+
 __all__ = [
     "SupportsHistoryLayerLookup",
     "get_history_layer",
+    "mark_interrupted_tool_calls",
     "replace_run_history",
     "validate_history_layer_composition",
 ]
