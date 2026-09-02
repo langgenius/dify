@@ -16,7 +16,6 @@ from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -34,6 +33,7 @@ from core.workflow.human_input_policy import HumanInputSurface, is_recipient_typ
 from extensions.ext_database import db
 from libs.helper import to_timestamp
 from libs.oauth_bearer import Scope
+from models.enums import CreatorUserRole
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
 
@@ -135,7 +135,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
-        if ctx.subject.caller_kind is CallerKind.ACCOUNT:
+        if ctx.subject.caller_role is CreatorUserRole.ACCOUNT:
             submission_user_id = load_caller(ctx).id
         else:
             submission_end_user_id = load_caller(ctx).id

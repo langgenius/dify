@@ -21,7 +21,6 @@ from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -42,7 +41,6 @@ from core.db.session_factory import session_factory
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
 from libs.oauth_bearer import Scope
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
@@ -74,7 +72,6 @@ class OpenApiWorkflowEventsApi(Resource):
         # values only.
         app_model = load_app(ctx)
         caller = load_caller(ctx)
-        caller_kind = ctx.subject.caller_kind
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
@@ -97,12 +94,8 @@ class OpenApiWorkflowEventsApi(Resource):
 
         # Ownership is a property of the run row, not of the app, so no pipeline
         # requirement can answer it — the caller may only reconnect to its own run.
-        if caller_kind is CallerKind.ACCOUNT:
-            if workflow_run.created_by_role != CreatorUserRole.ACCOUNT or workflow_run.created_by != caller.id:
-                raise NotFound("Workflow run not found")
-        else:
-            if workflow_run.created_by_role != CreatorUserRole.END_USER or workflow_run.created_by != caller.id:
-                raise NotFound("Workflow run not found")
+        if workflow_run.created_by_role != ctx.subject.caller_role or workflow_run.created_by != caller.id:
+            raise NotFound("Workflow run not found")
 
         workflow_run_entity = workflow_run
         tenant_id = app_model.tenant_id

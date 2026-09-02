@@ -29,7 +29,6 @@ from controllers.openapi._errors import (
     RecipientSurfaceMismatch,
 )
 from controllers.openapi._models import FormSubmitResponse
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.human_input_form import (
     CheckFormSurface,
@@ -37,7 +36,7 @@ from controllers.openapi.human_input_form import (
     OpenApiWorkflowHumanInputFormSubmitApi,
 )
 from models.account import Account
-from models.enums import EndUserType
+from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -45,7 +44,7 @@ from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 _MODULE = "controllers.openapi.human_input_form"
 
 
-def _context(caller: Account | EndUser, caller_kind: CallerKind) -> SimpleNamespace:
+def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> SimpleNamespace:
     app_model = App(
         id="app-1",
         tenant_id="tenant-1",
@@ -57,7 +56,7 @@ def _context(caller: Account | EndUser, caller_kind: CallerKind) -> SimpleNamesp
     return SimpleNamespace(
         app=app_model,
         caller=caller,
-        subject=SimpleNamespace(caller_kind=caller_kind),
+        subject=SimpleNamespace(caller_role=caller_role),
         view_args={"app_id": "app-1", "form_token": "tok-1"},
     )
 
@@ -129,7 +128,7 @@ class TestOpenApiHumanInputFormGet:
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             resp = api.get.__handler__(
                 api,
-                _context(_make_account(), CallerKind.ACCOUNT),
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
             )
@@ -148,7 +147,7 @@ class TestOpenApiHumanInputFormGet:
             with pytest.raises(HumanInputFormNotFound):
                 api.get.__handler__(
                     api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     form_token="bad",
                 )
@@ -161,7 +160,7 @@ class TestOpenApiHumanInputFormGet:
             with pytest.raises(HumanInputFormNotFound):
                 api.get.__handler__(
                     api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     form_token="tok-1",
                 )
@@ -179,7 +178,7 @@ class TestOpenApiHumanInputFormPost:
         ):
             result = api.post.__handler__(
                 api,
-                _context(_make_account("acct-42"), CallerKind.ACCOUNT),
+                _context(_make_account("acct-42"), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
                 body=HumanInputFormSubmitPayload(action="approve", inputs={"field1": "val"}),
@@ -206,7 +205,7 @@ class TestOpenApiHumanInputFormPost:
         ):
             result = api.post.__handler__(
                 api,
-                _context(_make_end_user("eu-7"), CallerKind.END_USER),
+                _context(_make_end_user("eu-7"), CreatorUserRole.END_USER),
                 app_id="app-1",
                 form_token="tok-1",
                 body=HumanInputFormSubmitPayload(action="approve", inputs={}),
@@ -233,7 +232,7 @@ class TestOpenApiHumanInputFormPost:
         ):
             result = api.post.__handler__(
                 api,
-                _context(_make_end_user("anyone"), CallerKind.END_USER),
+                _context(_make_end_user("anyone"), CreatorUserRole.END_USER),
                 app_id="app-1",
                 form_token="tok-1",
                 body=HumanInputFormSubmitPayload(action="approve", inputs={}),
@@ -289,7 +288,7 @@ class TestCheckFormSurface:
 
     def _run(self, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)
-        ctx = _context(_make_account(), CallerKind.ACCOUNT)
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         CheckFormSurface().run(ctx.subject, ctx, Mock())
 
     def test_admits_a_web_app_recipient(self, monkeypatch: pytest.MonkeyPatch):
