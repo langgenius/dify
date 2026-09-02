@@ -14,6 +14,7 @@ from shellctl.client import ShellctlClientError
 
 from dify_agent.runtime_backend import (
     BindingAcquireError,
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingLostError,
     ExecutionBindingCreateSpec,
@@ -286,6 +287,35 @@ async def test_e2b_sdk_create_disables_public_traffic(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.anyio
+async def test_e2b_sdk_create_maps_provider_capacity_exhaustion(monkeypatch: pytest.MonkeyPatch) -> None:
+    from e2b import AsyncSandbox, RateLimitException
+
+    calls = 0
+
+    async def create(
+        _cls: type[AsyncSandbox],
+        _template: str,
+        **_options: object,
+    ) -> _Sandbox:
+        nonlocal calls
+        calls += 1
+        raise RateLimitException("maximum concurrent sandboxes reached")
+
+    monkeypatch.setattr(AsyncSandbox, "create", classmethod(create))
+    control_plane = E2BSDKControlPlane(api_key="e2b-secret")
+
+    with pytest.raises(e2b_module._E2BControlPlaneCapacityExhaustedError, match="maximum concurrent"):
+        _ = await control_plane.create(
+            "prepared-template",
+            timeout=120,
+            metadata={"dify.resource": "runtime-sandbox"},
+            on_timeout="pause",
+        )
+
+    assert calls == 1
+
+
+@pytest.mark.anyio
 async def test_e2b_connect_retries_one_transport_failure(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -436,6 +466,31 @@ async def test_e2b_create_and_snapshot_create_are_not_retried(monkeypatch: pytes
 
     assert control.created == [("prepared-template", "pause")]
     assert snapshot_sandbox.snapshots == 1
+
+
+@pytest.mark.anyio
+async def test_e2b_create_maps_capacity_exhaustion_without_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    control = _ControlPlane(
+        create_errors=[e2b_module._E2BControlPlaneCapacityExhaustedError("maximum concurrent sandboxes reached")]
+    )
+    backend = _binding_backend(control)
+
+    async def fail_sleep(_delay: float) -> None:
+        raise AssertionError("capacity exhaustion must not retry")
+
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", fail_sleep)
+    with pytest.raises(BindingCapacityExhaustedError, match="maximum concurrent sandboxes reached"):
+        _ = await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+            )
+        )
+
+    assert control.created == [("prepared-template", "pause")]
 
 
 @pytest.mark.anyio
