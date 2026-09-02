@@ -66,7 +66,12 @@ export default defineConfig(({ mode }) => {
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            exclude: [
+              '@orpc/tanstack-query',
+              '@tanstack/query-core',
+              '@tanstack/react-query',
+              'jotai-tanstack-query',
+            ],
           },
           server: {
             port: 3000,
