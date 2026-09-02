@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from functools import partial, wraps
 from typing import Any
 
 from flask import request
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.pipelines import AccountPipeline, ExternalSsoPipeline, Pipeline
+from controllers.openapi.auth.pipelines import pipeline_for_subject
 from controllers.openapi.auth.requirements import assert_license_valid
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
-from libs.oauth_bearer import InvalidBearerError, SubjectType, extract_bearer, get_authenticator
+from libs.oauth_bearer import InvalidBearerError, extract_bearer, get_authenticator
 
 
 class AuthRouter:
-    def __init__(self, pipelines: Mapping[SubjectType, Pipeline]) -> None:
-        self._pipelines = pipelines
-
     def guard(self, spec: EndpointSpec) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(view)
@@ -55,10 +52,7 @@ class AuthRouter:
             # the 404-not-403 elsewhere on this surface.
             raise Unauthorized("invalid bearer")
         subject = subject_from_auth(auth)
-
-        pipeline = self._pipelines.get(subject.subject_type)
-        if pipeline is None:
-            raise Forbidden("unsupported_token_type")
+        pipeline = pipeline_for_subject(subject)
 
         with session_factory.create_session() as session:
             ctx = Context(subject, session, dict(request.view_args or {}))
@@ -80,9 +74,4 @@ class AuthRouter:
             return result
 
 
-subject_router = AuthRouter(
-    {
-        SubjectType.ACCOUNT: AccountPipeline(),
-        SubjectType.EXTERNAL_SSO: ExternalSsoPipeline(),
-    }
-)
+subject_router = AuthRouter()
