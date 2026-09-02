@@ -70,6 +70,7 @@ export interface SourceLogicalRevisionPublisher {
       readonly requestedBySubjectId?: string | undefined;
       readonly sourceId: string;
       readonly tenantId: string;
+      readonly workflowId?: string | undefined;
     },
     execution?: SourceLogicalRevisionPublicationExecution | undefined,
   ): Promise<void>;

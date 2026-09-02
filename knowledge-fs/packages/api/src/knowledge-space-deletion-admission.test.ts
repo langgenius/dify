@@ -204,6 +204,7 @@ describe.each(["postgres", "tidb"] as const)(
           knowledgeSpaceId: spaceId,
           sourceId,
           tenantId: "tenant-1",
+          workflowId: "workflow-1",
         }),
       ).resolves.toBe(true);
       await expect(
@@ -224,6 +225,8 @@ describe.each(["postgres", "tidb"] as const)(
         expect(deletionRead?.sql).not.toContain("'logical_document'");
         expect(deletionRead?.sql).not.toContain("'document_asset'");
       }
+      expect(deletionReads[1]?.sql).toContain("idempotency_key");
+      expect(deletionReads[1]?.params).toContain("source-remote-missing:workflow-1:%");
     });
 
     it("keeps a space deletion as a hard blocker", async () => {

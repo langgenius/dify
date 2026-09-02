@@ -472,7 +472,9 @@ export function createJointCasSourceLogicalRevisionPublisher({
         createdAt: input.now,
         documentId: input.documentId,
         expectedDocumentRowVersion: document.rowVersion,
-        idempotencyKey: `source-remote-missing:${input.sourceId}:${input.documentId}`,
+        idempotencyKey: input.workflowId
+          ? `source-remote-missing:${input.workflowId}:${input.documentId}`
+          : `source-remote-missing:${input.sourceId}:${input.documentId}`,
         knowledgeSpaceId: input.knowledgeSpaceId,
         tenantId: input.tenantId,
       });

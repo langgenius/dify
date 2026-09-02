@@ -846,13 +846,13 @@ describe("joint-CAS Source logical revision publisher", () => {
     );
     const assertActive = vi.fn(async () => undefined);
     await expect(
-      publisher.markRemoteMissing?.(tombstone, { assertActive }),
+      publisher.markRemoteMissing?.({ ...tombstone, workflowId: "workflow-1" }, { assertActive }),
     ).resolves.toBeUndefined();
     expect(remoteDeletions.requestLogicalDocumentDeletion).toHaveBeenCalledWith(
       expect.objectContaining({
         documentId: DOCUMENT_ID,
         expectedDocumentRowVersion: 1,
-        idempotencyKey: `source-remote-missing:${SOURCE_ID}:${DOCUMENT_ID}`,
+        idempotencyKey: `source-remote-missing:workflow-1:${DOCUMENT_ID}`,
         permissionSnapshotId: "permission-snapshot-1",
       }),
     );

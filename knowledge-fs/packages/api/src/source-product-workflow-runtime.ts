@@ -2730,6 +2730,7 @@ async function removeItemsOutsideSelection(
             providerItemId: item.providerItemId,
             sourceId: source.id,
             tenantId: run.tenantId,
+            workflowId: run.id,
           },
           {
             assertActive: async () => {

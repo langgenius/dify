@@ -13,6 +13,7 @@ export interface KnowledgeSpaceDeletionAdmissionInput {
 
 export interface SourceWorkflowDeletionAdmissionInput extends KnowledgeSpaceDeletionAdmissionInput {
   readonly sourceId?: string | undefined;
+  readonly workflowId?: string | undefined;
 }
 
 export interface SourceWorkflowBulkDeletionAdmissionInput
@@ -179,10 +180,25 @@ async function lockForDeletionAdmission(
     params: activeDeletionParams,
     // Keep this a current locking read. In TiDB repeatable-read mode the transaction snapshot can
     // predate a deletion transaction that the space-row lock just waited for.
-    sql: `SELECT active_deletion.${q("id")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${tenantParameter} AND active_deletion.${q("knowledge_space_id")} = ${knowledgeSpaceParameter} AND active_deletion.${q("active_slot")} = 1${deletionScope} LIMIT 1 FOR UPDATE;`,
+    sql: `SELECT active_deletion.${q("id")} FROM ${q("deletion_jobs")} active_deletion WHERE active_deletion.${q("tenant_id")} = ${tenantParameter} AND active_deletion.${q("knowledge_space_id")} = ${knowledgeSpaceParameter} AND active_deletion.${q("active_slot")} = 1${deletionScope}${sourceWorkflowDeletionOwnershipExclusion(database, activeDeletionParams, scope, input)} LIMIT 1 FOR UPDATE;`,
     tableName: "deletion_jobs",
   });
   return activeDeletion.rows.length === 0;
+}
+
+function sourceWorkflowDeletionOwnershipExclusion(
+  database: DatabaseAdapter,
+  params: DatabaseQueryValue[],
+  scope: DeletionAdmissionScope | undefined,
+  input: KnowledgeSpaceDeletionAdmissionInput,
+): string {
+  if (scope?.kind !== "source_workflow" || !("workflowId" in input) || !input.workflowId) {
+    return "";
+  }
+  params.push(`source-remote-missing:${input.workflowId}:%`);
+  const pattern = databasePlaceholder(database, params.length);
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  return ` AND NOT (active_deletion.${q("target_type")} = 'logical_document' AND active_deletion.${q("idempotency_key")} LIKE ${pattern})`;
 }
 
 export function documentWriteDeletionScopeQuery(

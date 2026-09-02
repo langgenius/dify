@@ -165,34 +165,38 @@ def resume_committed_source_import(
         "workflowId": workflow.id,
         "syncPolicy": import_marker.get("syncPolicy"),
     }
-    if last_import is not None or current_pending_import != pending_import or source.status != "syncing":
-        # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
-        try:
-            facade.update_source(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                control_space_id=control_space_id,
-                source_id=source.id,
-                payload=KnowledgeFSSourceUpdatePayload(
-                    expectedVersion=source.version,
-                    metadata={"lastImport": None, "preview": False, _PENDING_IMPORT_KEY: pending_import},
-                    status="syncing",
-                ),
-            )
-        except KnowledgeFSProductRequestRejectedError as error:
-            if error.status_code != 409:
-                raise
-            # A prior reconciler can finish its stale terminal write while retry is accepted.
-            # The newly dispatched reconciler below re-reads both authorities and repairs it.
     from tasks.knowledge_fs_source_import_tasks import finalize_source_import
 
-    finalize_source_import.delay(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source.id,
-        workflow_id=workflow.id,
-    )
+    try:
+        if last_import is not None or current_pending_import != pending_import or source.status != "syncing":
+            # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
+            try:
+                facade.update_source(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                    source_id=source.id,
+                    payload=KnowledgeFSSourceUpdatePayload(
+                        expectedVersion=source.version,
+                        metadata={"lastImport": None, "preview": False, _PENDING_IMPORT_KEY: pending_import},
+                        status="syncing",
+                    ),
+                )
+            except KnowledgeFSProductRequestRejectedError as error:
+                if error.status_code != 409:
+                    raise
+                # A prior reconciler can finish its stale terminal write while retry is accepted.
+                # The newly dispatched reconciler below re-reads both authorities and repairs it.
+    finally:
+        # The remote Source update may commit before its follow-up sync-policy bind fails.
+        # Always restore reconciliation ownership once this workflow marker is authoritative.
+        finalize_source_import.delay(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source.id,
+            workflow_id=workflow.id,
+        )
 
 
 def retry_or_resume_source_workflow(
