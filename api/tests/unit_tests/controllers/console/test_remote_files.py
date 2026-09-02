@@ -1,349 +1,250 @@
 from __future__ import annotations
 
 import urllib.parse
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 from flask import Flask
 
-from controllers.common.errors import FileTooLargeError, RemoteFileUploadError, UnsupportedFileTypeError
+from controllers.common.errors import (
+    BlockedFileExtensionError,
+    FileTooLargeError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
+    UnsupportedFileTypeError,
+)
 from controllers.console import remote_files as remote_files_module
-from extensions.storage.storage_type import StorageType
+from libs.exception import BaseHTTPException
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.enums import CreatorUserRole
-from models.model import UploadFile
+from services.errors.file import (
+    BlockedFileExtensionError as ServiceBlockedFileExtensionError,
+)
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from services.remote_file_service import (
+    RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
+)
+from services.remote_file_service import RemoteFileError, RemoteFileInfoResult, RemoteFileUploadResult
+from services.remote_file_service import (
+    RemoteFileInvalidResponseError as RemoteFileInvalidResponseServiceError,
+)
+from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFileInvalidUrlServiceError
+from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
+from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
+from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+
+REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPException], str, int], ...] = (
+    (RemoteFileInvalidUrlServiceError, RemoteFileInvalidUrlError, "remote_file_invalid_url", 400),
+    (RemoteFileUrlBlockedServiceError, RemoteFileUrlBlockedError, "remote_file_url_blocked", 400),
+    (RemoteFileNotFoundServiceError, RemoteFileNotFoundError, "remote_file_not_found", 404),
+    (RemoteFileAccessDeniedServiceError, RemoteFileAccessDeniedError, "remote_file_access_denied", 400),
+    (RemoteFileUnavailableServiceError, RemoteFileUnavailableError, "remote_file_unavailable", 502),
+    (
+        RemoteFileInvalidResponseServiceError,
+        RemoteFileInvalidResponseError,
+        "remote_file_invalid_response",
+        502,
+    ),
+)
 
 
-def _make_account(account_id: str = "u1") -> Account:
+def _account() -> Account:
     account = Account(
         name="Test User",
-        email=f"{account_id}@example.com",
+        email="user@example.com",
         status=AccountStatus.ACTIVE,
     )
-    account.id = account_id
+    account.id = "account-1"
     account.role = TenantAccountRole.OWNER
     return account
 
 
-def _upload_file(
-    *,
-    file_id: str = "file-1",
-    name: str = "report.txt",
-    size: int = 16,
-    extension: str = ".txt",
-    mime_type: str = "text/plain",
-    created_at: datetime | None = None,
-) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key=f"upload/{name}",
-        name=name,
-        size=size,
-        extension=extension,
-        mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="u1",
-        created_at=created_at or datetime(2024, 1, 1, tzinfo=UTC),
-        used=False,
+def _upload_result() -> RemoteFileUploadResult:
+    return RemoteFileUploadResult(
+        id="file-1",
+        name="report.txt",
+        size=16,
+        extension="txt",
+        url="https://signed.example/file-1",
+        mime_type="text/plain",
+        created_by="account-1",
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
-    upload_file.id = file_id
-    return upload_file
 
 
-class _FakeResponse:
-    def __init__(
+@contextmanager
+def _patch_application_services(remote_files: MagicMock) -> Generator[None]:
+    with patch.object(
+        remote_files_module,
+        "application_services",
+        return_value=SimpleNamespace(remote_files=remote_files),
+    ):
+        yield
+
+
+class TestGetRemoteFileInfo:
+    def test_decodes_url_and_preserves_console_missing_length_default(self, app: Flask) -> None:
+        api = remote_files_module.GetRemoteFileInfo()
+        handler = unwrap(api.get)
+        remote_files = MagicMock()
+        remote_files.fetch_info.return_value = RemoteFileInfoResult(
+            content_type="text/plain",
+            content_length=None,
+        )
+        target_url = "https://example.com/file?name=report.txt"
+        encoded_url = urllib.parse.quote(target_url, safe="")
+
+        with (
+            app.test_request_context(f"/remote-files/{encoded_url}", method="GET"),
+            _patch_application_services(remote_files),
+        ):
+            response = handler(api, encoded_url)
+
+        assert response == {"file_type": "text/plain", "file_length": 0}
+        remote_files.fetch_info.assert_called_once_with(url=target_url)
+
+    @pytest.mark.parametrize(("service_error_type", "http_error", "error_code", "status"), REMOTE_FILE_ERROR_CASES)
+    def test_translates_remote_file_errors(
         self,
-        *,
-        status_code: int = 200,
-        headers: dict[str, str] | None = None,
-        method: str = "GET",
-        content: bytes = b"",
-        text: str = "",
-        error: Exception | None = None,
+        app: Flask,
+        service_error_type: type[RemoteFileError],
+        http_error: type[BaseHTTPException],
+        error_code: str,
+        status: int,
     ) -> None:
-        self.status_code = status_code
-        self.headers = headers or {}
-        self.request = SimpleNamespace(method=method)
-        self.content = content
-        self.text = text
-        self._error = error
+        api = remote_files_module.GetRemoteFileInfo()
+        handler = unwrap(api.get)
+        service_error = service_error_type("sensitive upstream details")
+        remote_files = MagicMock()
+        remote_files.fetch_info.side_effect = service_error
 
-    def raise_for_status(self) -> None:
-        if self._error:
-            raise self._error
+        with (
+            app.test_request_context("/remote-files/url", method="GET"),
+            _patch_application_services(remote_files),
+            pytest.raises(http_error) as error_info,
+        ):
+            handler(api, "url")
 
-
-def _mock_upload_dependencies(
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    file_size_within_limit: bool = True,
-):
-    file_info = SimpleNamespace(
-        filename="report.txt",
-        extension=".txt",
-        mimetype="text/plain",
-        size=3,
-    )
-    monkeypatch.setattr(
-        remote_files_module.helpers,
-        "guess_file_info_from_response",
-        MagicMock(return_value=file_info),
-    )
-
-    file_service_cls = MagicMock()
-    file_service_cls.is_file_size_within_limit.return_value = file_size_within_limit
-    monkeypatch.setattr(remote_files_module, "FileService", file_service_cls)
-    current_user = _make_account()
-    monkeypatch.setattr(remote_files_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(
-        remote_files_module.file_helpers,
-        "get_signed_file_url",
-        lambda upload_file_id: f"https://signed.example/{upload_file_id}",
-    )
-
-    return file_service_cls, current_user
+        assert error_info.value.__cause__ is service_error
+        assert error_info.value.data is not None
+        assert error_info.value.data["code"] == error_code
+        assert error_info.value.data["status"] == status
+        assert "sensitive upstream details" not in error_info.value.data["message"]
 
 
-def test_get_remote_file_info_uses_head_when_successful(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.GetRemoteFileInfo()
-    handler = unwrap(api.get)
-    decoded_url = "https://example.com/test.txt"
-    encoded_url = urllib.parse.quote(decoded_url, safe="")
+class TestRemoteFileUpload:
+    def test_controller_delegates_with_validated_payload(self, app: Flask) -> None:
+        api = remote_files_module.RemoteFileUpload()
+        handler = unwrap(api.post)
+        account = _account()
+        remote_file = _upload_result()
 
-    head_resp = _FakeResponse(
-        status_code=200,
-        headers={"Content-Type": "text/plain", "Content-Length": "128"},
-        method="HEAD",
-    )
-    make_request = MagicMock(return_value=head_resp)
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
+        with (
+            app.test_request_context("/remote-files/upload", method="POST"),
+            patch.object(remote_files_module, "upload_remote_file", return_value=remote_file) as upload,
+        ):
+            response, status = handler(
+                api,
+                remote_files_module.RemoteFileUploadPayload(url="https://example.com/report.txt"),
+                account,
+            )
 
-    with app.test_request_context(method="GET"):
-        payload = handler(api, url=encoded_url)
-
-    assert payload == {"file_type": "text/plain", "file_length": 128}
-    make_request.assert_called_once_with("HEAD", decoded_url)
-
-
-def test_get_remote_file_info_preserves_unencoded_target_query(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.GetRemoteFileInfo()
-    handler = unwrap(api.get)
-    target_url = "http://example.com/api/aiagent/httpview/txt"
-    query = "fileNameKey=cankao1_ce4305bc-be20-4c5d-8732-de1741d28e27"
-
-    head_resp = _FakeResponse(
-        status_code=200,
-        headers={"Content-Type": "text/plain", "Content-Length": "128"},
-        method="HEAD",
-    )
-    make_request = MagicMock(return_value=head_resp)
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    with app.test_request_context(f"/remote-files/{target_url}?{query}", method="GET"):
-        payload = handler(api, url=target_url)
-
-    assert payload == {"file_type": "text/plain", "file_length": 128}
-    make_request.assert_called_once_with("HEAD", f"{target_url}?{query}")
-
-
-def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    api = remote_files_module.GetRemoteFileInfo()
-    handler = unwrap(api.get)
-    decoded_url = "https://example.com/test.txt"
-    encoded_url = urllib.parse.quote(decoded_url, safe="")
-
-    make_request = MagicMock(
-        side_effect=[
-            _FakeResponse(status_code=503),
-            _FakeResponse(status_code=200, headers={}, method="GET"),
-        ]
-    )
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    with app.test_request_context(method="GET"):
-        payload = handler(api, url=encoded_url)
-
-    assert payload == {"file_type": "application/octet-stream", "file_length": 0}
-    assert make_request.call_args_list[0].args == ("HEAD", decoded_url)
-    assert make_request.call_args_list[1].args == ("GET", decoded_url)
-    assert make_request.call_args_list[1].kwargs == {"timeout": 3}
-
-
-def test_remote_file_upload_success_when_fetch_falls_back_to_get(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/report.txt"
-
-    get_resp = _FakeResponse(status_code=200, method="GET", content=b"fallback-content")
-    make_request = MagicMock(side_effect=[_FakeResponse(status_code=404), get_resp])
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
-    upload_file = _upload_file()
-    file_service_cls.return_value.upload_file.return_value = upload_file
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        payload, status = handler(api, current_user)
-
-    assert status == 201
-    assert payload["id"] == "file-1"
-    assert payload["url"] == "https://signed.example/file-1"
-    assert make_request.call_args_list[0].args == ("HEAD",)
-    assert make_request.call_args_list[0].kwargs == {"url": url}
-    assert make_request.call_args_list[1].args == ("GET",)
-    assert make_request.call_args_list[1].kwargs == {"url": url, "timeout": 3, "follow_redirects": True}
-    file_service_cls.return_value.upload_file.assert_called_once_with(
-        filename="report.txt",
-        content=b"fallback-content",
-        mimetype="text/plain",
-        user=current_user,
-        tenant_id=None,
-        source_url=url,
-    )
-
-
-def test_remote_file_upload_assigns_resource_tenant(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    url = "https://example.com/report.txt"
-    response = _FakeResponse(status_code=200, method="GET", content=b"content")
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", MagicMock(return_value=response))
-
-    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
-    file_service_cls.return_value.upload_file.return_value = _upload_file(size=7)
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        remote_files_module.upload_remote_file_from_request(
-            current_user=current_user,
-            resource_tenant_id="app-tenant-id",
+        assert status == 201
+        assert response["created_at"] == 1704067200
+        upload.assert_called_once_with(
+            url="https://example.com/report.txt",
+            current_user=account,
         )
 
-    file_service_cls.return_value.upload_file.assert_called_once_with(
-        filename="report.txt",
-        content=b"content",
-        mimetype="text/plain",
-        user=current_user,
-        tenant_id="app-tenant-id",
-        source_url=url,
+    def test_helper_preserves_explicit_resource_tenant(self, app: Flask) -> None:
+        account = _account()
+        remote_files = MagicMock()
+        remote_files.upload_from_url.return_value = _upload_result()
+
+        with (
+            app.test_request_context("/remote-files/upload", method="POST"),
+            _patch_application_services(remote_files),
+        ):
+            result = remote_files_module.upload_remote_file(
+                url="https://example.com/report.txt",
+                current_user=account,
+                resource_tenant_id="app-tenant-id",
+            )
+
+        assert result == _upload_result()
+        remote_files.upload_from_url.assert_called_once_with(
+            url="https://example.com/report.txt",
+            user=account,
+            tenant_id="app-tenant-id",
+        )
+
+    @pytest.mark.parametrize(("service_error_type", "http_error", "error_code", "status"), REMOTE_FILE_ERROR_CASES)
+    def test_helper_translates_remote_file_errors(
+        self,
+        app: Flask,
+        service_error_type: type[RemoteFileError],
+        http_error: type[BaseHTTPException],
+        error_code: str,
+        status: int,
+    ) -> None:
+        service_error = service_error_type("sensitive upstream details")
+        remote_files = MagicMock()
+        remote_files.upload_from_url.side_effect = service_error
+
+        with (
+            app.test_request_context("/remote-files/upload", method="POST"),
+            _patch_application_services(remote_files),
+            pytest.raises(http_error) as error_info,
+        ):
+            remote_files_module.upload_remote_file(
+                url="https://example.com/report.txt",
+                current_user=_account(),
+            )
+
+        assert error_info.value.__cause__ is service_error
+        assert error_info.value.data is not None
+        assert error_info.value.data["code"] == error_code
+        assert error_info.value.data["status"] == status
+        assert "sensitive upstream details" not in error_info.value.data["message"]
+
+    @pytest.mark.parametrize(
+        ("service_error", "http_error"),
+        [
+            (ServiceFileTooLargeError("size exceeded"), FileTooLargeError),
+            (ServiceUnsupportedFileTypeError(), UnsupportedFileTypeError),
+            (
+                ServiceBlockedFileExtensionError("File extension '.exe' is not allowed"),
+                BlockedFileExtensionError,
+            ),
+        ],
     )
+    def test_helper_translates_file_errors(
+        self,
+        app: Flask,
+        service_error: Exception,
+        http_error: type[Exception],
+    ) -> None:
+        remote_files = MagicMock()
+        remote_files.upload_from_url.side_effect = service_error
 
+        with (
+            app.test_request_context("/remote-files/upload", method="POST"),
+            _patch_application_services(remote_files),
+            pytest.raises(http_error) as error_info,
+        ):
+            remote_files_module.upload_remote_file(
+                url="https://example.com/report.txt",
+                current_user=_account(),
+            )
 
-def test_remote_file_upload_fetches_content_with_second_get_when_head_succeeds(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/photo.jpg"
-
-    head_resp = _FakeResponse(status_code=200, method="HEAD", content=b"head-content")
-    extra_get_resp = _FakeResponse(status_code=200, method="GET", content=b"downloaded-content")
-    make_request = MagicMock(side_effect=[head_resp, extra_get_resp])
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
-    upload_file = _upload_file(
-        file_id="file-2",
-        name="photo.jpg",
-        size=18,
-        extension=".jpg",
-        mime_type="image/jpeg",
-        created_at=datetime(2024, 1, 2, tzinfo=UTC),
-    )
-    file_service_cls.return_value.upload_file.return_value = upload_file
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        payload, status = handler(api, current_user)
-
-    assert status == 201
-    assert payload["id"] == "file-2"
-    assert make_request.call_args_list[1].args == ("GET", url)
-    assert file_service_cls.return_value.upload_file.call_args.kwargs["content"] == b"downloaded-content"
-
-
-def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/fail.txt"
-
-    make_request = MagicMock(
-        side_effect=[
-            _FakeResponse(status_code=500),
-            _FakeResponse(status_code=502, text="bad gateway"),
-        ]
-    )
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: bad gateway"):
-            handler(api, _make_account())
-
-
-def test_remote_file_upload_raises_on_httpx_request_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/fail.txt"
-
-    request = httpx.Request("HEAD", url)
-    make_request = MagicMock(side_effect=httpx.RequestError("network down", request=request))
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: network down"):
-            handler(api, _make_account())
-
-
-def test_remote_file_upload_rejects_oversized_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/large.bin"
-
-    make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-
-    _, current_user = _mock_upload_dependencies(monkeypatch, file_size_within_limit=False)
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(FileTooLargeError):
-            handler(api, current_user)
-
-
-def test_remote_file_upload_translates_service_file_too_large_error(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/large.bin"
-
-    make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
-    file_service_cls.return_value.upload_file.side_effect = ServiceFileTooLargeError("size exceeded")
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(FileTooLargeError, match="size exceeded"):
-            handler(api, current_user)
-
-
-def test_remote_file_upload_translates_service_unsupported_type_error(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    api = remote_files_module.RemoteFileUpload()
-    handler = unwrap(api.post)
-    url = "https://example.com/file.exe"
-
-    make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))
-    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
-    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
-    file_service_cls.return_value.upload_file.side_effect = ServiceUnsupportedFileTypeError()
-
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(UnsupportedFileTypeError):
-            handler(api, current_user)
+        assert error_info.value.__cause__ is service_error

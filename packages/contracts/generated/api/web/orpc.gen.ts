@@ -797,14 +797,19 @@ export const passport = {
  * int: HTTP status code 201 for success
  *
  * Raises:
- * RemoteFileUploadError: Failed to fetch file from remote URL
+ * RemoteFileInvalidUrlError: Remote file URL is invalid
+ * RemoteFileUrlBlockedError: Remote file URL is blocked
+ * RemoteFileNotFoundError: Remote file does not exist
+ * RemoteFileAccessDeniedError: Remote file requires authorization
+ * RemoteFileUnavailableError: Remote file is unavailable
+ * RemoteFileInvalidResponseError: Remote file response is invalid
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
 export const post19 = oc
   .route({
     description:
-      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRemoteFilesUpload',

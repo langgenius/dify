@@ -478,7 +478,7 @@ export const zRemoteFileInfo = z.object({
  * RemoteFileUploadPayload
  */
 export const zRemoteFileUploadPayload = z.object({
-  url: z.url().min(1).max(2083),
+  url: z.url(),
 })
 
 /**
