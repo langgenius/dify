@@ -19,15 +19,22 @@ from controllers.openapi.auth.requirements import (
     assert_license_valid,
 )
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from models.account import Account
 from models.model import EndUser
 
+_PIPELINES: dict[type[Subject], Pipeline] = {}
+
 
 class Pipeline:
     fixed: ClassVar[tuple[Requirement, ...]] = ()
+
+    def __init_subclass__(cls, serves: type[Subject] | None = None, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        if serves is not None:
+            _PIPELINES[serves] = cls()
 
     def run(
         self,
@@ -49,7 +56,11 @@ class Pipeline:
             return call(ctx=ctx)
 
 
-class AccountPipeline(Pipeline):
+def pipeline_for_subject(subject: Subject) -> Pipeline:
+    return _PIPELINES[type(subject)]
+
+
+class AccountPipeline(Pipeline, serves=AccountSubject):
     fixed = (ResolveCaller(),)
 
 
@@ -67,7 +78,7 @@ class _RequiresEnterprise(Requirement):
         assert_license_valid()
 
 
-class ExternalSsoPipeline(Pipeline):
+class ExternalSsoPipeline(Pipeline, serves=ExternalSsoSubject):
     fixed = (
         _RequiresEnterprise(),
         ResolveCaller(),

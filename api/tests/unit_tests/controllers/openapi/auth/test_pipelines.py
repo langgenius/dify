@@ -16,6 +16,7 @@ from controllers.openapi.auth.pipelines import (
     ExternalSsoPipeline,
     Pipeline,
     _RequiresEnterprise,
+    pipeline_for_subject,
 )
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -365,3 +366,8 @@ def test_a_refused_sso_request_never_creates_an_end_user(
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
     assert ctx.caller is None
+
+
+def test_each_subject_resolves_to_the_pipeline_that_serves_it() -> None:
+    assert type(pipeline_for_subject(account_subject())) is AccountPipeline
+    assert type(pipeline_for_subject(sso_subject())) is ExternalSsoPipeline
