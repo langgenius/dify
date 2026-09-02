@@ -23,12 +23,7 @@ import { canAccessSnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
 import SnippetPublishStatusFilter from './components/snippet-publish-status-filter'
-import {
-  SNIPPET_LIST_FILTER_GROUP_CLASS_NAME,
-  SNIPPET_LIST_GRID_CLASS_NAME,
-  SNIPPET_LIST_SEARCH_CLASS_NAME,
-  SNIPPET_LIST_SEARCH_DEBOUNCE_MS,
-} from './constants'
+import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
 
 const TagManagementModal = dynamic(
@@ -156,15 +151,20 @@ const SnippetList = () => {
   const hasAnySnippet = totalSnippetCount > 0
   const hasInitialQueryError = canQuerySnippetList && Boolean(error) && pages.length === 0
   const showSkeleton =
-    isLoadingCurrentWorkspace ||
-    (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
+    !hasInitialQueryError &&
+    (isLoadingCurrentWorkspace ||
+      (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0))))
   const isListBusy =
     isLoadingCurrentWorkspace || (canQuerySnippetList && (isFetching || isFetchingNextPage))
-  const listStatus =
-    showSkeleton || hasInitialQueryError
-      ? ''
-      : isListBusy
-        ? t(($) => $.loading, { ns: 'common' })
+  const initialQueryErrorMessage = hasInitialQueryError
+    ? t(($) => $['errorBoundary.title'], { ns: 'common' })
+    : ''
+  const listStatus = showSkeleton
+    ? ''
+    : isListBusy
+      ? t(($) => $.loading, { ns: 'common' })
+      : hasInitialQueryError
+        ? initialQueryErrorMessage
         : hasAnySnippet
           ? t(($) => $['operation.searchCount'], {
               ns: 'common',
@@ -195,7 +195,7 @@ const SnippetList = () => {
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className={SNIPPET_LIST_FILTER_GROUP_CLASS_NAME}>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
             <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
             <TagFilter
@@ -206,7 +206,7 @@ const SnippetList = () => {
             />
             <SearchInput
               name="snippet-query"
-              className={SNIPPET_LIST_SEARCH_CLASS_NAME}
+              className="w-full sm:w-50"
               value={keywords}
               onValueChange={setKeywords}
               placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
@@ -221,19 +221,17 @@ const SnippetList = () => {
       </div>
       <div
         aria-busy={isListBusy}
-        className={cn(SNIPPET_LIST_GRID_CLASS_NAME, !hasAnySnippet && 'overflow-hidden')}
+        className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))] sm:px-8',
+          !hasAnySnippet && 'overflow-hidden',
+        )}
       >
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
         ) : hasInitialQueryError ? (
-          <div
-            role="alert"
-            className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center"
-          >
-            <p className="system-md-medium text-text-secondary">
-              {t(($) => $['errorBoundary.title'], { ns: 'common' })}
-            </p>
-            <Button variant="secondary" onClick={() => refetch()}>
+          <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
+            <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
+            <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           </div>

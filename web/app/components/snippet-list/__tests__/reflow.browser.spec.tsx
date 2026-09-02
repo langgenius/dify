@@ -217,13 +217,14 @@ describe('Snippet list reflow', () => {
     await expect.element(card).toBeVisible()
 
     const mainElement = main.element()
-    const listElement = mainElement.firstElementChild
-    if (!listElement) throw new Error('SnippetList did not render its root owner')
+    const gridElement = card.element().closest('[aria-busy]')
+    if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
 
     expect(mainElement.clientWidth).toBe(320)
-    expect(listElement.scrollWidth).toBe(listElement.clientWidth)
+    expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
+    expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {
-      expectWithinHorizontalBounds(locator.element(), listElement)
+      expectWithinHorizontalBounds(locator.element(), mainElement)
     })
   })
 })

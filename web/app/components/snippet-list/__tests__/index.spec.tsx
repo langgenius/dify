@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -417,13 +417,15 @@ describe('SnippetList', () => {
   it('does not fetch or render snippets without snippet list permissions', () => {
     mockWorkspacePermissionKeys.mockReturnValue([])
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
     expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
       enabled: false,
     })
     expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.noSnippetsFound', { selector: 'p' })).toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
   it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
@@ -453,33 +455,64 @@ describe('SnippetList', () => {
       fetchNextPage: mockFetchNextPage,
     })
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
-    expect(screen.getByText('workflow.tabs.noSnippetsFound', { selector: 'p' })).toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
   })
 
-  it('shows request failures with retry without announcing an empty result', async () => {
+  it('announces request failures and preserves retry focus while refetching', async () => {
     const user = userEvent.setup()
+    const requestError = new Error('Request failed')
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       data: { pages: [] },
-      error: new Error('Request failed'),
+      error: requestError,
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
     })
 
-    renderList()
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
 
-    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.title')
-    expect(screen.getByRole('status')).toBeEmptyDOMElement()
-    expect(
-      screen.queryByText('workflow.tabs.noSnippetsFound', { selector: 'p' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
+    expect(status).not.toHaveTextContent('workflow.tabs.noSnippetsFound')
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(retryButton)
 
     expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(retryButton).toHaveFocus()
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.loading')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
   })
 
   it('announces the current result count', () => {
@@ -578,7 +611,6 @@ describe('SnippetList', () => {
     const { container, rerenderList } = renderList()
     const status = screen.getByRole('status')
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(6)
     expect(status).toBeEmptyDOMElement()
     expect(status.closest('[aria-busy]')).toBeNull()
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
@@ -596,7 +628,7 @@ describe('SnippetList', () => {
     )
   })
 
-  it('renders a next-page loading skeleton', () => {
+  it('keeps current results available while the next page is loading', () => {
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       isFetchingNextPage: true,
@@ -604,9 +636,13 @@ describe('SnippetList', () => {
       fetchNextPage: mockFetchNextPage,
     })
 
-    const { container } = renderList()
+    renderList()
+    const card = screen.getByRole('link', { name: /Sales Snippet/ })
+    const list = card.closest('[aria-busy]')
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3)
+    expect(card).toBeInTheDocument()
+    expect(list).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
   })
 
   it('fetches the next page when the scroll anchor intersects', () => {
