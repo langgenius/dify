@@ -1,5 +1,6 @@
 from datetime import timedelta
 from types import SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,6 +13,12 @@ from models.account import Tenant
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from tasks import bootstrap_tokener_tenant_task as task_module
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+class _CeleryTaskOptions(Protocol):
+    queue: str
+    acks_late: bool
+    reject_on_worker_lost: bool
 
 
 def _persist_integration(
@@ -45,7 +52,7 @@ def _snapshot(integration: TenantTokenerIntegration) -> task_module._Integration
 
 
 def test_task_uses_plugin_queue_and_late_acknowledgement() -> None:
-    task = task_module.bootstrap_tokener_tenant_task
+    task = cast(_CeleryTaskOptions, task_module.bootstrap_tokener_tenant_task)
 
     assert task.queue == task_module.TOKENER_BOOTSTRAP_QUEUE
     assert task.acks_late is True
