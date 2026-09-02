@@ -309,6 +309,43 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     emit_canvas(env, "create_checkpoint")
     intents = env.agent.build_nodes(list(fc.plan_items))
 
+    if not any(intent.op == "create_node" for intent in intents):
+        # Generation produced no nodes (build.build_nodes' honest-empty path when the
+        # generator + its one retry still fail to yield a valid graph). Do NOT delete
+        # the placeholder start or report a successful build -- that would empty the
+        # canvas while claiming "Workflow built on the canvas." Surface an honest error
+        # and stay in plan_approval so the user can adjust the goal/plan and re-approve.
+        # (A loop-back re-approve still returns the fixed create intents -- they are only
+        # filtered as already-present below -- so zero create intents means genuine failure.)
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="Couldn't build the workflow",
+                body=(
+                    "I couldn't generate a valid workflow graph from this plan. "
+                    "Adjust the goal or the plan and approve again to retry."
+                ),
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="build.plan_approval",
+                trace=Trace(status="completed", steps=[]),
+                reply_text=(
+                    "I couldn't build a valid workflow graph -- see the error above. "
+                    "Adjust the plan and approve again."
+                ),
+                cards=["error"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_PLAN_APPROVAL,
+            context=fc,
+            items=[*error_items, *turn_items],
+        )
+
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
     current_nodes = current_graph.get("nodes", [])
     existing_node_ids = {n.get("id") for n in current_nodes}

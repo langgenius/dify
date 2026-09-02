@@ -257,6 +257,33 @@ def test_plan_approval_ignores_non_approve_action():
     assert res.next == PcState.BUILD_PLAN_APPROVAL
 
 
+def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
+    """If build_nodes yields no create_node intents (generation ultimately failed),
+    the handler must NOT delete the placeholder start, must NOT claim a successful
+    build, and must stay in plan_approval -- otherwise the canvas is emptied while
+    the assistant reports 'Workflow built on the canvas.'"""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
+        "edges": [],
+    }
+    env.agent.build_nodes = lambda _plan: []  # generation produced nothing
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"])
+
+    res = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    assert res.next == PcState.BUILD_PLAN_APPROVAL  # retryable, NOT advanced to execution
+    assert {n["id"] for n in env.dify.graph["nodes"]} == {"start"}  # placeholder kept; nothing deleted/added
+    assert any(i.kind == "error" for i in res.items)  # honest error surfaced
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["reply_text"] != "Workflow built on the canvas."  # no false success claim
+
+
 def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
     from core.dify_builder.handlers_build import handle_plan_approval
     from core.dify_builder.models import MutationIntent
