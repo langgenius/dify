@@ -288,14 +288,40 @@ const toProviderToolFormState = (
   }
 }
 
+const PROVIDER_SCOPED_CREDENTIAL_PROVIDER_TYPES = new Set(['api', 'workflow'])
+
+const hasProviderScopedAuthorization = (tool: AgentProviderTool) =>
+  PROVIDER_SCOPED_CREDENTIAL_PROVIDER_TYPES.has(tool.providerType ?? '') &&
+  tool.credentialVariant === 'authorized'
+
+const resolveDifyToolCredentialId = (tool: AgentProviderTool) =>
+  tool.credentialId ?? (hasProviderScopedAuthorization(tool) ? tool.id : undefined)
+
+const resolveDifyToolCredentialType = (tool: AgentProviderTool) => {
+  if (resolveDifyToolCredentialId(tool)) {
+    return tool.credentialType === 'oauth2' ? ('oauth2' as const) : ('api-key' as const)
+  }
+
+  return 'unauthorized' as const
+}
+
+const resolveDifyToolCredentialRef = (tool: AgentProviderTool) => {
+  const credentialId = resolveDifyToolCredentialId(tool)
+  if (!credentialId) return undefined
+
+  return {
+    id: credentialId,
+    provider: tool.id,
+    type: 'provider' as const,
+  }
+}
+
 const toDifyToolConfigs = (
   tools: AgentTool[],
   toolSettings: Record<string, Record<string, unknown>>,
 ) =>
   tools.flatMap((tool) => {
     if (tool.kind !== 'provider') return []
-
-    const credentialType = tool.credentialId ? (tool.credentialType ?? 'api-key') : 'unauthorized'
 
     return tool.actions.map((action) => ({
       enabled: true,
@@ -305,14 +331,8 @@ const toDifyToolConfigs = (
       provider_type: tool.providerType,
       tool_name: action.toolName,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-      credential_type: credentialType,
-      credential_ref: tool.credentialId
-        ? {
-            id: tool.credentialId,
-            provider: tool.id,
-            type: 'provider' as const,
-          }
-        : undefined,
+      credential_type: resolveDifyToolCredentialType(tool),
+      credential_ref: resolveDifyToolCredentialRef(tool),
     }))
   })
 

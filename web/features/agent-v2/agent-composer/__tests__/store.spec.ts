@@ -481,6 +481,89 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should preserve provider-scoped api tool credentials across save and hydrate', () => {
+    const formState = agentSoulConfigToFormState({
+      tools: {
+        dify_tools: [
+          {
+            provider: 'petstore',
+            provider_id: 'api-provider-1',
+            provider_type: 'api',
+            tool_name: 'get_pet',
+            credential_type: 'api-key',
+            credential_ref: {
+              id: 'api-provider-1',
+              provider: 'api-provider-1',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    })
+    const publishConfig = formStateToAgentSoulConfig({ formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'api-provider-1',
+        credentialId: 'api-provider-1',
+        credentialType: 'api-key',
+        credentialVariant: 'authorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        provider_id: 'api-provider-1',
+        provider_type: 'api',
+        credential_type: 'api-key',
+        credential_ref: {
+          id: 'api-provider-1',
+          provider: 'api-provider-1',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
+  it('should save authorized swagger tools without an explicit credential id', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'api-provider-1',
+            kind: 'provider',
+            name: 'petstore',
+            iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            providerType: 'api',
+            credentialType: 'api-key',
+            credentialVariant: 'authorized',
+            actions: [
+              {
+                id: 'api-provider-1:get_pet',
+                name: 'Get Pet',
+                toolName: 'get_pet',
+                description: 'Fetch a pet by id.',
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        provider_id: 'api-provider-1',
+        provider_type: 'api',
+        credential_type: 'api-key',
+        credential_ref: {
+          id: 'api-provider-1',
+          provider: 'api-provider-1',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
   it('should preserve oauth2 credential references when saving tool config', () => {
     const baseConfig = {
       tools: {
