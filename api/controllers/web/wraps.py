@@ -18,7 +18,7 @@ from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -44,7 +44,7 @@ def validate_jwt_token[**P, R](
 
 
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
-    system_features = FeatureService.get_system_features()
+    webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
     if not app_code:
         app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
     try:
@@ -75,21 +75,19 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         # for enterprise webapp auth
         app_web_auth_enabled = False
         webapp_settings = None
-        if system_features.webapp_auth.enabled:
+        if webapp_auth_enabled:
             app_id = AppService.get_app_id_by_code(app_code, session=db.session())
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
             app_web_auth_enabled = webapp_settings.access_mode != WebAppAccessMode.PUBLIC
 
-        _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
-        _validate_user_accessibility(
-            decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled, webapp_settings
-        )
+        _validate_webapp_token(decoded, app_web_auth_enabled, webapp_auth_enabled)
+        _validate_user_accessibility(decoded, app_code, app_web_auth_enabled, webapp_auth_enabled, webapp_settings)
 
         return app_model, end_user
     except Unauthorized as e:
-        if system_features.webapp_auth.enabled:
+        if webapp_auth_enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
             app_id = AppService.get_app_id_by_code(app_code, session=db.session())

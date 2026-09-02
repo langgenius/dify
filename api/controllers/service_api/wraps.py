@@ -200,7 +200,7 @@ def cloud_edition_billing_resource_check[**P, R](
                 if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
-                vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                vector_space = application_services().feature_queries.get_workspace_vector_space(api_token.tenant_id)
                 if vector_space.usage_unknown:
                     features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
                     if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:

@@ -74,6 +74,20 @@ def _configure_current_app_mock(mock_current_app):
     mock_current_app._get_current_object = Mock(return_value=Mock())
 
 
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
+
+
 def _session_proxy(session: Session) -> scoped_session[Session]:
     """Expose the real SQLite session through Flask-SQLAlchemy's callable shape."""
     return scoped_session(lambda: session)
