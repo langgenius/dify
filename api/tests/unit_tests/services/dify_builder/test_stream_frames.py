@@ -1,95 +1,118 @@
 import json
 
-from libs.broadcast_channel.exc import SubscriptionClosedError
+import pytest
+
 from services.dify_builder import wiring
-
-
-class _FakeSub:
-    def __init__(self, items):
-        self._items = list(items)  # bytes | None entries; None => a receive() timeout
-        self.closed = False
-        self.timeouts: list[float | None] = []
-
-    def receive(self, timeout=None):
-        self.timeouts.append(timeout)
-        if self._items:
-            return self._items.pop(0)
-        raise SubscriptionClosedError("closed")
-
-    def close(self):
-        self.closed = True
 
 
 class _FakeSubscription:
     def __init__(self, items):
-        self._items = list(items)  # bytes entries popped in order
+        self._items = list(items)
         self.closed = False
         self.timeouts: list[float | None] = []
 
     def receive(self, timeout=None):
         self.timeouts.append(timeout)
-        if self._items:
-            return self._items.pop(0)
-        return None
+        if not self._items:
+            raise AssertionError("test subscription ran out of events before a terminal frame")
+        return self._items.pop(0)
 
     def close(self):
         self.closed = True
 
 
-def test_stream_frames_snapshot_heartbeat_events_then_close():
-    view = {"session_id": "s1", "state": "fix.verify"}
-    node = json.dumps({"kind": "node", "node_id": "output", "status": "running"}).encode()
-    state = json.dumps({"kind": "state", "version": 5, "state": "success"}).encode()
-    sub = _FakeSub([node, None, state])  # event, timeout(heartbeat), event, then closed
-    frames = list(wiring.stream_frames(view, sub))
-    assert frames[0] == f"event: snapshot\ndata: {json.dumps(view)}\n\n"
-    assert frames[1] == f"event: node\ndata: {node.decode()}\n\n"
-    assert frames[2] == ": keep-alive\n\n"
-    assert frames[3] == f"event: state\ndata: {state.decode()}\n\n"
-    assert sub.closed is True  # generator closed the subscription in finally
+def _event(frame: str) -> dict:
+    lines = frame.strip().splitlines()
+    assert lines[0] == "event: message"
+    return json.loads(lines[1].removeprefix("data: "))
 
 
-def test_stream_frames_malformed_json_falls_back_to_message_kind():
-    view = {"session_id": "s1", "state": "fix.verify"}
-    malformed = b"not-json"
-    sub = _FakeSub([malformed])
-    frames = list(wiring.stream_frames(view, sub))
-    assert frames[0] == f"event: snapshot\ndata: {json.dumps(view)}\n\n"
-    assert frames[1] == f"event: message\ndata: {malformed.decode()}\n\n"
-    assert sub.closed is True
-
-
-def test_stream_advance_frames_relays_until_terminal_state_then_closes():
-    from services.dify_builder.wiring import stream_advance_frames
-
+def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
     view = {"session_id": "s1", "state": "fix.diagnose"}
-    node = json.dumps({"kind": "node", "node_id": "n1", "status": "running"}).encode()
-    state = json.dumps({"kind": "state", "version": 7, "session_id": "s1"}).encode()
-    extra = json.dumps({"kind": "node", "node_id": "n2"}).encode()  # must NOT be relayed (after terminal)
-    sub = _FakeSubscription([node, state, extra])  # reuse this file's fake; .receive pops in order
+    node = {"kind": "node", "node_id": "n1", "status": "running"}
+    commit = {
+        "kind": "commit",
+        "session_id": "s1",
+        "version": 6,
+        "state": "fix.propose",
+        "settled": False,
+        "items": [],
+    }
+    state = {"kind": "state", "version": 7, "session_id": "s1"}
+    extra = {"kind": "node", "node_id": "n2"}
+    subscription = _FakeSubscription(
+        [
+            json.dumps(node).encode(),
+            None,
+            json.dumps(commit).encode(),
+            json.dumps(state).encode(),
+            json.dumps(extra).encode(),
+        ]
+    )
 
-    frames = list(stream_advance_frames(view, sub, expect_advance=True))
+    frames = list(wiring.stream_advance_frames(view, subscription, expect_advance=True))
 
-    assert frames[0] == f"event: snapshot\ndata: {json.dumps(view)}\n\n"
-    assert frames[1] == f"event: node\ndata: {node.decode()}\n\n"
-    assert frames[2] == f"event: state\ndata: {state.decode()}\n\n"
-    assert len(frames) == 3            # closed at the terminal state frame; `extra` not relayed
-    assert sub.closed is True
-
-
-def test_stream_advance_frames_closes_on_error_frame():
-    from services.dify_builder.wiring import stream_advance_frames
-
-    err = json.dumps({"kind": "error", "error": "step failed"}).encode()
-    sub = _FakeSubscription([err])
-    frames = list(stream_advance_frames({"session_id": "s1"}, sub, expect_advance=True))
-    assert frames[-1] == f"event: error\ndata: {err.decode()}\n\n"
-    assert sub.closed is True
+    assert _event(frames[0]) == {"event": "snapshot", "data": view}
+    assert _event(frames[1]) == {"event": "node", "data": node}
+    assert frames[2] == ": keep-alive\n\n"
+    assert _event(frames[3]) == {"event": "commit", "data": commit}
+    assert _event(frames[4]) == {"event": "state", "data": state}
+    assert len(frames) == 5
+    assert subscription.closed is True
+    assert subscription.timeouts == [wiring._HEARTBEAT_SECONDS] * 4
 
 
-def test_stream_advance_frames_settle_only_yields_snapshot_and_closes():
-    from services.dify_builder.wiring import stream_advance_frames
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"not-json",
+        json.dumps([]).encode(),
+        json.dumps({"kind": "notice", "text": "unsupported"}).encode(),
+    ],
+)
+def test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error(raw):
+    subscription = _FakeSubscription([raw])
 
+    frames = list(wiring.stream_advance_frames({"session_id": "s1"}, subscription, expect_advance=True))
+
+    assert _event(frames[-1]) == {
+        "event": "error",
+        "data": {"kind": "error", "error": "invalid Builder progress event"},
+    }
+    assert subscription.closed is True
+
+
+def test_stream_advance_frames_closes_on_error_event():
+    error = {"kind": "error", "error": "step failed"}
+    subscription = _FakeSubscription([json.dumps(error).encode()])
+
+    frames = list(wiring.stream_advance_frames({"session_id": "s1"}, subscription, expect_advance=True))
+
+    assert _event(frames[-1]) == {"event": "error", "data": error}
+    assert subscription.closed is True
+
+
+def test_stream_advance_frames_settled_call_yields_snapshot_only():
     view = {"session_id": "s1", "state": "edit.capability_check"}
-    frames = list(stream_advance_frames(view, None, expect_advance=False))
-    assert frames == [f"event: snapshot\ndata: {json.dumps(view)}\n\n"]
+
+    frames = list(wiring.stream_advance_frames(view, None, expect_advance=False))
+
+    assert [_event(frame) for frame in frames] == [{"event": "snapshot", "data": view}]
+
+
+def test_stream_advance_frames_can_emit_terminal_state_for_settled_message():
+    view = {"session_id": "s1", "state": "success"}
+
+    frames = list(
+        wiring.stream_advance_frames(
+            view,
+            None,
+            expect_advance=False,
+            emit_state_when_settled=True,
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {"event": "snapshot", "data": view},
+        {"event": "state", "data": {"kind": "state", **view}},
+    ]

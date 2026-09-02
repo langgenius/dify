@@ -4,6 +4,7 @@ import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
+import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -65,6 +66,7 @@ function createWarningGraph() {
     height: 80,
     data: { ...llmDefault.defaultValue, type: BlockEnum.LLM, title: 'Broken Node' },
   })
+  store.set(difyBuilderSessionBusyAtom, busy)
   return {
     nodes: [start, missingPlugin, invalidNode],
     edges: [
@@ -237,7 +239,6 @@ describe('WorkflowChecklist', () => {
     expect(mockStartChecklistFix).toHaveBeenCalledWith(
       'app-1',
       [
-        expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
         expect.objectContaining({
           node_id: 'node-1',
           messages: ['Needs configuration'],
@@ -246,8 +247,35 @@ describe('WorkflowChecklist', () => {
       undefined,
     )
     expect(store.get(difyBuilderChecklistErrorsAtom)).toEqual([
-      expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
       expect.objectContaining({ node_id: 'node-1', messages: ['Needs configuration'] }),
     ])
+  })
+
+  it('should hide checklist Fix while Builder is disabled', async () => {
+    const user = userEvent.setup()
+    renderChecklist({ disabled: false }, { enabled: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should keep checklist Fix disabled without edit access or while the session is busy', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    expect(
+      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).toBeDisabled()
+
+    unmount()
+    renderChecklist({ disabled: false }, { busy: true })
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    expect(
+      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).toBeDisabled()
   })
 })

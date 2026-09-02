@@ -3,6 +3,7 @@ import logging
 from core.dify_builder.models import Diagnosis
 from core.dify_builder.ports import DifyBuilderAgent
 from services.dify_builder.agent import build as build_mod
+from services.dify_builder.agent import chat as chat_mod
 from services.dify_builder.agent import edit as edit_mod
 from services.dify_builder.agent import fix as fix_mod
 from services.dify_builder.agent import llm_agent
@@ -221,3 +222,40 @@ def test_model_or_none_logs_resolution_failure_once(caplog):
     assert len(warnings) == 1
     assert "model resolution failed" in warnings[0].getMessage()
     assert warnings[0].exc_info is not None
+
+
+def test_message_reply_delegates_stream_callback(monkeypatch):
+    seen = {}
+
+    def mock_respond(model, model_config, state, context, history, graph, text, on_delta):
+        seen["args"] = (model, model_config, state, context, history, graph, text)
+        on_delta("first ")
+        on_delta("second")
+        return "first second"
+
+    monkeypatch.setattr(chat_mod, "respond", mock_respond)
+    model_config = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
+    agent = LlmBuilderAgent("t1", model_config)
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+    deltas = []
+
+    reply = agent.respond_to_message(
+        "fix.await_approval",
+        "CONTEXT",
+        ["HISTORY"],
+        {"nodes": [], "edges": []},
+        "question",
+        deltas.append,
+    )
+
+    assert reply == "first second"
+    assert deltas == ["first ", "second"]
+    assert seen["args"] == (
+        "MODEL",
+        model_config,
+        "fix.await_approval",
+        "CONTEXT",
+        ["HISTORY"],
+        {"nodes": [], "edges": []},
+        "question",
+    )
