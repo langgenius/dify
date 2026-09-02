@@ -2,8 +2,8 @@
 
 The matrix is derived from what actually runs, not from what a route declares: a
 route's own requirements are merged with the fixed ones its subject's pipeline
-carries, a `RoleFloor` stands down when RBAC is enabled *and* it names the
-`RBACScene` beside it, and `RequireWebappAccess` applies the private-app check whether
+carries, a `CheckWorkspaceRole` applies only where RBAC is off and a `CheckRBACPermission` only where it is on,
+and `CheckAppAccess` applies the private-app check whether
 or not `webapp_auth.enabled` gates the ACL. Reading declarations alone under-counts
 every one of those.
 
@@ -16,10 +16,10 @@ stubbed per row, so those rows pin how *this* code handles each answer they can
 give — never what the real services decide.
 
 Cases are never gated on whether a route declares a check. A row that asserts
-`ADMIT` where RBAC, a role floor or a licence gate does not fire is pinning the
+`ADMIT` where RBAC, a workspace role check or a licence gate does not fire is pinning the
 check's *absence*: losing a check is caught by the deny rows, and gaining one is
 caught by these. `files.upload` is the route the design says must never acquire an
-RBAC scene, and `files.upload-rbac_on_denied` is the row that says so.
+RBAC permission, and `files.upload-rbac_on_denied` is the row that says so.
 
 Admission is observed as HTTP 418: a `user_logged_in` receiver raises `ImATeapot`
 at the moment the pipeline mounts the caller, which is after every requirement has
@@ -34,10 +34,10 @@ does rather than what a route's declaration suggests:
 * `workspaces.describe` declares no membership requirement, so a non-member is
   *admitted* by auth and refused by the view's own lookup. `workspaces.switch`,
   one path segment away, declares one and is refused by auth.
-* No token the shipped registry mints can fail `TokenScope` — `dfoa_` carries
+* No token the shipped registry mints can fail `CheckScope` — `dfoa_` carries
   `Scope.FULL` and `dfoe_` carries exactly the two scopes its routes ask for — so
   the scope rows mint from a deliberately narrowed registry. Those rows are not
-  dead weight and must not be simplified away: `TokenScope` is live code on every
+  dead weight and must not be simplified away: `CheckScope` is live code on every
   request, and the day a narrower token kind is minted it is the only thing
   standing between that token and every route it was not scoped for.
 
@@ -202,7 +202,7 @@ DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
 DENY_LICENSE = Expect(403, "license_invalid")
 DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_access")
-ADMIT_NO_RBAC_SCENE = Expect(
+ADMIT_NO_RBAC_PERMISSION = Expect(
     ADMITTED,
     note=(
         "pins a check this route does NOT have: RBAC is on and denying, and the route still "
@@ -210,7 +210,7 @@ ADMIT_NO_RBAC_SCENE = Expect(
         "files.upload is the route the design says must never gain a scene"
     ),
 )
-ADMIT_NO_ROLE_FLOOR = Expect(
+ADMIT_NO_WORKSPACE_ROLE = Expect(
     ADMITTED,
     note="pins a check this route does NOT have: RBAC is on and a NORMAL member is still admitted",
 )
@@ -482,8 +482,8 @@ _ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.LOW_ROLE: ADMIT,
     Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
-    Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+    Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
 }
 
 
@@ -503,8 +503,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "workspaces.switch": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -515,8 +515,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "workspaces.members.list": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -527,8 +527,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "workspaces.members.invite": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -540,7 +540,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "workspaces.members.remove": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -552,7 +552,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "workspaces.members.update_role": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -564,7 +564,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "app_dsl.import": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -610,7 +610,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
         Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "app_dsl.export": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -682,7 +682,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "app_run.stop": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -710,7 +710,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "files.upload": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -737,8 +737,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
     "human_input_form.get": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -766,7 +766,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "human_input_form.submit": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -794,7 +794,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "workflow_events.stream": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -822,7 +822,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "permitted_external.list": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -830,7 +830,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         # An account bearer answers on the subject axis here, before scope or
-        # membership: this route's SubjectCheck allows only ExternalSsoSubject.
+        # membership: this route's CheckSubject allows only ExternalSsoSubject.
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_WRONG_SUBJECT,
         Case.EDITION_NOT_ENTERPRISE: DENY_EDITION,
         Case.LICENSE_INVALID: DENY_LICENSE,
@@ -909,8 +909,8 @@ def _registry(rows: dict[str, ResolvedRow], *, narrow_scopes: bool) -> TokenKind
     """`narrow_scopes` mints tokens carrying no scope at all.
 
     The shipped registry gives `dfoa_` `Scope.FULL` and `dfoe_` exactly the two
-    scopes its routes ask for, so no shipped token can fail `TokenScope`. That is
-    a property of today's two token kinds, not of the check: `TokenScope` runs on
+    scopes its routes ask for, so no shipped token can fail `CheckScope`. That is
+    a property of today's two token kinds, not of the check: `CheckScope` runs on
     every request, and a narrower kind is the only way to reach its refusal. Do not
     delete the scope rows on the grounds that no real token trips them — they are
     what will catch a third token kind being routed somewhere it was not scoped for.

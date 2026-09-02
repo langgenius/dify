@@ -18,13 +18,13 @@ from controllers.openapi.auth.pipelines import (
     _RequiresEnterprise,
 )
 from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
     CheckAppApiEnabled,
+    CheckSubject,
+    CheckWorkspaceMember,
     Rank,
     Requirement,
-    RequireWebappAccess,
-    RequireWorkspaceMembership,
     ResolveCaller,
-    SubjectCheck,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, Subject
@@ -118,7 +118,7 @@ def test_requirements_run_in_rank_order(sqlite_session: Session) -> None:
 
 def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
     """Endpoint-declared before pipeline-fixed at equal rank — the property
-    that keeps `SubjectCheck` ahead of `_RequiresEnterprise`, and the reason the sort
+    that keeps `CheckSubject` ahead of `_RequiresEnterprise`, and the reason the sort
     has to stay stable.
     """
     log: list[str] = []
@@ -254,7 +254,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Both declared requirements need the app — `CheckAppApiEnabled` directly,
-    `RequireWorkspaceMembership` through the workspace it hangs off — and the
+    `CheckWorkspaceMember` through the workspace it hangs off — and the
     membership check and `ResolveCaller` both need the caller. Each is fetched once.
     """
     persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
@@ -271,7 +271,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
             subject,
             make_ctx(sqlite_session, subject, app_id=APP_ID),
             sqlite_session,
-            requirements=(CheckAppApiEnabled(), RequireWorkspaceMembership()),
+            requirements=(CheckAppApiEnabled(), CheckWorkspaceMember()),
         )
 
     assert (app_fetch.call_count, workspace_fetch.call_count, caller_fetch.call_count) == (1, 1, 1)
@@ -324,7 +324,7 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
     monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
     ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
-    _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(RequireWorkspaceMembership(),))
+    _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(CheckWorkspaceMember(),))
 
     assert ctx.caller is not None
 
@@ -332,9 +332,9 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
 @pytest.mark.parametrize(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
-        ((SubjectCheck(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
+        ((CheckSubject(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
         ((CheckAppApiEnabled(),), False, False, "service_api_disabled"),
-        ((RequireWebappAccess(),), True, True, "subject_not_allowed_for_access_mode"),
+        ((CheckAppAccess(),), True, True, "subject_not_allowed_for_access_mode"),
     ],
     ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],
 )

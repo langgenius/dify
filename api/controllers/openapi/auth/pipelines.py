@@ -41,7 +41,7 @@ class Pipeline:
     ) -> Any:
         """Endpoint-declared requirements are merged ahead of the fixed ones,
         so a stable sort leaves them first at equal rank — which is what keeps
-        `SubjectCheck` ahead of `_RequiresEnterprise`.
+        `CheckSubject` ahead of `_RequiresEnterprise`.
         """
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)

@@ -19,7 +19,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckSessionOwnership, TokenScope
+from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership
 from machinery.context import AccountRequestContext
 from services.entities.account_access_entities import AccountSessionPage
 
@@ -111,11 +111,11 @@ def test_revoke_by_id_declares_session_ownership():
 
 def test_session_ownership_runs_after_token_scope():
     """`CheckSessionOwnership` takes the default rank, so it is tied with
-    `TokenScope` — declaration order is what keeps a caller failing scope alone
+    `CheckScope` — declaration order is what keeps a caller failing scope alone
     from reaching the ownership check first.
     """
     requirements = AccountSessionByIdApi.delete.__spec__.requirements
-    token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, TokenScope))
+    token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckScope))
     ownership_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckSessionOwnership))
     assert token_scope_index < ownership_index
 
