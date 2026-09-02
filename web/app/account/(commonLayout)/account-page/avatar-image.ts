@@ -3,6 +3,11 @@ import { createImage, getMimeType } from '@/app/components/base/app-icon-picker/
 
 const AVATAR_IMAGE_MAX_SIZE = 256
 const AVATAR_IMAGE_QUALITY = 0.85
+const AVATAR_IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
 
 export const getBoundedAvatarImageSize = (
   crop: Pick<Area, 'width' | 'height'>,
@@ -54,4 +59,16 @@ export const createCroppedAvatarImage = async (
       AVATAR_IMAGE_QUALITY,
     )
   })
+}
+
+export const createAvatarImageFile = (blob: Blob, fileName: string) => {
+  const extension = AVATAR_IMAGE_EXTENSION_BY_MIME_TYPE[blob.type]
+
+  if (!extension || getMimeType(fileName) === blob.type)
+    return new File([blob], fileName, { type: blob.type })
+
+  const extensionStart = fileName.lastIndexOf('.')
+  const baseName = extensionStart > 0 ? fileName.slice(0, extensionStart) : fileName
+
+  return new File([blob], `${baseName}.${extension}`, { type: blob.type })
 }

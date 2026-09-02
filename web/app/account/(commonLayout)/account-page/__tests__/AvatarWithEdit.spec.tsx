@@ -45,9 +45,13 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
   }),
 }))
 
-vi.mock('../avatar-image', () => ({
-  createCroppedAvatarImage: vi.fn(),
-}))
+vi.mock('../avatar-image', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../avatar-image')>()
+  return {
+    ...actual,
+    createCroppedAvatarImage: vi.fn(),
+  }
+})
 
 const mockedCreateCroppedAvatarImage = vi.mocked(createCroppedAvatarImage)
 
