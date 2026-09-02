@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -10,7 +8,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller
+from controllers.openapi.auth.loaders import load_account, load_app
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
@@ -23,7 +21,6 @@ from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope
-from models import Account
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
@@ -66,7 +63,7 @@ class AppDslImportApi(Resource):
         write=False,
     )
     def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
-        account = cast(Account, load_caller(ctx))
+        account = load_account(ctx)
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
@@ -127,7 +124,7 @@ class AppDslImportConfirmApi(Resource):
         write=False,
     )
     def post(self, ctx: Context, workspace_id: str, import_id: str):
-        account = cast(Account, load_caller(ctx))
+        account = load_account(ctx)
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)

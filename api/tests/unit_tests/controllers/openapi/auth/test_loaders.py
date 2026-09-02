@@ -9,8 +9,10 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import (
+    load_account,
     load_app,
     load_caller,
+    load_end_user,
     load_workspace,
     load_workspace_role,
 )
@@ -143,7 +145,7 @@ def test_no_loader_can_hand_a_handler_an_optional() -> None:
     and a `None` slipping past it would reach a handler as a value it cannot tell
     from a real one.
     """
-    for loader in (load_app, load_workspace, load_workspace_role, load_caller):
+    for loader in (load_app, load_workspace, load_workspace_role, load_caller, load_account, load_end_user):
         returns = get_type_hints(loader)["return"]
 
         assert type(None) not in get_args(returns), loader.__name__
@@ -227,3 +229,11 @@ class TestLoadWorkspaceRole:
         load_workspace_role(ctx)
 
         assert loaded_when_called == [True]
+
+
+class TestNarrowingLoaders:
+    def test_load_end_user_refuses_an_account(self, sqlite_session: Session) -> None:
+        ctx = Context(cast(Subject, _StubSubject(caller=make_account())), sqlite_session, {})
+
+        with pytest.raises(Forbidden, match="unsupported_token_type"):
+            load_end_user(ctx)

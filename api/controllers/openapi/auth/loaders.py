@@ -5,7 +5,7 @@ import uuid
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.context import Caller, Context
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
@@ -38,10 +38,25 @@ def load_workspace(ctx: Context) -> Tenant:
     return ctx.workspace
 
 
-def load_caller(ctx: Context) -> Account | EndUser:
+def load_caller(ctx: Context) -> Caller:
     if ctx.caller is None:
         ctx.caller = ctx.subject.resolve_caller(ctx, ctx.session)
     return ctx.caller
+
+
+def load_account(ctx: Context) -> Account:
+    return _load_caller_as(ctx, Account)
+
+
+def load_end_user(ctx: Context) -> EndUser:
+    return _load_caller_as(ctx, EndUser)
+
+
+def _load_caller_as[C: Caller](ctx: Context, expected: type[C]) -> C:
+    caller = load_caller(ctx)
+    if not isinstance(caller, expected):
+        raise Forbidden("unsupported_token_type")
+    return caller
 
 
 def load_workspace_role(ctx: Context) -> TenantAccountRole:
