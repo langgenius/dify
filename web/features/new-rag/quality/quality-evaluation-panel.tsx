@@ -31,6 +31,7 @@ type ReplayItem = KnowledgeFsQualityReplayResponse['items'][number]
 
 const pageSize = 20
 const activeQuestionCountLimit = 100
+const replayRefreshInterval = 1000
 const activeReplayStates = new Set<ReplayState>(['queued', 'running'])
 
 function evaluationStateClassName(state: ReplayState) {
@@ -48,6 +49,13 @@ function formatDuration(milliseconds?: number | null) {
   if (milliseconds === undefined || milliseconds === null) return '—'
   if (milliseconds < 1000) return `${Math.round(milliseconds)} ms`
   return `${(milliseconds / 1000).toFixed(milliseconds < 10_000 ? 1 : 0)} s`
+}
+
+function keepLatestReplay(
+  current: KnowledgeFsQualityReplayResponse | undefined,
+  candidate: KnowledgeFsQualityReplayResponse,
+) {
+  return current && current.revision >= candidate.revision ? current : candidate
 }
 
 function EvaluationState({ state }: { state: ReplayState }) {
@@ -85,8 +93,11 @@ export function EvaluationReport({
     })
   const detailQuery = useQuery({
     ...detailOptions,
+    refetchOnMount: 'always',
     refetchInterval: (query) =>
-      query.state.data && activeReplayStates.has(query.state.data.state) ? 1500 : false,
+      query.state.data && activeReplayStates.has(query.state.data.state)
+        ? replayRefreshInterval
+        : false,
   })
 
   if (detailQuery.isLoading)
@@ -475,11 +486,19 @@ function RunEvaluationDialogContent({
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         params: { control_space_id: knowledgeSpaceId },
       })
-      await queryClient.invalidateQueries({
+      const detailOptions =
+        consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions(
+          {
+            input: { params: { control_space_id: knowledgeSpaceId, run_id: run.id } },
+          },
+        )
+      queryClient.setQueryData(detailOptions.queryKey, (current) => keepLatestReplay(current, run))
+      void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.get.key({
           input: { params: { control_space_id: knowledgeSpaceId } },
           type: 'infinite',
         }),
+        refetchType: 'none',
       })
       onClose()
       onRunStarted(run.id)
@@ -560,6 +579,7 @@ export function QualityEvaluationPanel({
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
+  const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const listOptions =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.get.infiniteOptions({
@@ -575,14 +595,24 @@ export function QualityEvaluationPanel({
     })
   const listQuery = useInfiniteQuery({
     ...listOptions,
+    refetchOnMount: 'always',
     refetchInterval: (query) =>
       query.state.data?.pages.some((page) =>
         page.data.some((run) => activeReplayStates.has(run.state)),
       )
-        ? 1500
+        ? replayRefreshInterval
         : false,
   })
   const runs = listQuery.data?.pages.flatMap((page) => page.data) ?? []
+
+  const openReport = (run: KnowledgeFsQualityReplayResponse) => {
+    const detailOptions =
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
+        input: { params: { control_space_id: knowledgeSpaceId, run_id: run.id } },
+      })
+    queryClient.setQueryData(detailOptions.queryKey, (current) => keepLatestReplay(current, run))
+    onOpenReport(run.id)
+  }
 
   return (
     <>
@@ -657,7 +687,7 @@ export function QualityEvaluationPanel({
                   variant="secondary"
                   size="small"
                   className="ml-auto"
-                  onClick={() => onOpenReport(run.id)}
+                  onClick={() => openReport(run)}
                 >
                   {t(($) => $['newKnowledge.qualityPage.evaluation.viewReport'])}
                 </Button>

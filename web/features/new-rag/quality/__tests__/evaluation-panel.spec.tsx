@@ -110,6 +110,19 @@ const completedRun = {
   updated_at: '2026-08-19T12:00:02.000Z',
 } as const
 
+const queuedRun = {
+  ...completedRun,
+  items: completedRun.items.map((item) => ({
+    ...item,
+    result: null,
+    state: 'queued' as const,
+  })),
+  revision: 1,
+  state: 'queued' as const,
+  summary: { completed: 0, failed: 0, hit_rate: 0, passed: 0, total: 1 },
+  updated_at: completedRun.created_at,
+}
+
 const completedRunWithEvidence = {
   ...completedRun,
   items: [
@@ -145,13 +158,14 @@ const completedRunWithEvidence = {
   ],
 } as const
 
-function renderPanel() {
-  const queryClient = new QueryClient({
+function renderPanel(
+  queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
       queries: { retry: false },
     },
-  })
+  }),
+) {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -353,6 +367,138 @@ describe('QualityEvaluationPanel', () => {
         name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
       }),
     ).toBeVisible()
+  })
+
+  it('shows the queued run without waiting for the evaluation list to refresh', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let listRequestCount = 0
+    serviceMock.createReplay.mockResolvedValue(queuedRun)
+    serviceMock.getReplay.mockImplementation(() => new Promise(() => {}))
+    serviceMock.listReplays.mockImplementation(() => {
+      listRequestCount += 1
+      return listRequestCount === 1
+        ? Promise.resolve({ data: [], next_cursor: null })
+        : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.start',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.reportTitle',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getAllByText('dataset.newKnowledge.qualityPage.evaluation.state.queued'),
+    ).not.toHaveLength(0)
+  })
+
+  it('opens a completed evaluation with the latest progress from the list', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let detailRequestCount = 0
+    serviceMock.listReplays
+      .mockResolvedValueOnce({ data: [queuedRun], next_cursor: null })
+      .mockResolvedValueOnce({ data: [completedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(() => {
+      detailRequestCount += 1
+      return detailRequestCount === 1 ? Promise.resolve(queuedRun) : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+    await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.queued')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluationTab',
+      }),
+    )
+
+    expect(
+      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(serviceMock.listReplays).toHaveBeenCalledTimes(2)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(
+      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(screen.getByText('1/1')).toBeVisible()
+  })
+
+  it('keeps newer report progress when the evaluation list is stale', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let detailRequestCount = 0
+    serviceMock.listReplays.mockResolvedValue({ data: [queuedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(() => {
+      detailRequestCount += 1
+      return detailRequestCount === 1 ? Promise.resolve(completedRun) : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+    expect(
+      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluationTab',
+      }),
+    )
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(
+      screen.getAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(screen.getByText('1/1')).toBeVisible()
   })
 
   it('opens evidence hit details and identifies matched and missing passages', async () => {
