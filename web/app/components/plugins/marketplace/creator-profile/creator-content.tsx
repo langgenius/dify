@@ -1,11 +1,14 @@
 'use client'
 
+import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type {
   CreatorCreation,
   CreatorCreationAction,
+  CreatorInventory,
   CreatorSortField,
   CreatorSortOrder,
 } from './model'
+import type { Plugin } from '@/app/components/plugins/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { parseAsStringEnum, useQueryStates } from 'nuqs'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from '#i18n'
 import CreationCard from './creation-card'
 import {
@@ -24,10 +27,17 @@ import {
   DEFAULT_CREATOR_SORT_ORDER,
   sortCreatorCreations,
 } from './model'
+import { fetchPublisherPluginPage, fetchPublisherTemplatePage, toCreatorRecords } from './publisher'
 
 type CreatorContentProps = {
   creations: CreatorCreation[]
   getCreationAction: (creation: CreatorCreation) => CreatorCreationAction
+  inventory?: CreatorInventory
+  locale?: string
+  onRecordsLoaded?: (records: {
+    pluginsByCreationId: Record<string, Plugin>
+    templatesByCreationId: Record<string, MarketplaceTemplate>
+  }) => void
 }
 
 const sortSearchOptions = { history: 'replace' as const, shallow: false, scroll: false }
@@ -40,11 +50,34 @@ const creatorSortSearchParsers = {
   ),
 }
 
-export default function CreatorContent({ creations, getCreationAction }: CreatorContentProps) {
+export default function CreatorContent({
+  creations,
+  getCreationAction,
+  inventory,
+  locale = 'en-US',
+  onRecordsLoaded,
+}: CreatorContentProps) {
   const { t } = useTranslation()
   const [sort, setSort] = useQueryStates(creatorSortSearchParsers, sortSearchOptions)
   const sortField = sort.sort_by
   const sortOrder = sort.sort_order
+  const [sourceCreations, setSourceCreations] = useState(creations)
+  const [loadedCreations, setLoadedCreations] = useState(creations)
+  const [pluginHasMore, setPluginHasMore] = useState(inventory?.pluginHasMore ?? false)
+  const [templateHasMore, setTemplateHasMore] = useState(inventory?.templateHasMore ?? false)
+  const [pluginNextPage, setPluginNextPage] = useState(inventory?.pluginNextPage ?? 2)
+  const [templateNextPage, setTemplateNextPage] = useState(inventory?.templateNextPage ?? 2)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [loadMoreFailed, setLoadMoreFailed] = useState(false)
+  if (creations !== sourceCreations) {
+    setSourceCreations(creations)
+    setLoadedCreations(creations)
+    setPluginHasMore(inventory?.pluginHasMore ?? false)
+    setTemplateHasMore(inventory?.templateHasMore ?? false)
+    setPluginNextPage(inventory?.pluginNextPage ?? 2)
+    setTemplateNextPage(inventory?.templateNextPage ?? 2)
+    setLoadMoreFailed(false)
+  }
   const sortOptions: Array<{ value: CreatorSortField; label: string }> = [
     {
       value: 'updatedAt',
@@ -61,10 +94,61 @@ export default function CreatorContent({ creations, getCreationAction }: Creator
   ]
   const selectedSort = sortOptions.find((option) => option.value === sortField) ?? sortOptions[0]!
   const sortedCreations = useMemo(
-    () => sortCreatorCreations(creations, sortField, sortOrder),
-    [creations, sortField, sortOrder],
+    () => sortCreatorCreations(loadedCreations, sortField, sortOrder),
+    [loadedCreations, sortField, sortOrder],
   )
   const nextSortOrder = sortOrder === 'desc' ? 'asc' : 'desc'
+  const hasMore = pluginHasMore || templateHasMore
+  const uniqueHandle = inventory?.uniqueHandle
+
+  const loadMore = async () => {
+    if (!uniqueHandle || isLoadingMore || !hasMore) return
+
+    setIsLoadingMore(true)
+    setLoadMoreFailed(false)
+    try {
+      const [pluginPage, templatePage] = await Promise.all([
+        pluginHasMore
+          ? fetchPublisherPluginPage({
+              uniqueHandle,
+              page: pluginNextPage,
+              sortField,
+              sortOrder,
+            })
+          : Promise.resolve({ items: [] as MarketplacePlugin[], hasMore: false }),
+        templateHasMore
+          ? fetchPublisherTemplatePage({
+              uniqueHandle,
+              page: templateNextPage,
+              sortField,
+              sortOrder,
+            })
+          : Promise.resolve({ items: [] as MarketplaceTemplate[], hasMore: false }),
+      ])
+      const records = toCreatorRecords({
+        locale,
+        plugins: pluginPage.items,
+        templates: templatePage.items,
+      })
+      setLoadedCreations((current) => {
+        const seen = new Set(current.map((creation) => creation.id))
+        return [...current, ...records.creations.filter((creation) => !seen.has(creation.id))]
+      })
+      if (pluginHasMore) {
+        setPluginHasMore(pluginPage.hasMore)
+        setPluginNextPage((page) => page + 1)
+      }
+      if (templateHasMore) {
+        setTemplateHasMore(templatePage.hasMore)
+        setTemplateNextPage((page) => page + 1)
+      }
+      onRecordsLoaded?.(records)
+    } catch {
+      setLoadMoreFailed(true)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   return (
     <section
@@ -149,6 +233,27 @@ export default function CreatorContent({ creations, getCreationAction }: Creator
       ) : (
         <div className="w-full py-12 text-center system-sm-regular text-text-tertiary">
           {t(($) => $['marketplace.creatorProfile.empty'], { ns: 'plugin' })}
+        </div>
+      )}
+
+      {hasMore && (
+        <div className="flex w-full flex-col items-center gap-2 pt-6">
+          <button
+            type="button"
+            aria-busy={isLoadingMore || undefined}
+            disabled={isLoadingMore}
+            className="flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:opacity-50"
+            onClick={() => {
+              void loadMore()
+            }}
+          >
+            {t(($) => $['marketplace.creatorProfile.loadMore'], { ns: 'plugin' })}
+          </button>
+          {loadMoreFailed && (
+            <p className="system-xs-regular text-text-destructive">
+              {t(($) => $['marketplace.creatorProfile.loadMoreFailed'], { ns: 'plugin' })}
+            </p>
+          )}
         </div>
       )}
     </section>

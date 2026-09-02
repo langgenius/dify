@@ -1,7 +1,14 @@
 'use client'
 
+import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
-import type { CreatorCreation, CreatorCreationAction, CreatorProfileViewModel } from './model'
+import type {
+  CreatorCreation,
+  CreatorCreationAction,
+  CreatorInventory,
+  CreatorProfileViewModel,
+} from './model'
+import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
@@ -15,6 +22,12 @@ export type CreatorProfileViewProps = {
   header?: ReactNode
   homeHref: string
   isMarketplacePlatform: boolean
+  inventory?: CreatorInventory
+  locale?: string
+  onRecordsLoaded?: (records: {
+    pluginsByCreationId: Record<string, Plugin>
+    templatesByCreationId: Record<string, MarketplaceTemplate>
+  }) => void
 }
 
 export default function CreatorProfileView({
@@ -23,6 +36,9 @@ export default function CreatorProfileView({
   header,
   homeHref,
   isMarketplacePlatform,
+  inventory,
+  locale,
+  onRecordsLoaded,
 }: CreatorProfileViewProps) {
   const { t } = useTranslation()
 
@@ -79,7 +95,13 @@ export default function CreatorProfileView({
             )}
           >
             <CreatorSidebar profile={profile.profile} />
-            <CreatorContent creations={profile.creations} getCreationAction={getCreationAction} />
+            <CreatorContent
+              creations={profile.creations}
+              getCreationAction={getCreationAction}
+              inventory={inventory}
+              locale={locale}
+              onRecordsLoaded={onRecordsLoaded}
+            />
           </div>
         </div>
       </main>

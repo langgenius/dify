@@ -5,6 +5,20 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import CreatorContent from '../creator-content'
 
+const publisherMocks = vi.hoisted(() => ({
+  fetchPublisherPluginPage: vi.fn(),
+  fetchPublisherTemplatePage: vi.fn(),
+}))
+
+vi.mock('../publisher', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../publisher')>()
+  return {
+    ...actual,
+    fetchPublisherPluginPage: publisherMocks.fetchPublisherPluginPage,
+    fetchPublisherTemplatePage: publisherMocks.fetchPublisherTemplatePage,
+  }
+})
+
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   const translations: Record<string, string> = {
@@ -17,6 +31,8 @@ vi.mock('#i18n', async () => {
     'marketplace.creatorProfile.sort.desc': 'Sort descending',
     'marketplace.creatorProfile.type.plugin': 'Plugin',
     'marketplace.creatorProfile.type.template': 'Template',
+    'marketplace.creatorProfile.loadMore': 'Load more',
+    'marketplace.creatorProfile.loadMoreFailed': "Couldn't load more creations.",
   }
 
   return {
@@ -59,6 +75,10 @@ const creations = [
 const cardNames = () => screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))
 
 describe('CreatorContent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('writes sort into the URL and reorders the current cards', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderWithNuqs(
@@ -90,5 +110,54 @@ describe('CreatorContent', () => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort_order')).toBe('asc')
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort_by')).toBe('popularity')
     })
+  })
+
+  it('loads the next publisher pages when more creations exist', async () => {
+    const user = userEvent.setup()
+    publisherMocks.fetchPublisherPluginPage.mockResolvedValue({
+      items: [
+        {
+          type: 'plugin',
+          org: 'dify',
+          name: 'delta',
+          labels: { 'en-US': 'Delta' },
+          brief: { 'en-US': 'Delta plugin' },
+          install_count: 4,
+          created_at: '2026-01-04T00:00:00Z',
+          updated_at: '2026-02-04T00:00:00Z',
+        },
+      ],
+      hasMore: false,
+    })
+    publisherMocks.fetchPublisherTemplatePage.mockResolvedValue({ items: [], hasMore: false })
+
+    renderWithNuqs(
+      <CreatorContent
+        creations={creations}
+        locale="en-US"
+        inventory={{
+          uniqueHandle: 'scarlettmao',
+          pluginHasMore: true,
+          templateHasMore: false,
+          pluginNextPage: 2,
+          templateNextPage: 2,
+        }}
+        getCreationAction={(creation) => ({ type: 'link', href: `/creation/${creation.id}` })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Load more' }))
+
+    await waitFor(() => {
+      expect(cardNames()).toContain('Delta')
+    })
+    expect(publisherMocks.fetchPublisherPluginPage).toHaveBeenCalledWith({
+      uniqueHandle: 'scarlettmao',
+      page: 2,
+      sortField: 'updatedAt',
+      sortOrder: 'desc',
+    })
+    expect(publisherMocks.fetchPublisherTemplatePage).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
   })
 })

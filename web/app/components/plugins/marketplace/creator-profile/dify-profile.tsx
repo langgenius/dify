@@ -34,7 +34,18 @@ const normalizePlugin = (plugin: Plugin): Plugin => ({
 export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreatorProfileProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<SelectedCreation | null>(null)
-  const profilePlugins = Object.values(loadedProfile.pluginsByCreationId)
+  const [sourceProfile, setSourceProfile] = useState(loadedProfile)
+  const [pluginsByCreationId, setPluginsByCreationId] = useState(loadedProfile.pluginsByCreationId)
+  const [templatesByCreationId, setTemplatesByCreationId] = useState(
+    loadedProfile.templatesByCreationId,
+  )
+  if (loadedProfile !== sourceProfile) {
+    setSourceProfile(loadedProfile)
+    setPluginsByCreationId(loadedProfile.pluginsByCreationId)
+    setTemplatesByCreationId(loadedProfile.templatesByCreationId)
+  }
+
+  const profilePlugins = Object.values(pluginsByCreationId)
   const pluginIds = useMemo(
     () =>
       Array.from(
@@ -52,12 +63,12 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
 
   const selectCreation = (creation: CreatorCreation) => {
     if (creation.kind === 'plugin') {
-      const plugin = loadedProfile.pluginsByCreationId[creation.id]
+      const plugin = pluginsByCreationId[creation.id]
       if (plugin) setSelected({ kind: 'plugin', plugin: normalizePlugin(plugin) })
       return
     }
 
-    const template = loadedProfile.templatesByCreationId[creation.id]
+    const template = templatesByCreationId[creation.id]
     if (template) setSelected({ kind: 'template', template })
   }
 
@@ -82,6 +93,15 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
         profile={loadedProfile.viewModel}
         homeHref="/marketplace"
         isMarketplacePlatform
+        inventory={loadedProfile.inventory}
+        locale={locale}
+        onRecordsLoaded={(records) => {
+          setPluginsByCreationId((current) => ({ ...current, ...records.pluginsByCreationId }))
+          setTemplatesByCreationId((current) => ({
+            ...current,
+            ...records.templatesByCreationId,
+          }))
+        }}
         getCreationAction={(creation) => ({
           type: 'select',
           onSelect: () => selectCreation(creation),

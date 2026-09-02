@@ -99,6 +99,13 @@ const loadedProfile: LoadedCreatorProfile = {
   templatesByCreationId: {
     'template:template-one': template,
   },
+  inventory: {
+    uniqueHandle: 'creator',
+    pluginHasMore: false,
+    templateHasMore: false,
+    pluginNextPage: 2,
+    templateNextPage: 2,
+  },
 }
 
 vi.mock('#i18n', async () => {

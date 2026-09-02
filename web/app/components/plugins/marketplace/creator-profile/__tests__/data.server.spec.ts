@@ -164,35 +164,50 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['template', 'plugin'])
   })
 
-  it('fetches remaining publisher pages until the reported total is loaded', async () => {
-    const extraPlugin = {
-      ...plugin,
-      name: 'extra',
-      plugin_id: 'dify/extra',
-    } as MarketplacePlugin
-    mocks.publisherPlugins
-      .mockResolvedValueOnce({
-        data: { plugins: [plugin], total: 2 },
-      })
-      .mockResolvedValueOnce({
-        data: { plugins: [extraPlugin], total: 2 },
-      })
+  it('loads only the first publisher page and reports remaining inventory', async () => {
+    mocks.publisherPlugins.mockResolvedValue({
+      data: {
+        plugins: Array.from({ length: 40 }, (_, index) => ({ ...plugin, name: `p-${index}` })),
+        total: 90,
+      },
+    })
+    mocks.publisherTemplates.mockResolvedValue({
+      data: { templates: [template], total: 1 },
+    })
 
     const loaded = await loadCreatorProfile({
       uniqueHandle: 'paged-creator',
       locale: 'en-US',
     })
 
-    expect(mocks.publisherPlugins).toHaveBeenNthCalledWith(1, {
+    expect(mocks.publisherPlugins).toHaveBeenCalledOnce()
+    expect(mocks.publisherPlugins).toHaveBeenCalledWith({
       params: { uniqueHandle: 'paged-creator' },
       query: { page: 1, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
     })
-    expect(mocks.publisherPlugins).toHaveBeenNthCalledWith(2, {
-      params: { uniqueHandle: 'paged-creator' },
-      query: { page: 2, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
+    expect(loaded?.inventory).toMatchObject({
+      uniqueHandle: 'paged-creator',
+      pluginHasMore: true,
+      templateHasMore: false,
+      pluginNextPage: 2,
     })
-    expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
-    expect(loaded?.pluginsByCreationId['plugin:dify/extra']).toBeDefined()
+    expect(loaded?.viewModel.creations).toHaveLength(41)
+  })
+
+  it('does not treat a full first page as the complete inventory when total is missing', async () => {
+    mocks.publisherPlugins.mockResolvedValue({
+      data: {
+        plugins: Array.from({ length: 40 }, (_, index) => ({ ...plugin, name: `p-${index}` })),
+      },
+    })
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'uncounted-creator',
+      locale: 'en-US',
+    })
+
+    expect(mocks.publisherPlugins).toHaveBeenCalledOnce()
+    expect(loaded?.inventory.pluginHasMore).toBe(true)
   })
 
   it('keeps successful creations when one publisher request fails', async () => {

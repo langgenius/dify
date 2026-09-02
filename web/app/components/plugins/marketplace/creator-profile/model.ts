@@ -98,10 +98,19 @@ export type CreatorProfileViewModel = {
   creations: CreatorCreation[]
 }
 
+export type CreatorInventory = {
+  uniqueHandle: string
+  pluginHasMore: boolean
+  templateHasMore: boolean
+  pluginNextPage: number
+  templateNextPage: number
+}
+
 export type LoadedCreatorProfile = {
   viewModel: CreatorProfileViewModel
   pluginsByCreationId: Record<string, Plugin>
   templatesByCreationId: Record<string, MarketplaceTemplate>
+  inventory: CreatorInventory
 }
 
 export type CreatorCreationAction =
@@ -136,22 +145,26 @@ const toTimestamp = (value?: MarketplaceTimestamp | null) => {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
+const firstLocalizedString = (value: object, keys: string[]) => {
+  for (const key of keys) {
+    const entry = (value as Record<string, unknown>)[key]
+    if (typeof entry === 'string' && entry) return entry
+  }
+  return (
+    Object.values(value).find((entry): entry is string => typeof entry === 'string' && !!entry) ??
+    ''
+  )
+}
+
 const getCreatorLocalizedText = (
   value: Partial<Record<string, string>> | string | undefined,
   locale: string,
 ) => {
   if (typeof value === 'string') return value
-  if (!value) return ''
+  if (!value || typeof value !== 'object') return ''
 
   const normalizedLocale = locale.replace('-', '_')
-  return (
-    value[locale] ||
-    value[normalizedLocale] ||
-    value['en-US'] ||
-    value.en_US ||
-    Object.values(value).find(Boolean) ||
-    ''
-  )
+  return firstLocalizedString(value, [locale, normalizedLocale, 'en-US', 'en_US'])
 }
 
 const getSocialPlatform = (hostname: string): CreatorSocialPlatform => {
@@ -170,7 +183,8 @@ const getSocialPlatform = (hostname: string): CreatorSocialPlatform => {
   return 'website'
 }
 
-export const normalizeCreatorSocialLink = (value: string): CreatorSocialLink | null => {
+export const normalizeCreatorSocialLink = (value: unknown): CreatorSocialLink | null => {
+  if (typeof value !== 'string') return null
   const trimmedValue = value.trim()
   if (!trimmedValue) return null
 
@@ -201,18 +215,22 @@ const getCreatorBadges = (creator: MarketplaceCreator) => {
   return Array.from(badges)
 }
 
-export const adaptCreatorProfile = ({
-  creator,
-  kind,
+export const adaptCreations = ({
   locale,
-  avatarUrl,
-  backgroundUrl,
   plugins,
   templates,
   resolvePluginIcon,
   resolveTemplateIcon,
   resolveDependencyIcon,
-}: CreatorProfileAdapterInput): CreatorProfileViewModel => {
+}: Pick<
+  CreatorProfileAdapterInput,
+  | 'locale'
+  | 'plugins'
+  | 'templates'
+  | 'resolvePluginIcon'
+  | 'resolveTemplateIcon'
+  | 'resolveDependencyIcon'
+>): CreatorCreation[] => {
   const pluginCreations = plugins.map((plugin): CreatorCreation => ({
     id: `${plugin.type}:${plugin.org}/${plugin.name}`,
     kind: 'plugin',
@@ -240,7 +258,9 @@ export const adaptCreatorProfile = ({
 
   const templateCreations = templates.map((template): CreatorCreation => {
     const templateIcon = resolveTemplateIcon(template)
-    const dependencyIds = template.deps_plugins ?? []
+    const dependencyIds = (template.deps_plugins ?? []).filter(
+      (id): id is string => typeof id === 'string' && id.length > 0,
+    )
     const publisher =
       template.publisher_handle ||
       template.publisher_unique_handle ||
@@ -269,6 +289,21 @@ export const adaptCreatorProfile = ({
     }
   })
 
+  return [...pluginCreations, ...templateCreations]
+}
+
+export const adaptCreatorProfile = ({
+  creator,
+  kind,
+  locale,
+  avatarUrl,
+  backgroundUrl,
+  plugins,
+  templates,
+  resolvePluginIcon,
+  resolveTemplateIcon,
+  resolveDependencyIcon,
+}: CreatorProfileAdapterInput): CreatorProfileViewModel => {
   return {
     profile: {
       kind,
@@ -283,7 +318,14 @@ export const adaptCreatorProfile = ({
         .map(normalizeCreatorSocialLink)
         .filter((link): link is CreatorSocialLink => link !== null),
     },
-    creations: [...pluginCreations, ...templateCreations],
+    creations: adaptCreations({
+      locale,
+      plugins,
+      templates,
+      resolvePluginIcon,
+      resolveTemplateIcon,
+      resolveDependencyIcon,
+    }),
   }
 }
 
