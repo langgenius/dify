@@ -1,4 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
@@ -739,6 +740,82 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('should invalidate the exact app detail after access mutations', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation(() => new Promise(() => {}))
+    const context = createMutationContext(queryClient)
+    const appDetail: AppDetail = {
+      enable_api: true,
+      enable_site: true,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'App',
+    }
+    const appSite: AppSiteResponse = {
+      app_id: 'app-1',
+      customize_token_strategy: 'fixed',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'App',
+      use_icon_as_answer_icon: false,
+    }
+
+    const results = [
+      consoleQuery.apps.byAppId.apiEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          appDetail,
+          null,
+          { params: { app_id: 'app-1' }, body: { enable_api: true } },
+          undefined,
+          context,
+        ),
+      consoleQuery.apps.byAppId.siteEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          appDetail,
+          null,
+          { params: { app_id: 'app-2' }, body: { enable_site: true } },
+          undefined,
+          context,
+        ),
+      consoleQuery.apps.byAppId.site.accessTokenReset.post
+        .mutationOptions()
+        .onSettled?.(appSite, null, { params: { app_id: 'app-3' } }, undefined, context),
+      consoleQuery.apps.byAppId.siteEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          undefined,
+          new Error('request failed'),
+          { params: { app_id: 'app-4' }, body: { enable_site: false } },
+          undefined,
+          context,
+        ),
+    ]
+
+    expect(results).toEqual([undefined, undefined, undefined, undefined])
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-1' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-2' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-3' } },
+      }),
+    })
+  })
+
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -929,6 +1006,7 @@ describe('consoleQuery app mutation defaults', () => {
           id: 'app-key-1',
           token: 'app-token',
           type: 'app',
+          dataset_ids: [],
         },
         { params: { resource_id: 'app-1' } },
         undefined,
@@ -939,8 +1017,9 @@ describe('consoleQuery app mutation defaults', () => {
           id: 'dataset-key-1',
           token: 'dataset-token',
           type: 'dataset',
+          dataset_ids: [],
         },
-        undefined,
+        { body: {} },
         undefined,
         context,
       ),

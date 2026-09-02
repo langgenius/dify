@@ -103,7 +103,7 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None, context:
         return
 
     enforce_rbac_access(
-        tenant_id=_workspace_id(context),
+        tenant_id=context.active_workspace_id,
         account_id=context.account_id,
         resource_type=RBACResourceScope.WORKSPACE,
         scene=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
@@ -119,12 +119,6 @@ def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, context: RequestContext) ->
     _enforce_snippet_tag_rbac_if_needed(tag_type, context)
 
 
-def _workspace_id(context: RequestContext) -> str:
-    if context.active_workspace_id is None:
-        raise RuntimeError("Console account admission did not resolve an active workspace")
-    return context.active_workspace_id
-
-
 def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
     current_user, _ = current_account_with_tenant()
     if current_user.has_edit_permission:
@@ -136,9 +130,9 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
 
 @console_ns.route("/tags")
 class TagListApi(Resource):
-    @console_account_admission()
     @console_ns.doc(params=query_params_from_model(TagListQueryParam))
     @console_ns.response(200, "Success", console_ns.models[TagListResponse.__name__])
+    @console_account_admission()
     @model_validate(TagListQueryParam)
     def get(self, req_data: TagListQueryParam, request_context: RequestContext):
         tags = application_services().tags.list_tags(request_context, req_data.type, req_data.keyword)
@@ -190,8 +184,8 @@ class TagUpdateDeleteApi(Resource):
 
         return dump_response(TagResponse, tag), 200
 
-    @console_account_admission()
     @console_ns.response(204, "Tag deleted successfully")
+    @console_account_admission()
     def delete(self, request_context: RequestContext, tag_id: UUID):
         tag_id_str = str(tag_id)
 

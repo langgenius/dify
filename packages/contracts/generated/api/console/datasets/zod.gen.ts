@@ -10,10 +10,18 @@ export const zApiBaseUrlResponse = z.object({
 })
 
 /**
+ * DatasetApiKeyCreatePayload
+ */
+export const zDatasetApiKeyCreatePayload = z.object({
+  dataset_ids: z.array(z.string()).optional(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -1552,6 +1560,8 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
  * API keys retrieved successfully
  */
 export const zGetDatasetsApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 
 /**
  * API key created successfully

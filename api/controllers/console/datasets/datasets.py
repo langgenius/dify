@@ -16,7 +16,7 @@ from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList
+from controllers.console.apikey import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -53,6 +53,7 @@ from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuer
 from models.enums import ApiTokenType, SegmentStatus
 from models.knowledge_fs import KnowledgeFSUpgradeJobStatus
 from models.provider_ids import ModelProviderID
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.app_service import AppService
 from services.dataset_knowledge_fs_upgrade_service import (
@@ -233,6 +234,12 @@ class IndexingEstimatePayload(BaseModel):
         return result
 
 
+class DatasetApiKeyCreatePayload(BaseModel):
+    # Knowledge bases to scope the key to. Absent/empty => the key can access every
+    # dataset in the tenant (default). Declared so the generated client can send it.
+    dataset_ids: list[str] = Field(default_factory=list)
+
+
 class ConsoleDatasetListQuery(BaseModel):
     page: int = Field(default=1, description="Page number")
     limit: int = Field(default=20, description="Number of items per page")
@@ -410,7 +417,12 @@ class AutoDisableLogsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetApiKeyCreatePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -1365,26 +1377,14 @@ class DatasetApiKeyApi(Resource):
         keys = session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return dump_response(
-            ApiKeyList,
-            {
-                "data": [
-                    {
-                        "created_at": key.created_at,
-                        "id": key.id,
-                        "last_used_at": get_effective_token_last_used_at(
-                            key.token,
-                            key.type,
-                            key.last_used_at,
-                        ),
-                        "token": key.token,
-                        "type": key.type,
-                    }
-                    for key in keys
-                ]
-            },
-        )
+        token_ids = [str(key.id) for key in keys]
+        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
+        api_key_list = build_masked_api_key_list(keys, bindings_by_token)
+        for key, item in zip(keys, api_key_list.data, strict=True):
+            item.last_used_at = to_timestamp(get_effective_token_last_used_at(key.token, key.type, key.last_used_at))
+        return dump_response(ApiKeyList, api_key_list)
 
+    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
@@ -1395,6 +1395,19 @@ class DatasetApiKeyApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str):
+        # Optional list of knowledge bases to scope the key to. Absent/empty => the key
+        # can access every dataset in the tenant (default). Duplicates are de-duplicated.
+        payload = request.get_json(silent=True) or {}
+        raw_dataset_ids = payload.get("dataset_ids") or []
+        if not isinstance(raw_dataset_ids, list) or any(not isinstance(item, str) for item in raw_dataset_ids):
+            console_ns.abort(400, message="dataset_ids must be a list of strings.")
+        dataset_ids = list(dict.fromkeys(raw_dataset_ids))
+
+        if dataset_ids:
+            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
+            if unknown:
+                console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
+
         current_key_count = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(
@@ -1418,7 +1431,13 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         session.add(api_token)
         session.flush()
-        return dump_response(ApiKeyItem, api_token), 200
+        dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
+        session.flush()
+
+        # Reveal-once: the create response carries the full secret and its bound scope.
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.dataset_ids = dataset_ids
+        return dump_response(ApiKeyItem, item), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

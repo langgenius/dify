@@ -535,6 +535,22 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
         byAppId: {
+          // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          apiEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, _variables, _onMutateResult, context) =>
@@ -565,6 +581,38 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.recent.get.key(),
                 })
+              },
+            },
+          },
+          siteEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
+          site: {
+            accessTokenReset: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
               },
             },
           },
