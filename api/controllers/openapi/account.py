@@ -47,7 +47,7 @@ class AccountApi(Resource):
         except AccountNotFoundError:
             raise Unauthorized("account not found") from None
         return AccountResponse(
-            subject_type="account",
+            subject_type=ctx.subject.subject_type,
             subject_email=snapshot.account.email,
             account=_account_payload(snapshot.account),
             workspaces=[_workspace_payload(workspace) for workspace in snapshot.workspaces],

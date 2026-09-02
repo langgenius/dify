@@ -29,3 +29,11 @@ def test_describe_response_input_schema_field() -> None:
     assert payload["input_schema"] == schema
     assert payload["info"] is None
     assert payload["parameters"] is None
+
+
+def test_subject_type_is_the_enum_on_both_response_models() -> None:
+    from controllers.openapi._models import AccountResponse, DeviceTokenResponse
+    from libs.oauth_bearer import SubjectType
+
+    for model in (AccountResponse, DeviceTokenResponse):
+        assert model.model_fields["subject_type"].annotation is SubjectType
