@@ -1,6 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
+import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { RetrievalComposer } from './composer'
@@ -9,7 +10,7 @@ import { RetrievalResultPanel } from './result-panel'
 import { RetrievalRuntimeController } from './runtime-controller'
 import { RetrievalStateBoundary } from './state/boundary'
 import { retrievalComposerModeAtom } from './state/graph'
-import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
+import { retrievalKnowledgeSpaceIdAtom, retrievalLocationQuery } from './state/inputs'
 
 function RetrievalTestSurface() {
   const { t } = useTranslation('dataset')
@@ -45,9 +46,11 @@ function RetrievalTestSurface() {
 
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   return (
-    <RetrievalStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
-      <RetrievalRuntimeController />
-      <RetrievalTestSurface />
-    </RetrievalStateBoundary>
+    <NuqsJotaiBridge key={`retrieval:${knowledgeSpaceId}`} config={retrievalLocationQuery}>
+      <RetrievalStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
+        <RetrievalRuntimeController />
+        <RetrievalTestSurface />
+      </RetrievalStateBoundary>
+    </NuqsJotaiBridge>
   )
 }

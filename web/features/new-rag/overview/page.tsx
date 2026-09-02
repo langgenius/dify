@@ -1,11 +1,10 @@
 'use client'
 
-import type { OverviewWindow } from './state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { OverviewActivity } from './overview-activity'
@@ -14,9 +13,11 @@ import { InventoryPanel } from './overview-inventory'
 import { OverviewMetrics, QueryOutcomesChart } from './overview-metrics'
 import { FirstSourceTaskFailureBanner, OverviewOnboarding } from './overview-onboarding'
 import {
+  OVERVIEW_WINDOWS,
   overviewEmptyAtom,
   overviewFirstLoadFailedAtom,
   overviewKnowledgeSpaceIdAtom,
+  overviewLocationQuery,
   overviewPageLoadingAtom,
   overviewShowEmptyModulesAtom,
   overviewShowIndexingAtom,
@@ -25,35 +26,24 @@ import {
 } from './state'
 import { OverviewStateBoundary } from './state-boundary'
 
-const WINDOWS: OverviewWindow[] = ['24h', '7d', '30d']
-const overviewWindowParser = parseAsStringLiteral(WINDOWS)
-  .withDefault('24h')
-  .withOptions({ history: 'push' })
-
 export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const [window, setWindow] = useQueryState('window', overviewWindowParser)
-
   return (
-    <OverviewStateBoundary knowledgeSpaceId={knowledgeSpaceId} window={window}>
-      <KnowledgeOverviewContent window={window} onWindowChange={(value) => void setWindow(value)} />
-    </OverviewStateBoundary>
+    <NuqsJotaiBridge key={`overview:${knowledgeSpaceId}`} config={overviewLocationQuery}>
+      <OverviewStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
+        <KnowledgeOverviewContent />
+      </OverviewStateBoundary>
+    </NuqsJotaiBridge>
   )
 }
 
-function KnowledgeOverviewContent({
-  onWindowChange,
-  window,
-}: {
-  onWindowChange: (window: OverviewWindow) => void
-  window: OverviewWindow
-}) {
+function KnowledgeOverviewContent() {
   const showEmptyModules = useAtomValue(overviewShowEmptyModulesAtom)
   const showIndexing = useAtomValue(overviewShowIndexingAtom)
 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="w-full px-6 pt-3 pb-6">
-        <OverviewHeader window={window} onWindowChange={onWindowChange} />
+        <OverviewHeader />
         <FirstSourceTaskFailureBanner />
         <OverviewKnowledgeModelReadinessBanner />
         <OverviewRecoveryStatus />
@@ -79,17 +69,12 @@ function KnowledgeOverviewContent({
   )
 }
 
-function OverviewHeader({
-  onWindowChange,
-  window,
-}: {
-  onWindowChange: (window: OverviewWindow) => void
-  window: OverviewWindow
-}) {
+function OverviewHeader() {
   const { t } = useTranslation('dataset')
   const empty = useAtomValue(overviewEmptyAtom)
   const showIndexing = useAtomValue(overviewShowIndexingAtom)
-  const setGraphWindow = useSetAtom(overviewWindowAtom)
+  const window = useAtomValue(overviewWindowAtom)
+  const setWindow = useSetAtom(overviewWindowAtom)
 
   return (
     <header className="relative -top-0.75 flex flex-wrap items-center justify-between gap-3">
@@ -97,16 +82,15 @@ function OverviewHeader({
         {t(($) => $['newKnowledge.overviewTitle'])}
       </h1>
       {!empty && !showIndexing && (
-        <SegmentedControl<OverviewWindow>
+        <SegmentedControl<(typeof OVERVIEW_WINDOWS)[number]>
           aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
           value={window}
           onValueChange={(value) => {
-            setGraphWindow(value)
-            onWindowChange(value)
+            void setWindow(value)
           }}
         >
-          {WINDOWS.map((value) => (
-            <SegmentedControlItem<OverviewWindow>
+          {OVERVIEW_WINDOWS.map((value) => (
+            <SegmentedControlItem<(typeof OVERVIEW_WINDOWS)[number]>
               key={value}
               className="h-6.5 px-2.5"
               value={value}

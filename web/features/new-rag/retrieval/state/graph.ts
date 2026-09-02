@@ -12,11 +12,7 @@ import {
   retrievalTestRecords,
 } from '../model'
 import { researchTaskAnswerFromEvents } from '../services/research-task-events'
-import {
-  retrievalKnowledgeSpaceIdAtom,
-  retrievalLinkedSelectionAtom,
-  retrievalLocationUpdateAtom,
-} from './inputs'
+import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './inputs'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
@@ -462,13 +458,17 @@ export const updateRetrievalComposerModeAtom = atom(null, (get, set, mode: Retri
 })
 
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
-  const updateLocation = get(retrievalLocationUpdateAtom).update
   if (record.kind === 'local') {
     set(retrievalLocalSelectedAtom, { id: record.id, kind: record.kind })
-    updateLocation({ research: null, retest: null, trace: null }, { history: 'push' })
+    void set(
+      retrievalLinkedSelectionAtom,
+      { research: null, retest: null, trace: null },
+      { history: 'push' },
+    )
   } else {
     set(retrievalLocalSelectedAtom, undefined)
-    updateLocation(
+    void set(
+      retrievalLinkedSelectionAtom,
       {
         research: record.kind === 'research' ? record.id : null,
         retest: null,

@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -21,7 +20,7 @@ import {
   loadNextDocumentChunkPageAtom,
   retryDocumentChunksAtom,
 } from './state/content'
-import { documentDetailChunkParser } from './state/location'
+import { documentDetailRequestedChunkIdAtom } from './state/inputs'
 
 const VIRTUALIZATION_THRESHOLD = 80
 const TREE_ROW_SIZE = 30
@@ -78,7 +77,7 @@ export function DocumentChunkTreePanel() {
   const tree = useAtomValue(documentDetailChunkTreeAtom)
   const fetchNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
   const retryChunks = useSetAtom(retryDocumentChunksAtom)
-  const [_requestedChunkId, setRequestedChunkId] = useQueryState('chunk', documentDetailChunkParser)
+  const setRequestedChunkId = useSetAtom(documentDetailRequestedChunkIdAtom)
   const [expansionOverrides, setExpansionOverrides] = useState<{
     collapsed: Set<string>
     expanded: Set<string>

@@ -1,34 +1,20 @@
-import { atom } from 'jotai'
 import { atomWithLazy } from 'jotai/utils'
-
-export type RetrievalLinkedSelection = {
-  research: string | null
-  retest: string | null
-  trace: string | null
-}
-
-export type RetrievalLocationUpdate = (
-  selection: RetrievalLinkedSelection,
-  options?: {
-    history?: 'push' | 'replace'
-    shallow?: boolean
-  },
-) => void
-
-const unavailableLocationUpdate: RetrievalLocationUpdate = () => {
-  throw new Error('Retrieval location bridge is unavailable')
-}
+import { parseAsString } from 'nuqs'
+import { createQueryAtoms } from 'nuqs-jotai'
 
 export const retrievalKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing retrieval knowledge space id')
 })
 
-export const retrievalLinkedSelectionAtom = atom<RetrievalLinkedSelection>({
-  research: null,
-  retest: null,
-  trace: null,
-})
+export const retrievalLocationQuery = createQueryAtoms(
+  {
+    research: parseAsString,
+    retest: parseAsString,
+    trace: parseAsString,
+  },
+  {
+    debugLabel: 'retrieval.location',
+  },
+)
 
-export const retrievalLocationUpdateAtom = atom<{ update: RetrievalLocationUpdate }>({
-  update: unavailableLocationUpdate,
-})
+export const retrievalLinkedSelectionAtom = retrievalLocationQuery.atom

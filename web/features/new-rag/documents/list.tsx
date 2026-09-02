@@ -21,7 +21,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,13 +34,12 @@ import { newKnowledgeDocumentDetailPath } from '../routes'
 import { DocumentActionsDropdown } from './actions-dropdown'
 import { DocumentBulkActionsToolbar } from './bulk/toolbar'
 import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
+import { documentMetadataParser, documentUploadParser } from './query-state'
 import {
-  documentFilterParser,
-  documentMetadataParser,
-  documentSearchParser,
-  documentUploadParser,
-} from './query-state'
-import { documentsKnowledgeSpaceIdAtom } from './state/inputs'
+  documentFilterAtom,
+  documentSearchAtom,
+  documentsKnowledgeSpaceIdAtom,
+} from './state/inputs'
 import { documentsQueryFetchNextPageAtom, sourcesQueryFetchNextPageAtom } from './state/queries'
 import {
   createDocumentRowSourceFactsAtom,
@@ -376,8 +375,8 @@ export function DocumentsEmpty() {
 
 function DocumentsToolbar() {
   const { t } = useTranslation('dataset')
-  const [filter, setFilter] = useQueryState('status', documentFilterParser)
-  const [search, setSearch] = useQueryState('query', documentSearchParser)
+  const [filter, setFilter] = useAtom(documentFilterAtom)
+  const [search, setSearch] = useAtom(documentSearchAtom)
   const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
   const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
   const { showTasks, statusPending } = useAtomValue(documentsToolbarFactsAtom)

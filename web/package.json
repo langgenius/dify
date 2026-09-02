@@ -109,6 +109,7 @@
     "next": "catalog:",
     "next-themes": "catalog:",
     "nuqs": "catalog:",
+    "nuqs-jotai": "workspace:*",
     "pinyin-pro": "catalog:",
     "qrcode.react": "catalog:",
     "qs": "catalog:",

@@ -27,11 +27,7 @@ import {
   retrievalSelectedAtom,
   retrievalSelectedResearchTaskAtom,
 } from './state/graph'
-import {
-  retrievalKnowledgeSpaceIdAtom,
-  retrievalLinkedSelectionAtom,
-  retrievalLocationUpdateAtom,
-} from './state/inputs'
+import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './state/inputs'
 import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
@@ -90,7 +86,7 @@ export function RetrievalRuntimeController() {
   const { t } = useTranslation('dataset')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
-  const updateLocation = useAtomValue(retrievalLocationUpdateAtom).update
+  const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
   const query = useAtomValue(retrievalComposerQueryAtom)
   const mode = useAtomValue(retrievalComposerModeAtom)
   const localRun = useAtomValue(retrievalLocalRunAtom)
@@ -249,7 +245,7 @@ export function RetrievalRuntimeController() {
         status: 'running',
       })
       setLocalSelected({ id, kind: 'local' })
-      updateLocation({ research: null, retest: null, trace: null }, { history: 'replace' })
+      void updateLocation({ research: null, retest: null, trace: null }, { history: 'replace' })
       const events: KnowledgeQueryEvent[] = []
       try {
         const admission =
@@ -363,7 +359,7 @@ export function RetrievalRuntimeController() {
           selectionKey: `research:${task.id}`,
         })
         setLocalSelected(undefined)
-        updateLocation(
+        void updateLocation(
           { research: task.id, retest: null, trace: null },
           { history: 'push', shallow: false },
         )

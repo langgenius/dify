@@ -352,14 +352,17 @@ vi.mock('@/service/client', () => {
   }
 })
 
-function renderOverviewWithNuqs(...args: Parameters<typeof renderWithNuqs>) {
+function renderOverviewWithNuqs(
+  ui: Parameters<typeof renderWithNuqs>[0],
+  options?: Parameters<typeof renderWithNuqs>[1],
+) {
   jotaiQueryMocks.bump?.()
-  const rendered = renderWithNuqs(...args)
+  const rendered = renderWithNuqs(ui, options)
   return {
     ...rendered,
-    rerender: (ui: Parameters<typeof rendered.rerender>[0]) => {
+    rerender: (nextUi: Parameters<typeof rendered.rerender>[0]) => {
       act(() => jotaiQueryMocks.bump?.())
-      rendered.rerender(ui)
+      rendered.rerender(nextUi)
     },
   }
 }
