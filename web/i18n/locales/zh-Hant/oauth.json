@@ -1,4 +1,8 @@
 {
+  "callback.error": "Authorization failed",
+  "callback.errorHint": "Please return to the previous page and try again.",
+  "callback.success": "Authorization complete",
+  "callback.successHint": "You can now close this tab and return to the previous page.",
   "connect": "連接到",
   "continue": "繼續",
   "error.authAppInfoFetchFailed": "無法獲取應用程式授權信息",
