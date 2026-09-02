@@ -18,7 +18,6 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
@@ -48,11 +47,11 @@ class _SealableContext:
         return self._values[name]
 
 
-def _context(caller: Account | EndUser, caller_kind: CallerKind) -> _SealableContext:
+def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> _SealableContext:
     return _SealableContext(
         app=_make_app(),
         caller=caller,
-        subject=SimpleNamespace(caller_kind=caller_kind),
+        subject=SimpleNamespace(caller_role=caller_role),
     )
 
 
@@ -144,7 +143,7 @@ class TestOpenApiWorkflowEventsApi:
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
                 )
@@ -162,7 +161,7 @@ class TestOpenApiWorkflowEventsApi:
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
                 )
@@ -179,7 +178,7 @@ class TestOpenApiWorkflowEventsApi:
             # Should not raise NotFound for matching caller
             resp = api.get.__handler__(
                 api,
-                _context(_make_account(), CallerKind.ACCOUNT),
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 task_id="wf-run-1",
             )
@@ -193,7 +192,7 @@ class TestOpenApiWorkflowEventsApi:
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
                 )
@@ -207,7 +206,7 @@ class TestOpenApiWorkflowEventsApi:
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             resp = api.get.__handler__(
                 api,
-                _context(_make_end_user(), CallerKind.END_USER),
+                _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
                 task_id="wf-run-1",
             )
@@ -242,7 +241,7 @@ class TestOpenApiWorkflowEventsApi:
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             resp = api.get.__handler__(
                 api,
-                _context(_make_account(), CallerKind.ACCOUNT),
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 task_id="wf-run-1",
             )
@@ -259,7 +258,7 @@ class TestOpenApiWorkflowEventsApi:
         """
         self._bind_finished_run(monkeypatch)
 
-        ctx = _context(_make_account(), CallerKind.ACCOUNT)
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1")
@@ -289,7 +288,7 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
         monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter([])))
 
-        ctx = _context(_make_account(), CallerKind.ACCOUNT)
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         query = "?include_state_snapshot=true" if include_state_snapshot else ""
         with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/wf-run-1/events{query}"):

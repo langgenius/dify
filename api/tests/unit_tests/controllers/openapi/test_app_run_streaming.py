@@ -13,6 +13,7 @@ from flask import Flask
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.app_run import AppRunApi, AppRunTaskStopApi
 from models import Account
+from models.enums import CreatorUserRole
 from models.model import App, AppMode
 
 _TEST_APP_ID = str(uuid.uuid4())
@@ -154,7 +155,7 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
         app=_make_app(),
         caller=_make_account(),
         session=Mock(),
-        subject=SimpleNamespace(caller_kind="account"),
+        subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
     )
 
     api = AppRunApi()

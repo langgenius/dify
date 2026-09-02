@@ -169,7 +169,6 @@ class AppRunApi(Resource):
     def post(self, ctx: Context, app_id: str, *, body: AppRunRequest):
         app_model = load_app(ctx)
         caller = load_caller(ctx)
-        caller_kind = ctx.subject.caller_kind
 
         handler = _DISPATCH.get(app_model.mode)
         if handler is None:
@@ -186,7 +185,7 @@ class AppRunApi(Resource):
         emit_app_run(
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
-            caller_kind=caller_kind,
+            caller_kind=ctx.subject.caller_role,
             mode=str(app_model.mode),
             surface="apps",
         )
