@@ -16,6 +16,7 @@ import { PublisherEnvironmentSummarySection } from './summary-section'
 
 type PublisherEnvironmentFlowProps = {
   appId?: string
+  canViewAccessPoint: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
   environmentName: string
@@ -30,6 +31,7 @@ type PublisherEnvironmentFlowProps = {
 
 export function PublisherEnvironmentFlow({
   appId,
+  canViewAccessPoint,
   deployment,
   environmentId,
   environmentName,
@@ -92,6 +94,7 @@ export function PublisherEnvironmentFlow({
           />
           <PublisherEnvironmentActionsSection
             appId={appId}
+            canViewAccessPoint={canViewAccessPoint}
             deployment={deployment}
             environmentId={environmentId}
           />

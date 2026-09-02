@@ -30,6 +30,7 @@ import { EnvironmentRow } from './row'
 
 type EnvironmentTableProps = {
   appId: string
+  canViewAccessPoint: boolean
   onChangeVersion: (deployment: EnvironmentDeployment) => void
   onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
   onDeployToEnvironment: (environment: AppEnvironment) => void
@@ -82,6 +83,7 @@ function EnvironmentTableHeader() {
 export const EnvironmentTable = memo(
   ({
     appId,
+    canViewAccessPoint,
     onChangeVersion,
     onDeployLatest,
     onDeployToEnvironment,
@@ -184,6 +186,7 @@ export const EnvironmentTable = memo(
                   <EnvironmentRow
                     key={row.environment.id}
                     appId={appId}
+                    canViewAccessPoint={canViewAccessPoint}
                     latestVersion={deployableLatestVersion}
                     row={row}
                     onChangeVersion={onChangeVersion}

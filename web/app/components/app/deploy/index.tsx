@@ -30,7 +30,13 @@ const DeploymentDialog = dynamic(() =>
   import('./deployment-dialog').then((module) => module.DeploymentDialog),
 )
 
-function AppDeployContent({ appId }: { appId: string }) {
+function AppDeployContent({
+  appId,
+  canViewAccessPoint,
+}: {
+  appId: string
+  canViewAccessPoint: boolean
+}) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -123,9 +129,10 @@ function AppDeployContent({ appId }: { appId: string }) {
         </header>
 
         <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2">
-          <BuiltInEnvironmentCard />
+          <BuiltInEnvironmentCard canViewAccessPoint={canViewAccessPoint} />
           <EnvironmentTable
             appId={appId}
+            canViewAccessPoint={canViewAccessPoint}
             onDeployToEnvironment={handleDeployToEnvironment}
             onChangeVersion={handleChangeVersion}
             onDeployLatest={handleDeployLatest}
@@ -155,11 +162,11 @@ export default function AppDeploy() {
 
   if (!appDetail) return <Loading type="app" />
 
-  const canDeploy = getAppACLCapabilities(appDetail.permission_keys, {
+  const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail.maintainer,
     workspacePermissionKeys,
-  }).canDeploy
+  })
 
   if (
     (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
@@ -169,7 +176,7 @@ export default function AppDeploy() {
 
   return (
     <AppDeployStateBoundary appId={appDetail.id}>
-      <AppDeployContent appId={appDetail.id} />
+      <AppDeployContent appId={appDetail.id} canViewAccessPoint={canViewAccessPoint} />
     </AppDeployStateBoundary>
   )
 }

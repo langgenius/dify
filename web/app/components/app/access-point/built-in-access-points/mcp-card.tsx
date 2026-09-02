@@ -31,7 +31,7 @@ import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
   appInfo: AccessPointAppInfo
-  canEdit: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
   triggerModeDisabled: boolean
   workflow: PublishedWorkflow
@@ -40,7 +40,7 @@ type MCPAccessPointCardProps = {
 
 export function MCPAccessPointCard({
   appInfo,
-  canEdit,
+  canManageAccessPoint,
   highlighted,
   triggerModeDisabled,
   workflow,
@@ -115,7 +115,7 @@ export function MCPAccessPointCard({
   }, [advancedApp, basicAppInputs, workflowNodes])
 
   const handleStatusChange = (enabled: boolean) => {
-    if (!canEdit || loading || unavailable) return
+    if (!canManageAccessPoint || loading || unavailable) return
     if (enabled && !serverPublished) {
       setShowServerModal(true)
       return
@@ -135,7 +135,7 @@ export function MCPAccessPointCard({
   }
 
   const handleRegenerate = async () => {
-    if (!canEdit || !detail?.id) return
+    if (!canManageAccessPoint || !detail?.id) return
     await refreshServerCode(appInfo.id)
     invalidateServerDetail(appInfo.id)
     setShowRegenerate(false)
@@ -161,13 +161,13 @@ export function MCPAccessPointCard({
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
-        switchDisabled={!canEdit}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['mcp.server.title'], { ns: 'tools' })}
         onEnabledChange={loading || unavailable ? undefined : handleStatusChange}
         actions={
           <Button
             variant="secondary"
-            disabled={loading || unavailable || !canEdit}
+            disabled={loading || unavailable || !canManageAccessPoint}
             onClick={() => setShowServerModal(true)}
             className="flex items-center gap-1 px-3"
           >
@@ -192,7 +192,7 @@ export function MCPAccessPointCard({
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canEdit || !serverPublished}
+          regenerateDisabled={!canManageAccessPoint || !serverPublished}
           regenerating={regenerating}
           onRegenerate={() => setShowRegenerate(true)}
         />

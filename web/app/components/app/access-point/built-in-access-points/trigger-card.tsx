@@ -54,12 +54,12 @@ function TriggerIcon({
 
 function TriggerAccessPointItem({
   appId,
-  canEdit,
+  canManageAccessPoint,
   trigger,
   triggerPlugins,
 }: {
   appId: string
-  canEdit: boolean
+  canManageAccessPoint: boolean
   trigger: AppTrigger
   triggerPlugins: TriggerWithProvider[]
 }) {
@@ -90,7 +90,7 @@ function TriggerAccessPointItem({
       })
 
   const handleEnabledChange = (nextEnabled: boolean) => {
-    if (!canEdit) return
+    if (!canManageAccessPoint) return
 
     updateTriggerMutation.mutate({
       params: {
@@ -122,7 +122,7 @@ function TriggerAccessPointItem({
       </span>
       <Switch
         checked={enabled}
-        disabled={!canEdit}
+        disabled={!canManageAccessPoint}
         aria-label={trigger.title}
         onCheckedChange={handleEnabledChange}
       />
@@ -133,14 +133,14 @@ function TriggerAccessPointItem({
 type TriggerAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: 'available' | 'loading' | 'unavailable'
-  canEdit: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
 }
 
 export function TriggerAccessPointCard({
   appInfo,
   availability,
-  canEdit,
+  canManageAccessPoint,
   highlighted,
 }: TriggerAccessPointCardProps) {
   const { t } = useTranslation()
@@ -221,7 +221,7 @@ export function TriggerAccessPointCard({
               <TriggerAccessPointItem
                 key={trigger.id}
                 appId={appInfo.id}
-                canEdit={canEdit}
+                canManageAccessPoint={canManageAccessPoint}
                 trigger={trigger}
                 triggerPlugins={triggerPlugins}
               />

@@ -43,23 +43,23 @@ const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
 type EnvironmentWebAppCardProps = {
   appId: string
   environmentId: string
-  canEdit: boolean
-  canManage: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   highlighted?: boolean
 }
 
 export function EnvironmentWebAppCard({
   appId,
   environmentId,
-  canEdit,
-  canManage,
+  canManageAccessPoint,
+  canReleaseAndVersion,
   highlighted,
 }: EnvironmentWebAppCardProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const actions = useAccessPointActions(appId, canEdit)
+  const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
@@ -89,7 +89,7 @@ export function EnvironmentWebAppCard({
     ...subjectsQueryOptions,
     enabled:
       siteQuery.isSuccess &&
-      canManage &&
+      canReleaseAndVersion &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
   const accessConfigured =
@@ -143,7 +143,7 @@ export function EnvironmentWebAppCard({
           ? t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })
           : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
   const handleEnabledChange = (enabled: boolean) => {
-    if (!canManage) return
+    if (!canManageAccessPoint) return
 
     siteMutation.mutate({
       params,
@@ -152,7 +152,7 @@ export function EnvironmentWebAppCard({
   }
 
   const handleRegenerate = () => {
-    if (!canManage) return
+    if (!canManageAccessPoint) return
 
     resetAccessTokenMutation.mutate({ params })
   }
@@ -180,7 +180,7 @@ export function EnvironmentWebAppCard({
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
-        switchDisabled={!canManage}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
         actions={
@@ -188,7 +188,7 @@ export function EnvironmentWebAppCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!actionsAvailable || !apiQuery.isSuccess}
+              disabled={!actionsAvailable || !apiQuery.isSuccess || !canManageAccessPoint}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -199,7 +199,7 @@ export function EnvironmentWebAppCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!appInfo || !siteQuery.isSuccess || !canEdit}
+              disabled={!appInfo || !siteQuery.isSuccess || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -225,7 +225,7 @@ export function EnvironmentWebAppCard({
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canManage}
+          regenerateDisabled={!canManageAccessPoint}
           regenerating={resetAccessTokenMutation.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
@@ -235,7 +235,7 @@ export function EnvironmentWebAppCard({
               accessConfigured={accessConfigured}
               accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
               accessLabel={accessLabel}
-              disabled={!canManage}
+              disabled={!canReleaseAndVersion}
               onClick={() => setShowAccess(true)}
             />
           ) : (
@@ -246,7 +246,7 @@ export function EnvironmentWebAppCard({
       {appInfo && (
         <SettingsModal
           isChat={false}
-          canDeploy={canManage}
+          canDeploy
           appInfo={appInfo}
           isShow={showSettings}
           onClose={() => setShowSettings(false)}
@@ -265,7 +265,7 @@ export function EnvironmentWebAppCard({
           appId={appId}
           environmentId={environmentId}
           accessMode={accessMode}
-          canManage={canManage}
+          canManage={canReleaseAndVersion}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />

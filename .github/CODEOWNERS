@@ -28,6 +28,7 @@
 
 # E2E
 /e2e/ @lyzno1
+/.github/workflows/web-e2e.yml @lyzno1
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost

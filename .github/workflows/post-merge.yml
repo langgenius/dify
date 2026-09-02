@@ -39,7 +39,6 @@ jobs:
               - 'e2e/tsx-register.js'
               - 'package.json'
               - 'pnpm-lock.yaml'
-              - '.nvmrc'
               - '.github/workflows/post-merge.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
