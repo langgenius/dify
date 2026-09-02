@@ -392,9 +392,6 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
