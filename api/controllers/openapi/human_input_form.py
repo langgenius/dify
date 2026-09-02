@@ -66,17 +66,6 @@ class CheckFormSurface(Requirement):
             raise RecipientSurfaceMismatch()
 
 
-_HUMAN_INPUT_FORM = (
-    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
-    CheckAppApiEnabled(),
-    CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
-    CheckAppAccess(),
-    CheckFormSurface(),
-)
-
-
 def _jsonify_form_definition(form) -> Response:
     definition_payload = form.get_definition().model_dump()
     payload = {
@@ -97,7 +86,15 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
-        requirements=_HUMAN_INPUT_FORM,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            CheckAppAccess(),
+            CheckFormSurface(),
+        ),
         returns=(200, HumanInputFormDefinitionResponse, "Form definition"),
         write=False,
     )
@@ -115,7 +112,15 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
-        requirements=_HUMAN_INPUT_FORM,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            CheckAppAccess(),
+            CheckFormSurface(),
+        ),
         body=HumanInputFormSubmitPayload,
         returns=(200, FormSubmitResponse, "Form submitted"),
         write=False,

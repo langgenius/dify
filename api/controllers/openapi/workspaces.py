@@ -62,22 +62,6 @@ from services.errors.account import (
 )
 from services.feature_service import FeatureService
 
-_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
-
-_WORKSPACE_READ = (_ACCOUNT_SUBJECT, CheckScope(Scope.WORKSPACE_READ))
-_WORKSPACE_MEMBER_READ = (*_WORKSPACE_READ, CheckWorkspaceMember())
-_WORKSPACE_MEMBER_ADMIN = (
-    _ACCOUNT_SUBJECT,
-    CheckScope(Scope.WORKSPACE_WRITE),
-    CheckWorkspaceMember(),
-    CheckRBACPermission(
-        resource_type=RBACResourceScope.WORKSPACE,
-        scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
-        resource_required=False,
-    ),
-    CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
-)
-
 
 def _member_response(account: Account) -> MemberResponse:
     return MemberResponse(
@@ -104,7 +88,11 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
-    @endpoint(requirements=_WORKSPACE_READ, returns=(200, WorkspaceListResponse, "Workspace list"), write=False)
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        returns=(200, WorkspaceListResponse, "Workspace list"),
+        write=False,
+    )
     def get(self, ctx: Context):
         rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
 
@@ -113,7 +101,11 @@ class WorkspacesApi(Resource):
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
-    @endpoint(requirements=_WORKSPACE_READ, returns=(200, WorkspaceDetailResponse, "Workspace detail"), write=False)
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        returns=(200, WorkspaceDetailResponse, "Workspace detail"),
+        write=False,
+    )
     def get(self, ctx: Context, workspace_id: str):
         row = TenantService.find_workspace_for_account(str(ctx.subject.account_id), workspace_id, session=ctx.session)
         if row is None:
@@ -132,7 +124,14 @@ class WorkspaceSwitchApi(Resource):
     that ``hosts.yml`` never diverges from the server's ``current`` state.
     """
 
-    @endpoint(requirements=_WORKSPACE_MEMBER_READ, returns=(200, WorkspaceDetailResponse, "Workspace detail"))
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        returns=(200, WorkspaceDetailResponse, "Workspace detail"),
+    )
     def post(self, ctx: Context, workspace_id: str):
         try:
             TenantService.switch_tenant(cast(Account, load_caller(ctx)), workspace_id, session=ctx.session)
@@ -155,7 +154,11 @@ class WorkspaceMembersApi(Resource):
     """
 
     @endpoint(
-        requirements=_WORKSPACE_MEMBER_READ,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
         query=MemberListQuery,
         returns=(200, MemberListResponse, "Member list"),
         write=False,
@@ -174,7 +177,17 @@ class WorkspaceMembersApi(Resource):
         )
 
     @endpoint(
-        requirements=_WORKSPACE_MEMBER_ADMIN,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.WORKSPACE,
+                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+        ),
         body=MemberInvitePayload,
         returns=(201, MemberInviteResponse, "Member invited"),
     )
@@ -227,7 +240,20 @@ class WorkspaceMemberApi(Resource):
     assigned via PATCH (closed enum); admin cannot demote the standing owner.
     """
 
-    @endpoint(requirements=_WORKSPACE_MEMBER_ADMIN, returns=(200, MemberActionResponse, "Member removed"))
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.WORKSPACE,
+                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+        ),
+        returns=(200, MemberActionResponse, "Member removed"),
+    )
     def delete(self, ctx: Context, workspace_id: str, member_id: str):
         member = AccountService.get_account_by_id(member_id, session=ctx.session)
         if member is None:
@@ -247,7 +273,17 @@ class WorkspaceMemberApi(Resource):
         return MemberActionResponse()
 
     @endpoint(
-        requirements=_WORKSPACE_MEMBER_ADMIN,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.WORKSPACE,
+                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+        ),
         body=MemberRoleUpdatePayload,
         returns=(200, MemberActionResponse, "Role updated"),
     )

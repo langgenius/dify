@@ -73,15 +73,6 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
-_APP_RUN = (
-    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
-    CheckAppApiEnabled(),
-    CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
-    CheckAppAccess(),
-)
-
 
 @contextmanager
 def _translate_service_errors() -> Generator[None, None, None]:
@@ -164,7 +155,14 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 @openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @endpoint(
-        requirements=_APP_RUN,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            CheckAppAccess(),
+        ),
         body=AppRunRequest,
         returns=(200, EventStreamResponse, "Run result (SSE stream)"),
     )
@@ -200,7 +198,14 @@ class AppRunApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @endpoint(
-        requirements=_APP_RUN,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            CheckAppAccess(),
+        ),
         returns=(200, TaskStopResponse, "Task stopped"),
         write=False,
     )

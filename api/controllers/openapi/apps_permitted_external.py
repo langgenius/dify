@@ -36,7 +36,6 @@ from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
 
-_EXTERNAL_SUBJECT = CheckSubject(allowed=(ExternalSsoSubject,))
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
 
@@ -44,7 +43,7 @@ _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 class PermittedExternalAppsListApi(Resource):
     @endpoint(
         requirements=(
-            _EXTERNAL_SUBJECT,
+            CheckSubject(allowed=(ExternalSsoSubject,)),
             CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
         ),
         query=PermittedExternalAppsListQuery,
@@ -103,7 +102,7 @@ class PermittedExternalAppsListApi(Resource):
 class PermittedExternalAppDescribeApi(Resource):
     @endpoint(
         requirements=(
-            _EXTERNAL_SUBJECT,
+            CheckSubject(allowed=(ExternalSsoSubject,)),
             CheckAppApiEnabled(),
             CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
             CheckAppAccess(),
