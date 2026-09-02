@@ -2,6 +2,7 @@
 
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -153,20 +154,24 @@ const SnippetList = () => {
   )
   const totalSnippetCount = pages[0]?.total ?? 0
   const hasAnySnippet = totalSnippetCount > 0
+  const hasInitialQueryError = canQuerySnippetList && Boolean(error) && pages.length === 0
   const showSkeleton =
     isLoadingCurrentWorkspace ||
     (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
   const isListBusy =
     isLoadingCurrentWorkspace || (canQuerySnippetList && (isFetching || isFetchingNextPage))
-  const listStatus = isListBusy
-    ? t(($) => $.loading, { ns: 'common' })
-    : hasAnySnippet
-      ? t(($) => $['operation.searchCount'], {
-          ns: 'common',
-          count: totalSnippetCount,
-          content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
-        })
-      : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
+  const listStatus =
+    showSkeleton || hasInitialQueryError
+      ? ''
+      : isListBusy
+        ? t(($) => $.loading, { ns: 'common' })
+        : hasAnySnippet
+          ? t(($) => $['operation.searchCount'], {
+              ns: 'common',
+              count: totalSnippetCount,
+              content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
+            })
+          : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
 
   return (
     <div
@@ -220,6 +225,18 @@ const SnippetList = () => {
       >
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
+        ) : hasInitialQueryError ? (
+          <div
+            role="alert"
+            className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center"
+          >
+            <p className="system-md-medium text-text-secondary">
+              {t(($) => $['errorBoundary.title'], { ns: 'common' })}
+            </p>
+            <Button variant="secondary" onClick={() => refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
         ) : hasAnySnippet ? (
           snippets.map((snippet) => (
             <SnippetCard

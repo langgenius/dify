@@ -243,7 +243,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
             </button>
           </div>
           <Tabs value={currentTab} onValueChange={handleTabChange}>
-            <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
+            <TabsList
+              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+              className="h-9 gap-6 border-b border-divider-subtle px-6"
+            >
               <TabsTab
                 value={ImportSnippetDSLDialogTab.FromFile}
                 className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"

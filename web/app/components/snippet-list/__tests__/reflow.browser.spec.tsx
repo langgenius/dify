@@ -152,6 +152,7 @@ const renderSnippetList = async () => {
         <main
           aria-label="Snippet list page"
           className="flex h-dvh w-full min-w-0 flex-col overflow-hidden"
+          style={{ width: 320 }}
         >
           <SnippetList />
         </main>
@@ -189,9 +190,9 @@ describe('Snippet list reflow', () => {
     await page.viewport(1280, 720)
   })
 
-  it('keeps the real filters, search, create action, and card overflow-free at 320 CSS pixels', async () => {
-    // Chromium owns responsive wrapping and layout geometry; happy-dom cannot prove 320px reflow.
-    await page.viewport(320, 800)
+  it('keeps the real filters, search, create action, and card overflow-free with 320 CSS pixels available', async () => {
+    // This isolates SnippetList's 320px component contract; the route shell owns page-level width.
+    await page.viewport(400, 800)
     const screen = await renderSnippetList()
     const main = screen.getByRole('main', { name: 'Snippet list page' })
     const creatorFilter = screen.getByRole('combobox', {
@@ -219,6 +220,7 @@ describe('Snippet list reflow', () => {
     const listElement = mainElement.firstElementChild
     if (!listElement) throw new Error('SnippetList did not render its root owner')
 
+    expect(mainElement.clientWidth).toBe(320)
     expect(listElement.scrollWidth).toBe(listElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {
       expectWithinHorizontalBounds(locator.element(), listElement)

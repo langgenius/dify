@@ -74,7 +74,7 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
     expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
-    expect(screen.getByRole('tablist')).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
       'aria-selected',
       'true',
