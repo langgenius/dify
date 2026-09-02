@@ -127,3 +127,29 @@ def test_app_statistic_repository_maps_results_and_preserves_query_scope(
             "start_date": start_date,
             "end_date": end_date,
         }
+
+
+def test_daily_messages_omit_time_range_when_not_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(repository_module, "convert_datetime_to_date", lambda field: field)
+    repository = _RecordingRepository()
+
+    assert (
+        repository.get_daily_messages(
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="Asia/Shanghai",
+        )
+        == ()
+    )
+
+    sql_query, parameters = repository.calls[0]
+    assert ":start_date" not in sql_query
+    assert ":end_date" not in sql_query
+    assert parameters == {
+        "tz": "Asia/Shanghai",
+        "app_id": "app-1",
+        "excluded_invoke_from": InvokeFrom.DEBUGGER,
+    }
