@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -78,12 +78,10 @@ def _account_auth(
 ) -> AuthContext:
     """The ``AuthContext`` a live ``dfoa_`` token for ``account`` would carry."""
     return AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email=account.email,
         subject_issuer=None,
         account_id=uuid.UUID(str(account.id)),
         client_id=client_id,
-        scopes=frozenset({Scope.FULL}),
         token_id=token_id or uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,

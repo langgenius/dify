@@ -46,7 +46,7 @@ from libs.device_flow_security import (
     mint_approval_grant,
     verify_approval_grant,
 )
-from libs.oauth_bearer import SubjectType
+from libs.oauth_bearer import SubjectType, TokenType
 from libs.rate_limit import (
     LIMIT_APPROVE_EXT_PER_EMAIL,
     LIMIT_SSO_INITIATE_PER_IP,
@@ -64,7 +64,6 @@ from services.oauth_device_flow import (
     mint_oauth_token,
     oauth_ttl_days,
 )
-from services.openapi.mint_policy import MintPolicyViolation, validate_mint_policy
 
 logger = logging.getLogger(__name__)
 
@@ -281,15 +280,6 @@ def approve_external():
     if not consume_approval_grant_nonce(redis_client, claims.nonce):
         raise Unauthorized("session_already_consumed")
 
-    try:
-        validate_mint_policy(
-            subject_type=SubjectType.EXTERNAL_SSO,
-            prefix=SubjectType.EXTERNAL_SSO.prefix,
-            scopes=SubjectType.EXTERNAL_SSO.scopes,
-        )
-    except MintPolicyViolation as e:
-        raise BadRequest(description=str(e)) from None
-
     ttl_days = oauth_ttl_days(tenant_id=None)
     mint = mint_oauth_token(
         redis_client,
@@ -298,7 +288,7 @@ def approve_external():
         account_id=None,
         client_id=state.client_id,
         device_label=state.device_label,
-        prefix=SubjectType.EXTERNAL_SSO.prefix,
+        token_type=TokenType.OAUTH_EXTERNAL_SSO,
         ttl_days=ttl_days,
         session=db.session(),
     )

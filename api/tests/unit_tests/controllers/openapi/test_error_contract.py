@@ -47,7 +47,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType
+from libs.oauth_bearer import AuthContext, TokenType
 from models.account import Account, AccountStatus
 
 
@@ -263,12 +263,10 @@ class TestWireContract:
         sqlite_session.commit()
 
         token = AuthContext(
-            subject_type=SubjectType.ACCOUNT,
             subject_email="caller@example.com",
             subject_issuer="dify:account",
             account_id=account_id,
             client_id="difyctl",
-            scopes=frozenset({Scope.FULL}),
             token_id=uuid.uuid4(),
             token_type=TokenType.OAUTH_ACCOUNT,
             expires_at=None,

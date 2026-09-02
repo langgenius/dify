@@ -15,7 +15,7 @@ from typing import Any, NotRequired, TypedDict
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
+from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType, TokenType
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -300,8 +300,6 @@ class DeviceFlowRedis:
 
 
 OAUTH_BODY_BYTES = 32  # ~256 bits entropy
-PREFIX_OAUTH_ACCOUNT = "dfoa_"
-PREFIX_OAUTH_EXTERNAL_SSO = "dfoe_"
 
 # Sentinel issuer for account-flow rows. Postgres' default partial unique
 # index treats NULLs as distinct, which would let two live `dfoa_` rows
@@ -342,7 +340,7 @@ def mint_oauth_token(
     account_id: str | None,
     client_id: str,
     device_label: str,
-    prefix: str,
+    token_type: TokenType,
     ttl_days: int,
     session: Session,
 ) -> MintResult:
@@ -351,21 +349,18 @@ def mint_oauth_token(
     index predicate so re-login INSERTs fresh. Pre-rotate Redis entry is
     deleted so stale AuthContext drops immediately.
     """
-    if prefix == PREFIX_OAUTH_ACCOUNT:
+    if token_type.subject is SubjectType.ACCOUNT:
         # Account flow always writes the sentinel — caller may pass None
         # (for clarity) or the sentinel itself; nothing else is valid.
         if subject_issuer not in (None, ACCOUNT_ISSUER_SENTINEL):
             raise ValueError(f"account-flow token must use ACCOUNT_ISSUER_SENTINEL, got {subject_issuer!r}")
         subject_issuer = ACCOUNT_ISSUER_SENTINEL
-    elif prefix == PREFIX_OAUTH_EXTERNAL_SSO:
+    elif not subject_issuer or not subject_issuer.strip():
         # Defense in depth: enterprise canonicalises + rejects empty,
         # but a regression there must not yield a NULL composite key here.
-        if not subject_issuer or not subject_issuer.strip():
-            raise ValueError("external-SSO token requires non-empty subject_issuer")
-    else:
-        raise ValueError(f"unknown oauth prefix: {prefix!r}")
+        raise ValueError("external-SSO token requires non-empty subject_issuer")
 
-    token = generate_token(prefix)
+    token = generate_token(token_type.prefix)
     new_hash = sha256_hex(token)
     expires_at = datetime.now(UTC) + timedelta(days=ttl_days)
 
@@ -376,7 +371,7 @@ def mint_oauth_token(
         account_id=account_id,
         client_id=client_id,
         device_label=device_label,
-        prefix=prefix,
+        prefix=token_type.prefix,
         new_hash=new_hash,
         expires_at=expires_at,
     )

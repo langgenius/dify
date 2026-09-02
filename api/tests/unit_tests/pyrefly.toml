@@ -774,7 +774,6 @@ project-excludes = [
   "services/enterprise/test_rbac_service.py",
   "services/enterprise/test_traceparent_propagation.py",
   "services/hit_service.py",
-  "services/openapi/test_mint_policy.py",
   "services/plugin/conftest.py",
   "services/plugin/test_dependencies_analysis.py",
   "services/plugin/test_endpoint_service.py",

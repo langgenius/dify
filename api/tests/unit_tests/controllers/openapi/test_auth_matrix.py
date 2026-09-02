@@ -74,9 +74,6 @@ from enums import DeploymentEdition, WebAppAccessMode
 from libs.oauth_bearer import (
     BearerAuthenticator,
     ResolvedRow,
-    SubjectType,
-    TokenKind,
-    TokenKindRegistry,
     TokenType,
     sha256_hex,
 )
@@ -905,34 +902,9 @@ class _MemoryResolver:
         return self._rows.get(token_hash)
 
 
-def _registry(rows: dict[str, ResolvedRow], *, narrow_scopes: bool) -> TokenKindRegistry:
-    """`narrow_scopes` mints tokens carrying no scope at all.
-
-    The shipped registry gives `dfoa_` `Scope.FULL` and `dfoe_` exactly the two
-    scopes its routes ask for, so no shipped token can fail `CheckScope`. That is
-    a property of today's two token kinds, not of the check: `CheckScope` runs on
-    every request, and a narrower kind is the only way to reach its refusal. Do not
-    delete the scope rows on the grounds that no real token trips them — they are
-    what will catch a third token kind being routed somewhere it was not scoped for.
-    """
-    return TokenKindRegistry(
-        [
-            TokenKind(
-                prefix=SubjectType.ACCOUNT.prefix,
-                subject_type=SubjectType.ACCOUNT,
-                scopes=frozenset() if narrow_scopes else SubjectType.ACCOUNT.scopes,
-                token_type=TokenType.OAUTH_ACCOUNT,
-                resolver=_MemoryResolver(rows),
-            ),
-            TokenKind(
-                prefix=SubjectType.EXTERNAL_SSO.prefix,
-                subject_type=SubjectType.EXTERNAL_SSO,
-                scopes=frozenset() if narrow_scopes else SubjectType.EXTERNAL_SSO.scopes,
-                token_type=TokenType.OAUTH_EXTERNAL_SSO,
-                resolver=_MemoryResolver(rows),
-            ),
-        ]
-    )
+def _authenticator(rows: dict[str, ResolvedRow]) -> BearerAuthenticator:
+    resolver = _MemoryResolver(rows)
+    return BearerAuthenticator({TokenType.OAUTH_ACCOUNT: resolver, TokenType.OAUTH_EXTERNAL_SSO: resolver})
 
 
 @pytest.fixture
@@ -1058,23 +1030,23 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
 
     mint(
         Bearer.ACCOUNT_MEMBER,
-        SubjectType.ACCOUNT.prefix,
+        TokenType.OAUTH_ACCOUNT.prefix,
         account_id=built.member_account_id,
         email="owner@example.com",
     )
     mint(
         Bearer.ACCOUNT_LOW_ROLE,
-        SubjectType.ACCOUNT.prefix,
+        TokenType.OAUTH_ACCOUNT.prefix,
         account_id=built.low_role_account_id,
         email="normal@example.com",
     )
     mint(
         Bearer.ACCOUNT_OUTSIDER,
-        SubjectType.ACCOUNT.prefix,
+        TokenType.OAUTH_ACCOUNT.prefix,
         account_id=built.outsider_account_id,
         email="outsider@example.com",
     )
-    mint(Bearer.EXTERNAL, SubjectType.EXTERNAL_SSO.prefix, account_id=None, email="external@example.com")
+    mint(Bearer.EXTERNAL, TokenType.OAUTH_EXTERNAL_SSO.prefix, account_id=None, email="external@example.com")
     return built
 
 
@@ -1169,13 +1141,15 @@ def _run_case(
     edition = scenario.edition or (
         DeploymentEdition.ENTERPRISE if Trait.ENTERPRISE_ONLY in route.traits else DeploymentEdition.COMMUNITY
     )
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", scenario.rbac_enabled)
-    monkeypatch.setattr(
-        oauth_bearer_module,
-        "_authenticator",
-        BearerAuthenticator(_registry(token_rows, narrow_scopes=scenario.narrow_scopes)),
-    )
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition, RBAC_ENABLED=scenario.rbac_enabled)
+    monkeypatch.setattr(oauth_bearer_module, "_authenticator", _authenticator(token_rows))
+    if scenario.narrow_scopes:
+        # No shipped token can fail `CheckScope`: `dfoa_` carries `Scope.FULL` and
+        # `dfoe_` exactly the scopes its routes ask for. Scopes are a constant of
+        # the subject, so the only way to reach the refusal is to blank them here.
+        # Keep these rows: they are what catches a third token kind routed
+        # somewhere it was not scoped for.
+        monkeypatch.setattr(oauth_bearer_module.AuthContext, "scopes", property(lambda _self: frozenset()))
 
     features = _system_features(
         edition=edition, webapp_auth=scenario.webapp_auth, license_status=scenario.license_status

@@ -15,8 +15,9 @@ from controllers.openapi.account import (
 )
 from controllers.openapi.auth.requirements import CheckSessionOwnership
 from extensions.ext_redis import redis_client
+from libs.oauth_bearer import TokenType
 from models import Account
-from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
+from services.oauth_device_flow import MintResult, mint_oauth_token
 from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, context_for
 
 
@@ -35,7 +36,7 @@ def _mint_account_token(
         account_id=str(account.id),
         client_id=client_id,
         device_label=device_label,
-        prefix=PREFIX_OAUTH_ACCOUNT,
+        token_type=TokenType.OAUTH_ACCOUNT,
         ttl_days=14,
         session=db_session,
     )
@@ -60,7 +61,7 @@ class TestSessionList:
         assert result.total == 1
         row = result.data[0]
         assert row.id == str(mint.token_id)
-        assert row.prefix == PREFIX_OAUTH_ACCOUNT
+        assert row.prefix == TokenType.OAUTH_ACCOUNT.prefix
         assert row.device_label == "Laptop"
 
     def test_excludes_other_accounts_sessions(

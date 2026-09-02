@@ -50,7 +50,7 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType
+from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import TenantService as RealTenantService
@@ -93,12 +93,10 @@ def _rule(app: Flask, path: str):
 
 def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
     return AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email="caller@example.com",
         subject_issuer="dify:account",
         account_id=account_id or uuid.uuid4(),
         client_id="difyctl",
-        scopes=frozenset({Scope.FULL}),
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),

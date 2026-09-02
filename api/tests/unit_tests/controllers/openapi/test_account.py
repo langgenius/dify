@@ -121,17 +121,15 @@ def test_subject_match_for_account_filters_by_account_id():
     """Account subject scopes queries via account_id."""
     import uuid as _uuid
 
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+    from libs.oauth_bearer import AuthContext, TokenType
     from services.oauth_device_flow import subject_match_clauses
 
     aid = _uuid.uuid4()
     ctx = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email="user@example.com",
         subject_issuer="dify:account",
         account_id=aid,
         client_id="difyctl",
-        scopes=frozenset({"full"}),
         token_id=_uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
@@ -149,16 +147,14 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
     """
     import uuid as _uuid
 
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+    from libs.oauth_bearer import AuthContext, TokenType
     from services.oauth_device_flow import subject_match_clauses
 
     ctx = AuthContext(
-        subject_type=SubjectType.EXTERNAL_SSO,
         subject_email="sso@partner.com",
         subject_issuer="https://idp.partner.com",
         account_id=None,
         client_id="difyctl",
-        scopes=frozenset({"apps:run"}),
         token_id=_uuid.uuid4(),
         token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
