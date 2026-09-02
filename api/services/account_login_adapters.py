@@ -58,8 +58,8 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
-from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
     EMAIL_CODE_SEND_ACTION,
     EMAIL_CODE_VERIFY_ACTION,
@@ -120,19 +120,19 @@ class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):
 
     @override
     def is_registration_allowed(self) -> bool:
-        return FeatureService.get_system_features().is_allow_register
+        return SystemFeatureService.is_registration_allowed()
 
     @override
     def is_workspace_creation_allowed(self) -> bool:
-        return FeatureService.is_workspace_creation_allowed()
+        return SystemFeatureService.is_workspace_creation_allowed()
 
     @override
     def has_workspace_capacity(self) -> bool:
-        return FeatureService.get_license().workspaces.is_available()
+        return SystemFeatureService.get_license().workspaces.is_available()
 
     @override
     def has_account_capacity(self) -> bool:
-        return FeatureService.get_license().seats.is_available()
+        return SystemFeatureService.get_license().seats.is_available()
 
 
 class RedisConsoleAuthSecurityGateway(ConsoleAuthSecurityGateway):

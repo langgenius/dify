@@ -2,7 +2,7 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import httpx
@@ -384,6 +384,8 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
     assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
+    assert services.notifications._accounts is accounts
+    assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
@@ -480,7 +482,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="private_all"),
@@ -517,7 +519,7 @@ def test_build_application_services_maps_known_enterprise_errors(
     enterprise_error: Exception,
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=enterprise_error,
@@ -540,7 +542,7 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="invalid"),
@@ -564,7 +566,7 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
 ) -> None:
     failure = TypeError("adapter bug")
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=failure,
@@ -588,7 +590,7 @@ def test_build_application_services_wires_webapp_permission(
 ) -> None:
     with (
         patch(
-            "extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True
+            "extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True
         ) as enabled,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
@@ -610,7 +612,12 @@ def test_build_application_services_wires_webapp_permission(
 
     assert requires_permission is True
     assert allowed is False
-    enabled.assert_called_once_with()
+    enabled.assert_has_calls(
+        [
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+        ]
+    )
     get_access_mode.assert_called_once_with("app-1")
     is_user_allowed.assert_called_once_with("user-1", "app-1")
 

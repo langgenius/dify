@@ -44,7 +44,6 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
     PasswordLoginResult,
 )
-from services.entities.feature_entities import SystemFeatureModel
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 TOKEN_PAIR = AuthTokenPair(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
@@ -100,14 +99,7 @@ class FakeAuthenticationService:
 @pytest.fixture(autouse=True)
 def admit_authentication_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(
-        wraps.FeatureService,
-        "get_system_features",
-        lambda: SystemFeatureModel(
-            deployment_edition=DeploymentEdition.CLOUD,
-            enable_email_password_login=True,
-        ),
-    )
+    monkeypatch.setattr(wraps.SystemFeatureService, "is_email_password_login_enabled", lambda: True)
 
 
 @pytest.fixture

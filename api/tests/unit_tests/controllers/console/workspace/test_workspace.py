@@ -39,9 +39,12 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionResponse,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services import workspace_plan_gateway
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
@@ -306,7 +309,7 @@ class TestDeploymentWorkspacePlanGateway:
 
 
 class TestWorkspaceListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -315,12 +318,12 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["total"] == 1
         assert result["has_more"] is False
 
-    def test_get_has_next_true(self, app: Flask):
+    def test_get_has_next_true(self, app: Flask, sqlite_session: Session):
         api = WorkspaceListApi()
         method = unwrap(api.get)
         tenant = make_tenant("t1", name="T")
@@ -329,7 +332,7 @@ class TestWorkspaceListApi:
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
             patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
-            result, status = method(api, MagicMock())
+            result, status = method(api, sqlite_session)
         assert status == HTTPStatus.OK
         assert result["has_more"] is True
 
@@ -342,12 +345,12 @@ def test_legacy_current_workspace_routes_are_not_registered():
 
 
 class TestCurrentWorkspaceSummaryApi:
-    def test_get_summary(self, app: Flask):
+    def test_get_summary(self, app: Flask, sqlite_session: Session):
         api = CurrentWorkspaceSummaryApi()
         method = unwrap(api.get)
         tenant = make_tenant()
         user = make_account_with_tenant(tenant)
-        session = MagicMock()
+        session = sqlite_session
         summary = {
             "id": tenant.id,
             "name": tenant.name,
@@ -375,7 +378,7 @@ class TestCurrentWorkspaceSummaryApi:
         }
         get_summary.assert_called_once_with(tenant, user.id, session=session)
 
-    def test_get_archived_tenant_returns_conflict(self, app: Flask):
+    def test_get_archived_tenant_returns_conflict(self, app: Flask, sqlite_session: Session):
         api = CurrentWorkspaceSummaryApi()
         method = unwrap(api.get)
         tenant = make_tenant(status=TenantStatus.ARCHIVE)
@@ -383,7 +386,7 @@ class TestCurrentWorkspaceSummaryApi:
 
         with app.test_request_context("/workspaces/current/summary"):
             with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
-                method(api, MagicMock(), user)
+                method(api, sqlite_session, user)
 
         assert exc_info.value.code == HTTPStatus.CONFLICT
         assert exc_info.value.error_code == "current_workspace_archived"
@@ -434,7 +437,7 @@ class TestSwitchWorkspaceApi:
         assert result["result"] == "success"
         switch_tenant.assert_called_once_with(user, "t2", session=workspace_session)
 
-    def test_switch_not_linked(self, app: Flask):
+    def test_switch_not_linked(self, app: Flask, sqlite_session: Session):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
         payload = {"tenant_id": "bad"}
@@ -444,7 +447,7 @@ class TestSwitchWorkspaceApi:
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
         ):
             with pytest.raises(AccountNotLinkTenantError):
-                method(api, MagicMock(), user)
+                method(api, sqlite_session, user)
 
     def test_switch_tenant_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
@@ -572,8 +575,21 @@ class TestWebappLogoWorkspaceApi:
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         file = FileStorage(stream=BytesIO(b"data"), filename="logo.png", content_type="image/png")
-        upload = MagicMock(id="file1")
         user = make_account()
+        upload = UploadFile(
+            tenant_id="t1",
+            storage_type=StorageType.LOCAL,
+            key="logo.png",
+            name="logo.png",
+            size=4,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=user.id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        upload.id = "file1"
         with (
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.FileService") as fs,
@@ -653,13 +669,13 @@ class TestWorkspaceInfoApi:
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]
 
-    def test_no_current_tenant(self, app: Flask):
+    def test_no_current_tenant(self, app: Flask, sqlite_session: Session):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
         payload = {"name": "X"}
         with app.test_request_context("/workspaces/info", json=payload):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), None)
+                method(api, sqlite_session, None)
 
 
 class TestWorkspacePermissionApi:

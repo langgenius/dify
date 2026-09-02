@@ -21,7 +21,7 @@ class TestAnnotationService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.annotation_service.FeatureService") as mock_feature_service,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_add_task,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_update_task,
@@ -70,9 +70,7 @@ class TestAnnotationService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant first
         from services.account_service import AccountService, TenantService

@@ -34,13 +34,13 @@ class TestAccountService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
             patch("services.account_service.PassportService") as mock_passport_service,
             patch("services.account_login_adapters.PassportService") as mock_login_passport_service,
         ):
             # Setup default mock returns
-            mock_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_feature_service.is_registration_allowed.return_value = True
             mock_feature_service.is_workspace_creation_allowed.return_value = True
             mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
             mock_feature_service.get_license.return_value.seats.is_available.return_value = True
@@ -65,7 +65,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         account = AccountService.create_account(
@@ -88,7 +88,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         account = AccountService.create_account(
@@ -112,7 +112,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Test with too short password (assuming minimum length validation)
@@ -135,7 +135,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         # Setup mocks to disable registration
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = False
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = False
 
         with pytest.raises(AccountNotFoundError):
             AccountService.create_account(
@@ -157,7 +157,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
         dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
 
@@ -181,7 +181,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -214,7 +214,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
@@ -238,7 +238,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -265,7 +265,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.seats.is_available.return_value = False
@@ -290,7 +290,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -328,7 +328,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -370,7 +370,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -401,7 +401,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "mock_access_token"
 
@@ -440,7 +440,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "mock_access_token"
 
@@ -473,7 +473,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "mock_access_token"
 
@@ -507,7 +507,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "new_mock_access_token"
 
@@ -554,7 +554,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "mock_access_token"
 
@@ -587,7 +587,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -628,7 +628,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -657,7 +657,7 @@ class TestAccountService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_external_service_dependencies["passport_service"].return_value.issue.return_value = "mock_jwt_token"
 
@@ -693,7 +693,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -725,7 +725,7 @@ class TestTenantService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
         ):
             # Setup default mock returns
@@ -1817,12 +1817,12 @@ class TestRegisterService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
             patch("services.account_service.PassportService") as mock_passport_service,
         ):
             # Setup default mock returns
-            mock_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_feature_service.is_registration_allowed.return_value = True
             mock_feature_service.is_workspace_creation_allowed.return_value = True
             mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
             mock_feature_service.get_license.return_value.seats.is_available.return_value = True
@@ -1845,7 +1845,7 @@ class TestRegisterService:
         admin_password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         from models.model import DifySetup
@@ -1894,7 +1894,7 @@ class TestRegisterService:
         admin_password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account to raise exception
@@ -1936,7 +1936,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -1978,7 +1978,7 @@ class TestRegisterService:
         provider = fake.random_element(elements=("google", "github", "microsoft"))
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -2025,7 +2025,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -2069,7 +2069,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
@@ -2106,7 +2106,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -2144,7 +2144,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration without workspace creation
@@ -2183,7 +2183,7 @@ class TestRegisterService:
         new_member_email = fake.email()
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -2255,7 +2255,7 @@ class TestRegisterService:
         existing_member_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
@@ -2329,7 +2329,7 @@ class TestRegisterService:
         existing_pending_member_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
@@ -2390,7 +2390,7 @@ class TestRegisterService:
         new_member_email = fake.email()
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant
@@ -2423,7 +2423,7 @@ class TestRegisterService:
         already_in_tenant_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
@@ -2475,7 +2475,7 @@ class TestRegisterService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2520,7 +2520,7 @@ class TestRegisterService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2568,7 +2568,7 @@ class TestRegisterService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2612,7 +2612,7 @@ class TestRegisterService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2656,7 +2656,7 @@ class TestRegisterService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2729,7 +2729,7 @@ class TestRegisterService:
         invalid_tenant_id = fake.uuid4()
         token = fake.uuid4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create account
@@ -2781,7 +2781,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         token = fake.uuid4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
@@ -2833,7 +2833,7 @@ class TestRegisterService:
         password = generate_valid_password(fake)
         token = fake.uuid4()
         # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
