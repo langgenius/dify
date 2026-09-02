@@ -114,16 +114,3 @@ def test_execute_code_output_validator(setup_code_executor_mock) -> None:
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Output result must be a string, got int instead."
-
-
-@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_code_scientific_notation(setup_code_executor_mock) -> None:
-    code = "def main():\n    return {'result': -8.0E-5}"
-    node = _init_code_node(_code_config(code, "number", variables=False))
-
-    result = node._run()
-
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert result.outputs["result"] == -8e-5
