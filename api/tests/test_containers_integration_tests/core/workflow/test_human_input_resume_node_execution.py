@@ -235,8 +235,8 @@ class TestHumanInputResumeNodeExecutionIntegration:
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',
             created_by=account.id,
-            created_at=naive_utc_now(),
         )
+        workflow.created_at = naive_utc_now()
         db_session_with_containers.add(workflow)
         db_session_with_containers.commit()
 

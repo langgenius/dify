@@ -81,11 +81,11 @@ def _create_node_execution_model(
         error=None,
         elapsed_time=1.5,
         execution_metadata="{}",
-        created_at=datetime.now(),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid4()),
         finished_at=None,
     )
+    model.created_at = datetime.now()
     session.add(model)
     session.flush()
     return model

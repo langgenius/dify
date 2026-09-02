@@ -45,7 +45,7 @@ def _make_workflow(*, workflow_id: str = "wf-1") -> Workflow:
         type=WorkflowType.RAG_PIPELINE,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="user-1",
     )
 

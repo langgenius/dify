@@ -121,7 +121,7 @@ def _persist_app(
                 type=WorkflowType.CHAT,
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": variables}}]}),
-                features="{}",
+                _features="{}",
                 created_by="00000000-0000-0000-0000-000000000003",
             )
             app.workflow_id = workflow.id
