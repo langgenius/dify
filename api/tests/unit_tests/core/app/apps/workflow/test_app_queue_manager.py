@@ -81,7 +81,10 @@ class TestWorkflowAppQueueManager:
             manager._execution_coordinator.mark_terminal()
 
     def test_execution_timeout_aborts_graph_before_stop_event(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_EXECUTION_TIME=0)
+        # #39602: WorkflowAppQueueManager follows WORKFLOW_MAX_EXECUTION_TIME,
+        # not APP_MAX_EXECUTION_TIME. Setting WORKFLOW_MAX_EXECUTION_TIME=0
+        # is the right knob to trip the watchdog for a workflow run.
+        config_overrides(WORKFLOW_MAX_EXECUTION_TIME=0)
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
@@ -173,3 +176,39 @@ class TestWorkflowAppQueueManager:
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
             graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
+    def test_listen_timeout_uses_workflow_max_execution_time(self, config_overrides: Callable[..., None]):
+        # #39602: a workflow run must follow WORKFLOW_MAX_EXECUTION_TIME,
+        # not the chat-style APP_MAX_EXECUTION_TIME default.
+        config_overrides(WORKFLOW_MAX_EXECUTION_TIME=3600, APP_MAX_EXECUTION_TIME=1200)
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client"),
+            patch("core.app.apps.execution_coordinator.redis_client"),
+        ):
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+
+        assert manager._listen_timeout == 3600
+        assert manager._execution_coordinator._timeout_seconds == 3600
+
+    def test_listen_timeout_falls_back_when_workflow_setting_equals_app(self, config_overrides: Callable[..., None]):
+        # When WORKFLOW_MAX_EXECUTION_TIME is left at its APP_MAX_EXECUTION_TIME
+        # default we should still expose the workflow knob (not a stale value).
+        config_overrides(WORKFLOW_MAX_EXECUTION_TIME=1800, APP_MAX_EXECUTION_TIME=1200)
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client"),
+            patch("core.app.apps.execution_coordinator.redis_client"),
+        ):
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+
+        assert manager._listen_timeout == 1800
+        assert manager._execution_coordinator._timeout_seconds == 1800
