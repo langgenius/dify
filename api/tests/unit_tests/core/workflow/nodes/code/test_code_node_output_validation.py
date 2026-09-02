@@ -85,3 +85,12 @@ def test_transform_result_validates_object_arrays() -> None:
 
     with pytest.raises(ValueError):
         node._transform_result({"object_list": [{"result": 1}, 1]}, outputs)
+
+
+def test_transform_result_preserves_scientific_notation() -> None:
+    node = _node()
+    outputs = {"result": CodeNodeData.Output(type="number")}
+
+    result = node._transform_result({"result": -8.0e-5}, outputs)
+
+    assert result["result"] == -8e-5
