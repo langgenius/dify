@@ -9,6 +9,9 @@ from typing import override
 from configs import dify_config
 from dify_app import DifyApp
 
+# Loggers SQLAlchemy emits engine/SQL records through when ``SQLALCHEMY_ECHO`` is enabled.
+_SQLALCHEMY_LOGGER_NAMES = ("sqlalchemy.engine", "sqlalchemy.engine.Engine")
+
 
 def init_app(app: DifyApp):
     """Initialize logging with support for text or JSON format."""
@@ -56,6 +59,31 @@ def init_app(app: DifyApp):
     # Apply timezone if specified (only for text format)
     if dify_config.LOG_OUTPUT_FORMAT == "text":
         _apply_timezone(log_handlers)
+
+
+def apply_log_config_to_sqlalchemy_handlers():
+    """Align SQLAlchemy's own log handlers with the configured log format and timezone.
+
+    When ``SQLALCHEMY_ECHO`` is enabled, SQLAlchemy installs a stdout handler with a hardcoded
+    formatter on the engine logger (see ``sqlalchemy.log.InstanceLogger``). That formatter never
+    goes through ``init_app``, so emitted-SQL records ignore ``LOG_FORMAT`` and ``LOG_TZ`` and end
+    up with timestamps that cannot be correlated with the surrounding application logs.
+
+    This must run after the engine has been created, since the handler does not exist before then.
+    It is a no-op when echo is disabled, because SQLAlchemy installs no handler in that case.
+    """
+    formatter = _create_formatter()
+    handlers = [
+        handler for logger_name in _SQLALCHEMY_LOGGER_NAMES for handler in logging.getLogger(logger_name).handlers
+    ]
+    if not handlers:
+        return
+
+    for handler in handlers:
+        handler.setFormatter(formatter)
+
+    if dify_config.LOG_OUTPUT_FORMAT == "text":
+        _apply_timezone(handlers)
 
 
 def _create_formatter() -> logging.Formatter:

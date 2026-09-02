@@ -5,6 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
+from extensions.ext_logging import apply_log_config_to_sqlalchemy_handlers
 from models.engine import db
 
 logger = logging.getLogger(__name__)
@@ -60,3 +61,7 @@ def init_app(app: DifyApp):
             _ = db.engine  # triggers engine creation with the configured options
     except Exception:
         logger.exception("Failed to initialize SQLAlchemy engine during app startup")
+
+    # Engine creation is what installs SQLAlchemy's own log handler when echo is enabled,
+    # so the configured log format and timezone can only be applied to it from here.
+    apply_log_config_to_sqlalchemy_handlers()
