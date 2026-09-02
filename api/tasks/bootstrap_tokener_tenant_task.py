@@ -71,9 +71,7 @@ def _begin_attempt(tenant_id: str) -> _IntegrationSnapshot | None:
     now = naive_utc_now()
     with session_factory.create_session() as session, session.begin():
         integration = session.scalar(
-            select(TenantTokenerIntegration)
-            .where(TenantTokenerIntegration.tenant_id == tenant_id)
-            .with_for_update()
+            select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant_id).with_for_update()
         )
         if integration is None:
             return None
@@ -107,9 +105,7 @@ def _update_integration(
 ) -> None:
     with session_factory.create_session() as session, session.begin():
         integration = session.scalar(
-            select(TenantTokenerIntegration)
-            .where(TenantTokenerIntegration.tenant_id == tenant_id)
-            .with_for_update()
+            select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant_id).with_for_update()
         )
         if integration is None:
             return
