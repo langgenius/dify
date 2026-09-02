@@ -206,19 +206,20 @@ def _mock_http(
     return clients
 
 
+def _binding_backend(control: _ControlPlane) -> E2BExecutionBindingBackend:
+    return E2BExecutionBindingBackend(
+        control_plane=control,  # pyright: ignore[reportArgumentType]
+        template="prepared-template",
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    )
+
+
 def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExecutionBindingBackend, _Sandbox]:
     control = _ControlPlane()
     sandbox = _Sandbox(sandbox_id="sandbox-1", pause_error=pause_error)
     sandbox.files.paths.add("/workspace")
     control.sandboxes[sandbox.sandbox_id] = sandbox
-    return (
-        E2BExecutionBindingBackend(
-            control_plane=control,  # pyright: ignore[reportArgumentType]
-            template="prepared-template",
-            active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-        ),
-        sandbox,
-    )
+    return _binding_backend(control), sandbox
 
 
 @dataclass(slots=True)
@@ -241,6 +242,17 @@ def _http_status_error() -> e2b_httpx.HTTPStatusError:
     request = e2b_httpx.Request("POST", "https://api.e2b.test/sandboxes")
     response = e2b_httpx.Response(503, request=request)
     return e2b_httpx.HTTPStatusError("E2B unavailable", request=request, response=response)
+
+
+@pytest.fixture
+def sleep_delays(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    delays: list[float] = []
+
+    async def record_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    return delays
 
 
 @pytest.mark.anyio
@@ -277,28 +289,19 @@ async def test_e2b_sdk_create_disables_public_traffic(monkeypatch: pytest.Monkey
 async def test_e2b_connect_retries_one_transport_failure(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    sleep_delays: list[float],
 ) -> None:
     control = _ControlPlane(connect_errors=[_transport_error(e2b_httpx.ConnectError)])
     sandbox = _Sandbox(sandbox_id="sandbox-1")
     sandbox.files.paths.add("/workspace")
     control.sandboxes[sandbox.sandbox_id] = sandbox
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
     clients = _mock_http(monkeypatch, lambda _request: httpx.Response(200, json={"status": "ok"}))
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
     with caplog.at_level(logging.WARNING, logger="dify_agent.runtime_backend.e2b"):
         lease = await backend.acquire(sandbox.sandbox_id)
 
     assert control.connect_attempts == [sandbox.sandbox_id, sandbox.sandbox_id]
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
     retry_record = next(record for record in caplog.records if record.__dict__.get("outcome") == "retrying")
     assert retry_record.__dict__["e2b_operation"] == "connect"
     assert retry_record.__dict__["sandbox_id"] == sandbox.sandbox_id
@@ -310,19 +313,9 @@ async def test_e2b_connect_retries_one_transport_failure(
 
 
 @pytest.mark.anyio
-async def test_e2b_initial_pause_retries_one_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_e2b_initial_pause_retries_one_transport_failure(sleep_delays: list[float]) -> None:
     control = _ControlPlane(sandbox_pause_errors=[_transport_error(e2b_httpx.ReadError)])
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend = _binding_backend(control)
     allocation = await backend.create_binding(
         ExecutionBindingCreateSpec(
             tenant_id="tenant-1",
@@ -336,23 +329,13 @@ async def test_e2b_initial_pause_retries_one_transport_failure(monkeypatch: pyte
     sandbox = control.sandboxes[allocation.binding_ref]
     assert control.created == [("prepared-template", "pause")]
     assert sandbox.pauses == [True, True]
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
-async def test_e2b_destroy_retries_one_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_e2b_destroy_retries_one_transport_failure(sleep_delays: list[float]) -> None:
     control = _ControlPlane(kill_errors=[_transport_error(e2b_httpx.WriteError)])
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend = _binding_backend(control)
     await backend.destroy_binding(
         ExecutionBindingDestroySpec(
             binding_ref="sandbox-1",
@@ -362,25 +345,19 @@ async def test_e2b_destroy_retries_one_transport_failure(monkeypatch: pytest.Mon
     )
 
     assert control.killed == ["sandbox-1", "sandbox-1"]
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
-async def test_e2b_snapshot_delete_retries_one_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_e2b_snapshot_delete_retries_one_transport_failure(sleep_delays: list[float]) -> None:
     control = _ControlPlane(delete_snapshot_errors=[_transport_error(e2b_httpx.RemoteProtocolError)])
     backend = E2BHomeSnapshotBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
     )
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
     await backend.delete("snapshot-1")
 
     assert control.deleted_snapshots == ["snapshot-1", "snapshot-1"]
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
@@ -411,11 +388,7 @@ async def test_e2b_connect_does_not_retry_non_transport_failures(
     else:
         failure = asyncio.CancelledError()
     control = _ControlPlane(connect_errors=[failure])
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
 
     async def fail_sleep(_delay: float) -> None:
         raise AssertionError("non-retryable E2B failures must not sleep")
@@ -430,11 +403,7 @@ async def test_e2b_connect_does_not_retry_non_transport_failures(
 @pytest.mark.anyio
 async def test_e2b_create_and_snapshot_create_are_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     control = _ControlPlane(create_errors=[_transport_error(e2b_httpx.ConnectError)])
-    bindings = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    bindings = _binding_backend(control)
     snapshot_sandbox = _Sandbox(
         sandbox_id="sandbox-snapshot",
         snapshot_errors=[_transport_error(e2b_httpx.ConnectError)],
@@ -489,11 +458,7 @@ async def test_e2b_file_initialization_is_one_shot_and_compensates_on_failure(
         file_list_errors=[error] if failure_stage == "list" else [],
         file_remove_errors=[error] if failure_stage == "remove" else [],
     )
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
 
     async def fail_sleep(_delay: float) -> None:
         raise AssertionError("file initialization must not retry")
@@ -521,11 +486,7 @@ async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_r
     snapshots = E2BHomeSnapshotBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
     )
-    bindings = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    bindings = _binding_backend(control)
 
     default_allocation = await bindings.create_binding(
         ExecutionBindingCreateSpec(
@@ -575,11 +536,7 @@ async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_r
 @pytest.mark.anyio
 async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
     control = _ControlPlane()
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
     spec = ExecutionBindingCreateSpec(
         tenant_id="tenant-1",
         agent_id="agent-2",
@@ -600,11 +557,7 @@ async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
 @pytest.mark.anyio
 async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> None:
     control = _ControlPlane(pause_error=RuntimeError("pause failed"))
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
 
     with pytest.raises(BindingCreateError, match="pause failed"):
         await backend.create_binding(
@@ -624,8 +577,8 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
 
 @pytest.mark.anyio
 async def test_e2b_binding_create_preserves_primary_error_when_compensation_kill_fails(
-    monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    sleep_delays: list[float],
 ) -> None:
     control = _ControlPlane(
         pause_error=RuntimeError("primary pause failure"),
@@ -634,17 +587,7 @@ async def test_e2b_binding_create_preserves_primary_error_when_compensation_kill
             _transport_error(e2b_httpx.WriteError),
         ],
     )
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend = _binding_backend(control)
     with caplog.at_level(logging.WARNING, logger="dify_agent.runtime_backend.e2b"):
         with pytest.raises(BindingCreateError, match="primary pause failure"):
             _ = await backend.create_binding(
@@ -659,10 +602,11 @@ async def test_e2b_binding_create_preserves_primary_error_when_compensation_kill
 
     sandbox = next(iter(control.sandboxes.values()))
     assert sandbox.killed == 2
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
     cleanup_record = next(
         record for record in caplog.records if record.__dict__.get("outcome") == "ignored_cleanup_failure"
     )
+    assert cleanup_record.funcName == "create_binding"
     assert cleanup_record.__dict__["e2b_operation"] == "kill"
     assert cleanup_record.__dict__["sandbox_id"] == sandbox.sandbox_id
     assert cleanup_record.__dict__["cleanup_stage"] == "binding_create_compensation"
@@ -671,7 +615,7 @@ async def test_e2b_binding_create_preserves_primary_error_when_compensation_kill
 
 @pytest.mark.anyio
 async def test_e2b_binding_create_fails_closed_when_initial_pause_retries_are_exhausted(
-    monkeypatch: pytest.MonkeyPatch,
+    sleep_delays: list[float],
 ) -> None:
     control = _ControlPlane(
         sandbox_pause_errors=[
@@ -679,17 +623,7 @@ async def test_e2b_binding_create_fails_closed_when_initial_pause_retries_are_ex
             _transport_error(e2b_httpx.ReadError),
         ]
     )
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
+    backend = _binding_backend(control)
     with pytest.raises(BindingCreateError, match="stale E2B connection"):
         _ = await backend.create_binding(
             ExecutionBindingCreateSpec(
@@ -704,7 +638,7 @@ async def test_e2b_binding_create_fails_closed_when_initial_pause_retries_are_ex
     sandbox = next(iter(control.sandboxes.values()))
     assert sandbox.pauses == [True, True]
     assert sandbox.killed == 1
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
@@ -716,11 +650,7 @@ async def test_e2b_missing_explicit_snapshot_does_not_fall_back_to_template() ->
             raise RuntimeError("snapshot unavailable")
 
     control = _FailingControlPlane()
-    backend = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    )
+    backend = _binding_backend(control)
 
     with pytest.raises(BindingCreateError, match="snapshot unavailable"):
         await backend.create_binding(
@@ -801,7 +731,7 @@ async def test_e2b_release_warns_without_raising_for_cleanup_failures(
 
 
 @pytest.mark.anyio
-async def test_e2b_release_retries_pause_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_e2b_release_retries_pause_transport_failure(sleep_delays: list[float]) -> None:
     data_plane = _ReleaseDataPlane()
     sandbox = _Sandbox(
         sandbox_id="sandbox-release",
@@ -812,17 +742,11 @@ async def test_e2b_release_retries_pause_transport_failure(monkeypatch: pytest.M
         data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
     )
     backend, _ = _connected_backend()
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
     await backend.release(lease)
 
     assert data_plane.close_calls == 1
     assert sandbox.pauses == [True, True]
-    assert sleeps == [0.25]
+    assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
@@ -872,6 +796,7 @@ async def test_e2b_release_preserves_close_base_exception_when_pause_also_raises
 @pytest.mark.anyio
 async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
     monkeypatch: pytest.MonkeyPatch,
+    sleep_delays: list[float],
 ) -> None:
     monkeypatch.setenv("SHELLCTL_AUTH_TOKEN", "ambient-shellctl-token")
     attempts = 0
@@ -889,18 +814,12 @@ async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
         return httpx.Response(200, json={"status": "ok"})
 
     clients = _mock_http(monkeypatch, handler)
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
     backend, sandbox = _connected_backend()
 
     lease = await backend.acquire(sandbox.sandbox_id)
 
     assert attempts == 3
-    assert sleeps == [0.5, 0.5]
+    assert sleep_delays == [0.5, 0.5]
     assert lease.layout.home_dir == "/home/dify"
     assert lease.layout.workspace_dir == "/workspace"
     assert not clients[0].is_closed
@@ -931,6 +850,7 @@ async def test_e2b_acquire_fails_closed_without_traffic_token(
 @pytest.mark.anyio
 async def test_e2b_acquire_closes_transport_and_pauses_after_readiness_retries_exhausted(
     monkeypatch: pytest.MonkeyPatch,
+    sleep_delays: list[float],
 ) -> None:
     attempts = 0
 
@@ -940,19 +860,13 @@ async def test_e2b_acquire_closes_transport_and_pauses_after_readiness_retries_e
         return httpx.Response(503, json={"error": {"code": "starting", "message": "not ready"}})
 
     clients = _mock_http(monkeypatch, handler)
-    sleeps: list[float] = []
-
-    async def record_sleep(delay: float) -> None:
-        sleeps.append(delay)
-
-    monkeypatch.setattr(e2b_module.asyncio, "sleep", record_sleep)
     backend, sandbox = _connected_backend()
 
     with pytest.raises(BindingAcquireError, match="not ready"):
         _ = await backend.acquire(sandbox.sandbox_id)
 
     assert attempts == 3
-    assert sleeps == [0.5, 0.5]
+    assert sleep_delays == [0.5, 0.5]
     assert clients[0].is_closed
     assert sandbox.pauses == [True]
 
