@@ -142,3 +142,6 @@ unannotated-return = true
 unused-ignore = true
 implicit-any-lambda = "info"
 unnecessary-type-conversion = "info"
+# `.__handler__`/`.__spec__` are attached dynamically by controllers.openapi._contract.endpoint;
+# same downgrade tests/unit_tests/pyrefly.toml already applies for the same test seam.
+missing-attribute = "warn"
