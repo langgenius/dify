@@ -64,7 +64,7 @@ class WorkflowComment(TypeBase):
     resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None)
     resolved_by: Mapped[str | None] = mapped_column(StringUUID, default=None)
 
-    resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # Relationships
     replies: Mapped[list[WorkflowCommentReply]] = relationship(
         lambda: WorkflowCommentReply, back_populates="comment", cascade="all, delete-orphan", init=False
