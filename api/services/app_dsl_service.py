@@ -49,6 +49,7 @@ from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_service import AppService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
@@ -504,7 +505,10 @@ class AppDslService:
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
-            # Update existing app
+            # Update existing app. Capture the old name BEFORE mutating
+            # ``app.name`` so the embedded Site title can be re-synced only
+            # if the user hadn't already customized it — see #41593.
+            old_app_name = app.name
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
             app.icon_type = resolved_icon_type
@@ -512,6 +516,8 @@ class AppDslService:
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
+            if app.name != old_app_name:
+                AppService._sync_site_title_if_matched_old_app_name(app, old_app_name, session=self._session)
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")

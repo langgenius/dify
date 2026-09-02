@@ -865,6 +865,27 @@ class AppService:
                 raise AgentNameConflictError() from exc
             raise
 
+    @staticmethod
+    def _sync_site_title_if_matched_old_app_name(app: App, old_name: str, *, session: Session) -> None:
+        """Keep the embedded Site's title in sync with the app name, but only
+        when the operator has not deliberately customized the title away from
+        the previous app name — see #41593.
+
+        The pre-fix code left ``Site.title`` untouched on rename, so the
+        public webapp kept showing the old app name long after the console
+        had renamed the app. The fix syncs the title forward only when it
+        still matches the previous app name; a manually-edited title is
+        left alone.
+
+        Called after the caller has updated ``app.name`` to the new value.
+        Pass ``old_name = app.name`` captured BEFORE that assignment.
+        """
+        if old_name == app.name:
+            return
+        site = session.scalar(select(Site).where(Site.app_id == app.id))
+        if site is not None and site.title == old_name:
+            site.title = app.name
+
     def update_app(self, app: App, args: ArgsDict, *, session: Session) -> App:
         """
         Update app
@@ -873,6 +894,10 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        # Capture the old name BEFORE mutating ``app.name`` so the embedded
+        # Site title can be re-synced only if the user hadn't already
+        # customized it. See #41593.
+        old_app_name = app.name
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
@@ -903,6 +928,7 @@ class AppService:
             session=session,
         )
         self._commit_app_identity_update(app, session=session)
+        self._sync_site_title_if_matched_old_app_name(app, old_app_name, session=session)
 
         app_was_updated.send(app)
 
@@ -916,6 +942,10 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        # Capture the old name BEFORE mutating ``app.name`` so the embedded
+        # Site title can be re-synced only if the user hadn't already
+        # customized it. See #41593.
+        old_app_name = app.name
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -927,6 +957,7 @@ class AppService:
             session=session,
         )
         self._commit_app_identity_update(app, session=session)
+        self._sync_site_title_if_matched_old_app_name(app, old_app_name, session=session)
 
         app_was_updated.send(app)
 
