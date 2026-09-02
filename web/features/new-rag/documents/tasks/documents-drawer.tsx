@@ -204,14 +204,16 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
     : task.operation === 'document_upload'
       ? `${t(($) => $['newKnowledge.addDocument'])}${progress ? ` · ${progress.total}` : ''}`
       : task.operation === 'document_reindex'
-        ? `${t(($) => $['newKnowledge.reindexDocuments'])}${progress ? ` · ${progress.total}` : documentTitle ? ` · ${documentTitle}` : ''}`
+        ? `${t(($) => $['newKnowledge.reindexDocuments'])}${documentTitle ? ` · ${documentTitle}` : progress && progress.total > 1 ? ` · ${progress.total}` : ''}`
         : task.operation === 'document_delete' && documentTitle
           ? `${operationTitle} · ${documentTitle}`
           : sourceTitle
             ? `${operationTitle} · ${sourceTitle}`
-            : progress
-              ? `${operationTitle} · ${progress.total}`
-              : operationTitle
+            : task.operation === 'source_sync'
+              ? operationTitle
+              : progress
+                ? `${operationTitle} · ${progress.total}`
+                : operationTitle
 }
 
 function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
@@ -266,8 +268,12 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
         }
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate system-sm-medium text-text-primary">{title}</p>
-        <p className="mt-0.75 truncate system-xs-regular text-text-tertiary">{status}</p>
+        <p className="truncate system-sm-medium text-text-primary" title={title}>
+          {title}
+        </p>
+        <p className="mt-0.75 truncate system-xs-regular text-text-tertiary" title={status}>
+          {status}
+        </p>
         {taskError && (
           <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
             {taskError}

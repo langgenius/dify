@@ -238,6 +238,7 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   completed_at: item.completedAt ?? null,
   created_at: item.createdAt,
   document_id: item.documentId ?? null,
+  document_title: item.documentTitle ?? null,
   document_revision: item.documentRevision ?? null,
   error_code: item.errorCode ?? null,
   error_message: item.errorMessage ?? null,
@@ -250,6 +251,7 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   progress_percent: item.progressPercent,
   progress_total: item.progressTotal ?? 1,
   source_id: item.sourceId ?? null,
+  source_title: item.sourceTitle ?? null,
   state:
     item.state === 'succeeded'
       ? 'completed'
@@ -2034,7 +2036,7 @@ describe('DocumentDetailPage', () => {
               id: 'another-task',
               state: 'succeeded',
             }),
-            backgroundTask({ id: 'bulk-reindex-task' }),
+            backgroundTask({ documentId: 'document-1', id: 'bulk-reindex-task' }),
           ],
         },
       ],
@@ -2059,7 +2061,7 @@ describe('DocumentDetailPage', () => {
     })
     expect(within(taskDrawer).getAllByText(/dataset\.newKnowledge\.addDocument/)).toHaveLength(2)
     expect(
-      within(taskDrawer).getByText('dataset.newKnowledge.reindexDocuments · 1'),
+      within(taskDrawer).getByText('dataset.newKnowledge.reindexDocuments · sso-enterprise.pdf'),
     ).toBeInTheDocument()
   })
 

@@ -55,6 +55,7 @@ export interface BackgroundTask {
   readonly progressPercent: number;
   readonly progressTotal: number;
   readonly sourceId?: string | undefined;
+  readonly sourceTitle?: string | undefined;
   readonly state: BackgroundTaskState;
   readonly semanticEnrichment?: DocumentSemanticEnrichmentProgress | undefined;
   readonly taskKind: BackgroundTaskKind;

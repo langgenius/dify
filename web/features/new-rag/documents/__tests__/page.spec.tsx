@@ -250,6 +250,7 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   progress_percent: item.progressPercent,
   progress_total: item.progressTotal ?? 1,
   source_id: item.sourceId ?? null,
+  source_title: item.sourceTitle ?? null,
   state:
     item.state === 'succeeded'
       ? 'completed'
@@ -4125,17 +4126,24 @@ describe('DocumentsPage', () => {
   it('shows document, bulk re-index, and source tasks returned by the task list', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }
+    sourcesQuery.data = { pages: [{ items: [] }] }
     tasksQuery.data = {
       pages: [
         {
           items: [
             task({ id: 'document-task', state: 'succeeded' }),
-            backgroundTask({ id: 'reindex-task', progressCompleted: 12, progressTotal: 12 }),
+            backgroundTask({
+              documentId: 'document-1',
+              id: 'reindex-task',
+              progressCompleted: 1,
+              progressTotal: 1,
+            }),
             backgroundTask({
               errorMessage: 'Source sync failed',
               id: 'source-task',
               operation: 'source_sync',
               sourceId: 'source-1',
+              sourceTitle: 'Notion support SOP',
               state: 'failed',
               taskKind: 'source',
             }),
@@ -4154,13 +4162,14 @@ describe('DocumentsPage', () => {
     const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
     expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
     expect(
-      within(panel).getByText('dataset.newKnowledge.reindexDocuments · 12'),
+      within(panel).getByText('dataset.newKnowledge.reindexDocuments · sso-enterprise.pdf'),
     ).toBeInTheDocument()
     expect(
       within(panel).getByText(
         'dataset.newKnowledge.overview.operation.source_sync · Notion support SOP',
       ),
     ).toBeInTheDocument()
+    expect(within(panel).queryByText(/ · 1$/)).not.toBeInTheDocument()
     expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
   })
 

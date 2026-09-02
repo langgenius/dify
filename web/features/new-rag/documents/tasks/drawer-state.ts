@@ -119,7 +119,8 @@ export const createTaskDrawerRowLabelsAtom = (task: BackgroundTask) => {
     documentTitlePending: Boolean(
       task.documentId && !task.documentTitle && get(taskDrawerDocumentsPendingAtom),
     ),
-    sourceTitle: task.sourceId ? get(sourceNamesAtom).get(task.sourceId) : undefined,
+    sourceTitle:
+      task.sourceTitle ?? (task.sourceId ? get(sourceNamesAtom).get(task.sourceId) : undefined),
   }))
   return selectAtom(
     labelsAtom,

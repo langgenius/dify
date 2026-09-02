@@ -111,6 +111,7 @@ export type BackgroundTask = {
     | 'canceled'
     | 'superseded'
   sourceId?: string
+  sourceTitle?: string
   taskKind: KnowledgeFsBackgroundTaskResponse['task_kind']
   updatedAt: string
 }
@@ -268,6 +269,7 @@ export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): 
           ? 'canceled'
           : task.state,
     sourceId: task.source_id ?? undefined,
+    sourceTitle: task.source_title ?? undefined,
     taskKind: task.task_kind,
     updatedAt: task.updated_at,
   }

@@ -1,4 +1,4 @@
-import type { AuthSubject } from "@knowledge/core";
+import type { AuthSubject, Source } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -72,18 +72,24 @@ describe("background task handlers", () => {
     const listRecentRuns = vi.fn(async () => ({
       items: [sourceRun({ createdAt: "2026-07-23T12:04:00.000Z" })],
     }));
+    const getMany = vi.fn(async () => [sourceRecord()]);
     const app = backgroundTaskApp({
       bulkOperations,
       compilationJobs,
       documentTasks,
       sourceRepository: { listRecentRuns },
+      sources: { getMany },
     });
 
     const response = await app.request(`/knowledge-spaces/${SPACE_ID}/background-tasks?limit=2`);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.items).toEqual([
-      expect.objectContaining({ id: SOURCE_RUN_ID, taskKind: "source" }),
+      expect.objectContaining({
+        id: SOURCE_RUN_ID,
+        sourceTitle: "Notion support SOP",
+        taskKind: "source",
+      }),
       expect.objectContaining({ id: BULK_ID, taskKind: "document_bulk" }),
     ]);
     expect(body.nextCursor).toEqual(expect.any(String));
@@ -98,6 +104,42 @@ describe("background task handlers", () => {
     expect(listRecentRuns).toHaveBeenCalledWith(
       expect.objectContaining({ candidateGrants: ["scope:visible"], limit: 2 }),
     );
+    expect(getMany).toHaveBeenCalledOnce();
+    expect(getMany).toHaveBeenCalledWith({ ids: [SOURCE_ID], knowledgeSpaceId: SPACE_ID });
+  });
+
+  it("does not disclose a source title outside the current content grants", async () => {
+    const app = backgroundTaskApp({
+      sourceRepository: { listRecentRuns: vi.fn(async () => ({ items: [sourceRun()] })) },
+      sources: {
+        getMany: vi.fn(async () => [sourceRecord({ permissionScope: ["scope:hidden"] })]),
+      },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10`);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.items).toEqual([
+      expect.objectContaining({ id: SOURCE_RUN_ID, sourceId: SOURCE_ID }),
+    ]);
+    expect(body.items[0]).not.toHaveProperty("sourceTitle");
+  });
+
+  it("keeps task listing available when source title enrichment is unavailable", async () => {
+    const app = backgroundTaskApp({
+      sourceRepository: { listRecentRuns: vi.fn(async () => ({ items: [sourceRun()] })) },
+      sources: {
+        getMany: vi.fn(async () => {
+          throw new Error("source catalog unavailable");
+        }),
+      },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10`);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      items: [expect.objectContaining({ id: SOURCE_RUN_ID, sourceId: SOURCE_ID })],
+    });
   });
 
   it("does not re-emit a grouped document after its bulk task leaves the page", async () => {
@@ -288,6 +330,7 @@ describe("background task handlers", () => {
     );
     const retry = vi.fn(async () => sourceRun({ state: "queued" }));
     const app = backgroundTaskApp({
+      sources: { getMany: vi.fn(async () => [sourceRecord()]) },
       sourceWorkflows: { cancel, retry },
     });
 
@@ -298,6 +341,7 @@ describe("background task handlers", () => {
     expect(canceled.status).toBe(200);
     await expect(canceled.json()).resolves.toMatchObject({
       canRetry: true,
+      sourceTitle: "Notion support SOP",
       state: "canceled",
       taskKind: "source",
     });
@@ -306,7 +350,10 @@ describe("background task handlers", () => {
       { method: "POST" },
     );
     expect(retried.status).toBe(200);
-    await expect(retried.json()).resolves.toMatchObject({ state: "queued" });
+    await expect(retried.json()).resolves.toMatchObject({
+      sourceTitle: "Notion support SOP",
+      state: "queued",
+    });
     expect(cancel).toHaveBeenCalledWith(
       expect.objectContaining({ knowledgeSpaceId: SPACE_ID, runId: SOURCE_RUN_ID }),
     );
@@ -730,6 +777,7 @@ function backgroundTaskApp(overrides: {
   readonly durableDeletions?: RegisterBackgroundTaskHandlersOptions["durableDeletions"];
   readonly space?: { readonly id: string } | null;
   readonly sourceRepository?: object;
+  readonly sources?: object;
   readonly sourceWorkflows?: object;
 }) {
   const app = createKnowledgeGatewayApp();
@@ -763,6 +811,7 @@ function backgroundTaskApp(overrides: {
     ...(overrides.sourceRepository
       ? { sourceRepository: overrides.sourceRepository as never }
       : {}),
+    ...(overrides.sources ? { sources: overrides.sources as never } : {}),
     ...(overrides.sourceWorkflows ? { sourceWorkflows: overrides.sourceWorkflows as never } : {}),
     spaces: {
       get: vi.fn(async ({ id, tenantId }) => {
@@ -888,6 +937,23 @@ function sourceRun(patch: Partial<SourceWorkflowRun> = {}): SourceWorkflowRun {
     state: "queued",
     tenantId: TENANT_ID,
     updatedAt: "2026-07-23T12:04:00.000Z",
+    ...patch,
+  };
+}
+
+function sourceRecord(patch: Partial<Source> = {}): Source {
+  return {
+    createdAt: "2026-07-23T12:00:00.000Z",
+    id: SOURCE_ID,
+    knowledgeSpaceId: SPACE_ID,
+    metadata: {},
+    name: "Notion support SOP",
+    permissionScope: ["scope:visible"],
+    status: "active",
+    type: "web",
+    updatedAt: "2026-07-23T12:01:00.000Z",
+    uri: "https://example.com",
+    version: 1,
     ...patch,
   };
 }

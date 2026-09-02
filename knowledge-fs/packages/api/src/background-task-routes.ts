@@ -80,6 +80,7 @@ export const BackgroundTaskSchema = z.object({
   progressPercent: z.number().int().min(0).max(100),
   progressTotal: z.number().int().nonnegative(),
   sourceId: z.string().uuid().optional(),
+  sourceTitle: z.string().min(1).optional(),
   state: BackgroundTaskStateSchema,
   semanticEnrichment: z
     .object({

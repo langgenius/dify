@@ -54,6 +54,12 @@ describe("createInMemorySourceRepository", () => {
     await expect(
       repository.get({ id: created.id, knowledgeSpaceId: SPACE_A }),
     ).resolves.toMatchObject({ id: created.id });
+    await expect(
+      repository.getMany({ ids: [created.id, "missing", created.id], knowledgeSpaceId: SPACE_A }),
+    ).resolves.toEqual([expect.objectContaining({ id: created.id, name: "Docs crawl" })]);
+    await expect(
+      repository.getMany({ ids: [created.id], knowledgeSpaceId: SPACE_B }),
+    ).resolves.toEqual([]);
 
     const updated = await repository.update({
       id: created.id,
@@ -189,6 +195,50 @@ describe("createDatabaseSourceRepository", () => {
     expect(calls[1]?.params).toEqual(["source-1", SPACE_A]);
     expect(calls[1]?.sql).not.toContain("<> 'deleting'");
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "batch-loads active sources in one space-scoped query for %s",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const firstId = "00000000-0000-4000-8000-000000000001";
+      const secondId = "00000000-0000-4000-8000-000000000002";
+      const repository = createDatabaseSourceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: async (input) => {
+            calls.push(input);
+            return {
+              rows: [
+                sourceRow(firstId, { name: "First source" }),
+                sourceRow(secondId, { name: "Second source" }),
+              ],
+              rowsAffected: 2,
+            };
+          },
+          kind: dialect,
+        }),
+      });
+
+      await expect(
+        repository.getMany({
+          ids: [secondId, firstId, secondId],
+          knowledgeSpaceId: SPACE_A,
+        }),
+      ).resolves.toEqual([
+        expect.objectContaining({ id: firstId, name: "First source" }),
+        expect.objectContaining({ id: secondId, name: "Second source" }),
+      ]);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.params).toEqual([SPACE_A, firstId, secondId]);
+      expect(calls[0]?.sql).toContain("status");
+      expect(calls[0]?.sql).toContain("<> 'deleting'");
+      expect(calls[0]?.sql).toContain("ORDER BY");
+      if (dialect === "tidb") {
+        const call = calls[0];
+        if (!call) throw new Error("Expected a batch source lookup query");
+        expect(call.sql.match(/\?/g)).toHaveLength(call.params.length);
+      }
+    },
+  );
 
   it.each(["postgres", "tidb"] as const)(
     "maps the lifecycle-only deleting status through getForDeletion for %s",

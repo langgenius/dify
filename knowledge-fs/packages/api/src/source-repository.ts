@@ -41,6 +41,11 @@ export interface SourceLookupInput {
   readonly knowledgeSpaceId: string;
 }
 
+export interface SourceBatchLookupInput {
+  readonly ids: readonly string[];
+  readonly knowledgeSpaceId: string;
+}
+
 /** Internal row shape used only while a durable deletion is fenced. */
 export type SourceForDeletion = Omit<Source, "status"> & {
   readonly status: Source["status"] | "deleting";
@@ -136,6 +141,8 @@ export interface SourceRepository {
   ): Promise<Source | null>;
   create(input: CreateSourceInput): Promise<Source>;
   get(input: SourceLookupInput): Promise<Source | null>;
+  /** Bounded, space-scoped lookup used to enrich task lists without per-row queries. */
+  getMany(input: SourceBatchLookupInput): Promise<Source[]>;
   /** Internal durable-deletion lookup; includes a row already fenced as deleting. */
   getForDeletion(input: SourceLookupInput): Promise<SourceForDeletion | null>;
   list(input: ListSourcesInput): Promise<ListSourcesResult>;
@@ -245,6 +252,13 @@ export function createInMemorySourceRepository({
       const source = sources.get(id);
 
       return source && source.knowledgeSpaceId === knowledgeSpaceId ? cloneSource(source) : null;
+    },
+    getMany: async ({ ids, knowledgeSpaceId }) => {
+      const requestedIds = normalizeSourceBatchLookupIds(ids);
+      return requestedIds.flatMap((id) => {
+        const source = sources.get(id);
+        return source?.knowledgeSpaceId === knowledgeSpaceId ? [cloneSource(source)] : [];
+      });
     },
     getForDeletion: async ({ id, knowledgeSpaceId }) => {
       const source = sources.get(id);
@@ -517,6 +531,30 @@ export function createDatabaseSourceRepository({
       return result.rows[0] ? mapDatabaseSourceRow(result.rows[0]) : source;
     },
     get: async (input) => databaseSourceGet(database, input),
+    getMany: async ({ ids, knowledgeSpaceId }) => {
+      const requestedIds = normalizeSourceBatchLookupIds(ids);
+      if (requestedIds.length === 0) return [];
+      const params = [knowledgeSpaceId, ...requestedIds] satisfies readonly DatabaseQueryValue[];
+      const result = await database.execute({
+        maxRows: requestedIds.length,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, tableName)} WHERE ${quoteDatabaseIdentifier(
+          database,
+          "knowledge_space_id",
+        )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
+          database,
+          "id",
+        )} IN (${requestedIds
+          .map((_, index) => databasePlaceholder(database, index + 2))
+          .join(", ")}) AND ${quoteDatabaseIdentifier(
+          database,
+          "status",
+        )} <> 'deleting' ORDER BY ${quoteDatabaseIdentifier(database, "id")} ASC;`,
+        tableName,
+      });
+      return result.rows.map(mapDatabaseSourceRow).map(cloneSource);
+    },
     getForDeletion: async (input) => databaseSourceGetForDeletion(database, input),
     list: async ({ cursor, knowledgeSpaceId, limit }) => {
       validateSourceListLimit(limit);
@@ -789,4 +827,12 @@ function validateSourceListLimit(limit: number): void {
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("Source list limit must be at least 1");
   }
+}
+
+function normalizeSourceBatchLookupIds(ids: readonly string[]): string[] {
+  const uniqueIds = [...new Set(ids)].sort((left, right) => left.localeCompare(right));
+  if (uniqueIds.length > 100) {
+    throw new Error("Source batch lookup exceeds 100 ids");
+  }
+  return uniqueIds;
 }

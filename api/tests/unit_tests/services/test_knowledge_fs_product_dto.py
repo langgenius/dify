@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from services.knowledge_fs.product_dto import (
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSBadCaseCreatePayload,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkJobResponse,
@@ -68,6 +69,30 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_background_task_response_accepts_source_title_alias() -> None:
+    task = KnowledgeFSBackgroundTaskResponse.model_validate(
+        {
+            "canCancel": False,
+            "canRetry": False,
+            "createdAt": "2026-09-02T12:00:00Z",
+            "id": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
+            "knowledgeSpaceId": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40",
+            "operation": "source_sync",
+            "progressCompleted": 1,
+            "progressFailed": 0,
+            "progressPercent": 100,
+            "progressTotal": 1,
+            "sourceId": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60",
+            "sourceTitle": "Notion support SOP",
+            "state": "completed",
+            "taskKind": "source",
+            "updatedAt": "2026-09-02T12:01:00Z",
+        }
+    )
+
+    assert task.source_title == "Notion support SOP"
 
 
 def test_quality_replay_payload_requires_exactly_one_selection_mode() -> None:

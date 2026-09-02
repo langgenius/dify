@@ -2066,6 +2066,7 @@ class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     progress_percent: int = Field(ge=0, le=100, validation_alias=AliasChoices("progress_percent", "progressPercent"))
     progress_total: int = Field(ge=0, validation_alias=AliasChoices("progress_total", "progressTotal"))
     source_id: str | None = Field(default=None, validation_alias=AliasChoices("source_id", "sourceId"))
+    source_title: str | None = Field(default=None, validation_alias=AliasChoices("source_title", "sourceTitle"))
     state: Literal["canceled", "completed", "failed", "queued", "running"]
     task_kind: Literal["document", "document_bulk", "source"] = Field(
         validation_alias=AliasChoices("task_kind", "taskKind")

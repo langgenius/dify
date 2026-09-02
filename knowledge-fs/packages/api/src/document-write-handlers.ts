@@ -440,6 +440,7 @@ export function registerDocumentWriteHandlers({
       bulkItems.push({
         compilationJobId: compilationJob.id,
         documentId: logicalDocument?.id ?? asset.id,
+        documentTitle: logicalDocument?.title ?? asset.filename,
         requiredPermissionScope: requiredPermissionScopeForAsset(asset),
         status: "queued",
       });

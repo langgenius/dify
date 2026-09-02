@@ -16,7 +16,10 @@ import {
 } from "./background-task-routes";
 import { type BulkOperationRepository, canReadBulkOperation } from "./bulk-operation";
 import { summarizeBulkOperation } from "./bulk-operation-summary";
-import { currentCandidateGrants } from "./candidate-content-authorization";
+import {
+  candidatePermissionScopeAllows,
+  currentCandidateGrants,
+} from "./candidate-content-authorization";
 import { issueKnowledgeSpaceDurablePermission } from "./derived-result-authorization";
 import type {
   DocumentCompilationJobStateMachine,
@@ -40,6 +43,7 @@ import type {
   SourceProductWorkflowService,
   SourceWorkflowPrincipal,
 } from "./source-product-workflow";
+import type { SourceRepository } from "./source-repository";
 
 type CandidateSource = "bulk" | "document" | "source";
 
@@ -59,6 +63,7 @@ export interface RegisterBackgroundTaskHandlersOptions {
   readonly durableDeletionJobs?: Pick<DurableDeletionRepository, "getJob"> | undefined;
   readonly durableDeletions?: DurableDeletionService | undefined;
   readonly sourceRepository?: SourceProductWorkflowRepository | undefined;
+  readonly sources?: Pick<SourceRepository, "getMany"> | undefined;
   readonly sourceWorkflows?: SourceProductWorkflowService | undefined;
   readonly spaces: KnowledgeSpaceRepository;
 }
@@ -73,6 +78,7 @@ export function registerBackgroundTaskHandlers({
   durableDeletionJobs,
   durableDeletions,
   sourceRepository,
+  sources,
   sourceWorkflows,
   spaces,
 }: RegisterBackgroundTaskHandlersOptions): void {
@@ -176,6 +182,12 @@ export function registerBackgroundTaskHandlers({
       compareCandidates,
     );
     const selected = candidates.slice(0, query.limit);
+    const selectedTasks = await attachSourceTitles(
+      selected.map((candidate) => candidate.task),
+      sources,
+      grants,
+      params.id,
+    );
     let next = advanceCursor(cursor, selected);
     if (documentCandidates.length === 0 && documentPage.items.length > 0) {
       const last = documentPage.items.at(-1);
@@ -191,7 +203,7 @@ export function registerBackgroundTaskHandlers({
       Boolean(documentPage.nextCursor || bulkPage.nextCursor || sourcePage.nextCursor);
     return context.json(
       {
-        items: selected.map((candidate) => candidate.task),
+        items: selectedTasks,
         ...(hasMore ? { nextCursor: encodeBackgroundTaskCursor(next) } : {}),
       },
       200,
@@ -247,7 +259,9 @@ export function registerBackgroundTaskHandlers({
             : await controlSourceTask({
                 action,
                 context,
+                grants,
                 knowledgeSpaceId: params.id,
+                sources,
                 sourceWorkflows,
                 taskId: params.taskId,
               });
@@ -444,7 +458,9 @@ async function controlSourceTask(input: {
   readonly action: "cancel" | "retry";
   // biome-ignore lint/suspicious/noExplicitAny: bounded OpenAPI handler context
   readonly context: any;
+  readonly grants: readonly string[];
   readonly knowledgeSpaceId: string;
+  readonly sources?: Pick<SourceRepository, "getMany"> | undefined;
   readonly sourceWorkflows?: SourceProductWorkflowService | undefined;
   readonly taskId: string;
 }): Promise<BackgroundTask | null> {
@@ -463,7 +479,44 @@ async function controlSourceTask(input: {
           knowledgeSpaceId: input.knowledgeSpaceId,
           runId: input.taskId,
         });
-  return run ? sourceBackgroundTask(run) : null;
+  if (!run) return null;
+  const task = sourceBackgroundTask(run);
+  return (
+    (await attachSourceTitles([task], input.sources, input.grants, input.knowledgeSpaceId))[0] ??
+    task
+  );
+}
+
+async function attachSourceTitles(
+  tasks: readonly BackgroundTask[],
+  sources: Pick<SourceRepository, "getMany"> | undefined,
+  candidateGrants: readonly string[],
+  knowledgeSpaceId: string,
+): Promise<BackgroundTask[]> {
+  if (!sources) return [...tasks];
+  const sourceIds = [...new Set(tasks.flatMap((task) => (task.sourceId ? [task.sourceId] : [])))];
+  if (sourceIds.length === 0) return [...tasks];
+
+  try {
+    const visibleSourceTitles = new Map(
+      (
+        await sources.getMany({
+          ids: sourceIds,
+          knowledgeSpaceId,
+        })
+      )
+        .filter((source) => candidatePermissionScopeAllows(source.permissionScope, candidateGrants))
+        .map((source) => [source.id, source.name] as const),
+    );
+    return tasks.map((task) => {
+      const sourceTitle = task.sourceId ? visibleSourceTitles.get(task.sourceId) : undefined;
+      return sourceTitle ? { ...task, sourceTitle } : task;
+    });
+  } catch {
+    // A title is display enrichment only; task control and visibility must remain available if the
+    // source catalog is temporarily unavailable.
+    return [...tasks];
+  }
 }
 
 async function controlPermission(

@@ -2219,6 +2219,7 @@ export function createKnowledgeGateway({
     ...(durableDeletionService ? { durableDeletions: durableDeletionService } : {}),
     ...(sourceProduct ? { sourceRepository: sourceProduct.repository } : {}),
     ...(sourceProductWorkflows ? { sourceWorkflows: sourceProductWorkflows } : {}),
+    sources: sourceRepository,
     spaces,
   });
   registerSourceHandlers({

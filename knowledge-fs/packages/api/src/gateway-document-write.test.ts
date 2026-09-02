@@ -3627,9 +3627,14 @@ describe("document write gateway integration", () => {
       now: () => 1_777_777_000_000,
       repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
     });
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
     const app = createKnowledgeGateway({
       adapter,
       auth: createTestAuthVerifier(),
+      bulkOperations,
       documentAssets: assets,
       documentCompilationJobs: compilationJobs,
       generateBulkUploadId: () => "bulk-reindex-1",
@@ -3691,6 +3696,14 @@ describe("document write gateway integration", () => {
         },
       ],
       total: 2,
+    });
+    const storedOperation = await bulkOperations.get({
+      id: "bulk-reindex-1",
+      tenantId: "tenant-1",
+    });
+    expect(storedOperation?.items[0]).toMatchObject({
+      documentId: first.id,
+      documentTitle: "First.md",
     });
 
     const all = await app.request(
