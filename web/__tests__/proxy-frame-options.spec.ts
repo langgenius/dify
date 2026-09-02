@@ -1,5 +1,6 @@
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { canEmbedPath, proxy } from '@/proxy'
+import { canEmbedPath, config, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
@@ -20,6 +21,66 @@ const createRequest = (url: string) => {
     nextUrl,
   } as Parameters<typeof proxy>[0]
 }
+
+describe('proxy matcher', () => {
+  it.each([
+    '/',
+    '/apps',
+    '/apiary',
+    '/apps.rsc',
+    '/auth/refresh',
+    '/chat/app-token',
+    '/chat/app-token.js',
+    '/console/apiary',
+    '/datasets/dataset-id/api',
+    '/education/bg.png',
+    '/education/apply',
+    '/embed.js',
+    '/integrations/foo.js',
+    '/logo/logo.svg',
+    '/marketplace',
+    '/pdf.worker.min.mjs',
+    '/_next/data/build-id/apps.json',
+  ])('keeps Proxy coverage for application and public asset request %s', (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(true)
+  })
+
+  it.each([
+    '/api',
+    '/api/files',
+    '/console/api',
+    '/console/api/apps',
+    '/_next/image?url=%2Flogo%2Flogo.png&w=640&q=75',
+    '/_next/static/chunks/app.js',
+    '/favicon.ico',
+  ])('skips API and static asset request %s', (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(false)
+  })
+
+  it('keeps matching route prefetches that need current-path request headers', () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: '/apps',
+        headers: {
+          'next-router-prefetch': '1',
+          purpose: 'prefetch',
+        },
+      }),
+    ).toBe(true)
+  })
+
+  it('applies the same matcher contract behind a base path', () => {
+    const nextConfig = { basePath: '/dify' }
+
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: '/dify/apps' })).toBe(true)
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: '/dify/api/files' })).toBe(false)
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: '/dify/favicon.ico' })).toBe(
+      false,
+    )
+  })
+})
 
 describe('proxy frame options', () => {
   afterEach(() => {
