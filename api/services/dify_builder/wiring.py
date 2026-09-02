@@ -137,6 +137,36 @@ def _progress_event(raw: bytes) -> tuple[str, object]:
     return data["kind"], data
 
 
+class _ClosingFrameStream:
+    """Iterator over SSE frames that guarantees ``subscription`` is closed when the
+    WSGI server closes the response body -- INCLUDING when the body is never
+    iterated. A bare generator cannot: its ``finally`` (which closes the
+    subscription) does not run if the generator was never started, so a response
+    dropped before its first frame (client aborted, or an after_request/teardown
+    error on the streaming response) would leak the eagerly-activated pub/sub
+    connection + listener thread. ``close()`` here closes the subscription
+    directly (idempotent), so it fires regardless of iteration -- and the WSGI
+    spec requires the server to call ``close()`` on the response iterable even on
+    an early disconnect."""
+
+    def __init__(self, frames: Iterator[str], subscription) -> None:
+        self._frames = frames
+        self._subscription = subscription
+
+    def __iter__(self) -> Iterator[str]:
+        return self
+
+    def __next__(self) -> str:
+        return next(self._frames)
+
+    def close(self) -> None:
+        try:
+            self._frames.close()  # runs the inner generator's finally when it started
+        finally:
+            if self._subscription is not None:
+                self._subscription.close()  # idempotent; covers the never-started case
+
+
 def stream_advance_frames(
     view_dict: dict,
     subscription,
@@ -146,28 +176,36 @@ def stream_advance_frames(
 ) -> Iterator[str]:
     """Snapshot, then (if an advance is in flight) relay progress frames until this
     advance's terminal frame (`state` or `error`), inclusive, then close. Settle-only
-    calls (no advance) yield just the snapshot. Bounded by _MAX_STREAM_SECONDS."""
-    try:
-        yield _event_frame("snapshot", view_dict)
-        if not expect_advance:
-            if emit_state_when_settled:
-                yield _event_frame("state", {"kind": "state", **view_dict})
-            return
-        if subscription is None:
-            return
-        deadline = time.monotonic() + _MAX_STREAM_SECONDS
-        while time.monotonic() < deadline:
-            try:
-                raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
-            except SubscriptionClosedError:
+    calls (no advance) yield just the snapshot. Bounded by _MAX_STREAM_SECONDS.
+
+    Returns a ``_ClosingFrameStream`` (not a bare generator) so the eagerly
+    activated ``subscription`` is closed even when the WSGI server closes the
+    response body without ever iterating it -- see _ClosingFrameStream."""
+
+    def _frames() -> Iterator[str]:
+        try:
+            yield _event_frame("snapshot", view_dict)
+            if not expect_advance:
+                if emit_state_when_settled:
+                    yield _event_frame("state", {"kind": "state", **view_dict})
                 return
-            if raw is None:
-                yield ": keep-alive\n\n"
-                continue
-            kind, data = _progress_event(raw)
-            yield _event_frame(kind, data)
-            if kind in _TERMINAL_KINDS:
+            if subscription is None:
                 return
-    finally:
-        if subscription is not None:
-            subscription.close()
+            deadline = time.monotonic() + _MAX_STREAM_SECONDS
+            while time.monotonic() < deadline:
+                try:
+                    raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
+                except SubscriptionClosedError:
+                    return
+                if raw is None:
+                    yield ": keep-alive\n\n"
+                    continue
+                kind, data = _progress_event(raw)
+                yield _event_frame(kind, data)
+                if kind in _TERMINAL_KINDS:
+                    return
+        finally:
+            if subscription is not None:
+                subscription.close()
+
+    return _ClosingFrameStream(_frames(), subscription)
