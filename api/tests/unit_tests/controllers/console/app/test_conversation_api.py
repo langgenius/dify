@@ -187,7 +187,7 @@ def test_conversation_response_source_uses_caller_session(sqlite_session: Sessio
         model_id=None,
         override_model_configs=None,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="first question",
         message={},
         message_tokens=1,
