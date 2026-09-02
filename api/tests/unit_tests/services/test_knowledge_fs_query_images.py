@@ -107,6 +107,42 @@ def test_validate_query_images_rejects_hidden_or_invalid_files(
     assert error.value.code == code
 
 
+def test_load_query_image_previews_signs_only_files_the_actor_owns(monkeypatch: pytest.MonkeyPatch) -> None:
+    owned = _upload(upload_file_id="00000000-0000-4000-8000-000000000001")
+    owned.name = "diagram.png"
+    foreign = _upload(upload_file_id="00000000-0000-4000-8000-000000000002", account_id="account-2")
+    foreign.name = "other.png"
+    _install_files(monkeypatch, [owned, foreign])
+    monkeypatch.setattr(
+        query_images.file_helpers,
+        "get_signed_file_url",
+        lambda *, upload_file_id: f"https://files.example.test/{upload_file_id}/file-preview?sign=1",
+    )
+
+    previews = query_images.load_query_image_previews(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        upload_file_ids=[
+            owned.id,
+            owned.id,
+            foreign.id,
+            "00000000-0000-4000-8000-000000000003",
+        ],
+    )
+
+    assert list(previews) == [owned.id]
+    assert previews[owned.id] == query_images.KnowledgeFSQueryImagePreview(
+        upload_file_id=owned.id,
+        name="diagram.png",
+        mime_type="image/png",
+        byte_size=12,
+        preview_url=f"https://files.example.test/{owned.id}/file-preview?sign=1",
+    )
+    assert (
+        query_images.load_query_image_previews(tenant_id="tenant-1", account_id="account-1", upload_file_ids=[]) == {}
+    )
+
+
 def test_validate_query_images_rejects_missing_and_oversized_aggregate(monkeypatch: pytest.MonkeyPatch) -> None:
     _install_files(monkeypatch, [])
     with pytest.raises(query_images.KnowledgeFSQueryImageError) as missing:

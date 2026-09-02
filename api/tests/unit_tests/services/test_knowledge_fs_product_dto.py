@@ -42,6 +42,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRerankIntent,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskPartialListResponse,
+    KnowledgeFSResearchTaskResponse,
     KnowledgeFSRetrievalCustomMetadataCondition,
     KnowledgeFSRetrievalCustomMetadataFilter,
     KnowledgeFSRetrievalMetadataFilters,
@@ -642,6 +643,57 @@ def test_query_payloads_accept_either_text_or_upload_file_images() -> None:
                 ]
             }
         )
+
+
+def test_trace_and_research_responses_expose_query_images_in_console_shape() -> None:
+    upload_file_id = "00000000-0000-4000-8000-000000000001"
+    gateway_image = {"byteSize": 2048, "mimeType": "image/png", "sha256": "a" * 64, "uploadFileId": upload_file_id}
+    trace = KnowledgeFSTraceResponse.model_validate(
+        {
+            "completed": True,
+            "createdAt": "2026-08-06T08:00:00.000Z",
+            "id": "trace-1",
+            "mode": "fast",
+            "profile": {},
+            "query": "What does this diagram show?",
+            "queryImages": [gateway_image],
+            "resultCount": 4,
+            "scores": {},
+            "stages": [],
+        }
+    )
+    task = KnowledgeFSResearchTaskResponse.model_validate(
+        {
+            "cost": {},
+            "createdAt": 1,
+            "id": "task-1",
+            "knowledgeSpaceId": "space-1",
+            "metadata": {},
+            "query": "",
+            "queryImages": [{"uploadFileId": upload_file_id}],
+            "stage": "queued",
+            "updatedAt": 1,
+        }
+    )
+    trace.query_images[0].preview_url = "https://files.example.test/preview"
+
+    assert trace.query_images[0].upload_file_id == upload_file_id
+    assert trace.query_images[0].byte_size == 2048
+    assert task.query_images[0].upload_file_id == upload_file_id
+    assert task.query_images[0].preview_url is None
+    dumped = trace.model_dump(mode="json")
+    assert dumped["query_images"] == [
+        {
+            "byte_size": 2048,
+            "mime_type": "image/png",
+            "name": None,
+            "preview_url": "https://files.example.test/preview",
+            "upload_file_id": upload_file_id,
+        }
+    ]
+    assert "query_images" not in KnowledgeFSTraceResponse.model_validate(
+        {**trace.model_dump(mode="json"), "query_images": []}
+    ).model_dump(mode="json")
 
 
 def test_trace_response_translates_historical_retrieval_statistics() -> None:

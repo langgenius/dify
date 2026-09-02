@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
@@ -93,6 +93,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSQueryImageResponse,
     KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskListResponse,
@@ -157,6 +158,10 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSERequest,
     KnowledgeFSRemoteSSEResponse,
 )
+from services.knowledge_fs.query_images import (
+    KnowledgeFSQueryImagePreviewPort,
+    load_query_image_previews,
+)
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 
 _BUFFERED_UPLOAD_CAPABILITY_MIN_REMAINING = timedelta(seconds=15)
@@ -176,11 +181,41 @@ class KnowledgeFSDataFacade:
             DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION
         ),
         clock: Callable[[], datetime] = _utc_now,
+        query_image_previews: KnowledgeFSQueryImagePreviewPort = load_query_image_previews,
     ) -> None:
         self._broker = broker
         self._remote = remote
         self._buffered_upload_admission = buffered_upload_admission
         self._clock = clock
+        self._query_image_previews = query_image_previews
+
+    @staticmethod
+    def _query_images_of(*responses: object) -> list[KnowledgeFSQueryImageResponse]:
+        # Responses are validated DTOs in production; unit tests may substitute opaque objects for
+        # the validated value, which simply carry no query images.
+        return [image for response in responses for image in (getattr(response, "query_images", None) or ())]
+
+    def _attach_query_image_previews(
+        self, *, tenant_id: str, account_id: str, images: Iterable[KnowledgeFSQueryImageResponse]
+    ) -> None:
+        """Fill in file names and signed preview URLs for the query images a run was asked with."""
+
+        pending = list(images)
+        if not pending:
+            return
+        previews = self._query_image_previews(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            upload_file_ids=[image.upload_file_id for image in pending],
+        )
+        for image in pending:
+            preview = previews.get(image.upload_file_id)
+            if preview is None:
+                continue
+            image.name = preview.name
+            image.mime_type = image.mime_type or preview.mime_type
+            image.byte_size = image.byte_size if image.byte_size is not None else preview.byte_size
+            image.preview_url = preview.preview_url
 
     def _ensure_fresh_buffered_upload_capability(
         self,
@@ -1889,7 +1924,11 @@ class KnowledgeFSDataFacade:
             payload=payload,
             bind_space_in_body=True,
         )
-        return KnowledgeFSResearchTaskResponse.model_validate(raw)
+        task = KnowledgeFSResearchTaskResponse.model_validate(raw)
+        self._attach_query_image_previews(
+            tenant_id=tenant_id, account_id=account_id, images=self._query_images_of(task)
+        )
+        return task
 
     def plan_research_task(
         self,
@@ -1919,7 +1958,11 @@ class KnowledgeFSDataFacade:
             operation_id="getResearchTask",
             resource_id=task_id,
         )
-        return KnowledgeFSResearchTaskResponse.model_validate(raw)
+        task = KnowledgeFSResearchTaskResponse.model_validate(raw)
+        self._attach_query_image_previews(
+            tenant_id=tenant_id, account_id=account_id, images=self._query_images_of(task)
+        )
+        return task
 
     def list_research_task_partials(
         self,
@@ -1964,7 +2007,13 @@ class KnowledgeFSDataFacade:
             operation_id="listResearchTasks",
             query=(("cursor", cursor),) if cursor else (),
         )
-        return KnowledgeFSResearchTaskListResponse.model_validate(raw)
+        tasks = KnowledgeFSResearchTaskListResponse.model_validate(raw)
+        self._attach_query_image_previews(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            images=self._query_images_of(*tasks.data),
+        )
+        return tasks
 
     def list_traces(
         self, *, tenant_id: str, account_id: str, control_space_id: str, cursor: str | None = None
@@ -1976,7 +2025,13 @@ class KnowledgeFSDataFacade:
             operation_id="listTraces",
             query=(("cursor", cursor),) if cursor else (),
         )
-        return KnowledgeFSTraceListResponse.model_validate(raw)
+        traces = KnowledgeFSTraceListResponse.model_validate(raw)
+        self._attach_query_image_previews(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            images=self._query_images_of(*traces.data),
+        )
+        return traces
 
     def list_golden_questions(
         self,
@@ -2320,7 +2375,11 @@ class KnowledgeFSDataFacade:
             resource_id=trace_id,
             path_parameters=(("traceId", trace_id),),
         )
-        return KnowledgeFSAnswerTraceResponse.model_validate(raw)
+        trace = KnowledgeFSAnswerTraceResponse.model_validate(raw)
+        self._attach_query_image_previews(
+            tenant_id=tenant_id, account_id=account_id, images=self._query_images_of(trace)
+        )
+        return trace
 
     def list_trace_entries(
         self,

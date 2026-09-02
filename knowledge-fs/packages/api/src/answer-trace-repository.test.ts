@@ -121,6 +121,72 @@ describe("AnswerTrace repositories", () => {
     ).rejects.toThrow("AnswerTrace repository step count exceeds maxSteps=2");
   });
 
+  it.each(["postgres", "tidb"] as const)(
+    "persists %s query images as a JSON column and reads them back",
+    async (kind) => {
+      const queryImages = [
+        {
+          byteSize: 2_048,
+          mimeType: "image/png" as const,
+          sha256: "a".repeat(64),
+          uploadFileId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c90",
+        },
+      ];
+      const trace = AnswerTraceSchema.parse({
+        createdAt: "2026-05-11T13:40:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a10",
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40",
+        mode: "fast",
+        query: "What does this diagram show?",
+        queryImages,
+        steps: [],
+      });
+      const fake = createFakeAnswerTraceExecutor();
+      await createDatabaseAnswerTraceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: fake.executor,
+          kind,
+          transaction: async (callback) => callback({ execute: fake.executor }),
+        }),
+      }).create(trace);
+
+      const traceInsert = fake.calls.find(
+        (call) => call.operation === "insert" && call.tableName === "answer_traces",
+      );
+      expect(traceInsert?.sql).toContain(kind === "postgres" ? '"query_images"' : "`query_images`");
+      expect(traceInsert?.sql).toContain(kind === "postgres" ? "$14::jsonb" : "CAST(? AS JSON)");
+      expect(traceInsert?.params).toContain(JSON.stringify(queryImages));
+      if (traceInsert) assertSqlArity(traceInsert, kind);
+
+      const readRepository = createDatabaseAnswerTraceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: async (input) => {
+            if (input.tableName === "answer_traces") {
+              return {
+                rows: [
+                  {
+                    completed: true,
+                    created_at: trace.createdAt,
+                    evidence_bundle_id: null,
+                    id: trace.id,
+                    knowledge_space_id: trace.knowledgeSpaceId,
+                    mode: trace.mode,
+                    query: trace.query,
+                    query_images: kind === "postgres" ? queryImages : JSON.stringify(queryImages),
+                  },
+                ],
+                rowsAffected: 1,
+              };
+            }
+            return { rows: [], rowsAffected: 0 };
+          },
+          kind,
+        }),
+      });
+      await expect(readRepository.getById(trace.id)).resolves.toEqual(trace);
+    },
+  );
+
   it("deletes old in-memory traces with bounded cleanup semantics", async () => {
     const repository = createInMemoryAnswerTraceRepository({ maxSteps: 2, maxTraces: 4 });
     const baseTrace = AnswerTraceSchema.parse({
@@ -226,6 +292,7 @@ describe("AnswerTrace repositories", () => {
           null,
           true,
           trace.createdAt,
+          null,
         ],
         tableName: "answer_traces",
       }),

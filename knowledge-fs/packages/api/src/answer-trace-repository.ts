@@ -7,7 +7,7 @@ import {
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
 import { persistScopedEvidenceBundleWithExecutor } from "./evidence-bundle-database-repository";
-import { jsonObjectColumn } from "./json-utils";
+import { jsonArrayColumn, jsonObjectColumn } from "./json-utils";
 
 import {
   type AnswerTrace,
@@ -239,6 +239,7 @@ export function createDatabaseAnswerTraceRepository({
           "access_channel",
           "completed",
           "created_at",
+          "query_images",
         ];
         const traceParams = [
           persistedTrace.id,
@@ -254,6 +255,7 @@ export function createDatabaseAnswerTraceRepository({
           persistedTrace.permissionSnapshot?.accessChannel ?? null,
           answerTraceCompleted(persistedTrace),
           persistedTrace.createdAt,
+          persistedTrace.queryImages?.length ? JSON.stringify(persistedTrace.queryImages) : null,
         ] satisfies readonly DatabaseQueryValue[];
         const admissionSpaceParameter =
           database.dialect === "postgres"
@@ -281,8 +283,8 @@ export function createDatabaseAnswerTraceRepository({
                 ],
           sql: `INSERT INTO ${quoteDatabaseIdentifier(database, "answer_traces")} (${traceColumns
             .map((column) => quoteDatabaseIdentifier(database, column))
-            .join(", ")}) SELECT ${traceParams
-            .map((_, index) => databasePlaceholder(database, index + 1))
+            .join(", ")}) SELECT ${traceColumns
+            .map((column, index) => answerTraceInsertPlaceholder(database, column, index + 1))
             .join(", ")} WHERE EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(
             database,
             "knowledge_spaces",
@@ -621,6 +623,9 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
         }
       : {}),
     query: stringColumn(traceRow, "query"),
+    ...(traceRow.query_images == null
+      ? {}
+      : { queryImages: jsonArrayColumn(traceRow, "query_images") }),
     ...(subjectId === undefined ? {} : { subjectId }),
     steps: stepRows.map((row) => ({
       endedAt: stringColumn(row, "ended_at"),
@@ -631,6 +636,17 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
     })),
     ...(tenantId === undefined ? {} : { tenantId }),
   });
+}
+
+/** `query_images` is the only JSON column on `answer_traces`; every other column binds as-is. */
+function answerTraceInsertPlaceholder(
+  database: DatabaseAdapter,
+  column: string,
+  position: number,
+): string {
+  const placeholder = databasePlaceholder(database, position);
+  if (column !== "query_images") return placeholder;
+  return database.dialect === "postgres" ? `${placeholder}::jsonb` : `CAST(${placeholder} AS JSON)`;
 }
 
 function parseAnswerTraceProvenance(trace: unknown): AnswerTrace {

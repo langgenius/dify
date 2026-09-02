@@ -541,6 +541,7 @@ export function RecordButton({
 }) {
   const { t, i18n } = useTranslation('dataset')
   const failed = record.status === 'failed'
+  const queryImageCount = record.queryImages?.length ?? 0
   const activeResearchStage =
     record.kind === 'research' && record.status === 'running'
       ? researchStageOrder[
@@ -560,8 +561,20 @@ export function RecordButton({
       onClick={onClick}
     >
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-1 system-sm-semibold text-text-secondary">
-          {record.query || t(($) => $['newKnowledge.retrievalTest.queryImages'])}
+        <span className="flex items-center gap-1">
+          <span className="line-clamp-1 min-w-0 system-sm-semibold text-text-secondary">
+            {record.query || t(($) => $['newKnowledge.retrievalTest.queryImages'])}
+          </span>
+          {queryImageCount > 0 && (
+            <span
+              aria-label={t(($) => $['newKnowledge.retrievalTest.queryImages'])}
+              className="inline-flex shrink-0 items-center gap-0.5 system-2xs-medium text-text-tertiary"
+              role="img"
+            >
+              <span aria-hidden className="i-ri-image-line size-3.5" />
+              {queryImageCount}
+            </span>
+          )}
         </span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
           <span className={cn('min-w-0 flex-1 truncate', failed && 'text-text-destructive')}>

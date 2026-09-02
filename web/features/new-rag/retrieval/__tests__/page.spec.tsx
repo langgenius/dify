@@ -819,7 +819,7 @@ describe('RetrievalTestPage', () => {
         metadata: {},
         mode: 'research',
         query: '',
-        query_images: [{ uploadFileId: 'historical-image-1' }],
+        query_images: [{ upload_file_id: 'historical-image-1' }],
         stage: 'failed',
         updated_at: 1_800_000_005,
       },
@@ -2688,5 +2688,155 @@ describe('RetrievalTestPage', () => {
       }),
     ).not.toBeInTheDocument()
     expect(apiMock.createBadCase).not.toHaveBeenCalled()
+  })
+
+  it('keeps query images attached to their run and restores them when the record is reselected', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    apiMock.streamQuery.mockImplementationOnce(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        onEvent({ data: { trace_id: 'trace-2' }, event: 'completed' })
+      },
+    )
+    apiMock.refetchTraces.mockImplementationOnce(async () => {
+      apiMock.traces = [
+        {
+          completed: true,
+          created_at: '2026-07-30T00:00:00.000Z',
+          duration_ms: 1250,
+          id: 'trace-2',
+          mode: 'fast',
+          profile: {},
+          query: 'What does this diagram show?',
+          result_count: 4,
+          scores: {},
+          stages: [],
+        },
+        {
+          completed: true,
+          created_at: '2026-07-29T00:00:00.000Z',
+          id: 'trace-1',
+          mode: 'fast',
+          profile: {},
+          query: 'What is the refund policy?',
+          scores: {},
+          stages: [],
+        },
+      ]
+      return {
+        data: { pageParams: [null], pages: [{ data: apiMock.traces, next_cursor: null }] },
+      }
+    })
+    const user = userEvent.setup()
+    const rendered = renderPage()
+
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    await screen.findByRole('img', { name: 'diagram.png' })
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'What does this diagram show?',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /What does this diagram show\?/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    )
+
+    // The composer keeps the image and the result panel shows what the run was asked with.
+    expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: /What does this diagram show\?/ }))
+    expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: /What is the refund policy\?/ }))
+    expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
+    expect(revokeObjectUrl).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /What does this diagram show\?/ }))
+    expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(2)
+
+    rendered.unmount()
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:query-image')
+    createObjectUrl.mockRestore()
+    revokeObjectUrl.mockRestore()
+  })
+
+  it('shows persisted query images for history records and restores them into the composer', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-30T00:00:00.000Z',
+        duration_ms: 900,
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What does this diagram show?',
+        query_images: [
+          {
+            byte_size: 2048,
+            mime_type: 'image/png',
+            name: 'diagram.png',
+            preview_url: 'https://files.example.test/diagram.png?sign=1',
+            upload_file_id: 'upload-image-1',
+          },
+          {
+            byte_size: 512,
+            mime_type: 'image/png',
+            name: null,
+            preview_url: null,
+            upload_file_id: 'upload-image-2',
+          },
+        ],
+        result_count: 2,
+        scores: {},
+        stages: [],
+      },
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-0',
+        mode: 'fast',
+        profile: {},
+        query: 'text only',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage()
+
+    // The newest record is selected on load: composer and result panel both show its images,
+    // a persisted image whose file is gone falls back to a labelled placeholder.
+    const previews = screen.getAllByRole('img', { name: 'diagram.png' })
+    expect(previews).toHaveLength(2)
+    for (const preview of previews)
+      expect(preview).toHaveAttribute('src', 'https://files.example.test/diagram.png?sign=1')
+    expect(screen.getAllByRole('img', { name: 'upload-image-2' })).toHaveLength(2)
+    const record = screen.getByRole('button', { name: /What does this diagram show\?/ })
+    expect(
+      within(record).getByRole('img', { name: 'dataset.newKnowledge.retrievalTest.queryImages' }),
+    ).toHaveTextContent('2')
+
+    await user.click(screen.getByRole('button', { name: /text only/ }))
+    expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
+
+    await user.click(record)
+    expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(2)
+
+    // Editing the composer detaches it from the record without touching the record itself.
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.removeImage:{"name":"diagram.png"}',
+      }),
+    )
+    expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(1)
+    expect(
+      within(record).getByRole('img', { name: 'dataset.newKnowledge.retrievalTest.queryImages' }),
+    ).toHaveTextContent('2')
   })
 })

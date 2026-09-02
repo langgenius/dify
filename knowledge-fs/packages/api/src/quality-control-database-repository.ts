@@ -6,6 +6,7 @@ import type {
   DatabaseQueryValue,
   DatabaseRow,
 } from "@knowledge/core";
+import { QueryImageMetadataSchema } from "@knowledge/core";
 
 import { answerTraceKnowledgeSpaceVisibilitySql } from "./answer-trace-repository";
 import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
@@ -1151,6 +1152,10 @@ function mapTraceSummary(
   steps: readonly DatabaseRow[],
 ): QualityAnswerTraceSummary {
   const evidenceItems = row.evidence_items == null ? [] : jsonArrayColumn(row, "evidence_items");
+  const queryImages =
+    row.query_images == null
+      ? []
+      : QueryImageMetadataSchema.array().max(4).parse(jsonArrayColumn(row, "query_images"));
   const startedAtValues = steps.flatMap((step) => parseDateTimeColumn(step, "started_at"));
   const endedAtValues = steps.flatMap((step) => parseDateTimeColumn(step, "ended_at"));
   const durationMs =
@@ -1220,6 +1225,7 @@ function mapTraceSummary(
         : {}),
     },
     query: stringColumn(row, "query"),
+    ...(queryImages.length > 0 ? { queryImages } : {}),
     resultCount: evidenceItems.length,
     scores: {
       ...(score("final") !== undefined ? { final: score("final") } : {}),

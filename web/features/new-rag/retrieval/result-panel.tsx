@@ -11,6 +11,7 @@ import { newKnowledgeQualityPath } from '../routes'
 import { RecordTime, ResearchProcess } from './history'
 import { researchTaskCanRetry, researchTaskIsActive } from './model'
 import { RetrievalQualityWorkflow } from './quality-workflow'
+import { QueryImageThumbnail } from './query-image-thumbnail'
 import { EmptyState, EvidenceCard, FailedResult, ResearchAnswer, ResultSkeleton } from './results'
 import {
   loadMoreSelectedRetrievalEvidenceAtom,
@@ -45,6 +46,7 @@ function RetrievalResultSession() {
     selectedHasNoResults,
     selectedIsLoading,
     selectedMode,
+    selectedQueryImages,
     selectedResearchActive,
     selectedResearchTask,
     traceHasNextPage,
@@ -156,6 +158,19 @@ function RetrievalResultSession() {
           </Link>
         )}
       </div>
+
+      {selectedQueryImages.length > 0 && (
+        <ul
+          aria-label={t(($) => $['newKnowledge.retrievalTest.queryImages'])}
+          className="flex shrink-0 gap-2 overflow-x-auto pl-3"
+        >
+          {selectedQueryImages.map((image) => (
+            <li key={image.uploadFileId} className="shrink-0">
+              <QueryImageThumbnail image={image} className="size-12" />
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
         {selectedResearchTask && (

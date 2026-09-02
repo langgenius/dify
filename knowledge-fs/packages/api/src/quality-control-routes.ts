@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { QueryImageMetadataSchema } from "@knowledge/core";
 
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
 import { ErrorResponseSchema } from "./gateway-route-schemas";
@@ -53,6 +54,7 @@ export const QualityTraceSummarySchema = z
       retrievalProfileRevision: z.number().int().positive().optional(),
     }),
     query: z.string(),
+    queryImages: z.array(QueryImageMetadataSchema).max(4).optional(),
     resultCount: z.number().int().nonnegative(),
     scores: z.object({ final: ScoreSchema, rerank: ScoreSchema, retrieval: ScoreSchema }),
     stages: z.array(

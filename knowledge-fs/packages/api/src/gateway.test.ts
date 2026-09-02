@@ -12873,6 +12873,7 @@ describe("createKnowledgeGateway", () => {
           trace.permissionSnapshot?.accessChannel,
           true,
           trace.createdAt,
+          null,
         ],
         tableName: "answer_traces",
       }),

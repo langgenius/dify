@@ -17,6 +17,12 @@ const TRACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
 const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4a";
 const CURRENT_CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4b";
 const NOW = "2026-07-14T15:00:00.000Z";
+const TRACE_QUERY_IMAGE = {
+  byteSize: 2_048,
+  mimeType: "image/png",
+  sha256: "a".repeat(64),
+  uploadFileId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c90",
+};
 
 function fixedQualityId(seed: number): () => string {
   let next = seed;
@@ -1709,6 +1715,10 @@ describe("database quality-control repository", () => {
                 id: TRACE_ID,
                 mode: "deep",
                 query: "Camera_100%\\ evidence",
+                query_images:
+                  dialect === "postgres"
+                    ? [TRACE_QUERY_IMAGE]
+                    : JSON.stringify([TRACE_QUERY_IMAGE]),
               },
               {
                 completed: dialect === "postgres" ? false : "0",
@@ -1719,6 +1729,7 @@ describe("database quality-control repository", () => {
                 id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
                 mode: "fast",
                 query: "next page",
+                query_images: null,
               },
             ],
             rowsAffected: 2,
@@ -1799,6 +1810,7 @@ describe("database quality-control repository", () => {
               rerankModel: "rerank-4",
               retrievalProfileRevision: 4,
             },
+            queryImages: [TRACE_QUERY_IMAGE],
             resultCount: 3,
             scores: { final: 0.9, rerank: 0.8, retrieval: 0.7 },
             stages: [
@@ -1809,6 +1821,7 @@ describe("database quality-control repository", () => {
         ],
         nextCursor: { createdAt: NOW, id: TRACE_ID },
       });
+      expect(page.items[0]).toHaveProperty("queryImages");
       const traceCall = calls.find((call) => call.tableName === "answer_traces");
       expect(traceCall?.params).toContain("%camera\\_100\\%\\\\%");
       expect(traceCall?.sql).toContain(dialect === "postgres" ? "TRUE" : "1");

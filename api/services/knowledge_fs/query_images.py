@@ -7,9 +7,9 @@ import hashlib
 import hmac
 import json
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Protocol
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
@@ -17,6 +17,7 @@ from core.db.session_factory import session_factory
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from models import ToolFile
 from models.enums import CreatorUserRole
@@ -51,6 +52,23 @@ class KnowledgeFSQueryImageMetadata:
 class KnowledgeFSResolvedQueryImage(KnowledgeFSQueryImageMetadata):
     body: bytes
     sha256: str
+
+
+@dataclass(frozen=True)
+class KnowledgeFSQueryImagePreview:
+    """Display metadata and a short-lived signed URL for one persisted query-image reference."""
+
+    upload_file_id: str
+    name: str
+    mime_type: str | None
+    byte_size: int
+    preview_url: str
+
+
+class KnowledgeFSQueryImagePreviewPort(Protocol):
+    def __call__(
+        self, *, tenant_id: str, account_id: str, upload_file_ids: Sequence[str]
+    ) -> Mapping[str, KnowledgeFSQueryImagePreview]: ...
 
 
 @dataclass(frozen=True)
@@ -123,6 +141,44 @@ def validate_query_image_references(
         if mark_used:
             session.commit()
         return result
+
+
+def load_query_image_previews(
+    *,
+    tenant_id: str,
+    account_id: str,
+    upload_file_ids: Sequence[str],
+) -> dict[str, KnowledgeFSQueryImagePreview]:
+    """Resolve preview URLs for the query images a persisted run was asked with.
+
+    Only files the acting account still owns are returned, mirroring the write-side ownership
+    rule; a reference whose file was deleted since is simply absent so history can render a
+    placeholder instead of failing.
+    """
+
+    unique_ids = list(dict.fromkeys(str(value).strip() for value in upload_file_ids if str(value).strip()))
+    if not unique_ids:
+        return {}
+
+    with session_factory.create_session() as session:
+        files_by_id = FileService.get_upload_files_by_ids(tenant_id, unique_ids, session=session)
+        previews: dict[str, KnowledgeFSQueryImagePreview] = {}
+        for upload_file_id in unique_ids:
+            upload_file = files_by_id.get(upload_file_id)
+            if (
+                upload_file is None
+                or upload_file.created_by_role != CreatorUserRole.ACCOUNT
+                or upload_file.created_by != account_id
+            ):
+                continue
+            previews[upload_file_id] = KnowledgeFSQueryImagePreview(
+                upload_file_id=upload_file_id,
+                name=upload_file.name,
+                mime_type=upload_file.mime_type,
+                byte_size=upload_file.size,
+                preview_url=file_helpers.get_signed_file_url(upload_file_id=upload_file_id),
+            )
+        return previews
 
 
 def issue_workflow_query_image_reference(

@@ -2700,6 +2700,20 @@ class KnowledgeFSRetrievalQueryImageReference(KnowledgeFSQueryImageReference):
     )
 
 
+class KnowledgeFSQueryImageResponse(ResponseModel):
+    """One query image a retrieval run was asked with, enriched for console display.
+
+    The gateway persists only the UploadFile reference and static metadata; the console fills in
+    the file name and a short-lived signed preview URL for files the caller still owns.
+    """
+
+    upload_file_id: str = Field(validation_alias=AliasChoices("upload_file_id", "uploadFileId"))
+    byte_size: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("byte_size", "byteSize"))
+    mime_type: str | None = Field(default=None, validation_alias=AliasChoices("mime_type", "mimeType"))
+    name: str | None = None
+    preview_url: str | None = None
+
+
 class _KnowledgeFSQueryModalities(BaseModel):
     query: str | None = Field(default=None, max_length=16_000)
     query_images: list[KnowledgeFSQueryImageReference] = Field(
@@ -3103,7 +3117,7 @@ class KnowledgeFSResearchTaskResponse(ResponseModel):
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     query: str
-    query_images: list[KnowledgeFSQueryImageReference] = Field(
+    query_images: list[KnowledgeFSQueryImageResponse] = Field(
         default_factory=list,
         validation_alias=AliasChoices("query_images", "queryImages"),
         exclude_if=lambda value: not value,
@@ -3234,6 +3248,11 @@ class KnowledgeFSAnswerTraceResponse(ResponseModel):
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     mode: Literal["auto", "deep", "fast", "research"]
     query: str
+    query_images: list[KnowledgeFSQueryImageResponse] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("query_images", "queryImages"),
+        exclude_if=lambda value: not value,
+    )
     steps: list[KnowledgeFSAnswerTraceStepResponse]
 
 
@@ -3313,6 +3332,11 @@ class KnowledgeFSTraceResponse(ResponseModel):
     mode: Literal["auto", "deep", "fast", "research"]
     profile: KnowledgeFSTraceProfileResponse
     query: str
+    query_images: list[KnowledgeFSQueryImageResponse] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("query_images", "queryImages"),
+        exclude_if=lambda value: not value,
+    )
     result_count: int = Field(ge=0, validation_alias=AliasChoices("result_count", "resultCount"))
     scores: KnowledgeFSTraceScoresResponse
     stages: list[KnowledgeFSTraceStageResponse]

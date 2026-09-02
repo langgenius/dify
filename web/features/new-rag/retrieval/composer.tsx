@@ -7,10 +7,11 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
+import { QueryImageThumbnail } from './query-image-thumbnail'
 import {
   retrievalComposerFactsAtom,
   updateRetrievalComposerImagesAtom,
@@ -32,23 +33,7 @@ export function RetrievalComposer() {
   const updateImages = useSetAtom(updateRetrievalComposerImagesAtom)
   const run = useSetAtom(runRetrievalAtom)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const imagesRef = useRef(images)
   const upload = useMutation(consoleQuery.files.upload.post.mutationOptions())
-
-  useEffect(() => {
-    const retainedUrls = new Set(images.map((image) => image.previewUrl))
-    for (const image of imagesRef.current) {
-      if (!retainedUrls.has(image.previewUrl)) URL.revokeObjectURL(image.previewUrl)
-    }
-    imagesRef.current = images
-  }, [images])
-
-  useEffect(
-    () => () => {
-      for (const image of imagesRef.current) URL.revokeObjectURL(image.previewUrl)
-    },
-    [],
-  )
 
   const selectImages = async (files: FileList | null) => {
     if (!files?.length || disabled || upload.isPending) return
@@ -81,7 +66,9 @@ export function RetrievalComposer() {
       }
       updateImages(next)
     } catch {
-      for (const image of next.slice(images.length)) URL.revokeObjectURL(image.previewUrl)
+      for (const image of next.slice(images.length)) {
+        if (image.previewUrl) URL.revokeObjectURL(image.previewUrl)
+      }
       toast.error(t(($) => $['newKnowledge.retrievalTest.imageUploadFailed']))
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -120,11 +107,7 @@ export function RetrievalComposer() {
           >
             {images.map((image) => (
               <li key={image.uploadFileId} className="relative shrink-0">
-                <img
-                  alt={image.name}
-                  className="size-16 rounded-lg object-cover ring-1 ring-components-panel-border"
-                  src={image.previewUrl}
-                />
+                <QueryImageThumbnail image={image} className="size-16" />
                 <IconButton
                   type="button"
                   size="sm"

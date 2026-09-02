@@ -4,6 +4,7 @@ import type {
   AuthSubject,
   KnowledgeSpaceEmbeddingProfile,
   KnowledgeSpaceRetrievalProfile,
+  QueryImageMetadata,
 } from "@knowledge/core";
 import { AnswerTraceSchema } from "@knowledge/core";
 
@@ -64,6 +65,8 @@ export interface QualityAnswerTraceSummary {
     readonly retrievalProfileRevision?: number | undefined;
   };
   readonly query: string;
+  /** Query-image references the trace was run with; absent for text-only traces. */
+  readonly queryImages?: QueryImageMetadata[] | undefined;
   readonly resultCount: number;
   readonly scores: {
     readonly final?: number | undefined;

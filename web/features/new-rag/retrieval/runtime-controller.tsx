@@ -1,11 +1,9 @@
 'use client'
 
-import type {
-  KnowledgeFsQueryImageReference,
-  KnowledgeFsResearchTaskResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsResearchTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RetrievalTestMode } from './model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
+import type { RetrievalComposerImage } from './state/scoped'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
@@ -27,8 +25,11 @@ import { streamResearchTaskEvents } from './services/research-task-events'
 import {
   retrievalComposerModeAtom,
   retrievalComposerQueryAtom,
+  retrievalComposerQueryImagesAtom,
+  retrievalRetainedImagesAtom,
   retrievalRuntimeQueryFactsAtom,
   retrievalSelectedAtom,
+  retrievalSelectedQueryImagesAtom,
   retrievalSelectedResearchTaskAtom,
 } from './state/graph'
 import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './state/inputs'
@@ -36,9 +37,9 @@ import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
-  retrievalComposerImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
+  retrievalRecordImagesAtom,
   retrievalResearchEventsAtom,
   retrievalResearchPlansAtom,
   retrievalResearchRetryPendingAtom,
@@ -94,7 +95,9 @@ export function RetrievalRuntimeController() {
   const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
   const query = useAtomValue(retrievalComposerQueryAtom)
-  const queryImages = useAtomValue(retrievalComposerImagesAtom)
+  const queryImages = useAtomValue(retrievalComposerQueryImagesAtom)
+  const selectedQueryImages = useAtomValue(retrievalSelectedQueryImagesAtom)
+  const retainedImages = useAtomValue(retrievalRetainedImagesAtom)
   const mode = useAtomValue(retrievalComposerModeAtom)
   const localRun = useAtomValue(retrievalLocalRunAtom)
   const selected = useAtomValue(retrievalSelectedAtom)
@@ -106,6 +109,7 @@ export function RetrievalRuntimeController() {
   const setComposerDraft = useSetAtom(retrievalComposerDraftAtom)
   const setLocalRun = useSetAtom(retrievalLocalRunAtom)
   const setLocalSelected = useSetAtom(retrievalLocalSelectedAtom)
+  const setRecordImages = useSetAtom(retrievalRecordImagesAtom)
   const setResearchPlans = useSetAtom(retrievalResearchPlansAtom)
   const setResearchEvents = useSetAtom(retrievalResearchEventsAtom)
   const setAdmittedResearchTasks = useSetAtom(retrievalAdmittedResearchTasksAtom)
@@ -126,10 +130,31 @@ export function RetrievalRuntimeController() {
   const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
     undefined,
   )
+  const retainedPreviewUrlsRef = useRef(new Set<string>())
 
   useEffect(() => {
     selectedResearchActiveRef.current = selectedResearchActive
   }, [selectedResearchActive])
+
+  // Preview URLs are object URLs. Release one only once neither the composer nor any run in
+  // this session references it any more, and release everything when the page goes away.
+  useEffect(() => {
+    const retained = new Set(
+      retainedImages.flatMap((image) => (image.previewUrl ? [image.previewUrl] : [])),
+    )
+    for (const previewUrl of retainedPreviewUrlsRef.current) {
+      if (!retained.has(previewUrl)) URL.revokeObjectURL(previewUrl)
+    }
+    retainedPreviewUrlsRef.current = retained
+  }, [retainedImages])
+
+  useEffect(
+    () => () => {
+      for (const previewUrl of retainedPreviewUrlsRef.current) URL.revokeObjectURL(previewUrl)
+      retainedPreviewUrlsRef.current = new Set()
+    },
+    [],
+  )
 
   useEffect(
     () => () => {
@@ -223,9 +248,13 @@ export function RetrievalRuntimeController() {
   ])
 
   const runFastQuery = useCallback(
-    async (input?: { mode: RetrievalTestMode; query: string }) => {
+    async (input?: {
+      images?: RetrievalComposerImage[]
+      mode: RetrievalTestMode
+      query: string
+    }) => {
       const cleanQuery = (input?.query ?? query).trim()
-      const activeImages = input ? [] : queryImages
+      const activeImages = input ? (input.images ?? []) : queryImages
       if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
       const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
@@ -253,6 +282,7 @@ export function RetrievalRuntimeController() {
         id,
         mode: runMode,
         query: cleanQuery,
+        queryImages: activeImages,
         startedAt,
         status: 'running',
       })
@@ -308,7 +338,11 @@ export function RetrievalRuntimeController() {
               }
             : current,
         )
-        if (traceId) setLocalSelected({ id: traceId, kind: 'trace' })
+        if (traceId) {
+          if (activeImages.length > 0)
+            setRecordImages((current) => ({ ...current, [`trace:${traceId}`]: activeImages }))
+          setLocalSelected({ id: traceId, kind: 'trace' })
+        }
         await refetchTraces()
       } catch (error) {
         if (controller.signal.aborted) return
@@ -339,17 +373,17 @@ export function RetrievalRuntimeController() {
       setComposerDraft,
       setLocalRun,
       setLocalSelected,
+      setRecordImages,
       updateLocation,
     ],
   )
 
   const startResearch = useCallback(
-    async (input?: { query: string; queryImages?: readonly KnowledgeFsQueryImageReference[] }) => {
+    async (input?: { images?: RetrievalComposerImage[]; query: string }) => {
       const cleanQuery = (input?.query ?? query).trim()
-      const imageReferences = input
-        ? [...(input.queryImages ?? [])]
-        : queryImages.map((image) => ({ uploadFileId: image.uploadFileId }))
-      if ((!cleanQuery && imageReferences.length === 0) || runInFlightRef.current) return
+      const activeImages = input ? (input.images ?? []) : queryImages
+      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
       try {
         if (
@@ -378,6 +412,8 @@ export function RetrievalRuntimeController() {
         })
         setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
         setResearchPlans((current) => ({ ...current, [task.id]: plan }))
+        if (activeImages.length > 0)
+          setRecordImages((current) => ({ ...current, [`research:${task.id}`]: activeImages }))
         setComposerDraft({
           mode: 'research',
           query: cleanQuery,
@@ -404,6 +440,7 @@ export function RetrievalRuntimeController() {
       setAdmittedResearchTasks,
       setComposerDraft,
       setLocalSelected,
+      setRecordImages,
       setResearchPlans,
       t,
       updateLocation,
@@ -436,10 +473,9 @@ export function RetrievalRuntimeController() {
       if (!researchTaskCanRetry(selectedResearchTask)) return
       setResearchRetryPending(true)
       try {
-        await startResearch({
-          query: selectedResearchTask.query,
-          queryImages: selectedResearchTask.query_images ?? [],
-        })
+        // Replay the failed task with the images it was run with (session previews first,
+        // then the persisted references) rather than whatever the composer currently holds.
+        await startResearch({ images: selectedQueryImages, query: selectedResearchTask.query })
       } finally {
         setResearchRetryPending(false)
       }
@@ -452,6 +488,7 @@ export function RetrievalRuntimeController() {
     mode,
     runFastQuery,
     selected?.kind,
+    selectedQueryImages,
     selectedResearchActive,
     selectedResearchTask,
     setResearchRetryPending,
@@ -468,8 +505,11 @@ export function RetrievalRuntimeController() {
   }, [cancelResearch, retry, run, runFastQuery, setRuntimeBridge])
 
   const runRetest = useEffectEvent((command: { mode: RetrievalTestMode; query: string }) => {
-    if (command.mode === 'research') void startResearch({ query: command.query })
-    else void runFastQuery(command)
+    // A retest replays the linked trace, so it carries that trace's images rather than any
+    // draft images the composer may currently hold.
+    const images = selectedQueryImages
+    if (command.mode === 'research') void startResearch({ images, query: command.query })
+    else void runFastQuery({ ...command, images })
   })
 
   useEffect(() => {

@@ -54,6 +54,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSERequest,
     KnowledgeFSRemoteSSEResponse,
 )
+from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
 
 
 class FailingBroker:
@@ -566,6 +567,117 @@ class ActiveSettingsRemote(RecordingRemote):
                 "updatedAt": "2026-07-28T00:01:00Z",
             }
         return super().execute_json(request)
+
+
+class QueryImageRemote(RecordingRemote):
+    UPLOAD_FILE_ID = "00000000-0000-4000-8000-000000000001"
+
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+        gateway_image = {
+            "byteSize": 2048,
+            "mimeType": "image/png",
+            "sha256": "a" * 64,
+            "uploadFileId": self.UPLOAD_FILE_ID,
+        }
+        if request.operation_id == "listTraces":
+            self.requests.append(request)
+            return {
+                "items": [
+                    {
+                        "completed": True,
+                        "createdAt": "2026-08-06T08:00:00.000Z",
+                        "id": "trace-1",
+                        "mode": "fast",
+                        "profile": {},
+                        "query": "What does this diagram show?",
+                        "queryImages": [gateway_image],
+                        "resultCount": 4,
+                        "scores": {},
+                        "stages": [],
+                    },
+                    {
+                        "completed": True,
+                        "createdAt": "2026-08-06T07:00:00.000Z",
+                        "id": "trace-2",
+                        "mode": "fast",
+                        "profile": {},
+                        "query": "text only",
+                        "resultCount": 1,
+                        "scores": {},
+                        "stages": [],
+                    },
+                ]
+            }
+        if request.operation_id == "getTrace":
+            self.requests.append(request)
+            return {
+                "createdAt": "2026-08-06T08:00:00.000Z",
+                "id": "trace-1",
+                "knowledgeSpaceId": "space-1",
+                "mode": "fast",
+                "query": "What does this diagram show?",
+                "queryImages": [gateway_image],
+                "steps": [],
+            }
+        if request.operation_id == "getResearchTask":
+            self.requests.append(request)
+            return {
+                "cost": {},
+                "createdAt": 1,
+                "id": "task-1",
+                "knowledgeSpaceId": "space-1",
+                "metadata": {},
+                "query": "",
+                "queryImages": [{"uploadFileId": self.UPLOAD_FILE_ID}],
+                "stage": "queued",
+                "updatedAt": 1,
+            }
+        return super().execute_json(request)
+
+
+def test_trace_and_research_history_carry_signed_query_image_previews() -> None:
+    remote = QueryImageRemote()
+    broker = RecordingBroker()
+    preview_requests: list[tuple[str, str, list[str]]] = []
+
+    def previews(*, tenant_id: str, account_id: str, upload_file_ids):
+        preview_requests.append((tenant_id, account_id, list(upload_file_ids)))
+        return {
+            QueryImageRemote.UPLOAD_FILE_ID: KnowledgeFSQueryImagePreview(
+                upload_file_id=QueryImageRemote.UPLOAD_FILE_ID,
+                name="diagram.png",
+                mime_type="image/png",
+                byte_size=2048,
+                preview_url="https://files.example.test/preview",
+            )
+        }
+
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote, query_image_previews=previews)  # type: ignore[arg-type]
+    common = {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
+
+    traces = facade.list_traces(**common)
+    trace = facade.get_trace(**common, trace_id="trace-1")
+    task = facade.get_research_task(**common, task_id="task-1")
+
+    assert [image.model_dump(mode="json") for image in traces.data[0].query_images] == [
+        {
+            "byte_size": 2048,
+            "mime_type": "image/png",
+            "name": "diagram.png",
+            "preview_url": "https://files.example.test/preview",
+            "upload_file_id": QueryImageRemote.UPLOAD_FILE_ID,
+        }
+    ]
+    assert traces.data[1].query_images == []
+    assert trace.query_images[0].preview_url == "https://files.example.test/preview"
+    assert task.query_images[0].name == "diagram.png"
+    assert task.query_images[0].byte_size == 2048
+    # One batched lookup per response, scoped to the acting account.
+    assert preview_requests == [
+        ("tenant-1", "account-1", [QueryImageRemote.UPLOAD_FILE_ID]),
+        ("tenant-1", "account-1", [QueryImageRemote.UPLOAD_FILE_ID]),
+        ("tenant-1", "account-1", [QueryImageRemote.UPLOAD_FILE_ID]),
+    ]
 
 
 def test_knowledge_fs_commands_use_independent_manifest_operations_and_query_contracts() -> None:

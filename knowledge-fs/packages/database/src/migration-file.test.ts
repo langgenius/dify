@@ -156,6 +156,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0047_parse_artifact_checkpoints.tidb.sql",
       "packages/database/migrations/0048_deletion_active_scope_indexes.postgres.sql",
       "packages/database/migrations/0048_deletion_active_scope_indexes.tidb.sql",
+      "packages/database/migrations/0049_answer_trace_query_images.postgres.sql",
+      "packages/database/migrations/0049_answer_trace_query_images.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -934,6 +936,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0046_remove_provider_sync_policy.postgres.sql",
       "packages/database/migrations/0047_parse_artifact_checkpoints.postgres.sql",
       "packages/database/migrations/0048_deletion_active_scope_indexes.postgres.sql",
+      "packages/database/migrations/0049_answer_trace_query_images.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -986,6 +989,7 @@ describe("migration file rendering", () => {
           "0046_remove_provider_sync_policy",
           "0047_parse_artifact_checkpoints",
           "0048_deletion_active_scope_indexes",
+          "0049_answer_trace_query_images",
         ],
         dialect: "postgres",
       }),

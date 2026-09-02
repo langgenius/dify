@@ -1691,6 +1691,22 @@ export const zKnowledgeFsResearchTaskCreatePayload = z.object({
 })
 
 /**
+ * KnowledgeFSQueryImageResponse
+ *
+ * One query image a retrieval run was asked with, enriched for console display.
+ *
+ * The gateway persists only the UploadFile reference and static metadata; the console fills in
+ * the file name and a short-lived signed preview URL for files the caller still owns.
+ */
+export const zKnowledgeFsQueryImageResponse = z.object({
+  byte_size: z.int().gte(0).nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  upload_file_id: z.string(),
+})
+
+/**
  * KnowledgeFSResearchTaskResponse
  */
 export const zKnowledgeFsResearchTaskResponse = z.object({
@@ -1706,7 +1722,7 @@ export const zKnowledgeFsResearchTaskResponse = z.object({
   metadata: z.record(z.string(), z.unknown()),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
   query: z.string(),
-  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   stage: z.enum([
     'analyzing',
     'canceled',
@@ -2072,6 +2088,7 @@ export const zKnowledgeFsAnswerTraceResponse = z.object({
   knowledge_space_id: z.string(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']),
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
 })
 
@@ -2945,6 +2962,7 @@ export const zKnowledgeFsTraceResponse = z.object({
   mode: z.enum(['auto', 'deep', 'fast', 'research']),
   profile: zKnowledgeFsTraceProfileResponse,
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   result_count: z.int().gte(0),
   scores: zKnowledgeFsTraceScoresResponse,
   stages: z.array(zKnowledgeFsTraceStageResponse),

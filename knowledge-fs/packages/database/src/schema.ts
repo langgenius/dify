@@ -4454,6 +4454,7 @@ const tables = [
       varcharColumn("access_channel", 16, true),
       boolColumn("completed"),
       timestampColumn("created_at"),
+      jsonColumn("query_images", true),
     ],
   },
   {

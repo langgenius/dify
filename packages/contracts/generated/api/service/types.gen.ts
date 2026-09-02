@@ -1268,6 +1268,7 @@ export type KnowledgeFsAnswerTraceResponse = {
   knowledge_space_id: string
   mode: 'auto' | 'deep' | 'fast' | 'research'
   query: string
+  query_images?: Array<KnowledgeFsQueryImageResponse>
   steps: Array<KnowledgeFsAnswerTraceStepResponse>
 }
 
@@ -1745,6 +1746,14 @@ export type KnowledgeFsQueryImageReference = {
   uploadFileId: string
 }
 
+export type KnowledgeFsQueryImageResponse = {
+  byte_size?: number | null
+  mime_type?: string | null
+  name?: string | null
+  preview_url?: string | null
+  upload_file_id: string
+}
+
 export type KnowledgeFsQueryResponse = {
   answer?: string | null
   id: string
@@ -1857,7 +1866,7 @@ export type KnowledgeFsResearchTaskResponse = {
   }
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
   query: string
-  query_images?: Array<KnowledgeFsQueryImageReference>
+  query_images?: Array<KnowledgeFsQueryImageResponse>
   stage:
     | 'analyzing'
     | 'canceled'
@@ -2415,6 +2424,7 @@ export type KnowledgeFsTraceResponse = {
   mode: 'auto' | 'deep' | 'fast' | 'research'
   profile: KnowledgeFsTraceProfileResponse
   query: string
+  query_images?: Array<KnowledgeFsQueryImageResponse>
   result_count: number
   scores: KnowledgeFsTraceScoresResponse
   stages: Array<KnowledgeFsTraceStageResponse>

@@ -1,4 +1,5 @@
 import type {
+  KnowledgeFsQueryImageResponse,
   KnowledgeFsResearchTaskResponse,
   KnowledgeFsTraceResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
@@ -27,6 +28,29 @@ export type RetrievalEvidence = {
   unavailableReason?: string
 }
 
+/**
+ * A query image a retrieval run was asked with. `previewUrl` is an object URL for an image
+ * attached in this session or a short-lived signed URL for a persisted one; it is absent when
+ * the uploaded file no longer exists.
+ */
+export type RetrievalQueryImage = {
+  name: string
+  previewUrl?: string
+  sizeBytes: number
+  uploadFileId: string
+}
+
+export function retrievalQueryImages(
+  images: readonly KnowledgeFsQueryImageResponse[] | null | undefined,
+): RetrievalQueryImage[] {
+  return (images ?? []).map((image) => ({
+    name: image.name || image.upload_file_id,
+    ...(image.preview_url ? { previewUrl: image.preview_url } : {}),
+    sizeBytes: image.byte_size ?? 0,
+    uploadFileId: image.upload_file_id,
+  }))
+}
+
 export type RetrievalTestRecord =
   | {
       createdAt: number
@@ -34,6 +58,7 @@ export type RetrievalTestRecord =
       kind: 'local'
       mode: Exclude<RetrievalTestMode, 'research'>
       query: string
+      queryImages?: RetrievalQueryImage[]
       durationMs?: number
       resultCount?: number
       status: 'completed' | 'failed' | 'running'
@@ -45,6 +70,7 @@ export type RetrievalTestRecord =
       kind: 'trace'
       mode: RetrievalTestMode
       query: string
+      queryImages?: RetrievalQueryImage[]
       resultCount?: number
       status: 'completed' | 'failed'
     }
@@ -54,6 +80,7 @@ export type RetrievalTestRecord =
       kind: 'research'
       mode: 'research'
       query: string
+      queryImages?: RetrievalQueryImage[]
       stage: KnowledgeFsResearchTaskResponse['stage']
       status: 'canceled' | 'completed' | 'failed' | 'running'
       updatedAt: number
@@ -362,6 +389,9 @@ export function retrievalTestRecords(
         kind: 'trace',
         mode: trace.mode === 'research' || trace.mode === 'deep' ? trace.mode : 'fast',
         query: trace.query,
+        ...(trace.query_images?.length
+          ? { queryImages: retrievalQueryImages(trace.query_images) }
+          : {}),
         ...(trace.result_count !== null && trace.result_count !== undefined
           ? { resultCount: trace.result_count }
           : {}),
@@ -373,6 +403,9 @@ export function retrievalTestRecords(
       kind: 'research',
       mode: 'research',
       query: task.query,
+      ...(task.query_images?.length
+        ? { queryImages: retrievalQueryImages(task.query_images) }
+        : {}),
       stage: task.stage,
       status: researchTaskStatus(task.stage),
       updatedAt: epochMilliseconds(task.updated_at),

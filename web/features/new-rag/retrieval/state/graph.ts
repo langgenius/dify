@@ -11,6 +11,7 @@ import {
   extractRetrievalEvidence,
   normalizedRetrievalTestMode,
   researchTaskIsActive,
+  retrievalQueryImages,
   retrievalTestRecords,
 } from '../model'
 import { researchTaskAnswerFromEvents } from '../services/research-task-events'
@@ -21,10 +22,13 @@ import {
   retrievalComposerImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
+  retrievalRecordImagesAtom,
   retrievalResearchEventsAtom,
   retrievalResearchPlansAtom,
   retrievalResearchRetryPendingAtom,
 } from './scoped'
+
+const noQueryImages: RetrievalComposerImage[] = []
 
 const tracesQueryAtom = atomWithInfiniteQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.get.infiniteOptions({
@@ -97,6 +101,7 @@ const localRecordAtom = atom<RetrievalTestRecord | undefined>((get) => {
     kind: 'local',
     mode: localRun.mode,
     query: localRun.query,
+    ...(localRun.queryImages.length > 0 ? { queryImages: localRun.queryImages } : {}),
     resultCount: localRun.evidence.length,
     status: localRun.status === 'no-results' ? 'completed' : localRun.status,
   }
@@ -341,11 +346,63 @@ const retrievalResearchAnswerFactsAtom = atom((get) => {
   }
 })
 
+const localRunImagesAtom = atom((get) => get(retrievalLocalRunAtom)?.queryImages ?? noQueryImages)
+
+function recordImagesKey(selected: { id: string; kind: RetrievalTestRecord['kind'] }) {
+  return `${selected.kind}:${selected.id}`
+}
+
+/**
+ * Images the selected record was run with. A run started in this session keeps its local
+ * previews; anything else comes from the persisted record, which carries a signed preview URL
+ * for files the user still owns.
+ */
+export const retrievalSelectedQueryImagesAtom = atom((get) => {
+  const selected = get(retrievalSelectedAtom)
+  if (!selected) return noQueryImages
+  if (selected.kind === 'local') {
+    const localRun = get(retrievalLocalRunAtom)
+    return localRun?.id === selected.id ? localRun.queryImages : noQueryImages
+  }
+  const remembered = get(retrievalRecordImagesAtom)[recordImagesKey(selected)]
+  if (remembered) return remembered
+  const persisted = get(selectedRecordAtom)?.queryImages
+  if (persisted?.length) return persisted
+  const detail =
+    selected.kind === 'research'
+      ? get(retrievalSelectedResearchTaskAtom)?.query_images
+      : get(traceDetailQueryAtom).data?.query_images
+  return detail?.length ? retrievalQueryImages(detail) : noQueryImages
+})
+
+/**
+ * What the composer shows: the images edited under the current selection, otherwise the images
+ * the selected record was run with, mirroring how the query text follows the selection.
+ */
+export const retrievalComposerQueryImagesAtom = atom((get) => {
+  const draft = get(retrievalComposerImagesAtom)
+  if (draft.selectionKey === get(retrievalSelectedHistoryKeyAtom)) return draft.images
+  return get(retrievalSelectedQueryImagesAtom)
+})
+
+/** Every object URL still referenced by the composer or by a run started in this session. */
+export const retrievalRetainedImagesAtom = atom((get) => {
+  const retained = new Map<string, RetrievalComposerImage>()
+  for (const image of [
+    ...get(retrievalComposerImagesAtom).images,
+    ...get(localRunImagesAtom),
+    ...Object.values(get(retrievalRecordImagesAtom)).flat(),
+  ]) {
+    if (image.previewUrl?.startsWith('blob:')) retained.set(image.previewUrl, image)
+  }
+  return [...retained.values()]
+})
+
 export const retrievalComposerFactsAtom = atom((get) => {
   const localRun = get(retrievalLocalRunAtom)
   const selectedResearchActive = researchTaskIsActive(get(retrievalSelectedResearchTaskAtom))
   const query = get(retrievalComposerQueryAtom)
-  const images = get(retrievalComposerImagesAtom)
+  const images = get(retrievalComposerQueryImagesAtom)
   return {
     disabled: selectedResearchActive || localRun?.status === 'running',
     images,
@@ -452,6 +509,7 @@ export const retrievalResultFactsAtom = atom((get) => {
     selectedIsLoading,
     selectedMode,
     selectedQuery,
+    selectedQueryImages: get(retrievalSelectedQueryImagesAtom),
     selectedResearchActive,
     selectedResearchTask,
     selectedTraceId: get(retrievalSelectedTraceIdAtom),
@@ -484,7 +542,10 @@ export const updateRetrievalComposerModeAtom = atom(null, (get, set, mode: Retri
 
 export const updateRetrievalComposerImagesAtom = atom(
   null,
-  (_get, set, images: RetrievalComposerImage[]) => set(retrievalComposerImagesAtom, images),
+  (get, set, images: RetrievalComposerImage[]) => {
+    const selectionKey = get(retrievalSelectedHistoryKeyAtom)
+    set(retrievalComposerImagesAtom, { images, ...(selectionKey ? { selectionKey } : {}) })
+  },
 )
 
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
@@ -512,7 +573,12 @@ export const selectRetrievalRecordAtom = atom(null, (get, set, record: Retrieval
     query: record.query,
     ...(record.kind === 'local' ? {} : { selectionKey: `${record.kind}:${record.id}` }),
   })
-  set(retrievalComposerImagesAtom, [])
+  // A persisted record shows the images it was run with until the composer is edited again; a
+  // local (unpersisted) run has no history key, so its images are copied into the draft.
+  const localRun = get(retrievalLocalRunAtom)
+  set(retrievalComposerImagesAtom, {
+    images: record.kind === 'local' && localRun?.id === record.id ? localRun.queryImages : [],
+  })
 })
 
 export const loadMoreRetrievalHistoryAtom = atom(null, (get) => {
