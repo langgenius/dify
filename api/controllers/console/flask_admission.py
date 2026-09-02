@@ -22,7 +22,7 @@ from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from machinery.errors import AdmissionConfigurationError
 from models.account import TenantAccountRole
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def console_email_registration_admission[T, **P, R](
@@ -32,8 +32,10 @@ def console_email_registration_admission[T, **P, R](
 
     @wraps(view)
     def check_registration_features(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
-        features = FeatureService.get_system_features()
-        if not features.enable_email_password_login or not features.is_allow_register:
+        if (
+            not SystemFeatureService.is_email_password_login_enabled()
+            or not SystemFeatureService.is_registration_allowed()
+        ):
             abort(403)
         return view(self, *args, **kwargs)
 

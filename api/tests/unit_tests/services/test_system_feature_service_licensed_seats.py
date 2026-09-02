@@ -1,16 +1,20 @@
+"""Tests for SystemFeatureService licensed-seat parsing."""
+
 from collections.abc import Callable
 
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
+from services import system_feature_service as feature_service_module
 from services.entities.feature_entities import LicenseModel, LicenseStatus
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
 
-def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]):
+def test_get_license_parses_licensed_seats(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     """The authenticated license accessor copies the licensed-seat quota out of the enterprise payload."""
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
@@ -19,7 +23,7 @@ def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch, conf
         staticmethod(lambda: _ENTERPRISE_INFO),
     )
 
-    license_model = FeatureService.get_license()
+    license_model = SystemFeatureService.get_license()
 
     assert isinstance(license_model, LicenseModel)
     assert license_model.seats.enabled is True
@@ -27,11 +31,11 @@ def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch, conf
     assert license_model.seats.size == 1
 
 
-def test_get_license_non_enterprise_is_unconstrained(config_overrides: Callable[..., None]):
+def test_get_license_non_enterprise_is_unconstrained(config_overrides: Callable[..., None]) -> None:
     """Non-enterprise deployments have no license; seat allocation is unconstrained."""
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
-    license_model = FeatureService.get_license()
+    license_model = SystemFeatureService.get_license()
 
     assert license_model.status == LicenseStatus.NONE
     assert license_model.seats.enabled is False
