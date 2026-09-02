@@ -1,4 +1,4 @@
-import type { ConversationItem } from '@dify/contracts/dify-builder'
+import type { ConversationItem } from '@/app/components/dify-builder/types'
 
 export type DifyBuilderConversationGroup =
   | { type: 'standalone'; item: ConversationItem; invalidated: false }

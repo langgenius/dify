@@ -9,12 +9,15 @@ node raises at runtime" failure. It satisfies ``DifyBuilderAgent`` structurally
 constructor to port; plain instantiation (``PlaceholderAgent()``) replaces it.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import (
     ChecklistError,
+    ConversationItem,
     Diagnosis,
+    DifyBuilderContext,
     Graph,
     Inputs,
     MutationIntent,
@@ -23,6 +26,7 @@ from core.dify_builder.models import (
     Run,
     StartSchema,
 )
+from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder import node_defaults
 
@@ -119,9 +123,7 @@ class PlaceholderAgent:
             )
         ]
 
-    def bind_resources(
-        self, plan_items: list[str], resource_ids: list[str], conflict_policy: str
-    ) -> list[str]:
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str], conflict_policy: str) -> list[str]:
         return [
             "Ingest source documents",
             "Retrieve from Company Knowledge Base",
@@ -250,3 +252,22 @@ class PlaceholderAgent:
                 },
             ),
         ]
+
+    def respond_to_message(
+        self,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
+        """Deterministic fallback used when Builder LLM mode is disabled."""
+        del context, history, graph
+        reply = (
+            f'I understand your note: "{text}". The Builder is currently at {state}. '
+            "I have not changed the workflow; use one of the available actions when you want to continue."
+        )
+        if on_delta is not None:
+            on_delta(reply)
+        return reply
