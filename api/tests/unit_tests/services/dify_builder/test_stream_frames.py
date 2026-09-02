@@ -27,6 +27,22 @@ def _event(frame: str) -> dict:
     return json.loads(lines[1].removeprefix("data: "))
 
 
+def test_stream_advance_frames_closes_subscription_when_never_iterated():
+    """Regression (409-review #4): if the WSGI server closes the SSE response body
+    without ever iterating it (client aborted before the first frame, or an
+    after_request/teardown error on the streaming response), the eagerly-activated
+    subscription must still be closed. A bare generator's ``finally`` (which closes
+    the subscription) does NOT run when the generator was never started, so that
+    path leaks the pub/sub connection + listener thread."""
+    subscription = _FakeSubscription([json.dumps({"kind": "state", "version": 1, "session_id": "s1"}).encode()])
+    stream = wiring.stream_advance_frames({"session_id": "s1"}, subscription, expect_advance=True)
+
+    # Never iterated -- emulate the WSGI server closing the response body.
+    stream.close()
+
+    assert subscription.closed is True
+
+
 def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
     view = {"session_id": "s1", "state": "fix.diagnose"}
     node = {"kind": "node", "node_id": "n1", "status": "running"}
