@@ -12,6 +12,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
@@ -61,6 +62,7 @@ class FetchUserArg(BaseModel):
 
 APP_TOKEN_FORBIDDEN_RESPONSE = {
     403: "Forbidden - token scope, app, dataset, or workspace access denied",
+    503: "Service unavailable - app token validation could not reach the database",
 }
 
 DATASET_TOKEN_AUTH_RESPONSES = {
@@ -73,6 +75,21 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
         "plan only; retry the request later."
     ),
 }
+
+
+_TRANSIENT_DB_ERROR_PATTERNS = (
+    "could not receive data from server",
+    "connection timed out",
+    "connection reset",
+    "server closed the connection unexpectedly",
+)
+
+
+def _is_transient_db_error(exc: OperationalError) -> bool:
+    if exc.connection_invalidated:
+        return True
+    message = f"{exc} {exc.orig or ''}".lower()
+    return any(pattern in message for pattern in _TRANSIENT_DB_ERROR_PATTERNS)
 
 
 def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
@@ -112,7 +129,12 @@ def validate_app_token[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.get(App, api_token.app_id)
+            try:
+                app_model = db.session.get(App, api_token.app_id)
+            except OperationalError as exc:
+                if _is_transient_db_error(exc):
+                    raise ServiceUnavailable("Unable to validate app token. Please try again later.") from exc
+                raise
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -122,7 +144,12 @@ def validate_app_token[**P, R](
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.get(Tenant, app_model.tenant_id)
+            try:
+                tenant = db.session.get(Tenant, app_model.tenant_id)
+            except OperationalError as exc:
+                if _is_transient_db_error(exc):
+                    raise ServiceUnavailable("Unable to validate app token. Please try again later.") from exc
+                raise
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:

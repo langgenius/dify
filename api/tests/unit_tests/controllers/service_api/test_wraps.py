@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
@@ -247,6 +248,90 @@ class TestValidateAppToken:
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
             assert "no longer exists" in str(exc_info.value)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+    def test_postgresql_operational_error_during_app_lookup_raises_service_unavailable(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        mock_validate_token.return_value = _api_token(
+            tenant_id=str(uuid.uuid4()),
+            app_id=str(uuid.uuid4()),
+            token_type=ApiTokenType.APP,
+        )
+        sqlite_session.get = Mock(
+            side_effect=OperationalError(
+                "SELECT", {}, RuntimeError("could not receive data from server: Connection timed out")
+            )
+        )
+
+        @validate_app_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.db.session", sqlite_session),
+        ):
+            with pytest.raises(ServiceUnavailable):
+                protected_view()
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @pytest.mark.parametrize("sqlite_session", [(App, Tenant)], indirect=True)
+    def test_postgresql_operational_error_during_tenant_lookup_raises_service_unavailable(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        tenant, _, _ = _persist_workspace(sqlite_session)
+        app_model = _app_model(tenant_id=tenant.id)
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+        mock_validate_token.return_value = _api_token(
+            tenant_id=tenant.id,
+            app_id=app_model.id,
+            token_type=ApiTokenType.APP,
+        )
+        sqlite_session.get = Mock(
+            side_effect=[
+                app_model,
+                OperationalError(
+                    "SELECT", {}, RuntimeError("could not receive data from server: Connection timed out")
+                ),
+            ]
+        )
+
+        @validate_app_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.db.session", sqlite_session),
+        ):
+            with pytest.raises(ServiceUnavailable):
+                protected_view()
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+    def test_non_transient_operational_error_during_app_lookup_is_not_service_unavailable(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        mock_validate_token.return_value = _api_token(
+            tenant_id=str(uuid.uuid4()),
+            app_id=str(uuid.uuid4()),
+            token_type=ApiTokenType.APP,
+        )
+        sqlite_session.get = Mock(side_effect=OperationalError("SELECT", {}, RuntimeError("relation does not exist")))
+
+        @validate_app_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.db.session", sqlite_session),
+        ):
+            with pytest.raises(OperationalError):
+                protected_view()
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
