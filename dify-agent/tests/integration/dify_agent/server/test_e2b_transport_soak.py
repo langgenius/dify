@@ -1242,9 +1242,7 @@ async def test_idle_inventory_requires_exact_paused_identity(tmp_path: Path, mis
     mismatched = _OwnedSandbox(
         sandbox_id=binding.binding_ref,
         binding_id=binding.binding_id,
-        workspace_id=(
-            f"{settings.binding_prefix}wrong-workspace" if mismatch == "workspace" else binding.binding_id
-        ),
+        workspace_id=(f"{settings.binding_prefix}wrong-workspace" if mismatch == "workspace" else binding.binding_id),
         state="running" if mismatch == "state" else "paused",
     )
 
