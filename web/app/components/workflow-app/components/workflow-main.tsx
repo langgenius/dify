@@ -20,6 +20,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -54,6 +55,7 @@ type VarsUpdateSnapshot = {
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { t } = useTranslation()
@@ -62,6 +64,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const appId = useStore((s) => s.appId)
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const appDetail = useAppStore((s) => s.appDetail)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
     appId: null as string | null,
@@ -540,16 +543,23 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     if (!result) throw new Error('Workflow draft sync failed.')
   }, [doSyncWorkflowDraft])
   const handleDifyBuilderRefreshCanvas = useCallback(async () => {
-    await handleRefreshWorkflowDraft()
+    return handleRefreshWorkflowDraft()
   }, [handleRefreshWorkflowDraft])
+  const handleDifyBuilderFocusCanvas = useCallback(() => {
+    const duration = window.matchMedia(REDUCED_MOTION_QUERY).matches ? 0 : 800
+    void reactFlow.fitView({ duration })
+  }, [reactFlow])
 
   return (
     <DifyBuilderProvider
       appId={appId}
       canEdit={appACLCapabilities.canEdit}
       getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
+      onFocusCanvas={handleDifyBuilderFocusCanvas}
       onSyncDraft={handleDifyBuilderSyncDraft}
       onRefreshCanvas={handleDifyBuilderRefreshCanvas}
+      tenantId={currentWorkspaceId}
+      userId={currentUserId}
     >
       <div className="flex size-full min-w-0 overflow-hidden">
         <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">

@@ -11,6 +11,7 @@ export type FeatureModel = {
   billing: BillingModel
   can_replace_logo: boolean
   dataset_operator_enabled: boolean
+  dify_builder_enabled: boolean
   docs_processing: string
   documents_upload_quota: LimitationModel
   education: EducationModel
@@ -22,6 +23,7 @@ export type FeatureModel = {
   members: LimitationModel
   model_load_balancing_enabled: boolean
   next_credit_reset_date: number
+  skill_learning_policy: string
   trigger_event: Quota
   vector_space: LimitationModel | null
   webapp_copyright_enabled: boolean

@@ -1,4 +1,4 @@
-import type { ConversationItem } from '@dify/contracts/dify-builder'
+import type { ConversationItem } from '@/app/components/dify-builder/types'
 
 const findLastItem = <K extends ConversationItem['kind']>(items: ConversationItem[], kind: K) => {
   for (let index = items.length - 1; index >= 0; index -= 1) {

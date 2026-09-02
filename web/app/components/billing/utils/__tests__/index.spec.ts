@@ -69,6 +69,7 @@ describe('billing utils', () => {
       },
       can_replace_logo: false,
       dataset_operator_enabled: false,
+      dify_builder_enabled: false,
       docs_processing: '',
       documents_upload_quota: {
         size: 20,
@@ -91,6 +92,7 @@ describe('billing utils', () => {
       },
       model_load_balancing_enabled: false,
       next_credit_reset_date: 0,
+      skill_learning_policy: '',
       trigger_event: {
         usage: 0,
         limit: 3000,

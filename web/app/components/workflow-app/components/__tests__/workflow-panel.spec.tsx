@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
+import type { DifyBuilderRuntime } from '../dify-builder/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
 import * as React from 'react'
+import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
+import { difyBuilderRuntimeAtom } from '../dify-builder/store'
 import WorkflowPanel from '../workflow-panel'
 
 type AppStoreState = {
@@ -28,6 +32,9 @@ type WorkflowStoreState = {
 const mockUseIsChatMode = vi.fn()
 const mockSetCurrentLogItem = vi.fn()
 const mockSetShowMessageLogModal = vi.fn()
+const mockSetShowPanel = vi.fn()
+const mockStartFix = vi.fn(async () => true)
+const mockSyncDraft = vi.fn(async () => undefined)
 
 let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
@@ -107,7 +114,26 @@ vi.mock('@/app/components/base/message-log-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/panel/record', () => ({
-  default: () => <div data-testid="record-panel">record</div>,
+  default: ({
+    fixWithBuilderDisabled,
+    onFixRun,
+  }: {
+    fixWithBuilderDisabled?: boolean
+    onFixRun?: (runId: string) => void
+  }) => (
+    <div data-testid="record-panel">
+      record
+      {onFixRun && (
+        <button
+          type="button"
+          disabled={fixWithBuilderDisabled}
+          onClick={() => onFixRun('failed-run-1')}
+        >
+          Fix failed run with App Builder
+        </button>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/panel/chat-record', () => ({
@@ -133,6 +159,47 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
 vi.mock('../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
+
+const createDifyBuilderRuntime = (enabled: boolean, canEdit: boolean): DifyBuilderRuntime => ({
+  appId: 'app-123',
+  canEdit,
+  enabled,
+  getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+  onSyncDraft: mockSyncDraft,
+  session: {
+    refresh: vi.fn(async () => true),
+    restore: vi.fn(async () => true),
+    reset: vi.fn(),
+    runAction: vi.fn(async () => true),
+    sendMessage: vi.fn(async () => true),
+    startBuild: vi.fn(async () => true),
+    startChecklistFix: vi.fn(async () => true),
+    startEdit: vi.fn(async () => true),
+    startFix: mockStartFix,
+    updateModel: vi.fn(async () => true),
+  },
+  setShowPanel: mockSetShowPanel,
+})
+
+const renderWorkflowPanel = ({
+  busy = false,
+  canEdit = true,
+  enabled,
+}: {
+  busy?: boolean
+  canEdit?: boolean
+  enabled: boolean
+}) => {
+  const store = createStore()
+  store.set(difyBuilderRuntimeAtom, createDifyBuilderRuntime(enabled, canEdit))
+  store.set(difyBuilderSessionBusyAtom, busy)
+
+  return render(
+    <Provider store={store}>
+      <WorkflowPanel />
+    </Provider>,
+  )
+}
 
 describe('WorkflowPanel', () => {
   beforeEach(() => {
@@ -222,5 +289,39 @@ describe('WorkflowPanel', () => {
     expect(screen.queryByTestId('chat-record-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('debug-and-preview-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('chat-variable-panel')).not.toBeInTheDocument()
+  })
+
+  it('should hide run Fix when Builder is disabled and start it when enabled', async () => {
+    const user = userEvent.setup()
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+
+    const { unmount } = renderWorkflowPanel({ enabled: false })
+    await screen.findByTestId('record-panel')
+    expect(
+      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+    renderWorkflowPanel({ enabled: true })
+    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
+
+    expect(mockSetShowPanel).toHaveBeenCalledWith(true)
+    expect(mockSyncDraft).toHaveBeenCalledTimes(1)
+    expect(mockStartFix).toHaveBeenCalledWith('app-123', 'failed-run-1', undefined)
+  })
+
+  it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+
+    const { unmount } = renderWorkflowPanel({ canEdit: false, enabled: true })
+    expect(
+      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).toBeDisabled()
+
+    unmount()
+    renderWorkflowPanel({ busy: true, enabled: true })
+    expect(
+      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).toBeDisabled()
   })
 })

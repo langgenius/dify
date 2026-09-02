@@ -1,5 +1,6 @@
 import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
@@ -287,6 +288,71 @@ describe('Header layout components', () => {
       expect(
         screen.queryByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should reopen an existing App Builder session while its canvas lock is active', async () => {
+      const user = userEvent.setup()
+      mockNodesReadOnly = true
+
+      const { store } = renderWorkflowComponent(
+        <HeaderInNormal
+          controls={{
+            hasDifyBuilderSession: true,
+            showDifyBuilderButton: true,
+          }}
+        />,
+      )
+      const appBuilderButton = screen.getByRole('button', {
+        name: 'workflow.difyBuilder.buttonTooltip',
+      })
+
+      expect(appBuilderButton).toBeEnabled()
+      await user.click(appBuilderButton)
+      expect(store.getState().showDifyBuilderPanel).toBe(true)
+    })
+
+    it('should keep App Builder disabled on a read-only canvas without a session', () => {
+      mockNodesReadOnly = true
+
+      renderWorkflowComponent(
+        <HeaderInNormal
+          controls={{
+            hasDifyBuilderSession: false,
+            showDifyBuilderButton: true,
+          }}
+        />,
+      )
+
+      expect(
+        screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
+      ).toBeDisabled()
+    })
+
+    it('should keep App Builder disabled without edit permission even for an existing session', () => {
+      mockNodesReadOnly = true
+
+      renderWorkflowComponent(
+        <HeaderInNormal
+          controls={{
+            hasDifyBuilderSession: true,
+            showDifyBuilderButton: true,
+          }}
+        />,
+        {
+          hooksStoreProps: {
+            accessControl: {
+              canEdit: false,
+              canImportExportDSL: false,
+              canReleaseAndVersion: false,
+              canRun: false,
+            },
+          },
+        },
+      )
+
+      expect(
+        screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
+      ).toBeDisabled()
     })
   })
 

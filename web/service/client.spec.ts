@@ -1,4 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
@@ -482,6 +483,65 @@ describe('consoleQuery transport context', () => {
       expect.objectContaining({
         fetchCompat: true,
       }),
+    )
+  })
+
+  it('should expose Dify Builder restore as a typed streamed query', async () => {
+    const snapshot = {
+      app_id: 'app-1',
+      canvas_read_only: true,
+      conversation: [],
+      interrupted: false,
+      run_status: 'executing',
+      session_id: 'session-1',
+      state: 'fix.diagnose',
+      version: 1,
+    } as const
+    const terminal = {
+      ...snapshot,
+      canvas_read_only: false,
+      kind: 'state' as const,
+      run_status: 'waiting_input' as const,
+      state: 'fix.await_approval',
+      version: 2,
+    }
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'event: message',
+          `data: ${JSON.stringify({ event: 'snapshot', data: snapshot })}`,
+          '',
+          'event: message',
+          `data: ${JSON.stringify({ event: 'state', data: terminal })}`,
+          '',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        },
+      ),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.difyBuilder.sessions.bySessionId.get.experimental_streamedOptions({
+        input: { params: { session_id: 'session-1' } },
+      })
+
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expectTypeOf(events[0]!).toMatchTypeOf<DifyBuilderStreamEventResponse>()
+    expect(events).toEqual([
+      { event: 'snapshot', data: snapshot },
+      { event: 'state', data: terminal },
+    ])
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/dify-builder/sessions/session-1'),
+      expect.any(Object),
+      expect.objectContaining({ fetchCompat: true }),
     )
   })
 })

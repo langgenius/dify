@@ -16,6 +16,7 @@ import { codeBasedExtension } from './code-based-extension/orpc.gen'
 import { compliance } from './compliance/orpc.gen'
 import { dataSource } from './data-source/orpc.gen'
 import { datasets } from './datasets/orpc.gen'
+import { difyBuilder } from './dify-builder/orpc.gen'
 import { emailCodeLogin } from './email-code-login/orpc.gen'
 import { emailRegister } from './email-register/orpc.gen'
 import { explore } from './explore/orpc.gen'
@@ -71,6 +72,7 @@ const communityContract = {
   compliance,
   dataSource,
   datasets,
+  difyBuilder,
   emailCodeLogin,
   emailRegister,
   explore,

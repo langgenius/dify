@@ -2,6 +2,7 @@ import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
+import { difyBuilderSessionBusyAtom } from '@/app/components/dify-builder/state'
 import {
   difyBuilderChecklistErrorsAtom,
   difyBuilderRuntimeAtom,
@@ -91,15 +92,28 @@ vi.mock('../node-group', () => ({
   ),
 }))
 
-const renderChecklist = (props: React.ComponentProps<typeof WorkflowChecklist>) => {
+const renderChecklist = (
+  props: React.ComponentProps<typeof WorkflowChecklist>,
+  {
+    busy = false,
+    canEdit = true,
+    enabled = true,
+  }: {
+    busy?: boolean
+    canEdit?: boolean
+    enabled?: boolean
+  } = {},
+) => {
   const store = createStore()
   store.set(difyBuilderRuntimeAtom, {
     appId: 'app-1',
-    canEdit: true,
+    canEdit,
+    enabled,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
     onSyncDraft: mockSyncDraft,
     session: {
       refresh: vi.fn(async () => true),
+      restore: vi.fn(async () => true),
       reset: vi.fn(),
       runAction: vi.fn(async () => true),
       sendMessage: vi.fn(async () => true),
@@ -111,6 +125,7 @@ const renderChecklist = (props: React.ComponentProps<typeof WorkflowChecklist>) 
     },
     setShowPanel: vi.fn(),
   })
+  store.set(difyBuilderSessionBusyAtom, busy)
   return {
     store,
     ...render(
@@ -212,7 +227,6 @@ describe('WorkflowChecklist', () => {
     expect(mockStartChecklistFix).toHaveBeenCalledWith(
       'app-1',
       [
-        expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
         expect.objectContaining({
           node_id: 'node-1',
           messages: ['Needs configuration'],
@@ -221,8 +235,35 @@ describe('WorkflowChecklist', () => {
       undefined,
     )
     expect(store.get(difyBuilderChecklistErrorsAtom)).toEqual([
-      expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
       expect.objectContaining({ node_id: 'node-1', messages: ['Needs configuration'] }),
     ])
+  })
+
+  it('should hide checklist Fix while Builder is disabled', async () => {
+    const user = userEvent.setup()
+    renderChecklist({ disabled: false }, { enabled: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should keep checklist Fix disabled without edit access or while the session is busy', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    expect(
+      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).toBeDisabled()
+
+    unmount()
+    renderChecklist({ disabled: false }, { busy: true })
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    expect(
+      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+    ).toBeDisabled()
   })
 })

@@ -1,35 +1,26 @@
 'use client'
 
-import type { SessionModel, SessionView } from '@dify/contracts/dify-builder'
-import type { ChecklistErrorPayload, ProgressEntry } from './types'
+import type {
+  AgentMessageEventData,
+  DifyBuilderCommitEventData,
+  DifyBuilderErrorResponse,
+  DifyBuilderStreamEventResponse,
+  SessionModel,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { ChecklistErrorPayload, ConversationItem, ProgressEntry, SessionView } from './types'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
-import Cookies from 'js-cookie'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import { consoleClient } from '@/service/client'
 import {
+  difyBuilderActiveSessionIdAtom,
   difyBuilderSessionBusyAtom,
+  difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionLastRawAtom,
   difyBuilderSessionProgressLogAtom,
   difyBuilderSessionViewAtom,
 } from './state'
-import { isSessionView, parseSSEFrame } from './types'
-
-// What seeds a new Fix session: either a failed workflow run (existing
-// run-fix flow) or a set of client-detected pre-publish checklist errors
-// (checklist-fix flow). Exactly one of the two is sent to the backend.
-type CreateSessionRequest =
-  | { scenario: 'build'; goalText: string; modelConfig?: SessionModel }
-  | { scenario: 'edit'; modelConfig?: SessionModel }
-  | {
-      scenario: 'fix'
-      target: { failedRunId: string } | { checklistErrors: ChecklistErrorPayload[] }
-      modelConfig?: SessionModel
-    }
-
-export type UseDifyBuilderSessionParams = {
-  baseUrl: string
-}
+import { DIFY_BUILDER_PROGRESS_LOG_LIMIT } from './types'
 
 export type UseDifyBuilderSessionResult = {
   view: SessionView | null
@@ -37,23 +28,25 @@ export type UseDifyBuilderSessionResult = {
   lastRaw: unknown
   lastError: string
   progressLog: ProgressEntry[]
-  /** Creates a new Fix session for `failedRunId` and starts streaming its progress. */
+  /** Creates a new Fix session for `failedRunId` and streams its progress. */
   startFix: (appId: string, failedRunId: string, modelConfig?: SessionModel) => Promise<boolean>
-  /** Creates a new checklist-fix session for `checklistErrors` and starts streaming its progress. */
+  /** Creates a new checklist-fix session for `checklistErrors` and streams its progress. */
   startChecklistFix: (
     appId: string,
     checklistErrors: ChecklistErrorPayload[],
     modelConfig?: SessionModel,
   ) => Promise<boolean>
-  /** Creates a new Build session and dispatches the opening goal. */
+  /** Creates a new Build session and streams the opening goal command. */
   startBuild: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
-  /** Creates an Edit session and dispatches the opening edit goal. */
+  /** Creates an Edit session and streams the opening edit goal command. */
   startEdit: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
   /** Re-fetches the current session (GET). No-op if no session has been created yet. */
   refresh: () => Promise<boolean>
-  /** Posts an action (`approve_repair`, `run_verify`, ...) against the current session. */
+  /** Restores a session and its full conversation from the authoritative GET endpoint. */
+  restore: (sessionId: string) => Promise<boolean>
+  /** Posts and streams an action (`approve_repair`, `run_verify`, ...). */
   runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
-  /** Posts a free-text message against the current session. */
+  /** Posts and streams a free-text message against the current session. */
   sendMessage: (text: string) => Promise<boolean>
   /** Persists a model selection on an idle/waiting session. */
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
@@ -66,385 +59,613 @@ export type DifyBuilderSessionController = Omit<
   'view' | 'isBusy' | 'lastRaw' | 'lastError' | 'progressLog'
 >
 
-function useDifyBuilderApi(baseUrl: string) {
-  // Memoized so the returned methods stay referentially stable across renders
-  // unless the connection inputs actually change (also what earns the `use` prefix).
-  return useMemo(() => {
-    // OSS-native difyBuilder routes (post-pivot): `/console/api/dify-builder/*`
-    // (the retired enterprise Go backend lived at `.../enterprise/dify-builder/*`).
-    const root = `${baseUrl.replace(/\/$/, '')}/dify-builder`
+type CommandOptions = {
+  openStream: (signal: AbortSignal) => Promise<AsyncIterable<DifyBuilderStreamEventResponse>>
+  knownSessionId?: string
+  expectTerminalEvent: boolean
+  startsSession?: boolean
+}
 
-    const headers = (json: boolean, csrf: boolean): Record<string, string> => {
-      const h: Record<string, string> = {}
-      if (json) h['Content-Type'] = 'application/json'
-      if (csrf) h[CSRF_HEADER_NAME] = Cookies.get(CSRF_COOKIE_NAME()) || ''
-      return h
-    }
+type StreamOutcome = {
+  sessionId?: string
+  sawSnapshot: boolean
+  terminalEvent: 'state' | 'error' | null
+  terminalError?: string
+  transportError?: string
+  stateApplied?: boolean
+}
 
-    const create = (appId: string, request: CreateSessionRequest) =>
-      fetch(`${root}/sessions`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true, true),
-        body: JSON.stringify({
-          app_id: appId,
-          scenario: request.scenario,
-          ...('modelConfig' in request && request.modelConfig
-            ? { model_config: request.modelConfig }
-            : {}),
-          ...(request.scenario === 'build' ? { goal_text: request.goalText } : {}),
-          ...(request.scenario !== 'fix'
-            ? {}
-            : 'failedRunId' in request.target
-              ? { failed_run_id: request.target.failedRunId }
-              : { checklist_errors: request.target.checklistErrors }),
-        }),
-      })
+const UNEXPECTED_EOF_ERROR = 'Builder stream ended before a terminal event.'
 
-    // NOTE: the OSS backend enforces CSRF on every method (login_required), so
-    // GET /sessions/{id} and the SSE stream must send X-CSRF-Token too — unlike
-    // the old Go backend, which skipped CSRF on GETs.
-    const get = (id: string) =>
-      fetch(`${root}/sessions/${id}`, {
-        credentials: 'include',
-        headers: headers(false, true),
-      })
+const isTerminalView = (view: SessionView) =>
+  view.run_status === 'complete' || view.run_status === 'failed'
 
-    const action = (
-      id: string,
-      actionId: string,
-      baseVersion: number,
-      payload: Record<string, unknown> = {},
-    ) =>
-      fetch(`${root}/sessions/${id}/actions`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true, true),
-        // Data-driven action id (Slice 0 Task 5a/7): the backend accepts
-        // `action_id` (and, for back-compat, legacy `kind`); the FE now only
-        // ever sends the id it got from `view.actions[].id`.
-        body: JSON.stringify({ action_id: actionId, payload, base_version: baseVersion }),
-      })
+function requestErrorMessage(error: unknown): string {
+  const status = requestErrorStatus(error)
+  if (typeof error === 'object' && error !== null && 'data' in error) {
+    const data = error.data
+    const body = typeof data === 'object' && data !== null && 'body' in data ? data.body : data
+    const response = body as Partial<DifyBuilderErrorResponse> | undefined
+    if (typeof response?.code === 'string')
+      return status ? `HTTP ${status}: ${response.code}` : response.code
+  }
+  return error instanceof Error ? error.message : String(error)
+}
 
-    const message = (id: string, text: string, baseVersion: number) =>
-      fetch(`${root}/sessions/${id}/messages`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true, true),
-        body: JSON.stringify({ text, base_version: baseVersion }),
-      })
+function requestErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) return undefined
+  if ('status' in error && typeof error.status === 'number') return error.status
+  if ('data' in error) {
+    const data = error.data
+    if (typeof data === 'object' && data !== null && 'status' in data)
+      return typeof data.status === 'number' ? data.status : undefined
+  }
+}
 
-    const streamURL = (id: string) => `${root}/sessions/${id}/stream`
-    // Headers for the SSE GET: X-CSRF-Token, no Content-Type.
-    const streamHeaders = () => headers(false, true)
+function streamErrorMessage(
+  data: Extract<DifyBuilderStreamEventResponse, { event: 'error' }>['data'],
+) {
+  if (typeof data.error === 'string') return data.error
+  if (typeof data.message === 'string') return data.message
+  if (typeof data.code === 'string') return data.code
+  return 'Builder command failed.'
+}
 
-    return { create, get, action, message, streamURL, streamHeaders }
-  }, [baseUrl])
+function mergeConversation(
+  current: ConversationItem[],
+  committed: ConversationItem[],
+): ConversationItem[] {
+  const bySequence = new Map(current.map((item) => [item.seq, item]))
+  committed.forEach((item) => bySequence.set(item.seq, item))
+  return [...bySequence.values()].sort((left, right) => left.seq - right.seq)
 }
 
 /**
- * Owns the Dify Builder session lifecycle: creating a session, streaming
- * its SSE progress log, posting actions/messages, and refreshing session state.
- * Shared by the standalone `/dify-builder-debug` page and the in-editor
- * Dify Builder panel so both drive the exact same request/stream logic.
+ * Owns the Dify Builder session lifecycle. Live commands render directly from
+ * authoritative SSE snapshots, durable commits, assistant deltas, and final
+ * state frames. GET is reserved for restore/reconnect flows.
  */
-export function useDifyBuilderSessionController({
-  baseUrl,
-}: UseDifyBuilderSessionParams): DifyBuilderSessionController {
+export function useDifyBuilderSessionController(): DifyBuilderSessionController {
   const store = useStore()
+  const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const setView = useSetAtom(difyBuilderSessionViewAtom)
   const setLastRaw = useSetAtom(difyBuilderSessionLastRawAtom)
   const setLastError = useSetAtom(difyBuilderSessionLastErrorAtom)
   const setProgressLog = useSetAtom(difyBuilderSessionProgressLogAtom)
+  const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
   const setIsBusy = useSetAtom(difyBuilderSessionBusyAtom)
   const abortRef = useRef<AbortController | null>(null)
-  const pendingAdvanceVersionRef = useRef<number | null>(null)
   const progressIdRef = useRef(0)
+  const canvasEventIdRef = useRef(0)
+  const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
 
-  const api = useDifyBuilderApi(baseUrl)
-
-  // Cancel the in-flight stream when the owning component unmounts.
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
+      abortRef.current = null
     }
   }, [])
 
   const pushProgress = useCallback(
     (event: string, data: unknown) => {
       progressIdRef.current += 1
-      setProgressLog((prev) => [...prev, { id: progressIdRef.current, event, data }])
+      const entry = { id: progressIdRef.current, event, data }
+      setProgressLog((previous) => {
+        if (previous.length < DIFY_BUILDER_PROGRESS_LOG_LIMIT) return [...previous, entry]
+        return [...previous.slice(1), entry]
+      })
     },
     [setProgressLog],
   )
 
-  const finishPendingAdvance = useCallback(
-    (version?: number) => {
-      const pendingVersion = pendingAdvanceVersionRef.current
-      if (pendingVersion === null) return
-      if (version !== undefined && version <= pendingVersion) return
-      pendingAdvanceVersionRef.current = null
-      setIsBusy(false)
+  const applySessionView = useCallback(
+    (nextView: SessionView) => {
+      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
+      if (activeSessionId && activeSessionId !== nextView.session_id) return false
+
+      const current = store.get(difyBuilderSessionViewAtom)
+      if (
+        current &&
+        current.session_id === nextView.session_id &&
+        nextView.version < current.version
+      )
+        return false
+
+      // Full server snapshots (GET, SSE snapshot, and SSE state) replace the
+      // disposable in-memory projection atomically.
+      setView(nextView)
+      if (isTerminalView(nextView)) {
+        setActiveSessionId((sessionId) => (sessionId === nextView.session_id ? null : sessionId))
+      } else {
+        setActiveSessionId(nextView.session_id)
+      }
+      return true
     },
-    [setIsBusy],
+    [setActiveSessionId, setView, store],
   )
 
-  // Keep `view` in sync with the live session via the SSE stream. The `snapshot`
-  // frame carries a full SessionView; `state` frames carry an incremental
-  // { version, phase, run_status, state, canvas_read_only, actions }. Without
-  // this the held `view.version` stays frozen at the create-time value, so
-  // the next action's base_version CAS 409s the moment the engine has
-  // auto-advanced (diagnose→propose→apply→await_verify), and the rendered
-  // action buttons (data-driven off `view.actions`) go stale.
-  const reconcileView = useCallback(
-    (data: unknown) => {
-      if (!data || typeof data !== 'object') return
-      const d = data as Partial<SessionView>
-      if (typeof d.version !== 'number') return // only versioned frames (snapshot / state)
-      const full = isSessionView(data)
-      setView((prev) => {
-        if (prev && d.version! < prev.version) return prev // never regress the version
-        if (full) return data as SessionView
-        if (!prev) return prev // incremental frame with no base view: nothing to merge
-        const next: SessionView = { ...prev, version: d.version! }
-        if (typeof d.state === 'string') next.state = d.state
-        if (typeof d.canvas_read_only === 'boolean') next.canvas_read_only = d.canvas_read_only
-        if (typeof d.run_status === 'string') next.run_status = d.run_status
-        if (typeof d.phase === 'string') next.phase = d.phase
-        if (Array.isArray(d.actions)) next.actions = d.actions
-        return next
+  const applyCommit = useCallback(
+    (commit: DifyBuilderCommitEventData) => {
+      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
+      if (activeSessionId && activeSessionId !== commit.session_id) return
+
+      setView((current) => {
+        if (
+          !current ||
+          current.session_id !== commit.session_id ||
+          commit.version <= current.version
+        )
+          return current
+        return {
+          ...current,
+          version: commit.version,
+          state: commit.state,
+          canvas_read_only: true,
+          run_status: 'executing',
+          conversation: mergeConversation(current.conversation, commit.items),
+        }
       })
     },
-    [setView],
+    [setView, store],
   )
 
-  const applyResponse = useCallback(
-    async (res: Response): Promise<unknown> => {
-      const text = await res.text()
-      let parsed: unknown = text
-      try {
-        parsed = JSON.parse(text)
-      } catch {
-        // leave as raw text; still shown in the "Last Raw Response" panel
-      }
-      setLastRaw(parsed)
-      setLastError(res.ok ? '' : `HTTP ${res.status}`)
-      if (isSessionView(parsed)) {
-        setView((current) => {
-          if (current && parsed.version < current.version) return current
-          return parsed
-        })
-      }
-      return parsed
+  const applyAgentMessageDelta = useCallback(
+    (message: AgentMessageEventData) => {
+      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
+      if (activeSessionId && activeSessionId !== message.session_id) return
+
+      setView((current) => {
+        if (
+          !current ||
+          current.session_id !== message.session_id ||
+          current.version >= message.at_version
+        )
+          return current
+
+        const itemIndex = current.conversation.findIndex(
+          (item) => item.kind === 'assistant_turn' && item.payload.turn_id === message.id,
+        )
+        if (itemIndex < 0) {
+          const streamedItem: ConversationItem = {
+            seq: message.seq,
+            at_version: message.at_version,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: message.id,
+              stage_id: message.stage_id,
+              trace: { status: 'running' },
+              reply_text: message.answer,
+            },
+          }
+          return {
+            ...current,
+            conversation: mergeConversation(current.conversation, [streamedItem]),
+          }
+        }
+
+        const conversation = [...current.conversation]
+        const currentItem = conversation[itemIndex]!
+        if (currentItem.kind !== 'assistant_turn') return current
+        conversation[itemIndex] = {
+          ...currentItem,
+          payload: {
+            ...currentItem.payload,
+            trace: { ...currentItem.payload.trace, status: 'running' },
+            reply_text: `${currentItem.payload.reply_text ?? ''}${message.answer}`,
+          },
+        }
+        return { ...current, conversation }
+      })
     },
-    [setLastError, setLastRaw, setView],
+    [setView, store],
   )
 
-  const startStream = useCallback(
+  const clearSession = useCallback(
     (sessionId: string) => {
+      setActiveSessionId((current) => (current === sessionId ? null : current))
+      setView((current) => (current?.session_id === sessionId ? null : current))
+    },
+    [setActiveSessionId, setView],
+  )
+
+  const consumeStream = useCallback(
+    async (
+      events: AsyncIterable<DifyBuilderStreamEventResponse>,
+      controller: AbortController,
+      initialSessionId?: string,
+      stopWhenNotExecuting = false,
+    ): Promise<StreamOutcome> => {
+      const outcome: StreamOutcome = {
+        sessionId: initialSessionId,
+        sawSnapshot: false,
+        terminalEvent: null,
+      }
+      const handleEvent = (event: DifyBuilderStreamEventResponse): boolean => {
+        setLastRaw(event.data)
+        pushProgress(event.event, event.data)
+        if (event.event === 'snapshot') {
+          outcome.sawSnapshot = true
+          outcome.sessionId = event.data.session_id
+          applySessionView(event.data)
+          if (stopWhenNotExecuting && event.data.run_status !== 'executing') {
+            outcome.terminalEvent = 'state'
+            outcome.stateApplied = true
+            return true
+          }
+          return false
+        }
+
+        if (event.event === 'canvas') {
+          canvasEventIdRef.current += 1
+          setLastCanvasEvent({ id: canvasEventIdRef.current, data: event.data })
+          return false
+        }
+
+        if (event.event === 'commit') {
+          outcome.sessionId = event.data.session_id
+          applyCommit(event.data)
+          return false
+        }
+
+        if (event.event === 'agent_message') {
+          outcome.sessionId = event.data.session_id
+          applyAgentMessageDelta(event.data)
+          return false
+        }
+
+        if (event.event === 'state') {
+          outcome.terminalEvent = 'state'
+          outcome.sessionId = event.data.session_id
+          const { kind: _kind, ...stateView } = event.data
+          applySessionView(stateView)
+          outcome.stateApplied = true
+          return true
+        }
+
+        if (event.event === 'error') {
+          outcome.terminalEvent = 'error'
+          outcome.terminalError = streamErrorMessage(event.data)
+          setLastError(outcome.terminalError)
+          return true
+        }
+        return false
+      }
+
+      try {
+        for await (const event of events) {
+          if (controller.signal.aborted || handleEvent(event)) break
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) outcome.transportError = requestErrorMessage(error)
+      }
+
+      return outcome
+    },
+    [
+      applyAgentMessageDelta,
+      applyCommit,
+      applySessionView,
+      pushProgress,
+      setLastCanvasEvent,
+      setLastError,
+      setLastRaw,
+    ],
+  )
+
+  const reconcileSession = useCallback(
+    async (sessionId: string, controller: AbortController) => {
+      try {
+        const events = await consoleClient.difyBuilder.sessions.bySessionId.get(
+          { params: { session_id: sessionId } },
+          { context: { silent: true }, signal: controller.signal },
+        )
+        return await consumeStream(events, controller, sessionId, true)
+      } catch {
+        return undefined
+      }
+    },
+    [consumeStream],
+  )
+
+  const runCommand = useCallback(
+    async ({
+      openStream,
+      knownSessionId,
+      expectTerminalEvent,
+      startsSession = false,
+    }: CommandOptions) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
-      fetch(api.streamURL(sessionId), {
-        credentials: 'include',
-        signal: controller.signal,
-        headers: api.streamHeaders(),
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            setLastError(`HTTP ${res.status}`)
-            finishPendingAdvance()
-            return
-          }
-          const reader = res.body?.getReader()
-          if (!reader) return
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let done = false
-          while (!done) {
-            const result = await reader.read()
-            done = result.done
-            if (result.value) buffer += decoder.decode(result.value, { stream: true })
-            const frames = buffer.split('\n\n')
-            buffer = frames.pop() ?? ''
-            for (const frame of frames) {
-              const parsed = parseSSEFrame(frame)
-              if (!parsed) continue
-              pushProgress(parsed.event, parsed.data)
-              reconcileView(parsed.data)
-              if (isSessionView(parsed.data)) finishPendingAdvance(parsed.data.version)
-              else if (
-                parsed.data &&
-                typeof parsed.data === 'object' &&
-                typeof (parsed.data as Partial<SessionView>).version === 'number'
-              ) {
-                finishPendingAdvance((parsed.data as Partial<SessionView>).version)
-              }
-              if (parsed.event === 'error') finishPendingAdvance()
-              if (parsed.event === 'state') {
-                const latest = await api.get(sessionId)
-                await applyResponse(latest)
-              }
-            }
-          }
-        })
-        .catch((err: unknown) => {
-          if (controller.signal.aborted) return
-          setLastError(String(err))
-          finishPendingAdvance()
-          pushProgress('error', String(err))
-        })
-    },
-    [api, applyResponse, finishPendingAdvance, pushProgress, reconcileView, setLastError],
-  )
-
-  const beginSession = useCallback(
-    async (appId: string, request: CreateSessionRequest) => {
       setIsBusy(true)
       setLastError('')
-      setProgressLog([])
-      abortRef.current?.abort()
+      if (startsSession) {
+        setActiveSessionId(null)
+        setProgressLog([])
+        setLastCanvasEvent(null)
+        pendingMessageRef.current = null
+      }
+
       try {
-        const res = await api.create(appId, request)
-        const parsed = await applyResponse(res)
-        if (!res.ok || !isSessionView(parsed)) return false
-        startStream(parsed.session_id)
+        const events = await openStream(controller.signal)
+        if (controller.signal.aborted) return false
+        const outcome = await consumeStream(events, controller, knownSessionId)
+        if (controller.signal.aborted) return false
+        const sessionId = outcome.sessionId ?? knownSessionId
+
+        if (outcome.transportError) {
+          setLastError(outcome.transportError)
+          pushProgress('error', outcome.transportError)
+          if (sessionId) await reconcileSession(sessionId, controller)
+          if (!controller.signal.aborted) setLastError(outcome.transportError)
+          return false
+        }
+
+        if (outcome.terminalEvent) {
+          if (controller.signal.aborted) return false
+          if (outcome.terminalEvent === 'error') {
+            if (sessionId) await reconcileSession(sessionId, controller)
+            setLastError(outcome.terminalError || 'Builder command failed.')
+            return false
+          }
+          if (!sessionId) setLastError('Builder stream did not identify its session.')
+          return Boolean(sessionId && outcome.stateApplied)
+        }
+
+        if (expectTerminalEvent) {
+          setLastError(UNEXPECTED_EOF_ERROR)
+          pushProgress('error', UNEXPECTED_EOF_ERROR)
+          if (sessionId) await reconcileSession(sessionId, controller)
+          if (!controller.signal.aborted) setLastError(UNEXPECTED_EOF_ERROR)
+          return false
+        }
+
+        if (!outcome.sawSnapshot) {
+          setLastError('Builder stream ended without a snapshot.')
+          return false
+        }
         return true
-      } catch (err) {
-        setLastError(String(err))
+      } catch (error) {
+        if (controller.signal.aborted) return false
+        const message = requestErrorMessage(error)
+        setLastError(message)
+        pushProgress('error', message)
+        if (knownSessionId) await reconcileSession(knownSessionId, controller)
+        if (!controller.signal.aborted) setLastError(message)
         return false
       } finally {
-        setIsBusy(false)
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          setIsBusy(false)
+        }
       }
     },
-    [api, applyResponse, setIsBusy, setLastError, setProgressLog, startStream],
+    [
+      consumeStream,
+      pushProgress,
+      reconcileSession,
+      setActiveSessionId,
+      setIsBusy,
+      setLastCanvasEvent,
+      setLastError,
+      setProgressLog,
+    ],
   )
 
   const startFix = useCallback(
     (appId: string, failedRunId: string, modelConfig?: SessionModel) =>
-      beginSession(appId, {
-        scenario: 'fix',
-        target: { failedRunId },
-        modelConfig,
+      runCommand({
+        startsSession: true,
+        expectTerminalEvent: true,
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.post(
+            {
+              body: {
+                app_id: appId,
+                scenario: 'fix',
+                failed_run_id: failedRunId,
+                ...(modelConfig ? { model_config: modelConfig } : {}),
+              },
+            },
+            { signal },
+          ),
       }),
-    [beginSession],
+    [runCommand],
   )
 
   const startChecklistFix = useCallback(
     (appId: string, checklistErrors: ChecklistErrorPayload[], modelConfig?: SessionModel) =>
-      beginSession(appId, {
-        scenario: 'fix',
-        target: { checklistErrors },
-        modelConfig,
+      runCommand({
+        startsSession: true,
+        expectTerminalEvent: true,
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.post(
+            {
+              body: {
+                app_id: appId,
+                scenario: 'fix',
+                checklist_errors: checklistErrors,
+                ...(modelConfig ? { model_config: modelConfig } : {}),
+              },
+            },
+            { signal },
+          ),
       }),
-    [beginSession],
+    [runCommand],
   )
 
   const startBuild = useCallback(
     (appId: string, goalText: string, modelConfig?: SessionModel) =>
-      beginSession(appId, { scenario: 'build', goalText, modelConfig }),
-    [beginSession],
+      runCommand({
+        startsSession: true,
+        expectTerminalEvent: true,
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.post(
+            {
+              body: {
+                app_id: appId,
+                scenario: 'build',
+                goal_text: goalText,
+                ...(modelConfig ? { model_config: modelConfig } : {}),
+              },
+            },
+            { signal },
+          ),
+      }),
+    [runCommand],
   )
 
   const startEdit = useCallback(
-    async (appId: string, goalText: string, modelConfig?: SessionModel) => {
-      setIsBusy(true)
-      setLastError('')
-      setProgressLog([])
-      abortRef.current?.abort()
-      try {
-        const createResponse = await api.create(appId, { scenario: 'edit', modelConfig })
-        const created = await applyResponse(createResponse)
-        if (!createResponse.ok || !isSessionView(created)) return false
-
-        const actionResponse = await api.action(
-          created.session_id,
-          'send_edit_goal',
-          created.version,
-          { text: goalText },
-        )
-        const updated = await applyResponse(actionResponse)
-        if (!actionResponse.ok || !isSessionView(updated)) return false
-        startStream(updated.session_id)
-        return true
-      } catch (err) {
-        setLastError(String(err))
-        return false
-      } finally {
-        setIsBusy(false)
-      }
-    },
-    [api, applyResponse, setIsBusy, setLastError, setProgressLog, startStream],
+    (appId: string, goalText: string, modelConfig?: SessionModel) =>
+      runCommand({
+        startsSession: true,
+        expectTerminalEvent: true,
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.post(
+            {
+              body: {
+                app_id: appId,
+                scenario: 'edit',
+                goal_text: goalText,
+                ...(modelConfig ? { model_config: modelConfig } : {}),
+              },
+            },
+            { signal },
+          ),
+      }),
+    [runCommand],
   )
 
-  const refresh = useCallback(async () => {
-    const view = store.get(difyBuilderSessionViewAtom)
-    if (!view) return false
-    setIsBusy(true)
-    try {
-      const res = await api.get(view.session_id)
-      await applyResponse(res)
-      return res.ok
-    } catch (err) {
-      setLastError(String(err))
-      return false
-    } finally {
-      setIsBusy(false)
-    }
-  }, [api, applyResponse, setIsBusy, setLastError, store])
+  const restore = useCallback(
+    async (sessionId: string) => {
+      const normalizedSessionId = sessionId.trim()
+      if (!normalizedSessionId || store.get(difyBuilderSessionBusyAtom)) return false
 
-  const runAction = useCallback(
-    async (actionId: string, payload: Record<string, unknown> = {}) => {
-      const view = store.get(difyBuilderSessionViewAtom)
-      const isBusy = store.get(difyBuilderSessionBusyAtom)
-      if (!view || isBusy) return false
-      const baseVersion = view.version
-      let waitsForAdvance = false
+      const controller = new AbortController()
+      abortRef.current = controller
+      setActiveSessionId(normalizedSessionId)
       setIsBusy(true)
+      setLastError('')
       try {
-        const res = await api.action(view.session_id, actionId, view.version, payload)
-        const parsed = await applyResponse(res)
-        if (res.ok && isSessionView(parsed)) {
-          waitsForAdvance = parsed.version <= baseVersion && actionId !== 'update_model'
-          pendingAdvanceVersionRef.current = waitsForAdvance ? baseVersion : null
-          startStream(parsed.session_id)
+        const events = await consoleClient.difyBuilder.sessions.bySessionId.get(
+          { params: { session_id: normalizedSessionId } },
+          { context: { silent: true }, signal: controller.signal },
+        )
+        const outcome = await consumeStream(events, controller, normalizedSessionId, true)
+        if (controller.signal.aborted) return false
+        if (outcome.terminalEvent === 'state') return outcome.stateApplied === true
+        if (outcome.terminalEvent === 'error') {
+          setLastError(outcome.terminalError || 'Builder command failed.')
+          return false
         }
-        return res.ok
-      } catch (err) {
-        setLastError(String(err))
+        if (!outcome.sawSnapshot) {
+          setLastError(outcome.transportError || 'Builder stream ended without a snapshot.')
+          return false
+        }
+
+        const reconciled = await reconcileSession(normalizedSessionId, controller)
+        if (controller.signal.aborted) return false
+        if (reconciled?.terminalEvent === 'state' && reconciled.stateApplied) return true
+        const message = outcome.transportError || UNEXPECTED_EOF_ERROR
+        setLastError(message)
+        if (outcome.transportError) pushProgress('error', outcome.transportError)
+        return false
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const message = requestErrorMessage(error)
+          if ([403, 404, 410].includes(requestErrorStatus(error) ?? 0))
+            clearSession(normalizedSessionId)
+          setLastError(message)
+          pushProgress('error', message)
+        }
         return false
       } finally {
-        if (!waitsForAdvance) setIsBusy(false)
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          setIsBusy(false)
+        }
       }
     },
-    [api, applyResponse, setIsBusy, setLastError, startStream, store],
+    [
+      consumeStream,
+      clearSession,
+      pushProgress,
+      reconcileSession,
+      setActiveSessionId,
+      setIsBusy,
+      setLastError,
+      store,
+    ],
+  )
+
+  const refresh = useCallback(() => {
+    const sessionId =
+      store.get(difyBuilderActiveSessionIdAtom) ?? store.get(difyBuilderSessionViewAtom)?.session_id
+    return sessionId ? restore(sessionId) : Promise.resolve(false)
+  }, [restore, store])
+
+  const runAction = useCallback(
+    (actionId: string, payload: Record<string, unknown> = {}) => {
+      const view = store.get(difyBuilderSessionViewAtom)
+      if (!view || store.get(difyBuilderSessionBusyAtom)) return Promise.resolve(false)
+      return runCommand({
+        knownSessionId: view.session_id,
+        expectTerminalEvent: actionId !== 'update_model' && actionId !== 'view_changes',
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.bySessionId.actions.post(
+            {
+              params: { session_id: view.session_id },
+              body: {
+                action_id: actionId,
+                payload,
+                base_version: view.version,
+                base_app_revision: view.app_revision?.current ?? '',
+              },
+            },
+            { signal },
+          ),
+      })
+    },
+    [runCommand, store],
   )
 
   const sendMessage = useCallback(
     async (text: string) => {
       const view = store.get(difyBuilderSessionViewAtom)
-      const isBusy = store.get(difyBuilderSessionBusyAtom)
-      if (!view || isBusy) return false
-      const baseVersion = view.version
-      let waitsForAdvance = false
-      setIsBusy(true)
-      try {
-        const res = await api.message(view.session_id, text, view.version)
-        const parsed = await applyResponse(res)
-        if (res.ok && isSessionView(parsed)) {
-          waitsForAdvance = parsed.version <= baseVersion
-          pendingAdvanceVersionRef.current = waitsForAdvance ? baseVersion : null
-          startStream(parsed.session_id)
-        }
-        return res.ok
-      } catch (err) {
-        setLastError(String(err))
-        return false
-      } finally {
-        if (!waitsForAdvance) setIsBusy(false)
+      if (!view || store.get(difyBuilderSessionBusyAtom)) return false
+      const normalizedText = text.trim()
+      if (!normalizedText) return false
+      const pending = pendingMessageRef.current
+      const clientTurnId =
+        pending?.sessionId === view.session_id && pending.text === normalizedText
+          ? pending.turnId
+          : globalThis.crypto.randomUUID()
+      pendingMessageRef.current = {
+        sessionId: view.session_id,
+        text: normalizedText,
+        turnId: clientTurnId,
       }
+      const sent = await runCommand({
+        knownSessionId: view.session_id,
+        expectTerminalEvent: true,
+        openStream: (signal) =>
+          consoleClient.difyBuilder.sessions.bySessionId.messages.post(
+            {
+              params: { session_id: view.session_id },
+              body: {
+                text: normalizedText,
+                base_version: view.version,
+                client_turn_id: clientTurnId,
+              },
+            },
+            { signal },
+          ),
+      })
+      if (sent && pendingMessageRef.current?.turnId === clientTurnId)
+        pendingMessageRef.current = null
+      return sent
     },
-    [api, applyResponse, setIsBusy, setLastError, startStream, store],
+    [runCommand, store],
   )
 
   const updateModel = useCallback(
@@ -455,13 +676,23 @@ export function useDifyBuilderSessionController({
   const reset = useCallback(() => {
     abortRef.current?.abort()
     abortRef.current = null
-    pendingAdvanceVersionRef.current = null
+    pendingMessageRef.current = null
+    setActiveSessionId(null)
     setView(null)
     setLastRaw(null)
     setLastError('')
     setProgressLog([])
+    setLastCanvasEvent(null)
     setIsBusy(false)
-  }, [setIsBusy, setLastError, setLastRaw, setProgressLog, setView])
+  }, [
+    setActiveSessionId,
+    setIsBusy,
+    setLastCanvasEvent,
+    setLastError,
+    setLastRaw,
+    setProgressLog,
+    setView,
+  ])
 
   return useMemo(
     () => ({
@@ -470,6 +701,7 @@ export function useDifyBuilderSessionController({
       startBuild,
       startEdit,
       refresh,
+      restore,
       runAction,
       sendMessage,
       updateModel,
@@ -478,6 +710,7 @@ export function useDifyBuilderSessionController({
     [
       refresh,
       reset,
+      restore,
       runAction,
       sendMessage,
       startBuild,
@@ -489,10 +722,8 @@ export function useDifyBuilderSessionController({
   )
 }
 
-export function useDifyBuilderSession({
-  baseUrl,
-}: UseDifyBuilderSessionParams): UseDifyBuilderSessionResult {
-  const controller = useDifyBuilderSessionController({ baseUrl })
+export function useDifyBuilderSession(): UseDifyBuilderSessionResult {
+  const controller = useDifyBuilderSessionController()
   const view = useAtomValue(difyBuilderSessionViewAtom)
   const isBusy = useAtomValue(difyBuilderSessionBusyAtom)
   const lastRaw = useAtomValue(difyBuilderSessionLastRawAtom)

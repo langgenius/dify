@@ -284,6 +284,85 @@ def test_await_approval_stray_action_no_auto_apply_approve_advances():
 # ---- verify ---------------------------------------------------------------
 
 
+def test_run_validation_exposes_testdata_form_for_start_inputs():
+    env, repo = _new_env()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "label": "Topic", "type": "text-input"},
+                        {"variable": "attachment", "label": "Attachment", "type": "file"},
+                    ],
+                },
+            }
+        ]
+    }
+    runner, s = _drive_to_await_verify(env, repo)
+
+    out = runner.advance(
+        s.id,
+        Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor()),
+    )
+
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+    items = repo.list_conversation(s.id)
+    form = next(item for item in items if item.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert [(field["key"], field["type"]) for field in form.payload["fields"]] == [
+        ("topic", "text-input"),
+        ("attachment", "file"),
+    ]
+    assistant = next(
+        item
+        for item in reversed(items)
+        if item.kind == "assistant_turn" and item.payload["stage_id"] == "fix.await_testdata"
+    )
+    assert assistant.payload["cards"] == ["form"]
+
+
+def test_mock_validation_inputs_use_the_workflow_start_schema():
+    env, repo = _new_env()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "topic", "label": "Topic", "type": "text-input"}],
+                },
+            }
+        ]
+    }
+    captured_schema = {}
+
+    def generate_mock_inputs(schema, _prior_failed):
+        captured_schema.update(schema)
+        return {"topic": "mock topic"}
+
+    env.agent.generate_mock_inputs = generate_mock_inputs
+    runner, s = _drive_to_await_verify(env, repo)
+    out = runner.advance(
+        s.id,
+        Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor()),
+    )
+
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+    assert captured_schema == {"variables": [{"variable": "topic", "label": "Topic", "type": "text-input"}]}
+    _, fc = repo.get_session(s.id)
+    assert repo.get_test_input(fc.test_input_ref).inputs == {"topic": "mock topic"}
+
+
 def test_verify_mints_new_immutable_run_original_untouched():
     env, repo = _new_env()
     runner, s = _drive_to_await_verify(env, repo)
@@ -526,15 +605,20 @@ def test_fix_registry_has_exactly_twelve_states():
 
 def test_start_schema_reads_start_node_variables():
     from core.dify_builder.handlers_fix import start_schema
-    graph = {"nodes": [
-        {"id": "s", "data": {"type": "start", "variables": [{"variable": "query", "type": "text-input"}]}},
-        {"id": "llm", "data": {"type": "llm"}},
-    ], "edges": []}
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "query", "type": "text-input"}]}},
+            {"id": "llm", "data": {"type": "llm"}},
+        ],
+        "edges": [],
+    }
     assert start_schema(graph) == {"variables": [{"variable": "query", "type": "text-input"}]}
 
 
 def test_start_schema_empty_when_no_start_or_no_vars():
     from core.dify_builder.handlers_fix import start_schema
+
     assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
     assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
 
@@ -545,8 +629,14 @@ def test_start_schema_empty_when_no_start_or_no_vars():
 def test_is_input_failure_matches_input_signals():
     from core.dify_builder.handlers_fix import is_input_failure
     from core.dify_builder.models import NodeOutput, Run
-    fail = Run(per_node=[NodeOutput(node_id="node2", status="failed",
-                                    error="File variable not found for selector: ['start', 'document']")])
+
+    fail = Run(
+        per_node=[
+            NodeOutput(
+                node_id="node2", status="failed", error="File variable not found for selector: ['start', 'document']"
+            )
+        ]
+    )
     assert is_input_failure(fail) is True
     cfg = Run(per_node=[NodeOutput(node_id="llm", status="failed", error="model provider error: 500")])
     assert is_input_failure(cfg) is False
@@ -560,21 +650,122 @@ def test_is_input_failure_does_not_misclassify_a_config_required_field_error():
     # never offered. Only genuinely input/file-shaped signals should match.
     from core.dify_builder.handlers_fix import is_input_failure
     from core.dify_builder.models import NodeOutput, Run
+
     cfg = Run(
-        per_node=[
-            NodeOutput(node_id="n1", status="failed", error="Node config invalid: field 'timeout' is required")
-        ]
+        per_node=[NodeOutput(node_id="n1", status="failed", error="Node config invalid: field 'timeout' is required")]
     )
     assert is_input_failure(cfg) is False
 
 
 def test_testdata_form_fields_preserves_file_type():
     from core.dify_builder.handlers_fix import testdata_form_fields
-    schema = {"variables": [
-        {"variable": "document", "label": "Document", "type": "file", "required": True},
-        {"variable": "topic", "type": "paragraph"},
-    ]}
+
+    schema = {
+        "variables": [
+            {"variable": "document", "label": "Document", "type": "file", "required": True},
+            {"variable": "topic", "type": "paragraph"},
+        ]
+    }
     fields = testdata_form_fields(schema)
     assert [f.key for f in fields] == ["document", "topic"]
-    assert fields[0].type == "file"          # NOT clamped to "text"
-    assert fields[1].label == "topic"        # falls back to the variable name
+    assert fields[0].type == "file"  # NOT clamped to "text"
+    assert fields[0].required is True
+    assert fields[1].label == "topic"  # falls back to the variable name
+
+
+def test_testdata_form_fields_copies_start_input_constraints():
+    from core.dify_builder.handlers_fix import testdata_form_fields
+
+    schema = {
+        "variables": [
+            {
+                "variable": "format",
+                "label": "Format",
+                "type": "select",
+                "options": ["PDF", "Markdown"],
+                "required": True,
+                "default": "PDF",
+                "max_length": 20,
+                "placeholder": "Choose a format",
+                "hint": "Used for the final report",
+                "unit": "characters",
+                "json_schema": {"type": "string", "enum": ["PDF", "Markdown"]},
+            },
+            {
+                "variable": "documents",
+                "type": "file-list",
+                "max_length": 4,
+                "allowed_file_types": ["document", "custom"],
+                "allowed_file_extensions": [".pdf", ".md"],
+                "allowed_file_upload_methods": ["local_file", "remote_url"],
+            },
+            {
+                "variable": "legacy_file",
+                "type": "file",
+                "number_limits": 2,
+                "allowed_upload_methods": ["remote_url"],
+                "json_schema": '{"type":"string"}',
+            },
+        ]
+    }
+
+    fields = testdata_form_fields(schema)
+
+    assert fields[0].options == ["PDF", "Markdown"]
+    assert fields[0].required is True
+    assert fields[0].default == "PDF"
+    assert fields[0].max_length == 20
+    assert fields[0].placeholder == "Choose a format"
+    assert fields[0].hint == "Used for the final report"
+    assert fields[0].unit == "characters"
+    assert fields[0].json_schema == {"type": "string", "enum": ["PDF", "Markdown"]}
+    assert fields[1].allowed_file_types == ["document", "custom"]
+    assert fields[1].allowed_file_extensions == [".pdf", ".md"]
+    assert fields[1].allowed_file_upload_methods == ["local_file", "remote_url"]
+    assert fields[1].max_length == 4
+    assert fields[1].number_limits == 4
+    assert fields[2].number_limits == 2
+    assert fields[2].allowed_file_upload_methods == ["remote_url"]
+    assert fields[2].json_schema == '{"type":"string"}'
+
+
+def test_testdata_form_fields_drops_malformed_constraints():
+    from core.dify_builder.handlers_fix import testdata_form_fields
+
+    fields = testdata_form_fields(
+        {
+            "variables": [
+                {
+                    "variable": "document",
+                    "type": "file",
+                    "options": ["valid", {"not": "a string"}],
+                    "required": "yes",
+                    "default": ["not", "primitive"],
+                    "max_length": True,
+                    "number_limits": 0,
+                    "allowed_file_types": ["document", 1],
+                    "allowed_file_extensions": "pdf",
+                    "allowed_file_upload_methods": {"method": "local_file"},
+                    "placeholder": 1,
+                    "hint": [],
+                    "unit": False,
+                    "json_schema": ["not", "schema"],
+                }
+            ]
+        }
+    )
+
+    assert len(fields) == 1
+    field = fields[0]
+    assert field.options == ["valid"]
+    assert field.required is False
+    assert field.default is None
+    assert field.max_length is None
+    assert field.number_limits is None
+    assert field.allowed_file_types == ["document"]
+    assert field.allowed_file_extensions == []
+    assert field.allowed_file_upload_methods == []
+    assert field.placeholder is None
+    assert field.hint is None
+    assert field.unit is None
+    assert field.json_schema is None

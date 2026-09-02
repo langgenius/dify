@@ -17,6 +17,7 @@ import { useEdges } from 'reactflow'
 import {
   difyBuilderAvailableAtom,
   difyBuilderCanStartFixAtom,
+  difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderStartChecklistFixAtom,
 } from '@/app/components/workflow-app/components/dify-builder/store'
@@ -55,6 +56,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
   const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
+  const canvasRefreshGeneration = useAtomValue(difyBuilderCanvasRefreshGenerationAtom)
   const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
   const registerChecklistErrors = useSetAtom(difyBuilderRegisterChecklistErrorsAtom)
   const startChecklistFix = useSetAtom(difyBuilderStartChecklistFixAtom)
@@ -68,21 +70,22 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
     }
     return { pluginItems: plugins, nodeItems: regular }
   }, [needWarningNodes])
-  const checklistErrors = useMemo(
-    () => needWarningNodes.map(toChecklistErrorPayload),
-    [needWarningNodes],
-  )
-  const fixableItemCount = useMemo(
+  const fixableChecklistErrors = useMemo(
     () =>
-      needWarningNodes.filter(
-        (item) => !item.unConnected && !item.isPluginMissing && item.errorMessages.length > 0,
-      ).length,
+      needWarningNodes
+        .filter(
+          (item) => !item.unConnected && !item.isPluginMissing && item.errorMessages.length > 0,
+        )
+        .map(toChecklistErrorPayload),
     [needWarningNodes],
   )
 
   useEffect(() => {
-    registerChecklistErrors(checklistErrors)
-  }, [checklistErrors, registerChecklistErrors])
+    registerChecklistErrors({
+      errors: fixableChecklistErrors,
+      generation: canvasRefreshGeneration,
+    })
+  }, [canvasRefreshGeneration, fixableChecklistErrors, registerChecklistErrors])
 
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
@@ -161,7 +164,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   onItemClick={handleItemClick}
                 />
               ))}
-              {difyBuilderAvailable && fixableItemCount > 0 && (
+              {difyBuilderAvailable && fixableChecklistErrors.length > 0 && (
                 <div className="mt-2 border-t border-divider-subtle pt-3">
                   <DifyBuilderEntry
                     label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
@@ -171,7 +174,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                     disabled={disabled || !canStartFix}
                     onClick={() => {
                       setOpen(false)
-                      void startChecklistFix(checklistErrors)
+                      void startChecklistFix(fixableChecklistErrors)
                     }}
                   />
                 </div>
