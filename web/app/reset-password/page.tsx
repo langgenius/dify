@@ -75,7 +75,10 @@ export default function CheckCode() {
           <div className="mt-1">
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="email"
+              spellCheck={false}
               disabled={loading}
               value={email}
               placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
