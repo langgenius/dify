@@ -528,6 +528,10 @@ _LEGACY_APP_NORMAL_KEYS: list[str] = [
     "app.acl.access_point_view",
 ]
 
+_LEGACY_APP_DATASET_OPERATOR_KEYS: list[str] = [
+    "app.acl.access_point_view",
+]
+
 _LEGACY_DATASET_OWNER_KEYS: list[str] = [
     "dataset.acl.preview",
     "dataset.acl.readonly",
@@ -607,6 +611,7 @@ _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
     },
     TenantAccountRole.DATASET_OPERATOR: {
         "workspace": _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        "app": _LEGACY_APP_DATASET_OPERATOR_KEYS,
         "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
     },
 }
