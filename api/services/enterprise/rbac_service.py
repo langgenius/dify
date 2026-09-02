@@ -488,7 +488,6 @@ _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
 
 _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.preview",
-    "app.acl.access_point_manage",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.edit",
@@ -499,12 +498,13 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.access_config",
     "app.acl.tracing_config",
     "app.acl.log_and_annotation",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.preview",
     "app.acl.view_layout",
-    "app.acl.access_point_manage",
     "app.acl.test_and_run",
     "app.acl.edit",
     "app.acl.import_export_dsl",
@@ -515,11 +515,12 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.access_config",
     "app.acl.tracing_config",
     "app.acl.log_and_annotation",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.preview",
-    "app.acl.access_point_manage",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.edit",
@@ -529,10 +530,13 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.monitor",
     "app.acl.log_and_annotation",
     "app.acl.access_config",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
     "app.acl.monitor",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_DATASET_OWNER_KEYS: list[str] = [

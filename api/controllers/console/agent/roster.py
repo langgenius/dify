@@ -79,10 +79,10 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -390,7 +390,7 @@ def _serialize_agent_app_detail(
     """
 
     app_model = AppService().get_app(app_model, session=session)
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 

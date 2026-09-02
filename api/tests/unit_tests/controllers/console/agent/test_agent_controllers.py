@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from datetime import datetime
 from inspect import getclosurevars, getsource, unwrap
 from types import SimpleNamespace
@@ -489,9 +488,7 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda _self, **kwargs: {"agent-list": "debug-conversation-list"},
     )
     monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "count_agent_app_debug_conversation_messages",
-        lambda _self, **kwargs: 0,
+        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
     monkeypatch.setattr(
         roster_controller.enterprise_rbac_service.RBACService.AgentPermissions,
@@ -523,9 +520,9 @@ def test_agent_app_list_and_create_use_agent_route(
         get_or_create_debug_conversation,
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     with app.test_request_context(
         "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
@@ -568,22 +565,12 @@ def test_agent_app_list_and_create_use_agent_route(
     assert count_params.agent_is_published is True
     with app.test_request_context(
         "/console/api/agent",
-        json={
-            "name": "Iris",
-            "description": "Agent app",
-            "role": "Coordinator",
-            "icon_type": "emoji",
-            "icon": "robot",
-        },
+        json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
     ):
         created, status = unwrap(AgentAppListApi.post)(
             AgentAppListApi(),
             AgentAppCreatePayload(
-                name="Iris",
-                description="Agent app",
-                role="Coordinator",
-                icon_type="emoji",
-                icon="robot",
+                name="Iris", description="Agent app", role="Coordinator", icon_type="emoji", icon="robot"
             ),
             sqlite_session,
             "tenant-1",
@@ -611,6 +598,7 @@ def test_agent_app_list_and_create_use_agent_route(
         "account_id": account_id,
         "commit": False,
     }
+<<<<<<< HEAD
 
 
 def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled(
@@ -681,6 +669,8 @@ def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled
     assert created["id"] == "agent-created"
     replace_whitelist.assert_not_called()
     initialize_access.assert_not_called()
+=======
+>>>>>>> feat/app-access-point-permission
 
 
 def test_agent_app_create_payload_allows_optional_role() -> None:
@@ -766,9 +756,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 2
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     monkeypatch.setattr(
         roster_controller,
@@ -1256,9 +1246,9 @@ def test_agent_app_update_allows_empty_role(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
 
     class FakeAppService:

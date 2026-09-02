@@ -2618,9 +2618,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
@@ -3845,11 +3842,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -4339,11 +4331,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/workflow/nodes/trigger-schedule/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {

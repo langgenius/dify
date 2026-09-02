@@ -1,5 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query'
-import type { AppPublisherProps, AppPublisherPublishParams } from '../types'
+import type {
+  AppPublisherProps,
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient } from '@tanstack/react-query'
@@ -81,41 +85,52 @@ export function usePublishController({
       : publishedAt
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
+  async function publishApp(
+    params?: AppPublisherPublishParams,
+    options?: AppPublisherPublishOptions,
+  ) {
+    await onPublish?.(params, options)
+    setPublished(true)
+
+    const socket = appId ? webSocketClient.getSocket(appId) : null
+    if (appId) {
+      invalidateAppWorkflow(appId)
+      if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
+    } else {
+      console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+    }
+    if (socket) {
+      const timestamp = Date.now()
+      socket.emit('collaboration_event', {
+        type: 'app_publish_update',
+        data: {
+          action: 'published',
+          timestamp,
+        },
+        timestamp,
+      })
+    } else if (appId) {
+      console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+    }
+
+    trackEvent('app_published_time', {
+      action_mode: 'app',
+      app_id: appId,
+      app_name: appName,
+    })
+  }
+
   async function handlePublish(params?: AppPublisherPublishParams) {
     try {
-      await onPublish?.(params)
-      setPublished(true)
-
-      const socket = appId ? webSocketClient.getSocket(appId) : null
-      if (appId) {
-        invalidateAppWorkflow(appId)
-        if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
-      } else {
-        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-      }
-      if (socket) {
-        const timestamp = Date.now()
-        socket.emit('collaboration_event', {
-          type: 'app_publish_update',
-          data: {
-            action: 'published',
-            timestamp,
-          },
-          timestamp,
-        })
-      } else if (appId) {
-        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
-      }
-
-      trackEvent('app_published_time', {
-        action_mode: 'app',
-        app_id: appId,
-        app_name: appName,
-      })
+      await publishApp(params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
+  }
+
+  async function publishWorkflowTool(params?: AppPublisherPublishParams) {
+    await publishApp(params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -164,6 +179,7 @@ export function usePublishController({
     isWorkflowApp,
     published,
     publishedWorkflow,
+    publishWorkflowTool,
     resetPublished: () => setPublished(false),
   }
 }
