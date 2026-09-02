@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast, override
 from unittest.mock import MagicMock
@@ -71,11 +72,11 @@ def test_security_gateway_owns_login_failure_state() -> None:
     redis.delete.assert_called_once_with("login_error_rate_limit:user@example.com")
 
 
-def test_security_gateway_owns_email_send_ip_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_security_gateway_owns_email_send_ip_limit(config_overrides: Callable[..., None]) -> None:
     redis = MagicMock(spec=RedisClientWrapper)
     redis.get.side_effect = [None, b"2", None]
     redis.set.return_value = True
-    monkeypatch.setattr(adapters.dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1)
+    config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
     gateway = adapters.RedisConsoleAuthSecurityGateway(redis=cast(RedisClientWrapper, redis))
 
     assert gateway.is_email_send_ip_limited("127.0.0.1") is True

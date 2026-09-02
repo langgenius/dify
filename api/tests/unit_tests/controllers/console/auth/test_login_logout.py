@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
@@ -97,8 +98,11 @@ class FakeAuthenticationService:
 
 
 @pytest.fixture(autouse=True)
-def admit_authentication_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+def admit_authentication_requests(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(wraps.SystemFeatureService, "is_email_password_login_enabled", lambda: True)
 
 
@@ -335,8 +339,9 @@ def test_refresh_does_not_require_completed_setup(
     app: Flask,
     service: FakeAuthenticationService,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: False)
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
 
