@@ -192,4 +192,33 @@ describe('creator profile model', () => {
     expect(normalizeCreatorSocialLink('data:text/html,bad')).toBeNull()
     expect(normalizeCreatorSocialLink('mailto:test@example.com')).toBeNull()
   })
+
+  it('ignores non-string social links and template dependencies instead of throwing', () => {
+    expect(normalizeCreatorSocialLink({ href: 'https://x.com/x' })).toBeNull()
+    expect(normalizeCreatorSocialLink(null)).toBeNull()
+
+    const viewModel = adaptCreatorProfile({
+      creator: {
+        ...creator,
+        social_links: [{ href: 'https://x.com/x' }, 'github.com/evanz'] as unknown as string[],
+      },
+      kind: 'individual',
+      locale: 'en-US',
+      avatarUrl: '/avatar',
+      backgroundUrl: '/background',
+      plugins: [],
+      templates: [
+        {
+          ...template,
+          deps_plugins: [null, 'dify/search', ''] as unknown as string[],
+        },
+      ],
+      resolvePluginIcon: () => '/plugin-icon',
+      resolveTemplateIcon: () => '',
+      resolveDependencyIcon: (id) => `/dependency/${id}`,
+    })
+
+    expect(viewModel.profile.socialLinks).toEqual([expect.objectContaining({ platform: 'github' })])
+    expect(viewModel.creations[0]?.dependencyIcons).toEqual(['/dependency/dify/search'])
+  })
 })

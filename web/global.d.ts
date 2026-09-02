@@ -19,6 +19,10 @@ declare global {
   interface Window {
     gtag?: Gtag
     dataLayer?: unknown[]
+    /**
+     * Optional analytics bridge injected by the standalone Marketplace host.
+     * Absent in Dify console builds; see `utils/marketplace-site-track.ts`.
+     */
     __marketplaceTracking__?: {
       track: (eventName: string, properties?: Record<string, unknown>) => void
       rememberReferrer: (itemId: string, section: 'banner' | 'search' | 'list' | 'direct') => void

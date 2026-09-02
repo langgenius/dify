@@ -148,9 +148,11 @@ export const getMarketplaceCollectionsAndPlugins = async (
       try {
         marketplaceCollectionPluginsMap[collection.name] =
           await getMarketplacePluginsByCollectionId(collection.name, query, options)
-      } catch {
+      } catch (error) {
+        if (options?.signal?.aborted) throw error
         // One empty carousel beats a blank catalog: the collection list itself
-        // loaded, so render what did arrive.
+        // loaded, so render what did arrive. Cancellation must not take this
+        // path — react-query would cache the empty carousels as a success.
         marketplaceCollectionPluginsMap[collection.name] = []
       }
     }

@@ -1173,8 +1173,7 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)

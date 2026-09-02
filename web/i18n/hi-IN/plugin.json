@@ -233,6 +233,8 @@
   "marketplace.creatorProfile.creations": "रचनाएँ",
   "marketplace.creatorProfile.empty": "अभी कोई रचना नहीं।",
   "marketplace.creatorProfile.home": "Marketplace होम",
+  "marketplace.creatorProfile.loadMore": "Load more",
+  "marketplace.creatorProfile.loadMoreFailed": "Couldn't load more creations.",
   "marketplace.creatorProfile.onTheWeb": "वेब पर",
   "marketplace.creatorProfile.organization": "संगठन",
   "marketplace.creatorProfile.searchPlaceholder": "प्लगिन और टेम्पलेट खोजें",

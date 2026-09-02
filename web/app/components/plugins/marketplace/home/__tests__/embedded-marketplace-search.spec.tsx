@@ -237,4 +237,34 @@ describe('EmbeddedMarketplaceSearch', () => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')
     })
   })
+
+  it('filters the current catalog when Enter is pressed instead of opening a result', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            plugin_id: 'langgenius/google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderSearch()
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    await user.hover(await screen.findByRole('option', { name: /Google Search/ }))
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')
+    })
+    expect(screen.queryByRole('dialog', { name: 'plugin-detail' })).not.toBeInTheDocument()
+  })
 })

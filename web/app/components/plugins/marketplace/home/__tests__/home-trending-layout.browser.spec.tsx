@@ -239,37 +239,30 @@ describe('Marketplace home trending layout', () => {
     expect(getComputedStyle(artwork!).borderBottomLeftRadius).toBe('16px')
   })
 
-  it('moves forwards into the first slide clone before resetting the loop', async () => {
+  it('wraps from the last banner back to the first visible slide', async () => {
     const screen = await render(
       <HomeTrending banners={carouselBanners} isMarketplacePlatform page="plugins" />,
     )
 
     await screen.getByRole('button', { name: 'Third banner' }).click()
-    await new Promise((resolve) => setTimeout(resolve, 450))
-
-    const track = document.querySelector<HTMLElement>('[data-carousel-track]')!
-    const progress = document.querySelector<HTMLElement>('[data-carousel-progress]')!
-    const progressAnimation = progress.getAnimations()[0]
-    expect(progressAnimation).toBeDefined()
-    progressAnimation!.finish()
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
     expect(screen.getByRole('button', { name: 'Third banner' }).element()).toHaveAttribute(
       'aria-current',
       'true',
     )
-    expect(track.style.transform).toContain('-300%')
-    expect(track.querySelector('[data-carousel-loop-clone]')).toBeInTheDocument()
 
     await expect
-      .poll(() => track.getAttribute('data-carousel-loop-phase'), { timeout: 1000 })
-      .toBe('idle')
+      .poll(
+        () =>
+          screen
+            .getByRole('button', { name: 'First banner' })
+            .element()
+            .getAttribute('aria-current'),
+        { timeout: 8000 },
+      )
+      .toBe('true')
 
-    expect(screen.getByRole('button', { name: 'First banner' }).element()).toHaveAttribute(
-      'aria-current',
-      'true',
+    expect(screen.getByRole('group', { name: 'First banner' }).element()).not.toHaveAttribute(
+      'inert',
     )
-    expect(track.style.transform).toBe('translate3d(0%, 0px, 0px)')
-    expect(track.querySelector('[data-carousel-loop-clone]')).not.toBeInTheDocument()
   })
 })

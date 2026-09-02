@@ -53,6 +53,15 @@ function withRequestDeadline(callerSignal: AbortSignal | null | undefined): Abor
   return controller.signal
 }
 
+function isMarketplacePackageDownload(input: Request | URL | string): boolean {
+  const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  try {
+    return new URL(href).pathname.endsWith('/download')
+  } catch {
+    return false
+  }
+}
+
 function isURL(path: string) {
   try {
     // oxlint-disable-next-line no-new
@@ -117,10 +126,13 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   headers: () => getMarketplaceHeaders(),
   fetch: (request, init) => {
     const requestInit = init as RequestInit | undefined
+    const callerSignal = requestInit?.signal ?? request.signal
     return globalThis.fetch(request, {
       ...requestInit,
       cache: 'no-store',
-      signal: withRequestDeadline(requestInit?.signal ?? request.signal),
+      signal: isMarketplacePackageDownload(request)
+        ? callerSignal
+        : withRequestDeadline(callerSignal),
     })
   },
   interceptors: [

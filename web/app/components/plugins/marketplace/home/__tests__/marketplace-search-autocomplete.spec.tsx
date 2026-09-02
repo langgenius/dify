@@ -253,6 +253,66 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).toHaveBeenCalledOnce()
   })
 
+  it('submits the typed query on Enter without selecting a hovered suggestion', async () => {
+    mockTemplateSearch.mockResolvedValue({
+      data: {
+        templates: [
+          {
+            id: 'template-1',
+            template_name: 'Legal Research Agent',
+            overview: 'Research legal questions with cited sources.',
+            publisher_handle: 'dify',
+            usage_count: 120,
+            categories: ['knowledge'],
+            icon: '📄',
+            icon_background: '#FFFFFF',
+            icon_file_key: '',
+          },
+        ],
+        total: 1,
+      },
+    })
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const { container } = render(
+      <MarketplaceSearchForm
+        action="/search/all"
+        locale="en-US"
+        placeholder="Search plugins or templates"
+        query=""
+        scope="all"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'search')
+    await user.hover(await screen.findByRole('option', { name: /Legal Research Agent/ }))
+    await user.keyboard('{Enter}')
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+    expect(screen.getByRole('combobox')).toHaveValue('search')
+  })
+
   it('submits the route search form when a suggestion is chosen', async () => {
     mockPluginSearch.mockResolvedValue({
       data: {

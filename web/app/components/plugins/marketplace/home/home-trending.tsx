@@ -109,6 +109,12 @@ function HomeTrending({
     setTrackIndex(index)
     setSelectedIndex(index)
   }, [])
+  const lastIndex = Math.max(0, banners.length - 1)
+  if (selectedIndex > lastIndex) {
+    setLoopPhase('idle')
+    setSelectedIndex(lastIndex)
+    setTrackIndex(lastIndex)
+  }
   const selectNextSlide = useCallback(() => {
     if (selectedIndex < banners.length - 1) {
       const nextIndex = selectedIndex + 1

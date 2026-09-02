@@ -723,6 +723,19 @@ describe('MainNav', () => {
     expect(
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation'))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/',
+      '/apps',
+      '/agents',
+      '/datasets',
+      '/skills',
+      '/integrations/model-provider',
+      '/marketplace',
+    ])
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {

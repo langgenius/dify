@@ -42,16 +42,50 @@ describe('marketplace template discovery', () => {
 
     const result = await getMarketplaceTemplateCollectionsAndTemplates()
 
-    expect(mocks.templateCollections).toHaveBeenCalledWith({
-      query: { page: 1, page_size: 100 },
-    })
-    expect(mocks.templateCollectionTemplates).toHaveBeenNthCalledWith(1, {
-      params: { collectionName: 'featured' },
-      body: { limit: 24 },
-    })
+    expect(mocks.templateCollections).toHaveBeenCalledWith(
+      {
+        query: { page: 1, page_size: 100 },
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(mocks.templateCollectionTemplates).toHaveBeenNthCalledWith(
+      1,
+      {
+        params: { collectionName: 'featured' },
+        body: { limit: 24 },
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(result.ok).toBe(false)
     expect(result.templatesByCollection).toEqual({
       featured: [{ id: 'template-1' }],
       partners: [],
+    })
+  })
+
+  it('does not cache a partial collection failure', async () => {
+    const { getMarketplaceTemplateCollectionsAndTemplates } = await importDiscovery()
+    mocks.templateCollections.mockResolvedValue({
+      data: {
+        collections: [
+          { name: 'featured', label: {}, description: {}, priority: 1 },
+          { name: 'partners', label: {}, description: {}, priority: 2 },
+        ],
+      },
+    })
+    mocks.templateCollectionTemplates
+      .mockRejectedValueOnce(new Error('Unavailable'))
+      .mockResolvedValueOnce({ data: { templates: [{ id: 'template-1' }] } })
+      .mockResolvedValue({ data: { templates: [{ id: 'template-2' }] } })
+
+    const failed = await getMarketplaceTemplateCollectionsAndTemplates()
+    expect(failed.ok).toBe(false)
+
+    const recovered = await getMarketplaceTemplateCollectionsAndTemplates()
+    expect(recovered.ok).toBe(true)
+    expect(recovered.templatesByCollection).toEqual({
+      featured: [{ id: 'template-2' }],
+      partners: [{ id: 'template-2' }],
     })
   })
 

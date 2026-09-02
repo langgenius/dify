@@ -331,6 +331,32 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     expect(result.marketplaceCollectionPluginsMap.broken).toEqual([])
   })
 
+  it('propagates cancellation instead of resolving empty carousels', async () => {
+    const controller = new AbortController()
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          { name: 'ok', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+          { name: 'slow', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        ],
+      },
+    })
+    mockCollectionPlugins
+      .mockResolvedValueOnce({ data: { plugins: [{ type: 'plugin', org: 'a', name: 'b' }] } })
+      .mockImplementationOnce(async () => {
+        controller.abort()
+        const error = new Error('Aborted')
+        error.name = 'AbortError'
+        throw error
+      })
+
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+
+    await expect(
+      getMarketplaceCollectionsAndPlugins({}, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
   it('should append condition and type to URL when provided', async () => {
     mockCollections.mockResolvedValueOnce({ data: { collections: [] } })
 

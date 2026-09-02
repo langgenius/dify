@@ -1,3 +1,13 @@
+/**
+ * Standalone Marketplace host contract.
+ *
+ * The Dify console never stamps `data-is-marketplace` or assigns
+ * `window.__marketplaceTracking__`, so every helper here is a no-op in a Dify
+ * build. The standalone marketplace (dify-marketplace) owns the producer: it
+ * sets `data-is-marketplace` on `<body>` and injects `__marketplaceTracking__`
+ * from its analytics runtime. Shared Marketplace UI calls these helpers; the
+ * host implements the bridge.
+ */
 type MarketplaceSiteReferrerSection = 'banner' | 'search' | 'list' | 'direct'
 
 type MarketplaceSiteFilter = {

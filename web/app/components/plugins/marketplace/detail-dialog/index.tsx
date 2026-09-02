@@ -4,6 +4,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
+import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import { getPluginLinkInMarketplace } from '../utils'
 import MarketplaceDetailDialogFrame from './frame'
 import { useSilentMarketplaceInstall } from './use-silent-install'
@@ -31,11 +32,13 @@ const isInstallRequest = (data: unknown, pluginUniqueIdentifier: string) => {
 }
 
 function OpenMarketplaceDetailDialog({
+  canInstallPlugin,
   onOpenChange,
   plugin,
   src,
   title,
 }: {
+  canInstallPlugin: boolean
   onOpenChange: (open: boolean) => void
   plugin: Plugin
   src: string
@@ -57,9 +60,25 @@ function OpenMarketplaceDetailDialog({
       if (!isInstallRequest(data, plugin.latest_package_identifier)) return
 
       const uniqueIdentifier = plugin.latest_package_identifier
+      if (!canInstallPlugin) {
+        reply({
+          type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
+          pluginUniqueIdentifier: uniqueIdentifier,
+          status: 'failed',
+        })
+        return
+      }
+
+      let settled = false
+      const settle = (payload: Record<string, unknown>) => {
+        if (settled) return
+        settled = true
+        reply(payload)
+      }
+
       const timeoutId = window.setTimeout(() => {
         timeoutIdsRef.current.delete(timeoutId)
-        reply({
+        settle({
           type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
           pluginUniqueIdentifier: uniqueIdentifier,
           status: 'timeout',
@@ -70,14 +89,14 @@ function OpenMarketplaceDetailDialog({
       void install(plugin).then((result) => {
         window.clearTimeout(timeoutId)
         timeoutIdsRef.current.delete(timeoutId)
-        reply({
+        settle({
           type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
           pluginUniqueIdentifier: uniqueIdentifier,
           ...result,
         })
       })
     },
-    [install, plugin],
+    [canInstallPlugin, install, plugin],
   )
 
   return (
@@ -99,6 +118,7 @@ function MarketplaceDetailDialog({
 }: MarketplaceDetailDialogProps) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const { canInstallPlugin } = useOptionalPluginInstallPermission()
   // resolvedTheme maps the "system" preference to the concrete light/dark
   // value the marketplace page expects.
   const { resolvedTheme } = useTheme()
@@ -107,6 +127,7 @@ function MarketplaceDetailDialog({
   const installedForSrcRef = useRef(isInstalled)
   if (!open) installedForSrcRef.current = isInstalled
   const detailURL = getPluginLinkInMarketplace(plugin, {
+    canInstall: String(canInstallPlugin),
     installed: String(installedForSrcRef.current),
     language: locale,
     source: globalThis.location?.origin,
@@ -128,6 +149,7 @@ function MarketplaceDetailDialog({
 
   return (
     <OpenMarketplaceDetailDialog
+      canInstallPlugin={canInstallPlugin}
       plugin={plugin}
       src={detailURL}
       title={title}

@@ -233,6 +233,8 @@
   "marketplace.creatorProfile.creations": "Créations",
   "marketplace.creatorProfile.empty": "Aucune création pour le moment.",
   "marketplace.creatorProfile.home": "Accueil du Marketplace",
+  "marketplace.creatorProfile.loadMore": "Load more",
+  "marketplace.creatorProfile.loadMoreFailed": "Couldn't load more creations.",
   "marketplace.creatorProfile.onTheWeb": "Sur le web",
   "marketplace.creatorProfile.organization": "Organisation",
   "marketplace.creatorProfile.searchPlaceholder": "Rechercher des plugins et des modèles",

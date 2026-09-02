@@ -233,6 +233,8 @@
   "marketplace.creatorProfile.creations": "آثار",
   "marketplace.creatorProfile.empty": "هنوز اثری وجود ندارد.",
   "marketplace.creatorProfile.home": "خانه Marketplace",
+  "marketplace.creatorProfile.loadMore": "Load more",
+  "marketplace.creatorProfile.loadMoreFailed": "Couldn't load more creations.",
   "marketplace.creatorProfile.onTheWeb": "در وب",
   "marketplace.creatorProfile.organization": "سازمان",
   "marketplace.creatorProfile.searchPlaceholder": "جستجوی افزونه و قالب",
