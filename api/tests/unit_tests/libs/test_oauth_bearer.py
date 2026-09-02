@@ -12,6 +12,11 @@ def test_each_token_type_serves_one_subject() -> None:
     assert TokenType.OAUTH_EXTERNAL_SSO.subject is SubjectType.EXTERNAL_SSO
 
 
+def test_scope_sets_are_pinned_exactly() -> None:
+    assert SubjectType.ACCOUNT.scopes == frozenset({Scope.FULL})
+    assert SubjectType.EXTERNAL_SSO.scopes == frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL})
+
+
 def test_the_permitted_external_scope_belongs_to_the_external_subject_only() -> None:
     """`dfoa_` relies on the `Scope.FULL` umbrella; the explicit scope is reserved for `dfoe_`."""
     assert Scope.APPS_READ_PERMITTED_EXTERNAL in SubjectType.EXTERNAL_SSO.scopes
