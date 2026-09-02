@@ -105,6 +105,7 @@ ignore_imports =
     libs.external_api -> core
     libs.external_api -> core.errors.error
     libs.external_api -> extensions.ext_logging
+    extensions.ext_database -> extensions.ext_logging
     libs.flask_utils -> models
     libs.helper -> core.app.features.rate_limiting.rate_limit
     libs.helper -> models
