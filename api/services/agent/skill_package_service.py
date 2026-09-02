@@ -107,7 +107,7 @@ class SkillPackageService:
             self._validate_skill_md_size(skill_md_member)
             raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
             skill_md = self._decode_skill_md(raw_skill_md_bytes)
-            skill_md_bytes = skill_md.encode('utf-8')
+            skill_md_bytes = skill_md.encode("utf-8")
             normalized_archive_bytes = self._build_normalized_archive(
                 archive=archive,
                 normalized_members=normalized_members,
@@ -257,9 +257,7 @@ class SkillPackageService:
                 payload = (
                     skill_md_bytes
                     if normalized_path == _SKILL_MD_NAME
-                    else self._read_member_bytes_from_archive(
-                        archive, member_info=normalized_members[normalized_path]
-                    )
+                    else self._read_member_bytes_from_archive(archive, member_info=normalized_members[normalized_path])
                 )
                 normalized_archive.writestr(normalized_path, payload)
         return output.getvalue()
