@@ -29,7 +29,7 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, SubjectType, try_get_auth_ctx
+from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from models import EndUser
 from models.enums import EndUserType
 from services.account_service import AccountService, TenantService
@@ -45,7 +45,6 @@ from ._world import (
     account_subject,
     make_account,
     make_app,
-    make_auth,
     make_ctx,
     make_membership,
     make_tenant,
@@ -98,7 +97,7 @@ def _run(
 ) -> object:
     return pipeline.run(
         subject=subject,
-        auth=make_auth(subject.subject_type),
+        auth=subject.auth,
         spec=EndpointSpec(requirements=requirements),
         ctx=ctx,
         session=session,
@@ -210,7 +209,7 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
     else:
         _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
 
-    assert seen == [make_auth(SubjectType.EXTERNAL_SSO)]
+    assert seen == [subject.auth]
     assert try_get_auth_ctx() is None
 
 

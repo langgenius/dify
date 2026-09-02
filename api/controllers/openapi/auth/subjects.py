@@ -1,6 +1,6 @@
-"""`SubjectType` in `libs/oauth_bearer` owns the mint-time facts (prefix, scopes);
-a `Subject` owns the request-time behaviour, so `libs/` never has to import the
-auth layer.
+"""`TokenType` in `libs/oauth_bearer` owns the mint-time facts (prefix, subject,
+scopes); a `Subject` owns the request-time behaviour, so `libs/` never has to
+import the auth layer.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import ClassVar, override
 
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import ExternalIdentity
@@ -147,7 +147,4 @@ class ExternalSsoSubject(Subject):
 
 
 def subject_from_auth(auth: AuthContext) -> Subject:
-    subject_class = _SUBJECT_CLASSES.get(auth.subject_type)
-    if subject_class is None:
-        raise Forbidden("unsupported_token_type")
-    return subject_class(auth)
+    return _SUBJECT_CLASSES[auth.subject_type](auth)

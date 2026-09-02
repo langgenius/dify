@@ -23,6 +23,7 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
+from libs.oauth_bearer import TokenType
 from models.account import AccountStatus, TenantAccountRole
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
@@ -291,7 +292,7 @@ class TestCheckSessionOwnership:
     def _token(session_id: str, *, account_id: str | None, email: str, issuer: str | None) -> OAuthAccessToken:
         row = OAuthAccessToken(
             token_hash=session_id,
-            prefix="dfoa_",
+            prefix=TokenType.OAUTH_ACCOUNT.prefix,
             account_id=account_id,
             subject_email=email,
             subject_issuer=issuer,

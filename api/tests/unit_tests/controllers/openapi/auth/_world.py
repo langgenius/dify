@@ -40,18 +40,16 @@ SSO_EMAIL = "user@sso.com"
 SSO_ISSUER = "https://idp.example"
 
 
-def make_auth(subject_type: SubjectType, **overrides: object) -> AuthContext:
+def make_auth(token_type: TokenType, **overrides: object) -> AuthContext:
     """A live token of either kind. `overrides` names the one field a test varies."""
-    is_account = subject_type is SubjectType.ACCOUNT
+    is_account = token_type.subject is SubjectType.ACCOUNT
     fields: dict[str, object] = {
-        "subject_type": subject_type,
+        "token_type": token_type,
         "subject_email": None if is_account else SSO_EMAIL,
         "subject_issuer": None if is_account else SSO_ISSUER,
         "account_id": uuid.UUID(ACCOUNT_ID) if is_account else None,
         "client_id": CLIENT_ID,
-        "scopes": subject_type.scopes,
         "token_id": uuid.UUID(TOKEN_ID),
-        "token_type": TokenType.OAUTH_ACCOUNT if is_account else TokenType.OAUTH_EXTERNAL_SSO,
         "expires_at": None,
     }
     fields.update(overrides)
@@ -59,11 +57,11 @@ def make_auth(subject_type: SubjectType, **overrides: object) -> AuthContext:
 
 
 def account_subject(**overrides: object) -> AccountSubject:
-    return AccountSubject(make_auth(SubjectType.ACCOUNT, **overrides))
+    return AccountSubject(make_auth(TokenType.OAUTH_ACCOUNT, **overrides))
 
 
 def sso_subject(**overrides: object) -> ExternalSsoSubject:
-    return ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO, **overrides))
+    return ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, **overrides))
 
 
 def make_app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID, enable_api: bool = True) -> App:
