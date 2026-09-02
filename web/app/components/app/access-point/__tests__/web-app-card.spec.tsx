@@ -110,10 +110,10 @@ function renderCard(
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   workflow?: PublishedWorkflow,
   {
-    canEdit = true,
+    canManageAccessPoint = true,
     onAppStateChanged = vi.fn().mockResolvedValue(undefined),
   }: {
-    canEdit?: boolean
+    canManageAccessPoint?: boolean
     onAppStateChanged?: () => Promise<void>
   } = {},
 ) {
@@ -122,9 +122,9 @@ function renderCard(
     <WebAppAccessPointCard
       appInfo={createAppInfo(mode)}
       availability={availability}
-      canEdit={canEdit}
       canDeploy
       canManageAccess
+      canManageAccessPoint={canManageAccessPoint}
       showAccessControl
       onAppStateChanged={onAppStateChanged}
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
@@ -256,9 +256,9 @@ describe('WebAppAccessPointCard', () => {
     })
   })
 
-  it('keeps site status changes behind app editing permission', async () => {
+  it('keeps site status changes behind Access Point management permission', async () => {
     const user = userEvent.setup()
-    renderCard(AppModeEnum.CHAT, 'available', undefined, { canEdit: false })
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
 
     await user.click(screen.getByRole('switch'))
 
@@ -331,5 +331,19 @@ describe('WebAppAccessPointCard', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+  })
+
+  it('disables Web App management actions without Access Point management', () => {
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
+
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
+    ).toBeEnabled()
   })
 })

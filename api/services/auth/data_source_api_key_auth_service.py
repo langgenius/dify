@@ -5,7 +5,6 @@ from dataclasses import replace
 from typing import Protocol
 
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.entities.data_source_api_key_auth_entities import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthBindingRecord,
@@ -48,10 +47,10 @@ class DataSourceApiKeyAuthService:
         self._encryptor = encryptor
 
     def list_bindings(self, context: RequestContext) -> tuple[DataSourceApiKeyAuthBindingRecord, ...]:
-        return tuple(self._bindings.list_enabled(self._require_workspace(context)))
+        return tuple(self._bindings.list_enabled(context.active_workspace_id))
 
     def create_binding(self, context: RequestContext, command: DataSourceApiKeyAuthBindingCreate) -> None:
-        workspace_id = self._require_workspace(context)
+        workspace_id = context.active_workspace_id
         if not self._validator.validate(command.provider, command.credentials):
             return
 
@@ -68,10 +67,4 @@ class DataSourceApiKeyAuthService:
         )
 
     def delete_binding(self, context: RequestContext, binding_id: str) -> None:
-        self._bindings.delete(self._require_workspace(context), binding_id)
-
-    @staticmethod
-    def _require_workspace(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise ActiveWorkspaceRequiredError()
-        return context.active_workspace_id
+        self._bindings.delete(context.active_workspace_id, binding_id)
