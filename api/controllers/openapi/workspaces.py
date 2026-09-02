@@ -13,7 +13,6 @@ account bearer and lets the view's own membership-scoped lookup answer 404.
 from __future__ import annotations
 
 from itertools import starmap
-from typing import cast
 from urllib import parse
 
 from flask_restx import Resource
@@ -36,7 +35,7 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_caller, load_workspace
+from controllers.openapi.auth.loaders import load_account, load_workspace
 from controllers.openapi.auth.requirements import (
     CheckRBACPermission,
     CheckScope,
@@ -134,7 +133,7 @@ class WorkspaceSwitchApi(Resource):
     )
     def post(self, ctx: Context, workspace_id: str):
         try:
-            TenantService.switch_tenant(cast(Account, load_caller(ctx)), workspace_id, session=ctx.session)
+            TenantService.switch_tenant(load_account(ctx), workspace_id, session=ctx.session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
@@ -202,7 +201,7 @@ class WorkspaceMembersApi(Resource):
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=cast(Account, load_caller(ctx)),
+                inviter=load_account(ctx),
                 session=ctx.session,
             )
         except AccountAlreadyInTenantError as exc:
@@ -260,9 +259,7 @@ class WorkspaceMemberApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.remove_member_from_tenant(
-                load_workspace(ctx), member, cast(Account, load_caller(ctx)), session=ctx.session
-            )
+            TenantService.remove_member_from_tenant(load_workspace(ctx), member, load_account(ctx), session=ctx.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -294,7 +291,7 @@ class WorkspaceMemberApi(Resource):
 
         try:
             TenantService.update_member_role(
-                load_workspace(ctx), member, body.role, cast(Account, load_caller(ctx)), session=ctx.session
+                load_workspace(ctx), member, body.role, load_account(ctx), session=ctx.session
             )
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))

@@ -16,7 +16,7 @@ from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller
+from controllers.openapi.auth.loaders import load_account, load_app, load_end_user
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -136,9 +136,9 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
         if ctx.subject.caller_role is CreatorUserRole.ACCOUNT:
-            submission_user_id = load_caller(ctx).id
+            submission_user_id = load_account(ctx).id
         else:
-            submission_end_user_id = load_caller(ctx).id
+            submission_end_user_id = load_end_user(ctx).id
 
         if form.recipient_type is None:
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
