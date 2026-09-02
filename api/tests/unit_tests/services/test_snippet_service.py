@@ -852,11 +852,11 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     external_binding = WorkflowAgentNodeBinding(
         tenant_id=snippet.tenant_id,

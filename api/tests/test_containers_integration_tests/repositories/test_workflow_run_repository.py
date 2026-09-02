@@ -59,8 +59,8 @@ def _create_workflow_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=scope.user_id,
-        created_at=now + created_at_offset if created_at_offset is not None else now,
     )
+    workflow_run.created_at = now + created_at_offset if created_at_offset is not None else now
     session.add(workflow_run)
     session.commit()
     return workflow_run

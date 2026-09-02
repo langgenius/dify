@@ -159,8 +159,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',
             created_by=self.test_user_id,
-            created_at=naive_utc_now(),
         )
+        self.test_workflow.created_at = naive_utc_now()
 
         # Create test workflow run
         self.test_workflow_run = WorkflowRun(
@@ -174,8 +174,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             status=WorkflowExecutionStatus.RUNNING,
             created_by=self.test_user_id,
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        self.test_workflow_run.created_at = naive_utc_now()
 
         # Store session and service instances
         self.session = db_session_with_containers
@@ -504,8 +504,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',
             created_by=different_user_id,
-            created_at=naive_utc_now(),
         )
+        different_workflow.created_at = naive_utc_now()
 
         different_workflow_run = WorkflowRun(
             id=str(uuid.uuid4()),
@@ -518,8 +518,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             status=WorkflowExecutionStatus.RUNNING,
             created_by=self.test_user_id,  # Run created by different user
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        different_workflow_run.created_at = naive_utc_now()
 
         self.session.add(different_workflow)
         self.session.add(different_workflow_run)

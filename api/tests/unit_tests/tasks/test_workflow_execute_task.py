@@ -102,11 +102,11 @@ def _make_workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id") 
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

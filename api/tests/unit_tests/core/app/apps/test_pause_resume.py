@@ -213,7 +213,7 @@ def _make_workflow() -> Workflow:
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="user",
     )
 

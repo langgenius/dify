@@ -27,7 +27,7 @@ def _make_execution(**overrides: object) -> WorkflowNodeExecutionModel:
     outputs = overrides.get("outputs_dict", {"answer": "world"})
     process_data = overrides.get("process_data_dict", {})
     metadata = overrides.get("execution_metadata_dict", {})
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id=cast(str, overrides.get("id", "exec-1")),
         tenant_id=cast(str, overrides.get("tenant_id", "tenant-1")),
         app_id=cast(str, overrides.get("app_id", "app-1")),
@@ -48,7 +48,6 @@ def _make_execution(**overrides: object) -> WorkflowNodeExecutionModel:
         error=cast(str | None, overrides.get("error")),
         elapsed_time=cast(float, overrides.get("elapsed_time", 1.5)),
         execution_metadata=json.dumps(metadata),
-        created_at=cast(datetime, overrides.get("created_at", datetime(2024, 1, 1, tzinfo=UTC))),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         finished_at=cast(
@@ -56,6 +55,8 @@ def _make_execution(**overrides: object) -> WorkflowNodeExecutionModel:
             overrides.get("finished_at", datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)),
         ),
     )
+    execution.created_at = cast(datetime, overrides.get("created_at", datetime(2024, 1, 1, tzinfo=UTC)))
+    return execution
 
 
 # ---------------------------------------------------------------------------

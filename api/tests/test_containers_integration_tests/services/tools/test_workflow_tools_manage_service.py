@@ -10,6 +10,7 @@ from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
+from models.workflow import WorkflowType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
@@ -111,13 +112,13 @@ class TestWorkflowToolManageService:
         workflow = WorkflowModel(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version="1.0.0",
             graph=json.dumps({}),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         db_session_with_containers.add(workflow)

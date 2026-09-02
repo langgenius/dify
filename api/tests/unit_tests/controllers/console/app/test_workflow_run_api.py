@@ -100,10 +100,10 @@ def _workflow_run_summary(session: Session, **overrides: object) -> WorkflowRun:
         total_steps=2,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=created_at,
         finished_at=created_at,
         exceptions_count=0,
     )
+    workflow_run.created_at = created_at
     for name, value in overrides.items():
         setattr(workflow_run, name, value)
     workflow_run.retry_index = 0
@@ -135,11 +135,11 @@ def _workflow_run_node_execution(session: Session) -> WorkflowNodeExecutionModel
         error=None,
         elapsed_time=1.0,
         execution_metadata=json.dumps({"total_tokens": 3}),
-        created_at=created_at,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=created_at,
     )
+    execution.created_at = created_at
     execution.offload_data = []
     session.add(execution)
     session.commit()
