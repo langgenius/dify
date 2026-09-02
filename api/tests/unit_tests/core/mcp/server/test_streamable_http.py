@@ -676,6 +676,13 @@ class TestUtilityFunctions:
                 required=False,
             ),
             VariableEntity(
+                type=VariableEntityType.FILE_LIST,
+                variable="attachments",
+                description="Attachment list",
+                label="Attachments",
+                required=True,
+            ),
+            VariableEntity(
                 type=VariableEntityType.CHECKBOX,
                 variable="enabled",
                 description="Enable flag",
@@ -713,6 +720,8 @@ class TestUtilityFunctions:
             "enabled": "Enable flag",
             "config": "Config object",
             "schema_config": "Config with schema",
+            "upload": "File upload",
+            "attachments": "Attachment list",
         }
 
         parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
@@ -729,8 +738,30 @@ class TestUtilityFunctions:
         assert "count" in parameters
         assert parameters["count"]["type"] == "number"
 
-        # FILE type is skipped entirely via `continue` — key should not exist
-        assert "upload" not in parameters
+        # FILE type is now represented as the file-object schema, not skipped
+        assert "upload" in parameters
+        assert parameters["upload"]["type"] == "object"
+        assert set(parameters["upload"]["properties"].keys()) == {
+            "type",
+            "transfer_method",
+            "url",
+            "upload_file_id",
+        }
+        assert parameters["upload"]["description"] == "File upload"
+        assert parameters["upload"].get("additionalProperties") is True
+
+        # FILE_LIST type is represented as an array of file objects
+        assert "attachments" in parameters
+        assert parameters["attachments"]["type"] == "array"
+        assert parameters["attachments"]["items"]["type"] == "object"
+        assert set(parameters["attachments"]["items"]["properties"].keys()) == {
+            "type",
+            "transfer_method",
+            "url",
+            "upload_file_id",
+        }
+        assert parameters["attachments"]["description"] == "Attachment list"
+        assert "attachments" in required  # FILE_LIST with required=True is required
 
         # CHECKBOX maps to boolean
         assert parameters["enabled"]["type"] == "boolean"
@@ -836,6 +867,124 @@ class TestUtilityFunctions:
         # Or validation should also raise SchemaError
         with pytest.raises(jsonschema.exceptions.SchemaError):
             jsonschema.validate(instance={"count": 1.23}, schema=bad_schema)
+
+    def test_build_parameter_schema_includes_file_list_for_workflow(self):
+        """#39727: a workflow published as an MCP server must expose its
+        File-List input variable in the tool's inputSchema instead of dropping
+        it. The same shape that an OpenAPI client sees must reach MCP clients.
+        """
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.TEXT_INPUT,
+                variable="query",
+                description="User question",
+                label="Query",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.FILE_LIST,
+                variable="attachments",
+                description="Files to attach",
+                label="Attachments",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.FILE,
+                variable="cover",
+                description="Cover image",
+                label="Cover",
+                required=False,
+            ),
+        ]
+        parameters_dict = {
+            "query": "User question",
+            "attachments": "Files to attach",
+            "cover": "Cover image",
+        }
+
+        schema = build_parameter_schema(AppMode.WORKFLOW, user_input_form, parameters_dict)
+
+        # The schema itself must be valid JSON Schema.
+        jsonschema.Draft202012Validator.check_schema(schema)
+
+        # The file-list parameter must be present (this is the regression).
+        assert "attachments" in schema["properties"]
+        assert schema["properties"]["attachments"]["type"] == "array"
+        assert schema["properties"]["attachments"]["items"]["type"] == "object"
+        assert set(schema["properties"]["attachments"]["items"]["properties"].keys()) == {
+            "type",
+            "transfer_method",
+            "url",
+            "upload_file_id",
+        }
+        assert "attachments" in schema["required"]
+
+        # The single-file parameter must also be present, with the file shape.
+        assert "cover" in schema["properties"]
+        assert schema["properties"]["cover"]["type"] == "object"
+        assert set(schema["properties"]["cover"]["properties"].keys()) == {
+            "type",
+            "transfer_method",
+            "url",
+            "upload_file_id",
+        }
+        assert "cover" not in schema["required"]
+
+    def test_handle_list_tools_workflow_exposes_file_list_input_schema(self):
+        """#39727: the full MCP ``tools/list`` response for a workflow with a
+        File-List input must include the file-list parameter in
+        ``inputSchema`` so MCP clients can pass files to the workflow.
+        """
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.FILE_LIST,
+                variable="attachments",
+                description="Files to attach",
+                label="Attachments",
+                required=True,
+            ),
+        ]
+        parameters_dict = {"attachments": "Files to attach"}
+
+        result = handle_list_tools(
+            app_name="extract_app",
+            app_mode=AppMode.WORKFLOW,
+            user_input_form=user_input_form,
+            description="Extract content from attachments",
+            parameters_dict=parameters_dict,
+        )
+
+        assert len(result.tools) == 1
+        tool = result.tools[0]
+        assert tool.name == "extract_app"
+        assert "attachments" in tool.inputSchema["properties"]
+        assert tool.inputSchema["properties"]["attachments"]["type"] == "array"
+        assert tool.inputSchema["properties"]["attachments"]["items"]["type"] == "object"
+        assert "attachments" in tool.inputSchema["required"]
+
+        # And the full schema is valid JSON Schema.
+        jsonschema.Draft202012Validator.check_schema(tool.inputSchema)
+
+    def test_external_data_tool_still_skipped(self):
+        """EXTERNAL_DATA_TOOL is a Dify-internal concept (variables bound to
+        an external-data-tool plugin at publish time) and is not a value an
+        MCP client can supply. It must stay skipped even after FILE /
+        FILE_LIST started being included.
+        """
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.EXTERNAL_DATA_TOOL,
+                variable="ext_data",
+                description="External data tool",
+                label="Ext",
+                required=True,
+            ),
+        ]
+        parameters_dict: dict[str, str] = {}
+
+        parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
+        assert "ext_data" not in parameters
+        assert "ext_data" not in required
 
 
 class TestNegotiateProtocolVersion:
