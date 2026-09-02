@@ -6,6 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from services.account_email import normalize_email
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountCredentials,
@@ -28,6 +29,14 @@ class SQLAlchemyAccountRepository(AccountRepository):
     def get(self, account_id: str) -> AccountSnapshot | None:
         with self._session_factory() as session:
             account = session.get(Account, account_id)
+            return self._to_snapshot(account) if account is not None else None
+
+    @override
+    def find_by_email(self, email: str) -> AccountSnapshot | None:
+        with self._session_factory() as session:
+            account = session.scalar(select(Account).where(Account.email == email).limit(1))
+            if account is None and email != email.lower():
+                account = session.scalar(select(Account).where(Account.email == email.lower()).limit(1))
             return self._to_snapshot(account) if account is not None else None
 
     @override
@@ -137,6 +146,7 @@ class SQLAlchemyAccountRepository(AccountRepository):
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
 
             account.email = new_email
+            account.normalized_email = normalize_email(new_email)
             session.execute(delete(AccountIntegrate).where(AccountIntegrate.account_id == account_id))
             session.flush()
             return AccountEmailResetResult(

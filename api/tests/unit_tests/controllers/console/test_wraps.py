@@ -14,6 +14,7 @@ from werkzeug.exceptions import HTTPException
 from controllers.common.wraps import _extract_resource_id
 from controllers.console import api as console_api
 from controllers.console import flask_admission
+from controllers.console import wraps as wraps_module
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
@@ -45,12 +46,31 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
 def reset_setup_required_cache():
     """Keep setup_required's process cache isolated across unit tests."""
     _is_setup_completed.reset_success()
+
+
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_features(workspace_id: str):
+            return wraps_module.FeatureService.get_features(workspace_id, exclude_vector_space=True)
+
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -195,6 +215,68 @@ class TestCurrentContextInjection:
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
 
+    def test_console_email_registration_admission_checks_features_once(self):
+        with (
+            patch(
+                "controllers.console.flask_admission.setup_required", side_effect=lambda view: view
+            ) as setup_required,
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=True,
+            ) as is_email_password_login_enabled,
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=True,
+            ) as is_registration_allowed,
+        ):
+
+            class Handler:
+                @flask_admission.console_email_registration_admission
+                def post(self):
+                    return "ok"
+
+            with Flask(__name__).test_request_context():
+                result = Handler().post()
+
+        assert result == "ok"
+        setup_required.assert_called_once()
+        is_email_password_login_enabled.assert_called_once_with()
+        is_registration_allowed.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        ("enable_email_password_login", "is_allow_register"),
+        [
+            pytest.param(False, True, id="password-login-disabled"),
+            pytest.param(True, False, id="registration-disabled"),
+        ],
+    )
+    def test_console_email_registration_admission_rejects_disabled_features(
+        self,
+        enable_email_password_login: bool,
+        is_allow_register: bool,
+    ) -> None:
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=enable_email_password_login,
+            ),
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=is_allow_register,
+            ),
+        ):
+
+            class Handler:
+                @flask_admission.console_email_registration_admission
+                def post(self):
+                    return "ok"
+
+            with Flask(__name__).test_request_context(), pytest.raises(HTTPException) as exc_info:
+                Handler().post()
+
+        assert exc_info.value.code == 403
+
     def test_console_account_admission_preserves_route_kwarg_named_request_context(self):
         current_user = make_account()
 
@@ -221,6 +303,21 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
+    def test_console_account_admission_enforces_declared_edition_first(self):
+        class Handler:
+            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+            def get(self, request_context: RequestContext):
+                return request_context
+
+        with (
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
+            Flask(__name__).test_request_context(),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            Handler().get()
+
+        assert exc_info.value.code == 404
+
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
         current_user.role = TenantAccountRole.NORMAL
@@ -229,7 +326,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
@@ -255,7 +352,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
@@ -649,6 +746,49 @@ class TestModelValidationInjection:
 
         with app.test_request_context("/items?name=alpha&count=2", method="GET"):
             payload = Handler().get()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_inject_delete_payload_from_query_params(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items?name=alpha&count=2", method="DELETE"):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_inject_delete_payload_from_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items", method="DELETE", json={"name": "alpha", "count": 2}):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_prefer_delete_query_params_over_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context(
+            "/items?name=alpha&count=2",
+            method="DELETE",
+            json={"name": "beta", "count": 9},
+        ):
+            payload = Handler().delete()
 
         assert payload == self.Payload(name="alpha", count=2)
 
@@ -1114,16 +1254,16 @@ class TestEnterpriseLicense:
 
     def test_should_allow_with_valid_license(self):
         """Test that valid licenses allow access"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = LicenseStatus.ACTIVE
 
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=LicenseStatus.ACTIVE,
+        ):
             result = enterprise_feature()
 
         # Assert
@@ -1132,16 +1272,16 @@ class TestEnterpriseLicense:
     @pytest.mark.parametrize("invalid_status", [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST])
     def test_should_reject_with_invalid_license(self, invalid_status):
         """Test that invalid licenses raise UnauthorizedAndForceLogout"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = invalid_status
 
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=invalid_status,
+        ):
             with pytest.raises(UnauthorizedAndForceLogout) as exc_info:
                 enterprise_feature()
             assert "license is invalid" in str(exc_info.value)

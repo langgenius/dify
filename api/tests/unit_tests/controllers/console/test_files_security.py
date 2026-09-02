@@ -13,6 +13,8 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
@@ -106,11 +108,8 @@ class TestFileUploadSecurity:
     # Test 3: Permission validation
     def test_should_validate_dataset_permissions(self):
         """Test dataset upload permission logic"""
-
-        class MockUser:
-            is_dataset_editor = False
-
-        user = MockUser()
+        user = Account(name="Viewer", email="viewer@example.com", status=AccountStatus.ACTIVE)
+        user.role = TenantAccountRole.NORMAL
         source = "datasets"
 
         # Simulate the permission check in FileApi.post()
@@ -120,11 +119,8 @@ class TestFileUploadSecurity:
 
     def test_should_allow_general_upload_without_permission(self):
         """Test general upload doesn't require dataset permission"""
-
-        class MockUser:
-            is_dataset_editor = False
-
-        user = MockUser()
+        user = Account(name="Viewer", email="viewer@example.com", status=AccountStatus.ACTIVE)
+        user.role = TenantAccountRole.NORMAL
         source = None  # General upload
 
         # This should not raise an exception

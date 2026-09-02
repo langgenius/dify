@@ -32,5 +32,5 @@ class SystemFeatureApi(Resource):
         """
         return dump_response(
             SystemFeatureModel,
-            application_services().feature_queries.get_system_features(),
+            application_services().feature_queries.get_public_system_features(),
         )

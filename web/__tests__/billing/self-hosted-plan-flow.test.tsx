@@ -1,4 +1,4 @@
-import type { SelfHostedPlanOption } from '@/app/components/billing/pricing/plans/self-hosted-plan-item/types'
+import type { SelfHostedPlan } from '@/app/components/billing/config'
 /**
  * Integration test: Self-Hosted Plan Flow
  *
@@ -8,38 +8,16 @@ import type { SelfHostedPlanOption } from '@/app/components/billing/pricing/plan
  * Covers community/premium/enterprise plan rendering and external URL navigation.
  */
 import { cleanup, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  contactSalesUrl,
-  getStartedWithCommunityUrl,
-  getWithPremiumUrl,
-} from '@/app/components/billing/config'
-import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
+import { SELF_HOSTED_PLAN_URLS } from '@/app/components/billing/config'
+import { SelfHostedPlanItem } from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
 import { render } from '@/test/console/render'
 
-const originalLocation = window.location
-let assignedHref = ''
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-  useTheme: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/app/components/base/icons/src/public/billing', () => ({
-  Azure: () => <span data-testid="icon-azure" />,
-  GoogleCloud: () => <span data-testid="icon-gcloud" />,
-  AwsMarketplaceLight: () => <span data-testid="icon-aws-light" />,
-  AwsMarketplaceDark: () => <span data-testid="icon-aws-dark" />,
-}))
-
 vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () => ({
-  default: ({ plan }: { plan: string }) => (
-    <div data-testid={`self-hosted-list-${plan}`}>Features</div>
-  ),
+  SelfHostedPlanFeatures: () => null,
 }))
 
-const renderSelfHostedPlanItem = (plan: SelfHostedPlanOption) => {
+const renderSelfHostedPlanItem = (plan: SelfHostedPlan) => {
   return render(<SelfHostedPlanItem plan={plan} />)
 }
 
@@ -47,28 +25,6 @@ describe('Self-Hosted Plan Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-
-    // Mock window.location with minimal getter/setter (Location props are non-enumerable)
-    assignedHref = ''
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        get href() {
-          return assignedHref
-        },
-        set href(value: string) {
-          assignedHref = value
-        },
-      },
-    })
-  })
-
-  afterEach(() => {
-    // Restore original location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    })
   })
 
   // ─── 1. Plan Rendering ──────────────────────────────────────────────────
@@ -78,21 +34,6 @@ describe('Self-Hosted Plan Flow', () => {
 
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.community\.description/i)).toBeInTheDocument()
-    })
-
-    it('should render premium plan with cloud provider icons', () => {
-      renderSelfHostedPlanItem('premium')
-
-      expect(screen.getByText(/plans\.premium\.name/i)).toBeInTheDocument()
-      expect(screen.getByTestId('icon-azure')).toBeInTheDocument()
-      expect(screen.getByTestId('icon-gcloud')).toBeInTheDocument()
-    })
-
-    it('should render enterprise plan without cloud provider icons', () => {
-      renderSelfHostedPlanItem('enterprise')
-
-      expect(screen.getByText(/plans\.enterprise\.name/i)).toBeInTheDocument()
-      expect(screen.queryByTestId('icon-azure')).not.toBeInTheDocument()
     })
 
     it('should not show price tip for community (free) plan', () => {
@@ -106,57 +47,18 @@ describe('Self-Hosted Plan Flow', () => {
 
       expect(screen.getByText(/plans\.premium\.priceTip/i)).toBeInTheDocument()
     })
-
-    it('should render features list for each plan', () => {
-      const { unmount: unmount1 } = renderSelfHostedPlanItem('community')
-      expect(screen.getByTestId('self-hosted-list-community')).toBeInTheDocument()
-      unmount1()
-
-      const { unmount: unmount2 } = renderSelfHostedPlanItem('premium')
-      expect(screen.getByTestId('self-hosted-list-premium')).toBeInTheDocument()
-      unmount2()
-
-      renderSelfHostedPlanItem('enterprise')
-      expect(screen.getByTestId('self-hosted-list-enterprise')).toBeInTheDocument()
-    })
-
-    it('should show AWS marketplace icon for premium plan button', () => {
-      renderSelfHostedPlanItem('premium')
-
-      expect(screen.getByTestId('icon-aws-light')).toBeInTheDocument()
-    })
   })
 
   // ─── 2. Navigation Flow ─────────────────────────────────────────────────
   describe('Navigation flow', () => {
-    it('should redirect to GitHub when clicking community plan button', async () => {
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem('community')
+    it.each([
+      ['community', SELF_HOSTED_PLAN_URLS.community],
+      ['premium', SELF_HOSTED_PLAN_URLS.premium],
+      ['enterprise', SELF_HOSTED_PLAN_URLS.enterprise],
+    ] as const)('should expose the %s destination as a native link', (plan, href) => {
+      renderSelfHostedPlanItem(plan)
 
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      expect(assignedHref).toBe(getStartedWithCommunityUrl)
-    })
-
-    it('should redirect to AWS Marketplace when clicking premium plan button', async () => {
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem('premium')
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      expect(assignedHref).toBe(getWithPremiumUrl)
-    })
-
-    it('should redirect to Typeform when clicking enterprise plan button', async () => {
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem('enterprise')
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      expect(assignedHref).toBe(contactSalesUrl)
+      expect(screen.getByRole('link')).toHaveAttribute('href', href)
     })
   })
 })

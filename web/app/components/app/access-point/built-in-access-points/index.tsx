@@ -1,7 +1,8 @@
 'use client'
 
 import type { AccessPoint } from '@/app/components/app/deploy/access-point'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
@@ -38,9 +39,17 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
-  const { data: workflow, isPending: workflowLoading } = useAppWorkflow(
-    shouldFetchWorkflow ? appId : '',
-  )
+  const {
+    data: workflow,
+    isError: workflowError,
+    isPending: workflowLoading,
+  } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
+    retry: (failureCount, error) => {
+      if (error instanceof Response && error.status === 403) return false
+
+      return failureCount < 3
+    },
+  })
   const capabilities = useMemo(
     () =>
       getAppACLCapabilities(appInfo?.permission_keys, {
@@ -71,7 +80,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
 
   return (
     <div className="flex h-full flex-col gap-2">
-      {workflowState.isUnpublished && !workflowLoading && (
+      {workflowState.isUnpublished && !workflowLoading && !workflowError && (
         <div className="flex flex-col items-start gap-2 rounded-xl bg-background-section-burn p-3">
           <div className="flex flex-col gap-0.5">
             <span className="block system-md-semibold text-text-secondary">
@@ -85,16 +94,23 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
               })}
             </span>
           </div>
-          <Button
-            variant="primary"
-            size="medium"
-            disabled={!capabilities.canReleaseAndVersion}
-            render={<Link href={`/app/${appId}/workflow`} />}
-            className="flex items-center gap-1"
-          >
-            {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
-            <span aria-hidden className="i-ri-arrow-right-line size-4" />
-          </Button>
+          {capabilities.canReleaseAndVersion ? (
+            <Link
+              href={`/app/${appId}/workflow`}
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'medium' }),
+                'flex items-center gap-1',
+              )}
+            >
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Link>
+          ) : (
+            <Button variant="primary" size="medium" disabled className="flex items-center gap-1">
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Button>
+          )}
         </div>
       )}
 
@@ -106,9 +122,8 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           canDeploy={capabilities.canDeploy}
           canManageAccess={capabilities.canReleaseAndVersion}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onChangeStatus={actions.changeSiteStatus}
+          onAppStateChanged={actions.handleAppStateChanged}
           onRefreshApp={actions.refreshAppDetail}
-          onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}
@@ -117,7 +132,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           appInfo={appInfo}
           availability={appCardAvailability}
           canManage={capabilities.canReleaseAndVersion}
-          onChangeStatus={actions.changeApiStatus}
+          onAppStateChanged={actions.handleAppStateChanged}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard

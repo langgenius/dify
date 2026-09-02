@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -539,7 +539,12 @@ class TestConversationApiController:
 
         with app.test_request_context("/conversations", method="GET"):
             with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
     def test_list_last_not_found(
         self,
@@ -566,7 +571,12 @@ class TestConversationApiController:
             method="GET",
         ):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
 
 class TestConversationDetailApiController:
@@ -625,9 +635,11 @@ class TestConversationRenameApiController:
             method="POST",
             json={"auto_generate": True},
         ):
+            payload = ConversationRenamePayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -645,6 +657,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotChatAppError):
                 handler(
                     api,
+                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -669,6 +682,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -706,6 +720,7 @@ class TestConversationVariablesApiController:
         ):
             result = handler(
                 api,
+                ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                 app_model=app_model,
                 end_user=end_user,
                 conversation_id="00000000-0000-0000-0000-000000000001",
@@ -736,9 +751,11 @@ class TestConversationVariableDetailApiController:
             method="PUT",
             json={"value": "x"},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             with pytest.raises(BadRequest):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -762,9 +779,11 @@ class TestConversationVariableDetailApiController:
             method="PUT",
             json={"value": "x"},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -796,8 +815,10 @@ class TestConversationVariableDetailApiController:
             method="PUT",
             json={"value": 1},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             result = handler(
                 api,
+                payload,
                 app_model=app_model,
                 end_user=end_user,
                 conversation_id="00000000-0000-0000-0000-000000000001",

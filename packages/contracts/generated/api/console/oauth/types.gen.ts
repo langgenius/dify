@@ -42,9 +42,9 @@ export type OAuthProviderAccountResponse = {
   avatar?: string | null
   email: string
   id: string
-  interface_language: string
+  interface_language: string | null
   name: string
-  timezone: string
+  timezone: string | null
 }
 
 export type OAuthProviderAuthorizeResponse = {

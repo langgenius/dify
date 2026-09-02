@@ -55,6 +55,7 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
+import AgentDefault from '../nodes/agent/default'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {
   getLLMModelIssue,
@@ -73,6 +74,7 @@ import {
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
+import { normalizeWorkflowOutputName } from '../utils/variable'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
@@ -94,6 +96,9 @@ export type ChecklistItem = {
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
+type NodeValidator = NonNullable<
+  ReturnType<typeof useNodesMetaData>['nodesMap']
+>[BlockEnum]['checkValid']
 
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
@@ -104,6 +109,17 @@ const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: Flo
     ...(moreDataForCheckValid ?? {}),
     flowType,
   }
+}
+
+const resolveNodeValidator = (
+  data: CommonNodeType,
+  nodesExtraData: ReturnType<typeof useNodesMetaData>['nodesMap'],
+): NodeValidator | undefined => {
+  const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
+  if (validator) return validator
+
+  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))
+    return AgentDefault.checkValid as NodeValidator
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -124,7 +140,7 @@ const getDuplicateEndOutputMessages = (
 
     const outputs = (node.data as { outputs?: Array<{ variable?: string }> }).outputs || []
     outputs.forEach((output) => {
-      const variable = output.variable?.trim()
+      const variable = normalizeWorkflowOutputName(output.variable)
       if (!variable) return
 
       const occurrences = variableOccurrences.get(variable) || []
@@ -391,7 +407,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
+        const validator = resolveNodeValidator(node!.data, nodesExtraData)
         const isPluginMissing = isNodePluginMissing(node!.data, {
           builtInTools: buildInTools,
           customTools,
@@ -785,15 +801,18 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(
-        checkData,
-        t,
-        withFlowType(moreDataForCheckValid, flowType),
-      )
+      const validator = resolveNodeValidator(node!.data, nodesExtraData)
+      if (validator) {
+        const { errorMessage } = validator(
+          checkData,
+          t,
+          withFlowType(moreDataForCheckValid, flowType),
+        )
 
-      if (errorMessage) {
-        toast.error(`[${node!.data.title}] ${errorMessage}`)
-        return false
+        if (errorMessage) {
+          toast.error(`[${node!.data.title}] ${errorMessage}`)
+          return false
+        }
       }
 
       const duplicateOutputMessages = duplicateEndOutputMessages.get(node!.id) || []

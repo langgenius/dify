@@ -1,5 +1,6 @@
 import datetime
 import json
+from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
@@ -43,7 +45,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
-from models.dataset import Dataset, DatasetQuery, Document
+from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
@@ -169,7 +171,29 @@ def make_document_status(**overrides) -> Document:
     return Document(**base)
 
 
-class TestDatasetList:
+def make_document_segment(*, position: int, completed: bool) -> DocumentSegment:
+    return DocumentSegment(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="doc-1",
+        position=position,
+        content=f"segment {position}",
+        word_count=2,
+        tokens=2,
+        created_by="account-1",
+        completed_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC) if completed else None,
+    )
+
+
+class _UsesSQLiteSession:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _inject_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
+
+class TestDatasetList(_UsesSQLiteSession):
     def _mock_user(self):
         user = make_account()
         return user
@@ -184,7 +208,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         assert status == 200
         assert resp["total"] == 1
         assert resp["data"][0]["embedding_available"] is True
@@ -200,7 +224,7 @@ class TestDatasetList:
         method = unwrap(api.get)
         current_user = self._mock_user()
         dataset = make_dataset()
-        session = MagicMock()
+        session = self.session
         with app.test_request_context("/datasets"):
             with (
                 patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
@@ -221,7 +245,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets_by_ids", return_value=(datasets, 2)) as by_ids_mock,
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         by_ids_mock.assert_called_once()
         assert status == 200
         assert resp["total"] == 2
@@ -250,12 +274,15 @@ class TestDatasetList:
                     return_value=permissions,
                 ) as get_permissions,
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         get_permissions.assert_called_once_with("tenant-1", current_user.id, session=ANY)
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
-    def test_get_limits_to_own_datasets_without_default_read_permission(self, app: Flask):
+    def test_get_restricted_whitelist_blocks_own_dataset_fallback(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -266,7 +293,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -278,11 +304,14 @@ class TestDatasetList:
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, self.session, "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
-        assert get_datasets.call_args.kwargs["include_own_datasets"] is True
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
-    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask):
+    def test_get_default_read_is_unrestricted_when_whitelist_unrestricted(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -291,7 +320,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -303,10 +331,40 @@ class TestDatasetList:
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, self.session, "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] is None
 
-    def test_get_limits_to_dataset_read_overrides(self, app: Flask):
+    def test_get_restricted_whitelist_overrides_default_read_permission(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
+        config_overrides(RBAC_ENABLED=True)
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(default_permission_keys=["dataset.preview"])
+        )
+        with app.test_request_context("/datasets"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
+                ),
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+            ):
+                method(api, MagicMock(), "tenant-1", current_user)
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == ["dataset-whitelist-only"]
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
+
+    def test_get_restricted_whitelist_ignores_dataset_read_overrides(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -328,7 +386,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -336,29 +393,24 @@ class TestDatasetList:
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(
-                        resource_ids=["dataset-shared", "dataset-acl-shared", "dataset-full", "dataset-whitelist-only"]
-                    ),
+                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, self.session, "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == [
-            "dataset-acl-shared",
-            "dataset-full",
-            "dataset-shared",
             "dataset-whitelist-only",
         ]
         assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
-    def test_get_with_ids_applies_dataset_visibility(self, app: Flask):
+    def test_get_with_ids_applies_dataset_visibility(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
         permissions = enterprise_rbac_service.MyPermissionsResponse()
         with app.test_request_context("/datasets?ids=dataset-1"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets_by_ids", return_value=([], 0)) as get_datasets_by_ids,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -370,9 +422,9 @@ class TestDatasetList:
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, self.session, "tenant-1", current_user)
         session = get_datasets_by_ids.call_args.kwargs["session"]
-        assert isinstance(session, MagicMock)
+        assert session is self.session
         assert get_datasets_by_ids.call_args.args == (["dataset-1"], "tenant-1")
         assert get_datasets_by_ids.call_args.kwargs == {
             "user": current_user,
@@ -391,7 +443,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         assert status == 200
 
     def test_get_allows_legacy_weighted_score_without_weight_type(self, app: Flask):
@@ -424,7 +476,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         assert status == 200
         assert resp["data"][0]["retrieval_model_dict"]["weights"]["weight_type"] is None
 
@@ -438,7 +490,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         assert status == 200
         retrieval_model = resp["data"][0]["retrieval_model_dict"]
         assert retrieval_model["search_method"] == "semantic_search"
@@ -462,7 +514,7 @@ class TestDatasetList:
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=config),
             ):
-                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+                resp, status = method(api, self.session, "tenant-1", current_user)
         assert resp["data"][0]["embedding_available"] is False
 
     def test_partial_members_permission(self, app: Flask):
@@ -470,8 +522,9 @@ class TestDatasetList:
         method = unwrap(api.get)
         current_user = self._mock_user()
         datasets = [make_dataset(permission="partial_members")]
-        session = MagicMock()
-        session.execute.return_value.all.return_value = [("ds-1", "u1")]
+        session = self.session
+        session.add(DatasetPermission(dataset_id="ds-1", account_id="u1", tenant_id="tenant-1"))
+        session.flush()
         with app.test_request_context("/datasets"):
             with (
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
@@ -481,7 +534,7 @@ class TestDatasetList:
         assert resp["data"][0]["partial_member_list"] == ["u1"]
 
 
-class TestDatasetListApiPost:
+class TestDatasetListApiPost(_UsesSQLiteSession):
     def test_post_success(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
@@ -493,7 +546,7 @@ class TestDatasetListApiPost:
             patch.object(type(console_ns), "payload", payload),
             patch.object(DatasetService, "create_empty_dataset", return_value=dataset),
         ):
-            _, status = method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
+            _, status = method(api, DatasetCreatePayload(**payload), self.session, "tenant-1", user)
         assert status == 201
 
     def test_post_forbidden(self, app: Flask):
@@ -503,7 +556,7 @@ class TestDatasetListApiPost:
         user = make_account(TenantAccountRole.NORMAL)
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), self.session, "tenant-1", user)
 
     def test_post_duplicate_name(self, app: Flask):
         api = DatasetListApi()
@@ -518,14 +571,14 @@ class TestDatasetListApiPost:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), self.session, "tenant-1", user)
 
     def test_post_invalid_payload_missing_name(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
         with app.test_request_context("/datasets", json={}), patch.object(type(console_ns), "payload", {}):
             with pytest.raises(ValueError):
-                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(), self.session, "tenant-1", make_account())
 
     def test_post_invalid_indexing_technique(self, app: Flask):
         api = DatasetListApi()
@@ -533,7 +586,7 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "indexing_technique": "invalid-tech"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid indexing technique"):
-                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), self.session, "tenant-1", make_account())
 
     def test_post_invalid_provider(self, app: Flask):
         api = DatasetListApi()
@@ -541,10 +594,10 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "provider": "unknown"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid provider"):
-                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), self.session, "tenant-1", make_account())
 
 
-class TestDatasetApiGet:
+class TestDatasetApiGet(_UsesSQLiteSession):
     def test_get_success_basic(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
@@ -559,20 +612,20 @@ class TestDatasetApiGet:
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-            data, status = method(api, MagicMock(), tenant_id, user, dataset_id)
+            data, status = method(api, self.session, tenant_id, user, dataset_id)
         assert status == 200
         assert data["embedding_available"] is True
 
-    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask):
+    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetApi()
         method = unwrap(api.get)
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
-        user = MagicMock(id="account-1")
+        user = make_account()
         tenant_id = "tenant-1"
         dataset = make_dataset(id=dataset_id)
         with (
             app.test_request_context(f"/datasets/{dataset_id}"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch.object(DatasetService, "get_dataset", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission", return_value=None),
             patch(
@@ -590,7 +643,7 @@ class TestDatasetApiGet:
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-            data, status = method(api, MagicMock(), tenant_id, user, dataset_id)
+            data, status = method(api, self.session, tenant_id, user, dataset_id)
         get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id, session=ANY)
         assert status == 200
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
@@ -607,7 +660,7 @@ class TestDatasetApiGet:
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-            data, status = method(api, MagicMock(), "tenant", make_account(), dataset_id)
+            data, status = method(api, self.session, "tenant", make_account(), dataset_id)
         assert status == 200
         assert data["external_retrieval_model"] == {"top_k": 2, "score_threshold": 0.0, "score_threshold_enabled": None}
 
@@ -620,7 +673,7 @@ class TestDatasetApiGet:
             patch.object(DatasetService, "get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), "tenant", make_account(), dataset_id)
+                method(api, self.session, "tenant", make_account(), dataset_id)
 
     def test_get_permission_denied(self, app: Flask):
         api = DatasetApi()
@@ -637,7 +690,7 @@ class TestDatasetApiGet:
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):
-                method(api, MagicMock(), "tenant", make_account(), dataset_id)
+                method(api, self.session, "tenant", make_account(), dataset_id)
 
     def test_get_high_quality_embedding_unavailable(self, app: Flask):
         api = DatasetApi()
@@ -658,7 +711,7 @@ class TestDatasetApiGet:
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-            data, _ = method(api, MagicMock(), tenant_id, user, dataset_id)
+            data, _ = method(api, self.session, tenant_id, user, dataset_id)
         assert data["embedding_available"] is False
 
     def test_get_partial_members_permission(self, app: Flask):
@@ -675,11 +728,11 @@ class TestDatasetApiGet:
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-            data, _ = method(api, MagicMock(), "tenant", make_account(), dataset_id)
+            data, _ = method(api, self.session, "tenant", make_account(), dataset_id)
         assert data["partial_member_list"] == partial_members
 
 
-class TestDatasetApiPatch:
+class TestDatasetApiPatch(_UsesSQLiteSession):
     def test_patch_success_basic(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
@@ -696,7 +749,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetService, "update_dataset", return_value=dataset),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=[]),
         ):
-            result, status = method(api, DatasetUpdatePayload(), MagicMock(), tenant_id, user, dataset_id)
+            result, status = method(api, DatasetUpdatePayload(), self.session, tenant_id, user, dataset_id)
         assert status == 200
         assert result["partial_member_list"] == []
 
@@ -708,7 +761,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetService, "get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, DatasetUpdatePayload(), MagicMock(), "tenant-1", make_account(), "missing")
+                method(api, DatasetUpdatePayload(), self.session, "tenant-1", make_account(), "missing")
 
     def test_patch_permission_denied(self, app: Flask):
         api = DatasetApi()
@@ -723,7 +776,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "check_permission", side_effect=Forbidden("no permission")),
         ):
             with pytest.raises(Forbidden):
-                method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
+                method(api, DatasetUpdatePayload(), self.session, "tenant", make_account(), dataset_id)
 
     def test_patch_partial_members_update(self, app: Flask):
         api = DatasetApi()
@@ -740,7 +793,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "update_partial_member_list", return_value=None),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["u1", "u2"]),
         ):
-            result, _ = method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
+            result, _ = method(api, DatasetUpdatePayload(), self.session, "tenant", make_account(), dataset_id)
         assert result["partial_member_list"] == ["u1", "u2"]
 
     def test_patch_clear_partial_members(self, app: Flask):
@@ -758,11 +811,11 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "clear_partial_member_list", return_value=None),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=[]),
         ):
-            result, _ = method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
+            result, _ = method(api, DatasetUpdatePayload(), self.session, "tenant", make_account(), dataset_id)
         assert result["partial_member_list"] == []
 
 
-class TestDatasetApiDelete:
+class TestDatasetApiDelete(_UsesSQLiteSession):
     def test_delete_success(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.delete)
@@ -773,7 +826,7 @@ class TestDatasetApiDelete:
             patch.object(DatasetService, "delete_dataset", return_value=True),
             patch.object(DatasetPermissionService, "clear_partial_member_list", return_value=None),
         ):
-            result, status = method(api, MagicMock(), user, dataset_id)
+            result, status = method(api, self.session, user, dataset_id)
         assert status == 204
         assert result == ""
 
@@ -784,7 +837,7 @@ class TestDatasetApiDelete:
         user = make_account(TenantAccountRole.NORMAL)
         with app.test_request_context(f"/datasets/{dataset_id}"):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), user, dataset_id)
+                method(api, self.session, user, dataset_id)
 
     def test_delete_dataset_not_found(self, app: Flask):
         api = DatasetApi()
@@ -796,7 +849,7 @@ class TestDatasetApiDelete:
             patch.object(DatasetService, "delete_dataset", return_value=False),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), user, dataset_id)
+                method(api, self.session, user, dataset_id)
 
     def test_delete_dataset_in_use(self, app: Flask):
         api = DatasetApi()
@@ -808,10 +861,10 @@ class TestDatasetApiDelete:
             patch.object(DatasetService, "delete_dataset", side_effect=services.errors.dataset.DatasetInUseError()),
         ):
             with pytest.raises(DatasetInUseError):
-                method(api, MagicMock(), user, dataset_id)
+                method(api, self.session, user, dataset_id)
 
 
-class TestDatasetUseCheckApi:
+class TestDatasetUseCheckApi(_UsesSQLiteSession):
     @pytest.mark.parametrize("is_using", [True, False])
     def test_get_use_check(self, app: Flask, is_using: bool):
         api = DatasetUseCheckApi()
@@ -819,7 +872,7 @@ class TestDatasetUseCheckApi:
         dataset_id = "dataset-id"
         dataset = make_dataset(id=dataset_id)
         current_user = make_account()
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context(f"/datasets/{dataset_id}/use-check"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
@@ -833,14 +886,14 @@ class TestDatasetUseCheckApi:
         check_permission.assert_called_once_with(dataset, current_user, session)
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
-    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask):
+    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-id")
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/datasets/dataset-id/use-check"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "dataset_use_check", return_value=False),
@@ -855,11 +908,11 @@ class TestDatasetUseCheckApi:
     "api_cls",
     [DatasetUseCheckApi, DatasetIndexingStatusApi, DatasetErrorDocs, DatasetAutoDisableLogApi],
 )
-def test_dataset_scoped_read_permission_denied(app: Flask, api_cls):
+def test_dataset_scoped_read_permission_denied(app: Flask, api_cls, sqlite_session: Session):
     api = api_cls()
     method = unwrap(api.get)
     dataset = make_dataset(id="dataset-1")
-    session = MagicMock()
+    session = sqlite_session
     with (
         app.test_request_context("/"),
         patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -873,7 +926,7 @@ def test_dataset_scoped_read_permission_denied(app: Flask, api_cls):
             method(api, session, "tenant-1", make_account(), "dataset-1")
 
 
-class TestDatasetQueryApi:
+class TestDatasetQueryApi(_UsesSQLiteSession):
     def _query_record(self, index: int = 1) -> DatasetQuery:
         query = DatasetQuery(
             dataset_id="dataset-id",
@@ -900,7 +953,7 @@ class TestDatasetQueryApi:
             patch.object(DatasetService, "check_dataset_permission", return_value=None),
             patch.object(DatasetService, "get_dataset_queries", return_value=(queries, 2)),
         ):
-            response, status = method(api, MagicMock(), current_user, dataset_id)
+            response, status = method(api, self.session, current_user, dataset_id)
         assert status == 200
         assert response["total"] == 2
         assert response["page"] == 1
@@ -923,24 +976,30 @@ class TestDatasetQueryApi:
         dataset = make_dataset(id="dataset-id")
         query = self._query_record()
         query.content = json.dumps([{"content_type": "image_query", "content": "file-1"}])
-        upload_file = SimpleNamespace(
-            id="file-1",
+        upload_file = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="image.png",
             name="image.png",
             size=10,
             extension="png",
             mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+            created_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
+            used=False,
         )
-        session = MagicMock()
-        session.scalar.return_value = upload_file
+        upload_file.id = "file-1"
+        session = self.session
+        session.add(upload_file)
+        session.flush()
         with (
             app.test_request_context("/datasets/queries"),
             patch.object(DatasetService, "get_dataset", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission", return_value=None),
             patch.object(DatasetService, "get_dataset_queries", return_value=([query], 1)),
-            patch("models.dataset.db") as db_mock,
             patch("models.dataset.sign_upload_file_preview_url", return_value="signed-url"),
         ):
-            db_mock.session.scalar.return_value = upload_file
             response, status = method(api, session, make_account(), "dataset-id")
 
         assert status == 200
@@ -958,8 +1017,7 @@ class TestDatasetQueryApi:
                 },
             }
         ]
-        session.scalar.assert_called_once()
-        db_mock.session.scalar.assert_not_called()
+        assert session.get(UploadFile, "file-1") is upload_file
 
     def test_get_queries_dataset_not_found(self, app: Flask):
         api = DatasetQueryApi()
@@ -971,7 +1029,7 @@ class TestDatasetQueryApi:
             patch.object(DatasetService, "get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), current_user, dataset_id)
+                method(api, self.session, current_user, dataset_id)
 
     def test_get_queries_permission_denied(self, app: Flask):
         api = DatasetQueryApi()
@@ -989,7 +1047,7 @@ class TestDatasetQueryApi:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), current_user, dataset_id)
+                method(api, self.session, current_user, dataset_id)
 
     def test_get_queries_pagination_has_more(self, app: Flask):
         api = DatasetQueryApi()
@@ -1004,13 +1062,13 @@ class TestDatasetQueryApi:
             patch.object(DatasetService, "check_dataset_permission", return_value=None),
             patch.object(DatasetService, "get_dataset_queries", return_value=(queries, 40)),
         ):
-            response, status = method(api, MagicMock(), current_user, dataset_id)
+            response, status = method(api, self.session, current_user, dataset_id)
         assert status == 200
         assert response["has_more"] is True
         assert len(response["data"]) == 20
 
 
-class TestDatasetIndexingEstimateApi:
+class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
     def _upload_file(self, *, tenant_id: str = "tenant-1", file_id: str = "file-1") -> UploadFile:
         upload_file = UploadFile(
             tenant_id=tenant_id,
@@ -1043,8 +1101,9 @@ class TestDatasetIndexingEstimateApi:
         method = unwrap(api.post)
         payload = self._base_payload()
         mock_file = self._upload_file()
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [mock_file]
+        session = self.session
+        session.add(mock_file)
+        session.flush()
 
         mock_response = IndexingEstimate(total_segments=100, preview=[])
 
@@ -1073,8 +1132,7 @@ class TestDatasetIndexingEstimateApi:
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
         payload = self._base_payload()
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = None
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
@@ -1093,8 +1151,9 @@ class TestDatasetIndexingEstimateApi:
         method = unwrap(api.post)
         mock_file = self._upload_file()
         payload = self._base_payload()
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [mock_file]
+        session = self.session
+        session.add(mock_file)
+        session.flush()
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
@@ -1117,8 +1176,9 @@ class TestDatasetIndexingEstimateApi:
         method = unwrap(api.post)
         mock_file = self._upload_file()
         payload = self._base_payload()
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [mock_file]
+        session = self.session
+        session.add(mock_file)
+        session.flush()
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
@@ -1141,8 +1201,9 @@ class TestDatasetIndexingEstimateApi:
         method = unwrap(api.post)
         mock_file = self._upload_file()
         payload = self._base_payload()
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [mock_file]
+        session = self.session
+        session.add(mock_file)
+        session.flush()
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
@@ -1160,16 +1221,16 @@ class TestDatasetIndexingEstimateApi:
                 )
 
 
-class TestDatasetRelatedAppListApi:
+class TestDatasetRelatedAppListApi(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
         app1 = make_related_app(id="app-1", name="App 1")
         app2 = make_related_app(id="app-2", name="App 2")
-        join1 = MagicMock(app_id="app-1")
-        join2 = MagicMock(app_id="app-2")
-        session = MagicMock()
+        join1 = AppDatasetJoin(app_id="app-1", dataset_id="dataset-1")
+        join2 = AppDatasetJoin(app_id="app-2", dataset_id="dataset-1")
+        session = self.session
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
@@ -1222,7 +1283,7 @@ class TestDatasetRelatedAppListApi:
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), make_account(), "dataset-1")
+                method(api, self.session, make_account(), "dataset-1")
 
     def test_get_permission_denied(self, app: Flask):
         api = DatasetRelatedAppListApi()
@@ -1237,16 +1298,16 @@ class TestDatasetRelatedAppListApi:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), make_account(), "dataset-1")
+                method(api, self.session, make_account(), "dataset-1")
 
     def test_get_filters_none_apps(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
         app1 = make_related_app()
-        join1 = MagicMock(app_id="app-1")
-        join2 = MagicMock(app_id="app-2")
-        session = MagicMock()
+        join1 = AppDatasetJoin(app_id="app-1", dataset_id="dataset-1")
+        join2 = AppDatasetJoin(app_id="app-2", dataset_id="dataset-1")
+        session = self.session
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
@@ -1274,26 +1335,17 @@ class TestDatasetRelatedAppListApi:
         ]
 
 
-class TestDatasetIndexingStatusApi:
+class TestDatasetIndexingStatusApi(_UsesSQLiteSession):
     def test_get_success_with_documents(self, app: Flask):
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
         current_user = make_account()
-        document = MagicMock()
-        document.id = "doc-1"
-        document.indexing_status = "completed"
-        document.processing_started_at = None
-        document.parsing_completed_at = None
-        document.cleaning_completed_at = None
-        document.splitting_completed_at = None
-        document.completed_at = None
-        document.paused_at = None
-        document.error = None
-        document.stopped_at = None
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [document]
-        session.scalar.return_value = 3
+        document = make_document_status()
+        session = self.session
+        session.add(document)
+        session.add_all([make_document_segment(position=position, completed=True) for position in range(1, 4)])
+        session.flush()
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
@@ -1308,16 +1360,13 @@ class TestDatasetIndexingStatusApi:
         assert item["total_segments"] == 3
         get_dataset.assert_called_once_with("dataset-1", "tenant-1", session=session)
         check_permission.assert_called_once_with(dataset, current_user, session)
-        assert {"dataset-1", "tenant-1"} <= set(session.scalars.call_args.args[0].compile().params.values())
-        for segment_count_call in session.scalar.call_args_list:
-            assert {"dataset-1", "tenant-1", "doc-1"} <= set(segment_count_call.args[0].compile().params.values())
+        assert session.get(Document, "doc-1") is document
 
     def test_get_success_no_documents(self, app: Flask):
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = []
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1331,20 +1380,11 @@ class TestDatasetIndexingStatusApi:
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
-        document = MagicMock()
-        document.id = "doc-1"
-        document.indexing_status = "indexing"
-        document.processing_started_at = None
-        document.parsing_completed_at = None
-        document.cleaning_completed_at = None
-        document.splitting_completed_at = None
-        document.completed_at = None
-        document.paused_at = None
-        document.error = None
-        document.stopped_at = None
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [document]
-        session.scalar.side_effect = [2, 5]
+        document = make_document_status(indexing_status=IndexingStatus.INDEXING)
+        session = self.session
+        session.add(document)
+        session.add_all([make_document_segment(position=position, completed=position <= 2) for position in range(1, 6)])
+        session.flush()
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1357,7 +1397,7 @@ class TestDatasetIndexingStatusApi:
         assert item["total_segments"] == 5
 
 
-class TestDatasetApiKeyApi:
+class TestDatasetApiKeyApi(_UsesSQLiteSession):
     def test_get_api_keys_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.get)
@@ -1375,8 +1415,11 @@ class TestDatasetApiKeyApi:
             last_used_at=None,
             created_at=None,
         )
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]
+        session = self.session
+        mock_key_1.tenant_id = "tenant-1"
+        mock_key_2.tenant_id = "tenant-1"
+        session.add_all([mock_key_1, mock_key_2])
+        session.flush()
         with app.test_request_context("/"):
             response = method(api, session, "tenant-1")
         assert "data" in response
@@ -1389,30 +1432,31 @@ class TestDatasetApiKeyApi:
     def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
-        mock_token = MagicMock()
-        mock_token.id = "new-key-id"
-        mock_token.last_used_at = None
-        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
-        mock_api_token_cls = MagicMock()
-        mock_api_token_cls.return_value = mock_token
-        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
-        session = MagicMock()
-        session.scalar.return_value = 3
-        with app.test_request_context("/"), patch("controllers.console.datasets.datasets.ApiToken", mock_api_token_cls):
+        session = self.session
+        with (
+            app.test_request_context("/"),
+            patch.object(ApiToken, "generate_api_key", return_value="dataset-abc123") as generate_api_key,
+        ):
             response, status = method(api, session, "tenant-1")
         assert status == 200
         assert isinstance(response, dict)
-        assert response["id"] == "new-key-id"
         assert response["token"] == "dataset-abc123"
         assert response["type"] == "dataset"
         assert response["created_at"] is not None
-        mock_api_token_cls.generate_api_key.assert_called_once_with("dataset-", 24, session=session)
+        generate_api_key.assert_called_once_with("dataset-", 24, session=session)
+        assert session.get(ApiToken, response["id"]).token == "dataset-abc123"
 
     def test_post_exceed_max_keys(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
-        session = MagicMock()
-        session.scalar.return_value = 10
+        session = self.session
+        session.add_all(
+            [
+                ApiToken(id=f"key-{index}", tenant_id="tenant-1", type="dataset", token=f"ds-{index}")
+                for index in range(10)
+            ]
+        )
+        session.flush()
         with app.test_request_context("/"):
             with pytest.raises(BadRequest) as exc_info:
                 method(api, session, "tenant-1")
@@ -1423,36 +1467,42 @@ class TestDatasetApiKeyApi:
         }
 
 
-class TestDatasetApiDeleteApi:
+class TestDatasetApiDeleteApi(_UsesSQLiteSession):
     def test_delete_success(self, app: Flask):
         api = DatasetApiDeleteApi()
         method = unwrap(api.delete)
-        mock_key = MagicMock()
-        session = MagicMock()
-        session.scalar.return_value = mock_key
-        with app.test_request_context("/"):
+        session = self.session
+        key = ApiToken(id="api-key-id", tenant_id="tenant-1", type="dataset", token="dataset-secret")
+        session.add(key)
+        session.flush()
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.datasets.ApiTokenCache.delete") as delete_cache,
+        ):
             response, status = method(api, session, "tenant-1", "api-key-id")
         assert status == 204
         assert response == ""
+        delete_cache.assert_called_once()
+        session.flush()
+        assert session.get(ApiToken, "api-key-id") is None
 
     def test_delete_key_not_found(self, app: Flask):
         api = DatasetApiDeleteApi()
         method = unwrap(api.delete)
-        session = MagicMock()
-        session.scalar.return_value = None
+        session = self.session
         with app.test_request_context("/"):
             with pytest.raises(NotFound):
                 method(api, session, "tenant-1", "api-key-id")
 
 
-class TestDatasetEnableApiApi:
+class TestDatasetEnableApiApi(_UsesSQLiteSession):
     @pytest.mark.parametrize(("status_value", "enabled"), [("enable", True), ("disable", False)])
     def test_update_api_status(self, app: Flask, status_value: str, enabled: bool):
         api = DatasetEnableApiApi()
         method = unwrap(api.post)
         dataset = make_dataset(id="dataset-1")
         current_user = make_account()
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
@@ -1470,7 +1520,7 @@ class TestDatasetEnableApiApi:
         api = DatasetEnableApiApi()
         method = unwrap(api.post)
         dataset = make_dataset(id="dataset-1")
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1490,44 +1540,44 @@ class TestDatasetEnableApiApi:
 
 
 class TestDatasetApiBaseUrlApi:
-    def test_get_api_base_url_from_config(self, app: Flask):
+    def test_get_api_base_url_from_config(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL="https://example.com")
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", "https://example.com"),
         ):
             response = method(api)
         assert response["api_base_url"] == "https://example.com/v1"
 
-    def test_get_api_base_url_from_request(self, app: Flask):
+    def test_get_api_base_url_from_request(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL=None)
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("http://localhost:5000/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", None),
         ):
             response = method(api)
         assert response["api_base_url"] == "http://localhost:5000/v1"
 
-    def test_get_api_base_url_no_double_v1(self, app: Flask):
+    def test_get_api_base_url_no_double_v1(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL="https://example.com/v1")
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", "https://example.com/v1"),
         ):
             response = method(api)
         assert response["api_base_url"] == "https://example.com/v1"
 
 
 class TestDatasetRetrievalSettingApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(VECTOR_STORE="qdrant")
         api = DatasetRetrievalSettingApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.VECTOR_STORE", "qdrant"),
             patch(
                 "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
                 return_value={"retrieval_method": ["semantic", "hybrid"]},
@@ -1536,21 +1586,15 @@ class TestDatasetRetrievalSettingApi:
             response = method(api)
         assert "retrieval_method" in response
 
-    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self):
-        with patch(
-            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
-            False,
-        ):
-            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self, config_overrides: Callable[..., None]):
+        config_overrides(TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH=False)
+        response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
 
         assert response["retrieval_method"] == [RetrievalMethod.SEMANTIC_SEARCH.value]
 
-    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self):
-        with patch(
-            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
-            True,
-        ):
-            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self, config_overrides: Callable[..., None]):
+        config_overrides(TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH=True)
+        response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
 
         assert response["retrieval_method"] == [
             RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -1559,7 +1603,7 @@ class TestDatasetRetrievalSettingApi:
         ]
 
 
-class TestDatasetRetrievalSettingMockApi:
+class TestDatasetRetrievalSettingMockApi(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = DatasetRetrievalSettingMockApi()
         method = unwrap(api.get)
@@ -1574,14 +1618,14 @@ class TestDatasetRetrievalSettingMockApi:
         assert response["retrieval_method"] == ["semantic"]
 
 
-class TestDatasetErrorDocs:
+class TestDatasetErrorDocs(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = DatasetErrorDocs()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
         error_doc = make_document_status(id="error-doc", indexing_status=IndexingStatus.ERROR, error="failed")
         current_user = make_account()
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
@@ -1601,7 +1645,7 @@ class TestDatasetErrorDocs:
     def test_get_dataset_not_found(self, app: Flask):
         api = DatasetErrorDocs()
         method = unwrap(api.get)
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=None) as get_dataset,
@@ -1611,7 +1655,7 @@ class TestDatasetErrorDocs:
         get_dataset.assert_called_once_with("dataset-1", "tenant-1", session=session)
 
 
-class TestDatasetPermissionUserListApi:
+class TestDatasetPermissionUserListApi(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = DatasetPermissionUserListApi()
         method = unwrap(api.get)
@@ -1626,7 +1670,7 @@ class TestDatasetPermissionUserListApi:
                 return_value=users,
             ),
         ):
-            response, status = method(api, MagicMock(), make_account(), "dataset-1")
+            response, status = method(api, self.session, make_account(), "dataset-1")
         assert status == 200
         assert response["data"] == users
 
@@ -1643,17 +1687,17 @@ class TestDatasetPermissionUserListApi:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), make_account(), "dataset-1")
+                method(api, self.session, make_account(), "dataset-1")
 
 
-class TestDatasetAutoDisableLogApi:
+class TestDatasetAutoDisableLogApi(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = DatasetAutoDisableLogApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-1")
         logs = {"document_ids": ["doc-1"], "count": 1}
         current_user = make_account()
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
@@ -1670,7 +1714,7 @@ class TestDatasetAutoDisableLogApi:
     def test_get_dataset_not_found(self, app: Flask):
         api = DatasetAutoDisableLogApi()
         method = unwrap(api.get)
-        session = MagicMock()
+        session = self.session
         with (
             app.test_request_context("/"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=None) as get_dataset,

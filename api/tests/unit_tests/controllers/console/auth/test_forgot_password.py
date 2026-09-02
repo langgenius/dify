@@ -17,6 +17,7 @@ from enums import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.entities.feature_entities import SystemFeatureModel
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -58,11 +59,14 @@ class TestForgotPasswordSendEmailApi:
         )
         with (
             patch(
-                "controllers.console.auth.forgot_password.FeatureService.get_system_features",
-                return_value=controller_features,
+                "controllers.console.auth.forgot_password.SystemFeatureService.is_registration_allowed",
+                return_value=controller_features.is_allow_register,
             ),
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with app.test_request_context(
                 "/forgot-password",
@@ -108,8 +112,11 @@ class TestForgotPasswordCheckApi:
             enable_email_password_login=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with app.test_request_context(
                 "/forgot-password/validity",
@@ -154,8 +161,11 @@ class TestForgotPasswordResetApi:
             enable_email_password_login=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with database_app.test_request_context(
                 "/forgot-password/resets",

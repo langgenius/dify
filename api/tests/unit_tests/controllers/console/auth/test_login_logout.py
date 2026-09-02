@@ -22,6 +22,7 @@ from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
+    NormalizedEmailAlreadyInUseError,
 )
 from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi, ResetPasswordSendEmailApi
 from controllers.console.error import (
@@ -37,6 +38,7 @@ from services.email_code_login_challenge import EmailCodeLoginChallengeResult, E
 from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import (
     AccountLoginError,
+    AccountNormalizedEmailAlreadyInUseError,
     AccountPasswordError,
     AccountRegisterError,
     SeatsLimitExceededError,
@@ -329,6 +331,7 @@ class TestLoginApi:
         ("service_error", "expected_error"),
         [
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
             (AccountRegisterError("frozen"), AccountInFreezeError),
         ],
     )
@@ -476,8 +479,8 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_license")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.get_license")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
         mock_is_workspace_creation_allowed: MagicMock,

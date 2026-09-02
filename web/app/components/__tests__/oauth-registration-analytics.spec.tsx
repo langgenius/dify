@@ -1,12 +1,31 @@
 import { render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSearchParams } from '@/next/navigation'
 import { OAuthRegistrationAnalytics } from '../oauth-registration-analytics'
 
-const { mockSendGAEvent, mockRememberRegistrationSuccess } = vi.hoisted(() => ({
-  mockSendGAEvent: vi.fn(),
+const {
+  mockConsent,
+  mockNormalizeRegistrationAttribution,
+  mockRememberRegistrationSuccess,
+  mockSendGAEvent,
+} = vi.hoisted(() => ({
+  mockConsent: { value: 'granted' as 'unknown' | 'denied' | 'granted' | 'disabled' },
+  mockNormalizeRegistrationAttribution: vi.fn((value: Record<string, unknown> | null) => {
+    if (!value) return null
+    const allowed = Object.fromEntries(
+      Object.entries(value).filter(
+        ([key, item]) =>
+          ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'slug'].includes(
+            key,
+          ) && typeof item === 'string',
+      ),
+    )
+    return Object.keys(allowed).length ? allowed : null
+  }),
   mockRememberRegistrationSuccess: vi.fn(),
+  mockSendGAEvent: vi.fn(),
 }))
 
 vi.mock('@/utils/gtag', () => ({
@@ -17,7 +36,14 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
+vi.mock('../base/analytics-consent/consent-store', () => ({
+  useAnalyticsConsent: () => mockConsent.value,
+}))
+
 vi.mock('../base/amplitude/registration-tracking', () => ({
+  normalizeRegistrationAttribution: (
+    ...args: Parameters<typeof mockNormalizeRegistrationAttribution>
+  ) => mockNormalizeRegistrationAttribution(...args),
   rememberRegistrationSuccess: (...args: unknown[]) => mockRememberRegistrationSuccess(...args),
 }))
 
@@ -33,22 +59,74 @@ const setSearchParams = (searchParams = '') => {
 describe('OAuthRegistrationAnalytics', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.sessionStorage.clear()
+    mockConsent.value = 'granted'
+    mockRememberRegistrationSuccess.mockReturnValue(true)
     Cookies.remove('utm_info')
     vi.spyOn(console, 'error').mockImplementation(() => {})
     setSearchParams()
   })
 
-  it('should track oauth registration with utm info and clear the query flag', async () => {
+  it('queues the Amplitude marker while consent is unknown and cleans the URL after persist', async () => {
+    mockConsent.value = 'unknown'
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'linkedin', slug: 'agent-launch' }))
+    setSearchParams('oauth_new_user=true&source=signin')
+
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => {
+      expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
+        method: 'oauth',
+        utmInfo: { utm_source: 'linkedin', slug: 'agent-launch' },
+      })
+    })
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+    expect(Cookies.get('utm_info')).toBeUndefined()
+    expect(window.location.search).toBe('?source=signin')
+  })
+
+  it('keeps the recoverable OAuth signal when marker persistence fails', () => {
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'linkedin' }))
+    setSearchParams('oauth_new_user=true&source=signin')
+    mockRememberRegistrationSuccess.mockReturnValue(false)
+
+    render(<OAuthRegistrationAnalytics />)
+
+    expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1)
+    expect(window.location.search).toBe('?oauth_new_user=true&source=signin')
+    expect(Cookies.get('utm_info')).toBeTruthy()
+  })
+
+  it('keeps the OAuth marker while consent is unknown, then cleans without a second Amplitude queue on denial', async () => {
+    mockConsent.value = 'unknown'
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'blog' }))
+    setSearchParams('oauth_new_user=true')
+
+    const { rerender } = render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1))
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+
+    mockConsent.value = 'denied'
+    rerender(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1)
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+    expect(Cookies.get('utm_info')).toBeUndefined()
+  })
+
+  it('queues immediately with pre-granted consent and keeps only allowlisted UTM fields', async () => {
     Cookies.set(
       'utm_info',
       JSON.stringify({
         utm_source: 'linkedin',
         slug: 'agent-launch',
+        arbitrary: 'discard-me',
+        utm_term: { nested: true },
       }),
     )
-
     setSearchParams('oauth_new_user=true&source=signin')
-    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
 
     render(<OAuthRegistrationAnalytics />)
 
@@ -64,16 +142,13 @@ describe('OAuthRegistrationAnalytics', () => {
       slug: 'agent-launch',
     })
     expect(Cookies.get('utm_info')).toBeUndefined()
-
-    await waitFor(() => {
-      expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/signin?source=signin')
-    })
+    expect(window.location.search).toBe('?source=signin')
   })
 
-  it('should fall back to the base registration event when the utm cookie is invalid', async () => {
+  it('uses the base event and cleans up when the UTM cookie is malformed', async () => {
     Cookies.set('utm_info', '{invalid-json')
-
     setSearchParams('oauth_new_user=true')
+
     render(<OAuthRegistrationAnalytics />)
 
     await waitFor(() => {
@@ -89,23 +164,77 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(Cookies.get('utm_info')).toBeUndefined()
   })
 
-  it('should do nothing without the oauth registration query flag', () => {
+  it('cleans a false OAuth marker immediately without tracking or clearing utm_info', async () => {
+    mockConsent.value = 'unknown'
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'blog' }))
+    setSearchParams('oauth_new_user=false')
+
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
+    expect(mockSendGAEvent).not.toHaveBeenCalled()
+    expect(Cookies.get('utm_info')).toBe(JSON.stringify({ utm_source: 'blog' }))
+  })
+
+  it('tracks GA and Amplitude once across StrictMode effects and rerenders', async () => {
+    setSearchParams('oauth_new_user=true')
+
+    const { rerender } = render(
+      <StrictMode>
+        <OAuthRegistrationAnalytics />
+      </StrictMode>,
+    )
+
+    rerender(
+      <StrictMode>
+        <OAuthRegistrationAnalytics />
+      </StrictMode>,
+    )
+
+    await waitFor(() => expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1))
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('tracks GA once across an unknown-consent remount that simulates reload', async () => {
+    mockConsent.value = 'unknown'
+    setSearchParams('oauth_new_user=true')
+
+    const firstRender = render(<OAuthRegistrationAnalytics />)
+    await waitFor(() => expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1))
+    firstRender.unmount()
+    render(<OAuthRegistrationAnalytics />)
+
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('treats analytics-disabled consent as terminal and cleans without Amplitude', async () => {
+    mockConsent.value = 'disabled'
+    Cookies.set('utm_info', JSON.stringify({ utm_source: 'blog' }))
+    setSearchParams('oauth_new_user=true')
+
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
+    expect(Cookies.get('utm_info')).toBeUndefined()
+  })
+
+  it('does nothing without the OAuth registration query marker', () => {
     render(<OAuthRegistrationAnalytics />)
 
     expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
     expect(mockSendGAEvent).not.toHaveBeenCalled()
   })
 
-  it('should clear a false oauth registration query flag without tracking', async () => {
-    setSearchParams('oauth_new_user=false')
-    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+  it('clears an abandoned flow guard so a later OAuth registration can emit GA', () => {
+    window.sessionStorage.setItem('oauth_registration_ga_sent', 'true')
+    const abandonedFlow = render(<OAuthRegistrationAnalytics />)
+    abandonedFlow.unmount()
 
+    setSearchParams('oauth_new_user=true')
     render(<OAuthRegistrationAnalytics />)
 
-    await waitFor(() => {
-      expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/signin')
-    })
-    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
-    expect(mockSendGAEvent).not.toHaveBeenCalled()
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
   })
 })

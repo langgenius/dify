@@ -50,5 +50,19 @@ def test_deployment_queries_delegate_without_request_context() -> None:
     )
 
     assert service.get_app_dsl_version() == "0.6.0"
-    assert service.get_system_features() is system_features
+    assert service.get_public_system_features() is system_features
     assert service.get_license() is license_model
+
+
+def test_workspace_id_queries_delegate_without_request_context() -> None:
+    gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
+    features = FeatureModel()
+    vector_space = VectorSpaceLimitationModel(size=2, limit=10)
+    gateway.get_workspace_features.return_value = features
+    gateway.get_vector_space.return_value = vector_space
+    service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
+
+    assert service.get_workspace_features("workspace_123") is features
+    assert service.get_workspace_vector_space("workspace_123") is vector_space
+    gateway.get_workspace_features.assert_called_once_with("workspace_123")
+    gateway.get_vector_space.assert_called_once_with("workspace_123")

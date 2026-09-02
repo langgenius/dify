@@ -30,6 +30,7 @@ import type {
 } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
+import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
@@ -195,6 +196,14 @@ export type IOtherOptions = {
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
   onDataSourceNodeError?: IOnDataSourceNodeError
+}
+
+const discardRegistrationStateForConsoleAuthBoundary = ({
+  isMarketplaceAPI,
+  isPublicAPI,
+}: IOtherOptions) => {
+  if (isMarketplaceAPI || isPublicAPI) return
+  discardRegistrationSessionState()
 }
 
 function jumpTo(url: string) {
@@ -1008,6 +1017,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
 
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       if (parseErr) {
+        discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
         window.location.href = buildSigninUrlWithRedirect()
         return Promise.reject(err)
       }
@@ -1025,6 +1035,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       }
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
+        discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
         window.location.reload()
         return Promise.reject(err)
       }
@@ -1053,6 +1064,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
+      discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
       if (window.location.pathname !== `${basePath}/signin`) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)

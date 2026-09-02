@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
+from controllers.service_api import wraps as wraps_module
 from controllers.service_api.wraps import (
     DatasetApiResource,
     FetchUserArg,
@@ -29,11 +30,26 @@ from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, IconType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _configure_current_app_mock(mock_current_app):
     mock_current_app.login_manager = Mock()
     mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
 
 
 def _session_proxy(session: Session) -> scoped_session[Session]:
@@ -346,7 +362,7 @@ class TestCloudEditionBillingResourceCheck:
         # Act
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         ):
             result = add_segment()
 
@@ -376,7 +392,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             pytest.raises(ServiceUnavailable) as exc_info,
         ):
             upload_document()
@@ -406,7 +422,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         ):
             result = upload_document()
 
