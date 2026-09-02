@@ -1,17 +1,8 @@
-"""The two value types the subject layer publishes: what kind of caller a
-subject speaks for, and the identity an external one carries.
-"""
+"""The identity an external subject carries."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-
 from pydantic import BaseModel, ConfigDict
-
-
-class CallerKind(StrEnum):
-    ACCOUNT = "account"
-    END_USER = "end_user"
 
 
 class ExternalIdentity(BaseModel):

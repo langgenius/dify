@@ -24,7 +24,6 @@ from controllers.openapi._models import (
     AppListRow,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
@@ -147,22 +146,11 @@ class AppListApi(Resource):
         else:
             parsed_uuid = None
 
-        # Compute RBAC-accessible app IDs when RBAC is enabled and the caller is an account.
-        # ``None`` means unrestricted (caller can see all apps in the workspace);
-        # an empty set or list means the caller has no accessible apps.
-        # End-users bypass RBAC here — their access is controlled by scope upstream.
-        apply_rbac_filter = (
-            dify_config.RBAC_ENABLED
-            and ctx.subject.caller_kind is not CallerKind.END_USER
-            and ctx.subject.account_id is not None
+        access_filter = (
+            resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
+            if dify_config.RBAC_ENABLED
+            else AppAccessFilter.unrestricted()
         )
-        access_filter = AppAccessFilter.unrestricted()
-        if apply_rbac_filter:
-            access_filter = resolve_app_access_filter(
-                workspace_id,
-                account_id,
-                session=ctx.session,
-            )
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
@@ -173,7 +161,7 @@ class AppListApi(Resource):
                 return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
-            if apply_rbac_filter and not access_filter.is_app_accessible(
+            if not access_filter.is_app_accessible(
                 str(app.id), str(app.maintainer) if app.maintainer else None, account_id
             ):
                 return empty
@@ -201,8 +189,7 @@ class AppListApi(Resource):
             openapi_visible=True,
         )
 
-        if apply_rbac_filter:
-            access_filter.apply_to_params(params)
+        access_filter.apply_to_params(params)
 
         pagination = AppService().get_paginate_apps(account_id, workspace_id, params, ctx.session)
         if pagination is None:

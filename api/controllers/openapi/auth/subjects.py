@@ -13,11 +13,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import CallerKind, ExternalIdentity
+from controllers.openapi.auth.data import ExternalIdentity
 from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
 from libs.oauth_bearer import AuthContext, Scope, SubjectType
 from models.account import Account
-from models.enums import EndUserType
+from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
 from services.account_service import AccountService
 from services.end_user_service import EndUserService
@@ -28,7 +28,7 @@ _SUBJECT_CLASSES: dict[SubjectType, type[Subject]] = {}
 
 class Subject(ABC):
     subject_type: ClassVar[SubjectType]
-    caller_kind: ClassVar[CallerKind]
+    caller_role: ClassVar[CreatorUserRole]
     webapp_modes: ClassVar[frozenset[WebAppAccessMode]]
 
     def __init_subclass__(cls, **kwargs: object) -> None:
@@ -74,7 +74,7 @@ class Subject(ABC):
 
 class AccountSubject(Subject):
     subject_type = SubjectType.ACCOUNT
-    caller_kind = CallerKind.ACCOUNT
+    caller_role = CreatorUserRole.ACCOUNT
     webapp_modes = frozenset(
         {
             WebAppAccessMode.PUBLIC,
@@ -104,7 +104,7 @@ class AccountSubject(Subject):
 
 class ExternalSsoSubject(Subject):
     subject_type = SubjectType.EXTERNAL_SSO
-    caller_kind = CallerKind.END_USER
+    caller_role = CreatorUserRole.END_USER
     webapp_modes = frozenset(
         {
             WebAppAccessMode.PUBLIC,

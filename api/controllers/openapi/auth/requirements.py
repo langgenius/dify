@@ -22,13 +22,13 @@ from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
+from models.enums import CreatorUserRole
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
@@ -106,7 +106,7 @@ class CheckWorkspaceMember(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if subject.caller_kind is not CallerKind.ACCOUNT:
+        if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         load_workspace_role(ctx)
 
@@ -140,7 +140,7 @@ class CheckRBACPermission(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if subject.caller_kind is not CallerKind.ACCOUNT:
+        if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         if not dify_config.RBAC_ENABLED:
             return
@@ -164,7 +164,7 @@ class CheckWorkspaceRole(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if subject.caller_kind is not CallerKind.ACCOUNT:
+        if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         if dify_config.RBAC_ENABLED:
             return
