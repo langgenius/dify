@@ -656,7 +656,8 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       const key = `${tenantId}\0${knowledgeSpaceId}\0${sourceId}`;
       const policy = policies.get(key);
       if (!policy) return null;
-      if (policy.expectedSourceVersion !== expectedSourceVersion) {
+      // Match the database repository's monotonic catch-up semantics.
+      if (policy.expectedSourceVersion > expectedSourceVersion) {
         throw new SourceWorkflowError(
           "SOURCE_SYNC_POLICY_SOURCE_CONFLICT",
           "Source sync policy changed concurrently",

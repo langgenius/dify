@@ -1047,25 +1047,33 @@ describe("in-memory source product workflow repository", () => {
       tenantId,
     });
     expect(rebound).toEqual({ ...revised, expectedSourceVersion: 4 });
+    const repaired = await repository.rebindSyncPolicySourceVersion({
+      expectedSourceVersion: 5,
+      knowledgeSpaceId,
+      sourceId: provider.sourceId,
+      sourceVersion: 6,
+      tenantId,
+    });
+    expect(repaired).toEqual({ ...revised, expectedSourceVersion: 6 });
     await expect(
       repository.rebindSyncPolicySourceVersion({
-        expectedSourceVersion: 1,
+        expectedSourceVersion: 5,
         knowledgeSpaceId,
         sourceId: provider.sourceId,
-        sourceVersion: 5,
+        sourceVersion: 7,
         tenantId,
       }),
     ).rejects.toMatchObject({ code: "SOURCE_SYNC_POLICY_SOURCE_CONFLICT" });
     await expect(
       repository.getSyncPolicy({ knowledgeSpaceId, sourceId: provider.sourceId, tenantId }),
-    ).resolves.toEqual(rebound);
+    ).resolves.toEqual(repaired);
     await expect(
       repository.listSyncPolicies({
         knowledgeSpaceId,
         sourceIds: ["missing", provider.sourceId, provider.sourceId],
         tenantId,
       }),
-    ).resolves.toEqual([rebound]);
+    ).resolves.toEqual([repaired]);
     await expect(
       repository.listSyncPolicies({
         knowledgeSpaceId,

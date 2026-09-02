@@ -2280,6 +2280,34 @@ describe("database source-product workflow repository edge coverage", () => {
     expect(update?.sql).not.toContain('"revision" =');
   });
 
+  it("repairs a sync policy version left behind by an earlier source update", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const repository = createDatabaseSourceProductWorkflowRepository({
+      database: testDatabase("postgres", async (input) => {
+        calls.push(input);
+        if (input.tableName === "source_sync_policies" && input.operation === "select") {
+          return { rows: [syncPolicyRow()], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+      }),
+    });
+
+    await expect(
+      repository.rebindSyncPolicySourceVersion({
+        expectedSourceVersion: 2,
+        knowledgeSpaceId,
+        sourceId,
+        sourceVersion: 3,
+        tenantId,
+      }),
+    ).resolves.toEqual({ ...syncPolicy(), expectedSourceVersion: 3 });
+
+    const update = calls.find(
+      (call) => call.tableName === "source_sync_policies" && call.operation === "update",
+    );
+    expect(update?.params).toEqual([3, "sync-policy-a", 1]);
+  });
+
   it("disables invalid due policies and handles scheduler races", async () => {
     await expect(
       createDatabaseSourceProductWorkflowRepository({

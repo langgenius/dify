@@ -1132,7 +1132,9 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       database.transaction(async (tx) => {
         const policy = await getPolicy(database, tx, input, true);
         if (!policy) return null;
-        if (policy.expectedSourceVersion !== input.expectedSourceVersion) {
+        // A prior source update can commit before its policy rebind fails. Permit a
+        // later update to repair that lag, but never move a policy backwards.
+        if (policy.expectedSourceVersion > input.expectedSourceVersion) {
           throw new SourceWorkflowError(
             "SOURCE_SYNC_POLICY_SOURCE_CONFLICT",
             "Source sync policy changed concurrently",
@@ -1141,7 +1143,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         const updated = await tx.execute({
           maxRows: 0,
           operation: "update",
-          params: [input.sourceVersion, policy.id, input.expectedSourceVersion],
+          params: [input.sourceVersion, policy.id, policy.expectedSourceVersion],
           sql: `UPDATE ${q(database, policyTable)} SET ${q(database, "expected_source_version")} = ${p(database, 1)} WHERE ${q(database, "id")} = ${p(database, 2)} AND ${q(database, "expected_source_version")} = ${p(database, 3)};`,
           tableName: policyTable,
         });
