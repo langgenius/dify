@@ -1119,6 +1119,19 @@ export const lintConfig = {
       },
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/*.spec.{jsx,tsx}',
+        'web/**/*.test.{jsx,tsx}',
+        'web/**/*.stories.{jsx,tsx}',
+        'web/**/*.story.{jsx,tsx}',
+      ],
+      rules: {
+        'dify/require-title-for-truncated-text': 'warn',
+      },
+    },
+    {
       files: [
         'web/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
         'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',

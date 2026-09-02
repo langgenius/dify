@@ -129,7 +129,10 @@ describe('RosterPage', () => {
   it('uses the localized roster title for the page heading', () => {
     render(<RosterPage />)
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toHaveAttribute(
+      'title',
+      'agentV2.roster.title',
+    )
     expect(screen.getByRole('region', { name: 'agentV2.roster.title' })).toBeInTheDocument()
   })
 
