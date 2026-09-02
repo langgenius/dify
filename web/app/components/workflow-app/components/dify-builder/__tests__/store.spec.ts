@@ -1,10 +1,7 @@
 import type { DifyBuilderRuntime } from '../store'
-import type { SessionView } from '@/app/components/dify-builder/types'
+import type { SessionView } from '../types'
 import { createStore } from 'jotai'
-import {
-  difyBuilderSessionBusyAtom,
-  difyBuilderSessionViewAtom,
-} from '@/app/components/dify-builder/state'
+import { difyBuilderSessionBusyAtom, difyBuilderSessionViewAtom } from '../session/state'
 import {
   difyBuilderCanStartFixAtom,
   difyBuilderCanvasLockedAtom,

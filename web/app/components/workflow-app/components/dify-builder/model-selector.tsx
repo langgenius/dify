@@ -1,4 +1,4 @@
-import type { SessionModel } from '@/app/components/dify-builder/types'
+import type { SessionModel } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo } from 'react'
