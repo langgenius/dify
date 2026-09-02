@@ -66,6 +66,21 @@ class Remote:
                 "verdict": "retrieval-miss",
                 "badCaseId": "019fac9f-bfb0-75ee-9af5-252ebafbac1d",
             }
+        if request.operation_id == "listMetadataFields":
+            return {
+                "items": [
+                    {
+                        "count": 3,
+                        "createdAt": "2026-01-01T00:00:00Z",
+                        "id": "field-1",
+                        "name": "department",
+                        "rowVersion": 1,
+                        "type": "string",
+                        "updatedAt": "2026-01-01T00:00:00Z",
+                    }
+                ],
+                "nextCursor": "cursor-2",
+            }
         if request.operation_id == "retrieveEvidence":
             return {
                 "items": [
@@ -342,6 +357,91 @@ def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operatio
         "g": ["short-lived-grant"],
         "v": 1,
     }
+
+
+def test_list_metadata_fields_issues_workflow_capability_and_calls_catalog_operation() -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+    run_context = DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        trace_session_id="trace-from-workflow",
+    )
+
+    first_page = service.list_metadata_fields(
+        run_context=run_context,
+        caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+    )
+    second_page = service.list_metadata_fields(
+        run_context=run_context,
+        caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+        cursor=first_page.next_cursor,
+        limit=50,
+    )
+
+    assert [item.name for item in first_page.data] == ["department"]
+    assert first_page.data[0].type == "string"
+    assert first_page.next_cursor == "cursor-2"
+    assert second_page.next_cursor == "cursor-2"
+    assert [call["operation_id"] for call in admission.calls] == ["listMetadataFields", "listMetadataFields"]
+    assert [call["caller_kind"] for call in admission.calls] == [
+        KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        KnowledgeFSAppSpaceJoinType.WORKFLOW,
+    ]
+    assert [call["operation_id"] for call in broker.calls] == ["listMetadataFields", "listMetadataFields"]
+    assert len(remote.calls) == 2
+    first_request, second_request = remote.calls
+    assert first_request.operation_id == "listMetadataFields"
+    assert first_request.method == "GET"
+    assert first_request.path == "/knowledge-spaces/space-1/metadata-fields"
+    assert first_request.namespace_id == "tenant-1"
+    assert first_request.knowledge_space_id == "space-1"
+    assert first_request.capability_token == "token"
+    assert first_request.payload is None
+    assert first_request.query == (("limit", "100"),)
+    assert second_request.query == (("cursor", "cursor-2"), ("limit", "50"))
+
+
+def test_list_metadata_fields_fails_closed_when_product_operation_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+    monkeypatch.setattr(app_execution_capability, "is_product_operation_ready", lambda _operation_id: False)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError):
+        service.list_metadata_fields(
+            run_context=DifyRunContext(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                user_id="user-1",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+        )
+
+    assert admission.calls == []
+    assert broker.calls == []
+    assert remote.calls == []
 
 
 def test_capture_workflow_failed_retrieval_uses_fresh_transport_trace_and_business_event_id() -> None:

@@ -9,22 +9,21 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { consoleQuery } from '@/service/client'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import AddKnowledgeSpace from './components/add-knowledge-space'
 import KnowledgeSpaceList from './components/knowledge-space-list'
 import RecallSettings from './components/recall-settings'
 import { toControlSpaceSummary } from './config-helpers'
-import { intersectKnowledgeFsMetadataFields } from './metadata-filtering'
+import {
+  intersectKnowledgeFsMetadataFields,
+  KNOWLEDGE_FS_METADATA_FILTER_MODES,
+  normalizeKnowledgeFsMetadataFilterMode,
+} from './metadata-filtering'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const SPACE_PAGE_SIZE = 50
-const KNOWLEDGE_FS_METADATA_FILTER_MODES = [
-  MetadataFilteringModeEnum.disabled,
-  MetadataFilteringModeEnum.manual,
-] as const
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -38,7 +37,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
     filterFileVar,
     filterStringVar,
     handleAddCondition,
+    handleMetadataCompletionParamsChange,
     handleMetadataFilterModeChange,
+    handleMetadataModelChange,
     handleModeChange,
     handleQueryAttachmentChange,
     handleQueryVarChange,
@@ -84,10 +85,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
         name: controlSpaceId,
       },
   )
-  const metadataFilterMode =
-    inputs.metadata_filtering_mode === MetadataFilteringModeEnum.manual
-      ? MetadataFilteringModeEnum.manual
-      : MetadataFilteringModeEnum.disabled
+  const metadataFilterMode = normalizeKnowledgeFsMetadataFilterMode(inputs.metadata_filtering_mode)
 
   return (
     <div className="pt-2">
@@ -155,8 +153,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
           selectedDatasetsLoaded={selectedSpacesMetadataLoaded}
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={inputs.metadata_filtering_conditions}
+          metadataModelConfig={inputs.metadata_model_config}
           handleAddCondition={handleAddCondition}
           handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
           handleRemoveCondition={handleRemoveCondition}
           handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
           handleUpdateCondition={handleUpdateCondition}

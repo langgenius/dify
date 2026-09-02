@@ -1,5 +1,12 @@
-import { MetadataFilteringVariableType } from '../../knowledge-retrieval/types'
-import { intersectKnowledgeFsMetadataFields } from '../metadata-filtering'
+import {
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '../../knowledge-retrieval/types'
+import {
+  intersectKnowledgeFsMetadataFields,
+  KNOWLEDGE_FS_METADATA_FILTER_MODES,
+  normalizeKnowledgeFsMetadataFilterMode,
+} from '../metadata-filtering'
 
 const field = (name: string, type: 'number' | 'string' | 'time', id = name) => ({
   count: 1,
@@ -42,5 +49,30 @@ describe('intersectKnowledgeFsMetadataFields', () => {
       expect.objectContaining({ name: 'priority', type: MetadataFilteringVariableType.number }),
       expect.objectContaining({ name: 'reviewed_at', type: MetadataFilteringVariableType.time }),
     ])
+  })
+})
+
+describe('normalizeKnowledgeFsMetadataFilterMode', () => {
+  it('offers disabled, automatic and manual filtering', () => {
+    expect(KNOWLEDGE_FS_METADATA_FILTER_MODES).toEqual([
+      MetadataFilteringModeEnum.disabled,
+      MetadataFilteringModeEnum.automatic,
+      MetadataFilteringModeEnum.manual,
+    ])
+  })
+
+  it('keeps supported modes and falls back to disabled otherwise', () => {
+    expect(normalizeKnowledgeFsMetadataFilterMode(MetadataFilteringModeEnum.automatic)).toBe(
+      MetadataFilteringModeEnum.automatic,
+    )
+    expect(normalizeKnowledgeFsMetadataFilterMode(MetadataFilteringModeEnum.manual)).toBe(
+      MetadataFilteringModeEnum.manual,
+    )
+    expect(normalizeKnowledgeFsMetadataFilterMode(undefined)).toBe(
+      MetadataFilteringModeEnum.disabled,
+    )
+    expect(normalizeKnowledgeFsMetadataFilterMode('unknown' as MetadataFilteringModeEnum)).toBe(
+      MetadataFilteringModeEnum.disabled,
+    )
   })
 })

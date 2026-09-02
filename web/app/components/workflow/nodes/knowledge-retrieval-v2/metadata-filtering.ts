@@ -1,6 +1,22 @@
 import type { MetadataInDoc } from '@/models/datasets'
 import type { KnowledgeFsMetadataField } from '@/service/knowledge-fs/metadata'
-import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+
+export const KNOWLEDGE_FS_METADATA_FILTER_MODES = [
+  MetadataFilteringModeEnum.disabled,
+  MetadataFilteringModeEnum.automatic,
+  MetadataFilteringModeEnum.manual,
+] as const
+
+export const normalizeKnowledgeFsMetadataFilterMode = (
+  mode: MetadataFilteringModeEnum | undefined,
+): MetadataFilteringModeEnum =>
+  mode && KNOWLEDGE_FS_METADATA_FILTER_MODES.includes(mode)
+    ? mode
+    : MetadataFilteringModeEnum.disabled
 
 const metadataVariableType = (
   type: KnowledgeFsMetadataField['type'],
