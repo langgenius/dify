@@ -74,6 +74,7 @@ import {
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
+import { normalizeWorkflowOutputName } from '../utils/variable'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
@@ -139,7 +140,7 @@ const getDuplicateEndOutputMessages = (
 
     const outputs = (node.data as { outputs?: Array<{ variable?: string }> }).outputs || []
     outputs.forEach((output) => {
-      const variable = output.variable?.trim()
+      const variable = normalizeWorkflowOutputName(output.variable)
       if (!variable) return
 
       const occurrences = variableOccurrences.get(variable) || []

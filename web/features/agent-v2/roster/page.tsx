@@ -112,6 +112,7 @@ export default function RosterPage() {
           <h1
             id={pageTitleId}
             className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+            title={pageTitle}
           >
             {pageTitle}
           </h1>

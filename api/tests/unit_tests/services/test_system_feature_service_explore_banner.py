@@ -1,9 +1,11 @@
+"""Tests for the SystemFeatureService explore-banner policy."""
+
 from collections.abc import Callable
 
 import pytest
 
 from enums import DeploymentEdition
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 @pytest.mark.parametrize(
@@ -23,9 +25,9 @@ def test_get_system_features_enables_explore_banner_only_for_cloud(
     expected: bool,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EXPLORE_BANNER=configured)
-    monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda *_: None)
+    monkeypatch.setattr(SystemFeatureService, "_fulfill_params_from_enterprise", lambda *_: None)
 
-    result = FeatureService.get_system_features()
+    result = SystemFeatureService.get_public_system_features()
 
-    assert FeatureService.is_explore_banner_enabled() is expected
+    assert SystemFeatureService.is_explore_banner_enabled() is expected
     assert result.enable_explore_banner is expected

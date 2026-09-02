@@ -1,10 +1,12 @@
+"""Tests for the SystemFeatureService knowledge-filesystem policy."""
+
 from collections.abc import Callable
 
 import pytest
 
 from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
@@ -40,7 +42,7 @@ def test_get_system_features_reads_knowledge_fs_availability(
         KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="signing-key" if signing_ready else None,
         KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=object() if signing_ready else None,
     )
-    result = FeatureService.get_system_features()
+    result = SystemFeatureService.get_public_system_features()
 
     assert result.knowledge_fs_enabled is enabled
     assert result.knowledge_fs_upload_enabled is upload_enabled
@@ -68,8 +70,8 @@ def test_get_system_features_controls_knowledge_fs_by_edition_or_development_fla
         KNOWLEDGE_FS_ENABLED=True,
         KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
     )
-    monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda _: None)
+    monkeypatch.setattr(SystemFeatureService, "_fulfill_params_from_enterprise", lambda _: None)
 
-    result = FeatureService.get_system_features()
+    result = SystemFeatureService.get_public_system_features()
 
     assert result.knowledge_fs_enabled is expected

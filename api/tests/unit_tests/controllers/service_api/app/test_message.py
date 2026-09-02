@@ -415,9 +415,16 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages?conversation_id=cid", method="GET"):
+        # @model_validate parses ahead of the app-mode guard, so the id has to be well-formed to
+        # reach the branch this test is about.
+        with app.test_request_context("/messages?conversation_id=00000000-0000-0000-0000-000000000001", method="GET"):
             with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
     def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -436,7 +443,12 @@ class TestMessageListApi:
             method="GET",
         ):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
     def test_first_message_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -455,7 +467,12 @@ class TestMessageListApi:
             method="GET",
         ):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
 
 class TestMessageFeedbackApi:
@@ -503,7 +520,9 @@ class TestAppGetFeedbacksApi:
         app_model = SimpleNamespace()
 
         with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
-            response = handler(api, app_model=app_model)
+            response = handler(
+                api, FeedbackListQuery.model_validate(request.args.to_dict(flat=True)), app_model=app_model
+            )
 
         assert response == {"data": [feedback]}
 
