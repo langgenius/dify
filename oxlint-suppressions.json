@@ -4931,18 +4931,8 @@
       "count": 7
     }
   },
-  "web/app/reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/reset-password/layout.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/reset-password/page.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
