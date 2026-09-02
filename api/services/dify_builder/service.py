@@ -1001,11 +1001,16 @@ class DifyBuilderService:
 
         view, expect_advance = self._prepare_action(session_id, actor, action)
         if not expect_advance:
+            # ``message`` (replay of a settled turn) and ``update_model`` both
+            # settle synchronously while changing the version, so they must emit
+            # a terminal ``state`` frame carrying the new version -- else a FE
+            # tracking its held version off ``state`` frames stays stale and its
+            # next action 409s.
             return stream_advance_frames(
                 asdict(view),
                 None,
                 expect_advance=False,
-                emit_state_when_settled=action.kind == "message",
+                emit_state_when_settled=action.kind in {"message", "update_model"},
             )
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
