@@ -90,9 +90,7 @@ def test_user_prompt_file_requires_exactly_one_transport(file_payload: dict[str,
 
 
 def test_default_compositor_registers_user_prompt_layer() -> None:
-    provider = next(
-        provider for provider in create_default_layer_providers() if provider.type_id == "dify.user_prompt"
-    )
+    provider = next(provider for provider in create_default_layer_providers() if provider.type_id == "dify.user_prompt")
 
     layer = provider.create_layer({"text": "Describe it."})
 
