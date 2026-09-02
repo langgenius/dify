@@ -116,7 +116,7 @@ def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str 
         app_id=app_id,
         mode=AppMode.ADVANCED_CHAT,
         name="Test Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
@@ -126,7 +126,7 @@ def _make_message(*, conversation_id: str = "conversation-id", workflow_run_id: 
         id="message-id",
         app_id="app-id",
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="query",
         message={"role": "user", "content": "query"},
         answer="answer",
