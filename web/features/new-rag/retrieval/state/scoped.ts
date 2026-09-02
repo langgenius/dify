@@ -48,6 +48,7 @@ export const retrievalResearchEventsAtom = atom<Record<string, ResearchTaskProgr
 export const retrievalAdmittedResearchTasksAtom = atom<
   Record<string, KnowledgeFsResearchTaskResponse>
 >({})
+export const retrievalResearchRetryPendingAtom = atom(false)
 
 export const retrievalScopedAtoms = [
   retrievalComposerDraftAtom,
@@ -57,5 +58,6 @@ export const retrievalScopedAtoms = [
   retrievalResearchPlansAtom,
   retrievalResearchEventsAtom,
   retrievalAdmittedResearchTasksAtom,
+  retrievalResearchRetryPendingAtom,
   retrievalRuntimeBridgeAtom,
 ] as const

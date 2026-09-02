@@ -17,6 +17,7 @@ import {
   type ResearchTaskProgressRepository,
   type ResearchTaskRuntime,
   createResearchTaskJobStateMachine,
+  createResearchTaskProgressPublisher,
   createResearchTaskRuntime,
 } from "@knowledge/api";
 
@@ -138,6 +139,7 @@ export function createApiResearchTaskRuntime({
     maxBatchSize,
     ...(metrics ? { metrics } : {}),
     partials,
+    progress: createResearchTaskProgressPublisher({ repository: progress }),
     ...(projectionSnapshotResolver ? { projectionSnapshotResolver } : {}),
     ...(queryImageResolver ? { queryImageResolver } : {}),
     repository,

@@ -353,7 +353,10 @@ export function createResearchTaskRuntime({
       current = result.job;
       await assertWritable();
       const completed = await serializeExecutionMutation((job) =>
-        repository.completeExecution(fence(job, now())),
+        repository.completeExecution({
+          ...fence(job, now()),
+          progressDetails: result.generationDetails,
+        }),
       );
       if (!completed) {
         throw new Error("Research task completion lost its lease fence");
@@ -696,6 +699,7 @@ async function runResearchTask({
       const updated = await repository.advanceExecution({
         ...fence(current, now()),
         nextStage,
+        ...(details ? { progressDetails: details } : {}),
       });
       if (updated) {
         current = updated;
@@ -857,6 +861,18 @@ async function runResearchTask({
       updateCurrent(persisted);
       return persisted;
     });
+    if (searchState.phase === "complete" && durable.evidenceBundle.state !== "partial") {
+      await revalidate();
+      await assertWritable();
+      current = getCurrent();
+      await partials.append({
+        evidenceBundle: { ...durable.evidenceBundle, state: "partial" },
+        idempotencyKey: `research-task:${current.id}:retrieval-evidence`,
+        knowledgeSpaceId: current.knowledgeSpaceId,
+        researchTaskJobId: current.id,
+        tenantId: current.tenantId,
+      });
+    }
   };
   const persistQueryImageExpansion = async (expansion: string): Promise<void> => {
     const normalized = expansion.trim();

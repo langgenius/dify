@@ -715,7 +715,7 @@ describe('RetrievalTestPage', () => {
     await waitFor(() => expect(apiMock.streamQuery).toHaveBeenCalledOnce())
   })
 
-  it('keeps a newly admitted empty-space Research run visible through its terminal event', async () => {
+  it('keeps retrieved evidence visible and retries a Research run that later fails', async () => {
     apiMock.createResearch.mockResolvedValueOnce({
       cost: {},
       created_at: 1_800_000_000,
@@ -726,6 +726,31 @@ describe('RetrievalTestPage', () => {
       stage: 'queued',
       updated_at: 1_800_000_000,
     })
+    apiMock.partials = [
+      {
+        evidence_bundle: {
+          items: [
+            {
+              citations: [
+                {
+                  documentAssetId: 'document-1',
+                  documentVersion: 1,
+                  sectionPath: ['Warranty'],
+                  startOffset: 0,
+                },
+              ],
+              metadata: {},
+              nodeId: 'failed-research-evidence-1',
+              score: 0.9,
+              text: 'Evidence retrieved before generation failed',
+            },
+          ],
+        },
+        knowledge_space_id: 'space-1',
+        research_task_job_id: 'research-1',
+        sequence: 1,
+      },
+    ]
     apiMock.streamResearchEvents.mockImplementation(
       async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
         onEvent({
@@ -758,12 +783,147 @@ describe('RetrievalTestPage', () => {
 
     const record = await screen.findByRole('button', { name: /Anything here\?/ })
     expect(record).toHaveAttribute('aria-pressed', 'true')
+    expect(record).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedTitle')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.taskFailure.research')
     expect(
-      await screen.findByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
+      await screen.findByText('Evidence retrieved before generation failed'),
     ).toBeInTheDocument()
     expect(
-      screen.queryByText('dataset.newKnowledge.retrievalTest.emptyTitle'),
+      screen.queryByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
     ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.retry' }),
+    )
+
+    await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledTimes(2))
+    expect(apiMock.createResearch).toHaveBeenLastCalledWith({
+      body: {
+        budgetUsd: 1,
+        mode: 'research',
+        query: 'Anything here?',
+        topK: 8,
+      },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
+  it('retries a historical image-only Research task with its persisted image references', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-image-failed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: '',
+        query_images: [{ uploadFileId: 'historical-image-1' }],
+        stage: 'failed',
+        updated_at: 1_800_000_005,
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?research=research-image-failed' })
+
+    await user.click(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.retrievalTest.retry' }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: {
+          mode: 'research',
+          query: '',
+          queryImages: [{ uploadFileId: 'historical-image-1' }],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(apiMock.createResearch).toHaveBeenCalledWith({
+      body: {
+        budgetUsd: 1,
+        mode: 'research',
+        query: '',
+        queryImages: [{ uploadFileId: 'historical-image-1' }],
+        topK: 8,
+      },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
+  it('shows pending feedback while retrying a failed Research task', async () => {
+    let rejectPlan: ((reason?: unknown) => void) | undefined
+    apiMock.planResearch.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectPlan = reject
+      }),
+    )
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-retry-pending',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Compare the sources',
+        stage: 'failed',
+        updated_at: 1_800_000_005,
+      },
+    ]
+    renderPage({ searchParams: '?research=research-retry-pending' })
+
+    const retry = await screen.findByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.retry',
+    })
+    act(() => {
+      retry.click()
+      retry.click()
+    })
+
+    await waitFor(() => expect(retry).toHaveAttribute('aria-disabled', 'true'))
+    expect(apiMock.planResearch).toHaveBeenCalledOnce()
+
+    await act(async () => rejectPlan?.(new Error('Plan unavailable')))
+    await waitFor(() => expect(retry).not.toHaveAttribute('aria-disabled'))
+  })
+
+  it('routes a non-retryable Research failure to its required configuration', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        failure: {
+          action: 'configure_model',
+          category: 'configuration',
+          code: 'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+          message: 'The selected model configuration is incomplete.',
+          retryPolicy: 'after_configuration',
+        },
+        id: 'research-model-configuration-failed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Compare the sources',
+        stage: 'failed',
+        updated_at: 1_800_000_005,
+      },
+    ]
+
+    renderPage({ searchParams: '?research=research-model-configuration-failed' })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.taskFailure.modelConfiguration')
+    expect(alert).toHaveTextContent('dataset.newKnowledge.retrievalTest.failedTitle')
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.retrievalTest.retry' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.datasetMenus.settings' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/settings',
+    )
   })
 
   it('collapses the research process when a running task completes', async () => {
@@ -988,7 +1148,89 @@ describe('RetrievalTestPage', () => {
     expect(screen.queryByText('2027-01-15T08:00:02.000Z')).not.toBeInTheDocument()
     expect(screen.queryByText(/unknown.*9/i)).not.toBeInTheDocument()
     expect(apiMock.refetchTasks).not.toHaveBeenCalled()
-    expect(apiMock.refetchPartials).not.toHaveBeenCalled()
+    expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
+  })
+
+  it('does not mix persisted stage details with fallback zero counts', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-analyzing',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What are the data classification rules?',
+        stage: 'analyzing',
+        top_k: 10,
+        updated_at: 1_800_000_010,
+      },
+    ]
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        const stages = ['queued', 'planning', 'retrieving', 'analyzing'] as const
+        stages.forEach((stage, index) =>
+          onEvent({
+            createdAt: new Date(1_800_000_000_000 + index * 1000).toISOString(),
+            id: `active-event-${index + 1}`,
+            payload: {
+              ...(stage === 'retrieving'
+                ? {
+                    details: {
+                      topK: 10,
+                      questions: ['What are the data classification rules?'],
+                    },
+                    previousStage: 'planning',
+                  }
+                : {}),
+              ...(stage === 'analyzing'
+                ? {
+                    details: {
+                      results: [
+                        {
+                          chunkCount: 10,
+                          question: 'What are the data classification rules?',
+                        },
+                      ],
+                      retrievalCount: 50,
+                    },
+                    previousStage: 'retrieving',
+                  }
+                : {}),
+            },
+            researchTaskJobId: 'research-analyzing',
+            sequence: index + 1,
+            stage,
+            type: index ? 'research_task.stage_changed' : 'research_task.started',
+          }),
+        )
+        return { cursor: '4', reconnect: false, terminal: false }
+      },
+    )
+
+    renderPage({ searchParams: '?research=research-analyzing' })
+
+    const plannedTopK = await screen.findByText('dataset.newKnowledge.settings.topKLabel: 10')
+    const plannedDetails = plannedTopK.parentElement
+    expect(plannedDetails).not.toBeNull()
+    const plannedQuestion = within(plannedDetails!).getByText(
+      'What are the data classification rules?',
+    )
+    expect(plannedQuestion.compareDocumentPosition(plannedTopK)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(
+      await screen.findByText(
+        'What are the data classification rules? · 10 dataset.newKnowledge.chunkCount',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'What are the data classification rules? · 0 dataset.newKnowledge.chunkCount',
+      ),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.chunkCount: 0')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.documents: 0')).not.toBeInTheDocument()
   })
 
   it('fills historical research stages from persisted task and evidence data', async () => {
@@ -1654,6 +1896,84 @@ describe('RetrievalTestPage', () => {
 
     await waitFor(() => expect(apiMock.refetchTasks).toHaveBeenCalledOnce())
     await waitFor(() => expect(apiMock.refetchPartials).toHaveBeenCalledOnce())
+  })
+
+  it('shows retrieved Research chunks during generation without reloading the page', async () => {
+    apiMock.partials = [
+      {
+        evidence_bundle: {
+          items: [
+            {
+              citations: [
+                {
+                  documentAssetId: 'document-1',
+                  documentVersion: 1,
+                  sectionPath: ['Warranty'],
+                  startOffset: 0,
+                },
+              ],
+              metadata: {},
+              nodeId: 'chunk-live-1',
+              score: 0.9,
+              text: 'Retrieved warranty evidence',
+            },
+          ],
+        },
+        knowledge_space_id: 'space-1',
+        research_task_job_id: 'research-1',
+        sequence: 1,
+      },
+    ]
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({
+        onEvent,
+      }: {
+        onEvent: (event: {
+          createdAt: string
+          id: string
+          payload: Record<string, unknown>
+          researchTaskJobId: string
+          sequence: number
+          stage: string
+          type: string
+        }) => void
+      }) => {
+        onEvent({
+          createdAt: '2027-01-15T08:00:20.000Z',
+          id: 'event-generating',
+          payload: {
+            details: { chunks: 1, retrievalCount: 1 },
+            previousStage: 'analyzing',
+          },
+          researchTaskJobId: 'research-1',
+          sequence: 6,
+          stage: 'generating',
+          type: 'research_task.stage_changed',
+        })
+        return { cursor: '6', reconnect: false, terminal: false }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Compare the refund policies',
+    )
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.research',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
+    )
+
+    expect(await screen.findByText('Retrieved warranty evidence')).toBeInTheDocument()
+    expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not let the composer shortcut bypass an active research task', async () => {

@@ -384,6 +384,12 @@ export function researchTaskIsActive(task?: KnowledgeFsResearchTaskResponse) {
   return task ? activeResearchStages.has(task.stage) : false
 }
 
+export function researchTaskCanRetry(task?: KnowledgeFsResearchTaskResponse) {
+  if (task?.stage !== 'failed') return false
+  if (!task.failure) return true
+  return task.failure.retryPolicy === 'automatic' || task.failure.retryPolicy === 'manual'
+}
+
 export function shouldRefreshResearchPartials(
   previousTask: KnowledgeFsResearchTaskResponse | undefined,
   task: KnowledgeFsResearchTaskResponse | undefined,

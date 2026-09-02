@@ -554,7 +554,7 @@ describe("Research evidence reasoning", () => {
     },
   );
 
-  it("does not retry a non-truncated judgement contract violation", async () => {
+  it("marks a non-truncated judgement contract violation as retryable", async () => {
     const generate = vi.fn(async (_input: unknown) => ({
       finishReason: "stop",
       metadata: {
@@ -580,7 +580,7 @@ describe("Research evidence reasoning", () => {
       }),
     ).rejects.toMatchObject({
       code: "RESEARCH_EVIDENCE_REASONING_INVALID",
-      retryable: false,
+      retryable: true,
     });
     expect(generate).toHaveBeenCalledOnce();
   });

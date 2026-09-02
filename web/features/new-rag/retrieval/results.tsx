@@ -1,9 +1,9 @@
 'use client'
 
-import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
+import type { AnchorHTMLAttributes, ComponentProps, PropsWithChildren } from 'react'
 import type { RetrievalEvidence } from './model'
 import type { MarkdownProps } from '@/app/components/base/markdown'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -13,10 +13,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
-import { useMemo, useState } from 'react'
+import { createContext, use, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
+import { Link as MarkdownLink, ThinkBlock } from '@/app/components/base/markdown-blocks'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -305,25 +305,47 @@ export function EmptyState({
 export function FailedResult({
   description,
   onRetry,
+  pending = false,
+  recovery,
 }: {
   description: string
-  onRetry: () => void
+  onRetry?: () => void
+  pending?: boolean
+  recovery?: { href: string; label: string }
 }) {
   const { t } = useTranslation('dataset')
   return (
     <div
       role="alert"
-      className="flex min-h-10 items-center gap-1.5 rounded-[10px] bg-util-colors-red-red-500/5 px-3 py-2"
+      className="mt-3 flex min-h-10 items-start gap-1.5 rounded-[10px] bg-util-colors-red-red-500/5 px-3 py-2"
     >
-      <span aria-hidden className="i-ri-alert-fill size-3.5 text-text-destructive" />
-      <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+      <span
+        aria-hidden
+        className="mt-0.75 i-ri-alert-fill size-3.5 shrink-0 text-text-destructive"
+      />
+      <p className="min-w-0 flex-1 system-sm-regular break-words text-text-secondary">
         {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
         {' — '}
         <span>{description}</span>
-      </span>
-      <Button size="small" variant="secondary" onClick={onRetry}>
-        {t(($) => $['newKnowledge.retrievalTest.retry'])}
-      </Button>
+      </p>
+      {recovery ? (
+        <Link
+          href={recovery.href}
+          className={cn(buttonVariants({ size: 'small', variant: 'secondary' }), 'shrink-0')}
+        >
+          {recovery.label}
+        </Link>
+      ) : onRetry ? (
+        <Button
+          size="small"
+          variant="secondary"
+          className="shrink-0"
+          loading={pending}
+          onClick={onRetry}
+        >
+          {t(($) => $['newKnowledge.retrievalTest.retry'])}
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -381,15 +403,27 @@ function ResearchAnswerLink({
   )
 }
 
+const ResearchAnswerStateContext = createContext<'active' | 'complete'>('complete')
+
+function ResearchAnswerDetails({
+  node: _node,
+  ...props
+}: ComponentProps<typeof ThinkBlock> & { node?: unknown }) {
+  const responseState = use(ResearchAnswerStateContext)
+  return <ThinkBlock {...props} responseState={responseState} />
+}
+
 export function ResearchAnswer({
   answer,
   citationCount,
   onCitationClick,
+  researchTaskId,
   streaming,
 }: {
   answer: string
   citationCount: number
   onCitationClick: (citationIndex: number) => void
+  researchTaskId: string
   streaming: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -400,6 +434,7 @@ export function ResearchAnswer({
   const citationComponents = useMemo<NonNullable<MarkdownProps['customComponents']>>(
     () => ({
       a: (props) => <ResearchAnswerLink {...props} onCitationClick={onCitationClick} />,
+      details: ResearchAnswerDetails,
     }),
     [onCitationClick],
   )
@@ -422,13 +457,15 @@ export function ResearchAnswer({
         )}
       </header>
       <div aria-live="polite" aria-atomic="false">
-        <Markdown
-          className="text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
-          content={linkedAnswer}
-          customComponents={citationComponents}
-          isAnimating={streaming}
-          mode={streaming ? 'streaming' : undefined}
-        />
+        <ResearchAnswerStateContext key={researchTaskId} value={streaming ? 'active' : 'complete'}>
+          <Markdown
+            className="text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
+            content={linkedAnswer}
+            customComponents={citationComponents}
+            isAnimating={streaming}
+            mode={streaming ? 'streaming' : undefined}
+          />
+        </ResearchAnswerStateContext>
       </div>
     </section>
   )

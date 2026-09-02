@@ -1,6 +1,9 @@
 'use client'
 
-import type { KnowledgeFsResearchTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsQueryImageReference,
+  KnowledgeFsResearchTaskResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RetrievalTestMode } from './model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -15,6 +18,7 @@ import {
   extractRetrievalEvidence,
   extractStreamError,
   extractTraceId,
+  researchTaskCanRetry,
   researchTaskIsActive,
   shouldRefreshResearchPartials,
 } from './model'
@@ -37,6 +41,7 @@ import {
   retrievalLocalSelectedAtom,
   retrievalResearchEventsAtom,
   retrievalResearchPlansAtom,
+  retrievalResearchRetryPendingAtom,
 } from './state/scoped'
 
 function structuredErrorMessage(value: unknown): string | undefined {
@@ -104,6 +109,7 @@ export function RetrievalRuntimeController() {
   const setResearchPlans = useSetAtom(retrievalResearchPlansAtom)
   const setResearchEvents = useSetAtom(retrievalResearchEventsAtom)
   const setAdmittedResearchTasks = useSetAtom(retrievalAdmittedResearchTasksAtom)
+  const setResearchRetryPending = useSetAtom(retrievalResearchRetryPendingAtom)
   const {
     configureModelSetup,
     ensureModelReady,
@@ -186,6 +192,8 @@ export function RetrievalRuntimeController() {
                   },
                 }
               })
+              if (event.type === 'research_task.stage_changed' && event.stage === 'generating')
+                void refetchResearchPartials()
               const terminal =
                 event.stage === 'canceled' ||
                 event.stage === 'completed' ||
@@ -336,11 +344,12 @@ export function RetrievalRuntimeController() {
   )
 
   const startResearch = useCallback(
-    async (input?: { query: string }) => {
+    async (input?: { query: string; queryImages?: readonly KnowledgeFsQueryImageReference[] }) => {
       const cleanQuery = (input?.query ?? query).trim()
-      const activeImages = input ? [] : queryImages
-      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
-      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
+      const imageReferences = input
+        ? [...(input.queryImages ?? [])]
+        : queryImages.map((image) => ({ uploadFileId: image.uploadFileId }))
+      if ((!cleanQuery && imageReferences.length === 0) || runInFlightRef.current) return
       runInFlightRef.current = true
       try {
         if (
@@ -421,13 +430,42 @@ export function RetrievalRuntimeController() {
     else void runFastQuery()
   }, [localRun?.status, mode, runFastQuery, selectedResearchActive, startResearch])
 
+  const retry = useCallback(async () => {
+    if (runInFlightRef.current || selectedResearchActive || localRun?.status === 'running') return
+    if (selected?.kind === 'research' && selectedResearchTask) {
+      if (!researchTaskCanRetry(selectedResearchTask)) return
+      setResearchRetryPending(true)
+      try {
+        await startResearch({
+          query: selectedResearchTask.query,
+          queryImages: selectedResearchTask.query_images ?? [],
+        })
+      } finally {
+        setResearchRetryPending(false)
+      }
+      return
+    }
+    if (mode === 'research') void startResearch()
+    else void runFastQuery()
+  }, [
+    localRun?.status,
+    mode,
+    runFastQuery,
+    selected?.kind,
+    selectedResearchActive,
+    selectedResearchTask,
+    setResearchRetryPending,
+    startResearch,
+  ])
+
   useLayoutEffect(() => {
     setRuntimeBridge({
       cancelResearch: (taskId) => void cancelResearch(taskId),
+      retry,
       run,
       runFastQuery: (input) => void runFastQuery(input),
     })
-  }, [cancelResearch, run, runFastQuery, setRuntimeBridge])
+  }, [cancelResearch, retry, run, runFastQuery, setRuntimeBridge])
 
   const runRetest = useEffectEvent((command: { mode: RetrievalTestMode; query: string }) => {
     if (command.mode === 'research') void startResearch({ query: command.query })

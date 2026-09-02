@@ -5,6 +5,7 @@ import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
+import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
 import { timeValue } from '../history-utils'
 import {
   extractRetrievalEvidence,
@@ -22,6 +23,7 @@ import {
   retrievalLocalSelectedAtom,
   retrievalResearchEventsAtom,
   retrievalResearchPlansAtom,
+  retrievalResearchRetryPendingAtom,
 } from './scoped'
 
 const tracesQueryAtom = atomWithInfiniteQuery((get) =>
@@ -183,9 +185,23 @@ const selectedFailedAtom = atom((get) => {
   const selected = get(retrievalSelectedAtom)
   const localRun = get(retrievalLocalRunAtom)
   const selectedRecord = get(selectedRecordAtom)
+  const selectedResearchTask = get(retrievalSelectedResearchTaskAtom)
   return Boolean(
     (selected?.kind === 'local' && localRun?.status === 'failed') ||
-    (selected?.kind === 'trace' && selectedRecord?.status === 'failed'),
+    (selected?.kind === 'trace' && selectedRecord?.status === 'failed') ||
+    (selected?.kind === 'research' && selectedResearchTask?.stage === 'failed'),
+  )
+})
+
+const selectedFailureMessageKeyAtom = atom((get) => {
+  const selected = get(retrievalSelectedAtom)
+  const selectedResearchTask = get(retrievalSelectedResearchTaskAtom)
+  if (selected?.kind !== 'research' || selectedResearchTask?.stage !== 'failed') return undefined
+  return (
+    knowledgeFsTaskFailureMessageKey(
+      selectedResearchTask.failure ?? undefined,
+      selectedResearchTask.error ?? undefined,
+    ) ?? 'newKnowledge.taskFailure.research'
   )
 })
 
@@ -295,8 +311,8 @@ const retrievalResearchPartialsAtom = atom(
 )
 
 const retrievalCurrentEvidenceAtom = atom((get) => {
-  if (get(selectedFailedAtom)) return []
   const selected = get(retrievalSelectedAtom)
+  if (selected?.kind !== 'research' && get(selectedFailedAtom)) return []
   const localRun = get(retrievalLocalRunAtom)
   const historicalEvidence = extractRetrievalEvidence(get(retrievalTraceEvidenceAtom))
   if (selected?.kind === 'local' && localRun)
@@ -425,11 +441,13 @@ export const retrievalResultFactsAtom = atom((get) => {
     researchPlan: selectedResearchTask
       ? get(retrievalResearchPlansAtom)[selectedResearchTask.id]
       : undefined,
+    researchRetryPending: get(retrievalResearchRetryPendingAtom),
     resultKey: selected ? `${selected.kind}:${selected.id}` : undefined,
     selected,
     selectedCreatedAt,
     selectedDataError,
     selectedFailed,
+    selectedFailureMessageKey: get(selectedFailureMessageKeyAtom),
     selectedHasNoResults: selected?.kind === 'local' && localRun?.status === 'no-results',
     selectedIsLoading,
     selectedMode,

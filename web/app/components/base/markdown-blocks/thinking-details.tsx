@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next'
 
 type ThinkingDetailsProps = ComponentProps<'details'> & {
   isComplete: boolean
-  elapsedTime: number
+  elapsedTime?: number
 }
 
 /**
  * Presentational collapsible "thinking" shell: the chevron summary with the
  * "Thinking…/Thought (Xs)" label and the bordered content body. Driver-agnostic
- * — callers compute `isComplete`/`elapsedTime` and pass the body as children.
+ * — callers compute `isComplete` and only pass `elapsedTime` when it was observed.
  */
 const ThinkingDetails = ({
   isComplete,
@@ -21,6 +21,7 @@ const ThinkingDetails = ({
   ...rest
 }: ThinkingDetailsProps) => {
   const { t } = useTranslation()
+  const status = t(($) => (isComplete ? $['chat.thought'] : $['chat.thinking']), { ns: 'common' })
 
   return (
     <details {...rest} className={cn('group', className)} open={isComplete ? open : true}>
@@ -34,9 +35,8 @@ const ThinkingDetails = ({
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          {isComplete
-            ? `${t(($) => $['chat.thought'], { ns: 'common' })}(${elapsedTime.toFixed(1)}s)`
-            : `${t(($) => $['chat.thinking'], { ns: 'common' })}(${elapsedTime.toFixed(1)}s)`}
+          {status}
+          {elapsedTime !== undefined && <span aria-hidden>({elapsedTime.toFixed(1)}s)</span>}
         </div>
       </summary>
       <div className="ml-2 border-l border-components-panel-border bg-components-panel-bg-alt p-3 text-text-secondary">

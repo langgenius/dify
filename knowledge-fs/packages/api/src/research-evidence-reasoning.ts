@@ -459,7 +459,7 @@ function parseQueryPlan(text: string): z.infer<typeof QueryPlanSchema> {
   } catch (cause) {
     throw new ResearchEvidenceReasoningContractError(
       "research.plan returned invalid structured JSON",
-      { cause },
+      { cause, retryable: true },
     );
   }
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -476,7 +476,7 @@ function parseQueryPlan(text: string): z.infer<typeof QueryPlanSchema> {
   } catch (cause) {
     throw new ResearchEvidenceReasoningContractError(
       "research.plan returned invalid structured JSON",
-      { cause },
+      { cause, retryable: true },
     );
   }
 }
@@ -488,7 +488,7 @@ function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementS
   } catch (cause) {
     throw new ResearchEvidenceReasoningContractError(
       "research.judge returned invalid structured JSON",
-      { cause },
+      { cause, retryable: true },
     );
   }
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -506,7 +506,7 @@ function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementS
   } catch (cause) {
     throw new ResearchEvidenceReasoningContractError(
       "research.judge returned invalid structured JSON",
-      { cause },
+      { cause, retryable: true },
     );
   }
 }

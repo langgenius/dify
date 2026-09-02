@@ -6,9 +6,10 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+import { knowledgeFsTaskRecoveryPath } from '../knowledge-fs-task-error'
 import { newKnowledgeQualityPath } from '../routes'
 import { RecordTime, ResearchProcess } from './history'
-import { researchTaskIsActive } from './model'
+import { researchTaskCanRetry, researchTaskIsActive } from './model'
 import { RetrievalQualityWorkflow } from './quality-workflow'
 import { EmptyState, EvidenceCard, FailedResult, ResearchAnswer, ResultSkeleton } from './results'
 import {
@@ -17,12 +18,13 @@ import {
   retrySelectedRetrievalDataAtom,
 } from './state/graph'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
-import { cancelRetrievalResearchAtom, retryFastRetrievalAtom } from './state/runtime'
+import { cancelRetrievalResearchAtom, retryRetrievalAtom } from './state/runtime'
 
 type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 
 function RetrievalResultSession() {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const {
     currentEvidence,
@@ -34,10 +36,12 @@ function RetrievalResultSession() {
     researchHasNextPage,
     researchIsFetchingNextPage,
     researchPlan,
+    researchRetryPending,
     selected,
     selectedCreatedAt,
     selectedDataError,
     selectedFailed,
+    selectedFailureMessageKey,
     selectedHasNoResults,
     selectedIsLoading,
     selectedMode,
@@ -46,7 +50,7 @@ function RetrievalResultSession() {
     traceHasNextPage,
     traceIsFetchingNextPage,
   } = useAtomValue(retrievalResultFactsAtom)
-  const retryFast = useSetAtom(retryFastRetrievalAtom)
+  const retryRetrieval = useSetAtom(retryRetrievalAtom)
   const retrySelectedData = useSetAtom(retrySelectedRetrievalDataAtom)
   const loadMoreEvidence = useSetAtom(loadMoreSelectedRetrievalEvidenceAtom)
   const cancelResearch = useSetAtom(cancelRetrievalResearchAtom)
@@ -58,6 +62,18 @@ function RetrievalResultSession() {
     taskId: string
   }>()
   const selectedResearchTaskId = selectedResearchTask?.id
+  const selectedResearchFailure = selectedResearchTask?.failure ?? undefined
+  const selectedResearchRecoveryPath = selectedResearchFailure
+    ? knowledgeFsTaskRecoveryPath(selectedResearchFailure, knowledgeSpaceId)
+    : undefined
+  const selectedResearchRecoveryLabel =
+    selectedResearchFailure?.action === 'configure_model'
+      ? tCommon(($) => $['datasetMenus.settings'])
+      : selectedResearchFailure?.action === 'configure_source'
+        ? t(($) => $['newKnowledge.openSource'])
+        : selectedResearchFailure?.action === 'reupload'
+          ? t(($) => $['newKnowledge.addDocument'])
+          : undefined
   const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
   const selectedResearchExpansionPhase = selectedResearchDefaultExpanded ? 'active' : 'terminal'
   const selectedResearchExpanded = selectedResearchTask
@@ -162,6 +178,7 @@ function RetrievalResultSession() {
             answer={researchAnswer.answer}
             citationCount={currentEvidence.length}
             onCitationClick={jumpToResearchCitation}
+            researchTaskId={selectedResearchTask.id}
             streaming={selectedResearchActive && !researchAnswer.persisted}
           />
         )}
@@ -170,8 +187,26 @@ function RetrievalResultSession() {
 
         {selectedFailed && (
           <FailedResult
-            description={localError || t(($) => $['newKnowledge.retrievalTest.failedDescription'])}
-            onRetry={retryFast}
+            description={
+              localError ||
+              (selectedFailureMessageKey
+                ? t(($) => $[selectedFailureMessageKey])
+                : t(($) => $['newKnowledge.retrievalTest.failedDescription']))
+            }
+            onRetry={
+              selected?.kind !== 'research' || researchTaskCanRetry(selectedResearchTask)
+                ? retryRetrieval
+                : undefined
+            }
+            pending={selected?.kind === 'research' && researchRetryPending}
+            recovery={
+              selectedResearchRecoveryPath && selectedResearchRecoveryLabel
+                ? {
+                    href: selectedResearchRecoveryPath,
+                    label: selectedResearchRecoveryLabel,
+                  }
+                : undefined
+            }
           />
         )}
 

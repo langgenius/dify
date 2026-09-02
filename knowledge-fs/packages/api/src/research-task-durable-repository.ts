@@ -80,7 +80,10 @@ export interface ResearchTaskDurableRepository
   extends ResearchTaskJobRepository,
     ResearchTaskDurableDispatch {
   advanceExecution(
-    input: ResearchTaskExecutionFence & { readonly nextStage: ResearchTaskJobStage },
+    input: ResearchTaskExecutionFence & {
+      readonly nextStage: ResearchTaskJobStage;
+      readonly progressDetails?: Readonly<Record<string, unknown>> | undefined;
+    },
   ): Promise<ResearchTaskJob | null>;
   claimExecution(input: {
     readonly expectedRowVersion: number;
@@ -107,7 +110,11 @@ export interface ResearchTaskDurableRepository
   cancelExecution(
     input: ResearchTaskExecutionFence & { readonly reason: string },
   ): Promise<ResearchTaskJob | null>;
-  completeExecution(input: ResearchTaskExecutionFence): Promise<ResearchTaskJob | null>;
+  completeExecution(
+    input: ResearchTaskExecutionFence & {
+      readonly progressDetails?: Readonly<Record<string, unknown>> | undefined;
+    },
+  ): Promise<ResearchTaskJob | null>;
   failExecution(
     input: ResearchTaskExecutionFence & { readonly error: string },
   ): Promise<ResearchTaskJob | null>;
@@ -669,7 +676,10 @@ export function createDatabaseResearchTaskDurableRepository({
         {
           generateProgressEventId,
           progress: (current) => ({
-            payload: { previousStage: current.stage },
+            payload: {
+              ...(input.progressDetails ? { details: input.progressDetails } : {}),
+              previousStage: current.stage,
+            },
             type: "research_task.stage_changed",
           }),
         },
@@ -773,7 +783,9 @@ function matchesExecutionFence(
 
 async function terminalExecution(
   database: DatabaseAdapter,
-  input: ResearchTaskExecutionFence,
+  input: ResearchTaskExecutionFence & {
+    readonly progressDetails?: Readonly<Record<string, unknown>> | undefined;
+  },
   stage: "canceled" | "completed" | "failed",
   error: string | undefined,
   generateProgressEventId: () => string,
@@ -821,7 +833,10 @@ async function terminalExecution(
         ? { error: error ?? "Research task execution failed" }
         : stage === "canceled"
           ? { reason: error ?? "Research task execution canceled" }
-          : { previousStage: current.stage },
+          : {
+              ...(input.progressDetails ? { details: input.progressDetails } : {}),
+              previousStage: current.stage,
+            },
     );
     return cloneJob(updated);
   });

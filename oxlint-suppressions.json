@@ -1387,11 +1387,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/markdown-blocks/think-block.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/base/markdown-blocks/video-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5

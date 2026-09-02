@@ -159,6 +159,7 @@ describe('ThinkBlock', () => {
 
       // Timer should be stopped immediately — isResponding undefined means not in active response
       expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+      expect(screen.queryByText(/\(0\.0s\)/)).not.toBeInTheDocument()
     })
   })
 

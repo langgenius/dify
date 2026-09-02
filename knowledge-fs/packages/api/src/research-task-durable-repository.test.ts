@@ -637,6 +637,7 @@ describe.each(["postgres", "tidb"] as const)(
           expectedRowVersion: 5,
           leaseToken: LEASE_TOKEN,
           now: 2_000,
+          progressDetails: { chunks: 2, documents: 1, sources: 1 },
           researchTaskJobId: JOB_ID,
         }),
       ).resolves.toMatchObject({ completedAt: 2_000, rowVersion: 6, stage: "completed" });
@@ -653,7 +654,10 @@ describe.each(["postgres", "tidb"] as const)(
         `research-task-progress:${JOB_ID}:6:research_task.stage_changed`,
         "research_task.stage_changed",
         "completed",
-        JSON.stringify({ previousStage: "generating" }),
+        JSON.stringify({
+          details: { chunks: 2, documents: 1, sources: 1 },
+          previousStage: "generating",
+        }),
         2_000,
       ]);
       expect(fake.commits).toBe(1);
@@ -1089,6 +1093,7 @@ describe.each(["postgres", "tidb"] as const)(
           leaseToken: LEASE_TOKEN,
           nextStage: "analyzing",
           now: 2_000,
+          progressDetails: { chunks: 2, retrievalCount: 5 },
           researchTaskJobId: JOB_ID,
         }),
       ).resolves.toMatchObject({ rowVersion: 6, stage: "analyzing" });
@@ -1097,7 +1102,12 @@ describe.each(["postgres", "tidb"] as const)(
           (call) =>
             call.tableName === "research_task_progress_events" && call.operation === "insert",
         )?.params,
-      ).toContain(JSON.stringify({ previousStage: "retrieving" }));
+      ).toContain(
+        JSON.stringify({
+          details: { chunks: 2, retrievalCount: 5 },
+          previousStage: "retrieving",
+        }),
+      );
 
       for (const call of [
         ...heartbeatDatabase.calls,

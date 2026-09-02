@@ -81,6 +81,16 @@ const researchPayloadContainers = new Set([
   'warnings',
 ])
 const researchPayloadLabels = new Set(['name', 'query', 'question', 'title', 'topic'])
+const researchPayloadCounts = new Set([
+  'chunkcount',
+  'chunks',
+  'documentcount',
+  'documents',
+  'retrievalcount',
+  'sourcecount',
+  'sources',
+  'topk',
+])
 const researchPayloadText = new Set([
   ...researchPayloadLabels,
   'coverage',
@@ -105,6 +115,10 @@ function normalizedPayloadKey(key: string) {
   return key.replaceAll(/[^a-z0-9]/gi, '').toLocaleLowerCase()
 }
 
+function isResearchPayloadCount(key: string) {
+  return researchPayloadCounts.has(normalizedPayloadKey(key))
+}
+
 function payloadCountLabel(key: string, labels: ResearchPayloadLabels) {
   const normalizedKey = normalizedPayloadKey(key)
   if (normalizedKey === 'chunkcount' || normalizedKey === 'chunks') return labels.chunks
@@ -112,6 +126,19 @@ function payloadCountLabel(key: string, labels: ResearchPayloadLabels) {
   if (normalizedKey === 'retrievalcount') return labels.retrievals
   if (normalizedKey === 'sourcecount' || normalizedKey === 'sources') return labels.sources
   if (normalizedKey === 'topk') return labels.topK
+}
+
+function compareResearchPayloadEntries(
+  [leftKey]: [string, unknown],
+  [rightKey]: [string, unknown],
+) {
+  const left = normalizedPayloadKey(leftKey)
+  const right = normalizedPayloadKey(rightKey)
+  const leftRank = researchPayloadText.has(left) ? 0 : isResearchPayloadCount(leftKey) ? 1 : 2
+  const rightRank = researchPayloadText.has(right) ? 0 : isResearchPayloadCount(rightKey) ? 1 : 2
+  if (leftRank !== rightRank) return leftRank - rightRank
+  if (left === right) return 0
+  return left < right ? -1 : 1
 }
 
 function researchPayloadLines(payload: Record<string, unknown>, labels: ResearchPayloadLabels) {
@@ -152,12 +179,14 @@ function researchPayloadLines(payload: Record<string, unknown>, labels: Research
         `${String(label).trim()}${countEntry ? ` · ${countEntry[1]} ${labels.chunks}` : ''}`,
       )
     }
-    entries.forEach(([nestedKey, nested]) => {
+    entries.sort(compareResearchPayloadEntries).forEach(([nestedKey, nested]) => {
       if (nestedKey !== labelEntry?.[0] && nestedKey !== countEntry?.[0])
         visit(nested, nestedKey, depth + 1)
     })
   }
-  Object.entries(payload).forEach(([key, value]) => visit(value, key))
+  Object.entries(payload)
+    .sort(compareResearchPayloadEntries)
+    .forEach(([key, value]) => visit(value, key))
   return [...new Set(lines)].slice(0, 12)
 }
 
@@ -413,16 +442,24 @@ export function ResearchProcess({
               const stageDuration =
                 actualStageDuration(events, stage, task, now, i18n.language) ??
                 estimatedStageDuration(plan, stage, i18n.language)
-              const fallbackPayload = fallbackResearchStagePayload({
-                documentCount,
-                evidenceCount,
-                stage,
-                task,
-              })
-              const payloadLines = [...researchStagePayloads(events, stage), fallbackPayload]
+              const persistedLines = researchStagePayloads(events, stage)
                 .flatMap((payload) => researchPayloadLines(payload, payloadLabels))
                 .filter((line, lineIndex, lines) => lines.indexOf(line) === lineIndex)
-                .slice(0, 12)
+              const payloadLines = (
+                persistedLines.length > 0
+                  ? persistedLines
+                  : current && stage !== 'planning'
+                    ? []
+                    : researchPayloadLines(
+                        fallbackResearchStagePayload({
+                          documentCount,
+                          evidenceCount,
+                          stage,
+                          task,
+                        }),
+                        payloadLabels,
+                      )
+              ).slice(0, 12)
               return (
                 <li key={stage} className="flex items-stretch gap-2.5 overflow-hidden">
                   <span
@@ -503,7 +540,7 @@ export function RecordButton({
   record: RetrievalTestRecord
 }) {
   const { t, i18n } = useTranslation('dataset')
-  const failed = record.kind !== 'research' && record.status === 'failed'
+  const failed = record.status === 'failed'
   const activeResearchStage =
     record.kind === 'research' && record.status === 'running'
       ? researchStageOrder[
@@ -535,7 +572,7 @@ export function RecordButton({
                 {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
               </>
             ) : failed ? (
-              record.durationMs !== undefined ? (
+              record.kind !== 'research' && record.durationMs !== undefined ? (
                 t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
                   duration: formatDuration(record.durationMs, i18n.language),
                 })

@@ -1,10 +1,21 @@
-import { createInMemoryResearchTaskProgressRepository } from "@knowledge/api";
+import {
+  createInMemoryResearchTaskProgressRepository,
+  createResearchTaskRuntime,
+} from "@knowledge/api";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   assertApiResearchTaskDurability,
   createApiResearchTaskRuntime,
 } from "./research-task-runtime-options";
+
+vi.mock("@knowledge/api", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@knowledge/api")>();
+  return {
+    ...original,
+    createResearchTaskRuntime: vi.fn(original.createResearchTaskRuntime),
+  };
+});
 
 describe("Research task production durability", () => {
   it("fails closed when production would fall back to a process-local task runtime", () => {
@@ -103,5 +114,45 @@ describe("Research task production durability", () => {
         },
       ],
     });
+  });
+
+  it("publishes answer deltas through the production progress repository", async () => {
+    const progress = createInMemoryResearchTaskProgressRepository({
+      maxEvents: 10,
+      maxListLimit: 10,
+      maxSubscribers: 2,
+    });
+    const append = vi.spyOn(progress, "append");
+    const createRuntime = vi.mocked(createResearchTaskRuntime);
+    createRuntime.mockClear();
+
+    createApiResearchTaskRuntime({
+      access: {} as never,
+      adapter: { jobs: {} } as never,
+      generator: {} as never,
+      manifests: {} as never,
+      partials: {} as never,
+      progress,
+      repository: {} as never,
+    });
+
+    const runtimeOptions = createRuntime.mock.calls.at(-1)?.[0];
+    await runtimeOptions?.progress?.publish(
+      {
+        id: "research-task-1",
+        knowledgeSpaceId: "space-1",
+        stage: "generating",
+        tenantId: "tenant-1",
+      } as never,
+      "research_task.answer_delta",
+      { delta: "Live answer", executionAttempt: 1, offset: 0 },
+    );
+
+    expect(append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: { delta: "Live answer", executionAttempt: 1, offset: 0 },
+        type: "research_task.answer_delta",
+      }),
+    );
   });
 });

@@ -574,6 +574,67 @@ describe("research task production runtime", () => {
     expect(repository.job.stage).toBe("completed");
   });
 
+  it("persists retrieved evidence through the durable checkpoint before generation", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+    });
+    const partials = createInMemoryResearchTaskPartialResultRepository({
+      maxListLimit: 10,
+      maxResults: 10,
+    });
+    let partialCountBeforeGeneration = 0;
+    const bundle = retrievedEvidenceBundle();
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          await input.onResearchStageChange?.("retrieving");
+          await input.onResearchStageChange?.("analyzing");
+          expect(input.onResearchRetrievalCheckpoint).toBeUndefined();
+          await input.onResearchDurableCheckpoint?.({
+            ...durableRetrievalCheckpoint(frozenRuntime),
+            evidenceBundle: bundle,
+          });
+          partialCountBeforeGeneration = (
+            await partials.list({
+              limit: 10,
+              researchTaskJobId: JOB_ID,
+              tenantId: "tenant-1",
+            })
+          ).items.length;
+          await input.onResearchStageChange?.("generating");
+          yield {
+            finishReason: "retrieval-evidence",
+            metadata: { evidenceBundle: bundle },
+            type: "done" as const,
+          };
+        },
+      },
+      partials,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(partialCountBeforeGeneration).toBe(1);
+    await expect(
+      partials.list({
+        limit: 10,
+        researchTaskJobId: JOB_ID,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        { evidenceBundle: { items: [{ text: "Retrieved before generation" }], state: "partial" } },
+        { evidenceBundle: { items: [{ text: "Retrieved before generation" }] } },
+      ],
+    });
+  });
+
   it("advances with the latest row version after a heartbeat during generation", async () => {
     const repository = new MemoryDurableRepository(baseJob());
     let heartbeatObserved: (() => void) | undefined;
@@ -881,9 +942,16 @@ describe("research task production runtime", () => {
     ).resolves.toMatchObject({
       items: [
         {
+          evidenceBundle: {
+            ...durableRetrievalCheckpoint(frozenRuntime).evidenceBundle,
+            state: "partial",
+          },
+          sequence: 1,
+        },
+        {
           answer: "Recovered answer",
           evidenceBundle: durableRetrievalCheckpoint(frozenRuntime).evidenceBundle,
-          sequence: 1,
+          sequence: 2,
         },
       ],
     });
@@ -1564,35 +1632,59 @@ describe("research task production runtime", () => {
     });
   });
 
-  it.each(["RESEARCH_EVIDENCE_REASONING_INVALID", "RESEARCH_EVIDENCE_REASONING_TRUNCATED"])(
-    "fails an explicitly non-retryable %s error without spending every attempt",
-    async (code) => {
-      const repository = new MemoryDurableRepository(baseJob());
-      const runtime = createResearchTaskRuntime({
-        ...runtimeOptions(repository),
-        generator: {
-          stream: async function* () {
-            yield traceStep("query.retrieve");
-            throw Object.assign(new Error("research.judge returned invalid structured JSON"), {
-              code,
-              retryable: false,
-            });
-          },
+  it("retries an invalid Research reasoning response from its durable checkpoint", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw Object.assign(new Error("research.judge returned invalid structured JSON"), {
+            code: "RESEARCH_EVIDENCE_REASONING_INVALID",
+            retryable: true,
+          });
         },
-      });
+      },
+    });
 
-      await expect(runtime.tick()).resolves.toMatchObject({
-        failed: 1,
-        leased: 1,
-        retryScheduled: 0,
-      });
-      expect(repository.job).toMatchObject({
-        error: code,
-        executionAttempts: 1,
-        stage: "failed",
-      });
-    },
-  );
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 0,
+      leased: 1,
+      retryScheduled: 1,
+    });
+    expect(repository.job).toMatchObject({
+      error: "research.judge returned invalid structured JSON",
+      executionAttempts: 1,
+      stage: "analyzing",
+    });
+  });
+
+  it("fails a truncated Research reasoning response without spending every attempt", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw Object.assign(new Error("research.judge returned invalid structured JSON"), {
+            code: "RESEARCH_EVIDENCE_REASONING_TRUNCATED",
+            retryable: false,
+          });
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 1,
+      leased: 1,
+      retryScheduled: 0,
+    });
+    expect(repository.job).toMatchObject({
+      error: "RESEARCH_EVIDENCE_REASONING_TRUNCATED",
+      executionAttempts: 1,
+      stage: "failed",
+    });
+  });
 
   it("reports progress publication failures without rolling back a completed task", async () => {
     const repository = new MemoryDurableRepository(baseJob());
@@ -2131,6 +2223,32 @@ function evidenceBundle() {
     missingEvidence: [],
     query: "Compare reliability findings",
     state: "not-enough-evidence" as const,
+  };
+}
+
+function retrievedEvidenceBundle() {
+  return {
+    ...evidenceBundle(),
+    items: [
+      {
+        citations: [
+          {
+            documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b01",
+            documentVersion: 1,
+            sectionPath: [],
+            startOffset: 0,
+          },
+        ],
+        conflicts: [],
+        freshness: { status: "fresh" as const },
+        metadata: {},
+        nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6c01",
+        score: 0.9,
+        scores: { final: 0.9, retrieval: 0.9 },
+        text: "Retrieved before generation",
+      },
+    ],
+    traceId: JOB_ID,
   };
 }
 
