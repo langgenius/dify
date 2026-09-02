@@ -185,7 +185,7 @@ export function DocumentReadingPane() {
             style={{ overflowX: 'hidden' }}
           >
             <ScrollAreaContent
-              className="flex min-h-full w-full max-w-full flex-col gap-3 px-2 pt-1 xl:px-0"
+              className="flex min-h-full w-full max-w-full flex-col gap-3 ps-2 pe-5 pt-1 xl:ps-0 xl:pe-3"
               style={{ minWidth: 0 }}
             >
               {contentBlocks.map((block) => {
