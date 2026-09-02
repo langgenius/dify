@@ -270,6 +270,10 @@ class Action:
     kind: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
     base_version: int = 0
+    # Opaque draft-workflow revision observed in the latest server view.
+    # Empty means the action does not mutate or otherwise depend on the app
+    # draft (for example a free-text conversation turn).
+    base_app_revision: str = ""
 
 
 @dataclass(kw_only=True)

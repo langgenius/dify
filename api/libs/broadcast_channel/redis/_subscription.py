@@ -1,6 +1,7 @@
 import logging
 import queue
 import threading
+import time
 import types
 from collections.abc import Generator, Iterator
 from typing import Any, Self, override
@@ -12,6 +13,8 @@ from redis import Redis, RedisCluster
 from redis.client import PubSub
 
 _logger = logging.getLogger(__name__)
+
+_SUBSCRIPTION_ACK_TIMEOUT_SECONDS = 2.0
 
 
 class RedisSubscriptionBase(Subscription):
@@ -40,7 +43,13 @@ class RedisSubscriptionBase(Subscription):
         self._started = False
 
     def _start_if_needed(self) -> None:
-        """Start the subscription if not already started."""
+        """Activate the subscription and start its listener if needed.
+
+        Redis ``subscribe`` methods only write the command to the socket. The
+        subscription is not active until Redis sends the corresponding
+        acknowledgement, so consume that acknowledgement here before the
+        listener can compete for reads from the PubSub connection.
+        """
         with self._start_lock:
             if self._started:
                 return
@@ -51,16 +60,58 @@ class RedisSubscriptionBase(Subscription):
                     f"The Redis {self._get_subscription_type()} subscription has been cleaned up"
                 )
 
-            self._subscribe()
-            _logger.debug("Subscribed to %s channel %s", self._get_subscription_type(), self._topic)
+            pubsub = self._pubsub
+            try:
+                self._subscribe()
+                self._wait_for_subscription_ack()
+                _logger.debug("Subscribed to %s channel %s", self._get_subscription_type(), self._topic)
 
-            self._listener_thread = threading.Thread(
-                target=self._listen,
-                name=f"redis-{self._get_subscription_type().replace(' ', '-')}-broadcast-{self._topic}",
-                daemon=True,
-            )
-            self._listener_thread.start()
-            self._started = True
+                self._listener_thread = threading.Thread(
+                    target=self._listen,
+                    name=f"redis-{self._get_subscription_type().replace(' ', '-')}-broadcast-{self._topic}",
+                    daemon=True,
+                )
+                self._listener_thread.start()
+                self._started = True
+            except BaseException:
+                # No listener owns the PubSub connection until activation has
+                # completed, so it is safe to clean it up synchronously here.
+                self._closed.set()
+                self._listener_thread = None
+                self._pubsub = None
+                try:
+                    pubsub.close()
+                except Exception:
+                    _logger.exception(
+                        "Failed to close Redis %s PubSub after subscription activation failed, topic=%s",
+                        self._get_subscription_type(),
+                        self._topic,
+                    )
+                raise
+
+    def _wait_for_subscription_ack(self) -> None:
+        deadline = time.monotonic() + _SUBSCRIPTION_ACK_TIMEOUT_SECONDS
+        ack_type = self._get_subscription_ack_type()
+
+        while True:
+            timeout = deadline - time.monotonic()
+            if timeout <= 0:
+                raise TimeoutError(
+                    f"Timed out waiting for Redis {self._get_subscription_type()} subscription acknowledgement "
+                    f"for channel {self._topic}"
+                )
+
+            raw_message = self._get_subscription_message(timeout=timeout)
+            if raw_message is None:
+                continue
+
+            if raw_message.get("type") == ack_type and self._channel_name(raw_message.get("channel")) == self._topic:
+                return
+
+            # Redis sends the acknowledgement before messages published to a
+            # newly subscribed channel. Preserve a data message anyway if a
+            # client implementation or reconnect path delivers one first.
+            self._process_message(raw_message)
 
     def _listen(self) -> None:
         """Main listener loop for processing messages."""
@@ -89,40 +140,7 @@ class RedisSubscriptionBase(Subscription):
             if self._closed.is_set():
                 break
 
-            if raw_message.get("type") != self._get_message_type():
-                continue
-
-            channel_field = raw_message.get("channel")
-            match channel_field:
-                case bytes():
-                    channel_name = channel_field.decode("utf-8")
-                case str():
-                    channel_name = channel_field
-                case _:
-                    channel_name = str(channel_field)
-
-            if channel_name != self._topic:
-                _logger.warning(
-                    "Ignoring %s message from unexpected channel %s", self._get_subscription_type(), channel_name
-                )
-                continue
-
-            payload_bytes: bytes | None = raw_message.get("data")
-            if not isinstance(payload_bytes, bytes):
-                _logger.error(
-                    "Received invalid data from %s channel %s, type=%s",
-                    self._get_subscription_type(),
-                    self._topic,
-                    type(payload_bytes),
-                )
-                continue
-
-            if payload_bytes == SIG_CLOSE:
-                # Close signals are broadcast to every subscriber on the topic.
-                # The closing subscription is already handled by the _closed check above.
-                continue
-
-            self._enqueue_message(payload_bytes)
+            self._process_message(raw_message)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
         try:
@@ -139,6 +157,44 @@ class RedisSubscriptionBase(Subscription):
             )
         finally:
             self._pubsub = None
+
+    @staticmethod
+    def _channel_name(channel_field: object) -> str:
+        match channel_field:
+            case bytes():
+                return channel_field.decode("utf-8")
+            case str():
+                return channel_field
+            case _:
+                return str(channel_field)
+
+    def _process_message(self, raw_message: dict[str, Any]) -> None:
+        if raw_message.get("type") != self._get_message_type():
+            return
+
+        channel_name = self._channel_name(raw_message.get("channel"))
+        if channel_name != self._topic:
+            _logger.warning(
+                "Ignoring %s message from unexpected channel %s", self._get_subscription_type(), channel_name
+            )
+            return
+
+        payload_bytes: bytes | None = raw_message.get("data")
+        if not isinstance(payload_bytes, bytes):
+            _logger.error(
+                "Received invalid data from %s channel %s, type=%s",
+                self._get_subscription_type(),
+                self._topic,
+                type(payload_bytes),
+            )
+            return
+
+        if payload_bytes == SIG_CLOSE:
+            # Close signals are broadcast to every subscriber on the topic.
+            # The closing subscription is already handled by the _closed check above.
+            return
+
+        self._enqueue_message(payload_bytes)
 
     def _enqueue_message(self, payload: bytes) -> None:
         """Enqueue a message to the internal queue with dropping behavior."""
@@ -226,9 +282,23 @@ class RedisSubscriptionBase(Subscription):
             listener = self._listener_thread
             self._listener_thread = None
             started = self._started
+            pubsub = self._pubsub
+            if not started:
+                self._pubsub = None
 
-        if started:
-            self._unblock_message_iterator()
+        if not started:
+            if pubsub is not None:
+                try:
+                    pubsub.close()
+                except Exception:
+                    _logger.exception(
+                        "Failed to close inactive Redis %s PubSub, topic=%s",
+                        self._get_subscription_type(),
+                        self._topic,
+                    )
+            return
+
+        self._unblock_message_iterator()
 
         # Send a control event on the same Redis channel to unblock the
         self._publish_close_event()
@@ -277,6 +347,14 @@ class RedisSubscriptionBase(Subscription):
 
     def _get_message(self) -> dict[str, Any] | None:
         """Get a message from Redis using the appropriate method."""
+        raise NotImplementedError
+
+    def _get_subscription_message(self, timeout: float) -> dict[str, Any] | None:
+        """Get a message while synchronously waiting for the subscription acknowledgement."""
+        raise NotImplementedError
+
+    def _get_subscription_ack_type(self) -> str:
+        """Return the acknowledgement type (e.g., 'subscribe' or 'ssubscribe')."""
         raise NotImplementedError
 
     def _get_message_type(self) -> str:

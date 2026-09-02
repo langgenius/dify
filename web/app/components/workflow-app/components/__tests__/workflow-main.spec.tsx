@@ -26,8 +26,16 @@ const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
 const mockUseCollaboration = vi.hoisted(() => vi.fn())
+const mockFitView = vi.hoisted(() => vi.fn())
 const mockSetCanvasReadOnly = vi.hoisted(() => vi.fn())
 const mockSetShowDifyBuilderPanel = vi.hoisted(() => vi.fn())
+const mockDifyBuilderProvider = vi.hoisted(() => ({
+  callbacks: null as null | {
+    onFocusCanvas: () => void
+    onRefreshCanvas: () => Promise<boolean>
+  },
+  identity: null as null | { appId?: string; tenantId?: string; userId?: string },
+}))
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -145,7 +153,30 @@ vi.mock('reactflow', () => ({
     setNodes: vi.fn(),
     getEdges: () => [],
     setEdges: vi.fn(),
+    fitView: mockFitView,
   }),
+}))
+
+vi.mock('../dify-builder/provider', () => ({
+  DifyBuilderProvider: ({
+    appId,
+    children,
+    onFocusCanvas,
+    onRefreshCanvas,
+    tenantId,
+    userId,
+  }: {
+    appId?: string
+    children: ReactNode
+    onFocusCanvas: () => void
+    onRefreshCanvas: () => Promise<boolean>
+    tenantId?: string
+    userId?: string
+  }) => {
+    mockDifyBuilderProvider.callbacks = { onFocusCanvas, onRefreshCanvas }
+    mockDifyBuilderProvider.identity = { appId, tenantId, userId }
+    return children
+  },
 }))
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
@@ -440,6 +471,8 @@ describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedContextProps = null
+    mockDifyBuilderProvider.callbacks = null
+    mockDifyBuilderProvider.identity = null
     collaborationRuntime.startCursorTracking.mockReset()
     collaborationRuntime.stopCursorTracking.mockReset()
     collaborationRuntime.onlineUsers = []
@@ -475,6 +508,11 @@ describe('WorkflowMain', () => {
       nodes,
       edges,
       viewport,
+    })
+    expect(mockDifyBuilderProvider.identity).toEqual({
+      appId: 'app-1',
+      tenantId: 'workspace-1',
+      userId: 'user-1',
     })
   })
 
@@ -556,6 +594,42 @@ describe('WorkflowMain', () => {
       fetchInspectVars: hookFns.fetchInspectVars,
       configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
     })
+  })
+
+  it('returns the workflow draft refresh result to Dify Builder', async () => {
+    hookFns.handleRefreshWorkflowDraft.mockResolvedValueOnce(false)
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const callbacks = mockDifyBuilderProvider.callbacks
+    if (!callbacks) throw new Error('Dify Builder provider callbacks were not registered')
+
+    await expect(callbacks.onRefreshCanvas()).resolves.toBe(false)
+  })
+
+  it('focuses the Builder canvas without animation when reduced motion is preferred', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string): MediaQueryList => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(() => true),
+        matches: true,
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    )
+    try {
+      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+      const callbacks = mockDifyBuilderProvider.callbacks
+      if (!callbacks) throw new Error('Dify Builder provider callbacks were not registered')
+
+      callbacks.onFocusCanvas()
+
+      expect(mockFitView).toHaveBeenCalledWith({ duration: 0 })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('passes collaboration props and tracks cursors when collaboration is enabled', () => {

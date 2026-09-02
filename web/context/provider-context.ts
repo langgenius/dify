@@ -31,6 +31,7 @@ export type ProviderContextState = {
   isFetchedPlanInfo: boolean
   enableBilling: boolean
   enableSkill: boolean
+  difyBuilderEnabled: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
@@ -55,6 +56,7 @@ export const baseProviderContextValue: ProviderContextState = {
   isFetchedPlanInfo: false,
   enableBilling: false,
   enableSkill: false,
+  difyBuilderEnabled: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,

@@ -10,6 +10,7 @@ This test suite covers all aspects of the Redis broadcast channel including:
 """
 
 import dataclasses
+import queue
 import threading
 import time
 from collections.abc import Generator
@@ -28,6 +29,26 @@ from libs.broadcast_channel.redis.sharded_channel import (
     _RedisShardedSubscription,
 )
 from libs.broadcast_channel.signals import SIG_CLOSE
+
+
+def _configure_subscription_ack(pubsub: MagicMock, topic: str, *, sharded: bool = False) -> None:
+    """Make a mocked PubSub acknowledge once, then return its configured value."""
+    get_message = pubsub.get_sharded_message if sharded else pubsub.get_message
+    get_message.return_value = None
+    ack_pending = True
+
+    def ack_then_messages(*args, **kwargs):  # noqa: ARG001
+        nonlocal ack_pending
+        if ack_pending:
+            ack_pending = False
+            return {
+                "type": "ssubscribe" if sharded else "subscribe",
+                "channel": topic.encode(),
+                "data": 1,
+            }
+        return get_message.return_value
+
+    get_message.side_effect = ack_then_messages
 
 
 class TestBroadcastChannel:
@@ -148,6 +169,7 @@ class TestTopic:
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         topic = Topic(mock_redis_client, "test-topic")
         subscription = topic.subscribe()
+        _configure_subscription_ack(mock_redis_client.pubsub.return_value, "enterprise-a:test-topic")
         try:
             subscription._start_if_needed()
         finally:
@@ -208,10 +230,21 @@ class TestShardedTopic:
         assert subscription._pubsub is mock_redis_client.pubsub.return_value
         assert subscription._topic == "test-sharded-topic"
 
-    def test_subscribe_prefixes_sharded_topic(self, mock_redis_client: MagicMock, config_overrides):
+    def test_subscribe_prefixes_sharded_topic(
+        self,
+        mock_redis_client: MagicMock,
+        config_overrides,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", MagicMock)
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
         subscription = sharded_topic.subscribe()
+        _configure_subscription_ack(
+            mock_redis_client.pubsub.return_value,
+            "enterprise-a:test-sharded-topic",
+            sharded=True,
+        )
         try:
             subscription._start_if_needed()
         finally:
@@ -241,6 +274,176 @@ class FakeRedisClient:
         self.pubsub = MagicMock(return_value=MagicMock())
 
 
+class AckControlledPubSub:
+    """PubSub fake whose subscription acknowledgement is released by the test."""
+
+    def __init__(self, topic: str, *, sharded: bool) -> None:
+        self.topic = topic
+        self.sharded = sharded
+        self.ack_read_started = threading.Event()
+        self.release_ack = threading.Event()
+        self.ack_consumed = threading.Event()
+        self.closed = threading.Event()
+        self.messages: queue.Queue[dict[str, object]] = queue.Queue()
+        self.read_threads: list[int] = []
+        self.get_message_calls: list[dict[str, object]] = []
+        self.get_sharded_message_calls: list[dict[str, object]] = []
+
+    def subscribe(self, topic: str) -> None:
+        assert not self.sharded
+        assert topic == self.topic
+
+    def ssubscribe(self, topic: str) -> None:
+        assert self.sharded
+        assert topic == self.topic
+
+    def unsubscribe(self, topic: str) -> None:
+        assert topic == self.topic
+
+    def sunsubscribe(self, topic: str) -> None:
+        assert topic == self.topic
+
+    def get_message(self, **kwargs) -> dict[str, object] | None:
+        self.get_message_calls.append(kwargs)
+        return self._next_message(kwargs["timeout"])
+
+    def get_sharded_message(self, **kwargs) -> dict[str, object] | None:
+        self.get_sharded_message_calls.append(kwargs)
+        return self._next_message(kwargs["timeout"])
+
+    def _next_message(self, timeout: float) -> dict[str, object] | None:
+        self.read_threads.append(threading.get_ident())
+        if not self.ack_consumed.is_set():
+            self.ack_read_started.set()
+            if not self.release_ack.wait(timeout):
+                return None
+            self.ack_consumed.set()
+            return {
+                "type": "ssubscribe" if self.sharded else "subscribe",
+                "channel": self.topic.encode(),
+                "data": 1,
+            }
+
+        try:
+            return self.messages.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def publish(self, payload: bytes) -> None:
+        if not self.ack_consumed.is_set():
+            return
+        self.messages.put_nowait(
+            {
+                "type": "smessage" if self.sharded else "message",
+                "channel": self.topic.encode(),
+                "data": payload,
+            }
+        )
+
+    def close(self) -> None:
+        self.closed.set()
+
+
+class AckControlledRedis:
+    def __init__(self, pubsub: AckControlledPubSub) -> None:
+        self._pubsub = pubsub
+
+    def publish(self, topic: str, payload: bytes) -> None:
+        assert topic == self._pubsub.topic
+        self._pubsub.publish(payload)
+
+    def spublish(self, topic: str, payload: bytes) -> None:
+        assert topic == self._pubsub.topic
+        self._pubsub.publish(payload)
+
+
+@pytest.mark.parametrize(
+    ("subscription_class", "sharded"),
+    [
+        pytest.param(_RedisSubscription, False, id="regular"),
+        pytest.param(_RedisShardedSubscription, True, id="sharded"),
+    ],
+)
+def test_context_entry_waits_for_target_subscription_ack_before_listener_and_immediate_publish(
+    subscription_class,
+    sharded: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    topic = "activation-barrier"
+    pubsub = AckControlledPubSub(topic, sharded=sharded)
+    client = AckControlledRedis(pubsub)
+    if sharded:
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", AckControlledRedis)
+    subscription = subscription_class(client=client, pubsub=pubsub, topic=topic)
+    activated = threading.Event()
+    activation_errors: list[BaseException] = []
+
+    def activate() -> None:
+        try:
+            subscription.__enter__()
+            activated.set()
+        except BaseException as error:
+            activation_errors.append(error)
+
+    activation_thread = threading.Thread(target=activate)
+    activation_thread.start()
+    try:
+        assert pubsub.ack_read_started.wait(timeout=1)
+        assert not activated.is_set()
+        assert subscription._listener_thread is None
+        assert pubsub.read_threads == [activation_thread.ident]
+
+        pubsub.release_ack.set()
+        activation_thread.join(timeout=1)
+        assert not activation_thread.is_alive()
+        assert activation_errors == []
+        assert activated.is_set()
+        assert pubsub.ack_consumed.is_set()
+
+        if sharded:
+            client.spublish(topic, b"terminal")
+            assert pubsub.get_sharded_message_calls[0]["ignore_subscribe_messages"] is False
+        else:
+            client.publish(topic, b"terminal")
+            assert pubsub.get_message_calls[0]["ignore_subscribe_messages"] is False
+        assert subscription.receive(timeout=1) == b"terminal"
+    finally:
+        pubsub.release_ack.set()
+        activation_thread.join(timeout=1)
+        subscription.close()
+
+
+@pytest.mark.parametrize(
+    ("subscription_class", "sharded"),
+    [
+        pytest.param(_RedisSubscription, False, id="regular"),
+        pytest.param(_RedisShardedSubscription, True, id="sharded"),
+    ],
+)
+def test_subscription_ack_timeout_closes_pubsub_without_starting_listener(
+    subscription_class,
+    sharded: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    topic = "activation-timeout"
+    pubsub = AckControlledPubSub(topic, sharded=sharded)
+    client = AckControlledRedis(pubsub)
+    if sharded:
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", AckControlledRedis)
+    monkeypatch.setattr("libs.broadcast_channel.redis._subscription._SUBSCRIPTION_ACK_TIMEOUT_SECONDS", 0.01)
+    subscription = subscription_class(client=client, pubsub=pubsub, topic=topic)
+
+    started_at = time.monotonic()
+    with pytest.raises(TimeoutError, match="subscription acknowledgement"):
+        subscription.__enter__()
+
+    assert time.monotonic() - started_at < 0.5
+    assert pubsub.closed.is_set()
+    assert subscription._closed.is_set()
+    assert subscription._pubsub is None
+    assert subscription._listener_thread is None
+
+
 class TestRedisSubscription:
     """Test cases for the _RedisSubscription class."""
 
@@ -257,6 +460,7 @@ class TestRedisSubscription:
         pubsub.unsubscribe = MagicMock()
         pubsub.close = MagicMock()
         pubsub.get_message = MagicMock()
+        _configure_subscription_ack(pubsub, "test-topic")
         return pubsub
 
     @pytest.fixture
@@ -332,6 +536,29 @@ class TestRedisSubscription:
             assert sub is subscription
             assert subscription._started is True
             mock_pubsub.subscribe.assert_called_once_with("test-topic")
+
+    def test_activation_ignores_other_channel_ack_and_preserves_data_before_target_ack(
+        self,
+        subscription: _RedisSubscription,
+        mock_pubsub: MagicMock,
+    ) -> None:
+        activation_messages = iter(
+            [
+                {"type": "subscribe", "channel": b"other-topic", "data": 1},
+                {"type": "message", "channel": b"test-topic", "data": b"early-message"},
+                {"type": "subscribe", "channel": b"test-topic", "data": 1},
+            ]
+        )
+        mock_pubsub.get_message.side_effect = lambda **kwargs: next(activation_messages, None)
+
+        subscription.__enter__()
+
+        assert subscription.receive(timeout=0.1) == b"early-message"
+        assert [call.kwargs["ignore_subscribe_messages"] for call in mock_pubsub.get_message.call_args_list[:3]] == [
+            False,
+            False,
+            False,
+        ]
 
     def test_close_idempotent(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that close() is idempotent and can be called multiple times."""
@@ -479,7 +706,10 @@ class TestRedisSubscription:
 
     def test_listener_thread_handles_redis_exceptions(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread handles Redis exceptions gracefully."""
-        mock_pubsub.get_message.side_effect = Exception("Redis error")
+        mock_pubsub.get_message.side_effect = [
+            {"type": "subscribe", "channel": b"test-topic", "data": 1},
+            Exception("Redis error"),
+        ]
 
         subscription._start_if_needed()
 
@@ -648,6 +878,7 @@ class TestRedisSubscription:
         ]
 
         for channel_name in channel_names:
+            _configure_subscription_ack(mock_pubsub, channel_name)
             subscription = _RedisSubscription(
                 client=mock_redis_client,
                 pubsub=mock_pubsub,
@@ -684,6 +915,7 @@ class TestRedisShardedSubscription:
         pubsub.sunsubscribe = MagicMock()
         pubsub.close = MagicMock()
         pubsub.get_sharded_message = MagicMock()
+        _configure_subscription_ack(pubsub, "test-sharded-topic", sharded=True)
         return pubsub
 
     @pytest.fixture
@@ -901,6 +1133,7 @@ class TestRedisShardedSubscription:
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
         )
+        mock_pubsub.get_sharded_message.side_effect = None
         mock_pubsub.get_sharded_message.return_value = {
             "type": "smessage",
             "channel": "test-sharded-topic",
@@ -916,6 +1149,35 @@ class TestRedisShardedSubscription:
             target_node="node-1",
         )
         assert result == mock_pubsub.get_sharded_message.return_value
+
+    def test_get_subscription_ack_uses_target_node_for_cluster_client(
+        self, mock_pubsub: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ):
+        class DummyRedisCluster:
+            def __init__(self):
+                self.get_node_from_key = MagicMock(return_value="node-1")
+
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.RedisCluster", DummyRedisCluster)
+
+        client = DummyRedisCluster()
+        subscription = _RedisShardedSubscription(
+            client=client,
+            pubsub=mock_pubsub,
+            topic="test-sharded-topic",
+        )
+        acknowledgement = {"type": "ssubscribe", "channel": b"test-sharded-topic", "data": 1}
+        mock_pubsub.get_sharded_message.side_effect = None
+        mock_pubsub.get_sharded_message.return_value = acknowledgement
+
+        result = subscription._get_subscription_message(timeout=0.25)
+
+        client.get_node_from_key.assert_called_once_with("test-sharded-topic")
+        mock_pubsub.get_sharded_message.assert_called_once_with(
+            ignore_subscribe_messages=False,
+            timeout=0.25,
+            target_node="node-1",
+        )
+        assert result is acknowledgement
 
     def test_listener_thread_ignores_subscribe_messages(
         self, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
@@ -960,7 +1222,10 @@ class TestRedisShardedSubscription:
         self, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
     ):
         """Test that listener thread handles Redis exceptions gracefully."""
-        mock_pubsub.get_sharded_message.side_effect = Exception("Redis error")
+        mock_pubsub.get_sharded_message.side_effect = [
+            {"type": "ssubscribe", "channel": b"test-sharded-topic", "data": 1},
+            Exception("Redis error"),
+        ]
 
         sharded_subscription._start_if_needed()
 
@@ -1123,6 +1388,7 @@ class TestRedisShardedSubscription:
         ]
 
         for channel_name in channel_names:
+            _configure_subscription_ack(mock_pubsub, channel_name, sharded=True)
             subscription = _RedisShardedSubscription(
                 client=mock_redis_client,
                 pubsub=mock_pubsub,
@@ -1181,8 +1447,10 @@ class TestRedisSubscriptionCommon:
         return FakeRedisClient()
 
     @pytest.fixture
-    def mock_pubsub(self) -> MagicMock:
+    def mock_pubsub(self, subscription_params) -> MagicMock:
         """Create a mock PubSub instance for testing."""
+        subscription_type, _ = subscription_params
+        topic = f"test-{subscription_type}-topic"
         pubsub = MagicMock()
         # Set up mock methods for both regular and sharded subscriptions
         pubsub.subscribe = MagicMock()
@@ -1192,6 +1460,7 @@ class TestRedisSubscriptionCommon:
         pubsub.get_message = MagicMock()
         pubsub.get_sharded_message = MagicMock()  # type: ignore[attr-defined]
         pubsub.close = MagicMock()
+        _configure_subscription_ack(pubsub, topic, sharded=subscription_type == "sharded")
         return pubsub
 
     @pytest.fixture

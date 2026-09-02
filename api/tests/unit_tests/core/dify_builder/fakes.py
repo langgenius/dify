@@ -272,7 +272,8 @@ class FakeDifyPort:
             for node_id in changed:
                 on_canvas({"event": "apply_error_fix", "node_id": node_id})
         return ApplyResult(
-            changed_nodes=changed, new_hash=self.hash,
+            changed_nodes=changed,
+            new_hash=self.hash,
             structure_fingerprint=_structural_fingerprint(self.graph),
         )
 
@@ -377,6 +378,12 @@ class StubAgent:
     def build_edit_intents(self, _edit_rules, _graph):
         return []
 
+    def respond_to_message(self, _state, _context, history, _graph, text, on_delta=None):
+        reply = f"reply {len(history)}: {text}"
+        if on_delta is not None:
+            on_delta(reply)
+        return reply
+
 
 # ---- fake DifyPort that actually builds the graph -------------------------
 
@@ -458,27 +465,35 @@ class FakeBuildDifyPort:
         self.hash = "h1"
         if not changed_nodes:
             return ApplyResult(
-                changed_nodes=[], new_hash=self.hash, changes=[], scope="",
+                changed_nodes=[],
+                new_hash=self.hash,
+                changes=[],
+                scope="",
                 structure_fingerprint=_structural_fingerprint(self.graph),
             )
         changes, scope = diff_graphs(before, graph)
         return ApplyResult(
-            changed_nodes=changed_nodes, new_hash=self.hash, changes=changes, scope=scope,
+            changed_nodes=changed_nodes,
+            new_hash=self.hash,
+            changes=changes,
+            scope=scope,
             structure_fingerprint=_structural_fingerprint(self.graph),
         )
 
-    def run_draft(
-        self, _app_id: str, _actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]
-    ) -> Run:
+    def run_draft(self, _app_id: str, _actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
         self.run_draft_inputs = copy.deepcopy(inputs)
         on_event(NodeEvent(node_id="llm", status="running"))
         if self.verify_pass:
             on_event(NodeEvent(node_id="llm", status="success"))
-            return Run(dify_run_id="build-run-1", status="succeeded",
-                       per_node=[NodeOutput(node_id="llm", status="success")])
+            return Run(
+                dify_run_id="build-run-1", status="succeeded", per_node=[NodeOutput(node_id="llm", status="success")]
+            )
         on_event(NodeEvent(node_id="llm", status="failed", error=self.fail_error))
-        return Run(dify_run_id="build-run-1", status="failed",
-                   per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)])
+        return Run(
+            dify_run_id="build-run-1",
+            status="failed",
+            per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
+        )
 
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
