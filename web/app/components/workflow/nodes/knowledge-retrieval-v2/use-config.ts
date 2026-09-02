@@ -12,6 +12,7 @@ import type {
   HandleRemoveCondition,
   HandleToggleConditionLogicalOperator,
   HandleUpdateCondition,
+  MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
@@ -21,13 +22,14 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import {
   ComparisonOperator,
   LogicalOperator,
-  MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { AppModeEnum } from '@/types/app'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import { toggleControlSpaceId } from './config-helpers'
 import { KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX } from './constants'
+import { normalizeKnowledgeFsMetadataFilterMode } from './metadata-filtering'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -173,10 +175,37 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     (mode: MetadataFilteringModeEnum) => {
       setInputs(
         produce(inputs, (draft) => {
-          draft.metadata_filtering_mode =
-            mode === MetadataFilteringModeEnum.manual
-              ? MetadataFilteringModeEnum.manual
-              : MetadataFilteringModeEnum.disabled
+          draft.metadata_filtering_mode = normalizeKnowledgeFsMetadataFilterMode(mode)
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
+  const handleMetadataModelChange = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      setInputs(
+        produce(inputs, (draft) => {
+          draft.metadata_model_config = {
+            provider: model.provider,
+            name: model.modelId,
+            mode: model.mode || AppModeEnum.CHAT,
+            completion_params: draft.metadata_model_config?.completion_params || {
+              temperature: 0.7,
+            },
+          }
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
+  const handleMetadataCompletionParamsChange = useCallback(
+    (params: Record<string, unknown>) => {
+      setInputs(
+        produce(inputs, (draft) => {
+          if (!draft.metadata_model_config) return
+          draft.metadata_model_config.completion_params = params
         }),
       )
     },
@@ -277,8 +306,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     filterFileVar,
     filterStringVar,
     handleAddCondition,
+    handleMetadataCompletionParamsChange,
     handleMetadataFilterChange,
     handleMetadataFilterModeChange,
+    handleMetadataModelChange,
     handleModeChange,
     handleNodeKindToggle,
     handleQueryAttachmentChange,

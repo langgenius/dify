@@ -19,16 +19,32 @@ const mockKnowledgeSpaceListProps = vi.hoisted(() => vi.fn())
 const mockVarReferencePickerProps = vi.hoisted(() => vi.fn())
 const mockHandleQueryAttachmentChange = vi.hoisted(() => vi.fn())
 const mockFilterFileVar = vi.hoisted(() => vi.fn())
-const mockInputs = vi.hoisted(() => ({
-  title: 'Knowledge Retrieval v2',
-  desc: '',
-  type: 'knowledge-retrieval-v2',
-  query_attachment_selector: ['start', 'images'],
-  query_variable_selector: ['start', 'query'],
-  control_space_ids: ['space-1'],
-  mode: 'research',
-  top_n: 10,
-}))
+const mockHandleMetadataModelChange = vi.hoisted(() => vi.fn())
+const mockHandleMetadataCompletionParamsChange = vi.hoisted(() => vi.fn())
+const mockInputs = vi.hoisted(
+  () =>
+    ({
+      title: 'Knowledge Retrieval v2',
+      desc: '',
+      type: 'knowledge-retrieval-v2',
+      query_attachment_selector: ['start', 'images'],
+      query_variable_selector: ['start', 'query'],
+      control_space_ids: ['space-1'],
+      mode: 'research',
+      top_n: 10,
+    }) as {
+      title: string
+      desc: string
+      type: string
+      query_attachment_selector: string[]
+      query_variable_selector: string[]
+      control_space_ids: string[]
+      mode: string
+      top_n: number
+      metadata_filtering_mode?: string
+      metadata_model_config?: Record<string, unknown>
+    },
+)
 
 vi.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: mockUseInfiniteQuery,
@@ -59,8 +75,10 @@ vi.mock('../use-config', () => ({
     filterFileVar: mockFilterFileVar,
     filterStringVar: vi.fn(),
     handleAddCondition: vi.fn(),
+    handleMetadataCompletionParamsChange: mockHandleMetadataCompletionParamsChange,
     handleMetadataFilterChange: mockHandleMetadataFilterChange,
     handleMetadataFilterModeChange: vi.fn(),
+    handleMetadataModelChange: mockHandleMetadataModelChange,
     handleModeChange: vi.fn(),
     handleNodeKindToggle: vi.fn(),
     handleQueryAttachmentChange: mockHandleQueryAttachmentChange,
@@ -159,6 +177,8 @@ describe('KnowledgeRetrievalV2Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInputs.control_space_ids = ['space-1']
+    delete mockInputs.metadata_filtering_mode
+    delete mockInputs.metadata_model_config
     mockUseQueries.mockReturnValue([
       {
         data: [
@@ -252,13 +272,71 @@ describe('KnowledgeRetrievalV2Panel', () => {
     expect(screen.queryByText('workflow.nodes.knowledgeRetrievalV2.filters.tags')).toBeNull()
     expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        allowedModes: ['disabled', 'manual'],
+        allowedModes: ['disabled', 'automatic', 'manual'],
+        metadataFilterMode: 'disabled',
         selectedDatasetsLoaded: true,
       }),
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'recall-10' }))
     expect(mockHandleTopNChange).toHaveBeenCalledWith(12)
+  })
+
+  it('wires the automatic metadata filtering model into the shared metadata filter', () => {
+    mockInputs.metadata_filtering_mode = 'automatic'
+    mockInputs.metadata_model_config = {
+      provider: 'openai',
+      name: 'gpt-4o-mini',
+      mode: 'chat',
+      completion_params: { temperature: 0.7 },
+    }
+
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-1'],
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadataFilterMode: 'automatic',
+        metadataModelConfig: mockInputs.metadata_model_config,
+        handleMetadataModelChange: mockHandleMetadataModelChange,
+        handleMetadataCompletionParamsChange: mockHandleMetadataCompletionParamsChange,
+      }),
+    )
+  })
+
+  it('falls back to disabled filtering for an unknown persisted metadata mode', () => {
+    mockInputs.metadata_filtering_mode = 'legacy-unknown'
+
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-1'],
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadataFilterMode: 'disabled' }),
+    )
   })
 
   it('only offers user metadata shared by every selected knowledge space with the same type', () => {

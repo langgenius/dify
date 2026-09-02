@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from core.rag.entities import RerankingModelConfig, SupportedComparisonOperator
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
+from graphon.nodes.llm.entities import ModelConfig
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalMetadataFilters
 
 KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"
@@ -40,7 +41,8 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
     reranking_model: RerankingModelConfig | None = None
     score_threshold: float | None = Field(default=None, ge=0, le=1)
     top_n: int = Field(default=10, ge=1, le=100)
-    metadata_filtering_mode: Literal["disabled", "manual"] = "disabled"
+    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] = "disabled"
+    metadata_model_config: ModelConfig | None = None
     metadata_filtering_conditions: KnowledgeRetrievalV2MetadataFilteringConditions | None = None
     metadata_filters: KnowledgeFSRetrievalMetadataFilters | None = None
 

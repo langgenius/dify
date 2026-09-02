@@ -4,7 +4,7 @@ import type {
   MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
 
 export type KnowledgeRetrievalV2Mode = 'fast' | 'deep' | 'research'
 export type KnowledgeRetrievalV2NodeKind = 'chunk' | 'section' | 'table' | 'image' | 'summary'
@@ -55,6 +55,7 @@ export type KnowledgeRetrievalV2NodeType = CommonNodeType & {
   score_threshold?: number | null
   top_n: number
   metadata_filtering_mode?: MetadataFilteringModeEnum
+  metadata_model_config?: ModelConfig
   metadata_filtering_conditions?: KnowledgeRetrievalV2MetadataFilteringConditions
   metadata_filters?: KnowledgeRetrievalV2MetadataFilters
   _control_spaces?: KnowledgeRetrievalV2SpaceSummary[]

@@ -311,13 +311,90 @@ describe('knowledge-retrieval-v2/use-config', () => {
     )
   })
 
-  it('normalizes every non-manual metadata mode to disabled', () => {
+  it('enables automatic metadata filtering and normalizes unknown modes to disabled', () => {
     const { result } = setup()
 
     act(() => result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.automatic))
 
     expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.automatic }),
+    )
+
+    act(() => result.current.handleMetadataFilterModeChange('unknown' as MetadataFilteringModeEnum))
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
       expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.disabled }),
+    )
+  })
+
+  it('stores the automatic metadata filtering model with default completion params', () => {
+    const { result } = setup()
+
+    act(() =>
+      result.current.handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' }),
+    )
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_model_config: {
+          provider: 'openai',
+          name: 'gpt-4o-mini',
+          mode: 'chat',
+          completion_params: { temperature: 0.7 },
+        },
+      }),
+    )
+  })
+
+  it('keeps tuned completion params when the automatic metadata model changes', () => {
+    const { result } = setup(
+      createData({
+        metadata_model_config: {
+          provider: 'openai',
+          name: 'gpt-4o-mini',
+          mode: 'chat',
+          completion_params: { temperature: 0.1 },
+        },
+      }),
+    )
+
+    act(() =>
+      result.current.handleMetadataModelChange({
+        provider: 'anthropic',
+        modelId: 'claude-sonnet-5',
+        mode: 'completion',
+      }),
+    )
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_model_config: {
+          provider: 'anthropic',
+          name: 'claude-sonnet-5',
+          mode: 'completion',
+          completion_params: { temperature: 0.1 },
+        },
+      }),
+    )
+
+    act(() => result.current.handleMetadataCompletionParamsChange({ temperature: 0.4 }))
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_model_config: expect.objectContaining({
+          completion_params: { temperature: 0.4 },
+        }),
+      }),
+    )
+  })
+
+  it('ignores completion params until an automatic metadata model is selected', () => {
+    const { result } = setup()
+
+    act(() => result.current.handleMetadataCompletionParamsChange({ temperature: 0.4 }))
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ metadata_model_config: expect.anything() }),
     )
   })
 

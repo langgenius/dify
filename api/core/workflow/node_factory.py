@@ -53,6 +53,10 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from core.workflow.nodes.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -491,6 +495,12 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)

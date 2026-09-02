@@ -5,19 +5,22 @@ from __future__ import annotations
 import logging
 import math
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, override
 
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, UserFrom
+from core.app.llm.model_access import build_dify_model_access
 from core.db.session_factory import session_factory
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.rerank_entities import RerankResult
 from graphon.node_events import NodeRunResult
@@ -38,6 +41,8 @@ from services.knowledge_fs.app_execution_capability import (
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSMetadataFieldResponse,
     KnowledgeFSRetrievalCustomMetadataCondition,
     KnowledgeFSRetrievalCustomMetadataFilter,
     KnowledgeFSRetrievalMetadataFilters,
@@ -60,6 +65,13 @@ from services.knowledge_fs.query_images import (
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from tasks.knowledge_fs_failed_retrieval_tasks import enqueue_workflow_failed_retrieval_capture
 
+from .automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+    KnowledgeFSAutomaticMetadataFilterOutcome,
+    KnowledgeFSMetadataFilterExtractor,
+    intersect_metadata_fields,
+    to_custom_metadata_conditions,
+)
 from .entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE, KnowledgeRetrievalV2NodeData
 from .exc import (
     KnowledgeFSRetrievalBindingError,
@@ -76,6 +88,8 @@ logger = logging.getLogger(__name__)
 
 MAX_WORKFLOW_RERANK_CANDIDATES = 100
 WORKFLOW_RERANK_POOL_MULTIPLIER = 4
+METADATA_CATALOG_PAGE_SIZE = 100
+METADATA_CATALOG_MAX_PAGES = 10
 
 
 def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
@@ -95,6 +109,16 @@ class _RetrievalCapability(Protocol):
         resource: KnowledgeResourceRef,
         payload: KnowledgeFSRetrievalTestPayload,
     ) -> KnowledgeFSRetrievalTestResponse: ...
+
+    def list_metadata_fields(
+        self,
+        *,
+        run_context: DifyRunContext,
+        caller_kind: KnowledgeFSAppSpaceJoinType,
+        resource: KnowledgeResourceRef,
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> KnowledgeFSMetadataFieldListResponse: ...
 
 
 class _BindingCapability(Protocol):
@@ -141,6 +165,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         capability_service: _RetrievalCapability | None = None,
         binding_service: _BindingCapability | None = None,
         rerank_model_manager: _RerankModelManager | None = None,
+        metadata_filter_extractor: KnowledgeFSMetadataFilterExtractor | None = None,
         max_concurrency: int = 4,
     ) -> None:
         super().__init__(
@@ -154,6 +179,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         self._capability_service = capability_service
         self._binding_service = binding_service
         self._rerank_model_manager = rerank_model_manager
+        self._metadata_filter_extractor = metadata_filter_extractor
         self._max_concurrency = max_concurrency
 
     @classmethod
@@ -164,15 +190,20 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
     @override
     def _run(self) -> NodeRunResult:
         started_at = time.perf_counter()
+        usage = LLMUsage.empty_usage()
         try:
             query = self._resolve_query()
             run_context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             query_images, query_image_inputs = self._resolve_query_images(run_context)
             self._ensure_draft_bindings(run_context)
+            filters, automatic_outcome = self._resolved_retrieval_filters(run_context=run_context, query=query)
+            if automatic_outcome is not None:
+                usage = automatic_outcome.usage
             responses = self._retrieve_all_spaces(
                 run_context=run_context,
                 query=query,
                 query_images=query_images,
+                filters=filters,
             )
             result_items, rerank_metrics = self._merge_items(
                 responses,
@@ -189,6 +220,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 responses,
                 rerank_metrics=rerank_metrics,
                 started_at=started_at,
+                automatic_outcome=automatic_outcome,
             )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -198,7 +230,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                     "result": ArrayObjectSegment(value=result_items),
                     "metrics": ObjectSegment(value=metrics),
                 },
-                metadata={},
+                metadata=self._usage_metadata(usage),
+                llm_usage=usage,
             )
         except KnowledgeFSRetrievalV2NodeError as exc:
             logger.warning("KnowledgeFS v2 retrieval failed: %s", exc)
@@ -207,7 +240,19 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 inputs={},
                 error=str(exc),
                 error_type=type(exc).__name__,
+                metadata=self._usage_metadata(usage),
+                llm_usage=usage,
             )
+
+    @staticmethod
+    def _usage_metadata(usage: LLMUsage) -> dict[WorkflowNodeExecutionMetadataKey, Any]:
+        if usage.total_tokens <= 0:
+            return {}
+        return {
+            WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+            WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+            WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+        }
 
     def _resolve_query(self) -> str:
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
@@ -320,6 +365,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         run_context: DifyRunContext,
         query: str,
         query_images: Sequence[KnowledgeFSRetrievalQueryImageReference],
+        filters: KnowledgeFSRetrievalMetadataFilters | None,
     ) -> list[tuple[str, KnowledgeFSRetrievalTestResponse]]:
         service = self._service()
         payload = KnowledgeFSRetrievalTestPayload(
@@ -327,11 +373,11 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             queryImages=list(query_images),
             mode=self._node_data.mode,
             include_text=True,
-            filters=self._resolved_retrieval_filters(),
+            filters=filters,
         )
 
         def retrieve(control_space_id: str) -> KnowledgeFSRetrievalTestResponse:
-            try:
+            with self._map_space_errors(control_space_id, action="retrieval"):
                 return service.run_retrieval(
                     run_context=run_context,
                     caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
@@ -341,45 +387,6 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                     ),
                     payload=payload,
                 )
-            except KnowledgeFSAppChannelDisabledError as exc:
-                raise KnowledgeFSRetrievalBindingError(
-                    "[knowledge_fs_workflow_access_disabled] "
-                    f"Workflow access is disabled for KnowledgeFS Space {control_space_id}; "
-                    "ask a workspace owner to enable the Workflow channel"
-                ) from exc
-            except KnowledgeFSAppSpaceUnavailableError as exc:
-                raise KnowledgeFSRetrievalBindingError(
-                    "[knowledge_fs_space_unavailable] "
-                    f"KnowledgeFS Space {control_space_id} is not ready for workflow retrieval; "
-                    "select an active, provisioned Space"
-                ) from exc
-            except KnowledgeFSAppAuthorizationNotReadyError as exc:
-                raise KnowledgeFSRetrievalBindingError(
-                    "[knowledge_fs_authorization_not_ready] "
-                    f"KnowledgeFS Space {control_space_id} permissions are not ready; "
-                    "ask a workspace owner to finish KnowledgeFS permission setup"
-                ) from exc
-            except KnowledgeFSAppAdmissionError as exc:
-                raise KnowledgeFSRetrievalBindingError(
-                    "[knowledge_fs_binding_not_enabled] "
-                    f"KnowledgeFS Space {control_space_id} is not bound to this workflow"
-                ) from exc
-            except ValidationError as exc:
-                raise KnowledgeFSRetrievalContractError(
-                    f"KnowledgeFS Space {control_space_id} returned an invalid retrieval response"
-                ) from exc
-            except KnowledgeFSProductRequestRejectedError as exc:
-                raise KnowledgeFSRetrievalConfigurationError(
-                    f"KnowledgeFS Space {control_space_id} rejected the retrieval request"
-                ) from exc
-            except (KnowledgeFSOperationUnavailableError, KnowledgeFSProductRemoteError) as exc:
-                raise KnowledgeFSRetrievalUnavailableError(
-                    f"KnowledgeFS Space {control_space_id} is unavailable"
-                ) from exc
-            except RuntimeError as exc:
-                raise KnowledgeFSRetrievalUnavailableError(
-                    f"KnowledgeFS Space {control_space_id} retrieval failed"
-                ) from exc
 
         worker_count = min(self._max_concurrency, len(self._node_data.control_space_ids))
         with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="knowledge-fs-retrieval") as executor:
@@ -389,10 +396,170 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 for space_id, future in zip(self._node_data.control_space_ids, futures, strict=True)
             ]
 
-    def _resolved_retrieval_filters(self) -> KnowledgeFSRetrievalMetadataFilters | None:
+    @staticmethod
+    @contextmanager
+    def _map_space_errors(control_space_id: str, *, action: str) -> Iterator[None]:
+        try:
+            yield
+        except KnowledgeFSAppChannelDisabledError as exc:
+            raise KnowledgeFSRetrievalBindingError(
+                "[knowledge_fs_workflow_access_disabled] "
+                f"Workflow access is disabled for KnowledgeFS Space {control_space_id}; "
+                "ask a workspace owner to enable the Workflow channel"
+            ) from exc
+        except KnowledgeFSAppSpaceUnavailableError as exc:
+            raise KnowledgeFSRetrievalBindingError(
+                "[knowledge_fs_space_unavailable] "
+                f"KnowledgeFS Space {control_space_id} is not ready for workflow {action}; "
+                "select an active, provisioned Space"
+            ) from exc
+        except KnowledgeFSAppAuthorizationNotReadyError as exc:
+            raise KnowledgeFSRetrievalBindingError(
+                "[knowledge_fs_authorization_not_ready] "
+                f"KnowledgeFS Space {control_space_id} permissions are not ready; "
+                "ask a workspace owner to finish KnowledgeFS permission setup"
+            ) from exc
+        except KnowledgeFSAppAdmissionError as exc:
+            raise KnowledgeFSRetrievalBindingError(
+                f"[knowledge_fs_binding_not_enabled] KnowledgeFS Space {control_space_id} is not bound to this workflow"
+            ) from exc
+        except ValidationError as exc:
+            raise KnowledgeFSRetrievalContractError(
+                f"KnowledgeFS Space {control_space_id} returned an invalid {action} response"
+            ) from exc
+        except KnowledgeFSProductRequestRejectedError as exc:
+            raise KnowledgeFSRetrievalConfigurationError(
+                f"KnowledgeFS Space {control_space_id} rejected the {action} request"
+            ) from exc
+        except (KnowledgeFSOperationUnavailableError, KnowledgeFSProductRemoteError) as exc:
+            raise KnowledgeFSRetrievalUnavailableError(f"KnowledgeFS Space {control_space_id} is unavailable") from exc
+        except RuntimeError as exc:
+            raise KnowledgeFSRetrievalUnavailableError(f"KnowledgeFS Space {control_space_id} {action} failed") from exc
+
+    def _resolved_retrieval_filters(
+        self,
+        *,
+        run_context: DifyRunContext,
+        query: str,
+    ) -> tuple[KnowledgeFSRetrievalMetadataFilters | None, KnowledgeFSAutomaticMetadataFilterOutcome | None]:
         filters = self._node_data.metadata_filters.model_copy(deep=True) if self._node_data.metadata_filters else None
+        mode = self._node_data.metadata_filtering_mode
+        if mode == "automatic":
+            outcome = self._resolve_automatic_metadata_filter(run_context=run_context, query=query)
+            if not outcome.conditions:
+                return filters, outcome
+            configured = self._node_data.metadata_filtering_conditions
+            filters = filters or KnowledgeFSRetrievalMetadataFilters()
+            filters.custom_metadata = KnowledgeFSRetrievalCustomMetadataFilter(
+                logical_operator=configured.logical_operator if configured else "or",
+                conditions=outcome.conditions,
+            )
+            return filters, outcome
+        if mode != "manual":
+            return filters, None
+        return self._resolve_manual_retrieval_filters(filters), None
+
+    def _resolve_automatic_metadata_filter(
+        self,
+        *,
+        run_context: DifyRunContext,
+        query: str,
+    ) -> KnowledgeFSAutomaticMetadataFilterOutcome:
+        model_config = self._node_data.metadata_model_config
+        if model_config is None:
+            raise KnowledgeFSRetrievalConfigurationError(
+                "KnowledgeFS automatic metadata filtering requires a metadata filtering model"
+            )
+        catalog = intersect_metadata_fields(
+            [
+                self._list_space_metadata_fields(run_context=run_context, control_space_id=control_space_id)
+                for control_space_id in self._node_data.control_space_ids
+            ]
+        )
+        field_names = [item.name for item in catalog]
+        if not catalog:
+            return KnowledgeFSAutomaticMetadataFilterOutcome(
+                conditions=[],
+                usage=LLMUsage.empty_usage(),
+                applied=False,
+                reason="no_shared_metadata_fields",
+            )
+        try:
+            extraction = self._metadata_filter_extractor_for(run_context).extract(
+                run_context=run_context,
+                model_config=model_config,
+                query=query,
+                field_names=field_names,
+            )
+        except KnowledgeFSRetrievalV2NodeError:
+            raise
+        except Exception:
+            # Match the legacy node: an LLM or parsing failure degrades to unfiltered retrieval
+            # instead of failing the whole node.
+            logger.warning("KnowledgeFS automatic metadata filter extraction failed", exc_info=True)
+            return KnowledgeFSAutomaticMetadataFilterOutcome(
+                conditions=[],
+                usage=LLMUsage.empty_usage(),
+                applied=False,
+                reason="extraction_failed",
+                field_names=field_names,
+                model=model_config.name,
+                provider=model_config.provider,
+            )
+        conditions = to_custom_metadata_conditions(extraction.metadata_map, catalog)
+        return KnowledgeFSAutomaticMetadataFilterOutcome(
+            conditions=conditions,
+            usage=extraction.usage,
+            applied=bool(conditions),
+            reason=None if conditions else "no_conditions_extracted",
+            field_names=field_names,
+            extracted_count=len(extraction.metadata_map),
+            model=extraction.model,
+            provider=extraction.provider,
+        )
+
+    def _metadata_filter_extractor_for(self, run_context: DifyRunContext) -> KnowledgeFSMetadataFilterExtractor:
+        if self._metadata_filter_extractor is not None:
+            return self._metadata_filter_extractor
+        credentials_provider, model_factory = build_dify_model_access(run_context)
+        return KnowledgeFSAutomaticMetadataFilterExtractor(
+            credentials_provider=credentials_provider,
+            model_factory=model_factory,
+        )
+
+    def _list_space_metadata_fields(
+        self,
+        *,
+        run_context: DifyRunContext,
+        control_space_id: str,
+    ) -> list[KnowledgeFSMetadataFieldResponse]:
+        service = self._service()
+        resource = KnowledgeResourceRef(kind="knowledge_fs", control_space_id=control_space_id)
+        fields: list[KnowledgeFSMetadataFieldResponse] = []
+        cursor: str | None = None
+        for _ in range(METADATA_CATALOG_MAX_PAGES):
+            with self._map_space_errors(control_space_id, action="metadata catalog"):
+                page = service.list_metadata_fields(
+                    run_context=run_context,
+                    caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                    resource=resource,
+                    cursor=cursor,
+                    limit=METADATA_CATALOG_PAGE_SIZE,
+                )
+            fields.extend(page.data)
+            cursor = page.next_cursor
+            if not cursor:
+                return fields
+        raise KnowledgeFSRetrievalContractError(
+            f"KnowledgeFS Space {control_space_id} metadata catalog exceeds the supported page count"
+        )
+
+    def _resolve_manual_retrieval_filters(
+        self,
+        filters: KnowledgeFSRetrievalMetadataFilters | None,
+    ) -> KnowledgeFSRetrievalMetadataFilters | None:
         configured = self._node_data.metadata_filtering_conditions
-        if self._node_data.metadata_filtering_mode != "manual" or not configured or not configured.conditions:
+        if not configured or not configured.conditions:
             return filters
 
         resolved_conditions: list[KnowledgeFSRetrievalCustomMetadataCondition] = []
@@ -628,6 +795,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         *,
         rerank_metrics: Mapping[str, Any],
         started_at: float,
+        automatic_outcome: KnowledgeFSAutomaticMetadataFilterOutcome | None = None,
     ) -> dict[str, Any]:
         effective_modes = list(dict.fromkeys(response.mode for _, response in responses))
         degradation_flags = list(
@@ -644,7 +812,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             }
             for control_space_id, response in responses
         ]
-        return {
+        metrics: dict[str, Any] = {
             "candidate_counts": {control_space_id: len(response.items) for control_space_id, response in responses},
             "degradation_flags": degradation_flags,
             "effective_modes": effective_modes,
@@ -654,6 +822,9 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             "total_ms": round(max(0.0, (time.perf_counter() - started_at) * 1_000), 3),
             "workflow_rerank": dict(rerank_metrics),
         }
+        if automatic_outcome is not None:
+            metrics["metadata_filtering"] = automatic_outcome.as_metrics()
+        return metrics
 
     @classmethod
     @override

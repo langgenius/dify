@@ -12,11 +12,14 @@ from pydantic import ValidationError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.knowledge_retrieval_v2 import knowledge_retrieval_v2_node as node_module
+from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import KnowledgeFSMetadataExtraction
 from core.workflow.nodes.knowledge_retrieval_v2.entities import KnowledgeRetrievalV2NodeData
+from core.workflow.nodes.knowledge_retrieval_v2.exc import KnowledgeFSRetrievalConfigurationError
 from core.workflow.nodes.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import FileSegment, StringSegment
@@ -26,7 +29,10 @@ from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppChannelDisabledError,
     KnowledgeFSAppSpaceUnavailableError,
 )
-from services.knowledge_fs.product_dto import KnowledgeFSRetrievalTestResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSRetrievalTestResponse,
+)
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.query_images import KnowledgeFSWorkflowQueryImageReference
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -69,10 +75,36 @@ def _empty_response(*, mode: str, space: str) -> KnowledgeFSRetrievalTestRespons
     )
 
 
+def _metadata_fields(*fields: tuple[str, str]) -> KnowledgeFSMetadataFieldListResponse:
+    return KnowledgeFSMetadataFieldListResponse.model_validate(
+        {
+            "items": [
+                {
+                    "count": 1,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "id": f"field-{name}",
+                    "name": name,
+                    "rowVersion": 1,
+                    "type": field_type,
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                }
+                for name, field_type in fields
+            ],
+            "nextCursor": None,
+        }
+    )
+
+
 class RecordingCapabilityService:
-    def __init__(self, responses: Mapping[str, KnowledgeFSRetrievalTestResponse | Exception]) -> None:
+    def __init__(
+        self,
+        responses: Mapping[str, KnowledgeFSRetrievalTestResponse | Exception],
+        metadata_fields: Mapping[str, KnowledgeFSMetadataFieldListResponse | Exception] | None = None,
+    ) -> None:
         self.responses = responses
+        self.metadata_fields = metadata_fields or {}
         self.calls: list[dict[str, object]] = []
+        self.metadata_calls: list[dict[str, object]] = []
         self._lock = threading.Lock()
 
     def run_retrieval(self, **kwargs: object) -> KnowledgeFSRetrievalTestResponse:
@@ -84,6 +116,47 @@ class RecordingCapabilityService:
         if isinstance(response, Exception):
             raise response
         return response
+
+    def list_metadata_fields(self, **kwargs: object) -> KnowledgeFSMetadataFieldListResponse:
+        resource = kwargs["resource"]
+        control_space_id = resource.control_space_id  # type: ignore[attr-defined]
+        with self._lock:
+            self.metadata_calls.append(kwargs)
+        response = self.metadata_fields[control_space_id]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+class RecordingMetadataFilterExtractor:
+    def __init__(
+        self,
+        metadata_map: list[dict[str, object]] | Exception,
+        *,
+        usage: LLMUsage | None = None,
+    ) -> None:
+        self.metadata_map = metadata_map
+        self.usage = usage or LLMUsage.empty_usage()
+        self.calls: list[dict[str, object]] = []
+
+    def extract(self, **kwargs: object) -> KnowledgeFSMetadataExtraction:
+        self.calls.append(kwargs)
+        if isinstance(self.metadata_map, Exception):
+            raise self.metadata_map
+        return KnowledgeFSMetadataExtraction(
+            metadata_map=list(self.metadata_map),
+            usage=self.usage,
+            model="gpt-4o-mini",
+            provider="openai",
+        )
+
+
+AUTOMATIC_MODEL_CONFIG = {
+    "provider": "openai",
+    "name": "gpt-4o-mini",
+    "mode": "chat",
+    "completion_params": {"temperature": 0.7},
+}
 
 
 class RecordingBindingService:
@@ -177,6 +250,7 @@ def _node(
     user_from: UserFrom = UserFrom.ACCOUNT,
     node_data_overrides: Mapping[str, object] | None = None,
     rerank_model_manager: RecordingRerankModelManager | None = None,
+    metadata_filter_extractor: RecordingMetadataFilterExtractor | None = None,
 ) -> KnowledgeRetrievalV2Node:
     node_data: dict[str, object] = {
         "control_space_ids": spaces,
@@ -202,6 +276,7 @@ def _node(
         capability_service=service,  # type: ignore[arg-type]
         binding_service=binding_service,  # type: ignore[arg-type]
         rerank_model_manager=rerank_model_manager or RecordingRerankModelManager(),  # type: ignore[arg-type]
+        metadata_filter_extractor=metadata_filter_extractor,
     )
 
 
@@ -490,6 +565,288 @@ def test_disabled_user_metadata_conditions_do_not_change_existing_retrievals() -
 
     payload = service.calls[0]["payload"]
     assert payload.filters.custom_metadata is None  # type: ignore[attr-defined]
+
+
+def test_automatic_metadata_conditions_are_extracted_from_the_shared_catalog_and_sent() -> None:
+    service = RecordingCapabilityService(
+        {
+            "space-a": _response(mode="fast", score=0.7, space="space-a", text="A"),
+            "space-b": _response(mode="fast", score=0.6, space="space-b", text="B"),
+        },
+        metadata_fields={
+            "space-a": _metadata_fields(("department", "string"), ("year", "number"), ("published_at", "time")),
+            "space-b": _metadata_fields(("department", "string"), ("year", "string"), ("published_at", "time")),
+        },
+    )
+    usage = LLMUsage.empty_usage().model_copy(update={"prompt_tokens": 30, "completion_tokens": 12, "total_tokens": 42})
+    extractor = RecordingMetadataFilterExtractor(
+        [
+            {"metadata_field_name": " department ", "metadata_field_value": "finance", "comparison_operator": "="},
+            {"metadata_field_name": "year", "metadata_field_value": "2024", "comparison_operator": "="},
+            {"metadata_field_name": "published_at", "metadata_field_value": "2024-01-01", "comparison_operator": ">="},
+            {"metadata_field_name": "owner", "metadata_field_value": "alice", "comparison_operator": "is"},
+        ],
+        usage=usage,
+    )
+
+    result = _node(
+        service=service,
+        spaces=["space-a", "space-b"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert len(extractor.calls) == 1
+    assert extractor.calls[0]["query"] == "camera"
+    assert extractor.calls[0]["field_names"] == ["department", "published_at"]
+    assert extractor.calls[0]["model_config"].name == "gpt-4o-mini"  # type: ignore[attr-defined]
+    assert [call["caller_kind"] for call in service.metadata_calls] == [
+        node_module.KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        node_module.KnowledgeFSAppSpaceJoinType.WORKFLOW,
+    ]
+    for call in service.calls:
+        payload = call["payload"]
+        assert payload.filters.document_types == ["handbook"]  # type: ignore[attr-defined]
+        assert payload.filters.custom_metadata.model_dump(by_alias=True, exclude_none=True) == {  # type: ignore[attr-defined]
+            "conditions": [
+                {
+                    "comparisonOperator": "is",
+                    "fieldType": "string",
+                    "name": "department",
+                    "value": "finance",
+                },
+                {
+                    "comparisonOperator": "after",
+                    "fieldType": "time",
+                    "name": "published_at",
+                    "value": "2024-01-01",
+                },
+            ],
+            "logicalOperator": "or",
+        }
+    assert result.outputs["metrics"].value["metadata_filtering"] == {
+        "applied": True,
+        "condition_count": 2,
+        "extracted_count": 4,
+        "field_names": ["department", "published_at"],
+        "mode": "automatic",
+        "model": "gpt-4o-mini",
+        "provider": "openai",
+    }
+    assert result.llm_usage.total_tokens == 42
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 42
+
+
+def test_automatic_metadata_filter_reuses_the_configured_logical_operator_and_coerces_numbers() -> None:
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+        metadata_fields={"space-a": _metadata_fields(("year", "number"), ("department", "string"))},
+    )
+    extractor = RecordingMetadataFilterExtractor(
+        [
+            {"metadata_field_name": "year", "metadata_field_value": "2024", "comparison_operator": ">="},
+            {"metadata_field_name": "year", "metadata_field_value": "not-a-number", "comparison_operator": "<"},
+            {"metadata_field_name": "department", "metadata_field_value": None, "comparison_operator": "not empty"},
+            {"metadata_field_name": "department", "metadata_field_value": "x", "comparison_operator": "matches"},
+        ]
+    )
+
+    result = _node(
+        service=service,
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+            "metadata_filtering_conditions": {"logical_operator": "and", "conditions": []},
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    payload = service.calls[0]["payload"]
+    assert payload.filters.custom_metadata.model_dump(by_alias=True, exclude_none=True) == {  # type: ignore[attr-defined]
+        "conditions": [
+            {"comparisonOperator": "≥", "fieldType": "number", "name": "year", "value": 2024},
+            {"comparisonOperator": "not empty", "fieldType": "string", "name": "department"},
+        ],
+        "logicalOperator": "and",
+    }
+    assert result.outputs["metrics"].value["metadata_filtering"]["condition_count"] == 2
+    assert result.outputs["metrics"].value["metadata_filtering"]["extracted_count"] == 4
+
+
+def test_automatic_metadata_filter_skips_extraction_without_shared_fields() -> None:
+    service = RecordingCapabilityService(
+        {
+            "space-a": _response(mode="fast", score=0.7, space="space-a", text="A"),
+            "space-b": _response(mode="fast", score=0.6, space="space-b", text="B"),
+        },
+        metadata_fields={
+            "space-a": _metadata_fields(("department", "string")),
+            "space-b": _metadata_fields(("department", "number")),
+        },
+    )
+    extractor = RecordingMetadataFilterExtractor([])
+
+    result = _node(
+        service=service,
+        spaces=["space-a", "space-b"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert extractor.calls == []
+    assert all(call["payload"].filters.custom_metadata is None for call in service.calls)  # type: ignore[attr-defined]
+    assert result.outputs["metrics"].value["metadata_filtering"] == {
+        "applied": False,
+        "condition_count": 0,
+        "extracted_count": 0,
+        "field_names": [],
+        "mode": "automatic",
+        "reason": "no_shared_metadata_fields",
+    }
+    assert result.metadata == {}
+
+
+def test_automatic_metadata_filter_fails_open_when_the_llm_extraction_breaks() -> None:
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+        metadata_fields={"space-a": _metadata_fields(("department", "string"))},
+    )
+    extractor = RecordingMetadataFilterExtractor(RuntimeError("llm timeout"))
+
+    result = _node(
+        service=service,
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert service.calls[0]["payload"].filters.custom_metadata is None  # type: ignore[attr-defined]
+    assert result.outputs["metrics"].value["metadata_filtering"] == {
+        "applied": False,
+        "condition_count": 0,
+        "extracted_count": 0,
+        "field_names": ["department"],
+        "mode": "automatic",
+        "model": "gpt-4o-mini",
+        "provider": "openai",
+        "reason": "extraction_failed",
+    }
+
+
+def test_automatic_metadata_filter_reports_no_conditions_when_the_llm_finds_none() -> None:
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+        metadata_fields={"space-a": _metadata_fields(("department", "string"))},
+    )
+
+    result = _node(
+        service=service,
+        spaces=["space-a"],
+        metadata_filter_extractor=RecordingMetadataFilterExtractor([]),
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert service.calls[0]["payload"].filters.custom_metadata is None  # type: ignore[attr-defined]
+    assert result.outputs["metrics"].value["metadata_filtering"]["reason"] == "no_conditions_extracted"
+
+
+def test_automatic_metadata_filter_fails_closed_on_missing_model_or_catalog_rejection() -> None:
+    extractor = RecordingMetadataFilterExtractor([])
+    missing_model = _node(
+        service=RecordingCapabilityService(
+            {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+            metadata_fields={"space-a": _metadata_fields(("department", "string"))},
+        ),
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={"metadata_filtering_mode": "automatic"},
+    )._run()
+    unavailable_model = _node(
+        service=RecordingCapabilityService(
+            {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+            metadata_fields={"space-a": _metadata_fields(("department", "string"))},
+        ),
+        spaces=["space-a"],
+        metadata_filter_extractor=RecordingMetadataFilterExtractor(
+            KnowledgeFSRetrievalConfigurationError("metadata model unavailable")
+        ),
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+    catalog_rejected_service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+        metadata_fields={"space-a": KnowledgeFSAppChannelDisabledError("KnowledgeFS workflow channel is disabled")},
+    )
+    catalog_rejected = _node(
+        service=catalog_rejected_service,
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert missing_model.status == WorkflowNodeExecutionStatus.FAILED
+    assert missing_model.error_type == "KnowledgeFSRetrievalConfigurationError"
+    assert missing_model.error == "KnowledgeFS automatic metadata filtering requires a metadata filtering model"
+    assert unavailable_model.status == WorkflowNodeExecutionStatus.FAILED
+    assert unavailable_model.error_type == "KnowledgeFSRetrievalConfigurationError"
+    assert unavailable_model.error == "metadata model unavailable"
+    assert catalog_rejected.status == WorkflowNodeExecutionStatus.FAILED
+    assert catalog_rejected.error_type == "KnowledgeFSRetrievalBindingError"
+    assert catalog_rejected.error is not None
+    assert catalog_rejected.error.startswith("[knowledge_fs_workflow_access_disabled] ")
+    assert catalog_rejected_service.calls == []
+    assert extractor.calls == []
+
+
+def test_automatic_metadata_catalog_follows_pagination_cursors() -> None:
+    class PagedCapabilityService(RecordingCapabilityService):
+        def list_metadata_fields(self, **kwargs: object) -> KnowledgeFSMetadataFieldListResponse:
+            self.metadata_calls.append(kwargs)
+            if kwargs["cursor"] is None:
+                page = _metadata_fields(("department", "string"))
+                return page.model_copy(update={"next_cursor": "cursor-2"})
+            return _metadata_fields(("year", "number"))
+
+    service = PagedCapabilityService({"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")})
+    extractor = RecordingMetadataFilterExtractor([])
+
+    result = _node(
+        service=service,
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "metadata_model_config": AUTOMATIC_MODEL_CONFIG,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [call["cursor"] for call in service.metadata_calls] == [None, "cursor-2"]
+    assert [call["limit"] for call in service.metadata_calls] == [100, 100]
+    assert extractor.calls[0]["field_names"] == ["department", "year"]
 
 
 def test_empty_retrieval_is_successful_and_dispatches_quality_capture(

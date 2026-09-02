@@ -35,7 +35,7 @@ export function GoldenQuestionImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
-        {open && <GoldenQuestionImportSession onOpenChange={onOpenChange} />}
+        <GoldenQuestionImportSession onOpenChange={onOpenChange} />
       </DialogPortal>
     </Dialog>
   )
