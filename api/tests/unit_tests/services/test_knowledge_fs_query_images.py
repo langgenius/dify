@@ -107,6 +107,32 @@ def test_validate_query_images_rejects_hidden_or_invalid_files(
     assert error.value.code == code
 
 
+def test_validate_query_images_rejects_missing_and_oversized_aggregate(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_files(monkeypatch, [])
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as missing:
+        query_images.validate_query_image_references(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            upload_file_ids=["missing"],
+            mark_used=False,
+        )
+    assert missing.value.code == "QUERY_IMAGE_NOT_FOUND"
+
+    uploads = [
+        _upload(upload_file_id=f"00000000-0000-4000-8000-00000000000{index}", size=9 * 1024 * 1024)
+        for index in range(1, 5)
+    ]
+    _install_files(monkeypatch, uploads)
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as oversized:
+        query_images.validate_query_image_references(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            upload_file_ids=[upload.id for upload in uploads],
+            mark_used=False,
+        )
+    assert oversized.value.code == "QUERY_IMAGE_TOTAL_TOO_LARGE"
+
+
 def test_load_query_image_sniffs_bytes_and_hashes_content(monkeypatch: pytest.MonkeyPatch) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     upload = _upload(size=len(body))
@@ -192,6 +218,89 @@ def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ow
             upload_file_id=upload.id,
         )
     assert wrong_subject.value.code == "QUERY_IMAGE_GRANT_INVALID"
+
+
+def test_workflow_grant_loads_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = b"\x89PNG\r\n\x1a\nrest"
+    tool_file = SimpleNamespace(
+        file_key="tool-files/image.png",
+        id="00000000-0000-4000-8000-000000000002",
+        mimetype="image/png",
+        size=len(body),
+        tenant_id="tenant-1",
+    )
+
+    class _ToolFileSession(_Session):
+        def get(self, model: object, file_id: str) -> SimpleNamespace | None:
+            assert model is query_images.ToolFile
+            return tool_file if file_id == tool_file.id else None
+
+    class _Controller:
+        def get_tool_file(self, **_kwargs: object) -> SimpleNamespace:
+            return tool_file
+
+    monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(_ToolFileSession()))
+    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
+    monkeypatch.setattr(query_images.dify_config, "SECRET_KEY", "test-secret")
+    monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
+    monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
+
+    reference = query_images.issue_workflow_query_image_reference(
+        app_id="app-1",
+        file=File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            reference=tool_file.id,
+            filename="diagram.png",
+        ),
+        now=1_000,
+        tenant_id="tenant-1",
+    )
+    resolved = query_images.load_query_image(
+        access_grant=reference.access_grant,
+        subject_id="dify-app:app-1",
+        tenant_id="tenant-1",
+        upload_file_id=tool_file.id,
+    )
+
+    assert resolved.body == body
+    assert resolved.mime_type == "image/png"
+
+
+def test_workflow_grant_rejects_invalid_context_and_file_shape() -> None:
+    image = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="file-1",
+    )
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as invalid_context:
+        query_images.issue_workflow_query_image_reference(
+            app_id=" ",
+            file=image,
+            tenant_id="tenant-1",
+        )
+    assert invalid_context.value.code == "QUERY_IMAGE_CONTEXT_INVALID"
+
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as invalid_type:
+        query_images.issue_workflow_query_image_reference(
+            app_id="app-1",
+            file=File(
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference="file-1",
+            ),
+            tenant_id="tenant-1",
+        )
+    assert invalid_type.value.code == "QUERY_IMAGE_MIME_UNSUPPORTED"
+
+    object.__setattr__(image, "reference", None)
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as missing_reference:
+        query_images.issue_workflow_query_image_reference(
+            app_id="app-1",
+            file=image,
+            tenant_id="tenant-1",
+        )
+    assert missing_reference.value.code == "QUERY_IMAGE_REFERENCE_UNSUPPORTED"
 
 
 def test_workflow_grant_rejects_cross_tenant_files_and_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
