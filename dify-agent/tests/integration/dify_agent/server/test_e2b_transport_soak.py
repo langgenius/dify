@@ -494,11 +494,14 @@ async def _run_idle(
         bindings_by_sequence[sequence] = binding
         known[binding.binding_ref] = binding
 
+    bindings: list[_Binding] = []
     try:
         await _gather_checked(
             [create_one(sequence) for sequence in range(settings.idle_bindings)],
             message="idle binding creation failed; do not reduce the configured capacity gate",
         )
+        bindings = [bindings_by_sequence[index] for index in range(settings.idle_bindings)]
+        await _require_exact_idle_inventory(settings, ledger, bindings, stage="idle_create_state")
     except BaseException as exc:
         ledger.record(
             "stage_end",
@@ -516,8 +519,6 @@ async def _run_idle(
         exception_type=None,
     )
 
-    bindings = [bindings_by_sequence[index] for index in range(settings.idle_bindings)]
-    await _require_exact_idle_inventory(settings, ledger, bindings)
     for round_number in range(settings.idle_rounds):
         ledger.record(
             "stage_start",
@@ -539,6 +540,12 @@ async def _run_idle(
             await _gather_checked(
                 [_probe_binding(settings, ledger, binding) for binding in bindings],
                 message=f"idle probe round {round_number} failed",
+            )
+            await _require_exact_idle_inventory(
+                settings,
+                ledger,
+                bindings,
+                stage=f"idle_probe_{round_number:02d}_state",
             )
         except BaseException as exc:
             ledger.record(
@@ -648,12 +655,14 @@ async def _list_owned_e2b_sandboxes(settings: _SoakSettings) -> list[_OwnedSandb
     return sorted(owned, key=lambda sandbox: sandbox.sandbox_id)
 
 
-def _inventory_identity(sandboxes: Sequence[_OwnedSandbox]) -> list[tuple[str, str, str]]:
-    return sorted((sandbox.sandbox_id, sandbox.binding_id, sandbox.workspace_id) for sandbox in sandboxes)
+def _inventory_identity(sandboxes: Sequence[_OwnedSandbox]) -> list[tuple[str, str, str, str]]:
+    return sorted(
+        (sandbox.sandbox_id, sandbox.binding_id, sandbox.workspace_id, sandbox.state) for sandbox in sandboxes
+    )
 
 
-def _expected_idle_identity(bindings: Sequence[_Binding]) -> list[tuple[str, str, str]]:
-    return sorted((binding.binding_ref, binding.binding_id, binding.binding_id) for binding in bindings)
+def _expected_idle_identity(bindings: Sequence[_Binding]) -> list[tuple[str, str, str, str]]:
+    return sorted((binding.binding_ref, binding.binding_id, binding.binding_id, "paused") for binding in bindings)
 
 
 def _record_inventory(
@@ -724,14 +733,16 @@ async def _require_exact_idle_inventory(
     ledger: _JsonlLedger,
     bindings: Sequence[_Binding],
     *,
+    stage: str = "idle_identity",
     list_owned: _ListOwnedSandboxes = _list_owned_e2b_sandboxes,
     sleep: _Sleep = asyncio.sleep,
     monotonic: _Monotonic = time.monotonic,
 ) -> None:
+    """Require the exact run-owned Bindings to be visibly paused before continuing."""
     if any(binding.binding_ref != binding.workspace_ref for binding in bindings):
         ledger.record(
             "e2b_identity_check",
-            stage="idle_identity",
+            stage=stage,
             outcome="failed",
             expected_count=len(bindings),
             actual_count=None,
@@ -753,7 +764,7 @@ async def _require_exact_idle_inventory(
                 ) from last_list_error
             ledger.record(
                 "e2b_identity_check",
-                stage="idle_identity",
+                stage=stage,
                 attempt=attempt,
                 outcome="failed",
                 expected_count=len(expected),
@@ -768,7 +779,7 @@ async def _require_exact_idle_inventory(
             settings,
             ledger,
             list_owned=list_owned,
-            stage="idle_identity",
+            stage=stage,
             attempt=attempt,
             timeout_seconds=remaining_seconds,
         )
@@ -785,11 +796,11 @@ async def _require_exact_idle_inventory(
         last_list_error = None
         actual = _inventory_identity(actual_sandboxes)
         last_observed_count = len(actual)
-        _record_inventory(ledger, stage="idle_identity", sandboxes=actual_sandboxes, attempt=attempt)
+        _record_inventory(ledger, stage=stage, sandboxes=actual_sandboxes, attempt=attempt)
         if actual == expected:
             ledger.record(
                 "e2b_identity_check",
-                stage="idle_identity",
+                stage=stage,
                 attempt=attempt,
                 outcome="succeeded",
                 expected_count=len(expected),
@@ -800,7 +811,7 @@ async def _require_exact_idle_inventory(
         if monotonic() >= deadline:
             ledger.record(
                 "e2b_identity_check",
-                stage="idle_identity",
+                stage=stage,
                 attempt=attempt,
                 outcome="failed",
                 expected_count=len(expected),
@@ -1219,7 +1230,8 @@ class _FakeClock:
 
 
 @pytest.mark.anyio
-async def test_idle_inventory_requires_exact_binding_and_workspace_metadata(tmp_path: Path) -> None:
+@pytest.mark.parametrize("mismatch", ["workspace", "state"])
+async def test_idle_inventory_requires_exact_paused_identity(tmp_path: Path, mismatch: str) -> None:
     settings = _test_settings(tmp_path, name="identity", reconcile_timeout_seconds=0.1)
     clock = _FakeClock()
     binding = _Binding(
@@ -1230,8 +1242,10 @@ async def test_idle_inventory_requires_exact_binding_and_workspace_metadata(tmp_
     mismatched = _OwnedSandbox(
         sandbox_id=binding.binding_ref,
         binding_id=binding.binding_id,
-        workspace_id=f"{settings.binding_prefix}wrong-workspace",
-        state="paused",
+        workspace_id=(
+            f"{settings.binding_prefix}wrong-workspace" if mismatch == "workspace" else binding.binding_id
+        ),
+        state="running" if mismatch == "state" else "paused",
     )
 
     async def list_owned(_settings: _SoakSettings) -> list[_OwnedSandbox]:
