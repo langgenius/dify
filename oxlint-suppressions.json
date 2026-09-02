@@ -5002,11 +5002,6 @@
       "count": 2
     }
   },
-  "web/hooks/use-oauth.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/hooks/use-pay.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
