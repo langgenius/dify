@@ -893,6 +893,7 @@ class TestWorkflowTriggerEndpoints:
     def test_webhook_trigger_api_get(
         self,
         database_app: Flask,
+        sqlite_session: Session,
     ) -> None:
         api = workflow_trigger_module.WebhookTriggerApi()
         method = unwrap(api.get)
@@ -903,11 +904,11 @@ class TestWorkflowTriggerEndpoints:
             webhook_id="webhook-1",
             created_by=USER_ID,
         )
-        db.session.add(trigger)
-        db.session.commit()
+        sqlite_session.add(trigger)
+        sqlite_session.commit()
 
         with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, Parser(node_id="node-1"), app_model=_make_app())
+            result = method(api, Parser(node_id="node-1"), sqlite_session, app_model=_make_app())
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())

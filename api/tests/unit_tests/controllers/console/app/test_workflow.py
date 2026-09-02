@@ -131,9 +131,6 @@ def _make_workflow(**overrides) -> Workflow:
     workflow.rag_pipeline_variables = rag_pipeline_variables
     for key, value in overrides.items():
         setattr(workflow, key, value)
-    workflow.get_created_by_account = Mock(return_value=workflow.created_by_account)
-    workflow.get_updated_by_account = Mock(return_value=workflow.updated_by_account)
-    workflow.get_tool_published = Mock(return_value=workflow.tool_published)
     return workflow
 
 
@@ -650,10 +647,13 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     ]
 
 
-def test_published_workflow_get_uses_session_aware_response_source(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_published_workflow_get_uses_session_aware_response_source(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    sqlite_session.add(_account())
+    sqlite_session.commit()
     workflow = _make_workflow()
-    session = Mock(spec=Session)
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(session=Mock(return_value=session)))
+    monkeypatch.setattr(workflow_module.db, "session", lambda: sqlite_session)
     monkeypatch.setattr(
         workflow_module, "WorkflowService", lambda: SimpleNamespace(get_published_workflow=lambda **_kwargs: workflow)
     )
@@ -664,9 +664,9 @@ def test_published_workflow_get_uses_session_aware_response_source(monkeypatch: 
     response = handler(api, app_model=SimpleNamespace(id="app"))
 
     assert response["id"] == "workflow-1"
-    workflow.get_created_by_account.assert_called_once_with(session=session)
-    workflow.get_updated_by_account.assert_called_once_with(session=session)
-    workflow.get_tool_published.assert_called_once_with(session=session)
+    assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}
+    assert response["updated_by"] is None
+    assert response["tool_published"] is False
 
 
 def test_pipeline_variable_response_accepts_legacy_file_field_names() -> None:
