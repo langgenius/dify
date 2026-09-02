@@ -2339,7 +2339,9 @@ class Site(TypeBase):
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default_factory=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4())
+    )
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True, default=None)
     icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
