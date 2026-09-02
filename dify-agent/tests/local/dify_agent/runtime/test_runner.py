@@ -1036,7 +1036,9 @@ def test_runner_marks_interrupted_tool_calls_when_cancelled_during_tool_executio
         create=lambda _config: StaticToolsTestLayer(tool_entries=(slow_tool,)),
     )
     request = _request("current user", include_history=True)
-    request.composition.layers.insert(1, RunLayerSpec(name="static-tools", type=cast(str, StaticToolsTestLayer.type_id)))
+    request.composition.layers.insert(
+        1, RunLayerSpec(name="static-tools", type=cast(str, StaticToolsTestLayer.type_id))
+    )
     request.session_snapshot = _history_session_snapshot(stored_history)
     request.session_snapshot.layers.insert(
         1, LayerSessionSnapshot(name="static-tools", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
