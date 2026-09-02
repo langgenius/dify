@@ -36,7 +36,7 @@ from services.errors.account import (
     EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns
 
@@ -310,7 +310,7 @@ def _generate_account(
     if account:
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if not tenants:
-            if not FeatureService.is_workspace_creation_allowed():
+            if not SystemFeatureService.is_workspace_creation_allowed():
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 TenantService.create_owner_tenant(account, session=db.session())
@@ -318,7 +318,7 @@ def _generate_account(
     if not account:
         normalized_email = user_info.email.lower()
         oauth_new_user = True
-        if not FeatureService.get_system_features().is_allow_register:
+        if not SystemFeatureService.is_registration_allowed():
             if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
                 freeze_type = BillingService.get_email_freeze_type(normalized_email)
                 if freeze_type:

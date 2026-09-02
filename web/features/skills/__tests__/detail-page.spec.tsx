@@ -12,7 +12,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { StrictMode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import SkillDetailPage from '../detail-page'
 

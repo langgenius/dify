@@ -9,6 +9,7 @@ Flag missing coverage when a change alters a reachable contract such as:
 - User interaction, navigation, form submission, validation, or permissions.
 - Query or mutation behavior, URL state, persistence, or one-shot signals.
 - Loading, error, empty, and recovery states that users can encounter.
+- A hidden surface whose close-and-reopen behavior changes whether in-progress state resets or persists.
 - Accessibility-critical labels, keyboard flow, focus, disabled state, or overlay behavior.
 - A regression-prone business rule or bug fix that can be reproduced through a public boundary.
 

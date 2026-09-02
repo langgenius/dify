@@ -1,10 +1,12 @@
+"""Tests for the SystemFeatureService knowledge-filesystem policy."""
+
 from collections.abc import Callable
 
 import pytest
 
 from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
@@ -18,6 +20,6 @@ def test_get_system_features_reads_knowledge_fs_flag(
 ) -> None:
     config_overrides(KNOWLEDGE_FS_ENABLED=enabled)
 
-    result = FeatureService.get_system_features()
+    result = SystemFeatureService.get_public_system_features()
 
     assert result.knowledge_fs_enabled is enabled

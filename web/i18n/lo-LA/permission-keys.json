@@ -3,7 +3,6 @@
   "api_extension.manage": "ຈັດການການຕັ້ງຄ່າ API extension",
   "app.access_config": "ຕັ້ງຄ່າສິດການເຂົ້າເຖິງແອັບ",
   "app.acl.access_config": "ເບິ່ງ ແລະ ຈັດການສິດການເຂົ້າເຖິງ",
-  "app.acl.access_point_manage": "ເບິ່ງ ແລະ ຈັດການຈຸດເຂົ້າເຖິງ",
   "app.acl.delete": "ລຶບແອັບ",
   "app.acl.deploy": "ຕິດຕັ້ງແອັບ",
   "app.acl.edit": "ແກ້ໄຂຂໍ້ມູນແອັບ ແລະ ຈັດການລະບົບແອັບ",

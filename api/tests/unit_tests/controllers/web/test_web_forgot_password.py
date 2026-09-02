@@ -41,7 +41,10 @@ def _patch_wraps():
     with (
         patch("controllers.console.wraps.db") as mock_db,
         config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+            return_value=wraps_features.enable_email_password_login,
+        ),
     ):
         yield
 

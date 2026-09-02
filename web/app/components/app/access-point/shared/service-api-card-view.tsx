@@ -20,9 +20,9 @@ type ServiceApiCardViewProps = {
   available: boolean
   status: AccessPointStatus
   switchDisabled: boolean
-  busy?: boolean
   highlighted?: boolean
   onEnabledChange?: (enabled: boolean) => void
+  switchLoading?: boolean
 }
 
 export function ServiceApiCardView({
@@ -30,11 +30,11 @@ export function ServiceApiCardView({
   apiUrl,
   appMode,
   available,
-  busy = false,
   highlighted,
   onEnabledChange,
   status,
   switchDisabled,
+  switchLoading = false,
 }: ServiceApiCardViewProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -53,7 +53,7 @@ export function ServiceApiCardView({
       switchDisabled={switchDisabled}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
       onEnabledChange={onEnabledChange}
-      busy={busy}
+      switchLoading={switchLoading}
       actions={
         <>
           <ApiSecretKeyButton {...apiKeyButtonProps} />
