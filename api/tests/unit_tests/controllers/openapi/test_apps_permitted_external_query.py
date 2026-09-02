@@ -1,14 +1,17 @@
-"""Unit tests for PermittedExternalAppsListQuery — the
-/permitted-external-apps query validator.
+"""Unit tests for the /permitted-external-apps routes.
 
-Strict ConfigDict(extra='forbid'): cross-tenant tag/workspace_id are
-unresolvable, so the model must reject them as 422 instead of silently
-dropping them. Mode/name/page/limit have the same shape as AppListQuery.
+`PermittedExternalAppsListQuery` is strict (`ConfigDict(extra='forbid')`):
+cross-tenant tag/workspace_id are unresolvable, so the model must reject them as
+422 instead of silently dropping them. Mode/name/page/limit have the same shape
+as AppListQuery.
+
+The allow/deny answers live in `test_auth_matrix.py`; what is pinned here is what
+each route declares — the transaction boundary, and which of the two carries
+`CheckAppAccess`.
 """
 
 from __future__ import annotations
 
-import inspect
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -18,8 +21,10 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi.apps_permitted_external import (
     PermittedExternalAppDescribeApi,
+    PermittedExternalAppsListApi,
     PermittedExternalAppsListQuery,
 )
+from controllers.openapi.auth.requirements import CheckAppAccess
 from models.model import App, AppMode
 
 from ._mode_constants import NON_LISTABLE_MODES
@@ -71,10 +76,36 @@ def test_query_accepts_valid_mode():
     assert q.mode.value == "chat"
 
 
+@pytest.mark.parametrize(
+    ("view", "write"),
+    [(PermittedExternalAppsListApi.get, False), (PermittedExternalAppDescribeApi.get, False)],
+    ids=["list", "describe"],
+)
+def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
+    """Both reads carried `@with_session(write=False)` before they moved onto
+    `@endpoint`. The allow/deny matrix cannot see this — it observes admission
+    before the view body runs.
+    """
+    assert view.__spec__.write is write
+
+
+def test_describe_requires_webapp_access():
+    """SSO-only and app-scoped, but not run-scoped — and the web-app ACL and the
+    private-app check are gated on the app and its access mode, neither on the run
+    scope. Omitting `CheckAppAccess` here would silently drop both.
+    """
+    requirements = PermittedExternalAppDescribeApi.get.__spec__.requirements
+    assert any(isinstance(requirement, CheckAppAccess) for requirement in requirements)
+
+
+def test_list_does_not_require_webapp_access():
+    """No `app_id` in the path, so there is no app to run an ACL against."""
+    requirements = PermittedExternalAppsListApi.get.__spec__.requirements
+    assert not any(isinstance(requirement, CheckAppAccess) for requirement in requirements)
+
+
 def test_describe_forwards_request_session_to_response_builder(unbound_session: Session):
     api = PermittedExternalAppDescribeApi()
-    method = inspect.unwrap(api.get)
-    session = unbound_session
     app = App(
         id="app-id",
         tenant_id="tenant-1",
@@ -83,7 +114,7 @@ def test_describe_forwards_request_session_to_response_builder(unbound_session: 
         enable_site=True,
         enable_api=True,
     )
-    auth_data = SimpleNamespace(app=app)
+    ctx = SimpleNamespace(app=app, session=unbound_session)
     query = SimpleNamespace(fields={"info"})
     response = object()
 
@@ -91,7 +122,7 @@ def test_describe_forwards_request_session_to_response_builder(unbound_session: 
         "controllers.openapi.apps_permitted_external.build_app_describe_response",
         return_value=response,
     ) as build_response:
-        result = method(api, session, "app-id", auth_data=auth_data, query=query)
+        result = api.get.__handler__(api, ctx, "app-id", query=query)
 
     assert result is response
-    build_response.assert_called_once_with(app, query.fields, session=session)
+    build_response.assert_called_once_with(app, query.fields, session=unbound_session)

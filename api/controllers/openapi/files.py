@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Resource
-from flask_restx.api import HTTPStatus
 from werkzeug.exceptions import BadRequest
 
 import services
@@ -16,10 +15,18 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import FilenameNotExists
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller
+from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
+    CheckAppApiEnabled,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+)
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
 from libs.oauth_bearer import Scope
@@ -39,10 +46,18 @@ class AppFileUploadApi(Resource):
             415: "Unsupported file type or blocked extension",
         }
     )
-    @auth_router.guard(scope=Scope.APPS_RUN)
-    @returns(HTTPStatus.CREATED, FileResponse, description="File uploaded")
-    def post(self, app_id: str, *, auth_data: AuthData):
-        app_model, caller, _ = auth_data.require_app_context()
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckAppAccess(),
+        ),
+        returns=(201, FileResponse, "File uploaded"),
+        write=False,
+    )
+    def post(self, ctx: Context, app_id: str):
         if "file" not in request.files:
             raise NoFileUploadedError()
         if len(request.files) > 1:
@@ -59,7 +74,7 @@ class AppFileUploadApi(Resource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=caller,
+                user=load_caller(ctx),
             )
         except ValueError as exc:
             raise BadRequest(str(exc))

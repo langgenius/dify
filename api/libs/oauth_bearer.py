@@ -6,7 +6,7 @@ import hashlib
 import json
 import logging
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -30,16 +30,6 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-class SubjectType(StrEnum):
-    ACCOUNT = "account"
-    EXTERNAL_SSO = "external_sso"
-
-
-class TokenType(StrEnum):
-    OAUTH_ACCOUNT = "oauth_account"
-    OAUTH_EXTERNAL_SSO = "oauth_external_sso"
-
-
 class Scope(StrEnum):
     """Catalog of bearer scopes recognised by the openapi surface.
 
@@ -56,23 +46,65 @@ class Scope(StrEnum):
     WORKSPACE_WRITE = "workspace:write"
 
 
-@dataclass(frozen=True, slots=True)
-class AuthContext:
-    """Per-request identity published via :data:`_auth_ctx_var`
-    (see :func:`set_auth_ctx` / :func:`get_auth_ctx`). ``scopes`` /
-    ``subject_type`` / ``token_type`` come from the TokenKind, not the DB —
-    corrupt rows can't elevate scope.
+class SubjectType(StrEnum):
+    # An annotation-only name is not a member; it declares what `__new__` attaches.
+    scopes: frozenset[Scope]
+
+    ACCOUNT = ("account", frozenset({Scope.FULL}))
+    EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}))
+
+    def __new__(cls, value: str, scopes: frozenset[Scope]) -> SubjectType:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.scopes = scopes
+        return obj
+
+
+class TokenType(StrEnum):
+    """Many token types may serve one subject; the prefix is the only thing a
+    bearer string reveals, so it lives here and nowhere else.
     """
 
-    subject_type: SubjectType
+    prefix: str
+    subject: SubjectType
+
+    OAUTH_ACCOUNT = ("oauth_account", "dfoa_", SubjectType.ACCOUNT)
+    OAUTH_EXTERNAL_SSO = ("oauth_external_sso", "dfoe_", SubjectType.EXTERNAL_SSO)
+
+    def __new__(cls, value: str, prefix: str, subject: SubjectType) -> TokenType:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.prefix = prefix
+        obj.subject = subject
+        return obj
+
+    @classmethod
+    def for_token(cls, token: str) -> TokenType | None:
+        return next((token_type for token_type in cls if token.startswith(token_type.prefix)), None)
+
+
+@dataclass(frozen=True, slots=True)
+class AuthContext:
+    """Per-request identity published via :data:`_auth_ctx_var`. Subject and
+    scopes derive from the token type, never from the row, so a corrupt row
+    cannot elevate scope.
+    """
+
+    token_type: TokenType
     subject_email: str | None
     subject_issuer: str | None
     account_id: uuid.UUID | None
     client_id: str | None
-    scopes: frozenset[Scope]
     token_id: uuid.UUID
-    token_type: TokenType
     expires_at: datetime | None
+
+    @property
+    def subject_type(self) -> SubjectType:
+        return self.token_type.subject
+
+    @property
+    def scopes(self) -> frozenset[Scope]:
+        return self.token_type.subject.scopes
 
 
 _auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
@@ -130,80 +162,8 @@ class Resolver(Protocol):
         ...
 
 
-@dataclass(frozen=True, slots=True)
-class TokenKind:
-    prefix: str
-    subject_type: SubjectType
-    scopes: frozenset[Scope]
-    token_type: TokenType
-    resolver: Resolver
-
-    def matches(self, token: str) -> bool:
-        return token.startswith(self.prefix)
-
-
-@dataclass(frozen=True, slots=True)
-class MintProfile:
-    """Single source of truth for (subject_type, prefix, scopes) at mint time.
-
-    Consumers:
-    - ``build_registry`` reads scopes here so the resolve-time TokenKind
-      cannot drift from the mint-time intent.
-    - Device-flow ``approve`` / ``approve-external`` read prefix + scopes
-      here when calling ``mint_oauth_token`` and ``validate_mint_policy``.
-    - ``services.openapi.mint_policy.validate_mint_policy`` cross-checks
-      the (subject_type, prefix, scopes) triple a caller intends to mint
-      against this table — a caller that assembles its own scope set
-      from a non-canonical source will fail closed at approve time.
-    """
-
-    subject_type: SubjectType
-    prefix: str
-    scopes: frozenset[Scope]
-
-
-MINTABLE_PROFILES: dict[SubjectType, MintProfile] = {
-    SubjectType.ACCOUNT: MintProfile(
-        subject_type=SubjectType.ACCOUNT,
-        prefix="dfoa_",
-        scopes=frozenset({Scope.FULL}),
-    ),
-    SubjectType.EXTERNAL_SSO: MintProfile(
-        subject_type=SubjectType.EXTERNAL_SSO,
-        prefix="dfoe_",
-        scopes=frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}),
-    ),
-}
-
-
 class InvalidBearerError(Exception):
     """Token missing, unknown prefix, or no live row."""
-
-
-class TokenExpiredError(Exception):
-    """Hard-expire bookkeeping is the resolver's job before raising."""
-
-
-# ============================================================================
-# Registry
-# ============================================================================
-
-
-class TokenKindRegistry:
-    def __init__(self, kinds: Iterable[TokenKind]) -> None:
-        self._kinds: tuple[TokenKind, ...] = tuple(kinds)
-        prefixes = [k.prefix for k in self._kinds]
-        if len(set(prefixes)) != len(prefixes):
-            raise ValueError(f"duplicate prefix in registry: {prefixes}")
-
-    def find(self, token: str) -> TokenKind | None:
-        for k in self._kinds:
-            if k.matches(token):
-                return k
-        return None
-
-    def kinds(self) -> tuple[TokenKind, ...]:
-        return self._kinds
 
 
 # ============================================================================
@@ -216,12 +176,8 @@ def sha256_hex(token: str) -> str:
 
 
 class BearerAuthenticator:
-    def __init__(self, registry: TokenKindRegistry) -> None:
-        self._registry = registry
-
-    @property
-    def registry(self) -> TokenKindRegistry:
-        return self._registry
+    def __init__(self, resolvers: Mapping[TokenType, Resolver]) -> None:
+        self._resolvers = resolvers
 
     def authenticate(self, token: str) -> AuthContext:
         """Identity + per-token rate limit (single source).
@@ -229,23 +185,21 @@ class BearerAuthenticator:
         The openapi auth pipeline is the only caller, so the rate limit fires
         exactly once per request.
         """
-        kind = self._registry.find(token)
-        if kind is None:
+        token_type = TokenType.for_token(token)
+        if token_type is None or token_type not in self._resolvers:
             raise InvalidBearerError("invalid_bearer")
         token_hash = sha256_hex(token)
         enforce_bearer_rate_limit(token_hash)
-        row = kind.resolver.resolve(token_hash)
+        row = self._resolvers[token_type].resolve(token_hash)
         if row is None:
             raise InvalidBearerError("invalid_bearer")
         return AuthContext(
-            subject_type=kind.subject_type,
+            token_type=token_type,
             subject_email=row.subject_email,
             subject_issuer=row.subject_issuer,
             account_id=row.account_id,
             client_id=row.client_id,
-            scopes=kind.scopes,
             token_id=row.token_id,
-            token_type=kind.token_type,
             expires_at=row.expires_at,
         )
 
@@ -259,13 +213,9 @@ POSITIVE_TTL_SECONDS = 60
 NEGATIVE_TTL_SECONDS = 10
 AUDIT_OAUTH_EXPIRED = "oauth.token_expired"
 
-ScopeVariant = Literal["account", "external_sso"]
-
 
 class OAuthAccessTokenResolver:
-    """``.for_account()`` / ``.for_external_sso()`` are variant-scoped views
-    sharing DB + cache plumbing.
-    """
+    """``for_token_type()`` returns a view scoped to one token type, sharing DB + cache plumbing."""
 
     def __init__(
         self,
@@ -279,11 +229,8 @@ class OAuthAccessTokenResolver:
         self._positive_ttl = positive_ttl
         self._negative_ttl = negative_ttl
 
-    def for_account(self) -> Resolver:
-        return _VariantResolver(self, variant="account")
-
-    def for_external_sso(self) -> Resolver:
-        return _VariantResolver(self, variant="external_sso")
+    def for_token_type(self, token_type: TokenType) -> Resolver:
+        return _TokenTypeResolver(self, token_type)
 
     def _cache_key(self, token_hash: str) -> str:
         return TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
@@ -333,17 +280,17 @@ class OAuthAccessTokenResolver:
         self.cache_set_negative(token_hash)
 
 
-class _VariantResolver:
-    def __init__(self, parent: OAuthAccessTokenResolver, variant: ScopeVariant) -> None:
+class _TokenTypeResolver:
+    def __init__(self, parent: OAuthAccessTokenResolver, token_type: TokenType) -> None:
         self._parent = parent
-        self._variant = variant
+        self._token_type = token_type
 
     def resolve(self, token_hash: str) -> ResolvedRow | None:
         cached = self._parent.cache_get(token_hash)
         if cached == "invalid":
             return None
         if cached is not None and not isinstance(cached, str):
-            if not self._matches_variant(cached):
+            if not self._matches_subject(cached):
                 return None
             return cached
 
@@ -360,7 +307,7 @@ class _VariantResolver:
             self._parent.hard_expire(session, row.id, token_hash)
             return None
 
-        if not self._matches_variant_model(row):
+        if not (self._matches_subject(row) and row.prefix == self._token_type.prefix):
             logger.error(
                 "internal_state_invariant: account_id/prefix mismatch token_id=%s prefix=%s",
                 row.id,
@@ -379,17 +326,9 @@ class _VariantResolver:
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved
 
-    def _matches_variant(self, row: ResolvedRow) -> bool:
-        has_account = row.account_id is not None
-        if self._variant == "account":
-            return has_account
-        return not has_account
-
-    def _matches_variant_model(self, row: OAuthAccessToken) -> bool:
-        has_account = row.account_id is not None
-        if self._variant == "account":
-            return has_account and row.prefix == "dfoa_"
-        return (not has_account) and row.prefix == "dfoe_"
+    def _matches_subject(self, row: ResolvedRow | OAuthAccessToken) -> bool:
+        """An account row has an `account_id`; an external one does not."""
+        return (row.account_id is not None) == (self._token_type.subject is SubjectType.ACCOUNT)
 
     def _load_from_db(self, session: Session, token_hash: str) -> OAuthAccessToken | None:
         return (
@@ -454,32 +393,17 @@ def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
 # ============================================================================
 
 
-def build_registry(session_factory, redis_client) -> TokenKindRegistry:
+def build_authenticator(session_factory, redis_client) -> BearerAuthenticator:
     oauth = OAuthAccessTokenResolver(session_factory, redis_client)
-    account = MINTABLE_PROFILES[SubjectType.ACCOUNT]
-    external = MINTABLE_PROFILES[SubjectType.EXTERNAL_SSO]
-    return TokenKindRegistry(
-        [
-            TokenKind(
-                prefix=account.prefix,
-                subject_type=account.subject_type,
-                scopes=account.scopes,
-                token_type=TokenType.OAUTH_ACCOUNT,
-                resolver=oauth.for_account(),
-            ),
-            TokenKind(
-                prefix=external.prefix,
-                subject_type=external.subject_type,
-                scopes=external.scopes,
-                token_type=TokenType.OAUTH_EXTERNAL_SSO,
-                resolver=oauth.for_external_sso(),
-            ),
-        ]
+    return BearerAuthenticator(
+        {
+            TokenType.OAUTH_ACCOUNT: oauth.for_token_type(TokenType.OAUTH_ACCOUNT),
+            TokenType.OAUTH_EXTERNAL_SSO: oauth.for_token_type(TokenType.OAUTH_EXTERNAL_SSO),
+        }
     )
 
 
 def build_and_bind(session_factory, redis_client) -> BearerAuthenticator:
-    registry = build_registry(session_factory, redis_client)
-    auth = BearerAuthenticator(registry)
+    auth = build_authenticator(session_factory, redis_client)
     bind_authenticator(auth)
     return auth

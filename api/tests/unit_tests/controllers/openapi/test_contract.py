@@ -45,7 +45,7 @@ def _register_contract_test_models():
 
 
 def _guard_like(view):
-    """Stand-in for ``@auth_router.guard`` — an outermost @wraps layer."""
+    """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer."""
 
     @wraps(view)
     def wrapper(*args, **kwargs):

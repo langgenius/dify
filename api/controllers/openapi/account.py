@@ -3,12 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
-from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
@@ -18,74 +15,66 @@ from controllers.openapi._models import (
     SessionRow,
     WorkspacePayload,
 )
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_account
+from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership, CheckSubject
+from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_redis import redis_client
-from libs.oauth_bearer import (
-    Scope,
-    TokenType,
-    get_auth_ctx,
-)
-from libs.rate_limit import (
-    LIMIT_ME_PER_ACCOUNT,
-    enforce,
-)
-from services.account_service import AccountService, TenantService
-from services.oauth_device_flow import (
-    list_active_sessions,
-    revoke_oauth_token,
-    token_belongs_to_subject,
-)
+from libs.oauth_bearer import Scope, get_auth_ctx
+from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
+from services.account_service import TenantService
+from services.oauth_device_flow import list_active_sessions, revoke_oauth_token
 
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @returns(200, AccountResponse, description="Account info")
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData):
-        enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
+        returns=(200, AccountResponse, "Account info"),
+        write=False,
+    )
+    def get(self, ctx: Context):
+        account_id_str = str(ctx.subject.account_id)
+        enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{account_id_str}")
 
-        account_id_str = str(auth_data.account_id) if auth_data.account_id else None
-        account = AccountService.get_account_by_id(account_id_str, session=session) if account_id_str else None
-        memberships = TenantService.get_account_memberships(account_id_str, session=session) if account_id_str else []
-        default_ws_id = _pick_default_workspace(memberships)
+        account = load_account(ctx)
+        memberships = TenantService.get_account_memberships(account_id_str, session=ctx.session)
 
         return AccountResponse(
-            subject_type="account",
-            subject_email=account.email if account else None,
-            account=_account_payload(account) if account else None,
+            subject_type=ctx.subject.subject_type,
+            subject_email=account.email,
+            account=_account_payload(account),
             workspaces=[_workspace_payload(m) for m in memberships],
-            default_workspace_id=default_ws_id,
+            default_workspace_id=_pick_default_workspace(memberships),
         )
 
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
-    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @returns(200, RevokeResponse, description="Session revoked")
-    @with_session
-    def delete(self, session: Session, *, auth_data: AuthData):
-        revoke_oauth_token(redis_client, str(auth_data.token_id), session=session)
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
+        returns=(200, RevokeResponse, "Session revoked"),
+    )
+    def delete(self, ctx: Context):
+        revoke_oauth_token(redis_client, str(ctx.subject.token_id), session=ctx.session)
         return RevokeResponse(status="revoked")
 
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
-    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @returns(200, SessionListResponse, description="Session list")
-    @accepts(query=SessionListQuery)
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData, query: SessionListQuery):
-        # SessionListQuery enforces the advertised bounds (extra='forbid', page>=1,
-        # 1<=limit<=MAX_PAGE_LIMIT) so the server rejects out-of-range paging rather
-        # than silently coercing (e.g. page=0 -> empty slice).
-        ctx = get_auth_ctx()
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
+        query=SessionListQuery,
+        returns=(200, SessionListResponse, "Session list"),
+        write=False,
+    )
+    def get(self, ctx: Context, *, query: SessionListQuery):
+        auth_ctx = get_auth_ctx()
         now = datetime.now(UTC)
         page = query.page
         limit = query.limit
 
-        all_rows = list_active_sessions(ctx, now, session=session)
+        all_rows = list_active_sessions(auth_ctx, now, session=ctx.session)
 
         total = len(all_rows)
         sliced = all_rows[(page - 1) * limit : page * limit]
@@ -114,18 +103,12 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @returns(200, RevokeResponse, description="Session revoked")
-    @with_session
-    def delete(self, session: Session, session_id: str, *, auth_data: AuthData):
-        ctx = get_auth_ctx()
-
-        # 404 (not 403) on cross-subject so the endpoint doesn't leak
-        # token IDs that belong to other subjects.
-        if not token_belongs_to_subject(session_id, ctx, session=session):
-            raise NotFound("session not found")
-
-        revoke_oauth_token(redis_client, session_id, session=session)
+    @endpoint(
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL), CheckSessionOwnership()),
+        returns=(200, RevokeResponse, "Session revoked"),
+    )
+    def delete(self, ctx: Context, session_id: str):
+        revoke_oauth_token(redis_client, session_id, session=ctx.session)
         return RevokeResponse(status="revoked")
 
 

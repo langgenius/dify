@@ -1,8 +1,11 @@
 """Wire-contract tests for the canonical /openapi/v1 error body."""
 
+import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadGateway,
     BadRequest,
@@ -44,6 +47,8 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from libs.oauth_bearer import AuthContext, TokenType
+from models.account import Account, AccountStatus
 
 
 @pytest.fixture
@@ -244,12 +249,39 @@ class TestQuotaExceptions:
 class TestWireContract:
     """End-to-end: request in, canonical JSON out, through the real openapi blueprint."""
 
-    def test_accepts_422_carries_code_status_details(self, openapi_app, bypass_pipeline):
-        client = openapi_app.test_client()
+    def test_accepts_422_carries_code_status_details(
+        self, openapi_app, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        """`@endpoint` runs auth outermost, so reaching `@accepts` means passing
+        it: one account row and a stubbed authenticator are the whole world
+        `GET /account/sessions` needs.
+        """
+        account_id = uuid.uuid4()
+        account = Account(name="caller", email="caller@example.com", status=AccountStatus.ACTIVE)
+        account.id = str(account_id)
+        sqlite_session.add(account)
+        sqlite_session.commit()
 
-        resp = client.get("/openapi/v1/apps?page=0")
+        token = AuthContext(
+            subject_email="caller@example.com",
+            subject_issuer="dify:account",
+            account_id=account_id,
+            client_id="difyctl",
+            token_id=uuid.uuid4(),
+            token_type=TokenType.OAUTH_ACCOUNT,
+            expires_at=None,
+        )
+        monkeypatch.setattr(
+            "controllers.openapi.auth.router.get_authenticator",
+            lambda: SimpleNamespace(authenticate=lambda _token: token),
+        )
+        monkeypatch.setattr("controllers.openapi.auth.pipelines._mount_flask_login", lambda _user: None)
 
-        assert resp.status_code == 422
+        resp = openapi_app.test_client().get(
+            "/openapi/v1/account/sessions?page=0", headers={"Authorization": "Bearer dfoa_wire"}
+        )
+
+        assert resp.status_code == 422, resp.get_json()
         wire = resp.get_json()
         ErrorBody.model_validate(wire)
         assert wire["code"] == "invalid_param"

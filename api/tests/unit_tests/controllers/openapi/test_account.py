@@ -2,23 +2,22 @@
 
 import builtins
 import sys
-import uuid
 from types import SimpleNamespace
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
-from werkzeug.exceptions import UnprocessableEntity
+from pydantic import ValidationError
 
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._models import SessionListQuery
 from controllers.openapi.account import (
     AccountApi,
     AccountSessionByIdApi,
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
+from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -88,21 +87,49 @@ def test_session_by_id_dispatches_to_correct_class(openapi_app: Flask):
     assert "DELETE" in rule.methods
 
 
+def test_revoke_by_id_declares_session_ownership():
+    """The route wiring, not the requirement's own logic: `CheckSessionOwnership`
+    is what stops a caller revoking a session id belonging to another subject, and
+    it is only reachable if this route declares it. Nothing else pins that — the
+    allow/deny matrix addresses the caller's own session, so removing the
+    declaration changes no row there.
+    """
+    requirements = AccountSessionByIdApi.delete.__spec__.requirements
+    assert any(isinstance(requirement, CheckSessionOwnership) for requirement in requirements)
+
+
+def test_session_ownership_runs_after_token_scope():
+    """`CheckSessionOwnership` takes the default rank, so it is tied with
+    `CheckScope` — declaration order is what keeps a caller failing scope alone
+    from reaching the ownership check first.
+    """
+    requirements = AccountSessionByIdApi.delete.__spec__.requirements
+    token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckScope))
+    ownership_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckSessionOwnership))
+    assert token_scope_index < ownership_index
+
+
+def test_the_other_session_routes_do_not_declare_it():
+    """`revoke_self` and the listing scope themselves by subject, so a per-session
+    ownership check would have nothing to name.
+    """
+    for view in (AccountSessionsSelfApi.delete, AccountSessionsApi.get):
+        assert not any(isinstance(requirement, CheckSessionOwnership) for requirement in view.__spec__.requirements)
+
+
 def test_subject_match_for_account_filters_by_account_id():
     """Account subject scopes queries via account_id."""
     import uuid as _uuid
 
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+    from libs.oauth_bearer import AuthContext, TokenType
     from services.oauth_device_flow import subject_match_clauses
 
     aid = _uuid.uuid4()
     ctx = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email="user@example.com",
         subject_issuer="dify:account",
         account_id=aid,
         client_id="difyctl",
-        scopes=frozenset({"full"}),
         token_id=_uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
@@ -120,16 +147,14 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
     """
     import uuid as _uuid
 
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+    from libs.oauth_bearer import AuthContext, TokenType
     from services.oauth_device_flow import subject_match_clauses
 
     ctx = AuthContext(
-        subject_type=SubjectType.EXTERNAL_SSO,
         subject_email="sso@partner.com",
         subject_issuer="https://idp.partner.com",
         account_id=None,
         client_id="difyctl",
-        scopes=frozenset({"apps:run"}),
         token_id=_uuid.uuid4(),
         token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
@@ -142,23 +167,7 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
     assert "account_id IS NULL" in rendered
 
 
-# --- GET /account/sessions query validation (the handler routes ?page/?limit through
-# SessionListQuery so the server enforces the bounds the contract advertises). The auth ctx and
-# DB read are stubbed so these exercise only the validation + paging path; __wrapped__ skips the
-# auth guard, which is covered separately in auth/. ---
-
 _ACCOUNT_MOD = "controllers.openapi.account"
-
-
-def _session_auth_data() -> AuthData:
-    return AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_id=uuid.uuid4(),
-        scopes=frozenset({Scope.FULL}),
-        required_scope=Scope.FULL,
-        allowed_roles=None,
-    )
 
 
 def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows):
@@ -167,45 +176,42 @@ def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows):
     monkeypatch.setattr(mod, "list_active_sessions", lambda *args, **kwargs: rows)
 
 
-def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    """A valid ?page&limit round-trips through SessionListQuery into the response envelope."""
+def test_sessions_list_valid_query_parses_page_and_limit(monkeypatch: pytest.MonkeyPatch):
+    """A valid page/limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])
-    with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
-    assert status == 200
-    assert body["page"] == 2
-    assert body["limit"] == 5
-    assert body["total"] == 0
-    assert body["data"] == []
+    ctx = SimpleNamespace(session=object())
+    result = api.get.__handler__(api, ctx, query=SessionListQuery(page=2, limit=5))
+    assert result.page == 2
+    assert result.limit == 5
+    assert result.total == 0
+    assert result.data == []
 
 
-def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_sessions_list_defaults_when_query_omitted(monkeypatch: pytest.MonkeyPatch):
     """No query → the model's defaults (page=1, limit=100) drive the envelope."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])
-    with app.test_request_context("/openapi/v1/account/sessions"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
-    assert status == 200
-    assert body["page"] == 1
-    assert body["limit"] == 100
+    ctx = SimpleNamespace(session=object())
+    result = api.get.__handler__(api, ctx, query=SessionListQuery())
+    assert result.page == 1
+    assert result.limit == 100
 
 
 @pytest.mark.parametrize(
-    "query",
+    "params",
     [
-        "page=0",  # below ge=1 (previously coerced to a silent empty slice)
-        "page=-3",
-        "limit=0",  # below ge=1
-        "limit=999",  # above le=MAX_PAGE_LIMIT
-        "page=abc",  # not an integer (previously a 500)
-        "foo=bar",  # extra='forbid'
+        {"page": "0"},
+        {"page": "-3"},
+        {"limit": "0"},
+        {"limit": "999"},
+        {"page": "abc"},
+        {"foo": "bar"},
     ],
 )
-def test_sessions_list_rejects_out_of_bounds_query(app: Flask, monkeypatch: pytest.MonkeyPatch, query):
-    """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
-    api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, [])
-    with app.test_request_context(f"/openapi/v1/account/sessions?{query}"):
-        with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, auth_data=_session_auth_data())
+def test_session_list_query_rejects_out_of_bounds(params):
+    """`__handler__` receives an already-validated query, so the bounds this pinned via
+    the handler now live at the model — same rejection, moved to where it happens.
+    """
+    with pytest.raises(ValidationError):
+        SessionListQuery.model_validate(params)

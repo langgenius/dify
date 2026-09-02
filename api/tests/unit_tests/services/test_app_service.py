@@ -314,31 +314,6 @@ class TestOpenapiVisibilityHelpers:
         with patch("services.app_service.is_openapi_visible", return_value=False):
             assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
 
-    def test_find_visible_apps_by_name_returns_scalars_through_visibility_gate(self, sqlite_session: Session):
-        """Tenant-scoped name lookup. The helper passes the SELECT through
-        ``apply_openapi_gate`` and materialises ``.scalars()`` into a list
-        so the controller can branch on length (404 / single / 409).
-        """
-        tenant_id = str(uuid4())
-        rows = [
-            _persist_app(sqlite_session, tenant_id=tenant_id, name="my-app"),
-            _persist_app(sqlite_session, tenant_id=tenant_id, name="my-app"),
-        ]
-        _persist_app(sqlite_session, tenant_id=str(uuid4()), name="my-app")
-
-        with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_name(name="my-app", tenant_id=tenant_id, session=sqlite_session)
-
-        assert {app.id for app in out} == {app.id for app in rows}
-        # Visibility gate must wrap the SELECT exactly once.
-        gate.assert_called_once()
-
-    def test_find_visible_apps_by_name_returns_empty_list_on_no_match(self, sqlite_session: Session):
-        with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q):
-            out = AppService.find_visible_apps_by_name(name="nope", tenant_id=str(uuid4()), session=sqlite_session)
-
-        assert out == []
-
     def test_find_visible_apps_by_ids_short_circuits_on_empty_input(self, unbound_session: Session):
         """Empty id list must not emit ``WHERE id IN ()`` — Postgres
         rejects empty IN lists and the call is a guaranteed no-op

@@ -1,20 +1,26 @@
 from __future__ import annotations
 
-from typing import cast
-
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_account, load_app
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
+)
+from controllers.openapi.auth.subjects import AccountSubject
+from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType
-from models import Account, App
+from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
@@ -36,22 +42,28 @@ class AppDslImportApi(Resource):
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_WRITE,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.APP,
+                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
+        body=AppDslImportPayload,
+        returns=(
+            (200, Import, "Import completed"),
+            (202, Import, "Import pending confirmation"),
+            (400, Import, "Import failed"),
+        ),
+        write=False,
     )
-    @returns(200, Import, "Import completed")
-    @returns(202, Import, "Import pending confirmation")
-    @returns(400, Import, "Import failed")
-    @accepts(body=AppDslImportPayload)
-    def post(self, workspace_id: str, *, auth_data: AuthData, body: AppDslImportPayload):
-        account = cast(Account, auth_data.caller)
+    def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
+        account = load_account(ctx)
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
@@ -96,20 +108,23 @@ class AppDslImportConfirmApi(Resource):
     Returns 400 when the pending data has expired or the import fails.
     """
 
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_WRITE,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckWorkspaceMember(),
+            CheckRBACPermission(
+                resource_type=RBACResourceScope.APP,
+                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+                resource_required=False,
+            ),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
+        returns=((200, Import, "Import confirmed"), (400, Import, "Import failed")),
+        write=False,
     )
-    @returns(200, Import, "Import confirmed")
-    @returns(400, Import, "Import failed")
-    def post(self, workspace_id: str, import_id: str, *, auth_data: AuthData):
-        account = cast(Account, auth_data.caller)
+    def post(self, ctx: Context, workspace_id: str, import_id: str):
+        account = load_account(ctx)
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
@@ -140,19 +155,23 @@ class AppDslExportApi(Resource):
     receive a 403; enable the API in the console first if needed.
     """
 
-    @auth_router.guard(
-        scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
+        query=AppDslExportQuery,
+        returns=(200, AppDslExportResponse, "Export successful"),
+        write=False,
     )
-    @accepts(query=AppDslExportQuery)
-    @returns(200, AppDslExportResponse, "Export successful")
-    def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
-        app = cast(App, auth_data.app)
+    def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
         try:
             data = AppDslService.export_dsl(
-                app_model=app,
+                app_model=load_app(ctx),
                 session=db.session(),
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
@@ -172,18 +191,21 @@ class AppDslCheckDependenciesApi(Resource):
     dependencies are satisfied.
     """
 
-    @auth_router.guard(
-        scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_READ),
+            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+        ),
+        returns=(200, CheckDependenciesResult, "Dependencies checked"),
+        write=False,
     )
-    @returns(200, CheckDependenciesResult, "Dependencies checked")
-    def get(self, app_id: str, *, auth_data: AuthData):
-        app = cast(App, auth_data.app)
-
+    def get(self, ctx: Context, app_id: str):
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.check_dependencies(app_model=app)
+            result = service.check_dependencies(app_model=load_app(ctx))
 
         return result, 200

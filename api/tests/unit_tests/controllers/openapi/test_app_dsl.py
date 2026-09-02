@@ -1,5 +1,6 @@
-from inspect import unwrap
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import Mock
 
 import pytest
@@ -9,8 +10,42 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._models import AppDslImportPayload
-from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.app_dsl import (
+    AppDslCheckDependenciesApi,
+    AppDslExportApi,
+    AppDslImportApi,
+    AppDslImportConfirmApi,
+)
+from controllers.openapi.auth.spec import EndpointSpec
+from models import Account
 from services.errors.account import NoPermissionError
+
+
+class _EndpointView(Protocol):
+    """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
+
+    __spec__: EndpointSpec
+    __handler__: Callable[..., object]
+
+
+@pytest.mark.parametrize(
+    ("view", "write"),
+    [
+        (AppDslImportApi.post, False),
+        (AppDslImportConfirmApi.post, False),
+        (AppDslExportApi.get, False),
+        (AppDslCheckDependenciesApi.get, False),
+    ],
+    ids=["import", "import_confirm", "export", "check_dependencies"],
+)
+def test_dsl_routes_leave_the_transaction_to_their_own_session(view: _EndpointView, write: bool) -> None:
+    """None of the four carried `@with_session` before moving onto `@endpoint`:
+    the imports open their own `Session` and commit or roll it back on the
+    import's own outcome, and the two reads never had a router-owned
+    transaction at all. `write=False` keeps the router's session — the one the
+    requirements read through — out of that decision, exactly as before.
+    """
+    assert view.__spec__.write is write
 
 
 @pytest.mark.parametrize(
@@ -44,6 +79,6 @@ def test_permission_denial_maps_to_forbidden(
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         with pytest.raises(Forbidden, match="denied") as exc_info:
-            unwrap(api.post)(api, auth_data=SimpleNamespace(caller=Mock()), **kwargs)
+            cast(_EndpointView, api.post).__handler__(api, SimpleNamespace(caller=Mock(spec=Account)), **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)

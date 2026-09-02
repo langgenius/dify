@@ -10,7 +10,13 @@ from flask import Flask
 from flask.views import MethodView
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspacesApi
+from controllers.openapi.workspaces import (
+    WorkspaceByIdApi,
+    WorkspaceMemberApi,
+    WorkspaceMembersApi,
+    WorkspacesApi,
+    WorkspaceSwitchApi,
+)
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -48,6 +54,28 @@ def test_workspace_by_id_dispatches_to_correct_class(openapi_app: Flask):
     rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>")
     assert openapi_app.view_functions[rule.endpoint].view_class is WorkspaceByIdApi
     assert "GET" in rule.methods
+
+
+@pytest.mark.parametrize(
+    ("view", "write"),
+    [
+        (WorkspacesApi.get, False),
+        (WorkspaceByIdApi.get, False),
+        (WorkspaceSwitchApi.post, True),
+        (WorkspaceMembersApi.get, False),
+        (WorkspaceMembersApi.post, True),
+        (WorkspaceMemberApi.delete, True),
+        (WorkspaceMemberApi.patch, True),
+    ],
+    ids=["list", "describe", "switch", "members.list", "members.invite", "members.remove", "members.update_role"],
+)
+def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
+    """`write` is the value each route's `@with_session` carried before it moved
+    onto `@endpoint`: `write=False` on the three reads, the decorator's own
+    default on the four writes. The allow/deny matrix cannot see this — it
+    observes admission before the view body runs — so it is pinned here instead.
+    """
+    assert view.__spec__.write is write
 
 
 def test_console_legacy_workspaces_route_not_remounted_on_openapi(openapi_app: Flask):

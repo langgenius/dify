@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType, TokenType
+from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, TokenType
 from models.oauth import OAuthAccessToken
 from services.oauth_device_flow import (
     list_active_sessions,
@@ -39,7 +39,7 @@ def _token(
         account_id=str(account_id) if account_id is not None else None,
         client_id="difyctl",
         device_label="test-device",
-        prefix="dfoa_" if account_id is not None else "dfoe_",
+        prefix=(TokenType.OAUTH_ACCOUNT if account_id is not None else TokenType.OAUTH_EXTERNAL_SSO).prefix,
         token_hash=token_hash,
         expires_at=expires_at or datetime.now(UTC) + timedelta(days=1),
         revoked_at=revoked_at,
@@ -52,12 +52,10 @@ def _token(
 
 def _account_ctx(*, account_id: uuid.UUID = ACCOUNT_ID) -> AuthContext:
     return AuthContext(
-        subject_type=SubjectType.ACCOUNT,
         subject_email="user@example.com",
         subject_issuer="dify:account",
         account_id=account_id,
         client_id="difyctl",
-        scopes=frozenset({"full"}),
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
@@ -66,12 +64,10 @@ def _account_ctx(*, account_id: uuid.UUID = ACCOUNT_ID) -> AuthContext:
 
 def _sso_ctx() -> AuthContext:
     return AuthContext(
-        subject_type=SubjectType.EXTERNAL_SSO,
         subject_email="sso@partner.com",
         subject_issuer="https://idp.partner.com",
         account_id=None,
         client_id="difyctl",
-        scopes=frozenset({"apps:run"}),
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
