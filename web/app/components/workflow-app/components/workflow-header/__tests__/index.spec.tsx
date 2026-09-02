@@ -1,9 +1,9 @@
-import type { SessionView } from '@/app/components/dify-builder/types'
+import type { SessionView } from '../../dify-builder/types'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import { render, screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
-import { difyBuilderSessionViewAtom } from '@/app/components/dify-builder/state'
 import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
+import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
 import WorkflowHeader from '../index'
 
 const mocks = vi.hoisted(() => ({

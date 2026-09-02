@@ -18,13 +18,37 @@ export type FormField = GeneratedFormField
 export type SessionModel = GeneratedSessionModel
 export type SessionView = DifyBuilderSessionViewResponse
 
-export type ProgressEntry = {
-  id: number
-  event: string
-  data: unknown
+export type DifyBuilderStreamingTurn = {
+  sessionId: string
+  turnId: string
+  sequence: number
+  atVersion: number
+  stageId: string
+  replyText: string
 }
 
-export const DIFY_BUILDER_PROGRESS_LOG_LIMIT = 200
+export type DifyBuilderSessionController = {
+  startFix: (appId: string, failedRunId: string, modelConfig?: SessionModel) => Promise<boolean>
+  startChecklistFix: (
+    appId: string,
+    checklistErrors: ChecklistErrorPayload[],
+    modelConfig?: SessionModel,
+  ) => Promise<boolean>
+  startBuild: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
+  startEdit: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
+  refresh: () => Promise<boolean>
+  restore: (sessionId: string) => Promise<boolean>
+  runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
+  sendMessage: (text: string) => Promise<boolean>
+  updateModel: (modelConfig: SessionModel) => Promise<boolean>
+  reset: () => void
+}
+
+export type DifyBuilderActionPayloadChange = (
+  actionId: string,
+  payload: Record<string, unknown>,
+) => void
+export type DifyBuilderActionValidityChange = (actionId: string, valid: boolean) => void
 
 // The state at which the backend has applied a checklist repair to the draft
 // and is waiting for the frontend to re-run its client-side checklist and
@@ -35,7 +59,7 @@ export const CHECKLIST_AWAIT_RECHECK_STATE = 'checklist.await_recheck'
 // beyond the odd `provide_testdata` special-case in the panel).
 //
 // Slice 0 Task 7 made action rendering data-driven off `SessionView.actions`
-// (see `use-dify-builder-session.ts`'s `runAction`, now typed to accept any
+// (see `session/use-session-controller.ts`'s `runAction`, now typed to accept any
 // backend-provided action id).
 // This legacy list is retained for protocol-level helpers. The production
 // App Builder panel renders `view.actions` directly; new call sites should do

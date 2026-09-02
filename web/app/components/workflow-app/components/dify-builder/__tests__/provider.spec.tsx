@@ -1,13 +1,13 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
+import { DifyBuilderProvider } from '../provider'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionViewAtom,
-} from '@/app/components/dify-builder/state'
-import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
-import { DifyBuilderProvider } from '../provider'
+} from '../session/state'
 import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
@@ -43,7 +43,7 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: mocks.selectWorkflowNode,
 }))
 
-vi.mock('@/app/components/dify-builder/use-dify-builder-session', () => ({
+vi.mock('../session/use-session-controller', () => ({
   useDifyBuilderSessionController: () => {
     mocks.controllerHook()
     return {

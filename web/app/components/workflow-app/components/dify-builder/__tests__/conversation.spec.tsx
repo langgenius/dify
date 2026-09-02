@@ -1,9 +1,11 @@
+import type { FormField } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { FormField } from '@/app/components/dify-builder/types'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
 import { DifyBuilderConversation } from '../conversation'
+import { difyBuilderStreamingTurnAtom } from '../session/state'
 
 const mocks = vi.hoisted(() => ({
   fileUploader: vi.fn(),
@@ -253,5 +255,49 @@ describe('DifyBuilderConversation test data form', () => {
       })
     })
     expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', true)
+  })
+
+  it('preserves form input while the isolated assistant tail streams', async () => {
+    const user = userEvent.setup()
+    const store = createStore()
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy={false}
+          changesExpanded={false}
+          interrupted={false}
+          items={[
+            {
+              seq: 0,
+              at_version: 1,
+              kind: 'form',
+              payload: {
+                variant: 'testdata',
+                fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+                values: {},
+              },
+            },
+          ]}
+          onActionPayloadChange={vi.fn()}
+          onActionValidityChange={vi.fn()}
+        />
+      </Provider>,
+    )
+    const input = screen.getByRole('textbox', { name: 'Topic' })
+    await user.type(input, 'AI agents')
+
+    act(() => {
+      store.set(difyBuilderStreamingTurnAtom, {
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        sequence: 1,
+        atVersion: 2,
+        stageId: 'build.test',
+        replyText: 'Checking the workflow',
+      })
+    })
+
+    expect(input).toHaveValue('AI agents')
+    expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
   })
 })
