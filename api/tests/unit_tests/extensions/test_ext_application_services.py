@@ -42,6 +42,7 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.mail_entities import InnerMailMessage
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -477,6 +478,59 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+@pytest.mark.parametrize(
+    ("substitutions", "expected_substitutions"),
+    [
+        pytest.param({"name": "Ada"}, {"name": "Ada"}, id="configured"),
+        pytest.param(None, {}, id="omitted-or-null"),
+    ],
+)
+def test_build_application_services_wires_inner_mail_dispatcher(
+    sqlite_session_factory: sessionmaker[Session],
+    substitutions: dict[str, object] | None,
+    expected_substitutions: dict[str, object],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    message = InnerMailMessage(
+        recipients=("one@example.com", "two@example.com"),
+        subject="Subject",
+        body="Body",
+        substitutions=substitutions,
+    )
+
+    with patch("tasks.mail_inner_task.send_inner_email_task.delay") as delay:
+        services.inner_mail.send(message)
+
+    delay.assert_called_once_with(
+        to=["one@example.com", "two@example.com"],
+        subject="Subject",
+        body="Body",
+        substitutions=expected_substitutions,
+    )
+
+
+def test_build_application_services_uses_passed_edition_for_webapp_auth(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
+    with patch("extensions.ext_application_services.DeploymentWebPassportAuthGateway") as auth_gateway:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    assert auth_gateway.call_args.kwargs["webapp_auth_enabled"] is True
 
 
 def test_build_application_services_wires_trial_app_usage(

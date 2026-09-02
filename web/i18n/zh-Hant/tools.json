@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "描述",
   "createTool.toolOutput.reserved": "已保留",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text、json 和 files 是保留變數。這些名稱的變數不能出現在輸出結構中。",
+  "createTool.toolOutput.sourceNode": "來源節點",
   "createTool.toolOutput.title": "工具輸出",
   "createTool.urlError": "請輸入有效的 URL",
   "createTool.viewSchemaSpec": "檢視 OpenAPI-Swagger 規範",

@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "설명",
   "createTool.toolOutput.reserved": "예약됨",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json, 파일은 예약된 변수입니다. 이러한 이름을 가진 변수는 출력 스키마에 나타날 수 없습니다.",
+  "createTool.toolOutput.sourceNode": "소스 노드",
   "createTool.toolOutput.title": "도구 출력",
   "createTool.urlError": "유효한 URL 을 입력하세요",
   "createTool.viewSchemaSpec": "OpenAPI-Swagger 명세 보기",

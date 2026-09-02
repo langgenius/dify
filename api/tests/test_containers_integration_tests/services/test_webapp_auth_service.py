@@ -10,7 +10,7 @@ from werkzeug.exceptions import NotFound
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, Site
 from services.enterprise.enterprise_service import WebAppAccessMode
-from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
+from services.webapp_auth_service import WebAppAuthService
 
 
 def _create_account_and_tenant(session: Session) -> tuple[Account, Tenant]:
@@ -107,24 +107,6 @@ def test_permission_check_from_access_mode(
     )
 
 
-@pytest.mark.parametrize(
-    ("access_mode", "expected"),
-    [
-        pytest.param(WebAppAccessMode.PUBLIC, WebAppAuthType.PUBLIC, id="public"),
-        pytest.param(WebAppAccessMode.PRIVATE, WebAppAuthType.INTERNAL, id="private"),
-        pytest.param(WebAppAccessMode.SSO_VERIFIED, WebAppAuthType.EXTERNAL, id="sso"),
-    ],
-)
-def test_auth_type_from_access_mode(
-    db_session_with_containers: Session,
-    access_mode: WebAppAccessMode,
-    expected: WebAppAuthType,
-) -> None:
-    assert WebAppAuthService.get_app_auth_type(access_mode=access_mode, session=db_session_with_containers) == expected
-
-
-def test_access_helpers_require_a_reference(db_session_with_containers: Session) -> None:
+def test_permission_check_requires_a_reference(db_session_with_containers: Session) -> None:
     with pytest.raises(ValueError, match="Either app_code or app_id"):
         WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)
-    with pytest.raises(ValueError, match="Either app_code or access_mode"):
-        WebAppAuthService.get_app_auth_type(session=db_session_with_containers)

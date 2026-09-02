@@ -82,7 +82,7 @@ from services.errors.account import (
     EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
     EMAIL_CODE_VERIFY_ACTION,
     TurnstileChallengeRejectedError,
@@ -202,8 +202,8 @@ class LoginApi(Resource):
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
             if (
-                FeatureService.is_workspace_creation_allowed()
-                and not FeatureService.get_license().workspaces.is_available()
+                SystemFeatureService.is_workspace_creation_allowed()
+                and not SystemFeatureService.get_license().workspaces.is_available()
             ):
                 raise WorkspacesLimitExceeded()
             else:
@@ -273,7 +273,7 @@ class ResetPasswordSendEmailApi(Resource):
             email=normalized_email,
             account=account,
             language=language,
-            is_allow_register=FeatureService.get_system_features().is_allow_register,
+            is_allow_register=SystemFeatureService.is_registration_allowed(),
         )
 
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
@@ -314,7 +314,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             raise AccountInFreezeError() from exc
 
         if account is None:
-            if FeatureService.get_system_features().is_allow_register:
+            if SystemFeatureService.is_registration_allowed():
                 token = AccountService.send_email_code_login_email(email=normalized_email, language=language)
             else:
                 raise AccountNotFound()
@@ -399,10 +399,10 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
-                workspaces = FeatureService.get_license().workspaces
+                workspaces = SystemFeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
-                if not FeatureService.is_workspace_creation_allowed():
+                if not SystemFeatureService.is_workspace_creation_allowed():
                     raise NotAllowedCreateWorkspace()
                 else:
                     TenantService.create_owner_tenant(account, session=db.session())
