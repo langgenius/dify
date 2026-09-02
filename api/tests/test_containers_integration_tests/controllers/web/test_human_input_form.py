@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from typing import override
 from uuid import uuid4
 
 import pytest
@@ -22,7 +21,6 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -38,14 +36,6 @@ from models.model import App, AppMode, CustomizeTokenStrategy, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.entities.feature_entities import FeatureModel
-
-
-class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
-    """Concrete repository for tests where save() is not under test."""
-
-    @override
-    def save(self, execution: WorkflowExecution) -> None:
-        return None
 
 
 def _create_app_with_site(session: Session) -> tuple[App, Account]:
@@ -218,7 +208,9 @@ def test_get_human_input_form_resolves_runtime_select_options(
     )
     engine = db_session_with_containers.get_bind()
     assert isinstance(engine, Engine)
-    workflow_run_repo = _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
+    workflow_run_repo = DifyAPISQLAlchemyWorkflowRunRepository(
+        session_maker=sessionmaker(bind=engine, expire_on_commit=False)
+    )
     workflow_run_repo.create_workflow_pause(
         workflow_run_id=workflow_run.id,
         state_owner_user_id=account.id,

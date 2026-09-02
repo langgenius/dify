@@ -270,10 +270,7 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
-    # The API query Protocol historically extends the core write Protocol; the runtime class is not abstract.
-    workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(  # type: ignore[abstract]  # pyrefly: ignore [bad-instantiation]
-        session_maker=database_client
-    )
+    workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )

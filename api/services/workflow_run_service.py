@@ -222,7 +222,7 @@ class WorkflowRunService:
         human_input_reasons: list[HumanInputRequired] = []
         for reason in pause_record.reasons:
             if not isinstance(reason, HumanInputRequired):
-                raise AssertionError("unimplemented.")
+                raise NotImplementedError(f"Pause details do not support {type(reason).__name__}")
             human_input_reasons.append(reason)
 
         return WorkflowRunPauseDetails(

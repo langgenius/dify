@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunPauseRecord
@@ -99,13 +100,13 @@ def test_get_pause_details_maps_human_input_and_token(workflow_runs: MagicMock) 
     )
 
 
-def test_get_pause_details_rejects_unknown_pause_reason(workflow_runs: MagicMock) -> None:
+def test_get_pause_details_rejects_unsupported_pause_reason(workflow_runs: MagicMock) -> None:
     workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
         status=WorkflowExecutionStatus.PAUSED,
         paused_at=None,
-        reasons=(MagicMock(),),
+        reasons=(SchedulingPause(message="Waiting for external input"),),
         form_tokens={},
     )
 
-    with pytest.raises(AssertionError, match="unimplemented"):
+    with pytest.raises(NotImplementedError, match="Pause details do not support SchedulingPause"):
         _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
