@@ -47,7 +47,7 @@ export const useAvailableNodesMetaData = () => {
 
   const mergedNodesMetaData = useMemo(() => {
     const commonNodes = WORKFLOW_COMMON_NODES.filter(
-      node => knowledgeFsEnabled || node.metaData.type !== BlockEnum.KnowledgeRetrievalV2,
+      (node) => knowledgeFsEnabled || node.metaData.type !== BlockEnum.KnowledgeRetrievalV2,
     )
 
     return [
