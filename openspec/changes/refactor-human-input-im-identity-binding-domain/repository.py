@@ -6,10 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol, override
-
-from pydantic import NaiveDatetime
-from sqlalchemy.orm import Session
+from typing import Protocol
 
 from core.human_input_v2.shared import (
     AccountId,
@@ -18,8 +15,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     TenantId,
 )
-from repositories.human_input_v2.im_channel_repository import IMChannelId
-
 from domain import (
     IMBinding,
     IMBindingAssignment,
@@ -27,6 +22,9 @@ from domain import (
     IMIdentityObservation,
     IMIdentityPage,
 )
+from pydantic import NaiveDatetime
+from repositories.human_input_v2.im_channel_repository import IMChannelId
+from sqlalchemy.orm import Session
 
 
 class IMIdentityRepositoryError(Exception):
@@ -77,10 +75,6 @@ class IMBindingConflictError(IMBindingRepositoryError):
 
 class IMBindingIdentityNotFoundError(IMBindingRepositoryError):
     """The requested Identity is not current in the bound Channel."""
-
-
-class StaleIMBindingWriteError(IMBindingRepositoryError):
-    """An exact Binding write no longer matches current state."""
 
 
 class IMBindingRepository(Protocol):
@@ -141,147 +135,25 @@ class IMBindingRepository(Protocol):
     ) -> tuple[IMBinding, ...]: ...
 
 
-class SQLAlchemyIMIdentityRepository(IMIdentityRepository):
-    """Constructor-complete Identity adapter with intentionally absent SQL.
+class SQLAlchemyIMIdentityRepository:
+    """Reference constructor shape for the required Identity implementation.
 
-    The caller owns the supplied Session and its complete transaction, including
-    commit and rollback. The caller also owns external locking, Provider I/O
-    ordering, and task dispatch; this adapter must never perform those actions.
+    The Protocol above owns the public method signatures. The production class
+    implements every method against the supplied Session and bound Channel.
     """
 
     def __init__(self, session: Session, channel_id: IMChannelId) -> None:
         self._session = session
         self._channel_id = channel_id
 
-    @override
-    def get(self, identity_id: IMIdentityId) -> IMIdentity | None:
-        raise NotImplementedError
 
-    @override
-    def get_by_provider_user_id(self, provider_user_id: str) -> IMIdentity | None:
-        raise NotImplementedError
+class SQLAlchemyIMBindingRepository:
+    """Reference constructor shape for the required Binding implementation.
 
-    @override
-    def list_all(self) -> tuple[IMIdentity, ...]:
-        raise NotImplementedError
-
-    @override
-    def search(self, *, keyword: str = "", page: int, limit: int) -> IMIdentityPage:
-        raise NotImplementedError
-
-    @override
-    def create(
-        self, identity_id: IMIdentityId, observation: IMIdentityObservation
-    ) -> IMIdentity:
-        raise NotImplementedError
-
-    @override
-    def update(
-        self, identity_id: IMIdentityId, observation: IMIdentityObservation
-    ) -> IMIdentity:
-        raise NotImplementedError
-
-    @override
-    def delete(self, identity_id: IMIdentityId) -> IMIdentity:
-        raise NotImplementedError
-
-
-class SQLAlchemyIMBindingRepository(IMBindingRepository):
-    """Constructor-complete Binding adapter with intentionally absent SQL.
-
-    The caller owns the supplied Session and its complete transaction, including
-    commit and rollback. The caller also owns external locking, Provider I/O
-    ordering, and task dispatch; this adapter must never perform those actions.
+    The Protocol above owns the public method signatures. The production class
+    implements every method against the supplied Session and bound Channel.
     """
 
     def __init__(self, session: Session, channel_id: IMChannelId) -> None:
         self._session = session
         self._channel_id = channel_id
-
-    @override
-    def get(self, binding_id: IMBindingId) -> IMBinding | None:
-        raise NotImplementedError
-
-    @override
-    def list_all(self) -> tuple[IMBinding, ...]:
-        raise NotImplementedError
-
-    @override
-    def create(
-        self,
-        assignment: IMBindingAssignment,
-        *,
-        bound_by_account_id: AccountId | None,
-    ) -> IMBinding:
-        raise NotImplementedError
-
-    @override
-    def replace(
-        self,
-        binding_id: IMBindingId,
-        *,
-        expected_identity_id: IMIdentityId,
-        next_identity_id: IMIdentityId,
-        bound_by_account_id: AccountId | None,
-        updated_at: NaiveDatetime,
-    ) -> IMBinding:
-        raise NotImplementedError
-
-    @override
-    def delete(
-        self,
-        binding_id: IMBindingId,
-        *,
-        expected_identity_id: IMIdentityId,
-    ) -> IMBinding:
-        raise NotImplementedError
-
-    @override
-    def set_workspace_override(
-        self,
-        tenant_id: TenantId,
-        assignment: IMBindingAssignment,
-        *,
-        bound_by_account_id: AccountId | None,
-    ) -> IMBinding:
-        raise NotImplementedError
-
-    @override
-    def reset_workspace_override(
-        self,
-        tenant_id: TenantId,
-        contact_id: ContactId,
-    ) -> IMBinding | None:
-        raise NotImplementedError
-
-    @override
-    def get_effective(
-        self,
-        tenant_id: TenantId,
-        contact_id: ContactId,
-    ) -> IMBinding | None:
-        raise NotImplementedError
-
-    @override
-    def get_effective_many(
-        self,
-        tenant_id: TenantId,
-        contact_ids: Sequence[ContactId],
-    ) -> tuple[IMBinding, ...]:
-        raise NotImplementedError
-
-
-__all__ = [
-    "IMBindingConflictError",
-    "IMBindingIdentityNotFoundError",
-    "IMBindingRepository",
-    "IMBindingRepositoryError",
-    "IMIdentityAlreadyExistsError",
-    "IMIdentityInUseError",
-    "IMIdentityNotFoundError",
-    "IMIdentityRepository",
-    "IMIdentityRepositoryError",
-    "SQLAlchemyIMBindingRepository",
-    "SQLAlchemyIMIdentityRepository",
-    "StaleIMBindingWriteError",
-]

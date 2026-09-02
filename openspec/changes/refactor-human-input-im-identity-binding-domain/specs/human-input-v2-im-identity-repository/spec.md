@@ -78,7 +78,7 @@
 
 ### Requirement: IM Identity Repository MUST be Channel-bound
 
-`IMIdentityRepository` MUST expose `get`, `get_by_provider_user_id`, `list_all`, paginated `search`, `create`, `update`, and `delete`. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, actor, Provider, raw owner key, SQLAlchemy Session, or ORM row.
+`IMIdentityRepository` MUST expose `get`, `get_by_provider_user_id`, `list_all`, paginated `search`, `create`, `update`, and idempotent `delete`. `list_all` MUST return the complete current Identity snapshot for reconciliation in the bound Channel. `delete` MUST return `None`. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, actor, Provider, raw owner key, SQLAlchemy Session, or ORM row.
 
 #### Scenario: Identity ID belongs to another Channel
 - **WHEN** the Repository receives an Identity ID that exists only under another Channel
@@ -90,9 +90,13 @@
 - **THEN** the Reader MUST apply the keyword to Provider user ID, display name, and email
 - **AND** it MUST return only owner-free Identities from the bound Channel
 
+#### Scenario: Missing Identity is deleted
+- **WHEN** delete does not find the addressed Identity in the bound Channel
+- **THEN** it MUST return normally without modifying another Identity
+
 ### Requirement: IM Identity writes MUST expose narrow stable conflicts
 
-Expected Identity persistence failures MUST derive from one `IMIdentityRepositoryError` root that derives directly from `Exception`. Duplicate Provider user creation MUST produce `IMIdentityAlreadyExistsError`; missing or foreign Identity writes MUST produce `IMIdentityNotFoundError`; delete while either current Binding table references the Identity MUST produce `IMIdentityInUseError`.
+Expected Identity persistence failures MUST derive from one `IMIdentityRepositoryError` root that derives directly from `Exception`. Duplicate Provider user creation MUST produce `IMIdentityAlreadyExistsError`; missing or foreign Identity updates MUST produce `IMIdentityNotFoundError`; delete while either current Binding table references the Identity MUST produce `IMIdentityInUseError`.
 
 #### Scenario: Identity is still bound
 - **WHEN** `IMIdentityRepository.delete` addresses an Identity referenced by a default Binding or workspace override
@@ -104,9 +108,9 @@ Expected Identity persistence failures MUST derive from one `IMIdentityRepositor
 - **THEN** the adapter MUST preserve the original failure
 - **AND** it MUST NOT misclassify it as an expected Identity conflict
 
-### Requirement: IM Identity SQLAlchemy stubs MUST use caller-owned Sessions
+### Requirement: SQLAlchemyIMIdentityRepository MUST implement the Identity port
 
-The SQLAlchemy Identity adapter stub MUST bind caller-provided `Session` and trusted `IMChannelId` at construction. Methods MAY query, perform DML, and flush when implemented. They MUST NOT create a Session, commit, rollback, begin a nested transaction, acquire an external lock, perform Provider I/O, or dispatch work.
+`SQLAlchemyIMIdentityRepository` MUST implement every `IMIdentityRepository` method. It MUST bind caller-provided `Session` and trusted `IMChannelId` at construction, scope every query and mutation by that Channel ID, and map ORM rows to owner-free values. Write methods MUST flush before returning. The adapter MUST NOT leave `NotImplementedError` placeholders, create a Session, commit, rollback, begin a nested transaction, acquire an external lock, perform Provider I/O, or dispatch work.
 
 #### Scenario: Identity adapter is constructed
 - **WHEN** composition has loaded the current Channel through the correct owner-bound Channel Reader
@@ -116,3 +120,17 @@ The SQLAlchemy Identity adapter stub MUST bind caller-provided `Session` and tru
 #### Scenario: Identity write is rolled back
 - **WHEN** the caller rolls back the surrounding transaction after a successful Identity flush
 - **THEN** the complete Identity mutation MUST be rolled back
+
+#### Scenario: Identity operation is invoked
+- **WHEN** a caller invokes any `IMIdentityRepository` method on the SQLAlchemy adapter
+- **THEN** the adapter MUST execute the corresponding persistence behavior
+- **AND** it MUST return or raise the outcome defined by this specification rather than `NotImplementedError`
+
+### Requirement: Reachable Identity consumers MUST use the Channel-bound Repository
+
+Current synchronization and reconciliation persistence paths MUST resolve the trusted current Channel before constructing `SQLAlchemyIMIdentityRepository`. Reconciliation MUST use `list_all` when it requires the complete current Identity snapshot for that Channel. These paths MUST NOT read or write current Identities through Integration-scoped mappers or Repository methods.
+
+#### Scenario: Synchronization applies an observation
+- **WHEN** synchronization writes a current Provider observation
+- **THEN** it MUST use the Channel-bound Identity Repository
+- **AND** historical sync-run and result records MUST retain their existing snapshot contracts

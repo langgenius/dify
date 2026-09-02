@@ -55,7 +55,7 @@ Default Bindings MUST enforce uniqueness for `(channel_id, contact_id)` and `(ch
 
 ### Requirement: Binding assignments MUST separate requested state from persisted state
 
-`IMBindingAssignment` MUST carry a candidate new Binding ID, Contact ID, Identity ID, and assignment timestamp. Default Binding create MUST use the candidate ID when inserting. Workspace override set MUST use the candidate ID only when inserting; updating an existing override for the Contact MUST preserve persisted Binding ID and creation timestamp.
+`IMBindingAssignment` MUST carry Contact ID, Identity ID, and assignment timestamp. The Repository MUST generate a new Binding ID when it inserts a default Binding or workspace override. Updating an existing workspace override MUST preserve the persisted Binding ID and creation timestamp.
 
 #### Scenario: Workspace override is replaced
 - **WHEN** the target Contact already has an override and the caller assigns another current Identity
@@ -64,15 +64,16 @@ Default Bindings MUST enforce uniqueness for `(channel_id, contact_id)` and `(ch
 
 #### Scenario: Workspace override is first created
 - **WHEN** the target Contact has no override
-- **THEN** the Writer MUST persist `assignment.new_binding_id` and assignment timestamp
+- **THEN** the Writer MUST generate and persist a new Binding ID
+- **AND** it MUST persist the assignment timestamp as the creation and update timestamp
 
 ### Requirement: IM Binding Repository MUST be Channel-bound
 
-`IMBindingRepository` MUST expose `get`, `list_all`, exact default `create/replace/delete`, workspace override `set_workspace_override/reset_workspace_override`, and `get_effective/get_effective_many`. It MUST NOT expose a default-only Contact lookup; locating a default row by Contact for idempotent create or effective fallback remains a Repository implementation detail. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, Provider, raw owner key, Session, or ORM row. Methods MAY accept target `tenant_id` only when selecting a workspace override or effective workspace result. Default create/replace and workspace override set MUST accept optional `bound_by_account_id` as keyword-only metadata for that mutation.
+`IMBindingRepository` MUST expose `get`, `list_all`, exact default `create/replace/delete`, workspace override `set_workspace_override/reset_workspace_override`, and `get_effective/get_effective_many`. Exact replace MUST return `IMBinding | None`, and default delete MUST return `None`. It MUST NOT expose a default-only Contact lookup; locating a default row by Contact for idempotent create or effective fallback remains a Repository implementation detail. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, Provider, raw owner key, Session, or ORM row. Methods MAY accept target `tenant_id` only when selecting a workspace override or effective workspace result. Default create/replace and workspace override set MUST accept optional `bound_by_account_id` as keyword-only metadata for that mutation.
 
 #### Scenario: Default Binding belongs to another Channel
 - **WHEN** the Repository receives a Binding ID that exists only under another Channel
-- **THEN** it MUST return the same missing or stale outcome as an unknown Binding ID
+- **THEN** it MUST return the same missing outcome as an unknown Binding ID
 - **AND** it MUST not return or mutate the foreign row
 
 #### Scenario: Default Binding create is retried
@@ -132,19 +133,24 @@ Every default Binding and workspace override write MUST require an Identity curr
 
 ### Requirement: Binding writes MUST expose narrow stable conflicts
 
-Expected Binding persistence failures MUST derive from one `IMBindingRepositoryError` root that derives directly from `Exception`. Endpoint uniqueness conflicts MUST produce `IMBindingConflictError`; missing or foreign Identity endpoints MUST produce `IMBindingIdentityNotFoundError`; exact replacement or deletion that no longer matches expected current state MUST produce `StaleIMBindingWriteError`. Unclassified SQLAlchemy, mapping, validation, and integrity failures MUST propagate unchanged.
+Expected Binding persistence failures MUST derive from one `IMBindingRepositoryError` root that derives directly from `Exception`. Endpoint uniqueness conflicts MUST produce `IMBindingConflictError`; missing or foreign Identity endpoints MUST produce `IMBindingIdentityNotFoundError`. An exact replacement that no longer matches expected current state MUST return no Binding, and default Binding deletion MUST be idempotent. Unclassified SQLAlchemy, mapping, validation, and integrity failures MUST propagate unchanged.
 
 #### Scenario: Default Binding replacement is stale
 - **WHEN** replace no longer finds constructor-bound Channel ID, Binding ID, and expected Identity ID together
-- **THEN** it MUST raise `StaleIMBindingWriteError`
+- **THEN** it MUST return no Binding
+- **AND** it MUST not modify another Binding
+
+#### Scenario: Missing default Binding is deleted
+- **WHEN** delete does not find the addressed Binding in the bound Channel
+- **THEN** it MUST return normally without modifying another Binding
 
 #### Scenario: Unrelated integrity failure occurs
 - **WHEN** persistence encounters an integrity failure unrelated to a classified endpoint uniqueness conflict
 - **THEN** it MUST preserve the original failure
 
-### Requirement: Binding SQLAlchemy stubs MUST use caller-owned Sessions
+### Requirement: SQLAlchemyIMBindingRepository MUST implement the Binding port
 
-The SQLAlchemy Binding adapter stub MUST bind only caller-provided `Session` and trusted `IMChannelId` in its constructor. Target Tenant ID and optional Dify actor MUST remain method arguments for operations that use them. Methods MAY query, perform DML, and flush when implemented. They MUST NOT create a Session, commit, rollback, begin a nested transaction, acquire an external lock, perform Provider I/O, or dispatch work.
+`SQLAlchemyIMBindingRepository` MUST implement every `IMBindingRepository` method. It MUST bind only caller-provided `Session` and trusted `IMChannelId` in its constructor, scope every query and mutation by that Channel ID, and derive `IMBindingKind` from the table read. Target Tenant ID and optional Dify actor MUST remain method arguments for operations that use them. Write methods MUST flush before returning. The adapter MUST NOT leave `NotImplementedError` placeholders, create a Session, commit, rollback, begin a nested transaction, acquire an external lock, perform Provider I/O, or dispatch work.
 
 #### Scenario: Binding capabilities share one transaction
 - **WHEN** a caller constructs Identity and Binding repositories with the same Session
@@ -153,3 +159,17 @@ The SQLAlchemy Binding adapter stub MUST bind only caller-provided `Session` and
 #### Scenario: Binding transaction rolls back
 - **WHEN** a later mutation fails after an earlier Binding flush
 - **THEN** caller rollback MUST remove the complete write set
+
+#### Scenario: Binding operation is invoked
+- **WHEN** a caller invokes any `IMBindingRepository` method on the SQLAlchemy adapter
+- **THEN** the adapter MUST execute the corresponding default, override, or effective persistence behavior
+- **AND** it MUST return or raise the outcome defined by this specification rather than `NotImplementedError`
+
+### Requirement: Reachable Binding consumers MUST use the Channel-bound Repository
+
+Current reconciliation and Contact-facing Binding persistence paths MUST resolve the trusted current Channel before constructing `SQLAlchemyIMBindingRepository`. They MUST use `list_all` when reconciliation requires the complete default-Binding snapshot for one Channel. Contact-facing reads MUST use `get_effective` or `get_effective_many` for the target workspace. These paths MUST NOT query current Bindings through `integration_id`, `scope`, `scope_id`, or denormalized Provider fields.
+
+#### Scenario: Contact-facing bindings are loaded
+- **WHEN** a Contact-facing caller loads Bindings for one target workspace
+- **THEN** it MUST resolve effective Bindings through the Channel-bound Repository
+- **AND** it MUST preserve the existing public Contact DTO shape

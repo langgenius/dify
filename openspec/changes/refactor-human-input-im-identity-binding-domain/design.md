@@ -15,13 +15,13 @@ The new IM Channel, Identity, and Binding schemas are unpublished. The implement
 - Return the same owner-free `IMIdentity` and `IMBinding` values for workspace-owned and deployment-owned Channels.
 - Keep normalized query columns, raw Provider payload, target tenant, configuring actor, and Channel ownership out of current Domain values.
 - Define one Identity Repository and one Binding Repository Protocol.
-- Define SQLAlchemy adapter stubs whose constructors bind only caller Session and trusted Channel ID.
+- Implement the SQLAlchemy adapters whose constructors bind only caller Session and trusted Channel ID.
+- Migrate reachable synchronization, reconciliation, and Contact-facing persistence paths to those adapters.
 - Keep transaction ownership with the caller-provided SQLAlchemy `Session`.
 
 **Non-Goals:**
 
-- Do not implement SQLAlchemy queries or mutations beyond adapter stubs.
-- Do not migrate synchronization, reconciliation, Contact, controller, runtime authorization, inbox, delivery, or historical callers.
+- Do not change synchronization or reconciliation decisions, controller behavior, public DTOs, runtime authorization, inbox, delivery, or historical record contracts.
 - Do not modify IM Channel management, Provider adapters, credentials, Webhook ingress, or Channel schema.
 - Do not redesign sync runs, reconciliation plans/results, historical snapshots, or Celery payloads.
 - Do not add an Organization entity, another parent entity, `scope + scope_id`, a polymorphic binding key, or a workspace/deployment Domain union.
@@ -69,7 +69,7 @@ Alternative considered: retain one table with a discriminator and nullable tenan
 
 `OpaqueProviderPayload` is declared directly as a frozen, strict, default-validating `RootModel[dict[str, JsonValue]]`. It is a Domain boundary value, not a serialized-string wrapper. The persistence-only `IMIdentityRawPayload` remains a separate direct `RootModel`; neither type reuses the other.
 
-`IMBindingAssignment` is the write value shared by default create and workspace override set. Its `new_binding_id` is consumed only when a row is created. Updating an existing workspace override preserves the persisted ID and creation timestamp.
+`IMBindingAssignment` is the write value shared by default create and workspace override set. It carries only Contact ID, Identity ID, and assignment time. The Repository generates a Binding ID when it inserts a row. Updating an existing workspace override preserves the persisted ID and creation timestamp.
 
 ### 4. Identity and Binding each use one Repository contract
 
@@ -77,6 +77,8 @@ Alternative considered: retain one table with a discriminator and nullable tenan
 
 - `get/get_by_provider_user_id/list_all/search`;
 - `create/update/delete`.
+
+`list_all` remains part of both Repository contracts because reconciliation needs one complete Channel-scoped snapshot. It is not a general cross-Channel query. Identity delete and default Binding delete are idempotent commands that return `None` when the addressed bound-Channel row is absent.
 
 `IMBindingRepository` exposes:
 
@@ -91,9 +93,9 @@ The contract does not expose a default-only Contact lookup. Workspace and runtim
 
 Reader/writer and default/override/effective splitting is rejected because all operations share the same Session, Channel predicate, tables, mapping, and concrete implementation. The Channel Repository split is not copied: Identity and Binding have no workspace/deployment adapter variants and no constructor asymmetry between reads and writes.
 
-### 5. Concrete adapter stubs bind trusted context
+### 5. Concrete adapters bind trusted context and implement the ports
 
-The reference Repository stub defines these production shapes:
+The production adapters use these constructor shapes:
 
 - `SQLAlchemyIMIdentityRepository(Session, IMChannelId)`;
 - `SQLAlchemyIMBindingRepository(Session, IMChannelId)`.
@@ -104,7 +106,13 @@ Target `tenant_id` is also not constructor state. Workspace override and effecti
 
 Composition must obtain `IMChannelId` from the correct owner-bound Channel Reader. It must not pass a request-supplied Channel ID directly into these constructors. Workspace/deployment selection ends before Identity or Binding persistence is constructed.
 
+Reachable synchronization, reconciliation, and Contact-facing composition paths are migrated in this change. The temporary rule that forbids production composition of the adapters is removed once their methods are implemented. Durable port boundaries continue to prevent Repository contracts from importing ORM or SQLAlchemy infrastructure.
+
 Every existing-resource query and mutation must compare constructor-bound `channel_id` plus the addressed resource fields. Possession of a globally unique Identity or Binding ID does not authorize cross-Channel access.
+
+`SQLAlchemyIMIdentityRepository` implements every `IMIdentityRepository` method. `SQLAlchemyIMBindingRepository` implements every `IMBindingRepository` method. A production method must execute the specified read or mutation and must not retain `NotImplementedError` placeholders.
+
+Write methods flush their own DML before returning so database constraints and generated persistence state are observed inside the caller's transaction. They do not commit or roll back that transaction.
 
 ### 6. Effective Binding lookup is deterministic
 
@@ -116,19 +124,19 @@ Repository mapping assigns `IMBindingKind` from the table actually read. Callers
 
 ### 7. Stable failures cover only expected persistence conflicts
 
-Identity ports define one root `IMIdentityRepositoryError` with narrow already-exists, not-found, and in-use errors. Binding ports define one root `IMBindingRepositoryError` with conflict, Identity-not-found, and stale-write errors. Both roots derive directly from `Exception`.
+Identity ports define one root `IMIdentityRepositoryError` with narrow already-exists, not-found, and in-use errors. Binding ports define one root `IMBindingRepositoryError` with conflict and Identity-not-found errors. Both roots derive directly from `Exception`.
 
-Identity delete must reject an Identity still referenced by either current Binding table. Binding writes must reject an Identity that is absent or belongs to another Channel. Unexpected mapping, SQLAlchemy, validation, and integrity failures propagate unchanged unless a requirement explicitly classifies the relevant constraint.
+Identity delete must reject an Identity still referenced by either current Binding table. Missing Identity and default Binding deletes succeed without returning a deleted value. A default Binding replacement that no longer matches its expected Identity returns no Binding. Binding writes must reject an Identity that is absent or belongs to another Channel. Unexpected mapping, SQLAlchemy, validation, and integrity failures propagate unchanged unless a requirement explicitly classifies the relevant constraint.
 
 ### 8. Caller owns transaction boundaries
 
-SQLAlchemy adapters receive a caller-provided `Session`. They may query, perform DML, and flush. They must not create a Session, commit, rollback, begin a nested transaction, acquire an Organization write lock, execute Provider I/O, or dispatch work.
+SQLAlchemy adapters receive a caller-provided `Session`. They query, perform DML, and flush as required by their Repository contracts. They must not create a Session, commit, rollback, begin a nested transaction, acquire an Organization write lock, execute Provider I/O, or dispatch work.
 
-The later synchronization/reconciliation migration may combine the two repositories over the same caller-owned Session and external write guard.
+Synchronization and reconciliation may combine the two repositories over the same caller-owned Session and external write guard.
 
-### 9. Reference artifacts fix production placement
+### 9. Production code and capability specs own the final shapes
 
-The change includes non-importable `domain.py`, `schema.py`, and `repository.py` reference artifacts.
+The original non-importable `domain.py`, `schema.py`, and `repository.py` mirrors contain no interface or schema fact absent from production code and the capability specs. They are removed to avoid a second implementation-shaped source of truth.
 
 Production placement is:
 
@@ -143,24 +151,24 @@ Core, services, and controllers must not define compatibility copies. Repository
 
 - [Effective reads combine two tables] → Only `IMBindingRepository` owns override-first composition; callers never query both tables directly.
 - [Identity and Binding rows retain logical rather than database foreign keys] → Every Repository predicate includes the bound Channel ID, and behavior tests cover cross-Channel IDs and missing Identity endpoints.
-- [Binding IDs are generated in two tables] → `IMBindingKind + IMBindingId` is the complete generic persistence identity; application-generated UUIDs remain the existing scalar ID mechanism.
-- [Old rows can remain after Channel replacement until later migration] → Current reads always bind the current Channel ID, so old rows are immediately unreachable; retention and cleanup remain outside this stub change.
-- [Repository stubs are not usable persistence implementations] → This change deliberately freezes contracts before synchronization and reconciliation SQL migration; tasks and architecture tests prevent callers from treating stubs as implemented adapters.
+- [Binding IDs are generated in two tables] → The Repository generates IDs only when inserting; `IMBindingKind + IMBindingId` is the complete generic persistence identity returned to callers.
+- [Old rows can remain after Channel replacement until later migration] → Current reads always bind the current Channel ID, so old rows are immediately unreachable; retention and cleanup remain outside this change.
+- [Constraint conflicts differ by database dialect] → Adapters translate only the named endpoint constraints owned by these tables and preserve every unrelated SQLAlchemy or integrity failure.
 
 ## Migration Plan
 
-1. Add red-first contract and schema tests for the reference shapes and portable constraints.
-2. Replace the unpublished Identity/Binding ORM schema with the three final tables.
-3. Add owner-free values, write values, errors, and the two Repository Protocols.
-4. Add the two constructor-complete SQLAlchemy adapter stubs without SQL bodies and prevent production composition from using them prematurely.
-5. Validate mapping examples, owner isolation, uniqueness, effective precedence, and caller-owned Session contracts through tests and static dependency checks.
-6. Migrate actual synchronization, reconciliation, Contact, and runtime callers in follow-up changes, then implement the SQLAlchemy bodies against the frozen ports.
+1. Replace the unpublished Identity/Binding ORM schema with the three final tables.
+2. Add owner-free values, write values, errors, and the two Repository Protocols.
+3. Implement the two SQLAlchemy adapters against the frozen ports.
+4. Migrate reachable synchronization, reconciliation, and Contact-facing persistence paths to the implemented adapters and remove obsolete Integration-scoped current Identity and Binding code.
+5. Add focused tests for the resulting production boundaries: deployed schema constraints, implemented Repository behavior, and migrated consumer behavior.
+6. Validate portability, transaction ownership, and dependency boundaries through database-backed tests and static checks.
 
-Rollback before dependent callers migrate consists of reverting the unpublished ORM/contracts and removing the unused stubs. No data backfill or external rollback protocol is required.
+Rollback consists of reverting the unpublished ORM/contracts, Repository implementations, and migrated callers together. No data backfill or external rollback protocol is required.
 
 ## Follow-up Boundary
 
-Separate changes must implement the SQLAlchemy query and mutation bodies before migrating synchronization, reconciliation, or Contact-facing reads to these ports. Controllers, public DTOs, runtime authorization, inbox and delivery flows, historical models and snapshots, credentials, Provider adapters, Webhook ingress, IM Channel management, and Celery payloads remain unchanged until an explicit follow-up change owns each migration.
+This change migrates current Identity and Binding persistence callers but preserves their external behavior and public DTOs. Runtime authorization, inbox and delivery flows, historical models and snapshots, credentials, Provider adapters, Webhook ingress, IM Channel management, and Celery payloads remain unchanged until an explicit follow-up change owns each migration.
 
 ## Open Questions
 
