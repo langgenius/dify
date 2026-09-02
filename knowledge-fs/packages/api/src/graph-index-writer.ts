@@ -18,6 +18,9 @@ import {
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { type KnowledgeNodeRepository, cloneKnowledgeNode } from "./knowledge-node-repository";
 
+const maxGraphEntityCanonicalKeyLength = 512;
+const maxGraphEntityNameLength = 255;
+
 export interface GraphIndexWriterOptions {
   readonly extractionVersion: number;
   readonly graph: GraphIndexRepository;
@@ -120,6 +123,13 @@ export function createGraphIndexWriter({
 
           const canonicalName = graphEntityCanonicalName(entity);
           const canonicalKey = graphEntityCanonicalKey(entity.type, canonicalName);
+          if (
+            canonicalName.length > maxGraphEntityNameLength ||
+            canonicalKey.length > maxGraphEntityCanonicalKeyLength
+          ) {
+            skippedEntities += 1;
+            continue;
+          }
           const existing = entityAccumulator.get(canonicalKey);
           const next: GraphEntityAccumulator = existing ?? {
             aliases: [],

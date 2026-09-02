@@ -2293,6 +2293,12 @@ describe("graph index persistence", () => {
             text: "Refund Policy",
             type: "policy",
           },
+          {
+            confidence: 0.99,
+            quality: { graphEligible: true },
+            text: "x".repeat(256),
+            type: "term",
+          },
           { confidence: 1, text: "", type: "term" },
           "invalid-entity",
         ],
@@ -2302,6 +2308,13 @@ describe("graph index persistence", () => {
             object: "Missing Entity",
             quality: { graphEligible: true },
             subject: "Refund Policy",
+            type: "references",
+          },
+          {
+            confidence: 0.99,
+            object: "Refund Policy",
+            quality: { graphEligible: true },
+            subject: "x".repeat(256),
             type: "references",
           },
           "invalid-relation",
@@ -2323,8 +2336,8 @@ describe("graph index persistence", () => {
     expect(result.stats).toEqual({
       entitiesIndexed: 1,
       relationsIndexed: 0,
-      skippedEntities: 0,
-      skippedRelations: 1,
+      skippedEntities: 1,
+      skippedRelations: 2,
     });
   });
 

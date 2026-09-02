@@ -75,6 +75,22 @@ describe("Dify object storage adapter", () => {
     await expect(adapter.getObject("tenant-1/large")).rejects.toThrow("exceeds maxObjectBytes=2");
   });
 
+  it("caps object-list pages to the Dify inner API contract", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(Response.json({ objects: [] }));
+    const adapter = createDifyObjectStorageAdapter({
+      apiKey: "inner-key",
+      baseUrl: "http://api:5001",
+      fetch,
+    });
+
+    await adapter.listObjects({ limit: 1_000, prefix: "tenant-1/spaces/space-1/" });
+
+    const url = new URL(String(fetch.mock.calls[0]?.[0]));
+    expect(url.searchParams.get("limit")).toBe("100");
+  });
+
   it("returns false when Dify storage health is unavailable", async () => {
     const adapter = createDifyObjectStorageAdapter({
       apiKey: "inner-key",

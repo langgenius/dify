@@ -341,6 +341,9 @@ describe.each(["postgres", "tidb"] as const)(
         }),
       ).resolves.toMatchObject({ state: "completed" });
 
+      const deletionAdmission = calls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionAdmission?.params).toContain(`source-remote-missing:${runId}:%`);
+
       const activity = calls.find(
         (call) =>
           call.tableName === "knowledge_space_activity_events" && call.operation === "insert",

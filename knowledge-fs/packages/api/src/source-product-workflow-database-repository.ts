@@ -1681,7 +1681,10 @@ async function getRunForMutationAdmission(
 } | null> {
   const candidate = await getRun(database, tx, runId, false);
   if (!candidate) return null;
-  const writable = await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, candidate);
+  const writable = await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, {
+    ...candidate,
+    workflowId: candidate.id,
+  });
   const terminalizingThroughDeletionFence = !writable && allowDeletionFencedTerminalization;
   if (
     !writable &&

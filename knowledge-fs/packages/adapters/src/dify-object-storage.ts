@@ -15,6 +15,7 @@ export interface DifyObjectStorageOptions {
 
 const defaultMaxObjectBytes = 64 * 1024 * 1024;
 const defaultRequestTimeoutMs = 60_000;
+const maxDifyObjectListPageSize = 100;
 const metadataHeader = "X-Knowledge-FS-Metadata";
 const checksumHeader = "X-Knowledge-FS-Checksum-Sha256";
 const contentTypeHeader = "X-Knowledge-FS-Content-Type";
@@ -162,7 +163,9 @@ export function createDifyObjectStorageAdapter({
       return withResponse(
         objectPath("/inner/api/knowledge-fs/storage/objects", {
           ...(cursor ? { cursor } : {}),
-          limit: String(limit),
+          // The Dify inner API deliberately caps one object-list page at 100. Preserve the
+          // caller's larger bounded scan through its normal nextCursor loop.
+          limit: String(Math.min(limit, maxDifyObjectListPageSize)),
           prefix,
         }),
         {},
