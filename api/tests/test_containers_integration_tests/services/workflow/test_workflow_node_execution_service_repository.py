@@ -55,11 +55,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             error=None,
             elapsed_time=0.0,
             execution_metadata="{}",
-            created_at=created_at,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             finished_at=None,
         )
+        execution.created_at = created_at
         db_session_with_containers.add(execution)
         db_session_with_containers.commit()
         return execution

@@ -6,7 +6,7 @@ from core.tools.errors import ToolProviderNotFoundError
 from events.event_handlers import delete_tool_parameters_cache_when_sync_draft_workflow as handler_module
 from graphon.nodes.tool.entities import ToolEntity, ToolProviderType
 from models.model import App, AppMode, IconType
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 
 
 def test_missing_tool_provider_does_not_log_error_traceback(
@@ -29,13 +29,13 @@ def test_missing_tool_provider_does_not_log_error_traceback(
     workflow = Workflow(
         tenant_id=app.tenant_id,
         app_id=app.id,
-        type="workflow",
+        type=WorkflowType.WORKFLOW,
         version="draft",
         graph='{"nodes": [{"id": "node-id", "data": {"type": "tool"}}]}',
-        features="{}",
+        _features="{}",
         created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
     tool_entity = ToolEntity(
         provider_type=ToolProviderType.MCP,

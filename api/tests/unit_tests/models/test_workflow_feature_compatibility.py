@@ -6,7 +6,7 @@ import json
 
 from pydantic import JsonValue
 
-from models import Workflow
+from models import Workflow, WorkflowType
 
 OLD_VERSION_WORKFLOW_FEATURES: dict[str, JsonValue] = {
     "file_upload": {
@@ -47,7 +47,7 @@ def test_workflow_features() -> None:
     workflow = Workflow(
         tenant_id="",
         app_id="",
-        type="",
+        type=WorkflowType.WORKFLOW,
         version="",
         graph="",
         _features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
