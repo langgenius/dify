@@ -5,10 +5,7 @@ endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
 that matches /openapi/v1/account.
 
-Member-management endpoints declare ``CheckWorkspaceMember`` and, where
-the console gates on role, a ``CheckWorkspaceRole``. That floor names no superseding
-scene: nothing in the RBAC scene set covers member management on this surface,
-so it stands whether or not RBAC is enabled.
+Member management declares both authorization arms; ``RBAC_ENABLED`` picks one.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
 account bearer and lets the view's own membership-scoped lookup answer 404.
 """
@@ -41,12 +38,14 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.requirements import (
+    CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -71,6 +70,11 @@ _WORKSPACE_MEMBER_ADMIN = (
     _ACCOUNT_SUBJECT,
     CheckScope(Scope.WORKSPACE_WRITE),
     CheckWorkspaceMember(),
+    CheckRBACPermission(
+        resource_type=RBACResourceScope.WORKSPACE,
+        scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+        resource_required=False,
+    ),
     CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
 )
 

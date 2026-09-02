@@ -122,8 +122,8 @@ class CheckScope(Requirement):
 
 
 class CheckRBACPermission(Requirement):
-    """One RBAC permission point. Inert wherever RBAC is switched off, which is
-    also what lets the `CheckWorkspaceRole` beside it take over there.
+    """One RBAC permission point. Inert wherever RBAC is off; a route that
+    needs a check there declares a `CheckWorkspaceRole` beside this.
     """
 
     def __init__(
@@ -154,29 +154,18 @@ class CheckRBACPermission(Requirement):
 
 
 class CheckWorkspaceRole(Requirement):
-    """The coarse workspace-role gate that predates RBAC.
-
-    `superseded_by` names the `CheckRBACPermission` declared beside it on the same route:
-    where RBAC is on, that scene is the authority and this floor stands down
-    rather than double-enforcing. A floor that names nothing applies
-    unconditionally, which is what keeps workspace administration guarded on an
-    RBAC deployment: no scene there has taken the job over.
+    """The workspace-role gate that predates RBAC. Inert wherever RBAC is on;
+    a route that needs a check there declares a `CheckRBACPermission` beside this.
     """
 
-    def __init__(
-        self,
-        allowed_roles: frozenset[TenantAccountRole],
-        *,
-        superseded_by: RBACPermission | None = None,
-    ) -> None:
+    def __init__(self, allowed_roles: frozenset[TenantAccountRole]) -> None:
         self.allowed_roles = allowed_roles
-        self.superseded_by = superseded_by
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if subject.caller_kind is not CallerKind.ACCOUNT:
             return
-        if dify_config.RBAC_ENABLED and self.superseded_by is not None:
+        if dify_config.RBAC_ENABLED:
             return
         if load_workspace_role(ctx) not in self.allowed_roles:
             raise Forbidden("insufficient workspace role")
