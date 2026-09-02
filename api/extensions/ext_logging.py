@@ -90,6 +90,49 @@ def _apply_timezone(handlers: list[logging.Handler]):
                 handler.formatter.converter = time_converter  # type: ignore[attr-defined]
 
 
+def apply_timezone_to_sqlalchemy_loggers() -> None:
+    """Apply the LOG_TZ converter to the formatters of SQLAlchemy logger handlers.
+
+    ``sqlalchemy.engine`` (and its sub-loggers like ``sqlalchemy.pool``) have
+    ``propagate = False`` set in :func:`init_app` to avoid duplicate logs, so the
+    root handlers' ``LOG_TZ``-aware formatter never gets a chance to format
+    SQLAlchemy records. As a result, when ``SQLALCHEMY_ECHO`` is enabled, engine
+    log timestamps are emitted in the server's local timezone while the
+    surrounding application logs are converted to ``LOG_TZ``, producing
+    inconsistent timestamps within a single log stream.
+
+    This helper walks the SQLAlchemy logger hierarchy and applies the same
+    ``LOG_TZ`` converter to the formatters of any handlers that SQLAlchemy
+    itself has attached, so engine log timestamps agree with the rest of the
+    application logs.
+
+    Must be called AFTER the SQLAlchemy engine is created (i.e. after
+    ``ext_database.init_app()`` triggers engine creation via ``db.engine``), so
+    that any echo handler has been attached. The function is a no-op when
+    ``LOG_OUTPUT_FORMAT`` is not ``"text"`` or when ``LOG_TZ`` is unset.
+    """
+    if dify_config.LOG_OUTPUT_FORMAT != "text":
+        return
+    log_tz = dify_config.LOG_TZ
+    if not log_tz:
+        return
+
+    from datetime import datetime
+
+    import pytz
+
+    timezone = pytz.timezone(log_tz)
+
+    def time_converter(seconds):
+        return datetime.fromtimestamp(seconds, tz=timezone).timetuple()
+
+    for name in ("sqlalchemy.engine", "sqlalchemy", "sqlalchemy.pool"):
+        sql_logger = logging.getLogger(name)
+        for handler in sql_logger.handlers:
+            if isinstance(handler.formatter, logging.Formatter):
+                handler.formatter.converter = time_converter  # type: ignore[attr-defined]
+
+
 class _TextFormatter(logging.Formatter):
     """Text formatter that ensures trace_id and req_id are always present."""
 
