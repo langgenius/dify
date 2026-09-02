@@ -143,17 +143,51 @@ def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> Mod
     })
 
 
+# Prepended to the generator instruction so the LLM emits a WORKFLOW-shaped graph
+# (start + end node) even when the plan reads like a chatbot. Without this the model
+# often produces a chatflow graph (answer node / no end node) that the generator
+# rejects as MISSING_TERMINAL -- and the generator does NOT retry that class of
+# failure -- so the build silently yields no nodes.
+_WORKFLOW_TOPOLOGY_DIRECTIVE = (
+    "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
+    "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
+    "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
+)
+
+
+def _terminal_retry_instruction(base_instruction: str, error: str) -> str:
+    """Corrective instruction for the single retry after a topology-validation
+    failure -- feed the specific generator error back with an explicit fix."""
+    return (
+        f"Your previous attempt was rejected: {error}. Regenerate the COMPLETE workflow graph "
+        "with exactly one 'start' node and at least one 'end' node wired from the final step. "
+        f"Do NOT use 'answer' nodes.\n\n{base_instruction}"
+    )
+
+
 def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[str]) -> list[MutationIntent]:
     try:
         mc = _generator_model_config(tenant_id, model_config)
-        result = WorkflowGeneratorService.generate_workflow_graph(
-            tenant_id=tenant_id,
-            mode="workflow",
-            instruction="\n".join(plan_items),
-            model_config=mc,
-            current_graph=None,
-        )
+        base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\n" + "\n".join(plan_items)
+
+        def _generate(instruction: str) -> dict[str, Any]:
+            return WorkflowGeneratorService.generate_workflow_graph(
+                tenant_id=tenant_id,
+                mode="workflow",
+                instruction=instruction,
+                model_config=mc,
+                current_graph=None,
+            )
+
+        result = _generate(base_instruction)
         graph = result.get("graph") or {}
+        if result.get("error") or not graph.get("nodes"):
+            # The generator's own retry only covers invalid-JSON / bad-schema, NOT a
+            # structurally-valid graph that fails topology validation (e.g. no 'end'
+            # node). Retry ONCE with the specific error fed back as a corrective nudge.
+            retry_error = result.get("error") or "the generated graph had no nodes"
+            result = _generate(_terminal_retry_instruction(base_instruction, retry_error))
+            graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
             logger.warning(
                 "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items): error=%s",
