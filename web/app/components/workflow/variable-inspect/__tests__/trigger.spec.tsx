@@ -1,5 +1,5 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
@@ -103,6 +103,27 @@ describe('VariableInspectTrigger', () => {
     await user.keyboard('{Enter}')
 
     expect(store.getState().showVariableInspectPanel).toBe(true)
+  })
+
+  it('should restore focus to the trigger after the panel closes', async () => {
+    const { store } = renderTrigger()
+    const trigger = screen.getByRole('button', {
+      name: 'workflow.debug.variableInspect.trigger.normal',
+    })
+
+    trigger.focus()
+    act(() => store.setState({ showVariableInspectPanel: true }))
+    expect(trigger).not.toBeInTheDocument()
+
+    act(() => store.setState({ showVariableInspectPanel: false }))
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'workflow.debug.variableInspect.trigger.normal',
+        }),
+      ).toHaveFocus(),
+    )
   })
 
   it('should disable opening while the workflow is read only', async () => {

@@ -1,13 +1,18 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+export const START_PLACEHOLDER_PANEL_TITLE_ID = 'workflow-start-placeholder-panel-title'
+
 export function StartPlaceholderPanelTitle() {
   const { t } = useTranslation()
 
   return (
-    <div className="mr-2 min-w-0 grow system-xl-semibold text-text-primary">
+    <h2
+      id={START_PLACEHOLDER_PANEL_TITLE_ID}
+      className="mr-2 min-w-0 grow system-xl-semibold text-text-primary"
+    >
       {t(($) => $['nodes.startPlaceholder.panelTitle'], { ns: 'workflow' })}
-    </div>
+    </h2>
   )
 }
 

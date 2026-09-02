@@ -244,6 +244,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         >
           <button
             type="button"
+            data-workflow-node-primary-action
             aria-label={data.title}
             className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => {

@@ -184,6 +184,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     onlineUsers,
   }) => {
     const { t } = useTranslation()
+    const { t: tAppDebug } = useTranslation('appDebug')
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
@@ -658,6 +659,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         )}
         ref={workflowContainerRef}
       >
+        <h1 className="sr-only">{tAppDebug(($) => $.orchestrate)}</h1>
         <CandidateNode />
         <CommentManager />
         <div
@@ -793,7 +795,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             deleteKeyCode={null}
             nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
             nodesConnectable={!nodesReadOnly}
-            nodesFocusable={!nodesReadOnly}
+            nodesFocusable={false}
             edgesFocusable={!nodesReadOnly}
             panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
             panOnDrag={controlMode === ControlMode.Hand || [1]}

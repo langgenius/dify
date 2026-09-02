@@ -142,6 +142,12 @@ describe('VariableInspect Panel', () => {
     )
 
     expect(screen.getByText('workflow.debug.variableInspect.listening.title'))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'workflow.debug.variableInspect.title',
+      }),
+    ).toBeInTheDocument()
     expect(mockEmit).toHaveBeenCalledWith({
       type: EVENT_WORKFLOW_STOP,
     })
@@ -158,6 +164,12 @@ describe('VariableInspect Panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('workflow.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'workflow.debug.variableInspect.title',
+      }),
+    ).toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 

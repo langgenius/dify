@@ -62,11 +62,12 @@ const DebugAndPreview = () => {
 
     return workflowCanvasWidth - 400 - 400
   }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
-  const { triggerRef, containerRef } = useResizePanel({
+  const { triggerRef, containerRef, resizeHandleProps } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
     minWidth: 400,
     maxWidth: maxPanelWidth,
+    currentWidth: panelWidth,
     onResize: debounce((width: number) => {
       handleResize(width, 'user')
     }),
@@ -76,11 +77,15 @@ const DebugAndPreview = () => {
     <div className="relative h-full">
       <div
         ref={triggerRef}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        {...resizeHandleProps}
+        aria-controls="workflow-debug-and-preview-panel"
+        aria-label={t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
+        className="group absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible:h-full group-focus-visible:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
       <div
+        id="workflow-debug-and-preview-panel"
         ref={containerRef}
         className={cn(
           'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',

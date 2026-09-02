@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-type UseResizePanelParams = {
+export type UseResizePanelParams = {
   direction?: 'horizontal' | 'vertical' | 'both'
   triggerDirection?:
     | 'top'
@@ -15,6 +16,9 @@ type UseResizePanelParams = {
   maxWidth?: number
   minHeight?: number
   maxHeight?: number
+  currentWidth?: number
+  currentHeight?: number
+  keyboardStep?: number
   onResized?: (width: number, height: number) => void
   onResize?: (width: number, height: number) => void
 }
@@ -26,6 +30,9 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
     maxWidth = Infinity,
     minHeight = -Infinity,
     maxHeight = Infinity,
+    currentWidth,
+    currentHeight,
+    keyboardStep = 10,
     onResized,
     onResize,
   } = params || {}
@@ -115,6 +122,98 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
       onResized(containerRef.current.offsetWidth, containerRef.current.offsetHeight)
   }, [prevUserSelectStyle, onResized])
 
+  const handleResizeKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!containerRef.current) return
+
+      const isHorizontalResize = direction === 'horizontal'
+      const isVerticalResize = direction === 'vertical'
+      if (!isHorizontalResize && !isVerticalResize) return
+
+      const currentValue = isHorizontalResize
+        ? (currentWidth ?? containerRef.current.offsetWidth)
+        : (currentHeight ?? containerRef.current.offsetHeight)
+      const minValue = isHorizontalResize ? minWidth : minHeight
+      const maxValue = isHorizontalResize ? maxWidth : maxHeight
+      const increaseKey = isHorizontalResize
+        ? triggerDirection.includes('left')
+          ? 'ArrowLeft'
+          : 'ArrowRight'
+        : triggerDirection.includes('top')
+          ? 'ArrowUp'
+          : 'ArrowDown'
+      const decreaseKey = isHorizontalResize
+        ? increaseKey === 'ArrowLeft'
+          ? 'ArrowRight'
+          : 'ArrowLeft'
+        : increaseKey === 'ArrowUp'
+          ? 'ArrowDown'
+          : 'ArrowUp'
+
+      let nextValue: number | undefined
+      if (event.key === increaseKey)
+        nextValue = currentValue + keyboardStep * (event.shiftKey ? 10 : 1)
+      else if (event.key === decreaseKey)
+        nextValue = currentValue - keyboardStep * (event.shiftKey ? 10 : 1)
+      else if (event.key === 'Home' && Number.isFinite(minValue)) nextValue = minValue
+      else if (event.key === 'End' && Number.isFinite(maxValue)) nextValue = maxValue
+
+      if (nextValue === undefined) return
+
+      event.preventDefault()
+      nextValue = Math.min(Math.max(nextValue, minValue), maxValue)
+
+      if (isHorizontalResize) {
+        containerRef.current.style.width = `${nextValue}px`
+        onResize?.(nextValue, 0)
+      } else {
+        containerRef.current.style.height = `${nextValue}px`
+        onResize?.(0, nextValue)
+      }
+    },
+    [
+      currentHeight,
+      currentWidth,
+      direction,
+      keyboardStep,
+      maxHeight,
+      maxWidth,
+      minHeight,
+      minWidth,
+      onResize,
+      triggerDirection,
+    ],
+  )
+
+  const resizeHandleProps = useMemo(() => {
+    const isHorizontalResize = direction === 'horizontal'
+    const isVerticalResize = direction === 'vertical'
+    if (!isHorizontalResize && !isVerticalResize) return {}
+
+    const minValue = isHorizontalResize ? minWidth : minHeight
+    const maxValue = isHorizontalResize ? maxWidth : maxHeight
+    const currentValue = isHorizontalResize ? currentWidth : currentHeight
+
+    return {
+      role: 'separator' as const,
+      tabIndex: 0,
+      'aria-orientation': isHorizontalResize ? ('vertical' as const) : ('horizontal' as const),
+      'aria-valuemin': Number.isFinite(minValue) ? minValue : undefined,
+      'aria-valuemax': Number.isFinite(maxValue) ? maxValue : undefined,
+      'aria-valuenow': currentValue,
+      onKeyDown: handleResizeKeyDown,
+    }
+  }, [
+    currentHeight,
+    currentWidth,
+    direction,
+    handleResizeKeyDown,
+    maxHeight,
+    maxWidth,
+    minHeight,
+    minWidth,
+  ])
+
   useEffect(() => {
     const element = triggerRef.current
     element?.addEventListener('mousedown', handleStartResize)
@@ -130,5 +229,6 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
   return {
     triggerRef,
     containerRef,
+    resizeHandleProps,
   }
 }

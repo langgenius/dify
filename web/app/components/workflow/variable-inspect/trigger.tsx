@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -21,6 +21,8 @@ const VariableInspectTrigger: FC = () => {
 
   const showVariableInspectPanel = useStore((s) => s.showVariableInspectPanel)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const wasPanelOpenRef = useRef(showVariableInspectPanel)
 
   const environmentVariables = useStore((s) => s.environmentVariables)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -62,12 +64,21 @@ const VariableInspectTrigger: FC = () => {
     setCurrentFocusNodeId('')
   }
 
+  useEffect(() => {
+    const wasPanelOpen = wasPanelOpenRef.current
+    wasPanelOpenRef.current = showVariableInspectPanel
+
+    if (wasPanelOpen && !showVariableInspectPanel && document.activeElement === document.body)
+      triggerRef.current?.focus()
+  }, [showVariableInspectPanel])
+
   if (showVariableInspectPanel) return null
 
   return (
     <div className={cn('flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
       {!isRunning && !currentVars.length && (
         <Button
+          ref={triggerRef}
           variant="ghost"
           size={null}
           disabled={nodesReadOnly}
@@ -87,6 +98,7 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && currentVars.length > 0 && (
         <>
           <Button
+            ref={triggerRef}
             variant="ghost"
             size={null}
             disabled={nodesReadOnly}
@@ -103,6 +115,7 @@ const VariableInspectTrigger: FC = () => {
             {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflow' })}
           </Button>
           <Button
+            ref={triggerRef}
             variant="ghost"
             size={null}
             disabled={nodesReadOnly}

@@ -79,6 +79,7 @@ import {
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import {
+  START_PLACEHOLDER_PANEL_TITLE_ID,
   StartPlaceholderPanelBody,
   StartPlaceholderPanelDescription,
   StartPlaceholderPanelTitle,
@@ -184,11 +185,12 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     [updateNodePanelWidth],
   )
 
-  const { triggerRef, containerRef } = useResizePanel({
+  const { triggerRef, containerRef, resizeHandleProps } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
     minWidth: 400,
     maxWidth: maxNodePanelWidth,
+    currentWidth: nodePanelWidth,
     onResize: debounce(handleResize),
   })
 
@@ -213,6 +215,14 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     data.isInIteration || data.isInLoop,
   )
   const toolIcon = useToolIcon(data)
+
+  const handlePanelClose = useCallback(() => {
+    const nodeElement = Array.from(
+      document.querySelectorAll<HTMLElement>('.react-flow__node[data-id]'),
+    ).find((element) => element.dataset.id === id)
+    nodeElement?.querySelector<HTMLElement>('[data-workflow-node-primary-action]')?.focus()
+    handleNodeSelect(id, true)
+  }, [handleNodeSelect, id])
 
   const { saveStateToHistory } = useWorkflowHistory()
 
@@ -555,12 +565,19 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     >
       <div
         ref={triggerRef}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        {...resizeHandleProps}
+        aria-controls={`workflow-node-panel-${id}`}
+        aria-label={data.title}
+        className="group absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible:h-full group-focus-visible:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
       <Tabs
+        id={`workflow-node-panel-${id}`}
         ref={containerRef}
+        role="region"
+        aria-label={isStartPlaceholderPanel ? undefined : data.title}
+        aria-labelledby={isStartPlaceholderPanel ? START_PLACEHOLDER_PANEL_TITLE_ID : undefined}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
         className={cn(
@@ -621,7 +638,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 type="button"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
-                onClick={() => handleNodeSelect(id, true)}
+                onClick={handlePanelClose}
               >
                 <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
               </button>

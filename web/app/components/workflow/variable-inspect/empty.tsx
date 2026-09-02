@@ -13,9 +13,9 @@ const Empty: FC = () => {
         <Variable02 className="size-5 text-text-accent" />
       </div>
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold text-text-secondary">
+        <h3 className="system-sm-semibold text-text-secondary">
           {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
-        </div>
+        </h3>
         <div className="system-xs-regular text-text-tertiary">
           {t(($) => $['debug.variableInspect.emptyTip'], { ns: 'workflow' })}
         </div>
