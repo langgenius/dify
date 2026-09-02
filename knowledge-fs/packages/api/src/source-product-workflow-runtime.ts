@@ -916,15 +916,15 @@ async function processOnlineDocumentImport(
   }
   const initial = execution.run();
   const records = payloadItems(initial);
-  const frozenSource = await freezeProviderSelection(
+  const replacementSelection = prepareProviderSelection(source, "online-document", records);
+  const inventory = await loadSourceInventory(
     input,
     execution,
     source,
-    "online-document",
-    records,
+    input.maxSyncItems ?? 1_000,
   );
   const connectorSource = await execution.external(() =>
-    resolveSource(input, frozenSource, initial.tenantId),
+    resolveSource(input, source, initial.tenantId),
   );
   const completedBefore = Math.min(initial.progressCompleted, records.length);
   for (const [index, record] of records.entries()) {
@@ -977,7 +977,7 @@ async function processOnlineDocumentImport(
       sizeBytes: body.byteLength,
       title: typeof record.name === "string" ? record.name : pageId,
     };
-    await materializeCandidates(input, execution, frozenSource, [document], [candidate]);
+    await materializeCandidates(input, execution, source, [document], [candidate]);
     await execution.mutate((latest) =>
       input.repository.checkpoint({
         checkpoint: "materialized",
@@ -989,6 +989,14 @@ async function processOnlineDocumentImport(
       }),
     );
   }
+  await removeItemsOutsideSelection(
+    input,
+    execution,
+    source,
+    inventory,
+    new Set(records.map((record) => requiredPayloadString(record, "providerItemId"))),
+  );
+  await commitProviderSelection(input, execution, source, replacementSelection);
 }
 
 async function processOnlineDriveImport(
@@ -1001,15 +1009,15 @@ async function processOnlineDriveImport(
   }
   const initial = execution.run();
   const records = payloadItems(initial);
-  const frozenSource = await freezeProviderSelection(
+  const replacementSelection = prepareProviderSelection(source, "online-drive", records);
+  const inventory = await loadSourceInventory(
     input,
     execution,
     source,
-    "online-drive",
-    records,
+    input.maxSyncItems ?? 1_000,
   );
   const connectorSource = await execution.external(() =>
-    resolveSource(input, frozenSource, initial.tenantId),
+    resolveSource(input, source, initial.tenantId),
   );
   const completedBefore = Math.min(initial.progressCompleted, records.length);
   for (const [index, record] of records.entries()) {
@@ -1064,7 +1072,7 @@ async function processOnlineDriveImport(
       sizeBytes: download.body.byteLength,
       title: name,
     };
-    await materializeCandidates(input, execution, frozenSource, [document], [candidate]);
+    await materializeCandidates(input, execution, source, [document], [candidate]);
     await execution.mutate((latest) =>
       input.repository.checkpoint({
         checkpoint: "materialized",
@@ -1076,6 +1084,14 @@ async function processOnlineDriveImport(
       }),
     );
   }
+  await removeItemsOutsideSelection(
+    input,
+    execution,
+    source,
+    inventory,
+    new Set(records.map((record) => requiredPayloadString(record, "providerItemId"))),
+  );
+  await commitProviderSelection(input, execution, source, replacementSelection);
 }
 
 interface FrozenProviderSelection {
@@ -1085,13 +1101,11 @@ interface FrozenProviderSelection {
   readonly version: 1;
 }
 
-async function freezeProviderSelection(
-  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
-  execution: RuntimeExecution,
+function prepareProviderSelection(
   source: Source,
   kind: FrozenProviderSelection["kind"],
   records: readonly Record<string, unknown>[],
-): Promise<Source> {
+): FrozenProviderSelection {
   const selections = records.map((record) => {
     const providerItemId = requiredPayloadString(record, "providerItemId");
     const coordinateKey = providerSelectionCoordinateKey(kind, record);
@@ -1125,9 +1139,16 @@ async function freezeProviderSelection(
   const existing = readFrozenProviderSelection(source.metadata);
   if (existing) {
     assertCompatibleFrozenProviderSelection(existing, frozenSelection);
-    return source;
   }
+  return frozenSelection;
+}
 
+async function commitProviderSelection(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  frozenSelection: FrozenProviderSelection,
+): Promise<void> {
   await execution.assertActive();
   const updated = await updateSourceWithRetry({
     id: source.id,
@@ -1147,7 +1168,6 @@ async function freezeProviderSelection(
   });
   if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
   await execution.assertActive();
-  return updated;
 }
 
 function assertCompatibleFrozenProviderSelection(
@@ -1447,7 +1467,7 @@ async function processSourceSync(
   if (!Number.isSafeInteger(maxItems) || maxItems < 1 || maxItems > 10_000) {
     throw runtimeError("SOURCE_SYNC_LIMIT_INVALID", "Source sync item limit is invalid");
   }
-  const inventory = await loadSourceInventory(input, execution, source, maxItems);
+  let inventory = await loadSourceInventory(input, execution, source, maxItems);
   if (source.type === "web") {
     await processWebsiteSync(input, execution, source, inventory, maxItems);
     return;
@@ -1471,12 +1491,12 @@ async function processSourceSync(
   if (frozenSelection) {
     const allowed = new Set(frozenSelection.identityHashes);
     const allowedCoordinates = new Set(frozenSelection.coordinateHashes);
+    const outsideSelection = new Map<string, SourceActiveDocumentInventoryItem>();
     for (const providerItemId of inventory.keys()) {
       if (!allowed.has(providerSelectionIdentityHash(providerKind, providerItemId))) {
-        throw runtimeError(
-          "SOURCE_SYNC_SELECTION_MISMATCH",
-          "Logical source inventory is outside the frozen provider selection",
-        );
+        const item = inventory.get(providerItemId);
+        if (item) outsideSelection.set(providerItemId, item);
+        continue;
       }
       const item = inventory.get(providerItemId);
       const coordinateKey = item ? frozenInventoryCoordinateKey(item, providerKind) : undefined;
@@ -1491,6 +1511,18 @@ async function processSourceSync(
           "Logical source provider coordinate is outside the frozen selection",
         );
       }
+    }
+    if (outsideSelection.size > 0) {
+      await removeItemsOutsideSelection(
+        input,
+        execution,
+        source,
+        outsideSelection,
+        new Set<string>(),
+      );
+      inventory = new Map(
+        [...inventory].filter(([providerItemId]) => !outsideSelection.has(providerItemId)),
+      );
     }
   }
   // A connected Source is populated only by an explicit durable import. An empty logical
@@ -2662,6 +2694,58 @@ function missingInventory(
         left.providerItemId.localeCompare(right.providerItemId) ||
         left.documentId.localeCompare(right.documentId),
     );
+}
+
+async function removeItemsOutsideSelection(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
+  selectedProviderItemIds: ReadonlySet<string>,
+): Promise<void> {
+  const removed = missingInventory(inventory, selectedProviderItemIds);
+  if (removed.length === 0) return;
+  if (!input.logicalRevisions.markRemoteMissing) {
+    throw runtimeError(
+      "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+      "Connected-source selection replacement requires durable logical document deletion",
+    );
+  }
+  for (const item of removed) {
+    const run = execution.run();
+    await execution.external(
+      (signal) =>
+        input.logicalRevisions.markRemoteMissing?.(
+          {
+            ...(run.capabilityGrantId
+              ? { capabilityGrantId: run.capabilityGrantId }
+              : {
+                  permissionSnapshot: durablePermissionReference(run),
+                  requestedBySubjectId: workflowSubjectId(run),
+                }),
+            documentId: item.documentId,
+            knowledgeSpaceId: run.knowledgeSpaceId,
+            now: iso((input.now ?? Date.now)()),
+            policy: "tombstone",
+            providerItemId: item.providerItemId,
+            sourceId: source.id,
+            tenantId: run.tenantId,
+          },
+          {
+            assertActive: async () => {
+              await execution.assertActive();
+            },
+            signal,
+          },
+        ) ??
+        Promise.reject(
+          runtimeError(
+            "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+            "Connected-source selection replacement requires durable logical document deletion",
+          ),
+        ),
+    );
+  }
 }
 
 async function processRemoteMissing(

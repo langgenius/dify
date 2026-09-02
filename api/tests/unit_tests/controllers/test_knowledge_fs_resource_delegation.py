@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
@@ -851,6 +852,38 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     commit.assert_not_called()
     facade.update_source_sync_policy.assert_called_once()
     assert result is source
+
+
+def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() -> None:
+    provider_item_id = '["workspace-a","page-a"]'
+    identity_hash = sha256(f"online-document\0{provider_item_id}".encode()).hexdigest()
+    source = SimpleNamespace(
+        metadata={
+            "providerKind": "online-document",
+            "__knowledgeFsProviderSelection": {"identityHashes": [identity_hash]},
+        },
+        status="error",
+        type="connector",
+        uri="notion://connection-a",
+    )
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {
+                "kind": "online_document",
+                "items": [
+                    {
+                        "pageId": "page-a",
+                        "providerItemId": provider_item_id,
+                        "type": "page",
+                        "workspaceId": "workspace-a",
+                    }
+                ],
+            },
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+
+    assert console_resources._source_edit_requires_import(source, payload) is True
 
 
 def test_console_source_update_applies_policy_without_creating_import_work(

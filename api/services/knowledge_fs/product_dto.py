@@ -1914,6 +1914,7 @@ KnowledgeFSPublicErrorCode = Literal[
     "SOURCE_SECRET_INTEGRITY_FAILED",
     "SOURCE_SECRET_REF_CONFLICT",
     "SOURCE_SYNC_FAILED",
+    "SOURCE_SYNC_SELECTION_MISMATCH",
     "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID",
     "SOURCE_WEBSITE_CRAWL_FAILED",
     "SOURCE_WORKFLOW_FAILED",
@@ -1943,6 +1944,7 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
         "RETRIEVAL_EXECUTION_LEASE_LOST": (
             "The retrieval execution expired before it could finish. Run the query again."
         ),
+        "SOURCE_SYNC_SELECTION_MISMATCH": ("The source document inventory does not match the configured selection."),
     }
     _SAFE_PARAMETER_KEYS: ClassVar[frozenset[str]] = frozenset(
         {

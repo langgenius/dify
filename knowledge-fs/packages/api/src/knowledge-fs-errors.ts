@@ -511,6 +511,13 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
     503,
     "retry",
   ),
+  SOURCE_SYNC_SELECTION_MISMATCH: descriptor(
+    "conflict",
+    "The source document inventory does not match the configured selection.",
+    "never",
+    409,
+    "contact_admin",
+  ),
   SOURCE_SECRET_INTEGRITY_FAILED: descriptor(
     "internal",
     "The stored source credential failed its integrity check.",

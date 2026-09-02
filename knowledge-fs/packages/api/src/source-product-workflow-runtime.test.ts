@@ -614,6 +614,92 @@ describe("source-product workflow provider imports", () => {
     expect(fixture.sourceUpdates).not.toHaveBeenCalled();
   });
 
+  it("tombstones removed provider items before committing a replacement selection", async () => {
+    const previousProviderItemId = JSON.stringify(["workspace-a", "page-old"]);
+    const selectedProviderItemId = JSON.stringify(["workspace-a", "page-new"]);
+    const source = sourceRecord("replacement-online-document-import-source", {});
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(previousProviderItemId, "online-document", {
+          kind: "online-document",
+          pageId: "page-old",
+          type: "page",
+          workspaceId: "workspace-a",
+        }),
+      ],
+      onlineDocuments: {
+        getPageContent: vi.fn(async () => ({ content: "new content" })),
+      },
+      run: providerRun(source.id, "online-document-import", {
+        items: [
+          {
+            pageId: "page-new",
+            providerItemId: selectedProviderItemId,
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+        ],
+      }),
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(fixture.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ providerItemId: selectedProviderItemId }),
+      expect.any(Object),
+    );
+    expect(fixture.markRemoteMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policy: "tombstone",
+        providerItemId: previousProviderItemId,
+      }),
+      expect.any(Object),
+    );
+    expect(fixture.sourceUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          __knowledgeFsProviderSelection: frozenSelectionMetadata("online-document", [
+            selectedProviderItemId,
+          ]).__knowledgeFsProviderSelection,
+        }),
+      }),
+    );
+    expect(fixture.markRemoteMissing.mock.invocationCallOrder[0]).toBeLessThan(
+      fixture.sourceUpdates.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it("does not commit a replacement marker when durable removal is unavailable", async () => {
+    const previousProviderItemId = JSON.stringify(["workspace-a", "page-old"]);
+    const selectedProviderItemId = JSON.stringify(["workspace-a", "page-new"]);
+    const source = sourceRecord("blocked-replacement-online-document-import-source", {});
+    const fixture = await createFixture({
+      inventory: [inventoryItem(previousProviderItemId, "online-document")],
+      omitMarkRemoteMissing: true,
+      onlineDocuments: {
+        getPageContent: vi.fn(async () => ({ content: "new content" })),
+      },
+      run: providerRun(source.id, "online-document-import", {
+        items: [
+          {
+            pageId: "page-new",
+            providerItemId: selectedProviderItemId,
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+        ],
+      }),
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+      state: "failed",
+    });
+    expect(fixture.sourceUpdates).not.toHaveBeenCalled();
+  });
+
   it("rejects distinct providerItemIds that alias the same provider coordinate", async () => {
     const getPageContent = vi.fn();
     const source = sourceRecord("duplicate-online-document-coordinate", {});
@@ -1471,7 +1557,7 @@ describe("source-product workflow runtime sync", () => {
     expect(fixture.markRemoteMissing).not.toHaveBeenCalled();
   });
 
-  it("fails before provider work when logical inventory escapes the frozen identity allowlist", async () => {
+  it("repairs logical inventory that escapes the frozen identity allowlist", async () => {
     const allowedProviderItemId = JSON.stringify(["workspace-a", "page-a"]);
     const mismatchedProviderItemId = JSON.stringify(["workspace-a", "page-b"]);
     const listPages = vi.fn(async () => ({ workspaces: [] }));
@@ -1490,11 +1576,15 @@ describe("source-product workflow runtime sync", () => {
       }),
     });
 
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
-    await expect(fixture.getRun()).resolves.toMatchObject({
-      lastErrorCode: "SOURCE_SYNC_SELECTION_MISMATCH",
-      state: "failed",
-    });
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    await expect(fixture.getRun()).resolves.toMatchObject({ state: "completed" });
+    expect(fixture.markRemoteMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policy: "tombstone",
+        providerItemId: mismatchedProviderItemId,
+      }),
+      expect.any(Object),
+    );
     expect(listPages).not.toHaveBeenCalled();
   });
 

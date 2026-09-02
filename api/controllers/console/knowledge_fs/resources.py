@@ -757,6 +757,8 @@ def _source_edit_requires_import(source: KnowledgeFSSourceResponse, payload: Kno
         configured_kind = {"online-document": "online_document", "online-drive": "online_drive"}.get(provider_kind)
     if configured_kind is not None and selection.kind != configured_kind:
         raise ValueError("Source selection kind cannot be changed")
+    if getattr(source, "status", None) == "error":
+        return True
     if payload.uri is not None and payload.uri != source.uri:
         return True
     if payload.provider_parameters is not None and payload.provider_parameters != source.metadata.get("parameters"):

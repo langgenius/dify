@@ -117,6 +117,12 @@ describe("KnowledgeFS public errors", () => {
       code: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
       retryPolicy: "never",
     });
+    expect(knowledgeFsFailureForCode("SOURCE_SYNC_SELECTION_MISMATCH")).toMatchObject({
+      action: "contact_admin",
+      category: "conflict",
+      code: "SOURCE_SYNC_SELECTION_MISMATCH",
+      retryPolicy: "never",
+    });
   });
 
   it("never exposes an unregistered diagnostic code in the structured contract", () => {
