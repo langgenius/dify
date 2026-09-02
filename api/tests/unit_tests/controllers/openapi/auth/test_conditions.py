@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch
 
 from controllers.openapi.auth.conditions import (
@@ -26,6 +27,9 @@ from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
 from tests.unit_tests.config_override import config_overrides_context
 
+PROBE_ID = uuid.uuid4()
+OTHER_ID = uuid.uuid4()
+
 
 def _ctx(token_type=TokenType.OAUTH_ACCOUNT, path_params=None, **kwargs):
     return RequestContext(
@@ -36,7 +40,7 @@ def _ctx(token_type=TokenType.OAUTH_ACCOUNT, path_params=None, **kwargs):
 
 
 def _data(**kwargs):
-    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "token_hash": "x", "scopes": frozenset()}
+    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "scopes": frozenset()}
     defaults.update(kwargs)
     return AuthData(**defaults)
 
@@ -88,9 +92,9 @@ def test_data_cond_returns_false_when_data_none():
 
 
 def test_data_cond_evaluates_when_data_present():
-    c = data_cond(lambda data: data.token_hash == "secret")
-    assert c(_ctx(), _data(token_hash="secret")) is True
-    assert c(_ctx(), _data(token_hash="other")) is False
+    c = data_cond(lambda data: data.token_id == PROBE_ID)
+    assert c(_ctx(), _data(token_id=PROBE_ID)) is True
+    assert c(_ctx(), _data(token_id=OTHER_ID)) is False
 
 
 def test_config_cond_ignores_ctx_and_data():

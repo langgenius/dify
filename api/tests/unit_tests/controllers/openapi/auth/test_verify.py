@@ -9,7 +9,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.openapi.auth.verify import (
     check_acl,
-    check_app_access,
     check_app_api_enabled,
     check_private_app_permission,
     check_rbac_permission,
@@ -31,7 +30,7 @@ def _rbac_config(config_overrides: Callable[..., None]) -> None:
 
 
 def _data(**kwargs) -> AuthData:
-    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "token_hash": "hash", "scopes": frozenset({Scope.FULL})}
+    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "scopes": frozenset({Scope.FULL})}
     defaults.update(kwargs)
     return AuthData(**defaults)
 
@@ -60,27 +59,6 @@ def test_check_workspace_member_raises_not_found_when_no_role():
 
 def test_check_workspace_member_passes_when_role_present():
     check_workspace_member(_data(tenant_role=TenantAccountRole.NORMAL))
-
-
-def test_check_app_access_passes_when_tenant_none():
-    check_app_access(_data(tenant=None))
-
-
-def test_check_app_access_passes_when_member():
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "t1"
-    data = _data(account_id=uuid.uuid4(), tenant=tenant)
-    with patch("controllers.openapi.auth.verify.TenantService.account_belongs_to_tenant", return_value=True):
-        check_app_access(data)
-
-
-def test_check_app_access_raises_when_not_member():
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "t1"
-    data = _data(account_id=uuid.uuid4(), tenant=tenant)
-    with patch("controllers.openapi.auth.verify.TenantService.account_belongs_to_tenant", return_value=False):
-        with pytest.raises(Forbidden, match="subject_no_app_access"):
-            check_app_access(data)
 
 
 # --- check_rbac_permission ---

@@ -37,8 +37,6 @@ from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
-_ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
-
 
 def _is_listable(app: App) -> bool:
     """Whether the openapi app face exposes this app (curated, listable types only)."""

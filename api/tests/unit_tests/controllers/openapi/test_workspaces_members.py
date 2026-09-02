@@ -9,7 +9,7 @@ Coverage:
 
 Auth-pipeline plumbing is bypassed via the `bypass_pipeline` fixture from
 conftest.py; the bearer identity is seeded into the openapi auth ContextVar
-via `_seed` (the slot `validate_bearer` publishes). Tests that exercise
+via `_seed`. Tests that exercise
 endpoint *bodies* skip the single `guard_workspace` decorator via
 ``__wrapped__`` — membership and role enforcement live in the auth pipeline
 and are covered in `auth/test_prepare.py` and `auth/test_verify.py`.
@@ -110,8 +110,6 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
-        token_hash="h",
-        verified_tenants={},
     )
 
 
@@ -122,7 +120,6 @@ def _auth_data(account_id: uuid.UUID) -> AuthData:
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=account_id,
-        token_hash="testhash",
         scopes=frozenset({Scope.FULL}),
     )
 
