@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
-from typing import Any, override
+from enum import Enum
+from typing import override
 
 from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
@@ -223,7 +224,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         end_user = (
             WorkflowAppLogEndUser(
                 id=end_user_id,
-                type=WorkflowAppLogQueryRepository._enum_value(row["end_user_type"]) or "",
+                type=WorkflowAppLogQueryRepository._enum_value(row["end_user_type"]),
                 is_anonymous=False,
                 session_id=row["end_user_session_id"],
             )
@@ -235,17 +236,17 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             id=row["log_id"],
             workflow_run=workflow_run,
             details={"trigger_metadata": row["trigger_metadata"]} if detail else None,
-            created_from=WorkflowAppLogQueryRepository._enum_value(row["log_created_from"]) or "",
-            created_by_role=WorkflowAppLogQueryRepository._enum_value(row["log_created_by_role"]) or "",
+            created_from=WorkflowAppLogQueryRepository._enum_value(row["log_created_from"]),
+            created_by_role=WorkflowAppLogQueryRepository._enum_value(row["log_created_by_role"]),
             created_by_account=account,
             created_by_end_user=end_user,
             created_at=row["log_created_at"],
         )
 
     @staticmethod
-    def _enum_value(value: Any) -> str | None:
+    def _enum_value(value: Enum | str | None) -> str:
         if value is None:
-            return None
+            raise ValueError("Required enum value is missing")
         if isinstance(value, str):
             return value
         return str(value.value)

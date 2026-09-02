@@ -29,8 +29,8 @@ class WorkflowAppLogEndUser:
 class WorkflowAppLogRunSummary:
     id: str
     version: str | None
-    status: str | None
-    triggered_from: str | None
+    status: str
+    triggered_from: str
     error: str | None
     elapsed_time: float | None
     total_tokens: int | None

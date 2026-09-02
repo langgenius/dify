@@ -152,6 +152,11 @@ def test_get_paginated_preserves_missing_account_filter_error(
         )
 
 
+def test_enum_value_rejects_missing_required_value() -> None:
+    with pytest.raises(ValueError, match="Required enum value is missing"):
+        WorkflowAppLogQueryRepository._enum_value(None)
+
+
 def test_get_paginated_projects_plugin_workflow_run_summary(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
