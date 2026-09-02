@@ -44,8 +44,6 @@ from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
-_ACCOUNT_SUBJECT = CheckSubject(allowed=(AccountSubject,))
-
 
 def _is_listable(app: App) -> bool:
     """Whether the openapi app face exposes this app (curated, listable types only)."""
@@ -108,7 +106,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 class AppDescribeApi(Resource):
     @endpoint(
         requirements=(
-            _ACCOUNT_SUBJECT,
+            CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
@@ -127,7 +125,7 @@ class AppDescribeApi(Resource):
 class AppListApi(Resource):
     @endpoint(
         requirements=(
-            _ACCOUNT_SUBJECT,
+            CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.APPS_READ),
             CheckWorkspaceMember(),
         ),
