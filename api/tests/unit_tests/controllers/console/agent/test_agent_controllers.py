@@ -598,7 +598,6 @@ def test_agent_app_list_and_create_use_agent_route(
         "account_id": account_id,
         "commit": False,
     }
-<<<<<<< HEAD
 
 
 def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled(
@@ -669,8 +668,6 @@ def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled
     assert created["id"] == "agent-created"
     replace_whitelist.assert_not_called()
     initialize_access.assert_not_called()
-=======
->>>>>>> feat/app-access-point-permission
 
 
 def test_agent_app_create_payload_allows_optional_role() -> None:
