@@ -31,116 +31,180 @@ def upgrade() -> None:
     op.create_table(
         "human_input_im_identities",
         sa.Column(
-            "integration_id",
+            "channel_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="Logical human_input_im_integrations.id owner.",
+            comment="Logical human_input_im_channels.id reference.",
         ),
-        sa.Column("provider", sa.String(length=20), nullable=False, comment="Provider identity discriminator."),
         sa.Column(
-            "provider_user_id", sa.String(length=255), nullable=False, comment="Provider user matching identity."
-        ),
-        sa.Column("display_name", sa.String(length=255), nullable=True, comment="Latest provider display name."),
-        sa.Column("normalized_name", sa.String(length=255), nullable=True, comment="Case-folded provider name."),
-        sa.Column("email", sa.String(length=320), nullable=True, comment="Latest provider email."),
-        sa.Column(
-            "normalized_email", sa.String(length=320), nullable=True, comment="Case-folded fallback matching email."
+            "provider_user_id",
+            sa.String(length=255),
+            nullable=False,
+            comment="Provider-native user identifier within the owning Channel.",
         ),
         sa.Column(
             "raw_payload",
             models.types.LongText(),
             nullable=False,
-            comment="Opaque provider payload serialized as JSON text for diagnostics.",
+            comment="Latest opaque Provider payload retained for diagnostics.",
         ),
         sa.Column(
             "last_seen_sync_run_id",
             models.types.StringUUID(),
-            nullable=True,
-            comment="Logical human_input_im_sync_runs.id that last observed this identity.",
+            nullable=False,
+            comment="Logical human_input_im_sync_runs.id reference for the latest observation.",
         ),
-        sa.Column("last_seen_at", sa.DateTime(), nullable=True, comment="Timestamp last observed."),
+        sa.Column(
+            "last_seen_at",
+            sa.DateTime(),
+            nullable=False,
+            comment="Timestamp of the latest successful Provider observation.",
+        ),
+        sa.Column(
+            "display_name",
+            sa.String(length=255),
+            nullable=True,
+            comment="Latest canonical non-blank Provider display name.",
+        ),
+        sa.Column(
+            "normalized_name",
+            sa.String(length=255),
+            nullable=True,
+            comment="Canonical display name used by persistence queries.",
+        ),
+        sa.Column(
+            "email",
+            sa.String(length=320),
+            nullable=True,
+            comment="Latest canonical non-blank Provider email.",
+        ),
+        sa.Column(
+            "normalized_email",
+            sa.String(length=320),
+            nullable=True,
+            comment="Canonical email used by matching and persistence queries.",
+        ),
         *_default_fields("human_input_im_identities"),
         sa.UniqueConstraint(
-            "integration_id",
-            "provider",
+            "channel_id",
             "provider_user_id",
-            name="human_input_im_identities_integration_provider_user_uq",
+            name="human_input_im_identities_channel_provider_user_uq",
         ),
         sa.CheckConstraint(
-            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
-            name="email_normalization_pair",
+            "length(trim(provider_user_id)) > 0",
+            name="human_input_im_identities_provider_user_nonblank",
         ),
-        comment="Current synchronized IM directory identities.",
+        comment="Current Provider users synchronized through one IM Channel.",
     )
     op.create_index(
-        "hiimi_integration_provider_email_idx",
+        "hiimi_channel_email_idx",
         "human_input_im_identities",
-        ["integration_id", "provider", "normalized_email"],
+        ["channel_id", "normalized_email"],
     )
     op.create_index(
-        "hiimi_integration_provider_name_idx",
+        "hiimi_channel_name_idx",
         "human_input_im_identities",
-        ["integration_id", "provider", "normalized_name"],
+        ["channel_id", "normalized_name"],
     )
     op.create_index(
-        "hiimi_integration_last_seen_run_idx",
+        "hiimi_channel_last_seen_run_idx",
         "human_input_im_identities",
-        ["integration_id", "last_seen_sync_run_id"],
+        ["channel_id", "last_seen_sync_run_id"],
     )
 
     op.create_table(
         "human_input_im_bindings",
         sa.Column(
-            "integration_id",
+            "channel_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="Logical human_input_im_integrations.id owner.",
+            comment="Logical human_input_im_channels.id reference.",
         ),
-        sa.Column("scope", sa.String(length=20), nullable=False, comment="Organization or workspace scope."),
-        sa.Column("scope_id", models.types.StringUUID(), nullable=False, comment="Scope owner identity."),
         sa.Column(
             "contact_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="Logical human_input_contact_identities.id.",
+            comment="Logical human_input_contact_identities.id reference.",
         ),
         sa.Column(
             "im_identity_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="Logical human_input_im_identities.id.",
+            comment="Logical human_input_im_identities.id reference.",
         ),
-        sa.Column("provider", sa.String(length=20), nullable=False, comment="Denormalized provider discriminator."),
         sa.Column(
             "bound_by_account_id",
             models.types.StringUUID(),
             nullable=True,
-            comment="Logical accounts.id for an administrative override.",
+            comment="Latest Dify Account that manually selected this Binding, when available.",
         ),
         *_default_fields("human_input_im_bindings"),
         sa.UniqueConstraint(
-            "scope",
-            "scope_id",
+            "channel_id",
             "contact_id",
-            "provider",
-            name="human_input_im_bindings_scope_contact_provider_uq",
+            name="human_input_im_bindings_channel_contact_uq",
         ),
-        sa.UniqueConstraint("scope", "scope_id", "im_identity_id", name="human_input_im_bindings_scope_identity_uq"),
-        sa.CheckConstraint(
-            "scope <> 'organization' OR scope_id = integration_id",
-            name="organization_scope_owner",
+        sa.UniqueConstraint(
+            "channel_id",
+            "im_identity_id",
+            name="human_input_im_bindings_channel_identity_uq",
         ),
-        comment="Current organization binding or workspace override.",
+        comment="Default Contact-to-IM-identity Bindings for one IM Channel.",
+    )
+    op.create_index("hiimb_contact_idx", "human_input_im_bindings", ["contact_id"])
+    op.create_index("hiimb_identity_idx", "human_input_im_bindings", ["im_identity_id"])
+
+    op.create_table(
+        "human_input_im_workspace_binding_overrides",
+        sa.Column(
+            "channel_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Logical human_input_im_channels.id reference.",
+        ),
+        sa.Column(
+            "tenant_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Target tenants.id whose effective Binding is overridden.",
+        ),
+        sa.Column(
+            "contact_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Logical human_input_contact_identities.id reference.",
+        ),
+        sa.Column(
+            "im_identity_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Logical human_input_im_identities.id reference.",
+        ),
+        sa.Column(
+            "bound_by_account_id",
+            models.types.StringUUID(),
+            nullable=True,
+            comment="Dify Account that selected this workspace override.",
+        ),
+        *_default_fields("human_input_im_workspace_binding_overrides"),
+        sa.UniqueConstraint(
+            "channel_id",
+            "tenant_id",
+            "contact_id",
+            name="hiimwbo_channel_tenant_contact_uq",
+        ),
+        sa.UniqueConstraint(
+            "channel_id",
+            "tenant_id",
+            "im_identity_id",
+            name="hiimwbo_channel_tenant_identity_uq",
+        ),
+        comment="Workspace-specific Binding overrides for one IM Channel.",
     )
     op.create_index(
-        "hiimb_integration_contact_provider_scope_idx",
-        "human_input_im_bindings",
-        ["integration_id", "contact_id", "provider", "scope", "scope_id"],
-    )
-    op.create_index(
-        "hiimb_identity_scope_idx",
-        "human_input_im_bindings",
-        ["im_identity_id", "scope", "scope_id"],
+        "hiimwbo_channel_identity_idx",
+        "human_input_im_workspace_binding_overrides",
+        ["channel_id", "im_identity_id"],
     )
 
     op.create_table(
@@ -272,5 +336,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("human_input_im_sync_results")
     op.drop_table("human_input_im_sync_runs")
+    op.drop_table("human_input_im_workspace_binding_overrides")
     op.drop_table("human_input_im_bindings")
     op.drop_table("human_input_im_identities")

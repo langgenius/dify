@@ -7,7 +7,8 @@ comments name the referenced ``table.column`` for every logical foreign key.
 Human Input v2 forms and every form-scoped child use a dedicated table namespace;
 they never reference the legacy ``human_input_forms`` aggregate. Runtime forms
 bind to the shared workflow pause infrastructure through ``workflow_pause_id``.
-IM child rows use their integration as the concrete persistence boundary.
+Current IM Identity and Binding rows use their Channel as the persistence boundary.
+Historical synchronization rows retain their existing Integration boundary.
 """
 
 from __future__ import annotations
@@ -49,9 +50,6 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.entities import (
     HumanInputV2FormStatus as _HumanInputV2FormStatus,
-)
-from core.human_input_v2.entities import (
-    IMBindingScope as _IMBindingScope,
 )
 from core.human_input_v2.entities import (
     IMProvider as _IMProvider,
@@ -117,8 +115,10 @@ class ResendEmailProviderEncryptedCredentials(_ImmutableJSONModel):
     encrypted_api_key: str = Field(description="Encrypted Resend API key.")
 
 
-class IMIdentityRawPayload(_ImmutableJSONObject):
+class IMIdentityRawPayload(RootModel[dict[str, JsonValue]]):
     """Opaque provider identity payload retained only for diagnostics."""
+
+    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
 
 
 class IMSyncDirectoryEntryPayload(_ImmutableJSONObject):
@@ -808,162 +808,162 @@ class HumanInputIMChannel(DefaultFieldsDCMixin, TypeBase):
 
 
 class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
-    """Durable provider identity discovered by manual directory synchronization.
+    """Current Provider user synchronized through one IM Channel.
 
     Searchable and match-critical fields are stored in columns. ``raw_payload``
-    retains the provider response for diagnostics without making it query state.
-    An identity absent from the current provider directory is deleted after its
-    last-known snapshot is written to the synchronization result.
+    retains the Provider response for diagnostics without making it query state.
+    Channel ownership and Provider configuration remain on the parent Channel.
     """
 
     __tablename__ = "human_input_im_identities"
     __table_args__ = (
         sa.UniqueConstraint(
-            "integration_id",
-            "provider",
+            "channel_id",
             "provider_user_id",
-            name="human_input_im_identities_integration_provider_user_uq",
+            name="human_input_im_identities_channel_provider_user_uq",
         ),
         sa.CheckConstraint(
-            "email IS NOT NULL OR normalized_email IS NULL",
-            name="email_normalization_pair",
+            "length(trim(provider_user_id)) > 0",
+            name="human_input_im_identities_provider_user_nonblank",
         ),
-        sa.Index("hiimi_integration_provider_email_idx", "integration_id", "provider", "normalized_email"),
-        sa.Index("hiimi_integration_provider_name_idx", "integration_id", "provider", "normalized_name"),
-        sa.Index("hiimi_integration_last_seen_run_idx", "integration_id", "last_seen_sync_run_id"),
-        {"comment": "Synchronized IM directory identities available for contact binding."},
+        sa.Index("hiimi_channel_email_idx", "channel_id", "normalized_email"),
+        sa.Index("hiimi_channel_name_idx", "channel_id", "normalized_name"),
+        sa.Index("hiimi_channel_last_seen_run_idx", "channel_id", "last_seen_sync_run_id"),
+        {
+            "comment": (
+                "Current Provider users synchronized through one IM Channel. "
+                "Channel ownership remains outside this table."
+            )
+        },
     )
 
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_im_integrations.id.",
-    )
-    provider: Mapped[_IMProvider] = mapped_column(
-        EnumText(_IMProvider), nullable=False, comment="Provider that owns the external identity."
+        comment="Logical human_input_im_channels.id reference.",
     )
     provider_user_id: Mapped[str] = mapped_column(
         sa.String(255),
         nullable=False,
-        comment="External provider user identifier used for first-pass matching; not a logical foreign key.",
+        comment="Provider-native user identifier within the owning Channel.",
+    )
+    raw_payload: Mapped[IMIdentityRawPayload] = mapped_column(
+        FrozenPydanticModelColumn(IMIdentityRawPayload),
+        nullable=False,
+        comment="Latest opaque Provider payload retained for diagnostics.",
+    )
+    last_seen_sync_run_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical human_input_im_sync_runs.id reference for the latest observation.",
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        comment="Timestamp of the latest successful Provider observation.",
     )
     display_name: Mapped[str | None] = mapped_column(
-        sa.String(255), nullable=True, default=None, comment="Latest provider display name."
+        sa.String(255), nullable=True, default=None, comment="Latest canonical non-blank Provider display name."
     )
     normalized_name: Mapped[str | None] = mapped_column(
-        sa.String(255), nullable=True, default=None, comment="Lower-cased provider display name for prefix search."
+        sa.String(255), nullable=True, default=None, comment="Canonical display name used by persistence queries."
     )
     email: Mapped[str | None] = mapped_column(
-        sa.String(320), nullable=True, default=None, comment="Latest provider email, when available."
+        sa.String(320), nullable=True, default=None, comment="Latest canonical non-blank Provider email."
     )
     normalized_email: Mapped[str | None] = mapped_column(
         sa.String(320),
         nullable=True,
         default=None,
-        comment="Full lower-cased provider email used for fallback matching.",
-    )
-    raw_payload: Mapped[IMIdentityRawPayload] = mapped_column(
-        FrozenPydanticModelColumn(IMIdentityRawPayload),
-        nullable=False,
-        default_factory=lambda: IMIdentityRawPayload({}),
-        comment="Latest provider payload Pydantic model retained as non-query diagnostic data.",
-    )
-    last_seen_sync_run_id: Mapped[str | None] = mapped_column(
-        StringUUID,
-        nullable=True,
-        default=None,
-        comment="Logical foreign key to human_input_im_sync_runs.id for the run that last observed this identity.",
-    )
-    last_seen_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime, nullable=True, default=None, comment="Timestamp when the identity was last observed."
-    )
-
-    bindings: Mapped[list[HumanInputIMBinding]] = relationship(
-        lambda: HumanInputIMBinding,
-        primaryjoin=lambda: HumanInputIMIdentity.id == orm.foreign(HumanInputIMBinding.im_identity_id),
-        back_populates="identity",
-        viewonly=True,
-        lazy="raise",
-        init=False,
+        comment="Canonical email used by matching and persistence queries.",
     )
 
 
 class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
-    """Current association between a contact and a synchronized IM identity.
-
-    ``scope_id`` is always non-null: it references the owning IM integration for
-    an organization binding and the target tenant for a workspace override. This
-    avoids relying on dialect-specific uniqueness semantics for nullable columns.
-    """
+    """Default Contact-to-IM-identity Binding for one IM Channel."""
 
     __tablename__ = "human_input_im_bindings"
     __table_args__ = (
         sa.UniqueConstraint(
-            "scope",
-            "scope_id",
+            "channel_id",
             "contact_id",
-            "provider",
-            name="human_input_im_bindings_scope_contact_provider_uq",
+            name="human_input_im_bindings_channel_contact_uq",
         ),
-        sa.UniqueConstraint("scope", "scope_id", "im_identity_id", name="human_input_im_bindings_scope_identity_uq"),
-        sa.CheckConstraint(
-            "scope <> 'organization' OR scope_id = integration_id",
-            name="organization_scope_owner",
+        sa.UniqueConstraint(
+            "channel_id",
+            "im_identity_id",
+            name="human_input_im_bindings_channel_identity_uq",
         ),
-        sa.Index(
-            "hiimb_integration_contact_provider_scope_idx",
-            "integration_id",
-            "contact_id",
-            "provider",
-            "scope",
-            "scope_id",
-        ),
-        sa.Index("hiimb_identity_scope_idx", "im_identity_id", "scope", "scope_id"),
-        {"comment": "Current organization binding or workspace override for a contact IM identity."},
+        sa.Index("hiimb_contact_idx", "contact_id"),
+        sa.Index("hiimb_identity_idx", "im_identity_id"),
+        {"comment": "Default Contact-to-IM-identity Bindings for one IM Channel."},
     )
 
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment=(
-            "Logical foreign key to human_input_im_integrations.id; "
-            "must match the integration that owns im_identity_id."
-        ),
-    )
-    scope: Mapped[_IMBindingScope] = mapped_column(
-        EnumText(_IMBindingScope), nullable=False, comment="Organization binding or workspace override."
-    )
-    scope_id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
-        comment=(
-            "Polymorphic logical foreign key selected by scope: human_input_im_integrations.id for ORGANIZATION; "
-            "tenants.id for WORKSPACE."
-        ),
+        comment="Logical human_input_im_channels.id reference.",
     )
     contact_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_contact_identities.id."
+        StringUUID, nullable=False, comment="Logical human_input_contact_identities.id reference."
     )
     im_identity_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_im_identities.id."
-    )
-    provider: Mapped[_IMProvider] = mapped_column(
-        EnumText(_IMProvider), nullable=False, comment="Denormalized provider used by effective-binding queries."
+        StringUUID, nullable=False, comment="Logical human_input_im_identities.id reference."
     )
     bound_by_account_id: Mapped[str | None] = mapped_column(
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to accounts.id for the administrator who created the override.",
+        comment="Latest Dify Account that manually selected this Binding, when available.",
     )
 
-    identity: Mapped[HumanInputIMIdentity] = relationship(
-        lambda: HumanInputIMIdentity,
-        primaryjoin=lambda: orm.foreign(HumanInputIMBinding.im_identity_id) == HumanInputIMIdentity.id,
-        back_populates="bindings",
-        viewonly=True,
-        lazy="raise",
-        init=False,
+
+class HumanInputIMBindingWorkspaceOverride(DefaultFieldsDCMixin, TypeBase):
+    """Workspace-specific override for one default IM Binding."""
+
+    __tablename__ = "human_input_im_workspace_binding_overrides"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "channel_id",
+            "tenant_id",
+            "contact_id",
+            name="hiimwbo_channel_tenant_contact_uq",
+        ),
+        sa.UniqueConstraint(
+            "channel_id",
+            "tenant_id",
+            "im_identity_id",
+            name="hiimwbo_channel_tenant_identity_uq",
+        ),
+        sa.Index("hiimwbo_channel_identity_idx", "channel_id", "im_identity_id"),
+        {"comment": "Workspace-specific Binding overrides for one IM Channel."},
+    )
+
+    channel_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical human_input_im_channels.id reference.",
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Target tenants.id whose effective Binding is overridden.",
+    )
+    contact_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical human_input_contact_identities.id reference.",
+    )
+    im_identity_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical human_input_im_identities.id reference.",
+    )
+    bound_by_account_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Dify Account that selected this workspace override.",
     )
 
 
@@ -2092,6 +2092,7 @@ __all__ = [
     "HumanInputEmailProvider",
     "HumanInputExternalContactProfile",
     "HumanInputIMBinding",
+    "HumanInputIMBindingWorkspaceOverride",
     "HumanInputIMChannel",
     "HumanInputIMIdentity",
     "HumanInputIMSyncResult",

@@ -184,6 +184,29 @@ forbidden_modules =
     services.human_input_v2.im_message_inbox
 allow_indirect_imports = True
 
+[importlinter:contract:human-input-im-identity-binding-port-boundary]
+name = IM Identity and Binding ports remain independent from ORM infrastructure
+type = forbidden
+source_modules =
+    repositories.human_input_v2.im_identity_repository
+    repositories.human_input_v2.im_binding_repository
+forbidden_modules =
+    models
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:human-input-im-identity-binding-stub-composition]
+name = Unimplemented IM Identity and Binding SQLAlchemy adapters are not composed by production callers
+type = forbidden
+source_modules =
+    core
+    services
+    controllers
+forbidden_modules =
+    repositories.human_input_v2.sqlalchemy_im_identity_repository
+    repositories.human_input_v2.sqlalchemy_im_binding_repository
+allow_indirect_imports = True
+
 
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, domain, and shared-library layers
