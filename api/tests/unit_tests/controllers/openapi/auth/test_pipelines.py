@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 from configs import dify_config
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
+    _PIPELINES,
     AccountPipeline,
     ExternalSsoPipeline,
     Pipeline,
@@ -28,7 +29,7 @@ from controllers.openapi.auth.requirements import (
     ResolveCaller,
 )
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, Subject
+from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from models import EndUser
@@ -371,3 +372,7 @@ def test_a_refused_sso_request_never_creates_an_end_user(
 def test_each_subject_resolves_to_the_pipeline_that_serves_it() -> None:
     assert type(pipeline_for_subject(account_subject())) is AccountPipeline
     assert type(pipeline_for_subject(sso_subject())) is ExternalSsoPipeline
+
+
+def test_every_registrable_subject_has_a_pipeline() -> None:
+    assert set(_SUBJECT_CLASSES.values()) == set(_PIPELINES)
