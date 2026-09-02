@@ -124,12 +124,14 @@ function connectedDraftFromSource(source: Source): ConnectedSourceDraft | undefi
 }
 
 export function SourceEditDialog({
+  controlSpaceId,
   onEdit,
   onOpenChange,
   open,
   pending,
   source,
 }: {
+  controlSpaceId: string
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -148,6 +150,7 @@ export function SourceEditDialog({
       >
         <SourceEditDialogContent
           connectedDraft={connectedDraft}
+          controlSpaceId={controlSpaceId}
           onEdit={onEdit}
           onOpenChange={onOpenChange}
           pending={pending}
@@ -160,6 +163,7 @@ export function SourceEditDialog({
 
 function SourceEditDialogContent(props: {
   connectedDraft?: ConnectedSourceDraft
+  controlSpaceId: string
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onOpenChange: (open: boolean) => void
   pending: boolean
@@ -172,12 +176,14 @@ function SourceEditDialogContent(props: {
 }
 
 function ConnectedSourceEditDialogContent({
+  controlSpaceId,
   initialDraft,
   onEdit,
   onOpenChange,
   pending,
   source,
 }: {
+  controlSpaceId: string
   initialDraft: ConnectedSourceDraft
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onOpenChange: (open: boolean) => void
@@ -199,7 +205,7 @@ function ConnectedSourceEditDialogContent({
       context: { silent: true },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
-        params: { control_space_id: source.knowledgeSpaceId },
+        params: { control_space_id: controlSpaceId },
         query: {
           limit: CONNECTION_PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
@@ -426,11 +432,13 @@ function BasicSourceEditDialogContent({
 }
 
 function WebsiteSourceEditDialogContent({
+  controlSpaceId,
   onEdit,
   onOpenChange,
   pending,
   source,
 }: {
+  controlSpaceId: string
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onOpenChange: (open: boolean) => void
   pending: boolean
@@ -456,7 +464,7 @@ function WebsiteSourceEditDialogContent({
       context: { silent: true },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
-        params: { control_space_id: initialSource.knowledgeSpaceId },
+        params: { control_space_id: controlSpaceId },
         query: {
           limit: CONNECTION_PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),

@@ -322,6 +322,7 @@ export function SourceActions({
         </DropdownMenuContent>
       </DropdownMenu>
       <SourceEditDialog
+        controlSpaceId={knowledgeSpaceId}
         onEdit={editSource}
         onOpenChange={setEditDialogOpen}
         open={editDialogOpen}

@@ -106,6 +106,10 @@ type SourcesInfiniteOptions = {
   }) => false | number
 }
 
+type ConnectionsInfiniteOptions = {
+  input: (pageParam: string | null) => unknown
+}
+
 const sourcesQuery = vi.hoisted(() => ({
   data: undefined as { pages: Array<{ items: Source[]; nextCursor?: string }> } | undefined,
   error: null as unknown,
@@ -149,6 +153,9 @@ const connectionsQuery = vi.hoisted(() => ({
 }))
 
 const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOptions) => ({})))
+const connectionInfiniteOptionsMock = vi.hoisted(() =>
+  vi.fn((_options: ConnectionsInfiniteOptions) => ({ scope: 'source-connections' })),
+)
 const clientMock = vi.hoisted(() => ({
   deleteSource: vi.fn(),
   deletePreviewJob: vi.fn(),
@@ -296,7 +303,7 @@ vi.mock('@/service/client', () => ({
           },
           sourceConnections: {
             get: {
-              infiniteOptions: () => ({ scope: 'source-connections' }),
+              infiniteOptions: connectionInfiniteOptionsMock,
             },
           },
           sources: {
@@ -1994,6 +2001,38 @@ describe('SourcesPage', () => {
     expect(
       screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('loads edit connections with the current control space instead of the remote space id', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              knowledgeSpaceId: 'remote-space-1',
+              metadata: { providerKind: 'online-document' },
+              type: 'connector',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="control-space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    const options = connectionInfiniteOptionsMock.mock.calls.at(-1)?.[0]
+    expect(options?.input(null)).toEqual({
+      params: { control_space_id: 'control-space-1' },
+      query: { limit: 200 },
+    })
   })
 
   it('syncs a source through the real KnowledgeFS action', async () => {
