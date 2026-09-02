@@ -286,7 +286,7 @@ class WorkflowServiceDifyPort:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
 
-            workflow, _retirement_candidates = WorkflowService().publish_workflow(
+            workflow = WorkflowService().publish_workflow(
                 session=session,
                 app_model=app,
                 account=account,
