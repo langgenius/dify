@@ -75,13 +75,24 @@ const getCredentialVariant = (tool: AgentProviderToolDefaultValue) => {
   return tool.is_team_authorization ? ('authorized' as const) : ('unauthorized' as const)
 }
 
+const usesProviderScopedCredentials = (tool: AgentProviderToolDefaultValue) =>
+  tool.provider_type === 'api' || tool.provider_type === 'workflow'
+
+const resolveProviderCredentialId = (tool: AgentProviderToolDefaultValue) => {
+  if (tool.credential_id) return tool.credential_id
+
+  if (usesProviderScopedCredentials(tool) && tool.is_team_authorization) return tool.provider_id
+
+  return undefined
+}
+
 const getCredentialType = (tool: AgentProviderToolDefaultValue) => {
   if (!tool.credentialRequired) return undefined
 
   if (tool.credentialType === 'oauth2') return 'oauth2' as const
 
   if (!tool.allowDelete)
-    return tool.credential_id ? ('api-key' as const) : ('unauthorized' as const)
+    return resolveProviderCredentialId(tool) ? ('api-key' as const) : ('unauthorized' as const)
 
   return tool.is_team_authorization ? ('api-key' as const) : ('unauthorized' as const)
 }
@@ -133,7 +144,7 @@ export const addProviderTools = (
       iconDark: selectedTool.provider_icon_dark,
       providerType: selectedTool.provider_type,
       allowDelete: selectedTool.allowDelete,
-      credentialId: selectedTool.credential_id,
+      credentialId: resolveProviderCredentialId(selectedTool),
       credentialKey: selectedTool.is_team_authorization
         ? 'agentDetail.configure.tools.credential.authOne'
         : undefined,

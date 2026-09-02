@@ -392,6 +392,28 @@ def test_manual_metadata_filtering_condition_accepts_composer_ui_identifiers():
     assert condition.metadata_id == "ad6cf326-eadf-46e8-a2d5-9cb892d2cc84"
 
 
+def test_agent_soul_dify_tool_config_backfills_api_provider_credential_ref():
+    config = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_id": "api-provider-1",
+                        "provider_type": "api",
+                        "tool_name": "get_pet",
+                        "credential_type": "api-key",
+                    }
+                ]
+            }
+        }
+    )
+
+    tool = config.tools.dify_tools[0]
+    assert tool.credential_ref is not None
+    assert tool.credential_ref.id == "api-provider-1"
+    assert tool.credential_ref.provider == "api-provider-1"
+
+
 def test_agent_soul_model_config_is_first_class_without_credentials():
     config = AgentSoulConfig(
         model=AgentSoulModelConfig(

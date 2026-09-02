@@ -46,6 +46,22 @@ const unauthorizedOAuthTool = {
   credentialType: 'oauth2',
 } satisfies AgentProviderToolDefaultValue
 
+const authorizedApiTool = {
+  provider_id: 'api-provider-1',
+  provider_type: 'api',
+  provider_name: 'petstore',
+  provider_show_name: 'Petstore',
+  tool_name: 'get_pet',
+  tool_label: 'Get Pet',
+  title: 'Get Pet',
+  tool_description: 'Fetch a pet by id.',
+  is_team_authorization: true,
+  params: {},
+  paramSchemas: [],
+  allowDelete: true,
+  credentialRequired: true,
+} satisfies AgentProviderToolDefaultValue
+
 describe('agent composer tools store', () => {
   describe('addProviderTools', () => {
     it('should not mark tools that do not need credentials as unauthorized', () => {
@@ -80,6 +96,18 @@ describe('agent composer tools store', () => {
           credentialId: undefined,
           credentialType: 'oauth2',
           credentialVariant: 'unauthorized',
+        }),
+      ])
+    })
+
+    it('should bind provider-scoped credentials for authorized swagger tools', () => {
+      const nextTools = addProviderTools([], [authorizedApiTool])
+
+      expect(nextTools).toEqual([
+        expect.objectContaining({
+          credentialId: 'api-provider-1',
+          credentialType: 'api-key',
+          credentialVariant: 'authorized',
         }),
       ])
     })

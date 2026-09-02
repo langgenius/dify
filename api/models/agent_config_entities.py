@@ -705,7 +705,15 @@ class AgentSoulDifyToolConfig(BaseModel):
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
-            raise ValueError("credential_ref.id is required for credentialed Dify tools")
+            provider_id = self.provider_id
+            if provider_id and self.provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
+                self.credential_ref = AgentSoulDifyToolCredentialRef(
+                    type="provider",
+                    id=provider_id,
+                    provider=provider_id,
+                )
+            else:
+                raise ValueError("credential_ref.id is required for credentialed Dify tools")
         # ``name`` is reserved for a future user-rename UX. Until that lands
         # the model-visible name is forced to match ``tool_name``; reject
         # explicit values so a frontend bug surfaces immediately instead of
