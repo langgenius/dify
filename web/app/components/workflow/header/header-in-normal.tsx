@@ -26,6 +26,7 @@ export type HeaderInNormalProps = {
     chatVariableTrigger?: React.ReactNode
   }
   controls?: {
+    hasDifyBuilderSession?: boolean
     showEnvButton?: boolean
     showGlobalVariableButton?: boolean
     showDifyBuilderButton?: boolean
@@ -35,6 +36,7 @@ export type HeaderInNormalProps = {
 const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { handleNodeSelect } = useNodesInteractions()
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
@@ -52,6 +54,8 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const showEnvButton = controls?.showEnvButton !== false
   const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
   const showDifyBuilderButton = controls?.showDifyBuilderButton === true
+  const hasDifyBuilderSession = controls?.hasDifyBuilderSession === true
+  const difyBuilderButtonDisabled = !canEdit || (nodesReadOnly && !hasDifyBuilderSession)
   const showContextButtons =
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
@@ -106,7 +110,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         {showDifyBuilderButton && !isDifyBuilderPanelOpen && (
           <>
             <Divider type="vertical" className="mx-0 h-4" />
-            <DifyBuilderButton disabled={nodesReadOnly} />
+            <DifyBuilderButton disabled={difyBuilderButtonDisabled} />
           </>
         )}
       </div>

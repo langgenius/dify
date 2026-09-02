@@ -10,8 +10,8 @@ from datetime import datetime
 import pytest
 
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-from core.dify_builder.runner import Env, Runner, StepResult
+from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
+from core.dify_builder.runner import CommittedTransition, Env, Runner, StepResult
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
@@ -72,6 +72,8 @@ def test_advance_commits_each_transition_and_stops_at_waiting():
 
 def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -85,6 +87,28 @@ def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     assert stored.version == 1  # nothing committed
     assert stored.current_state == PcState.FIX_DIAGNOSE
     assert repo.list_conversation(s.id) == []
+    assert commits == []
+
+
+def test_lost_commit_cas_emits_no_committed_transition(monkeypatch: pytest.MonkeyPatch):
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    s = _session()
+    repo.create_session(s, DifyBuilderContext(), [])
+
+    def lose_cas(*_args, **_kwargs):
+        raise ConflictError("lost race")
+
+    monkeypatch.setattr(repo, "compare_and_advance", lose_cas)
+
+    with pytest.raises(ConflictError, match="lost race"):
+        Runner(env, _toy_registry()).advance(
+            s.id,
+            Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()),
+        )
+
+    assert commits == []
 
 
 def test_advance_missing_handler_raises():
@@ -137,8 +161,12 @@ def test_advance_terminal_state_returns_session_unchanged():
     assert out.version == 1
 
 
-def test_message_appends_user_bubble_without_advancing_waiting_state():
+def test_message_appends_user_and_assistant_turns_without_advancing_waiting_state():
     env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    messages = []
+    env.emit_commit = commits.append
+    env.emit_message = messages.append
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -147,15 +175,189 @@ def test_message_appends_user_bubble_without_advancing_waiting_state():
 
     runner = Runner(env, {PcState.FIX_AWAIT_APPROVAL: must_not_run})
     turn = Turn(
-        action=Action(kind="message", payload={"text": "Make the change smaller"}, base_version=1),
+        action=Action(
+            kind="message",
+            payload={"text": "Make the change smaller", "client_turn_id": "turn-1"},
+            base_version=1,
+        ),
         actor=_actor(),
     )
     out = runner.advance(s.id, turn)
 
     assert out.current_state == PcState.FIX_AWAIT_APPROVAL
-    assert out.version == 2
+    assert out.version == 3
     items = repo.list_conversation(s.id)
-    assert [(item.kind, item.payload) for item in items] == [("user", {"text": "Make the change smaller"})]
+    assert [(item.kind, item.payload) for item in items] == [
+        ("user", {"text": "Make the change smaller", "turn_id": "turn-1"}),
+        (
+            "assistant_turn",
+            {
+                "turn_id": "turn-1",
+                "stage_id": "fix.await_approval",
+                "trace": {"status": "completed", "steps": []},
+                "reply_text": "reply 1: Make the change smaller",
+                "cards": [],
+                "card_state": None,
+            },
+        ),
+    ]
+    assert [item.at_version for item in items] == [2, 3]
+    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
+        (2, PcState.FIX_AWAIT_APPROVAL, False),
+        (3, PcState.FIX_AWAIT_APPROVAL, True),
+    ]
+    assert commits[0].items == items[:1]
+    assert commits[1].items == items[1:]
+    assert len(messages) == 1
+    assert messages[0].session_id == s.id
+    assert messages[0].id == "turn-1"
+    assert messages[0].answer == "reply 1: Make the change smaller"
+    assert messages[0].seq == 1
+    assert messages[0].at_version == 3
+    assert messages[0].stage_id == "fix.await_approval"
+
+
+def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent():
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(s, DifyBuilderContext(), [])
+    runner = Runner(env, {})
+
+    first = Action(
+        kind="message",
+        payload={"text": "First", "client_turn_id": "turn-1"},
+        base_version=1,
+    )
+    out = runner.advance(s.id, Turn(action=first, actor=_actor()))
+    second = Action(
+        kind="message",
+        payload={"text": "Second", "client_turn_id": "turn-2"},
+        base_version=out.version,
+    )
+    out = runner.advance(s.id, Turn(action=second, actor=_actor()))
+
+    replies = [item.payload["reply_text"] for item in repo.list_conversation(s.id) if item.kind == "assistant_turn"]
+    assert replies == ["reply 1: First", "reply 3: Second"]
+    version_before_retry = out.version
+    commit_count_before_retry = len(commits)
+
+    # Retrying the same client turn after the assistant half committed is a
+    # success even with the original now-stale session version.
+    retried = runner.advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="message",
+                payload={"text": "Second", "client_turn_id": "turn-2"},
+                base_version=3,
+            ),
+            actor=_actor(),
+        ),
+    )
+    assert retried.version == version_before_retry
+    assert len(commits) == commit_count_before_retry
+
+
+def test_message_retry_resumes_after_user_half_committed():
+    env, repo = _new_env()
+    s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(s, DifyBuilderContext(), [])
+    action = Action(
+        kind="message",
+        payload={"text": "Retry me", "client_turn_id": "turn-retry"},
+        base_version=1,
+    )
+
+    def fail_reply(*_args):
+        raise RuntimeError("model unavailable")
+
+    env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError, match="model unavailable"):
+        Runner(env, {}).advance(s.id, Turn(action=action, actor=_actor()))
+
+    partial, _fc = repo.get_session(s.id)
+    assert partial.version == 2
+    assert [item.kind for item in repo.list_conversation(s.id)] == ["user"]
+
+    env.agent.respond_to_message = lambda *_args: "Recovered reply"  # type: ignore[method-assign]
+    completed = Runner(env, {}).advance(s.id, Turn(action=action, actor=_actor()))
+
+    assert completed.version == 3
+    items = repo.list_conversation(s.id)
+    assert [item.kind for item in items] == ["user", "assistant_turn"]
+    assert items[-1].payload["reply_text"] == "Recovered reply"
+
+
+def test_advance_emits_each_successful_cas_as_an_ordered_commit():
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    s = _session()
+    repo.create_session(s, DifyBuilderContext(), [])
+
+    def diagnose(_env: Env, _turn: Turn, _s: Session, fc: DifyBuilderContext) -> StepResult:
+        item = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Diagnosed"})
+        fc.next_seq += 1
+        return StepResult(next=PcState.FIX_PROPOSE, context=fc, items=[item])
+
+    def propose(_env: Env, _turn: Turn, _s: Session, fc: DifyBuilderContext) -> StepResult:
+        item = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Plan ready"})
+        fc.next_seq += 1
+        return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc, items=[item])
+
+    runner = Runner(env, {PcState.FIX_DIAGNOSE: diagnose, PcState.FIX_PROPOSE: propose})
+    runner.advance(s.id, Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()))
+
+    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
+        (2, PcState.FIX_PROPOSE, False),
+        (3, PcState.FIX_AWAIT_APPROVAL, True),
+    ]
+    assert [[item.seq for item in commit.items] for commit in commits] == [[0], [1]]
+    assert [item.seq for item in repo.list_conversation(s.id)] == [0, 1]
+
+
+def test_stop_and_resume_each_emit_a_settled_commit_without_items():
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    s = _session()
+    repo.create_session(s, DifyBuilderContext(), [])
+    runner = Runner(env, {})
+
+    stopped = runner.advance(s.id, Turn(action=Action(kind="stop", base_version=1), actor=_actor()))
+    resumed = runner.advance(s.id, Turn(action=Action(kind="resume", base_version=stopped.version), actor=_actor()))
+
+    assert resumed.version == 3
+    assert [(commit.version, commit.state, commit.settled, commit.items) for commit in commits] == [
+        (2, PcState.FIX_DIAGNOSE, True, []),
+        (3, PcState.FIX_DIAGNOSE, True, []),
+    ]
+
+
+def test_recovery_short_path_emits_its_items_as_a_settled_commit(monkeypatch: pytest.MonkeyPatch):
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(s, DifyBuilderContext(), [])
+
+    def apply_recovery(_dify, _turn, session, fc):
+        item = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Recovery checked"})
+        fc.next_seq += 1
+        return session.current_state, [item]
+
+    monkeypatch.setattr("core.dify_builder.runner.recovery.apply_recovery_action", apply_recovery)
+    Runner(env, {}).advance(
+        s.id,
+        Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()),
+    )
+
+    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
+        (2, PcState.FIX_AWAIT_APPROVAL, True)
+    ]
+    assert [item.payload for item in commits[0].items] == [{"text": "Recovery checked"}]
 
 
 def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps():

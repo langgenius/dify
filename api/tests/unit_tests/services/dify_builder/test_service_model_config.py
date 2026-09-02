@@ -81,5 +81,5 @@ def test_invalid_model_config_raises_before_persist(monkeypatch, actor):
     repo = _FakeRepo()
     svc = _service(repo)
     with pytest.raises(BadRequestError):
-        svc.create_edit_session(app_id="app-1", actor=actor, model_config=MC)
+        svc.create_edit_session(app_id="app-1", actor=actor, goal_text="edit it", model_config=MC)
     assert repo.created_fc is None  # never persisted

@@ -1,5 +1,7 @@
 import pytest
 
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from services.dify_builder.agent import llm
 
 
@@ -30,6 +32,29 @@ def test_invoke_text_returns_completion():
     inst = _FakeInstance(["hello world"])
     assert llm.invoke_text(inst, system="s", user="u") == "hello world"
     assert len(inst.calls) == 1
+
+
+def test_invoke_text_stream_yields_model_deltas():
+    chunks = [
+        LLMResultChunk(
+            model="model",
+            prompt_messages=[],
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=delta),
+            ),
+        )
+        for delta in ("hello ", "world")
+    ]
+
+    class _StreamingInstance:
+        def invoke_llm(self, **_kwargs):
+            return iter(chunks)
+
+    assert list(llm.invoke_text_stream(_StreamingInstance(), system="s", user="u")) == [
+        "hello ",
+        "world",
+    ]
 
 
 def test_invoke_json_clean():

@@ -1,24 +1,24 @@
 """The real Dify Builder agent shell.
 
-Owns the resolved model. All of the Protocol's 13 methods (Fix 4 + Build 6 + Edit 3)
-use real cognition: the 3 Fix methods that reason about a failed run --
+Owns the resolved model. All of the Protocol's methods use real cognition: the
+3 Fix methods that reason about a failed run --
 ``diagnose``, ``diagnose_checklist``, ``propose_repair`` -- via
 ``services.dify_builder.agent.fix``; the 6 Build methods -- ``analyze_goal``,
 ``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
 ``learn_from_build`` -- via ``services.dify_builder.agent.build`` (``bind_resources``
 is deterministic, not LLM-driven); and all 3 Edit methods -- ``analyze_impact``,
 ``propose_edit_plan``, ``build_edit_intents`` -- via ``services.dify_builder.agent.edit``;
-and ``generate_mock_inputs`` via ``services.dify_builder.agent.mock_inputs``. Each
-resolves the model through ``_model_or_none`` (which degrades to ``None`` on resolution
-failure rather than crashing the advance; ``fix.*``/``build.*``/``edit.*``/``mock_inputs.*``
-handle that).
+``generate_mock_inputs`` via ``services.dify_builder.agent.mock_inputs``, and
+multi-turn chat via ``services.dify_builder.agent.chat``. Chat uses native model
+streaming; the other cognition methods resolve the model through
+``_model_or_none`` and degrade when no model is available.
 """
 
 import logging
 from typing import Any
 
 from core.model_manager import ModelInstance
-from services.dify_builder.agent import build, edit, fix, mock_inputs
+from services.dify_builder.agent import build, chat, edit, fix, mock_inputs
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 
 logger = logging.getLogger(__name__)
@@ -47,8 +47,7 @@ class LlmBuilderAgent:
             if not self._resolution_failed:
                 self._resolution_failed = True
                 logger.warning(
-                    "Dify Builder: model resolution failed for tenant %s in llm mode; "
-                    "degrading to heuristic cognition",
+                    "Dify Builder: model resolution failed for tenant %s in llm mode; degrading to heuristic cognition",
                     self._tenant_id,
                     exc_info=True,
                 )
@@ -95,3 +94,15 @@ class LlmBuilderAgent:
 
     def build_edit_intents(self, edit_rules, graph):
         return edit.build_edit_intents(self._model_or_none(), edit_rules, graph)
+
+    def respond_to_message(self, state, context, history, graph, text, on_delta=None):
+        return chat.respond(
+            self._model_or_none(),
+            self._model_config,
+            state,
+            context,
+            history,
+            graph,
+            text,
+            on_delta,
+        )

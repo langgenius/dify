@@ -106,7 +106,7 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     assert stored.current_state == PcState.FIX_AWAIT_VERIFY
 
     state_events = [ev for _sid, ev in events if ev["kind"] == "state"]
-    assert state_events, "advance_session must publish a terminal state event"
+    assert len(state_events) == 1, "advance_session must publish exactly one terminal state event"
     last_state_event = state_events[-1]
     assert last_state_event["state"] == "fix.await_verify"
     assert last_state_event["canvas_read_only"] is False
@@ -117,6 +117,14 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     # Task 5a: actions are now data-driven per PcState; fix.await_verify's
     # table entries are run_validation (primary) + revert (destructive).
     assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert"]
+
+    commit_events = [ev for _sid, ev in events if ev["kind"] == "commit"]
+    assert commit_events, "each successful CAS must be observable before the terminal state"
+    assert [event["version"] for event in commit_events] == sorted(event["version"] for event in commit_events)
+    assert commit_events[-1]["settled"] is True
+    assert commit_events[-1]["version"] == last_state_event["version"]
+    assert commit_events[-1]["state"] == last_state_event["state"]
+    assert events[-1][1]["kind"] == "state"
 
     canvas_events = [ev for _sid, ev in events if ev["kind"] == "canvas"]
     assert canvas_events, "advance_session must publish canvas events once the adapter emits them"
@@ -164,6 +172,88 @@ def test_advance_session_conflict_error_publishes_conflict_and_releases_lock(
     assert (s.id, "tok-x") in released
 
 
+def test_terminal_error_is_published_after_the_advance_lock_is_released(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("run_verify", 999), _ACTOR_DICT, "tok-order")
+
+    assert timeline == ["release", "publish:error"]
+
+
+def test_terminal_state_is_published_after_the_advance_lock_is_released(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-order")
+
+    assert timeline[-2:] == ["release", "publish:state"]
+
+
+def test_message_advance_publishes_assistant_delta_before_durable_reply(
+    repo: SqlDifyBuilderRepository,
+    wired,
+) -> None:
+    events, released = wired
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_APPROVAL,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    mod.advance_session(
+        session.id,
+        _act("message", 1, text="Can you explain this?", client_turn_id="turn-1"),
+        _ACTOR_DICT,
+        "tok-message",
+    )
+
+    payloads = [event for _session_id, event in events]
+    kinds = [event["kind"] for event in payloads]
+    assert kinds == ["commit", "agent_message", "commit", "state"]
+    assert payloads[0]["items"][0]["kind"] == "user"
+    assert payloads[1]["id"] == "turn-1"
+    assert payloads[1]["answer"]
+    assert payloads[1]["seq"] == 1
+    assert payloads[1]["at_version"] == 3
+    assert payloads[2]["items"][0]["kind"] == "assistant_turn"
+    assert payloads[2]["items"][0]["payload"]["reply_text"] == payloads[1]["answer"]
+    assert released == [(session.id, "tok-message")]
+
+
 def test_advance_session_generic_exception_publishes_generic_error_and_releases_lock(monkeypatch) -> None:
     # A fresh, isolated engine/repo/session so the FakeDifyPort.read_graph
     # monkeypatch below cannot bleed into any other test.
@@ -196,6 +286,35 @@ def test_advance_session_generic_exception_publishes_generic_error_and_releases_
         assert (s.id, "tok-y") in released
     finally:
         engine.dispose()
+
+
+def test_commit_publish_failure_is_best_effort_and_terminal_state_is_still_published_once(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+
+    events: list[tuple[str, dict]] = []
+    released: list[tuple[str, str]] = []
+
+    def publish(session_id: str, event: dict) -> None:
+        if event["kind"] == "commit":
+            raise RuntimeError("progress bus unavailable")
+        events.append((session_id, event))
+
+    monkeypatch.setattr(mod.progress_bus, "publish", publish)
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-best-effort")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.FIX_AWAIT_VERIFY
+    assert [event["kind"] for _sid, event in events].count("state") == 1
+    assert all(event["kind"] != "error" for _sid, event in events)
+    assert events[-1][1]["kind"] == "state"
+    assert released == [(s.id, "tok-best-effort")]
 
 
 def test_advance_session_setup_failure_still_releases_lock(monkeypatch) -> None:

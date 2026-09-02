@@ -107,9 +107,7 @@ def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderServi
 # ---- Test 1: full happy path, async-wired -----------------------------------
 
 
-def test_full_fix_flow_create_to_publish_success_eager_async(
-    monkeypatch, repo: SqlDifyBuilderRepository
-) -> None:
+def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
     # Seed the failed run BEFORE creating the session -- get_run is by id
     # with no FK, so any placeholder session_id works here.
     repo.save_run(
@@ -157,9 +155,7 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
 # ---- Test 2: busy while a lock is held --------------------------------------
 
 
-def test_submit_action_while_lock_held_raises_busy_eager_async(
-    monkeypatch, repo: SqlDifyBuilderRepository
-) -> None:
+def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
     svc, _events = _wire(monkeypatch, repo)
 
     # Seed the session DIRECTLY via the repo (bypassing create_fix_session,
@@ -169,7 +165,7 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(
         tenant_id=TENANT_ID,
         owner_account_id=ACCOUNT_ID,
         entry_mode=EntryMode.FIX,
-        current_state=PcState.FIX_DIAGNOSE,
+        current_state=PcState.FIX_AWAIT_VERIFY,
     )
     repo.create_session(s, DifyBuilderContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
 
@@ -181,10 +177,10 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(
     # CAS passes (version is 1), but dispatch's acquire fails because the
     # lock is still held -- proving the cross-process serialization.
     with pytest.raises(BusyError):
-        svc.submit_action(s.id, _actor(), Action(kind="request_fix", base_version=1))
+        svc.submit_action(s.id, _actor(), Action(kind="run_verify", base_version=1))
 
     stored, _fc = repo.get_session(s.id)
-    assert stored.current_state == PcState.FIX_DIAGNOSE, "a busy dispatch must leave the session untouched"
+    assert stored.current_state == PcState.FIX_AWAIT_VERIFY, "a busy dispatch must leave the session untouched"
 
     session_lock.release(s.id, held)
     reacquired = session_lock.acquire(s.id)

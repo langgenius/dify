@@ -3,9 +3,9 @@
 Spec: docs/superpowers/specs/2026-08-21-dify-builder-full-flow-contract-design.md, §2/§6/§7.
 """
 
-import json
 from dataclasses import asdict
-from pathlib import Path
+
+import pytest
 
 from core.dify_builder.contract import (
     ActionKind,
@@ -42,7 +42,10 @@ def test_recovery_class_members():
     assert RecoveryClass.STRUCTURAL_COMPATIBLE == "structural_compatible"
     assert RecoveryClass.STRUCTURAL_INVALIDATING == "structural_invalidating"
     assert [c.value for c in RecoveryClass] == [
-        "unchanged", "config_only", "structural_compatible", "structural_invalidating",
+        "unchanged",
+        "config_only",
+        "structural_compatible",
+        "structural_invalidating",
     ]
 
 
@@ -157,7 +160,25 @@ def test_card_shapes_round_trip():
     assert form.kind == CardKind.FORM
     assert "kind" not in asdict(form)
     form_item = form.to_item(seq=2, at_version=1)
-    assert form_item.payload["fields"] == [{"key": "audience", "label": "Audience", "type": "text", "options": []}]
+    assert form_item.payload["fields"] == [
+        {
+            "key": "audience",
+            "label": "Audience",
+            "type": "text",
+            "options": [],
+            "required": False,
+            "default": None,
+            "max_length": None,
+            "allowed_file_types": [],
+            "allowed_file_extensions": [],
+            "allowed_file_upload_methods": [],
+            "placeholder": None,
+            "hint": None,
+            "unit": None,
+            "json_schema": None,
+            "number_limits": None,
+        }
+    ]
     assert form_item.payload["values"] == {"audience": "execs"}
     assert form_item.payload["frozen"] is False
 
@@ -245,45 +266,198 @@ def test_card_shapes_round_trip():
     }
 
 
-def test_schema_in_lockstep():
-    """The checked-in JSON Schema + TypeScript are DERIVED from contract.py
-    (+ EntryMode/ConversationItem/SessionView) via contract_gen.generate().
-    This byte-compares a fresh generation against the checked-in files so
-    drift/hand-edits fail CI instead of silently diverging from the FE."""
-    from core.dify_builder import contract_gen
+def test_create_request_requires_edit_goal_and_one_fix_input():
+    from pydantic import ValidationError
 
-    schema, ts = contract_gen.generate()
-    root = next(p for p in Path(__file__).parents if (p / "web").is_dir() and (p / "api").is_dir())
-    checked_json = (root / "api/core/dify_builder/contract_schema.json").read_text()
-    checked_ts = (root / "packages/contracts/generated/dify-builder/types.ts").read_text()
-    regen_hint = "run: uv run --directory api python -m core.dify_builder.contract_gen"
-    assert json.dumps(schema, indent=2, ensure_ascii=False) + "\n" == checked_json, regen_hint
-    assert ts == checked_ts, regen_hint
+    from controllers.console.dify_builder_fields import DifyBuilderCreateSessionPayload
+
+    edit = DifyBuilderCreateSessionPayload.model_validate(
+        {"app_id": "app-1", "scenario": "edit", "goal_text": "Tighten risk handling"}
+    ).root
+    assert edit.scenario == "edit"
+    assert edit.goal_text == "Tighten risk handling"
+
+    failed_run_fix = DifyBuilderCreateSessionPayload.model_validate(
+        {"app_id": "app-1", "scenario": "fix", "failed_run_id": "run-1"}
+    ).root
+    assert failed_run_fix.failed_run_id == "run-1"
+
+    checklist_fix = DifyBuilderCreateSessionPayload.model_validate(
+        {
+            "app_id": "app-1",
+            "scenario": "fix",
+            "checklist_errors": [
+                {
+                    "node_id": "n1",
+                    "node_type": "llm",
+                    "title": "Missing prompt",
+                    "messages": ["prompt is required"],
+                    "unconnected": False,
+                    "plugin_missing": False,
+                }
+            ],
+        }
+    ).root
+    assert checklist_fix.checklist_errors[0].node_id == "n1"
+
+    for invalid in (
+        {"app_id": "app-1", "scenario": "edit"},
+        {"app_id": "app-1", "scenario": "fix"},
+        {"app_id": "app-1", "scenario": "fix", "checklist_errors": []},
+    ):
+        with pytest.raises(ValidationError):
+            DifyBuilderCreateSessionPayload.model_validate(invalid)
 
 
-def test_sample_session_view_validates():
-    """The generated schema is itself a valid JSON Schema and accepts a
-    real (minimal) SessionView instance -- proves $defs/$ref resolution
-    round-trips, not just that generate() runs without raising."""
-    import jsonschema
+def test_request_models_reject_legacy_response_mode():
+    from pydantic import ValidationError
 
-    from core.dify_builder import contract_gen
+    from controllers.console.dify_builder_fields import (
+        DifyBuilderCreateSessionPayload,
+        DifyBuilderSubmitActionPayload,
+        DifyBuilderSubmitMessagePayload,
+    )
 
-    schema, _ts = contract_gen.generate()
-    jsonschema.Draft202012Validator.check_schema(schema)
+    cases = (
+        (
+            DifyBuilderCreateSessionPayload,
+            {
+                "app_id": "app-1",
+                "scenario": "build",
+                "goal_text": "Build it",
+                "response_mode": "streaming",
+            },
+        ),
+        (
+            DifyBuilderSubmitActionPayload,
+            {
+                "action_id": "run_verify",
+                "payload": {},
+                "base_version": 1,
+                "base_app_revision": "hash-1",
+                "response_mode": "streaming",
+            },
+        ),
+        (
+            DifyBuilderSubmitMessagePayload,
+            {
+                "text": "Continue",
+                "base_version": 1,
+                "client_turn_id": "turn-1",
+                "response_mode": "streaming",
+            },
+        ),
+    )
 
-    sample = {
+    for model, payload in cases:
+        with pytest.raises(ValidationError):
+            model.model_validate(payload)
+
+
+def test_transport_json_schema_contains_request_and_sse_unions():
+    from controllers.console.dify_builder_fields import (
+        DifyBuilderCreateSessionPayload,
+        DifyBuilderStreamEventResponse,
+    )
+
+    create_schema = DifyBuilderCreateSessionPayload.model_json_schema()
+    stream_schema = DifyBuilderStreamEventResponse.model_json_schema()
+
+    assert len(create_schema["anyOf"]) == 4
+    assert "response_mode" not in str(create_schema)
+    assert stream_schema["discriminator"]["propertyName"] == "event"
+    assert len(stream_schema["oneOf"]) == 7
+
+
+def test_sse_union_accepts_current_payloads():
+    from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+
+    view = {
         "session_id": "s1",
         "app_id": "a1",
-        "version": 1,
-        "state": "fix.await_verify",
+        "version": 2,
+        "state": "edit.impact_analysis",
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
         "conversation": [],
-        "entry_mode": "fix",
-        "phase": "test",
-        "actions": [],
-        "checkpoint": None,
     }
-    jsonschema.validate(sample, {**schema, "$ref": "#/$defs/SessionView"})
+    events = [
+        {"event": "snapshot", "data": view},
+        {
+            "event": "node",
+            "data": {"kind": "node", "node_id": "n1", "title": "LLM", "status": "running", "error": ""},
+        },
+        {
+            "event": "canvas",
+            "data": {"kind": "canvas", "event": "highlight_edit_target", "node_id": "n1"},
+        },
+        {
+            "event": "agent_message",
+            "data": {
+                "kind": "agent_message",
+                "session_id": "s1",
+                "id": "message-1",
+                "answer": "Working",
+                "seq": 1,
+                "at_version": 2,
+                "stage_id": "edit.impact_analysis",
+            },
+        },
+        {
+            "event": "commit",
+            "data": {
+                "kind": "commit",
+                "session_id": "s1",
+                "version": 2,
+                "state": "edit.impact_analysis",
+                "settled": True,
+                "items": [
+                    {
+                        "seq": 0,
+                        "at_version": 2,
+                        "kind": "notice",
+                        "payload": {"text": "Impact analysis ready"},
+                    }
+                ],
+            },
+        },
+        {"event": "state", "data": {"kind": "state", **view}},
+        {"event": "error", "data": {"kind": "error", "error": "step failed"}},
+    ]
+
+    for event in events:
+        assert DifyBuilderStreamEventResponse.model_validate(event).root.event == event["event"]
+
+
+def test_sse_union_rejects_unknown_event():
+    from pydantic import ValidationError
+
+    from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+
+    with pytest.raises(ValidationError):
+        DifyBuilderStreamEventResponse.model_validate({"event": "message", "data": {}})
+
+
+def test_sample_session_view_validates():
+    from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
+
+    view = DifyBuilderSessionViewResponse.model_validate(
+        {
+            "session_id": "s1",
+            "app_id": "a1",
+            "version": 1,
+            "state": "fix.await_verify",
+            "canvas_read_only": False,
+            "run_status": "waiting_input",
+            "interrupted": False,
+            "conversation": [],
+            "entry_mode": "fix",
+            "phase": "test",
+            "actions": [],
+            "checkpoint": None,
+        }
+    )
+
+    assert view.session_id == "s1"
+    assert view.run_status == RunStatus.WAITING_INPUT

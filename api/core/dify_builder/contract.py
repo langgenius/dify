@@ -13,9 +13,9 @@ that value.
 
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
-from core.dify_builder.models import ConversationItem
+from core.dify_builder.models import ConversationItem, EntryMode
 
 
 class Phase(StrEnum):
@@ -142,6 +142,16 @@ class RecoveryClass(StrEnum):
     STRUCTURAL_INVALIDATING = "structural_invalidating"
 
 
+class BuilderErrorCode(StrEnum):
+    """Stable HTTP error codes returned by the Builder console routes."""
+
+    BAD_REQUEST = "bad_request"
+    NOT_FOUND = "not_found"
+    CONFLICT = "conflict"
+    SESSION_BUSY = "session_busy"
+    FEATURE_UNAVAILABLE = "feature_unavailable"
+
+
 @dataclass
 class Action:
     """A UI action the FE renders (spec §5).
@@ -177,6 +187,19 @@ class RecoveryRef:
     message: str
 
 
+@dataclass
+class BuilderError:
+    """Error body returned before an SSE response starts, or by a JSON route.
+
+    ``message`` and ``recoverable`` are optional extension fields. Current
+    responses only require the stable ``code`` field.
+    """
+
+    code: BuilderErrorCode
+    message: str | None = None
+    recoverable: bool | None = None
+
+
 # ---------------------------------------------------------------------------
 # Card sub-types (spec §4.3). Plain dataclasses -- no ``kind`` discriminant,
 # they nest inside a card's fields rather than standing alone in the
@@ -186,12 +209,23 @@ class RecoveryRef:
 
 @dataclass
 class FormField:
-    """One field of a ``form`` card. ``type`` in text|textarea|select|bool."""
+    """One field of a ``form`` card, including Start-node input constraints."""
 
     key: str
     label: str
     type: str
     options: list[str] = field(default_factory=list)
+    required: bool = False
+    default: str | int | float | bool | None = None
+    max_length: int | None = field(default=None, metadata={"minimum": 1})
+    allowed_file_types: list[str] = field(default_factory=list)
+    allowed_file_extensions: list[str] = field(default_factory=list)
+    allowed_file_upload_methods: list[str] = field(default_factory=list)
+    placeholder: str | None = None
+    hint: str | None = None
+    unit: str | None = None
+    json_schema: str | dict[str, Any] | None = None
+    number_limits: int | None = field(default=None, metadata={"minimum": 1})
 
 
 @dataclass
@@ -221,6 +255,42 @@ class SessionModel:
     name: str
     mode: str = ""
     completion_params: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AppRevision:
+    """Shared draft-workflow revision associated with a private session.
+
+    ``observed`` is the revision last incorporated by the Builder engine;
+    ``current`` is read from the app draft when this SessionView is built.
+    A mismatch tells the client to refresh/rebase before submitting a
+    workflow-dependent action.
+    """
+
+    observed: str
+    current: str
+    conflicted: bool
+
+
+@dataclass
+class SessionView:
+    """Read model returned by the Builder session-facing routes."""
+
+    session_id: str
+    app_id: str
+    version: int
+    state: str
+    canvas_read_only: bool
+    run_status: RunStatus
+    interrupted: bool
+    conversation: list[ConversationItem]
+    entry_mode: EntryMode = EntryMode.FIX
+    phase: Phase = Phase.UNDERSTAND
+    actions: list[Action] = field(default_factory=list)
+    checkpoint: CheckpointRef | None = None
+    recovery: RecoveryRef | None = None
+    model: SessionModel | None = None
+    app_revision: AppRevision | None = None
 
 
 @dataclass
@@ -314,6 +384,7 @@ class UserItem(_Card):
     kind: ClassVar[CardKind] = CardKind.USER
 
     text: str
+    turn_id: str
 
 
 @dataclass
@@ -596,3 +667,100 @@ class TestdataPayload:
 
     mode: str
     inputs: dict | None = None
+
+
+# ---------------------------------------------------------------------------
+# SSE payloads. ``_SseEventData`` is the shared wire-payload marker. Each payload
+# declares its envelope event name as the ``sse_event`` ClassVar. Bus-level
+# ``kind`` remains on payloads while the HTTP transport wraps each value in a
+# generated ``{ event, data }`` response envelope.
+# ---------------------------------------------------------------------------
+
+
+class _SseEventData:
+    sse_event: ClassVar[str]
+
+
+@dataclass
+class SnapshotEventData(SessionView, _SseEventData):
+    sse_event: ClassVar[str] = "snapshot"
+
+
+@dataclass
+class NodeEventData(_SseEventData):
+    sse_event: ClassVar[str] = "node"
+
+    node_id: str
+    title: str
+    status: str
+    error: str
+    kind: Literal["node"] = "node"
+
+
+@dataclass
+class CanvasEdge:
+    source: str
+    target: str
+
+
+@dataclass
+class CanvasEventData(_SseEventData):
+    sse_event: ClassVar[str] = "canvas"
+
+    event: CanvasEvent
+    kind: Literal["canvas"] = "canvas"
+    node_id: str | None = None
+    edge: CanvasEdge | None = None
+
+
+@dataclass
+class AgentMessageEventData(_SseEventData):
+    """One incremental assistant-text chunk for an in-flight chat turn.
+
+    ``answer`` follows the existing Dify ``agent_message`` convention: it is
+    a delta, not the accumulated answer. ``seq``/``at_version`` identify the
+    durable assistant item that replaces the transient stream item when the
+    turn commits.
+    """
+
+    sse_event: ClassVar[str] = "agent_message"
+
+    session_id: str
+    id: str
+    answer: str
+    seq: int
+    at_version: int
+    stage_id: str
+    kind: Literal["agent_message"] = "agent_message"
+
+
+@dataclass
+class CommitEventData(_SseEventData):
+    """One CAS-backed conversation increment emitted before terminal state."""
+
+    sse_event: ClassVar[str] = "commit"
+
+    session_id: str
+    version: int
+    state: str
+    settled: bool
+    items: list[ConversationItem]
+    kind: Literal["commit"] = "commit"
+
+
+@dataclass
+class StateEventData(SessionView, _SseEventData):
+    sse_event: ClassVar[str] = "state"
+
+    kind: Literal["state"] = "state"
+
+
+@dataclass
+class ErrorEventData(_SseEventData):
+    sse_event: ClassVar[str] = "error"
+
+    error: str
+    kind: Literal["error"] = "error"
+    code: str | None = None
+    message: str | None = None
+    recoverable: bool | None = None

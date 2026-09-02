@@ -1,13 +1,12 @@
-"""Unit tests for the Dify Builder console JSON routes.
+"""Unit tests for the Dify Builder console SSE routes.
 
-These test the UNDECORATED module-level route-logic functions
-(``_create``/``_view``/``_action``/``_message``) and the ``dify_builder_required``
-gate directly -- NOT the decorated ``Resource`` methods. Calling a decorated
-resource method would trigger the real ``@login_required``/``@setup_required``
-auth stack, which needs a live Flask request context and a logged-in user;
-that is exercised by integration/e2e tests, not here.
+The module-level route functions are deliberately undecorated, so these tests
+exercise request validation, pre-stream error mapping, and stream construction
+without requiring a logged-in Flask request context.
 """
 
+import json
+from inspect import unwrap
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,287 +14,393 @@ from flask import Response
 
 import controllers.console.dify_builder as mod
 from controllers.console import wraps as wraps_mod
-from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.contract import RunStatus
+from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import Actor
 from services.dify_builder.service import SessionView
 
 
-def _session_view(session_id: str = "s1") -> SessionView:
+def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.EXECUTING) -> SessionView:
     return SessionView(
         session_id=session_id,
         app_id="a1",
         version=1,
         state="fix.diagnose",
         canvas_read_only=True,
-        run_status="executing",
+        run_status=run_status,
         interrupted=False,
         conversation=[],
     )
 
 
 def _account(account_id: str = "acc-1") -> MagicMock:
-    m = MagicMock()
-    m.id = account_id
-    return m
+    account = MagicMock()
+    account.id = account_id
+    return account
 
 
 def _actor() -> Actor:
     return mod._actor(_account(), "ten-1")
 
 
+def _frames():
+    yield f"event: message\ndata: {json.dumps({'event': 'snapshot', 'data': {'session_id': 's1'}})}\n\n"
+
+
+def _assert_event_stream(result) -> Response:
+    assert isinstance(result, Response)
+    assert result.mimetype == "text/event-stream"
+    assert result.headers["Cache-Control"] == "no-cache"
+    assert result.headers["X-Accel-Buffering"] == "no"
+    return result
+
+
 def test_actor_builds_from_current_user_and_tenant():
-    account = _account("acc-1")
-    actor = mod._actor(account, "ten-1")
+    actor = mod._actor(_account("acc-1"), "ten-1")
     assert actor == Actor(account_id="acc-1", tenant_id="ten-1")
 
 
-def test_create_returns_201_and_view(monkeypatch):
-    svc = MagicMock()
-    svc.create_fix_session.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+def test_session_get_delegates_to_restore_stream(monkeypatch):
+    restore = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
+    monkeypatch.setattr(mod, "_restore", restore)
 
-    actor = _actor()
-    body, status = mod._create({"app_id": "a1", "failed_run_id": "TR-1", "checklist_errors": []}, actor)
+    response = unwrap(mod.DifyBuilderSessionApi.get)(object(), "ten-1", _account(), "s1")
 
-    assert status == 201
-    assert body["session_id"] == "s1"
-    called = svc.create_fix_session.call_args
-    assert called.kwargs["app_id"] == "a1"
-    assert isinstance(called.kwargs["actor"], Actor)
-    assert called.kwargs["actor"] == actor
+    _assert_event_stream(response)
+    restore.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
 
 
-def test_create_build_scenario_calls_create_build_session(monkeypatch):
-    svc = MagicMock()
-    svc.create_build_session.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._create({"scenario": "build", "app_id": "a1", "goal_text": "Build it"}, actor)
-
-    assert status == 201
-    svc.create_build_session.assert_called_once()
-    called = svc.create_build_session.call_args
-    assert called.kwargs["app_id"] == "a1"
-    assert called.kwargs["goal_text"] == "Build it"
-    svc.create_fix_session.assert_not_called()
-
-
-def test_create_edit_scenario_calls_create_edit_session(monkeypatch):
-    svc = MagicMock()
-    svc.create_edit_session.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._create({"scenario": "edit", "app_id": "a1"}, actor)
-
-    assert status == 201
-    svc.create_edit_session.assert_called_once()
-    called = svc.create_edit_session.call_args
-    assert called.kwargs["app_id"] == "a1"
-    svc.create_fix_session.assert_not_called()
-    svc.create_build_session.assert_not_called()
-
-
-def test_create_rejects_non_dict_body():
-    actor = _actor()
-    svc = MagicMock()
-    body, status = mod._create(None, actor)
-    assert (body, status) == ({"code": "bad_request"}, 400)
-    svc.create_fix_session.assert_not_called()
-
-
-def test_action_rejects_non_dict_body(monkeypatch):
-    svc = MagicMock()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._action("s1", "notadict", actor)
-
-    assert (body, status) == ({"code": "bad_request"}, 400)
-    svc.submit_action.assert_not_called()
-
-
-def test_action_conflict_maps_409(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.side_effect = ConflictError("stale")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._action("s1", {"kind": "run_verify", "payload": {}, "base_version": 1}, actor)
-
-    assert status == 409
-    assert body["code"] == "conflict"
-
-
-def test_action_resolves_action_id_to_handler_kind(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+@pytest.mark.parametrize(
+    ("payload", "method_name", "expected_kwargs"),
+    [
+        (
+            {"scenario": "build", "app_id": "a1", "goal_text": "Build it"},
+            "create_build_session_stream",
+            {"app_id": "a1", "goal_text": "Build it", "model_config": None},
+        ),
+        (
+            {"scenario": "edit", "app_id": "a1", "goal_text": "Tighten risk"},
+            "create_edit_session_stream",
+            {"app_id": "a1", "goal_text": "Tighten risk", "model_config": None},
+        ),
+        (
+            {"scenario": "fix", "app_id": "a1", "failed_run_id": "TR-1"},
+            "create_fix_session_stream",
+            {
+                "app_id": "a1",
+                "failed_run_id": "TR-1",
+                "model_config": None,
+            },
+        ),
+        (
+            {
+                "scenario": "fix",
+                "app_id": "a1",
+                "checklist_errors": [
+                    {
+                        "node_id": "node-1",
+                        "node_type": "llm",
+                        "title": "Missing model",
+                        "messages": ["Select a model"],
+                        "unconnected": False,
+                        "plugin_missing": False,
+                    }
+                ],
+            },
+            "create_fix_session_stream",
+            {
+                "app_id": "a1",
+                "failed_run_id": None,
+                "checklist_errors": [
+                    {
+                        "node_id": "node-1",
+                        "node_type": "llm",
+                        "title": "Missing model",
+                        "messages": ["Select a model"],
+                        "unconnected": False,
+                        "plugin_missing": False,
+                    }
+                ],
+                "model_config": None,
+            },
+        ),
+    ],
+)
+def test_create_always_calls_streaming_service(monkeypatch, payload, method_name, expected_kwargs):
+    service = MagicMock()
+    getattr(service, method_name).return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
-    body, status = mod._action("s1", {"action_id": "run_validation", "payload": {}, "base_version": 1}, actor)
+    response = _assert_event_stream(mod._create(payload, actor))
 
-    assert status == 200
-    called_action = svc.submit_action.call_args.args[2]
-    assert called_action.kind == "run_verify"
+    assert b'"event": "snapshot"' in response.get_data()
+    called = getattr(service, method_name).call_args
+    assert called.kwargs == {**expected_kwargs, "actor": actor}
+    service.create_build_session.assert_not_called()
+    service.create_edit_session.assert_not_called()
+    service.create_fix_session.assert_not_called()
 
 
-def test_action_id_supersedes_legacy_kind_when_both_present(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
+def test_create_serializes_model_config_for_service(monkeypatch):
+    service = MagicMock()
+    service.create_build_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
 
-    body, status = mod._action(
-        "s1", {"action_id": "publish_fix", "kind": "run_verify", "payload": {}, "base_version": 1}, actor
+    response = mod._create(
+        {
+            "scenario": "build",
+            "app_id": "a1",
+            "goal_text": "Build it",
+            "model_config": {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4o-mini",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.2},
+            },
+        },
+        _actor(),
     )
 
-    assert status == 200
-    called_action = svc.submit_action.call_args.args[2]
-    assert called_action.kind == "publish"
+    _assert_event_stream(response)
+    assert service.create_build_session_stream.call_args.kwargs["model_config"] == {
+        "provider": "langgenius/openai/openai",
+        "name": "gpt-4o-mini",
+        "mode": "chat",
+        "completion_params": {"temperature": 0.2},
+    }
 
 
-def test_action_legacy_kind_still_accepted_without_action_id(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {"app_id": "a1", "failed_run_id": "TR-1"},
+        {"scenario": "unknown", "app_id": "a1"},
+        {"scenario": "fix", "app_id": "a1"},
+        {"scenario": "fix", "app_id": "a1", "checklist_errors": []},
+        {"scenario": "build", "app_id": "a1", "goal_text": "  "},
+        {"scenario": "edit", "app_id": "a1", "goal_text": 1},
+        {"scenario": "build", "app_id": "a1", "goal_text": "goal", "model_config": []},
+        {
+            "scenario": "build",
+            "app_id": "a1",
+            "goal_text": "goal",
+            "response_mode": "streaming",
+        },
+    ],
+)
+def test_create_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+    service = MagicMock()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    assert mod._create(payload, _actor()) == ({"code": "bad_request"}, 400)
+    assert not service.mock_calls
+
+
+def test_create_maps_pre_stream_error(monkeypatch):
+    service = MagicMock()
+    service.create_fix_session_stream.side_effect = ConflictError("stale")
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    result = mod._create({"scenario": "fix", "app_id": "a1", "failed_run_id": "TR-1"}, _actor())
+
+    assert result == ({"code": "conflict"}, 409)
+
+
+def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch):
+    service = MagicMock()
+    service.submit_action_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
-    body, status = mod._action("s1", {"kind": "run_verify", "payload": {}, "base_version": 1}, actor)
+    response = mod._action(
+        "s1",
+        {
+            "action_id": "run_validation",
+            "payload": {"scope": "changed"},
+            "base_version": 1,
+            "base_app_revision": "hash-1",
+        },
+        actor,
+    )
 
-    assert status == 200
-    called_action = svc.submit_action.call_args.args[2]
-    assert called_action.kind == "run_verify"
+    _assert_event_stream(response)
+    called_session_id, called_actor, action = service.submit_action_stream.call_args.args
+    assert (called_session_id, called_actor) == ("s1", actor)
+    assert action.kind == "run_verify"
+    assert action.payload == {"scope": "changed"}
+    assert action.base_version == 1
+    assert action.base_app_revision == "hash-1"
+    service.submit_action.assert_not_called()
 
 
-def test_action_busy_maps_409_session_busy(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.side_effect = BusyError("busy")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {"payload": {}, "base_version": 1, "base_app_revision": "hash-1"},
+        {"action_id": "", "payload": {}, "base_version": 1, "base_app_revision": "hash-1"},
+        {"action_id": "run_validation", "payload": None, "base_version": 1, "base_app_revision": "hash-1"},
+        {"action_id": "run_validation", "payload": {}, "base_version": True, "base_app_revision": "hash-1"},
+        {"action_id": "run_validation", "payload": {}, "base_version": 1},
+        {
+            "action_id": "run_validation",
+            "payload": {},
+            "base_version": 1,
+            "base_app_revision": "hash-1",
+            "response_mode": "streaming",
+        },
+        {
+            "action_id": "run_validation",
+            "kind": "run_verify",
+            "payload": {},
+            "base_version": 1,
+            "base_app_revision": "hash-1",
+        },
+    ],
+)
+def test_action_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+    service = MagicMock()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    assert mod._action("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
+    assert not service.mock_calls
+
+
+def test_action_maps_pre_stream_conflict(monkeypatch):
+    service = MagicMock()
+    service.submit_action_stream.side_effect = ConflictError("stale")
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    result = mod._action(
+        "s1",
+        {
+            "action_id": "run_verify",
+            "payload": {},
+            "base_version": 1,
+            "base_app_revision": "hash-1",
+        },
+        _actor(),
+    )
+
+    assert result == ({"code": "conflict"}, 409)
+
+
+def test_message_always_returns_event_stream(monkeypatch):
+    service = MagicMock()
+    service.submit_message_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
-    body, status = mod._action("s1", {"kind": "publish", "payload": {}, "base_version": 2}, actor)
+    response = mod._message(
+        "s1",
+        {"text": "hi", "base_version": 2, "client_turn_id": "turn-1"},
+        actor,
+    )
 
-    assert status == 409
-    assert body["code"] == "session_busy"
-
-
-def test_view_notfound_maps_generic_404(monkeypatch):
-    svc = MagicMock()
-    svc.get_session_view.side_effect = NotFoundError("session xyz not found")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._view("s1", actor)
-
-    assert status == 404
-    assert body == {"code": "not_found"}
-    # the message text must NOT leak into the response
-    assert "xyz" not in str(body)
+    _assert_event_stream(response)
+    service.submit_message_stream.assert_called_once_with("s1", actor, "hi", 2, "turn-1")
+    service.submit_message.assert_not_called()
 
 
-def test_message_returns_200_and_view(monkeypatch):
-    svc = MagicMock()
-    svc.submit_message.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {"text": "hi", "base_version": 1},
+        {"text": " ", "base_version": 1, "client_turn_id": "turn-1"},
+        {"text": "hi", "base_version": True, "client_turn_id": "turn-1"},
+        {"text": "hi", "base_version": 1, "client_turn_id": " "},
+        {
+            "text": "hi",
+            "base_version": 1,
+            "client_turn_id": "turn-1",
+            "response_mode": "streaming",
+        },
+    ],
+)
+def test_message_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+    service = MagicMock()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
 
-    body, status = mod._message("s1", {"text": "hi", "base_version": 2}, actor)
-
-    assert status == 200
-    assert body["session_id"] == "s1"
-    svc.submit_message.assert_called_once_with("s1", actor, "hi", 2)
+    assert mod._message("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
+    assert not service.mock_calls
 
 
-def test_message_rejects_non_dict_body(monkeypatch):
-    svc = MagicMock()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._message("s1", None, actor)
-
-    assert (body, status) == ({"code": "bad_request"}, 400)
-    svc.submit_message.assert_not_called()
-
-
-def test_stream_subscribes_before_reading_snapshot(monkeypatch):
+def test_restore_authorizes_then_subscribes_before_reading_snapshot(monkeypatch):
     calls: list[str] = []
     subscription = MagicMock()
-    svc = MagicMock()
+    service = MagicMock()
+
+    service.authorize_session.side_effect = lambda *_args: calls.append("authorize")
+    service.get_session_view.side_effect = lambda *_args: (calls.append("view"), _session_view())[1]
 
     def subscribe(_session_id: str):
         calls.append("subscribe")
         return subscription
 
-    def get_session_view(_session_id: str, _actor: Actor):
-        calls.append("view")
-        return _session_view()
-
-    svc.get_session_view.side_effect = get_session_view
+    stream = MagicMock(return_value=iter(["data: {}\n\n"]))
+    monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    response = mod._stream("s1", _actor())
+    response = mod._restore("s1", _actor())
 
-    assert calls == ["subscribe", "view"]
-    assert response.status_code == 200
-    assert response.mimetype == "text/event-stream"
+    _assert_event_stream(response)
+    assert calls == ["authorize", "subscribe", "view"]
+    assert stream.call_args.kwargs["expect_advance"] is True
 
 
-def test_stream_closes_subscription_when_snapshot_is_unavailable(monkeypatch):
+def test_restore_settled_snapshot_does_not_watch_for_progress(monkeypatch):
+    service = MagicMock()
+    service.get_session_view.return_value = _session_view(run_status=RunStatus.COMPLETE)
     subscription = MagicMock()
-    svc = MagicMock()
-    svc.get_session_view.side_effect = NotFoundError("missing")
+    stream = MagicMock(return_value=iter(["data: {}\n\n"]))
+    monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    body, status = mod._stream("s1", _actor())
+    response = mod._restore("s1", _actor())
 
-    assert (body, status) == ({"code": "not_found"}, 404)
+    _assert_event_stream(response)
+    assert stream.call_args.kwargs["expect_advance"] is False
+
+
+def test_restore_closes_subscription_when_snapshot_is_unavailable(monkeypatch):
+    subscription = MagicMock()
+    service = MagicMock()
+    service.get_session_view.side_effect = NotFoundError("missing")
+    monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    result = mod._restore("s1", _actor())
+
+    assert result == ({"code": "not_found"}, 404)
     subscription.close.assert_called_once_with()
 
 
-# --- response_mode streaming (Task C1) --------------------------------------
+def test_restore_authorizes_before_opening_subscription(monkeypatch):
+    service = MagicMock()
+    service.authorize_session.side_effect = NotFoundError("missing")
+    subscribe = MagicMock()
+    monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
+    monkeypatch.setattr(mod, "build_service", lambda: service)
 
-
-def test_is_streaming_true_for_streaming_mode():
-    assert mod._is_streaming({"response_mode": "streaming"}) is True
-
-
-def test_is_streaming_false_when_absent_or_blocking():
-    assert mod._is_streaming({"response_mode": "blocking"}) is False
-    assert mod._is_streaming({}) is False
-
-
-def test_is_streaming_false_for_non_dict_body():
-    assert mod._is_streaming("notadict") is False
-    assert mod._is_streaming(None) is False
+    assert mod._restore("s1", _actor()) == ({"code": "not_found"}, 404)
+    subscribe.assert_not_called()
 
 
 def test_stream_response_returns_event_stream_on_success():
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-
-    def make_generator():
-        return _frames()
-
-    response = mod._stream_response(make_generator)
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    assert response.headers["Cache-Control"] == "no-cache"
-    assert b"event: snapshot" in response.get_data()
+    response = _assert_event_stream(mod._stream_response(_frames))
+    assert b'"event": "snapshot"' in response.get_data()
 
 
 def test_stream_response_maps_known_error_to_http_tuple():
     def make_generator():
         raise ConflictError("stale")
 
-    body, status = mod._stream_response(make_generator)
-
-    assert status == 409
-    assert body == {"code": "conflict"}
+    assert mod._stream_response(make_generator) == ({"code": "conflict"}, 409)
 
 
 def test_stream_response_reraises_unmapped_exception():
@@ -306,282 +411,69 @@ def test_stream_response_reraises_unmapped_exception():
         mod._stream_response(make_generator)
 
 
-def test_create_streaming_build_scenario_calls_create_build_session_stream(monkeypatch):
-    svc = MagicMock()
-
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-
-    svc.create_build_session_stream.return_value = _frames()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    response = mod._create(
-        {"scenario": "build", "app_id": "a1", "goal_text": "Build it", "response_mode": "streaming"}, actor
-    )
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    svc.create_build_session_stream.assert_called_once()
-    svc.create_fix_session_stream.assert_not_called()
-    svc.create_build_session.assert_not_called()
-
-
-def test_create_streaming_edit_scenario_calls_create_edit_session_stream(monkeypatch):
-    svc = MagicMock()
-
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-
-    svc.create_edit_session_stream.return_value = _frames()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    response = mod._create({"scenario": "edit", "app_id": "a1", "response_mode": "streaming"}, actor)
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    svc.create_edit_session_stream.assert_called_once()
-    svc.create_fix_session_stream.assert_not_called()
-
-
-def test_create_streaming_defaults_to_fix_scenario(monkeypatch):
-    svc = MagicMock()
-
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-
-    svc.create_fix_session_stream.return_value = _frames()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    response = mod._create(
-        {"app_id": "a1", "failed_run_id": "TR-1", "checklist_errors": [], "response_mode": "streaming"}, actor
-    )
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    svc.create_fix_session_stream.assert_called_once()
-    svc.create_build_session_stream.assert_not_called()
-    svc.create_edit_session_stream.assert_not_called()
-
-
-def test_create_streaming_maps_conflict_to_http_tuple(monkeypatch):
-    svc = MagicMock()
-    svc.create_fix_session_stream.side_effect = ConflictError("stale")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._create({"app_id": "a1", "response_mode": "streaming"}, actor)
-
-    assert status == 409
-    assert body == {"code": "conflict"}
-
-
-def test_create_blocking_path_unchanged_when_response_mode_absent(monkeypatch):
-    svc = MagicMock()
-    svc.create_fix_session.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._create({"app_id": "a1"}, actor)
-
-    assert status == 201
-    assert body["session_id"] == "s1"
-    svc.create_fix_session_stream.assert_not_called()
-
-
-def test_action_streaming_returns_event_stream(monkeypatch):
-    svc = MagicMock()
-
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-        yield 'event: state\ndata: {"version": 2}\n\n'
-
-    svc.submit_action_stream.return_value = _frames()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    response = mod._action(
-        "s1", {"action_id": "run_verify", "payload": {}, "base_version": 1, "response_mode": "streaming"}, actor
-    )
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    data = response.get_data()
-    assert b"event: state" in data
-    called = svc.submit_action_stream.call_args
-    assert called.args[0] == "s1"
-    assert called.args[1] == actor
-    assert called.args[2].kind == "run_verify"
-    svc.submit_action.assert_not_called()
-
-
-def test_action_streaming_maps_conflict_to_http_tuple(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action_stream.side_effect = ConflictError("stale")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._action(
-        "s1", {"action_id": "run_verify", "payload": {}, "base_version": 1, "response_mode": "streaming"}, actor
-    )
-
-    assert status == 409
-    assert body == {"code": "conflict"}
-
-
-def test_action_blocking_still_returns_json(monkeypatch):
-    svc = MagicMock()
-    svc.submit_action.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._action("s1", {"kind": "run_verify", "payload": {}, "base_version": 1}, actor)
-
-    assert status == 200
-    assert body["session_id"] == "s1"
-    svc.submit_action_stream.assert_not_called()
-
-
-def test_message_streaming_returns_event_stream(monkeypatch):
-    svc = MagicMock()
-
-    def _frames():
-        yield "event: snapshot\ndata: {}\n\n"
-
-    svc.submit_message_stream.return_value = _frames()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    response = mod._message("s1", {"text": "hi", "base_version": 2, "response_mode": "streaming"}, actor)
-
-    assert isinstance(response, Response)
-    assert response.mimetype == "text/event-stream"
-    svc.submit_message_stream.assert_called_once_with("s1", actor, "hi", 2)
-    svc.submit_message.assert_not_called()
-
-
-def test_message_streaming_maps_conflict_to_http_tuple(monkeypatch):
-    svc = MagicMock()
-    svc.submit_message_stream.side_effect = ConflictError("stale")
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._message("s1", {"text": "hi", "base_version": 2, "response_mode": "streaming"}, actor)
-
-    assert status == 409
-    assert body == {"code": "conflict"}
-
-
-def test_message_blocking_still_returns_json(monkeypatch):
-    svc = MagicMock()
-    svc.submit_message.return_value = _session_view()
-    monkeypatch.setattr(mod, "build_service", lambda: svc)
-    actor = _actor()
-
-    body, status = mod._message("s1", {"text": "hi", "base_version": 2}, actor)
-
-    assert status == 200
-    assert body["session_id"] == "s1"
-    svc.submit_message_stream.assert_not_called()
-
-
-# --- dify_builder_required gate -----------------------------------------
-#
-# NOTE: the brief/dispatch assumed `@with_current_user`/`@with_current_tenant_id`
-# inject their values as KEYWORD arguments. Reading the real implementation in
-# controllers/console/wraps.py shows otherwise: both call
-# `view(self, injected_value, *args, **kwargs)`, i.e. they PREPEND the value as
-# a POSITIONAL argument immediately after `self`. This is confirmed by the
-# existing multi-decorator example in controllers/console/app/workflow_comment.py
-# (`def post(self, current_tenant_id, current_user, app_model, comment_id)`).
-# `dify_builder_required` sits directly below `@with_current_tenant_id`, so
-# it must accept `current_tenant_id` positionally (as the argument right after
-# `self`), not as a keyword-only argument. The gate is tested against that real
-# contract below.
-
-
 def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch):
-    def dummy(_self, _current_tenant_id, *_args, **_kwargs):
-        return {"ok": True}, 200
-
-    wrapped = mod.dify_builder_required(dummy)
-
-    features = MagicMock()
-    features.dify_builder_enabled = False
+    wrapped = mod.dify_builder_required(lambda *_args, **_kwargs: ({"ok": True}, 200))
+    features = MagicMock(dify_builder_enabled=False)
     monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: features)
 
-    result = wrapped(object(), "t")
-
-    assert result == ({"code": "feature_unavailable"}, 403)
+    assert wrapped(object(), "t") == ({"code": "feature_unavailable"}, 403)
 
 
 def test_dify_builder_required_passes_through_when_enabled(monkeypatch):
-    def dummy(_self, current_tenant_id, *_args, **_kwargs):
-        return {"ok": True, "current_tenant_id": current_tenant_id}, 200
+    def view(_self, current_tenant_id, *_args, **_kwargs):
+        return {"current_tenant_id": current_tenant_id}, 200
 
-    wrapped = mod.dify_builder_required(dummy)
-
-    features = MagicMock()
-    features.dify_builder_enabled = True
+    features = MagicMock(dify_builder_enabled=True)
     monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: features)
 
-    result = wrapped(object(), "t")
-
-    assert result == ({"ok": True, "current_tenant_id": "t"}, 200)
-
-
-# --- real decorator stack composition ---------------------------------------
-#
-# The tests above exercise `dify_builder_required` in isolation. The tests
-# below compose the REAL `@with_current_user` / `@with_current_tenant_id` /
-# `dify_builder_required` stack (mirroring the exact nesting used on the
-# Resource methods in dify_builder.py: `with_current_user(with_current_tenant_id(
-# dify_builder_required(view)))`) to verify the values actually land in the
-# method's declared positional slots -- not just that each decorator behaves
-# correctly alone.
+    assert mod.dify_builder_required(view)(object(), "t") == ({"current_tenant_id": "t"}, 200)
 
 
 def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
-    account = MagicMock()
-    account.id = "acc-1"
-    # both injection decorators resolve identity via current_account_with_tenant()
+    account = _account()
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
-    # feature enabled so the gate passes through instead of 403
-    feat = MagicMock()
-    feat.dify_builder_enabled = True
-    monkeypatch.setattr(mod, "FeatureService", MagicMock(get_features=lambda _t: feat))
-
+    monkeypatch.setattr(
+        mod.FeatureService,
+        "get_features",
+        lambda _tenant_id: MagicMock(dify_builder_enabled=True),
+    )
     captured = {}
 
-    def fake_view(self, current_tenant_id, current_user, **kwargs):
-        captured.update(self=self, current_tenant_id=current_tenant_id, current_user=current_user, kwargs=kwargs)
+    def view(self, current_tenant_id, current_user, **kwargs):
+        captured.update(self=self, tenant=current_tenant_id, user=current_user, kwargs=kwargs)
         return {"ok": True}, 200
 
-    # innermost → outermost, mirroring the real stack order (gate is closest to the method)
-    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view)))
-    sentinel_self = object()
-    result = composed(sentinel_self, session_id="s1")
+    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(view)))
+    sentinel = object()
 
-    assert result == ({"ok": True}, 200)
-    assert captured["self"] is sentinel_self
-    assert captured["current_tenant_id"] == "ten-9"
-    assert captured["current_user"] is account
-    assert captured["kwargs"] == {"session_id": "s1"}
+    assert composed(sentinel, session_id="s1") == ({"ok": True}, 200)
+    assert captured == {"self": sentinel, "tenant": "ten-9", "user": account, "kwargs": {"session_id": "s1"}}
 
 
 def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
-    account = MagicMock()
-    account.id = "acc-1"
-    monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
-    feat = MagicMock()
-    feat.dify_builder_enabled = False
-    monkeypatch.setattr(mod, "FeatureService", MagicMock(get_features=lambda _t: feat))
+    monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (_account(), "ten-9"))
+    monkeypatch.setattr(
+        mod.FeatureService,
+        "get_features",
+        lambda _tenant_id: MagicMock(dify_builder_enabled=False),
+    )
 
-    def fake_view(_self, _current_tenant_id, _current_user, **_kwargs):
+    def view(*_args, **_kwargs):
         raise AssertionError("view must not run when the feature is off")
 
-    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view)))
-    result = composed(object(), session_id="s1")
-    assert result == ({"code": "feature_unavailable"}, 403)
+    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(view)))
+    assert composed(object(), session_id="s1") == ({"code": "feature_unavailable"}, 403)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        mod.DifyBuilderSessionsApi.post,
+        mod.DifyBuilderSessionApi.get,
+        mod.DifyBuilderActionsApi.post,
+        mod.DifyBuilderMessagesApi.post,
+    ],
+)
+def test_session_routes_require_legacy_edit_permission(method):
+    gate = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
+    assert "edit_permission_required" in gate.__code__.co_qualname

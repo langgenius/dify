@@ -32,6 +32,7 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
     DecisionItem,
+    FormCard,
     FormField,
     NoticeItem,
     SummaryCard,
@@ -234,6 +235,11 @@ def start_schema(graph: Graph) -> StartSchema:
     return {"variables": []}
 
 
+def _string_list(value: object) -> list[str]:
+    """Copy only string members from a JSON-style list."""
+    return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
+
+
 _INPUT_FAILURE_SIGNALS = ("file variable", "not provided", "missing input")
 
 
@@ -262,19 +268,60 @@ def is_input_failure(run: Run) -> bool:
 
 def testdata_form_fields(schema: StartSchema) -> list[FormField]:
     """Map a StartSchema's declared variables to FormFields for the testdata
-    gate, PRESERVING each variable's declared type (incl. 'file') -- unlike
-    build_form_fields, which clamps to the 4 requirement-form types."""
+    gate, preserving the declared type and UI/input constraints. Malformed
+    optional values are dropped instead of leaking non-contract values into
+    the conversation payload."""
     fields: list[FormField] = []
     for v in schema.get("variables", []):
         if not isinstance(v, dict) or not v.get("variable"):
             continue
-        options = v.get("options") if isinstance(v.get("options"), list) else []
+        variable_type = str(v.get("type") or "text")
+        raw_default = v.get("default")
+        default = raw_default if isinstance(raw_default, (str, int, float, bool)) else None
+        raw_max_length = v.get("max_length")
+        max_length = (
+            raw_max_length
+            if isinstance(raw_max_length, int) and not isinstance(raw_max_length, bool) and raw_max_length > 0
+            else None
+        )
+        raw_number_limits = v.get("number_limits")
+        number_limits = (
+            raw_number_limits
+            if isinstance(raw_number_limits, int) and not isinstance(raw_number_limits, bool) and raw_number_limits > 0
+            else None
+        )
+        if number_limits is None and variable_type in {"file", "file-list"}:
+            number_limits = max_length
+
+        upload_methods = v.get("allowed_file_upload_methods")
+        if upload_methods is None:
+            upload_methods = v.get("allowed_upload_methods")
+        raw_json_schema = v.get("json_schema")
+        json_schema = (
+            dict(raw_json_schema)
+            if isinstance(raw_json_schema, dict)
+            else raw_json_schema
+            if isinstance(raw_json_schema, str)
+            else None
+        )
+
         fields.append(
             FormField(
                 key=str(v["variable"]),
                 label=str(v.get("label") or v["variable"]),
-                type=str(v.get("type") or "text"),
-                options=[str(o) for o in options],
+                type=variable_type,
+                options=_string_list(v.get("options")),
+                required=v.get("required") if isinstance(v.get("required"), bool) else False,
+                default=default,
+                max_length=max_length,
+                allowed_file_types=_string_list(v.get("allowed_file_types")),
+                allowed_file_extensions=_string_list(v.get("allowed_file_extensions")),
+                allowed_file_upload_methods=_string_list(upload_methods),
+                placeholder=v.get("placeholder") if isinstance(v.get("placeholder"), str) else None,
+                hint=v.get("hint") if isinstance(v.get("hint"), str) else None,
+                unit=v.get("unit") if isinstance(v.get("unit"), str) else None,
+                json_schema=json_schema,
+                number_limits=number_limits,
             )
         )
     return fields
@@ -398,7 +445,31 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # run_verify: if we have prepared inputs, go verify; else prepare test data.
     if fc.test_input_ref == "":
-        return StepResult(next=PcState.FIX_AWAIT_TESTDATA, context=fc)
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+        form_items = append_card(
+            fc,
+            FormCard(
+                variant="testdata",
+                fields=testdata_form_fields(start_schema(graph)),
+                values={},
+                frozen=False,
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="fix.await_testdata",
+                trace=Trace(status="completed", steps=[]),
+                reply_text="Provide test inputs (or use mock data) to run validation.",
+                cards=["form"],
+            ),
+        )
+        return StepResult(
+            next=PcState.FIX_AWAIT_TESTDATA,
+            context=fc,
+            items=[*form_items, *turn_items],
+        )
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
 
 
@@ -408,7 +479,8 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     mode, _ = action_string(turn, "mode")
     inputs: dict[str, Any] = {}
     if mode == "mock":
-        inputs = env.agent.generate_mock_inputs({}, {})
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
     else:
         # upload / reuse: payload carries the inputs directly for the slice.
         if turn.action is not None:

@@ -204,6 +204,40 @@ beforeEach(() => {
   api.remove.mockReset().mockImplementation(async () => {
     versions = []
   })
+
+  it('should hide run Fix when Builder is disabled and start it when enabled', async () => {
+    const user = userEvent.setup()
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+
+    const { unmount } = renderWorkflowPanel({ enabled: false })
+    await screen.findByTestId('record-panel')
+    expect(
+      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+    renderWorkflowPanel({ enabled: true })
+    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
+
+    expect(mockSetShowPanel).toHaveBeenCalledWith(true)
+    expect(mockSyncDraft).toHaveBeenCalledTimes(1)
+    expect(mockStartFix).toHaveBeenCalledWith('app-123', 'failed-run-1', undefined)
+  })
+
+  it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+
+    const { unmount } = renderWorkflowPanel({ canEdit: false, enabled: true })
+    expect(
+      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).toBeDisabled()
+
+    unmount()
+    renderWorkflowPanel({ busy: true, enabled: true })
+    expect(
+      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).toBeDisabled()
+  })
 })
 afterEach(() => {
   window.history.replaceState({}, '', originalUrl)

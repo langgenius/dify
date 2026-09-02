@@ -1,4 +1,4 @@
-import type { Action } from '@dify/contracts/dify-builder'
+import type { Action } from '@/app/components/dify-builder/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -11,28 +11,38 @@ import DifyBuilderModelSelector from './model-selector'
 import {
   difyBuilderActionsAtom,
   difyBuilderCanComposeAtom,
+  difyBuilderCanvasRefreshFailedAtom,
+  difyBuilderCanvasRefreshingAtom,
   difyBuilderConversationAtom,
   difyBuilderErrorAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInterruptedAtom,
+  difyBuilderRecheckReadyAtom,
   difyBuilderResetAtom,
+  difyBuilderRetryCanvasRefreshAtom,
   difyBuilderStartPromptAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
 
+const FORM_ACTION_IDS = new Set(['provide_testdata', 'submit_edit_rules', 'submit_requirements'])
+
 const DifyBuilderActionBar = ({
+  actionValidity,
   actions,
   busy,
   changesExpanded,
   pendingActionId,
+  recheckReady,
   onAction,
 }: {
+  actionValidity: Record<string, boolean>
   actions: Action[]
   busy: boolean
   changesExpanded: boolean
   pendingActionId: string | null
+  recheckReady: boolean
   onAction: (action: Action) => void
 }) => {
   const visibleActions = actions.filter((action) => action.kind !== 'automatic')
@@ -42,14 +52,20 @@ const DifyBuilderActionBar = ({
     <div className="flex flex-col items-end gap-1 px-4 pb-2">
       {visibleActions.map((action) => {
         const loading = pendingActionId === action.id
+        const awaitingChecklist = action.id === 'recheck' && !recheckReady
+        const invalid = FORM_ACTION_IDS.has(action.id)
+          ? actionValidity[action.id] !== true
+          : actionValidity[action.id] === false
         return (
           <Button
             key={action.id}
             size="small"
-            variant="secondary"
+            variant={action.kind === 'primary' ? 'primary' : 'secondary'}
             tone={action.kind === 'destructive' ? 'destructive' : 'default'}
             loading={loading}
-            disabled={loading ? false : busy || pendingActionId !== null}
+            disabled={
+              loading ? false : busy || pendingActionId !== null || awaitingChecklist || invalid
+            }
             aria-expanded={action.id === 'view_changes' ? changesExpanded : undefined}
             onClick={() => onAction(action)}
           >
@@ -66,19 +82,24 @@ const DifyBuilderPanel = () => {
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const actions = useAtomValue(difyBuilderActionsAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
+  const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
+  const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
+  const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
+  const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const startPrompt = useSetAtom(difyBuilderStartPromptAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
   const [draft, setDraft] = useState('')
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionPayloads, setActionPayloads] = useState<Record<string, Record<string, unknown>>>({})
+  const [actionValidity, setActionValidity] = useState<Record<string, boolean>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -94,7 +115,7 @@ const DifyBuilderPanel = () => {
 
   const handleAction = useCallback(
     async (action: Action) => {
-      if (interactionBusy || pendingActionId !== null) return
+      if (interactionBusy || pendingActionId !== null || actionValidity[action.id] === false) return
       if (isClientOnlyAction(action.id)) {
         setChangesExpanded((expanded) => !expanded)
         return
@@ -111,12 +132,17 @@ const DifyBuilderPanel = () => {
             delete next[action.id]
             return next
           })
+          setActionValidity((current) => {
+            const next = { ...current }
+            delete next[action.id]
+            return next
+          })
         }
       } finally {
         setPendingActionId(null)
       }
     },
-    [actionPayloads, conversation, interactionBusy, pendingActionId, submitAction],
+    [actionPayloads, actionValidity, conversation, interactionBusy, pendingActionId, submitAction],
   )
 
   const handleReset = () => {
@@ -125,6 +151,7 @@ const DifyBuilderPanel = () => {
     setPendingActionId(null)
     setChangesExpanded(false)
     setActionPayloads({})
+    setActionValidity({})
   }
 
   return (
@@ -178,6 +205,9 @@ const DifyBuilderPanel = () => {
               onActionPayloadChange={(actionId, payload) =>
                 setActionPayloads((current) => ({ ...current, [actionId]: payload }))
               }
+              onActionValidityChange={(actionId, valid) =>
+                setActionValidity((current) => ({ ...current, [actionId]: valid }))
+              }
             />
           ) : (
             <div className="flex min-h-full flex-col items-center justify-center px-8 pb-8 text-center">
@@ -201,11 +231,26 @@ const DifyBuilderPanel = () => {
               {error}
             </div>
           )}
+          {canvasRefreshFailed && (
+            <div className="mx-4 mb-2 flex justify-end">
+              <Button
+                size="small"
+                variant="secondary"
+                loading={canvasRefreshing}
+                disabled={interactionBusy && !canvasRefreshing}
+                onClick={() => retryCanvasRefresh()}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
           <DifyBuilderActionBar
+            actionValidity={actionValidity}
             actions={actions}
             busy={interactionBusy}
             changesExpanded={changesExpanded}
             pendingActionId={pendingActionId}
+            recheckReady={recheckReady}
             onAction={(action) => void handleAction(action)}
           />
           <div className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1">

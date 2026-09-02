@@ -140,6 +140,12 @@ class _StubAgent:
     def build_edit_intents(self, _edit_rules, _graph):
         return []
 
+    def respond_to_message(self, _state, _context, _history, _graph, text, on_delta=None):
+        reply = f"reply: {text}"
+        if on_delta is not None:
+            on_delta(reply)
+        return reply
+
 
 class _StubDifyPort:
     """A trivial conforming DifyPort. Takes `actor`, never ForwardAuth."""
@@ -285,4 +291,6 @@ def test_agent_missing_learn_from_build_is_not_a_dify_builder_agent():
         def analyze_impact(self, *a): ...
         def propose_edit_plan(self, *a): ...
         def build_edit_intents(self, *a): ...
+        def respond_to_message(self, *a): ...
+
     assert not isinstance(_Missing(), DifyBuilderAgent)

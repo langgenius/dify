@@ -20,6 +20,8 @@ from flask_restx.utils import not_none
 
 BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY = "dify-binary-response-media-types"
 _BINARY_RESPONSE_MEDIA_TYPES_EXTENSION = f"x-{BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY}"
+TYPED_EVENT_STREAM_RESPONSE_VENDOR_KEY = "dify-typed-event-stream-response"
+_TYPED_EVENT_STREAM_RESPONSE_EXTENSION = f"x-{TYPED_EVENT_STREAM_RESPONSE_VENDOR_KEY}"
 _HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
 
 
@@ -44,6 +46,10 @@ def _add_transport_response_schemas(payload: dict[str, object]) -> None:
                 continue
 
             binary_media_types = operation.pop(_BINARY_RESPONSE_MEDIA_TYPES_EXTENSION, [])
+            # Keep this extension so finalization is idempotent. The offline
+            # exporter finalizes the already-finalized Flask-RESTX payload once
+            # more before writing it.
+            typed_event_stream_schema = operation.get(_TYPED_EVENT_STREAM_RESPONSE_EXTENSION)
             normalized_binary_media_types = {
                 _normalize_media_type(media_type) for media_type in binary_media_types if isinstance(media_type, str)
             }
@@ -51,17 +57,24 @@ def _add_transport_response_schemas(payload: dict[str, object]) -> None:
             responses = operation.get("responses")
             if not isinstance(responses, dict):
                 continue
-            for response in responses.values():
+            for status, response in responses.items():
                 if not isinstance(response, dict):
                     continue
                 content = response.get("content")
                 if not isinstance(content, dict):
                     continue
-                for media_type, media in content.items():
+                for media_type, media in list(content.items()):
                     if not isinstance(media_type, str) or not isinstance(media, dict):
                         continue
                     normalized_media_type = _normalize_media_type(media_type)
                     if normalized_media_type == "text/event-stream":
+                        if isinstance(typed_event_stream_schema, str):
+                            if isinstance(status, str) and (status == "2XX" or status.startswith("2")):
+                                media["schema"] = {"$ref": f"#/components/schemas/{typed_event_stream_schema}"}
+                                continue
+                            content.pop(media_type)
+                            content["application/json"] = media
+                            continue
                         # Flask-RESTX attaches the status response model to every
                         # produced media type. The model describes the blocking
                         # JSON body; the SSE transport itself is always text.

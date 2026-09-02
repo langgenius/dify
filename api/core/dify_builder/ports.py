@@ -61,11 +61,7 @@ __all__ = [
 
 @runtime_checkable
 class DifyBuilderAgent(Protocol):
-    """The cognitive seam.
-
-    The current implementation is a canned stub (``PlaceholderAgent``); real
-    agent cognition is future work.
-    """
+    """The cognitive seam implemented by both LLM and fallback agents."""
 
     def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis: ...
 
@@ -83,9 +79,7 @@ class DifyBuilderAgent(Protocol):
 
     def discover_resources(self, plan_items: list[str]) -> list[ResourceOption]: ...
 
-    def bind_resources(
-        self, plan_items: list[str], resource_ids: list[str], conflict_policy: str
-    ) -> list[str]: ...
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str], conflict_policy: str) -> list[str]: ...
 
     def build_nodes(self, plan_items: list[str]) -> list[MutationIntent]: ...
 
@@ -104,6 +98,16 @@ class DifyBuilderAgent(Protocol):
     def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]: ...
 
     def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]: ...
+
+    def respond_to_message(
+        self,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str: ...
 
 
 @runtime_checkable

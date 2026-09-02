@@ -1,15 +1,23 @@
-"""Non-streaming LLM helper for the Dify Builder agent.
+"""LLM helpers for the Dify Builder agent.
 
-Blocking calls are fine — advances run in a Celery worker. invoke_json mirrors
-the repo's hardened WorkflowGenerator._invoke_and_parse_json: parse with
-json_repair, and on failure retry ONCE with a corrective hint before raising.
+Blocking calls are fine — advances run in a Celery worker. Chat replies expose
+the model's native stream while structured cognition remains blocking.
+``invoke_json`` mirrors the repo's hardened
+WorkflowGenerator._invoke_and_parse_json: parse with json_repair, and on
+failure retry ONCE with a corrective hint before raising.
 """
 
-from typing import Any
+from collections.abc import Generator, Iterator
+from typing import Any, cast
 
 import json_repair
 
-from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.model_runtime.entities.message_entities import (
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 
 
 class LlmError(Exception):
@@ -41,6 +49,47 @@ def invoke_text(
 ) -> str:
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
     return _complete(model_instance, messages, model_parameters, stop)
+
+
+def invoke_text_stream(
+    model_instance,
+    *,
+    system: str,
+    user: str,
+    model_parameters: dict[str, Any] | None = None,
+    stop: list[str] | None = None,
+) -> Iterator[str]:
+    """Yield assistant text deltas from the model's native streaming API."""
+    messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
+    result = model_instance.invoke_llm(
+        prompt_messages=messages,
+        model_parameters=model_parameters or {},
+        stop=stop,
+        stream=True,
+    )
+    if isinstance(result, LLMResult):
+        text = result.message.get_text_content()
+        if text:
+            yield text
+        return
+
+    for chunk in cast(Generator[LLMResultChunk, None, None], result):
+        content = chunk.delta.message.content
+        if isinstance(content, str):
+            if content:
+                yield content
+            continue
+        if not isinstance(content, list):
+            continue
+
+        delta = ""
+        for part in cast(list[object], content):
+            if isinstance(part, TextPromptMessageContent):
+                delta += part.data
+            elif isinstance(part, str):
+                delta += part
+        if delta:
+            yield delta
 
 
 def invoke_json(
