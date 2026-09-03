@@ -80,6 +80,20 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
   const shouldBlockAgentResourceAccess =
     routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
+  const canViewAccessPoint =
+    routeAppDetail?.id === appId &&
+    currentWorkspace.id &&
+    !isLoadingCurrentWorkspace &&
+    !isLoadingWorkspacePermissionKeys &&
+    !isLoadingAppDetail
+      ? getAppACLCapabilities(routeAppDetail.permission_keys, {
+          currentUserId,
+          resourceMaintainer: routeAppDetail.maintainer,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        }).canViewAccessPoint
+      : false
+  const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
   useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
@@ -141,6 +155,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
+    const isAccessPointPath = pathname.endsWith('access-point')
     const isDeployPath = pathname.endsWith('deploy')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
@@ -149,6 +164,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
       (isAccessConfigPath &&
         (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+      (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
       (isDeployPath &&
         (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
     ) {
@@ -198,7 +214,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || shouldBlockAgentResourceAccess ? (
+    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <Loading />
       </div>

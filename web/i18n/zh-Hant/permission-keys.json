@@ -3,6 +3,8 @@
   "api_extension.manage": "管理API擴充配置",
   "app.access_config": "配置應用訪問權限",
   "app.acl.access_config": "檢視與管理存取權限",
+  "app.acl.access_point_manage": "管理存取點",
+  "app.acl.access_point_view": "檢視存取點",
   "app.acl.delete": "刪除應用",
   "app.acl.deploy": "部署應用",
   "app.acl.edit": "編輯應用資訊與編排應用",

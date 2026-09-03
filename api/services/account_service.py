@@ -31,7 +31,7 @@ from libs.helper import RateLimiter, TokenManager
 from libs.helper import timezone as validate_timezone
 from libs.key_providers import generate_key_pair
 from libs.passport import PassportService
-from libs.password import compare_password, hash_password, valid_password
+from libs.password import hash_password, valid_password
 from libs.token import generate_csrf_token
 from models.account import (
     Account,
@@ -48,11 +48,14 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.account_email import normalize_email
-from services.billing_service import BillingService
-from services.email_code_login_challenge import (
-    EmailCodeLoginChallengeResult,
-    EmailCodeLoginChallengeStore,
+from services.account_forgot_password_service import (
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+    FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT,
+    FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX,
 )
+from services.billing_service import BillingService
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -62,10 +65,9 @@ from services.entities.auth_entities import (
 )
 from services.errors.account import (
     AccountAlreadyInTenantError,
-    AccountLoginError,
     AccountNormalizedEmailAlreadyInUseError,
+    AccountNotFoundError,
     AccountNotLinkTenantError,
-    AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
     EmailDomainSuspendedError,
@@ -73,27 +75,24 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
-    RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
     SeatsLimitExceededError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
 )
-from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_owner_transfer_task import (
     send_new_owner_transfer_notify_email_task,
     send_old_owner_transfer_notify_email_task,
     send_owner_transfer_confirm_task,
 )
-from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
 from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
@@ -156,19 +155,27 @@ class AccountService:
     CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
 
-    reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
-    email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
-    email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
+    reset_password_rate_limiter = RateLimiter(
+        prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+        max_attempts=FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+        time_window=FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
     )
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
 
     LOGIN_MAX_ERROR_LIMITS = 5
-    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
-    EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+
+    @staticmethod
+    def _resolve_role_id_by_tag(tenant_id: str, account_id: str, tag: str) -> str:
+        options = ListOption(page_number=1, results_per_page=100)
+        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
+        for rbac_role in roles:
+            if rbac_role.is_builtin and rbac_role.category == "global_system_default" and rbac_role.role_tag == tag:
+                return str(rbac_role.id)
+
+        raise ValueError(f"Builtin RBAC role not found for tag {tag!r} in tenant {tenant_id}")
 
     @staticmethod
     def _resolve_legacy_role_id(tenant_id: str, account_id: str, role: TenantAccountRole) -> str:
@@ -177,9 +184,6 @@ class AccountService:
         Looks up the builtin RBAC role whose tag matches the legacy role name
         (e.g. ``TenantAccountRole.ADMIN`` → builtin role with tag ``"admin"``).
         """
-        options = ListOption(page_number=1, results_per_page=100)
-        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
-
         expected_tag = {
             TenantAccountRole.OWNER: "owner",
             TenantAccountRole.ADMIN: "admin",
@@ -187,15 +191,7 @@ class AccountService:
             TenantAccountRole.NORMAL: "normal",
             TenantAccountRole.DATASET_OPERATOR: "dataset_operator",
         }[role]
-        for rbac_role in roles:
-            if (
-                rbac_role.is_builtin
-                and rbac_role.category == "global_system_default"
-                and rbac_role.role_tag == expected_tag
-            ):
-                return str(rbac_role.id)
-
-        raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
+        return AccountService._resolve_role_id_by_tag(tenant_id, account_id, expected_tag)
 
     @staticmethod
     def get_workspace_permission_keys(tenant_id: str, account_id: str, *, session: Session) -> set[str]:
@@ -392,10 +388,14 @@ class AccountService:
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
+        return AccountService.get_account_jwt_token_for_account_id(account.id)
+
+    @staticmethod
+    def get_account_jwt_token_for_account_id(account_id: str) -> str:
         exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
         payload = {
-            "user_id": account.id,
+            "user_id": account_id,
             "exp": exp,
             "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
@@ -403,37 +403,6 @@ class AccountService:
 
         token: str = PassportService().issue(payload)
         return token
-
-    @staticmethod
-    def authenticate(email: str, password: str, invite_token: str | None = None, *, session: Session) -> Account:
-        """authenticate account with email and password"""
-
-        account = session.scalar(select(Account).where(Account.email == email).limit(1))
-        if not account:
-            raise AccountPasswordError("Invalid email or password.")
-
-        if account.status == AccountStatus.BANNED:
-            raise AccountLoginError("Account is banned.")
-
-        if password and invite_token and account.password is None:
-            # if invite_token is valid, set password and password_salt
-            salt = secrets.token_bytes(16)
-            base64_salt = base64.b64encode(salt).decode()
-            password_hashed = hash_password(password, salt)
-            base64_password_hashed = base64.b64encode(password_hashed).decode()
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
-
-        if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
-
-        if account.status == AccountStatus.PENDING:
-            account.status = AccountStatus.ACTIVE
-            account.initialized_at = naive_utc_now()
-
-        session.commit()
-
-        return account
 
     @staticmethod
     def create_account(
@@ -450,10 +419,8 @@ class AccountService:
         session: Session,
     ) -> Account:
         """Create an account, preferring explicit user timezone over language-derived defaults."""
-        if not FeatureService.get_system_features().is_allow_register and not is_setup:
-            from controllers.console.error import AccountNotFound
-
-            raise AccountNotFound()
+        if not SystemFeatureService.is_registration_allowed() and not is_setup:
+            raise AccountNotFoundError("Account registration is disabled.")
 
         if check_normalized_email:
             AccountService.ensure_registration_email_available(email, session=session)
@@ -462,7 +429,7 @@ class AccountService:
         # account into another workspace does not pass through here and costs no seat.
         # get_license() carries the full license payload that server-side enforcement needs;
         # the public system-features endpoint exposes only license status.
-        if not FeatureService.get_license().seats.is_available():
+        if not SystemFeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
@@ -607,38 +574,39 @@ class AccountService:
             account.status = AccountStatus.ACTIVE
             session.commit()
 
-        access_token = AccountService.get_account_jwt_token(account=account)
-        refresh_token = _generate_refresh_token()
-        csrf_token = generate_csrf_token(account.id)
+        return AccountService.issue_token_pair(account.id)
 
-        AccountService._store_refresh_token(refresh_token, account.id)
+    @staticmethod
+    def issue_token_pair(account_id: str) -> TokenPair:
+        access_token = AccountService.get_account_jwt_token_for_account_id(account_id)
+        refresh_token = _generate_refresh_token()
+        csrf_token = generate_csrf_token(account_id)
+
+        AccountService._store_refresh_token(refresh_token, account_id)
 
         return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
-    def logout(*, account: Account):
-        refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
+    def revoke_token_pair(account_id: str) -> None:
+        refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account_id))
         if refresh_token:
-            AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
+            AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account_id)
 
     @staticmethod
-    def refresh_token(refresh_token: str, *, session: Session) -> TokenPair:
-        # Verify the refresh token
+    def resolve_refresh_token(refresh_token: str) -> str:
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
             raise RefreshTokenNotFoundError("Invalid refresh token")
+        return account_id.decode("utf-8")
 
-        account = AccountService.load_user(account_id.decode("utf-8"), session)
-        if not account:
-            raise RefreshTokenAccountNotFoundError("Invalid account")
-
-        # Generate new access token and refresh token
-        new_access_token = AccountService.get_account_jwt_token(account)
+    @staticmethod
+    def rotate_token_pair(refresh_token: str, account_id: str) -> TokenPair:
+        new_access_token = AccountService.get_account_jwt_token_for_account_id(account_id)
         new_refresh_token = _generate_refresh_token()
 
-        AccountService._delete_refresh_token(refresh_token, account.id)
-        AccountService._store_refresh_token(new_refresh_token, account.id)
-        csrf_token = generate_csrf_token(account.id)
+        AccountService._delete_refresh_token(refresh_token, account_id)
+        AccountService._store_refresh_token(new_refresh_token, account_id)
+        csrf_token = generate_csrf_token(account_id)
 
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
@@ -678,40 +646,6 @@ class AccountService:
                 is_allow_register=is_allow_register,
             )
         cls.reset_password_rate_limiter.increment_rate_limit(account_email)
-        return token
-
-    @classmethod
-    def send_email_register_email(
-        cls,
-        account: Account | None = None,
-        email: str | None = None,
-        language: str = "en-US",
-    ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
-
-        if cls.email_register_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import EmailRegisterRateLimitExceededError
-
-            raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
-
-        code, token = cls.generate_email_register_token(account_email)
-
-        if account:
-            send_email_register_mail_task_when_account_exist.delay(
-                language=language,
-                to=account_email,
-                account_name=account.name,
-            )
-
-        else:
-            send_email_register_mail_task.delay(
-                language=language,
-                to=account_email,
-                code=code,
-            )
-        cls.email_register_rate_limiter.increment_rate_limit(account_email)
         return token
 
     @classmethod
@@ -868,19 +802,6 @@ class AccountService:
         return code, token
 
     @classmethod
-    def generate_email_register_token(
-        cls,
-        email: str,
-        code: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=additional_data)
-        return code, token
-
-    @classmethod
     def generate_change_email_token(
         cls,
         token_data: ChangeEmailTokenData,
@@ -918,10 +839,6 @@ class AccountService:
         TokenManager.revoke_token(token, "reset_password")
 
     @classmethod
-    def revoke_email_register_token(cls, token: str):
-        TokenManager.revoke_token(token, "email_register")
-
-    @classmethod
     def revoke_change_email_token(cls, token: str):
         TokenManager.revoke_token(token, "change_email")
 
@@ -932,10 +849,6 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "reset_password")
-
-    @classmethod
-    def get_email_register_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
     def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
@@ -952,36 +865,6 @@ class AccountService:
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "owner_transfer")
 
-    @classmethod
-    def send_email_code_login_email(
-        cls,
-        account: Account | None = None,
-        email: str | None = None,
-        language: str = "en-US",
-    ):
-        email = account.email if account else email
-        if email is None:
-            raise ValueError("Email must be provided.")
-        email = email.lower()
-        if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
-
-            raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
-
-        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = EmailCodeLoginChallengeStore.create(
-            account_id=str(account.id) if account else None,
-            email=email,
-            code=code,
-        )
-        send_email_code_login_mail_task.delay(
-            language=language,
-            to=account.email if account else email,
-            code=code,
-        )
-        cls.email_code_login_rate_limiter.increment_rate_limit(email)
-        return token
-
     @staticmethod
     def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
@@ -995,38 +878,6 @@ class AccountService:
             return account
 
         return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
-
-    @classmethod
-    def verify_email_code_login_challenge(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
-        return EmailCodeLoginChallengeStore.verify(email=email, code=code, token=token)
-
-    @classmethod
-    def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
-            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
-            if freeze_type == "email_domain_suspended":
-                raise EmailDomainSuspendedError()
-            raise AccountRegisterError(
-                description=(
-                    "This email account has been deleted within the past "
-                    "30 days and is temporarily unavailable for new account registration"
-                )
-            )
-
-        account = session.scalar(select(Account).where(Account.email == email).limit(1))
-        if not account:
-            return None
-
-        if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
-
-        return account
-
-    @classmethod
-    def get_account_freeze_type(cls, email: str):
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return None
-        return BillingService.get_email_freeze_type(email)
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -1060,7 +911,7 @@ class AccountService:
     @staticmethod
     @redis_fallback(default_return=None)
     def add_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             count = 0
@@ -1068,50 +919,22 @@ class AccountService:
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
 
     @staticmethod
-    @redis_fallback(default_return=None)
-    def add_email_register_error_rate_limit(email: str) -> None:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            count = 0
-        count = int(count) + 1
-        redis_client.setex(key, dify_config.EMAIL_REGISTER_LOCKOUT_DURATION, count)
-
-    @staticmethod
     @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             return False
 
         count = int(count)
-        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
+        if count > FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT:
             return True
         return False
 
     @staticmethod
     @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
-        redis_client.delete(key)
-
-    @staticmethod
-    @redis_fallback(default_return=False)
-    def is_email_register_error_rate_limit(email: str) -> bool:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            return False
-        count = int(count)
-        if count > AccountService.EMAIL_REGISTER_MAX_ERROR_LIMITS:
-            return True
-        return False
-
-    @staticmethod
-    @redis_fallback(default_return=None)
-    def reset_email_register_error_rate_limit(email: str):
-        key = f"email_register_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         redis_client.delete(key)
 
     @staticmethod
@@ -1226,7 +1049,7 @@ class TenantService:
         session: Session,
     ) -> Tenant:
         """Create tenant"""
-        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
+        if not SystemFeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -1289,10 +1112,10 @@ class TenantService:
         owner. It persists the legacy membership before creating the matching
         RBAC role binding, then makes the workspace current for the account.
         """
-        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
+        if not SystemFeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_license().workspaces
+        workspaces = SystemFeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -1857,28 +1680,39 @@ class TenantService:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
         if new_role == "owner":
-            # Find the current owner and change their role to 'admin'
+            if dify_config.RBAC_ENABLED:
+                old_owner_id = AccountService.get_rbac_workspace_owner_account_id(
+                    str(tenant.id), operator.id, session=session
+                )
+                owner_role_id = AccountService._resolve_legacy_role_id(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    role=TenantAccountRole.OWNER,
+                )
+                no_access_role_id = AccountService._resolve_role_id_by_tag(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    tag="no_access",
+                )
+                current_roles = RBACService.MemberRoles.get(
+                    str(tenant.id), operator.id, old_owner_id, session=session
+                ).roles
+                remaining_role_ids = [str(r.id) for r in current_roles if str(r.id) != owner_role_id]
+                RBACService.MemberRoles.replace(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    member_account_id=old_owner_id,
+                    role_ids=remaining_role_ids or [no_access_role_id],
+                    session=session,
+                )
+
             current_owner_join = session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
             )
-            if not dify_config.RBAC_ENABLED:
-                if current_owner_join:
-                    current_owner_join.role = TenantAccountRole.ADMIN
-            elif current_owner_join:
-                admin_role_id = AccountService._resolve_legacy_role_id(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    role=TenantAccountRole.ADMIN,
-                )
-                RBACService.MemberRoles.replace(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    member_account_id=str(current_owner_join.account_id),
-                    role_ids=[admin_role_id],
-                    session=session,
-                )
+            if current_owner_join:
+                current_owner_join.role = TenantAccountRole.NORMAL
 
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
@@ -1894,6 +1728,8 @@ class TenantService:
                 role_ids=[resolved_role_id],
                 session=session,
             )
+            if new_tenant_role == TenantAccountRole.OWNER:
+                target_member_join.role = new_tenant_role
         else:
             target_member_join.role = new_tenant_role
         session.commit()
@@ -2012,9 +1848,9 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
-                FeatureService.is_workspace_creation_allowed()
+                SystemFeatureService.is_workspace_creation_allowed()
                 and create_workspace_required
-                and FeatureService.get_license().workspaces.is_available()
+                and SystemFeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

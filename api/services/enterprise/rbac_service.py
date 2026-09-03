@@ -464,6 +464,7 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -471,6 +472,7 @@ _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
     "plugin.install",
     "dataset.create_and_management",
     "dataset.external.connect",
+    "agent.manage",
 ]
 
 _LEGACY_APP_OWNER_KEYS: list[str] = [
@@ -485,6 +487,8 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.access_config",
     "app.acl.tracing_config",
     "app.acl.log_and_annotation",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
@@ -500,6 +504,8 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.access_config",
     "app.acl.tracing_config",
     "app.acl.log_and_annotation",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
@@ -513,10 +519,17 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.monitor",
     "app.acl.log_and_annotation",
     "app.acl.access_config",
+    "app.acl.access_point_manage",
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
     "app.acl.monitor",
+    "app.acl.access_point_view",
+]
+
+_LEGACY_APP_DATASET_OPERATOR_KEYS: list[str] = [
+    "app.acl.access_point_view",
 ]
 
 _LEGACY_DATASET_OWNER_KEYS: list[str] = [
@@ -598,6 +611,7 @@ _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
     },
     TenantAccountRole.DATASET_OPERATOR: {
         "workspace": _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        "app": _LEGACY_APP_DATASET_OPERATOR_KEYS,
         "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
     },
 }
@@ -1846,7 +1860,7 @@ class RBACService:
                         )
                     )
                     if current_owner_join and current_owner_join.account_id != member_account_id:
-                        current_owner_join.role = TenantAccountRole.ADMIN
+                        current_owner_join.role = TenantAccountRole.NORMAL
 
                 target_member_join.role = tenant_role
                 session.commit()

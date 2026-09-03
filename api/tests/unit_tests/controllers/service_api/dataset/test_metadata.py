@@ -38,7 +38,7 @@ from controllers.service_api.dataset.metadata import (
 from models.account import Account, Tenant
 from models.dataset import Dataset
 from models.enums import PermissionEnum
-from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
+from services.entities.knowledge_entities.knowledge_entities import MetadataArgs, MetadataOperationData
 from services.errors.metadata import MetadataResourceNotFoundError
 
 
@@ -537,7 +537,8 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
 
     @staticmethod
     def _call_post(api, session: Session, **kwargs):
-        return unwrap(api.post)(api, session, **kwargs)
+        metadata_args = MetadataOperationData.model_validate(request.get_json() or {})
+        return unwrap(api.post)(api, metadata_args, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")

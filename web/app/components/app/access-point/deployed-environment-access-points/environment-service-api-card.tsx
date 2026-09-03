@@ -10,14 +10,14 @@ import { ServiceApiCardView } from '../shared/service-api-card-view'
 type EnvironmentServiceApiCardProps = {
   appId: string
   environmentId: string
-  canManage: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
 }
 
 export function EnvironmentServiceApiCard({
   appId,
   environmentId,
-  canManage,
+  canManageAccessPoint,
   highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation()
@@ -54,7 +54,7 @@ export function EnvironmentServiceApiCard({
         : 'disabled'
 
   const handleEnabledChange = (enabled: boolean) => {
-    if (!canManage) return
+    if (!canManageAccessPoint) return
 
     apiMutation.mutate({
       params,
@@ -68,7 +68,7 @@ export function EnvironmentServiceApiCard({
         appId,
         environmentId,
         apiKeyCount: api?.api_key_count,
-        canManage,
+        canManage: canManageAccessPoint,
         disabled: !apiQuery.isSuccess,
       }}
       apiUrl={api?.base_url ?? ''}
@@ -76,9 +76,9 @@ export function EnvironmentServiceApiCard({
       available={apiQuery.isSuccess}
       status={status}
       highlighted={highlighted}
-      switchDisabled={!canManage}
+      switchDisabled={!canManageAccessPoint}
       onEnabledChange={apiQuery.isSuccess ? handleEnabledChange : undefined}
-      busy={apiMutation.isPending}
+      switchLoading={apiMutation.isPending}
     />
   )
 }

@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Deskripsi",
   "createTool.toolOutput.reserved": "Dicadangkan",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json, dan file adalah variabel yang dicadangkan. Variabel dengan nama-nama ini tidak dapat muncul dalam skema keluaran.",
+  "createTool.toolOutput.sourceNode": "Node sumber",
   "createTool.toolOutput.title": "Keluaran Alat",
   "createTool.urlError": "Silakan masukkan URL yang valid",
   "createTool.viewSchemaSpec": "Lihat Spesifikasi OpenAPI-Swagger",

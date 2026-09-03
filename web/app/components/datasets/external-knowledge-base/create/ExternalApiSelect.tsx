@@ -57,11 +57,8 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
 
   return (
     <div className="relative w-full">
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
+      <div
+        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedItem ? (
@@ -79,16 +76,15 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
           </span>
         )}
         <RiArrowDownSLine
-          className={`size-4 shrink-0 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`}
+          className={`size-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`}
         />
-      </button>
+      </div>
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           {items.map((item) => (
-            <button
-              type="button"
+            <div
               key={item.value}
-              className="block w-full cursor-pointer p-1 text-left"
+              className="flex cursor-pointer items-center p-1"
               onClick={() => handleSelect(item)}
             >
               <div className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
@@ -100,19 +96,18 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
                   {item.url}
                 </span>
               </div>
-            </button>
+            </div>
           ))}
           <div className="flex flex-col items-start self-stretch p-1">
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg p-2 text-left hover:bg-state-base-hover"
+            <div
+              className="flex cursor-pointer items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover"
               onClick={handleAddNewAPI}
             >
               <RiAddLine className="size-4 text-text-secondary" />
               <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
                 {t(($) => $.createNewExternalAPI, { ns: 'dataset' })}
               </span>
-            </button>
+            </div>
           </div>
         </div>
       )}

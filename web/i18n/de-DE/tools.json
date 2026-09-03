@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Beschreibung",
   "createTool.toolOutput.reserved": "Reserviert",
   "createTool.toolOutput.reservedParameterDuplicateTip": "Text, JSON und Dateien sind reservierte Variablen. Variablen mit diesen Namen dürfen im Ausgabeschema nicht erscheinen.",
+  "createTool.toolOutput.sourceNode": "Quellknoten",
   "createTool.toolOutput.title": "Werkzeugausgabe",
   "createTool.urlError": "Bitte geben Sie eine gültige URL ein",
   "createTool.viewSchemaSpec": "Die OpenAPI-Swagger-Spezifikation anzeigen",
