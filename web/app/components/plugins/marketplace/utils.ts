@@ -16,6 +16,46 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
+// Matches backend warmup homepageCollectionPluginsRequests Limit: 20 so the
+// public POST hits the Redis bucket the scheduler already writes.
+export const COLLECTION_PREVIEW_PLUGIN_LIMIT = 20
+
+type MarketplacePluginListExtras = {
+  agent_strategy?: unknown
+  data_sources?: unknown
+  model?: unknown
+  plugins?: unknown
+  privacy_options?: unknown
+  privacy_policy?: unknown
+  readme_meta?: unknown
+  resource?: unknown
+  tool?: unknown
+  triggers?: unknown
+}
+
+export const toListPlugin = (plugin: Plugin): Plugin => {
+  const {
+    agent_strategy: _agentStrategy,
+    data_sources: _dataSources,
+    introduction: _introduction,
+    model: _model,
+    plugins: _plugins,
+    privacy_options: _privacyOptions,
+    privacy_policy: _privacyPolicy,
+    readme_meta: _readmeMeta,
+    resource: _resource,
+    tool: _tool,
+    triggers: _triggers,
+    ...listFields
+  } = plugin as Plugin & MarketplacePluginListExtras
+
+  return {
+    ...listFields,
+    introduction: '',
+    endpoint: { settings: [] },
+  }
+}
+
 export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
   const pages: T[][] = []
 
@@ -120,7 +160,7 @@ export const getMarketplacePluginsByCollectionId = async (
       params: {
         collectionId,
       },
-      body: query ?? {},
+      body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT, ...query },
     },
     {
       signal: options?.signal,
@@ -128,7 +168,7 @@ export const getMarketplacePluginsByCollectionId = async (
   )
 
   return (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
-    getFormattedPlugin(plugin),
+    toListPlugin(getFormattedPlugin(plugin)),
   )
 }
 
@@ -261,11 +301,12 @@ export function getCollectionsParams(
   category: ActivePluginType,
 ): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
-    return {}
+    return { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT }
   }
   return {
     category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
+    limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
   }
 }

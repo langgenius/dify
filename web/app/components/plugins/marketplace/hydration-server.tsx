@@ -1,5 +1,6 @@
 import type { SearchParams } from 'nuqs/server'
 import type { MarketplaceSearchParams } from './search-params'
+import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/app/get-query-client'
@@ -16,7 +17,7 @@ import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './uti
 
 // The server side logic should move to marketplace's codebase so that we can get rid of Next.js
 
-async function getDehydratedState(searchParams?: Promise<SearchParams>) {
+export async function prefetchMarketplaceDehydratedState(searchParams?: Promise<SearchParams>) {
   if (!searchParams) {
     return
   }
@@ -49,11 +50,16 @@ async function getDehydratedState(searchParams?: Promise<SearchParams>) {
 
 export async function HydrateQueryClient({
   searchParams,
+  prefetchedState,
   children,
 }: {
   searchParams: Promise<SearchParams> | undefined
+  prefetchedState?: DehydratedState
   children: React.ReactNode
 }) {
-  const dehydratedState = await getDehydratedState(searchParams)
+  const dehydratedState =
+    prefetchedState === undefined
+      ? await prefetchMarketplaceDehydratedState(searchParams)
+      : prefetchedState
   return <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
 }

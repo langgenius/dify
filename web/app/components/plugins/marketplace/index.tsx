@@ -3,7 +3,7 @@ import type { SearchParams } from 'nuqs'
 import type { MarketplaceViewProps } from './view'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { fetchPluginBanners } from './home/banners'
-import { HydrateQueryClient } from './hydration-server'
+import { HydrateQueryClient, prefetchMarketplaceDehydratedState } from './hydration-server'
 import { withinServerBudget } from './server-budget'
 import { MarketplaceView } from './view'
 
@@ -25,18 +25,33 @@ const Marketplace = async ({
 
   if (variant === 'home') {
     const locale = language ?? (await getLocaleOnServer())
+    const prefetch = prefetchMarketplaceDehydratedState(searchParams)
 
-    // Banners are decoration on a page whose point is the catalog, so the same
-    // budget that keeps the prefetch from holding the document applies here.
-    // A late resolution just misses this render; nothing waits on it.
+    // Banners are decoration on a page whose point is the catalog. Overlap
+    // them with the catalog prefetch so the document waits at most one budget.
+    // A late banner resolution just misses this render; nothing waits on it.
     await withinServerBudget(
-      fetchPluginBanners(locale)
-        .then((banners) => {
-          trendingBanners = banners
-        })
-        .catch(() => {
-          // Keep the homepage available if Marketplace banner delivery is down.
-        }),
+      Promise.all([
+        fetchPluginBanners(locale)
+          .then((banners) => {
+            trendingBanners = banners
+          })
+          .catch(() => {
+            // Keep the homepage available if Marketplace banner delivery is down.
+          }),
+        prefetch,
+      ]),
+    )
+
+    return (
+      <HydrateQueryClient searchParams={undefined} prefetchedState={await prefetch}>
+        <MarketplaceView
+          {...viewProps}
+          banners={trendingBanners}
+          language={language}
+          variant={variant}
+        />
+      </HydrateQueryClient>
     )
   }
 

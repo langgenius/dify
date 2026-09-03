@@ -15,11 +15,8 @@
  * blocking. Server rendering degrades exactly when it is too slow to be worth
  * waiting for.
  *
- * Known limitation: the catalog spends this budget twice in sequence — banners
- * in `index.tsx`, then the prefetch in `hydration-server.tsx` — so the worst
- * case is 2x. Overlapping them means handing the started prefetch promise down
- * instead of letting `HydrateQueryClient` own it, which is a wider change than
- * bounding the waits.
+ * Homepage (`variant="home"`) overlaps banners and catalog prefetch under one
+ * budget so a slow banner cannot add a second 2.5s onto the catalog wait.
  */
 export const SERVER_PREFETCH_BUDGET_MS = 2_500
 

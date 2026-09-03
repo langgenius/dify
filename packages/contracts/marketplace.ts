@@ -48,6 +48,7 @@ export type CollectionsAndPluginsSearchParams = {
   condition?: string
   exclude?: string[]
   type?: 'plugin' | 'bundle'
+  limit?: number
 }
 
 export type MarketplaceTemplate = {

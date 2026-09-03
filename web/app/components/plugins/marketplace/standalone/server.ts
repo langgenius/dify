@@ -13,13 +13,14 @@ import {
   sortCreatorCreations,
   toPublisherSortQuery,
 } from '../creator-profile/model'
-import { HydrateQueryClient } from '../hydration-server'
+import { HydrateQueryClient, prefetchMarketplaceDehydratedState } from '../hydration-server'
 import Marketplace from '../index'
 import { SERVER_PREFETCH_BUDGET_MS, withinServerBudget } from '../server-budget'
 
 export const standaloneMarketplaceServer = {
   Marketplace,
   HydrateQueryClient,
+  prefetchMarketplaceDehydratedState,
   SERVER_PREFETCH_BUDGET_MS,
   withinServerBudget,
   adaptCreatorProfile,
