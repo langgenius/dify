@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} kredit",
   "mainNav.workspace.creditsUnit": "kredit",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Tidak ada workspace yang ditemukan",
   "mainNav.workspace.openMenu": "Buka menu workspace",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

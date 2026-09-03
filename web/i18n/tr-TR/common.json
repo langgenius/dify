@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} kredi",
   "mainNav.workspace.creditsUnit": "kredi",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Çalışma alanı bulunamadı",
   "mainNav.workspace.openMenu": "Çalışma alanı menüsünü aç",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

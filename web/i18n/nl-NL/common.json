@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} credits",
   "mainNav.workspace.creditsUnit": "credits",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Geen werkruimtes gevonden",
   "mainNav.workspace.openMenu": "Werkruimtemenu openen",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

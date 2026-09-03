@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} クレジット",
   "mainNav.workspace.creditsUnit": "クレジット",
   "mainNav.workspace.inviteMembers": "メンバーを招待",
+  "mainNav.workspace.noResults": "ワークスペースが見つかりません",
   "mainNav.workspace.openMenu": "ワークスペースメニューを開く",
   "mainNav.workspace.searchPlaceholder": "ワークスペースを検索",
   "mainNav.workspace.settings": "ワークスペース設定",

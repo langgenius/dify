@@ -68,7 +68,7 @@ function renderCard(availability: 'available' | 'loading' | 'unavailable') {
     <TriggerAccessPointCard
       appInfo={appInfo}
       availability={availability}
-      canEdit
+      canManageAccessPoint
       onToggleResult={vi.fn()}
     />,
   )

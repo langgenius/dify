@@ -1,7 +1,8 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
@@ -68,7 +69,9 @@ export default function SupportMenu() {
         <DropdownMenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
-            openZendeskWindow(deploymentEdition)
+            void zendeskRuntime.open(deploymentEdition).catch(() => {
+              toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+            })
           }}
         >
           <MenuItemContent

@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} 消息额度",
   "mainNav.workspace.creditsUnit": "消息额度",
   "mainNav.workspace.inviteMembers": "邀请成员",
+  "mainNav.workspace.noResults": "未找到工作空间",
   "mainNav.workspace.openMenu": "打开工作空间菜单",
   "mainNav.workspace.searchPlaceholder": "搜索工作空间",
   "mainNav.workspace.settings": "工作空间设置",

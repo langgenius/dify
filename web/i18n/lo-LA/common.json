@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} ເຄຣດິດ",
   "mainNav.workspace.creditsUnit": "ເຄຣດິດ",
   "mainNav.workspace.inviteMembers": "ເຊີນສະມາຊິກ",
+  "mainNav.workspace.noResults": "ບໍ່ພົບພື້ນທີ່ເຮັດວຽກ",
   "mainNav.workspace.openMenu": "ເປີດເມນູພື້ນທີ່ເຮັດວຽກ",
   "mainNav.workspace.searchPlaceholder": "ຄົ້ນຫາພື້ນທີ່ເຮັດວຽກ",
   "mainNav.workspace.settings": "ການຕັ້ງຄ່າພື້ນທີ່ເຮັດວຽກ",

@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} crédits",
   "mainNav.workspace.creditsUnit": "crédits",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Aucun espace de travail trouvé",
   "mainNav.workspace.openMenu": "Ouvrir le menu de l’espace de travail",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

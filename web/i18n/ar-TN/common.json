@@ -212,6 +212,7 @@
   "mainNav.workspace.credits": "{{count}} رصيد",
   "mainNav.workspace.creditsUnit": "أرصدة",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "لم يتم العثور على مساحات عمل",
   "mainNav.workspace.openMenu": "فتح قائمة مساحة العمل",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

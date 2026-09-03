@@ -340,7 +340,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                           href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
                           rel="noreferrer"
                           target="_blank"
-                          aria-label={t(($) => $.openInStudio, { ns: 'tools' })}
                           className={cn(
                             buttonVariants({ variant: 'primary' }),
                             'my-3 h-8 min-w-0 flex-1 rounded-lg py-2',
