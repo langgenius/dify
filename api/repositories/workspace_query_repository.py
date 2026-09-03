@@ -65,3 +65,7 @@ class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, 
         )
         with self._session_factory() as session:
             return session.scalar(stmt) is not None
+
+    @override
+    def has_active_membership(self, account_id: str) -> bool:
+        return self.has_active_for_account(account_id)
