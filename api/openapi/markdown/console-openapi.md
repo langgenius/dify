@@ -19460,6 +19460,7 @@ Enum class for model property key.
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
 | tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
+| tokener_metering | [TokenerMeteringResponse](#tokenermeteringresponse) |  | No |
 
 #### ModelProviderCustomConfigurationSummaryResponse
 
@@ -22891,6 +22892,36 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
+
+#### TokenerCurrentMonthAvailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| billed_usd_micro | string |  | Yes |
+| end_date | string |  | Yes |
+| request_count | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerCurrentMonthUnavailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_date | string |  | Yes |
+| error_code | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_usd_micro | string |  | Yes |
+| balance_generated_at | string |  | Yes |
+| currency | string |  | Yes |
+| current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
+| tenant_id | string |  | Yes |
+| usage_generated_at | string |  | No |
 
 #### TokensPerSecondStatisticItem
 
