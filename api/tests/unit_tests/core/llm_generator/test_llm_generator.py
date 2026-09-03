@@ -284,6 +284,22 @@ class TestLLMGenerator:
             "reasoning_effort": "minimal",
         }
 
+    def test_generate_suggested_questions_after_answer_uses_defaults_when_schema_lookup_fails(
+        self, mock_model_instance
+    ):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = '["Question 1?"]'
+        mock_model_instance.invoke_llm.return_value = mock_response
+        mock_model_instance.get_model_schema.side_effect = ValueError("schema unavailable")
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+
+        assert questions == ["Question 1?"]
+        assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": 256,
+            "temperature": 0.0,
+        }
+
     @pytest.mark.parametrize(
         ("parameter_type", "options", "expected_value"),
         [
@@ -367,6 +383,27 @@ class TestLLMGenerator:
         assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
         assert invoke_kwargs["stop"] == []
         assert "custom prompt" in invoke_kwargs["prompt_messages"][0].content
+
+    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
+    def test_generate_suggested_questions_after_answer_with_custom_model_without_completion_params(
+        self, mock_for_tenant
+    ):
+        custom_model_instance = MagicMock()
+        custom_response = MagicMock()
+        custom_response.message.get_text_content.return_value = '["Question 1?"]'
+        custom_model_instance.invoke_llm.return_value = custom_response
+        mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer(
+            "tenant_id",
+            "histories",
+            model_config={"provider": "openai", "name": "gpt-4o"},
+        )
+
+        assert questions == ["Question 1?"]
+        invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
+        assert invoke_kwargs["model_parameters"] == {}
+        assert invoke_kwargs["stop"] == []
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     def test_generate_suggested_questions_after_answer_fallback_to_default_model(self, mock_for_tenant):
