@@ -29,6 +29,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     WorkflowSnapshot,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.common.user_snapshot import UserSnapshot
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -614,6 +615,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
             conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
             message_snapshot = MessageSnapshot.from_message(message)
+            user_snapshot = UserSnapshot.from_user(user)
             session.close()
 
             try:
@@ -623,7 +625,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     conversation=conversation_snapshot,
                     message=message_snapshot,
-                    user=user,
+                    user=user_snapshot,
                     stream=stream,
                     draft_var_saver_factory=self._get_draft_var_saver_factory(
                         invoke_from,
@@ -757,7 +759,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         queue_manager: AppQueueManager,
         conversation: ConversationSnapshot,
         message: MessageSnapshot,
-        user: Account | EndUser,
+        user: Account | EndUser | UserSnapshot,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> (
