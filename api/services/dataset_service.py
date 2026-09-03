@@ -3592,6 +3592,11 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
+        is_enable_only = args.enabled is True and not segment.enabled and args.model_fields_set == {"enabled"}
+        if is_enable_only:
+            # Disabled segments no longer have vectors. Reuse the console enable flow to load them instead of updating.
+            cls.update_segments_status([segment.id], "enable", dataset, document, session)
+            return segment
         if args.enabled is not None:
             action = args.enabled
             if segment.enabled != action:

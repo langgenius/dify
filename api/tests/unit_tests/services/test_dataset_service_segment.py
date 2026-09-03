@@ -631,6 +631,63 @@ class TestSegmentServiceMutations:
         mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_indexing", 600, 1)
         disable_task.delay.assert_called_once_with(segment.id)
 
+    def test_update_segment_reenables_disabled_segment_via_bulk_index_task(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(enabled=False)
+        segment.disabled_at = "disabled-at"
+        segment.disabled_by = "user-2"
+        document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        dataset = _make_dataset()
+        args = SegmentUpdateArgs(enabled=True)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.enable_segments_to_index_task") as enable_task,
+            patch("services.dataset_service.VectorService") as vector_service,
+        ):
+            mock_redis.get.return_value = None
+            session.scalars.return_value.all.return_value = [segment]
+            session.get.return_value = segment
+
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
+
+        assert result is segment
+        assert segment.enabled is True
+        assert segment.disabled_at is None
+        assert segment.disabled_by is None
+        enable_task.delay.assert_called_once_with([segment.id], dataset.id, document.id)
+        vector_service.update_segment_vector.assert_not_called()
+        vector_service.update_multimodel_vector.assert_not_called()
+
+    def test_update_segment_reenables_and_updates_content_synchronously(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(content="old content", word_count=11, enabled=False)
+        document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=20)
+        dataset = _make_dataset(indexing_technique="economy")
+        refreshed_segment = SimpleNamespace(id=segment.id)
+        args = SegmentUpdateArgs(enabled=True, content="new content", keywords=["new"])
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.enable_segments_to_index_task") as enable_task,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="new-hash"),
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
+
+        assert result is refreshed_segment
+        assert segment.enabled is True
+        assert segment.content == "new content"
+        assert segment.disabled_at is None
+        assert segment.disabled_by is None
+        enable_task.delay.assert_not_called()
+        vector_service.update_segment_vector.assert_called_once_with(["new"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+
     def test_update_segment_rejects_updates_for_disabled_segment(self, account_context):
         segment = _make_segment(enabled=False)
         document = _make_document()
