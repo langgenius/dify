@@ -5212,7 +5212,7 @@ describe('SkillDetailPage', () => {
 
     fireEvent.dragOver(contextRegion, { dataTransfer })
 
-    expect(screen.getByLabelText('Upload to root folder')).toBeInTheDocument()
+    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to root folder$/)
 
     fireEvent.drop(contextRegion, { dataTransfer })
     await confirmUploadReview()
@@ -5342,7 +5342,7 @@ describe('SkillDetailPage', () => {
     fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
 
     expect(folder).toHaveClass('ring-state-accent-solid')
-    expect(screen.getByLabelText('Upload to references')).toBeInTheDocument()
+    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to references$/)
 
     fireEvent.drop(folder.closest('li')!, { dataTransfer })
     await confirmUploadReview()
@@ -5586,7 +5586,7 @@ describe('SkillDetailPage', () => {
     expect(exampleFile).toHaveClass('opacity-30')
 
     fireEvent.dragOver(targetFolder.closest('li')!, { dataTransfer })
-    expect(screen.getByLabelText('Move to references')).toBeInTheDocument()
+    expect(screen.getByText(/^Move to/)).toHaveTextContent(/^Move to references$/)
     fireEvent.drop(targetFolder.closest('li')!, { dataTransfer })
 
     await waitFor(() => {
