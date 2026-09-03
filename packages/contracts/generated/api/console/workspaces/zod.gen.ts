@@ -174,6 +174,7 @@ export const zModelProviderCreditsResponse = z.object({
   is_unlimited: z.boolean(),
   model_billing_source: z
     .enum(['legacy_message_credits', 'tokener'])
+    .optional()
     .default('legacy_message_credits'),
   next_credit_reset_date: z.int().nullable(),
   pool_type: z.enum(['paid', 'trial']).nullable(),
@@ -182,15 +183,14 @@ export const zModelProviderCreditsResponse = z.object({
   remaining_credits: z.int().nullable(),
   tokener_bootstrap_status: z
     .enum([
-      'pending',
-      'installing_plugin',
-      'provisioning',
       'configuring_provider',
-      'ready',
       'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
     ])
-    .nullable()
-    .default(null),
+    .nullish(),
 })
 
 /**
@@ -1649,21 +1649,21 @@ export const zCurrentWorkspaceSummaryResponse = z.object({
   id: z.string(),
   model_billing_source: z
     .enum(['legacy_message_credits', 'tokener'])
+    .optional()
     .default('legacy_message_credits'),
   name: z.string(),
   plan: zCloudPlan.nullable(),
   role: zTenantAccountRole,
   tokener_bootstrap_status: z
     .enum([
-      'pending',
-      'installing_plugin',
-      'provisioning',
       'configuring_provider',
-      'ready',
       'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
     ])
-    .nullable()
-    .default(null),
+    .nullish(),
 })
 
 /**
@@ -1983,26 +1983,29 @@ export const zTenantInfoResponse = z.object({
   custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
-  model_billing_source: z.enum(['legacy_message_credits', 'tokener']).optional(),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .optional()
+    .default('legacy_message_credits'),
   name: z.string().nullish(),
   next_credit_reset_date: z.int().nullish(),
   plan: zCloudPlan.nullish(),
   role: z.string().nullish(),
   status: z.string().nullish(),
+  tokener_bootstrap_status: z
+    .enum([
+      'configuring_provider',
+      'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
+    ])
+    .nullish(),
   trial_credits: z.int().nullish(),
   trial_credits_exhausted_at: z.int().nullish(),
   trial_credits_used: z.int().nullish(),
   trial_end_reason: z.string().nullish(),
-  tokener_bootstrap_status: z
-    .enum([
-      'pending',
-      'installing_plugin',
-      'provisioning',
-      'configuring_provider',
-      'ready',
-      'failed',
-    ])
-    .nullish(),
 })
 
 /**

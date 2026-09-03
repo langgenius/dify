@@ -16640,9 +16640,11 @@ Model class for credential form schema.
 | ---- | ---- | ----------- | -------- |
 | credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
 | id | string |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 
 #### CustomConfigurationResponse
 
@@ -18253,8 +18255,10 @@ Flask blueprint initialization.
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
@@ -19450,11 +19454,13 @@ Enum class for model property key.
 | exhausted_at | integer |  | Yes |
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | next_credit_reset_date | integer |  | Yes |
 | pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 
 #### ModelProviderCustomConfigurationSummaryResponse
 
@@ -22767,11 +22773,13 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
 | plan | [CloudPlan](#cloudplan) |  | No |
 | role | string |  | No |
 | status | string |  | No |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 | trial_credits | integer |  | No |
 | trial_credits_exhausted_at | integer |  | No |
 | trial_credits_used | integer |  | No |

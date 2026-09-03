@@ -116,15 +116,14 @@ export const zFeatureModel = z.object({
   next_credit_reset_date: z.int().default(0),
   tokener_bootstrap_status: z
     .enum([
-      'pending',
-      'installing_plugin',
-      'provisioning',
       'configuring_provider',
-      'ready',
       'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
     ])
-    .nullable()
-    .default(null),
+    .nullable(),
   trigger_event: zQuota.default({
     limit: 3000,
     reset_date: 0,

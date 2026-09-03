@@ -225,13 +225,13 @@ export type ModelProviderCreditsResponse = {
   exhausted_at: number | null
   is_exhausted: boolean
   is_unlimited: boolean
-  model_billing_source: 'legacy_message_credits' | 'tokener'
+  model_billing_source?: 'legacy_message_credits' | 'tokener'
   next_credit_reset_date: number | null
   pool_type: 'paid' | 'trial' | null
   quota_limit: number | null
   quota_used: number | null
   remaining_credits: number | null
-  tokener_bootstrap_status:
+  tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
     | 'installing_plugin'
@@ -857,11 +857,11 @@ export type SkillVersionUpdatePayload = {
 export type CurrentWorkspaceSummaryResponse = {
   credits: number | null
   id: string
-  model_billing_source: 'legacy_message_credits' | 'tokener'
+  model_billing_source?: 'legacy_message_credits' | 'tokener'
   name: string
   plan: CloudPlan | null
   role: TenantAccountRole
-  tokener_bootstrap_status:
+  tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
     | 'installing_plugin'
@@ -2048,10 +2048,6 @@ export type TenantInfoResponse = {
   plan?: CloudPlan | null
   role?: string | null
   status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
   tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
@@ -2060,6 +2056,10 @@ export type TenantInfoResponse = {
     | 'provisioning'
     | 'ready'
     | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
 }
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
