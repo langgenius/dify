@@ -2,10 +2,11 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Any, Literal, NotRequired, TypedDict
+from datetime import date, datetime
+from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
 import httpx
-from pydantic import TypeAdapter, ValidationError
+from pydantic import Field, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
@@ -78,6 +79,38 @@ class TokenerTenantBootstrapResponse(TypedDict):
     data_plane_api_key: NotRequired[str]
     retryable: bool
     error_code: NotRequired[str]
+
+
+_UnsignedDecimalString = Annotated[str, Field(pattern=r"^\d+$")]
+_SignedDecimalString = Annotated[str, Field(pattern=r"^-?\d+$")]
+_IsoDateString = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")]
+
+
+class TokenerCurrentMonthAvailableMetering(TypedDict):
+    status: Literal["available"]
+    start_date: _IsoDateString
+    end_date: _IsoDateString
+    billed_usd_micro: _UnsignedDecimalString
+    request_count: _UnsignedDecimalString
+
+
+class TokenerCurrentMonthUnavailableMetering(TypedDict):
+    status: Literal["unavailable"]
+    start_date: _IsoDateString
+    end_date: _IsoDateString
+    error_code: Annotated[str, Field(pattern=r"^[a-z0-9_]{1,100}$")]
+
+
+TokenerCurrentMonthMetering = TokenerCurrentMonthAvailableMetering | TokenerCurrentMonthUnavailableMetering
+
+
+class TokenerTenantMeteringResponse(TypedDict):
+    tenant_id: str
+    currency: Literal["USD"]
+    available_usd_micro: _SignedDecimalString
+    current_month: TokenerCurrentMonthMetering
+    balance_generated_at: str
+    usage_generated_at: NotRequired[str]
 
 
 class EducationAutocompleteResponseDict(TypedDict):
@@ -208,6 +241,7 @@ class BillingInfo(TypedDict):
 
 _billing_info_adapter = TypeAdapter(BillingInfo)
 _vector_space_quota_adapter = TypeAdapter(_VectorSpaceQuota)
+_tokener_tenant_metering_adapter = TypeAdapter(TokenerTenantMeteringResponse)
 
 
 class KnowledgeRateLimitDict(TypedDict):
@@ -321,6 +355,69 @@ class BillingService:
         raw_data_plane_api_key = None
 
         return response
+
+    @classmethod
+    def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
+        """Read secret-free Tokener balance and current-month usage from the internal billing API."""
+        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        if not base_url:
+            raise BillingUpstreamUnavailableError
+
+        try:
+            payload = cls._send_request(
+                "GET",
+                f"/internal/v1/tokener/tenants/{tenant_id}/metering",
+                base_url=base_url,
+            )
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {
+                httpx.codes.REQUEST_TIMEOUT,
+                httpx.codes.TOO_MANY_REQUESTS,
+                httpx.codes.SERVICE_UNAVAILABLE,
+            } or (error.status_code >= 500 and error.status_code != httpx.codes.BAD_GATEWAY):
+                raise BillingUpstreamUnavailableError from None
+            raise BillingUpstreamInvalidResponseError from None
+        except httpx.RequestError:
+            raise BillingUpstreamUnavailableError from None
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise BillingUpstreamInvalidResponseError from None
+
+        try:
+            metering = _tokener_tenant_metering_adapter.validate_python(payload, strict=True)
+            if metering["tenant_id"] != tenant_id:
+                raise ValueError("tenant mismatch")
+
+            current_month = metering["current_month"]
+            raw_current_month = payload.get("current_month") if isinstance(payload, dict) else None
+            if not isinstance(raw_current_month, dict):
+                raise ValueError("invalid current-month usage")
+            if current_month["status"] == "available":
+                if "usage_generated_at" not in metering or "error_code" in raw_current_month:
+                    raise ValueError("incomplete available usage")
+            elif (
+                "billed_usd_micro" in raw_current_month
+                or "request_count" in raw_current_month
+                or "usage_generated_at" in metering
+            ):
+                raise ValueError("unavailable usage must not contain metrics")
+
+            start_date = date.fromisoformat(current_month["start_date"])
+            end_date = date.fromisoformat(current_month["end_date"])
+            if start_date > end_date:
+                raise ValueError("invalid usage period")
+
+            generated_at_values = [metering["balance_generated_at"]]
+            usage_generated_at = metering.get("usage_generated_at")
+            if usage_generated_at is not None:
+                generated_at_values.append(usage_generated_at)
+            for generated_at_value in generated_at_values:
+                generated_at = datetime.fromisoformat(generated_at_value)
+                if generated_at.utcoffset() is None:
+                    raise ValueError("timestamp must include a timezone")
+        except (TypeError, ValueError, ValidationError):
+            raise BillingUpstreamInvalidResponseError from None
+
+        return metering
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:

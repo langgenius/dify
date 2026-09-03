@@ -239,6 +239,7 @@ export type ModelProviderCreditsResponse = {
     | 'provisioning'
     | 'ready'
     | null
+  tokener_metering?: TokenerMeteringResponse | null
 }
 
 export type ModelProviderSummaryListResponse = {
@@ -1448,6 +1449,21 @@ export type ProviderResponse = {
   tenant_id: string
 }
 
+export type TokenerMeteringResponse = {
+  available_usd_micro: string
+  balance_generated_at: string
+  currency: 'USD'
+  current_month:
+    | ({
+        status: 'available'
+      } & TokenerCurrentMonthAvailableMeteringResponse)
+    | ({
+        status: 'unavailable'
+      } & TokenerCurrentMonthUnavailableMeteringResponse)
+  tenant_id: string
+  usage_generated_at?: string | null
+}
+
 export type ModelProviderSummaryResponse = {
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: ModelProviderCustomConfigurationSummaryResponse
@@ -2128,6 +2144,21 @@ export type SystemConfigurationResponse = {
   current_quota_type?: ProviderQuotaType | null
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
+}
+
+export type TokenerCurrentMonthAvailableMeteringResponse = {
+  billed_usd_micro: string
+  end_date: string
+  request_count: string
+  start_date: string
+  status: 'available'
+}
+
+export type TokenerCurrentMonthUnavailableMeteringResponse = {
+  end_date: string
+  error_code: string
+  start_date: string
+  status: 'unavailable'
 }
 
 export type ModelProviderCustomConfigurationSummaryResponse = {

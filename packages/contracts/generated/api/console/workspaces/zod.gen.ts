@@ -166,34 +166,6 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
- * ModelProviderCreditsResponse
- */
-export const zModelProviderCreditsResponse = z.object({
-  exhausted_at: z.int().nullable(),
-  is_exhausted: z.boolean(),
-  is_unlimited: z.boolean(),
-  model_billing_source: z
-    .enum(['legacy_message_credits', 'tokener'])
-    .optional()
-    .default('legacy_message_credits'),
-  next_credit_reset_date: z.int().nullable(),
-  pool_type: z.enum(['paid', 'trial']).nullable(),
-  quota_limit: z.int().nullable(),
-  quota_used: z.int().nullable(),
-  remaining_credits: z.int().nullable(),
-  tokener_bootstrap_status: z
-    .enum([
-      'configuring_provider',
-      'failed',
-      'installing_plugin',
-      'pending',
-      'provisioning',
-      'ready',
-    ])
-    .nullish(),
-})
-
-/**
  * ModelProviderPaymentCheckoutUrlResponse
  */
 export const zModelProviderPaymentCheckoutUrlResponse = z.object({
@@ -2082,6 +2054,71 @@ export const zConfigurateMethod = z.enum(['customizable-model', 'predefined-mode
  * ProviderType
  */
 export const zProviderType = z.enum(['custom', 'system'])
+
+/**
+ * TokenerCurrentMonthAvailableMeteringResponse
+ */
+export const zTokenerCurrentMonthAvailableMeteringResponse = z.object({
+  billed_usd_micro: z.string().regex(/^\d+$/),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  request_count: z.string().regex(/^\d+$/),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  status: z.literal('available'),
+})
+
+/**
+ * TokenerCurrentMonthUnavailableMeteringResponse
+ */
+export const zTokenerCurrentMonthUnavailableMeteringResponse = z.object({
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  error_code: z.string().regex(/^[a-z0-9_]{1,100}$/),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  status: z.literal('unavailable'),
+})
+
+/**
+ * TokenerMeteringResponse
+ */
+export const zTokenerMeteringResponse = z.object({
+  available_usd_micro: z.string().regex(/^-?\d+$/),
+  balance_generated_at: z.string(),
+  currency: z.literal('USD'),
+  current_month: z.discriminatedUnion('status', [
+    zTokenerCurrentMonthAvailableMeteringResponse.extend({ status: z.literal('available') }),
+    zTokenerCurrentMonthUnavailableMeteringResponse.extend({ status: z.literal('unavailable') }),
+  ]),
+  tenant_id: z.string(),
+  usage_generated_at: z.string().nullish(),
+})
+
+/**
+ * ModelProviderCreditsResponse
+ */
+export const zModelProviderCreditsResponse = z.object({
+  exhausted_at: z.int().nullable(),
+  is_exhausted: z.boolean(),
+  is_unlimited: z.boolean(),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .optional()
+    .default('legacy_message_credits'),
+  next_credit_reset_date: z.int().nullable(),
+  pool_type: z.enum(['paid', 'trial']).nullable(),
+  quota_limit: z.int().nullable(),
+  quota_used: z.int().nullable(),
+  remaining_credits: z.int().nullable(),
+  tokener_bootstrap_status: z
+    .enum([
+      'configuring_provider',
+      'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
+    ])
+    .nullish(),
+  tokener_metering: zTokenerMeteringResponse.nullish(),
+})
 
 /**
  * ModelProviderSystemConfigurationSummaryResponse

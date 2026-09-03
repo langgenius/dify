@@ -12,7 +12,8 @@ from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant
 from models.tokener import TenantTokenerIntegrationStatus
 from services.credit_pool_service import CreditPoolBalance
-from services.workspace_service import WorkspaceService
+from services.errors.billing import BillingUpstreamUnavailableError
+from services.workspace_service import EffectiveCreditPool, WorkspaceService
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +23,23 @@ def _legacy_model_billing_profile() -> Iterator[None]:
         return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
     ):
         yield
+
+
+def _tokener_metering() -> dict[str, object]:
+    return {
+        "tenant_id": "tenant-1",
+        "currency": "USD",
+        "available_usd_micro": "12500000",
+        "current_month": {
+            "status": "available",
+            "start_date": "2026-09-01",
+            "end_date": "2026-09-03",
+            "billed_usd_micro": "3750000",
+            "request_count": "42",
+        },
+        "balance_generated_at": "2026-09-03T06:00:00Z",
+        "usage_generated_at": "2026-09-03T05:59:30Z",
+    }
 
 
 def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
@@ -162,6 +180,82 @@ def test_tokener_workspace_summary_never_reads_legacy_credit_pool(
     assert result["model_billing_source"] == "tokener"
     assert result["tokener_bootstrap_status"] == status.value
     get_pool.assert_not_called()
+
+
+def test_get_model_provider_credits_enriches_ready_tokener_without_changing_legacy_fields() -> None:
+    session = MagicMock()
+    credit_pool = EffectiveCreditPool(
+        model_billing_source=ModelBillingSource.TOKENER,
+        tokener_bootstrap_status=TenantTokenerIntegrationStatus.READY.value,
+        plan=CloudPlan.SANDBOX,
+    )
+    metering = _tokener_metering()
+    with (
+        patch(
+            "services.workspace_service.dify_config",
+            SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        ),
+        patch.object(WorkspaceService, "get_effective_credit_pool", return_value=credit_pool),
+        patch("services.workspace_service.BillingService.get_tokener_metering", return_value=metering) as get_metering,
+    ):
+        result = WorkspaceService.get_model_provider_credits("tenant-1", session=session)
+
+    assert result.tokener_metering == metering
+    assert result.remaining_credits is None
+    assert result.is_exhausted is False
+    get_metering.assert_called_once_with("tenant-1")
+
+
+@pytest.mark.parametrize(
+    "credit_pool",
+    [
+        EffectiveCreditPool(model_billing_source=ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+        EffectiveCreditPool(
+            model_billing_source=ModelBillingSource.TOKENER,
+            tokener_bootstrap_status=TenantTokenerIntegrationStatus.PENDING.value,
+        ),
+    ],
+)
+def test_get_model_provider_credits_does_not_query_metering_for_legacy_or_pending(
+    credit_pool: EffectiveCreditPool,
+) -> None:
+    session = MagicMock()
+    with (
+        patch(
+            "services.workspace_service.dify_config",
+            SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        ),
+        patch.object(WorkspaceService, "get_effective_credit_pool", return_value=credit_pool),
+        patch("services.workspace_service.BillingService.get_tokener_metering") as get_metering,
+    ):
+        result = WorkspaceService.get_model_provider_credits("tenant-1", session=session)
+
+    assert result is credit_pool
+    assert result.tokener_metering is None
+    get_metering.assert_not_called()
+
+
+def test_get_model_provider_credits_keeps_ready_balance_shape_when_metering_is_unavailable() -> None:
+    session = MagicMock()
+    credit_pool = EffectiveCreditPool(
+        model_billing_source=ModelBillingSource.TOKENER,
+        tokener_bootstrap_status=TenantTokenerIntegrationStatus.READY.value,
+    )
+    with (
+        patch(
+            "services.workspace_service.dify_config",
+            SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        ),
+        patch.object(WorkspaceService, "get_effective_credit_pool", return_value=credit_pool),
+        patch(
+            "services.workspace_service.BillingService.get_tokener_metering",
+            side_effect=BillingUpstreamUnavailableError,
+        ),
+    ):
+        result = WorkspaceService.get_model_provider_credits("tenant-1", session=session)
+
+    assert result is credit_pool
+    assert result.tokener_metering is None
 
 
 def test_get_tenant_info_uses_authoritative_legacy_profile_for_cloud_credits() -> None:

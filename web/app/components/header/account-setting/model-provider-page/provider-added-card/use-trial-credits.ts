@@ -8,6 +8,7 @@ const selectTrialCredits = (creditPool: ModelProviderCreditsResponse) => {
   return {
     modelBillingSource,
     tokenerBootstrapStatus: creditPool.tokener_bootstrap_status ?? null,
+    tokenerMetering: usesLegacyMessageCredits ? null : (creditPool.tokener_metering ?? null),
     credits: usesLegacyMessageCredits ? (creditPool.remaining_credits ?? 0) : 0,
     usedCredits: usesLegacyMessageCredits ? (creditPool.quota_used ?? 0) : 0,
     totalCredits: usesLegacyMessageCredits ? (creditPool.quota_limit ?? 0) : 0,
@@ -18,10 +19,17 @@ const selectTrialCredits = (creditPool: ModelProviderCreditsResponse) => {
   }
 }
 
-export const useTrialCredits = () => {
+type UseTrialCreditsOptions = {
+  pollTokenerMetering?: boolean
+}
+
+export const useTrialCredits = ({ pollTokenerMetering = false }: UseTrialCreditsOptions = {}) => {
   const trialCreditsQuery = useQuery(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryOptions({
       select: selectTrialCredits,
+      refetchInterval: pollTokenerMetering
+        ? (query) => (query.state.data?.model_billing_source === 'tokener' ? 30_000 : false)
+        : false,
     }),
   )
   const trialCredits = trialCreditsQuery.data
@@ -29,6 +37,7 @@ export const useTrialCredits = () => {
   return {
     modelBillingSource: trialCredits?.modelBillingSource ?? 'legacy_message_credits',
     tokenerBootstrapStatus: trialCredits?.tokenerBootstrapStatus,
+    tokenerMetering: trialCredits?.tokenerMetering ?? null,
     credits: trialCredits?.credits ?? 0,
     usedCredits: trialCredits?.usedCredits ?? 0,
     totalCredits: trialCredits?.totalCredits ?? 0,

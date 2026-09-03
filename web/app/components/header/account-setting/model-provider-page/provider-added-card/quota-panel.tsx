@@ -1,4 +1,7 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderCreditsResponse,
+  ModelProviderSummaryResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { PluginManifestInMarket } from '@/app/components/plugins/types'
@@ -69,6 +72,127 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
   )
 }
 
+type TokenerMetering = NonNullable<ModelProviderCreditsResponse['tokener_metering']>
+
+const formatUsdMicro = (rawMicroAmount: string) => {
+  if (!/^-?\d+$/.test(rawMicroAmount)) return '—'
+
+  const microAmount = BigInt(rawMicroAmount)
+  const isNegative = microAmount < 0n
+  const absoluteMicroAmount = isNegative ? -microAmount : microAmount
+  const dollars = absoluteMicroAmount / 1_000_000n
+  const microDollars = (absoluteMicroAmount % 1_000_000n).toString().padStart(6, '0')
+  const fractionalDollars = microDollars.replace(/0+$/, '').padEnd(2, '0')
+  return `${isNegative ? '-$' : '$'}${new Intl.NumberFormat().format(dollars)}.${fractionalDollars}`
+}
+
+const formatDecimalInteger = (value: string) => {
+  if (!/^\d+$/.test(value)) return '—'
+  return new Intl.NumberFormat().format(BigInt(value))
+}
+
+type TokenerQuotaPanelProps = {
+  bootstrapStatus?: ModelProviderCreditsResponse['tokener_bootstrap_status']
+  metering: TokenerMetering | null
+}
+
+const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, metering }) => {
+  const { t } = useTranslation()
+  const tipText = t(($) => $['modelProvider.tokenerUsageTip'], { ns: 'common' })
+
+  if (!metering) {
+    const isSetupInProgress = Boolean(
+      bootstrapStatus && bootstrapStatus !== 'ready' && bootstrapStatus !== 'failed',
+    )
+    const statusMessageKey =
+      bootstrapStatus === 'failed'
+        ? 'modelProvider.tokenerUsageSetupFailed'
+        : isSetupInProgress
+          ? 'modelProvider.tokenerUsagePending'
+          : 'modelProvider.tokenerUsageUnavailable'
+    return (
+      <div
+        role="group"
+        aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+        className="flex min-h-16 items-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
+      >
+        <div>
+          <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+            <QuotaInfotip tipText={tipText} />
+          </div>
+          <div role="status" className="mt-1 system-sm-regular text-text-secondary">
+            {t(($) => $[statusMessageKey], { ns: 'common' })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const currentMonth = metering.current_month
+  return (
+    <div
+      role="group"
+      aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+      className="relative min-h-16 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
+    >
+      <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
+      <div className="relative">
+        <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
+          {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+          <QuotaInfotip tipText={tipText} />
+        </div>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="flex items-baseline gap-1">
+            <span className="system-xl-semibold text-text-secondary">
+              {formatUsdMicro(metering.available_usd_micro)}
+            </span>
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $['modelProvider.tokenerAvailableUsd'], { ns: 'common' })}
+            </span>
+          </div>
+          <span aria-hidden className="text-text-quaternary">
+            ·
+          </span>
+          {currentMonth.status === 'available' ? (
+            <>
+              <div className="flex items-baseline gap-1">
+                <span className="system-md-semibold text-text-secondary">
+                  {formatUsdMicro(currentMonth.billed_usd_micro)}
+                </span>
+                <span className="system-sm-regular text-text-tertiary">
+                  {t(($) => $['modelProvider.tokenerBilledThisMonth'], {
+                    ns: 'common',
+                    date: currentMonth.end_date,
+                  })}
+                </span>
+              </div>
+              <span aria-hidden className="text-text-quaternary">
+                ·
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="system-md-semibold text-text-secondary">
+                  {formatDecimalInteger(currentMonth.request_count)}
+                </span>
+                <span className="system-sm-regular text-text-tertiary">
+                  {t(($) => $['modelProvider.tokenerRequestsThisMonth'], { ns: 'common' })}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-baseline gap-1">
+              <span className="system-md-semibold text-text-secondary">—</span>
+              <span className="system-sm-regular text-text-tertiary">
+                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], { ns: 'common' })}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type QuotaPanelProps = {
   providers: Array<ModelProviderSummaryResponse | ModelProvider>
 }
@@ -86,6 +210,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   })
   const {
     modelBillingSource,
+    tokenerBootstrapStatus,
+    tokenerMetering,
     usedCredits,
     totalCredits,
     isUnlimited,
@@ -93,7 +219,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     isLoading,
     exhaustedAt,
     nextCreditResetDate,
-  } = useTrialCredits()
+  } = useTrialCredits({ pollTokenerMetering: true })
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
@@ -175,7 +301,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .join(', '),
   })
 
-  if (modelBillingSource === 'tokener') return null
+  if (modelBillingSource === 'tokener') {
+    return <TokenerQuotaPanel bootstrapStatus={tokenerBootstrapStatus} metering={tokenerMetering} />
+  }
 
   if (isLoading) {
     return (

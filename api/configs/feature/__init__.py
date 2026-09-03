@@ -329,7 +329,7 @@ class PluginConfig(BaseSettings):
     )
 
     TOKENER_BILLING_API_URL: str = Field(
-        description="Internal dify-saas billing base URL used only by the Tokener bootstrap client",
+        description="Internal dify-saas billing base URL used by Tokener bootstrap and metering clients",
         default="",
     )
 
