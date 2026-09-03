@@ -2076,6 +2076,7 @@ export type KnowledgeFsTraceResponse = {
   final_score?: number | null
   id: string
   mode: 'auto' | 'deep' | 'fast' | 'research'
+  open_bad_case_id?: string | null
   profile: KnowledgeFsTraceProfileResponse
   query: string
   query_images?: Array<KnowledgeFsQueryImageResponse>

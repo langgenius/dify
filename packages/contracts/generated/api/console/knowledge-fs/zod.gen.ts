@@ -2960,6 +2960,7 @@ export const zKnowledgeFsTraceResponse = z.object({
   final_score: z.number().gte(0).lte(1).nullish(),
   id: z.string(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  open_bad_case_id: z.string().nullish(),
   profile: zKnowledgeFsTraceProfileResponse,
   query: z.string(),
   query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),

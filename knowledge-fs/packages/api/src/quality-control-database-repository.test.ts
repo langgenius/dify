@@ -755,6 +755,55 @@ describe("database quality-control repository", () => {
     },
   );
 
+  it.each(["postgres", "tidb"] as const)(
+    "refuses a second bad case while the trace still has an unresolved one on %s",
+    async (dialect) => {
+      const traceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c53";
+      const openBadCaseId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c77";
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "answer_traces") {
+          return { rows: [{ id: traceId }], rowsAffected: 1 };
+        }
+        if (
+          input.tableName === "quality_bad_cases" &&
+          input.operation === "select" &&
+          input.sql.includes("'open', 'replaying'")
+        ) {
+          return { rows: [{ id: openBadCaseId }], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseQualityControlRepository({
+        database,
+        generateId: fixedQualityId(710),
+        maxListLimit: 100,
+        now: () => NOW,
+      });
+
+      await expect(
+        repository.createBadCase({
+          actorSubjectId: "editor-1",
+          candidateGrants: ["tenant:tenant-1", "subject:editor-1"],
+          knowledgeSpaceId: SPACE_ID,
+          permission: permissionBinding(),
+          reason: "bad evidence",
+          tags: ["regression"],
+          tenantId: "tenant-1",
+          traceId,
+        }),
+      ).rejects.toMatchObject({ badCaseId: openBadCaseId, name: "QualityBadCaseAlreadyOpenError" });
+      expect(calls.some((call) => call.operation === "insert")).toBe(false);
+      const unresolvedLookup = calls.find(
+        (call) =>
+          call.tableName === "quality_bad_cases" && call.sql.includes("'open', 'replaying'"),
+      );
+      expect(unresolvedLookup?.params).toEqual(["tenant-1", SPACE_ID, traceId]);
+      expect(unresolvedLookup?.sql).toContain("FOR UPDATE");
+    },
+  );
+
   it("reuses an exact caller-supplied bad-case id and rejects a different payload", async () => {
     const id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c54";
     const candidateGrants = ["tenant:tenant-1", "subject:editor-1"];
@@ -1714,6 +1763,7 @@ describe("database quality-control repository", () => {
                 evidence_state: "complete",
                 id: TRACE_ID,
                 mode: "deep",
+                open_bad_case_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c77",
                 query: "Camera_100%\\ evidence",
                 query_images:
                   dialect === "postgres"
@@ -1801,6 +1851,7 @@ describe("database quality-control repository", () => {
             evidenceState: "complete",
             finalScore: 0.9,
             id: TRACE_ID,
+            openBadCaseId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c77",
             profile: {
               embeddingModel: "embedding-4",
               embeddingVectorSpaceId: "embedding-space-4",
@@ -1822,6 +1873,10 @@ describe("database quality-control repository", () => {
         nextCursor: { createdAt: NOW, id: TRACE_ID },
       });
       expect(page.items[0]).toHaveProperty("queryImages");
+      expect(page.items).toHaveLength(1);
+      const traceListCall = calls.find((call) => call.tableName === "answer_traces");
+      expect(traceListCall?.sql).toContain("open_bad_case_id");
+      expect(traceListCall?.sql).toContain("'open', 'replaying'");
       const traceCall = calls.find((call) => call.tableName === "answer_traces");
       expect(traceCall?.params).toContain("%camera\\_100\\%\\\\%");
       expect(traceCall?.sql).toContain(dialect === "postgres" ? "TRUE" : "1");

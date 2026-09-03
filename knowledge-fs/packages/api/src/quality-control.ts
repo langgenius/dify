@@ -55,6 +55,8 @@ export interface QualityAnswerTraceSummary {
   readonly finalScore?: number | undefined;
   readonly id: string;
   readonly mode: "auto" | "deep" | "fast" | "research";
+  /** The unresolved (open or replaying) bad case already filed for this trace, if any. */
+  readonly openBadCaseId?: string | undefined;
   readonly profile: {
     readonly embeddingModel?: string | undefined;
     readonly embeddingVectorSpaceId?: string | undefined;

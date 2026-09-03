@@ -13,7 +13,7 @@ import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
 import { newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { QualityActions } from './results'
-import { retrievalResultFactsAtom } from './state/graph'
+import { retrievalResultFactsAtom, retrievalRuntimeQueryFactsAtom } from './state/graph'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
 type GoldenQuestionPromotion = {
@@ -54,10 +54,12 @@ export function RetrievalQualityWorkflow() {
     selectedDataError,
     selectedFailed,
     selectedIsLoading,
+    selectedOpenBadCaseId,
     selectedQuery,
     selectedResearchActive,
     selectedTraceId,
   } = useAtomValue(retrievalResultFactsAtom)
+  const { refetchTraces } = useAtomValue(retrievalRuntimeQueryFactsAtom)
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
@@ -96,7 +98,14 @@ export function RetrievalQualityWorkflow() {
         params: { control_space_id: knowledgeSpaceId },
       })
       setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
-    } catch {
+      void refetchTraces()
+    } catch (error) {
+      // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
+      if (error instanceof Response && error.status === 409) {
+        setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
+        void refetchTraces()
+        return
+      }
       toast.error(t(($) => $.unknownError))
     } finally {
       setQualityPendingKey(undefined)
@@ -149,7 +158,7 @@ export function RetrievalQualityWorkflow() {
         <QualityActions
           badCaseAvailable={Boolean(selectedTraceId)}
           noResults={currentEvidence.length === 0}
-          decision={qualityDecisions[resultKey]}
+          decision={qualityDecisions[resultKey] ?? (selectedOpenBadCaseId ? 'bad-case' : undefined)}
           onBadCase={saveBadCase}
           onGolden={startGoldenPromotion}
           pending={qualityPendingKey === resultKey}

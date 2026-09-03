@@ -13,6 +13,7 @@ import type {
   QualityTrendReport,
 } from "./quality-control";
 import {
+  QualityBadCaseAlreadyOpenError,
   QualityControlIdempotencyConflictError,
   QualityControlRevisionConflictError,
 } from "./quality-control-database-repository";
@@ -1081,6 +1082,53 @@ describe("quality-control handlers", () => {
       expect.objectContaining({ reason: "Regression", tags: ["camera"], traceId: TRACE_ID }),
     );
     expect(revalidatePermissionSnapshot).toHaveBeenCalledTimes(3);
+  });
+
+  it("answers 409 when the trace already has an unresolved bad case", async () => {
+    const createBadCase = vi.fn(async () => {
+      throw new QualityBadCaseAlreadyOpenError("018f0d60-7a49-7cc2-9c1b-5b36f18f2c77");
+    });
+    const app = qualityApp({ createBadCase } as unknown as QualityControlRepository, {
+      access: {
+        createPermissionSnapshot: vi.fn(async () => {
+          throw new Error("legacy permission issuance must not run");
+        }),
+      } as never,
+      answerTraces: {
+        get: vi.fn(async () => ({
+          ...visibleTrace(),
+          capabilityGrantId: CAPABILITY_GRANT_ID,
+          permissionSnapshot: undefined,
+          subjectId: undefined,
+        })),
+      } as never,
+      assets: { get: vi.fn(async () => null) } as never,
+      capabilityGrant: {
+        contentScopeIds: ["tenant:tenant-1", "source:camera"],
+        grantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49",
+        subject: "editor-1",
+      },
+      capabilityGrants: {
+        assertPublicationAllowed: vi.fn(async () => undefined),
+        get: vi.fn(async () => ({ state: "active", subjectId: "editor-1" })),
+      } as never,
+      nodes: {
+        getMany: vi.fn(async () => []),
+        getManyByIdsAcrossGenerations: vi.fn(async () => []),
+      } as never,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/quality/bad-cases`, {
+      body: JSON.stringify({ reason: "Regression", traceId: TRACE_ID }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "QUALITY_BAD_CASE_ALREADY_OPEN",
+      error: "Answer trace already has an unresolved bad case",
+    });
   });
 
   it("captures a capability-created trace after revalidating its durable grant provenance", async () => {

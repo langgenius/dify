@@ -3330,6 +3330,9 @@ class KnowledgeFSTraceResponse(ResponseModel):
         default=None, ge=0, le=1, validation_alias=AliasChoices("final_score", "finalScore")
     )
     mode: Literal["auto", "deep", "fast", "research"]
+    open_bad_case_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("open_bad_case_id", "openBadCaseId")
+    )
     profile: KnowledgeFSTraceProfileResponse
     query: str
     query_images: list[KnowledgeFSQueryImageResponse] = Field(
