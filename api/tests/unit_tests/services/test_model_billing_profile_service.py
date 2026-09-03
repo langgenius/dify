@@ -11,6 +11,7 @@ from core.model_billing_profile import (
     ModelBillingProfileResolutionError,
     ModelBillingProfileService,
     ModelBillingSource,
+    TenantModelBillingResolution,
 )
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
@@ -222,3 +223,110 @@ def test_invalidate_raises_typed_error_when_redis_is_unavailable(monkeypatch: py
 
     with pytest.raises(ModelBillingProfileCacheUnavailableError):
         ModelBillingProfileService.invalidate("tenant-1")
+
+
+@pytest.mark.parametrize("cached_value", [object(), b"\xff"])
+def test_invalid_cache_entry_and_failed_cleanup_still_fall_back_to_database(
+    cached_value: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = MagicMock()
+    cache.get.return_value = cached_value
+    cache.delete.side_effect = ConnectionError("redis cleanup unavailable")
+    session = MagicMock()
+    session.scalar.return_value = None
+    monkeypatch.setattr(service_module, "redis_client", cache)
+
+    resolution = ModelBillingProfileService.resolve("tenant-1", session=session)
+
+    assert resolution.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    cache.delete.assert_called_once_with(_CACHE_KEY)
+    session.scalar.assert_called_once()
+
+
+def test_cache_write_failure_does_not_fail_database_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = MagicMock()
+    cache.get.return_value = None
+    cache.setex.side_effect = ConnectionError("redis write unavailable")
+    session = MagicMock()
+    session.scalar.return_value = None
+    monkeypatch.setattr(service_module, "redis_client", cache)
+
+    resolution = ModelBillingProfileService.resolve("tenant-1", session=session)
+
+    assert resolution.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    cache.setex.assert_called_once_with(_CACHE_KEY, 600, "legacy_message_credits")
+
+
+def test_resolution_mode_properties() -> None:
+    legacy = TenantModelBillingResolution(model_billing_source=ModelBillingSource.LEGACY_MESSAGE_CREDITS)
+    tokener = TenantModelBillingResolution(model_billing_source=ModelBillingSource.TOKENER)
+
+    assert legacy.uses_legacy_message_credits is True
+    assert legacy.uses_tokener is False
+    assert tokener.uses_legacy_message_credits is False
+    assert tokener.uses_tokener is True
+
+
+def test_resolve_without_supplied_session_uses_owned_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = MagicMock()
+    cache.get.return_value = None
+    owned_session = MagicMock()
+    owned_session.scalar.side_effect = [
+        SimpleNamespace(model_billing_source="tokener"),
+        None,
+    ]
+    session_context = MagicMock()
+    session_context.__enter__.return_value = owned_session
+    create_session = MagicMock(return_value=session_context)
+    monkeypatch.setattr(service_module, "redis_client", cache)
+    monkeypatch.setattr(service_module.session_factory, "create_session", create_session)
+
+    resolution = ModelBillingProfileService.resolve("tenant-1")
+
+    assert resolution.model_billing_source == ModelBillingSource.TOKENER
+    assert resolution.tokener_bootstrap_status is None
+    create_session.assert_called_once_with()
+    assert owned_session.scalar.call_count == 2
+
+
+def test_tokener_cache_hit_without_supplied_session_uses_owned_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = MagicMock()
+    cache.get.return_value = "tokener"
+    owned_session = MagicMock()
+    owned_session.scalar.return_value = None
+    session_context = MagicMock()
+    session_context.__enter__.return_value = owned_session
+    create_session = MagicMock(return_value=session_context)
+    monkeypatch.setattr(service_module, "redis_client", cache)
+    monkeypatch.setattr(service_module.session_factory, "create_session", create_session)
+
+    resolution = ModelBillingProfileService.resolve("tenant-1")
+
+    assert resolution.model_billing_source == ModelBillingSource.TOKENER
+    assert resolution.tokener_bootstrap_status is None
+    create_session.assert_called_once_with()
+    owned_session.scalar.assert_called_once()
+
+
+def test_tokener_status_query_failure_is_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = MagicMock()
+    cache.get.return_value = "tokener"
+    session = MagicMock()
+    session.scalar.side_effect = RuntimeError("database details")
+    monkeypatch.setattr(service_module, "redis_client", cache)
+
+    with pytest.raises(ModelBillingProfileResolutionError) as exc_info:
+        ModelBillingProfileService.resolve("tenant-1", session=session)
+
+    assert exc_info.value.error_code == "model_billing_profile_unavailable"
+    assert "database details" not in str(exc_info.value)
+
+
+def test_new_tokener_profile_uses_stored_source() -> None:
+    profile = ModelBillingProfileService.new_tokener_profile("tenant-1")
+
+    assert profile.tenant_id == "tenant-1"
+    assert profile.model_billing_source == "tokener"

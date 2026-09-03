@@ -69,6 +69,15 @@ def test_task_uses_plugin_queue_and_late_acknowledgement() -> None:
     assert task.reject_on_worker_lost is True
 
 
+def test_attempt_and_update_ignore_missing_integration() -> None:
+    assert task_module._begin_attempt("00000000-0000-0000-0000-000000000001") is None
+
+    task_module._update_integration(
+        "00000000-0000-0000-0000-000000000001",
+        status=TenantTokenerIntegrationStatus.FAILED,
+    )
+
+
 def test_task_persists_sanitized_retry_state_and_releases_lock(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -221,6 +230,176 @@ def test_package_install_persists_daemon_task_id_for_retry(
     assert persisted.plugin_install_task_id == "plugin-task-1"
 
 
+def test_plugin_install_requires_a_configured_identifier() -> None:
+    snapshot = task_module._IntegrationSnapshot(
+        tenant_id="tenant-1",
+        tenant_name="Tokener tenant",
+        status=TenantTokenerIntegrationStatus.PENDING,
+        plugin_unique_identifier=None,
+        plugin_install_task_id=None,
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_plugin_installed(snapshot)
+
+    assert exc_info.value.error_code == "tokener_plugin_not_configured"
+    assert exc_info.value.retryable is False
+    assert exc_info.value.stage == TenantTokenerIntegrationStatus.INSTALLING_PLUGIN
+
+
+def test_exact_plugin_match_clears_stale_install_task(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session, install_task_id="stale-task")
+    installed_plugin = SimpleNamespace(
+        plugin_id="langgenius/tokener",
+        plugin_unique_identifier=integration.plugin_unique_identifier,
+    )
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[installed_plugin]))
+
+    task_module._ensure_plugin_installed(_snapshot(integration))
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.plugin_install_task_id is None
+    assert persisted.status == TenantTokenerIntegrationStatus.INSTALLING_PLUGIN
+
+
+def test_installed_plugin_version_conflict_is_not_retryable(monkeypatch: pytest.MonkeyPatch) -> None:
+    installed_plugin = SimpleNamespace(
+        plugin_id="langgenius/tokener",
+        plugin_unique_identifier="langgenius/tokener:older@checksum",
+    )
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[installed_plugin]))
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._installed_plugin_matches("tenant-1", "langgenius/tokener:0.1.2@checksum")
+
+    assert exc_info.value.error_code == "tokener_plugin_version_conflict"
+    assert exc_info.value.retryable is False
+
+
+@pytest.mark.parametrize(
+    "install_status",
+    [task_module.PluginInstallTaskStatus.Pending, task_module.PluginInstallTaskStatus.Running],
+)
+def test_existing_plugin_install_task_waits_while_in_progress(
+    install_status: task_module.PluginInstallTaskStatus,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session, install_task_id="plugin-task-1")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
+    fetch_task = MagicMock(return_value=SimpleNamespace(status=install_status))
+    monkeypatch.setattr(task_module.PluginService, "fetch_install_task", fetch_task)
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_plugin_installed(_snapshot(integration))
+
+    assert exc_info.value.error_code == "tokener_plugin_install_pending"
+    assert exc_info.value.retryable is True
+    fetch_task.assert_called_once_with(integration.tenant_id, "plugin-task-1")
+
+
+def test_failed_plugin_install_task_is_cleared_before_retry(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session, install_task_id="plugin-task-1")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        task_module.PluginService,
+        "fetch_install_task",
+        MagicMock(return_value=SimpleNamespace(status=task_module.PluginInstallTaskStatus.Failed)),
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_plugin_installed(_snapshot(integration))
+
+    assert exc_info.value.error_code == "tokener_plugin_install_failed"
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.plugin_install_task_id is None
+    assert persisted.last_error_code == "tokener_plugin_install_failed"
+
+
+def test_successful_plugin_install_task_rechecks_installed_plugin(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session, install_task_id="plugin-task-1")
+    installed_plugin = SimpleNamespace(
+        plugin_id="langgenius/tokener",
+        plugin_unique_identifier=integration.plugin_unique_identifier,
+    )
+    list_plugins = MagicMock(side_effect=[[], [installed_plugin]])
+    monkeypatch.setattr(task_module.PluginService, "list", list_plugins)
+    monkeypatch.setattr(
+        task_module.PluginService,
+        "fetch_install_task",
+        MagicMock(return_value=SimpleNamespace(status=task_module.PluginInstallTaskStatus.Success)),
+    )
+    install_from_package = MagicMock()
+    monkeypatch.setattr(task_module.PluginService, "install_from_local_pkg", install_from_package)
+
+    task_module._ensure_plugin_installed(_snapshot(integration))
+
+    assert list_plugins.call_count == 2
+    install_from_package.assert_not_called()
+
+
+def test_successful_plugin_task_without_installed_plugin_starts_fresh_install(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session, install_task_id="plugin-task-1")
+    apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="package")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(side_effect=[[], []]))
+    monkeypatch.setattr(
+        task_module.PluginService,
+        "fetch_install_task",
+        MagicMock(return_value=SimpleNamespace(status=task_module.PluginInstallTaskStatus.Success)),
+    )
+    install_from_package = MagicMock(return_value=SimpleNamespace(all_installed=True, task_id=None))
+    monkeypatch.setattr(task_module.PluginService, "install_from_local_pkg", install_from_package)
+
+    task_module._ensure_plugin_installed(_snapshot(integration))
+
+    install_from_package.assert_called_once_with(integration.tenant_id, [integration.plugin_unique_identifier])
+
+
+@pytest.mark.parametrize(
+    ("all_installed", "expected_error"),
+    [
+        (True, None),
+        (False, "tokener_plugin_install_task_missing"),
+    ],
+)
+def test_marketplace_plugin_install_handles_terminal_response_without_task_id(
+    all_installed: bool,
+    expected_error: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="marketplace")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
+    marketplace_install = MagicMock(return_value=SimpleNamespace(all_installed=all_installed, task_id=None))
+    monkeypatch.setattr(task_module.PluginService, "install_from_marketplace_pkg", marketplace_install)
+
+    if expected_error is None:
+        task_module._ensure_plugin_installed(_snapshot(integration))
+    else:
+        with pytest.raises(task_module._BootstrapStepError) as exc_info:
+            task_module._ensure_plugin_installed(_snapshot(integration))
+        assert exc_info.value.error_code == expected_error
+
+    marketplace_install.assert_called_once_with(integration.tenant_id, [integration.plugin_unique_identifier])
+
+
 def test_existing_managed_credential_skips_remote_bootstrap(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -235,6 +414,164 @@ def test_existing_managed_credential_skips_remote_bootstrap(
 
     assert credential_id == "credential-1"
     remote_bootstrap.assert_not_called()
+
+
+def test_find_managed_credential_returns_none_when_no_managed_credentials(
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+
+    assert task_module._find_managed_credential(integration.tenant_id) == (None, False)
+
+
+def test_find_managed_credential_recognizes_valid_active_provider(
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    credential = task_module.ProviderCredential(
+        tenant_id=integration.tenant_id,
+        provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
+        credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
+        encrypted_config="encrypted-secret",
+    )
+    sqlite_session.add(credential)
+    sqlite_session.flush()
+    sqlite_session.add(
+        task_module.Provider(
+            tenant_id=integration.tenant_id,
+            provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
+            provider_type=task_module.ProviderType.CUSTOM,
+            is_valid=True,
+            credential_id=credential.id,
+        )
+    )
+    sqlite_session.commit()
+
+    assert task_module._find_managed_credential(integration.tenant_id) == (credential.id, True)
+
+
+def test_find_managed_credential_is_inactive_without_provider_row(sqlite_session: Session) -> None:
+    integration = _persist_integration(sqlite_session)
+    credential = task_module.ProviderCredential(
+        tenant_id=integration.tenant_id,
+        provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
+        credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
+        encrypted_config="encrypted-secret",
+    )
+    sqlite_session.add(credential)
+    sqlite_session.commit()
+
+    assert task_module._find_managed_credential(integration.tenant_id) == (credential.id, False)
+
+
+def test_find_managed_credential_returns_first_credential_when_provider_is_inactive(
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    credential = task_module.ProviderCredential(
+        tenant_id=integration.tenant_id,
+        provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
+        credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
+        encrypted_config="encrypted-secret",
+    )
+    sqlite_session.add(credential)
+    sqlite_session.flush()
+    sqlite_session.add(
+        task_module.Provider(
+            tenant_id=integration.tenant_id,
+            provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
+            provider_type=task_module.ProviderType.CUSTOM,
+            is_valid=False,
+            credential_id=credential.id,
+        )
+    )
+    sqlite_session.commit()
+
+    assert task_module._find_managed_credential(integration.tenant_id) == (credential.id, False)
+
+
+def test_existing_inactive_managed_credential_is_activated(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=("credential-1", False)))
+    activate = MagicMock()
+    monkeypatch.setattr(task_module, "_activate_managed_credential", activate)
+    remote_bootstrap = MagicMock()
+    monkeypatch.setattr(task_module.BillingService, "bootstrap_tokener_tenant", remote_bootstrap)
+
+    assert task_module._ensure_managed_credential(_snapshot(integration)) == "credential-1"
+    activate.assert_called_once_with(integration.tenant_id, "credential-1")
+    remote_bootstrap.assert_not_called()
+
+
+def test_bootstrap_upstream_error_preserves_sanitized_retry_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=(None, False)))
+    upstream_error = task_module.TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True)
+    monkeypatch.setattr(
+        task_module.BillingService,
+        "bootstrap_tokener_tenant",
+        MagicMock(side_effect=upstream_error),
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_managed_credential(_snapshot(integration))
+
+    assert exc_info.value.error_code == "tokener_bootstrap_unavailable"
+    assert exc_info.value.retryable is True
+    assert exc_info.value.stage == TenantTokenerIntegrationStatus.PROVISIONING
+
+
+def test_pending_bootstrap_response_preserves_upstream_retry_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=(None, False)))
+    monkeypatch.setattr(
+        task_module.BillingService,
+        "bootstrap_tokener_tenant",
+        MagicMock(return_value={"status": "pending", "retryable": False, "error_code": "trial_not_available"}),
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_managed_credential(_snapshot(integration))
+
+    assert exc_info.value.error_code == "trial_not_available"
+    assert exc_info.value.retryable is False
+    assert exc_info.value.stage == TenantTokenerIntegrationStatus.PROVISIONING
+
+
+def test_credential_write_failure_is_raised_after_secret_is_consumed(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    response = {"status": "ready", "retryable": False, "data_plane_api_key": "one-time-secret"}
+    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=(None, False)))
+    monkeypatch.setattr(task_module.BillingService, "bootstrap_tokener_tenant", MagicMock(return_value=response))
+    monkeypatch.setattr(
+        task_module,
+        "_consume_data_plane_api_key",
+        MagicMock(return_value=task_module._CredentialWriteResult(error_code="credential_write_failed")),
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._ensure_managed_credential(_snapshot(integration))
+
+    assert exc_info.value.error_code == "credential_write_failed"
+    assert exc_info.value.retryable is True
+    assert exc_info.value.stage == TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER
+    assert "data_plane_api_key" not in response
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.status == TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER
 
 
 def test_one_time_key_is_removed_from_response_after_credential_creation(
@@ -292,6 +629,114 @@ def test_consume_data_plane_api_key_includes_configured_endpoint(
     ]
 
 
+def test_consume_data_plane_api_key_reports_missing_persisted_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_service = MagicMock()
+    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=(None, False)))
+
+    result = task_module._consume_data_plane_api_key("tenant-1", "one-time-secret")
+
+    assert result.error_code == "tokener_provider_credential_not_persisted"
+    assert result.credential_id is None
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_error"),
+    [
+        (
+            task_module._BootstrapStepError(
+                "tokener_provider_credential_activation_failed",
+                retryable=True,
+                stage=TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER,
+            ),
+            "tokener_provider_credential_activation_failed",
+        ),
+        (RuntimeError("database details must not escape"), "tokener_provider_credential_activation_failed"),
+    ],
+)
+def test_consume_data_plane_api_key_sanitizes_credential_lookup_or_activation_failure(
+    failure: Exception,
+    expected_error: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_service = MagicMock()
+    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+    if isinstance(failure, task_module._BootstrapStepError):
+        monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=("credential-1", False)))
+        monkeypatch.setattr(task_module, "_activate_managed_credential", MagicMock(side_effect=failure))
+    else:
+        monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(side_effect=failure))
+
+    result = task_module._consume_data_plane_api_key("tenant-1", "one-time-secret")
+
+    assert result == task_module._CredentialWriteResult(error_code=expected_error)
+    assert "database details" not in repr(result)
+
+
+def test_activate_managed_credential_wraps_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider_service = MagicMock()
+    provider_service.switch_active_provider_credential.side_effect = RuntimeError("provider secret")
+    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._activate_managed_credential("tenant-1", "credential-1")
+
+    assert exc_info.value.error_code == "tokener_provider_credential_activation_failed"
+    assert "provider secret" not in str(exc_info.value)
+
+
+def test_set_default_llm_wraps_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider_service = MagicMock()
+    provider_service.update_default_model_of_model_type.side_effect = RuntimeError("provider secret")
+    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._set_default_llm("tenant-1")
+
+    assert exc_info.value.error_code == "tokener_default_model_configuration_failed"
+    assert exc_info.value.stage == TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER
+
+
+@pytest.mark.parametrize(
+    ("resolution_error", "expected_code", "expected_retryable", "expected_stage"),
+    [
+        (
+            task_module.InvalidModelBillingProfileError(),
+            "tokener_model_billing_profile_invalid",
+            False,
+            TenantTokenerIntegrationStatus.FAILED,
+        ),
+        (
+            task_module.ModelBillingProfileResolutionError(),
+            "tokener_model_billing_profile_unavailable",
+            True,
+            TenantTokenerIntegrationStatus.PENDING,
+        ),
+    ],
+)
+def test_run_bootstrap_maps_profile_resolution_failures(
+    resolution_error: Exception,
+    expected_code: str,
+    expected_retryable: bool,
+    expected_stage: TenantTokenerIntegrationStatus,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_module.ModelBillingProfileService,
+        "resolve",
+        MagicMock(side_effect=resolution_error),
+    )
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module._run_bootstrap("tenant-1")
+
+    assert exc_info.value.error_code == expected_code
+    assert exc_info.value.retryable is expected_retryable
+    assert exc_info.value.stage == expected_stage
+
+
 def test_credential_failure_traceback_frames_do_not_contain_one_time_key(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -325,6 +770,143 @@ def test_credential_failure_traceback_frames_do_not_contain_one_time_key(
             assert one_time_key not in repr(frame.f_locals)
         traceback_cursor = traceback_cursor.tb_next
     assert checked_production_frame is True
+
+
+def test_task_is_noop_when_bootstrap_worker_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=False)
+    redis_lock = MagicMock()
+    monkeypatch.setattr(task_module.redis_client, "lock", redis_lock)
+
+    task_module.bootstrap_tokener_tenant_task.run("tenant-1")
+
+    redis_lock.assert_not_called()
+
+
+def test_task_retries_when_tenant_lock_is_already_held(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True)
+    lock = MagicMock()
+    lock.acquire.return_value = False
+    monkeypatch.setattr(task_module.redis_client, "lock", MagicMock(return_value=lock))
+    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "retry", retry)
+
+    with pytest.raises(Retry):
+        task_module.bootstrap_tokener_tenant_task.run("tenant-1")
+
+    retry_error = retry.call_args.kwargs["exc"]
+    assert isinstance(retry_error, task_module._BootstrapStepError)
+    assert retry_error.error_code == "tokener_bootstrap_locked"
+    lock.release.assert_not_called()
+
+
+def test_task_persists_non_retryable_failure_without_scheduling_retry(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True)
+    bootstrap_error = task_module._BootstrapStepError(
+        "tokener_plugin_version_conflict",
+        retryable=False,
+        stage=TenantTokenerIntegrationStatus.INSTALLING_PLUGIN,
+    )
+    monkeypatch.setattr(task_module, "_run_bootstrap", MagicMock(side_effect=bootstrap_error))
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setattr(task_module.redis_client, "lock", MagicMock(return_value=lock))
+    retry = MagicMock()
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "retry", retry)
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module.bootstrap_tokener_tenant_task.run(integration.tenant_id)
+
+    assert exc_info.value is bootstrap_error
+    retry.assert_not_called()
+    lock.release.assert_called_once_with()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.status == TenantTokenerIntegrationStatus.FAILED
+    assert persisted.last_error_code == "tokener_plugin_version_conflict"
+
+
+def test_task_sanitizes_unexpected_failure_before_retry(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True)
+    monkeypatch.setattr(
+        task_module,
+        "_run_bootstrap",
+        MagicMock(side_effect=RuntimeError("upstream response contained a secret")),
+    )
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setattr(task_module.redis_client, "lock", MagicMock(return_value=lock))
+    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "retry", retry)
+
+    with pytest.raises(Retry):
+        task_module.bootstrap_tokener_tenant_task.run(integration.tenant_id)
+
+    retry_error = retry.call_args.kwargs["exc"]
+    assert isinstance(retry_error, task_module._BootstrapStepError)
+    assert retry_error.error_code == "tokener_bootstrap_internal_error"
+    assert "secret" not in str(retry_error)
+    lock.release.assert_called_once_with()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.status == TenantTokenerIntegrationStatus.FAILED
+    assert persisted.last_error_code == "tokener_bootstrap_internal_error"
+
+
+def test_task_raises_sanitized_error_after_internal_retry_budget_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True)
+    monkeypatch.setattr(task_module, "_run_bootstrap", MagicMock(side_effect=RuntimeError("sensitive details")))
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setattr(task_module.redis_client, "lock", MagicMock(return_value=lock))
+    retry = MagicMock()
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "retry", retry)
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task.request, "retries", task_module._MAX_RETRIES)
+
+    with pytest.raises(task_module._BootstrapStepError) as exc_info:
+        task_module.bootstrap_tokener_tenant_task.run(integration.tenant_id)
+
+    assert exc_info.value.error_code == "tokener_bootstrap_internal_error"
+    assert "sensitive details" not in str(exc_info.value)
+    retry.assert_not_called()
+    lock.release.assert_called_once_with()
+
+
+def test_task_does_not_mask_success_when_lock_expired_before_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True)
+    run_bootstrap = MagicMock()
+    monkeypatch.setattr(task_module, "_run_bootstrap", run_bootstrap)
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    lock.release.side_effect = RuntimeError("lock expired")
+    monkeypatch.setattr(task_module.redis_client, "lock", MagicMock(return_value=lock))
+
+    task_module.bootstrap_tokener_tenant_task.run("tenant-1")
+
+    run_bootstrap.assert_called_once_with("tenant-1")
+    lock.release.assert_called_once_with()
+
+
+def test_recovery_sweeper_is_noop_when_bootstrap_worker_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=False)
+    delay = MagicMock()
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "delay", delay)
+
+    assert task_module.sweep_pending_tokener_integrations_task.run() == 0
+    delay.assert_not_called()
 
 
 def test_recovery_sweeper_requeues_only_stale_incomplete_integrations(
