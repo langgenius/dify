@@ -272,6 +272,8 @@ class TestModelProviderCreditsApi:
 
         get_effective_credit_pool.assert_called_once_with("tenant1", session=session)
         assert result == {
+            "model_billing_source": "legacy_message_credits",
+            "tokener_bootstrap_status": None,
             "pool_type": "paid",
             "quota_limit": -1,
             "quota_used": 999,
@@ -294,6 +296,8 @@ class TestModelProviderCreditsApi:
             result = method(api, session, "tenant1")
 
         assert result == {
+            "model_billing_source": "legacy_message_credits",
+            "tokener_bootstrap_status": None,
             "pool_type": None,
             "quota_limit": None,
             "quota_used": None,

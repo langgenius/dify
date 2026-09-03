@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from types import SimpleNamespace
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -14,6 +14,12 @@ from events.event_handlers import update_provider_when_message_created
 from models import AppMode, Message, TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
+from models.tokener import TenantTokenerIntegrationStatus
+from services.model_billing_profile_service import (
+    ModelBillingProfileResolutionError,
+    ModelBillingSource,
+    TenantModelBillingResolution,
+)
 
 
 @pytest.fixture
@@ -170,6 +176,66 @@ def test_agent_app_gateway_accounting_skips_legacy_message_charge() -> None:
     mock_updates.assert_called_once()
     assert len(mock_updates.call_args.args[0]) == 1
     assert mock_updates.call_args.args[0][0].description == "basic_last_used_update"
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        TenantTokenerIntegrationStatus.PENDING,
+        TenantTokenerIntegrationStatus.READY,
+        TenantTokenerIntegrationStatus.FAILED,
+    ],
+)
+def test_tokener_workspace_never_deducts_legacy_message_credits(
+    status: TenantTokenerIntegrationStatus,
+) -> None:
+    tenant_id = str(uuid4())
+    system_configuration = SimpleNamespace(
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[
+            SimpleNamespace(
+                quota_type=ProviderQuotaType.TRIAL,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=10,
+            )
+        ],
+    )
+    application_generate_entity = ChatAppGenerateEntity.model_construct(
+        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.CHAT),
+        model_conf=SimpleNamespace(
+            provider="openai",
+            model="gpt-4o",
+            provider_model_bundle=SimpleNamespace(
+                configuration=SimpleNamespace(
+                    using_provider_type=ProviderType.SYSTEM,
+                    system_configuration=system_configuration,
+                )
+            ),
+        ),
+    )
+
+    with (
+        patch.object(
+            update_provider_when_message_created.ModelBillingProfileService,
+            "resolve",
+            return_value=TenantModelBillingResolution(ModelBillingSource.TOKENER, status),
+        ),
+        patch.object(update_provider_when_message_created, "_deduct_credit_pool_quota_capped") as mock_deduct,
+        patch.object(update_provider_when_message_created, "_execute_provider_updates"),
+    ):
+        update_provider_when_message_created.handle(
+            sender=Message(message_tokens=2, answer_tokens=1),
+            application_generate_entity=application_generate_entity,
+        )
+
+    mock_deduct.assert_not_called()
+
+
+def test_profile_resolution_error_fails_closed_without_legacy_deduction() -> None:
+    resolve = MagicMock(side_effect=ModelBillingProfileResolutionError())
+
+    with patch.object(update_provider_when_message_created.ModelBillingProfileService, "resolve", resolve):
+        assert update_provider_when_message_created._legacy_message_credit_billing_allowed("tenant-1") is False
 
 
 def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount_is_deducted(

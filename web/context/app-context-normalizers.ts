@@ -43,6 +43,8 @@ export function normalizeCurrentWorkspaceSummary(
     name: workspace.name,
     plan: workspace.plan,
     credits: workspace.credits,
+    model_billing_source: workspace.model_billing_source ?? 'legacy_message_credits',
+    tokener_bootstrap_status: workspace.tokener_bootstrap_status ?? null,
     role: resolveWorkspaceRole(workspace.role),
   }
 }

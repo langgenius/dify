@@ -11,10 +11,13 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.billing_service import BillingService
 from services.feature_service import FeatureService
+from services.model_billing_profile_service import ModelBillingProfileService, ModelBillingSource
 
 
 @dataclass(frozen=True)
 class EffectiveCreditPool:
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: str | None = None
     plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
     quota_limit: int | None = None
@@ -36,6 +39,8 @@ class EffectiveCreditPool:
 
     @property
     def is_exhausted(self) -> bool:
+        if self.model_billing_source == ModelBillingSource.TOKENER:
+            return False
         remaining_credits = self.remaining_credits
         return not self.is_unlimited and (remaining_credits is None or remaining_credits <= 0)
 
@@ -52,11 +57,26 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
+        model_billing = ModelBillingProfileService.resolve(tenant_id, session=session)
+        tokener_bootstrap_status = (
+            model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
+        )
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return EffectiveCreditPool()
+            return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
+            )
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
+
+        if model_billing.uses_tokener:
+            return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
+                plan=subscription_plan if billing_info["enabled"] else None,
+                next_credit_reset_date=billing_info.get("next_credit_reset_date"),
+            )
 
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
@@ -73,6 +93,8 @@ class WorkspaceService:
 
         if effective_pool is None:
             return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
                 plan=subscription_plan if billing_info["enabled"] else None,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
@@ -87,6 +109,8 @@ class WorkspaceService:
             exhausted_at = None
 
         return EffectiveCreditPool(
+            model_billing_source=model_billing.model_billing_source,
+            tokener_bootstrap_status=tokener_bootstrap_status,
             plan=subscription_plan if billing_info["enabled"] else None,
             pool_type=effective_pool_type,
             quota_limit=effective_pool.quota_limit,
@@ -112,6 +136,8 @@ class WorkspaceService:
             "role": tenant_account_join.role,
             "plan": effective_pool.plan,
             "credits": effective_pool.remaining_credits,
+            "model_billing_source": effective_pool.model_billing_source.value,
+            "tokener_bootstrap_status": effective_pool.tokener_bootstrap_status,
         }
 
     @classmethod
@@ -138,6 +164,8 @@ class WorkspaceService:
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
+        tenant_info["model_billing_source"] = feature.model_billing_source
+        tenant_info["tokener_bootstrap_status"] = feature.tokener_bootstrap_status
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(
@@ -155,7 +183,10 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and feature.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
+        ):
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
             from services.credit_pool_service import CreditPoolBalance, CreditPoolService

@@ -1,10 +1,26 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
+import pytest
+
 from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant
+from models.tokener import TenantTokenerIntegrationStatus
 from services.credit_pool_service import CreditPoolBalance
+from services.model_billing_profile_service import (
+    ModelBillingSource,
+    TenantModelBillingResolution,
+)
 from services.workspace_service import WorkspaceService
+
+
+@pytest.fixture(autouse=True)
+def _legacy_model_billing_profile():
+    with patch(
+        "services.workspace_service.ModelBillingProfileService.resolve",
+        return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+    ):
+        yield
 
 
 def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
@@ -38,6 +54,8 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         "role": "owner",
         "plan": CloudPlan.SANDBOX,
         "credits": 180,
+        "model_billing_source": "legacy_message_credits",
+        "tokener_bootstrap_status": None,
     }
     get_info.assert_called_once_with(tenant.id, exclude_vector_space=True)
     get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="trial", session=session)
@@ -103,6 +121,43 @@ def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits() -> 
         "role": "editor",
         "plan": None,
         "credits": None,
+        "model_billing_source": "legacy_message_credits",
+        "tokener_bootstrap_status": None,
     }
     get_info.assert_not_called()
+    get_pool.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        TenantTokenerIntegrationStatus.PENDING,
+        TenantTokenerIntegrationStatus.READY,
+        TenantTokenerIntegrationStatus.FAILED,
+    ],
+)
+def test_tokener_workspace_summary_never_reads_legacy_credit_pool(
+    status: TenantTokenerIntegrationStatus,
+) -> None:
+    tenant = Tenant(name="Tokener workspace")
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(role="owner")
+    billing_info = {
+        "enabled": True,
+        "subscription": {"plan": CloudPlan.SANDBOX},
+    }
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    resolution = TenantModelBillingResolution(ModelBillingSource.TOKENER, status)
+
+    with (
+        patch("services.workspace_service.dify_config", config),
+        patch("services.workspace_service.ModelBillingProfileService.resolve", return_value=resolution),
+        patch("services.workspace_service.BillingService.get_info", return_value=billing_info),
+        patch("services.credit_pool_service.CreditPoolService.get_pool") as get_pool,
+    ):
+        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=session)
+
+    assert result["credits"] is None
+    assert result["model_billing_source"] == "tokener"
+    assert result["tokener_bootstrap_status"] == status.value
     get_pool.assert_not_called()

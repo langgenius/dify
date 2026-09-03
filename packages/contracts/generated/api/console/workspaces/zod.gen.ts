@@ -172,11 +172,25 @@ export const zModelProviderCreditsResponse = z.object({
   exhausted_at: z.int().nullable(),
   is_exhausted: z.boolean(),
   is_unlimited: z.boolean(),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .default('legacy_message_credits'),
   next_credit_reset_date: z.int().nullable(),
   pool_type: z.enum(['paid', 'trial']).nullable(),
   quota_limit: z.int().nullable(),
   quota_used: z.int().nullable(),
   remaining_credits: z.int().nullable(),
+  tokener_bootstrap_status: z
+    .enum([
+      'pending',
+      'installing_plugin',
+      'provisioning',
+      'configuring_provider',
+      'ready',
+      'failed',
+    ])
+    .nullable()
+    .default(null),
 })
 
 /**
@@ -1633,9 +1647,23 @@ export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor',
 export const zCurrentWorkspaceSummaryResponse = z.object({
   credits: z.int().nullable(),
   id: z.string(),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .default('legacy_message_credits'),
   name: z.string(),
   plan: zCloudPlan.nullable(),
   role: zTenantAccountRole,
+  tokener_bootstrap_status: z
+    .enum([
+      'pending',
+      'installing_plugin',
+      'provisioning',
+      'configuring_provider',
+      'ready',
+      'failed',
+    ])
+    .nullable()
+    .default(null),
 })
 
 /**
@@ -1955,6 +1983,7 @@ export const zTenantInfoResponse = z.object({
   custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
+  model_billing_source: z.enum(['legacy_message_credits', 'tokener']).optional(),
   name: z.string().nullish(),
   next_credit_reset_date: z.int().nullish(),
   plan: zCloudPlan.nullish(),
@@ -1964,6 +1993,16 @@ export const zTenantInfoResponse = z.object({
   trial_credits_exhausted_at: z.int().nullish(),
   trial_credits_used: z.int().nullish(),
   trial_end_reason: z.string().nullish(),
+  tokener_bootstrap_status: z
+    .enum([
+      'pending',
+      'installing_plugin',
+      'provisioning',
+      'configuring_provider',
+      'ready',
+      'failed',
+    ])
+    .nullish(),
 })
 
 /**

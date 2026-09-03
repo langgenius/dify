@@ -3,12 +3,16 @@ import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 
 const selectTrialCredits = (creditPool: ModelProviderCreditsResponse) => {
+  const modelBillingSource = creditPool.model_billing_source ?? 'legacy_message_credits'
+  const usesLegacyMessageCredits = modelBillingSource === 'legacy_message_credits'
   return {
-    credits: creditPool.remaining_credits ?? 0,
-    usedCredits: creditPool.quota_used ?? 0,
-    totalCredits: creditPool.quota_limit ?? 0,
-    isUnlimited: creditPool.is_unlimited,
-    isExhausted: creditPool.is_exhausted,
+    modelBillingSource,
+    tokenerBootstrapStatus: creditPool.tokener_bootstrap_status ?? null,
+    credits: usesLegacyMessageCredits ? (creditPool.remaining_credits ?? 0) : 0,
+    usedCredits: usesLegacyMessageCredits ? (creditPool.quota_used ?? 0) : 0,
+    totalCredits: usesLegacyMessageCredits ? (creditPool.quota_limit ?? 0) : 0,
+    isUnlimited: usesLegacyMessageCredits && creditPool.is_unlimited,
+    isExhausted: usesLegacyMessageCredits && creditPool.is_exhausted,
     exhaustedAt: creditPool.exhausted_at ?? undefined,
     nextCreditResetDate: creditPool.next_credit_reset_date ?? undefined,
   }
@@ -23,6 +27,8 @@ export const useTrialCredits = () => {
   const trialCredits = trialCreditsQuery.data
 
   return {
+    modelBillingSource: trialCredits?.modelBillingSource ?? 'legacy_message_credits',
+    tokenerBootstrapStatus: trialCredits?.tokenerBootstrapStatus,
     credits: trialCredits?.credits ?? 0,
     usedCredits: trialCredits?.usedCredits ?? 0,
     totalCredits: trialCredits?.totalCredits ?? 0,

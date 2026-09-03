@@ -109,8 +109,22 @@ export const zFeatureModel = z.object({
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   knowledge_rate_limit: z.int().default(10),
   members: zLimitationModel.default({ limit: 1, size: 0 }),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .default('legacy_message_credits'),
   model_load_balancing_enabled: z.boolean().default(false),
   next_credit_reset_date: z.int().default(0),
+  tokener_bootstrap_status: z
+    .enum([
+      'pending',
+      'installing_plugin',
+      'provisioning',
+      'configuring_provider',
+      'ready',
+      'failed',
+    ])
+    .nullable()
+    .default(null),
   trigger_event: zQuota.default({
     limit: 3000,
     reset_date: 0,

@@ -5,6 +5,8 @@ import { consoleQuery } from '@/service/client'
 import CreditsExhaustedAlert from './credits-exhausted-alert'
 
 const baseCredits: ModelProviderCreditsResponse = {
+  model_billing_source: 'legacy_message_credits',
+  tokener_bootstrap_status: null,
   pool_type: 'trial',
   quota_limit: 200,
   quota_used: 200,

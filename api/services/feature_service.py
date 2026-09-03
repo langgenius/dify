@@ -3,6 +3,7 @@ from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
+from services.model_billing_profile_service import ModelBillingProfileService
 
 
 class FeatureService:
@@ -40,6 +41,13 @@ class FeatureService:
             features=features,
             tenant_id=tenant_id,
         )
+
+        if tenant_id:
+            model_billing = ModelBillingProfileService.resolve(tenant_id)
+            features.model_billing_source = model_billing.model_billing_source.value
+            features.tokener_bootstrap_status = (
+                model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
+            )
 
         return features
 

@@ -373,6 +373,8 @@ class TestCurrentWorkspaceSummaryApi:
             "role": "owner",
             "plan": "sandbox",
             "credits": 180,
+            "model_billing_source": "legacy_message_credits",
+            "tokener_bootstrap_status": None,
         }
         get_summary.assert_called_once_with(tenant, user.id, session=session)
 

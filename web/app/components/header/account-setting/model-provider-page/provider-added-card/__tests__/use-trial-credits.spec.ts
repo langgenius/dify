@@ -39,6 +39,8 @@ describe('useTrialCredits', () => {
           is_exhausted?: boolean
           exhausted_at?: number | null
           next_credit_reset_date?: number | null
+          model_billing_source?: 'legacy_message_credits' | 'tokener'
+          tokener_bootstrap_status?: 'pending' | 'ready' | 'failed' | null
         }
       | undefined,
     isPending = false,
@@ -66,6 +68,8 @@ describe('useTrialCredits', () => {
       const { result } = renderHook(() => useTrialCredits())
 
       expect(result.current).toEqual({
+        modelBillingSource: 'legacy_message_credits',
+        tokenerBootstrapStatus: null,
         credits: 60,
         usedCredits: 40,
         totalCredits: 100,
@@ -106,6 +110,8 @@ describe('useTrialCredits', () => {
       const { result } = renderHook(() => useTrialCredits())
 
       expect(result.current).toEqual({
+        modelBillingSource: 'legacy_message_credits',
+        tokenerBootstrapStatus: undefined,
         credits: 0,
         usedCredits: 0,
         totalCredits: 0,
@@ -153,6 +159,29 @@ describe('useTrialCredits', () => {
         usedCredits: 999,
         totalCredits: -1,
         isUnlimited: true,
+        isExhausted: false,
+      })
+    })
+
+    it('should never interpret a Tokener profile as exhausted legacy credits', () => {
+      mockTrialCreditsQuery({
+        model_billing_source: 'tokener',
+        tokener_bootstrap_status: 'pending',
+        quota_limit: 200,
+        quota_used: 200,
+        remaining_credits: 0,
+        is_exhausted: true,
+      })
+
+      const { result } = renderHook(() => useTrialCredits())
+
+      expect(result.current).toMatchObject({
+        modelBillingSource: 'tokener',
+        tokenerBootstrapStatus: 'pending',
+        credits: 0,
+        usedCredits: 0,
+        totalCredits: 0,
+        isUnlimited: false,
         isExhausted: false,
       })
     })

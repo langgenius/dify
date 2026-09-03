@@ -99,6 +99,7 @@ from .model import (
     TrialApp,
     UploadFile,
 )
+from .model_billing import TenantModelBillingProfile
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .onboarding import AccountStepByStepTourState
 from .provider import (
@@ -263,6 +264,7 @@ __all__ = [
     "TenantAccountRole",
     "TenantCreditPool",
     "TenantDefaultModel",
+    "TenantModelBillingProfile",
     "TenantPreferredModelProvider",
     "TenantStatus",
     "TenantTokenerIntegration",

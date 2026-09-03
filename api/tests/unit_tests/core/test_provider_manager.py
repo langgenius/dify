@@ -36,6 +36,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -60,6 +61,15 @@ def _persist_model_configuration(
         ).all()
     )
     return settings, configs
+
+
+@pytest.fixture(autouse=True)
+def _legacy_model_billing_profile():
+    with patch(
+        "core.provider_manager.ModelBillingProfileService.resolve",
+        return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -398,6 +408,45 @@ def test_package_provider_keeps_custom_configuration() -> None:
     assert configuration.system_configuration.enabled is False
     assert configuration.custom_configuration.provider is not None
     assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
+
+
+def test_tokener_billing_disables_system_hosting_without_removing_custom_configuration() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [provider_entity]
+    custom_configuration = CustomConfiguration(
+        provider=CustomProviderConfiguration(credentials={"api_key": "user-secret"})
+    )
+    init_trial_records = MagicMock()
+    to_system_configuration = MagicMock()
+
+    with (
+        patch(
+            "core.provider_manager.ModelBillingProfileService.resolve",
+            return_value=TenantModelBillingResolution(ModelBillingSource.TOKENER),
+        ),
+        patch.object(manager, "_get_all_providers", return_value={provider_entity.provider: []}),
+        patch.object(manager, "_init_trial_provider_records", init_trial_records),
+        patch.object(manager, "_get_all_provider_models", return_value={}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", to_system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+    ):
+        configuration = manager.get_configurations("tenant-id").get(provider_entity.provider)
+
+    assert configuration is not None
+    assert configuration.system_configuration.enabled is False
+    assert configuration.using_provider_type == ProviderType.CUSTOM
+    assert configuration.custom_configuration.provider is not None
+    init_trial_records.assert_not_called()
+    to_system_configuration.assert_not_called()
 
 
 def test__to_model_settings_only_one_lb(mock_provider_entity, provider_db: Session):

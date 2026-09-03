@@ -47,6 +47,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration
 from services.account_email import normalize_email
 from services.billing_service import BillingService
@@ -1145,14 +1146,21 @@ class TenantService:
 
             raise NotAllowedCreateWorkspace()
         tenant = Tenant(name=name)
+        uses_tokener_billing = dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED
 
         session.add(tenant)
-        if dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED:
-            session.add(
-                TenantTokenerIntegration(
-                    tenant_id=tenant.id,
-                    plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
-                )
+        if uses_tokener_billing:
+            session.add_all(
+                [
+                    TenantModelBillingProfile(
+                        tenant_id=tenant.id,
+                        model_billing_source="tokener",
+                    ),
+                    TenantTokenerIntegration(
+                        tenant_id=tenant.id,
+                        plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
+                    ),
+                ]
             )
         session.commit()
 
@@ -1172,9 +1180,10 @@ class TenantService:
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         session.commit()
 
-        from services.credit_pool_service import CreditPoolService
+        if not uses_tokener_billing:
+            from services.credit_pool_service import CreditPoolService
 
-        CreditPoolService.create_default_pool(tenant.id, session=session)
+            CreditPoolService.create_default_pool(tenant.id, session=session)
 
         return tenant
 

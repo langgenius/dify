@@ -62,6 +62,7 @@ from models.provider import (
 )
 from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
+from services.model_billing_profile_service import ModelBillingProfileService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
@@ -649,13 +650,16 @@ class ProviderManager:
         if cached_configurations is not None:
             return cached_configurations
 
+        model_billing = ModelBillingProfileService.resolve(tenant_id)
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
         # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
-        )
+        if model_billing.uses_legacy_message_credits:
+            provider_name_to_provider_records_dict = self._init_trial_provider_records(
+                tenant_id, provider_name_to_provider_records_dict
+            )
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -746,12 +750,18 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            system_configuration = (
+                self._to_system_configuration(tenant_id, provider_entity, provider_records)
+                if model_billing.uses_legacy_message_credits
+                else SystemConfiguration(enabled=False)
+            )
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
-            if preferred_provider_type_record:
+            if model_billing.uses_tokener:
+                preferred_provider_type = ProviderType.CUSTOM
+            elif preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
             elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
                 preferred_provider_type = ProviderType.SYSTEM
@@ -864,6 +874,10 @@ class ProviderManager:
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
         if not default_model:
+            model_billing = ModelBillingProfileService.resolve(tenant_id)
+            if model_billing.uses_tokener:
+                return None
+
             # Get provider configurations
             provider_configurations = self.get_configurations(tenant_id)
 
