@@ -317,6 +317,14 @@ class TestLLMGenerator:
             questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
             assert questions == []
 
+    def test_generate_suggested_questions_after_answer_model_resolution_error(self, mock_model_instance):
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
+            mock_manager.return_value.get_default_model_instance.side_effect = ValueError("unsupported default model")
+
+            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+
+        assert questions == []
+
     def test_generate_suggested_questions_after_answer_invoke_error(self, mock_model_instance):
         mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke failed")
         questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
