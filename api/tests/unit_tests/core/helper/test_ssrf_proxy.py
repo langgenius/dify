@@ -460,3 +460,50 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client) 
 
     assert "10.0.0.42" in str(exc_info.value)
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_forwarded_401_from_upstream_is_not_treated_as_ssrf_block(mock_get_client) -> None:
+    """Regression for #41434: when Squid forwards a 401/403 from the
+    upstream server, the response carries the upstream's ``Server`` header
+    and a ``Via`` header that Squid added as a forwarder. The detection
+    must NOT treat the forwarded ``Via`` marker as evidence that Squid
+    itself generated the response; only the upstream's ``Server`` header
+    should decide. Preserving the original status lets application-level
+    authorization errors surface to the caller instead of being rewritten
+    as a misleading SSRF-block error.
+    """
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = 401
+    # nginx is the upstream; Squid added the Via header as a forwarder.
+    response.headers = {
+        "server": "nginx",
+        "via": "1.1 xxxx (squid/6.13)",
+    }
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    # Should return the upstream response, not raise ToolSSRFError.
+    returned = make_request("GET", "http://public.example.com/protected")
+    assert returned.status_code == 401
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_forwarded_403_from_upstream_is_not_treated_as_ssrf_block(mock_get_client) -> None:
+    """Same as the 401 case, but with 403 — the symmetric 403 path that
+    was also misclassified by the original ``or 'squid' in via_header``
+    check. Pins both status codes that the SSRF-detection block covers.
+    """
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = 403
+    response.headers = {
+        "server": "nginx/1.25",
+        "via": "1.1 xxxx (squid/6.13)",
+    }
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "http://public.example.com/forbidden")
+    assert returned.status_code == 403
