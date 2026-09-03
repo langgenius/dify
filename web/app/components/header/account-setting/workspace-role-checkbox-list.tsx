@@ -199,10 +199,10 @@ const WorkspaceRoleCheckboxList = ({
     const description = getRoleDescription(role)
 
     return (
-      <div className="min-w-0 flex-1">
-        <div className="system-sm-semibold text-text-secondary">{role.name}</div>
-        <div className="mt-0.5 system-xs-regular text-text-tertiary">{description}</div>
-      </div>
+      <span className="min-w-0 flex-1">
+        <span className="block system-sm-semibold text-text-secondary">{role.name}</span>
+        <span className="mt-0.5 block system-xs-regular text-text-tertiary">{description}</span>
+      </span>
     )
   }
 
@@ -240,31 +240,21 @@ const WorkspaceRoleCheckboxList = ({
 
                       return (
                         <li key={role.id}>
-                          <div
-                            role="checkbox"
-                            aria-checked={checked}
-                            aria-disabled={disabled}
-                            tabIndex={disabled ? -1 : 0}
+                          <label
                             className={cn(
-                              'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                              'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover',
                               checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
                               disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                             )}
-                            onClick={handleToggle}
-                            onKeyDown={(e) => {
-                              if (e.key === ' ' || e.key === 'Enter') {
-                                e.preventDefault()
-                                handleToggle()
-                              }
-                            }}
                           >
                             <Checkbox
                               checked={checked}
                               disabled={disabled}
-                              className="pointer-events-none mt-0.5"
+                              onCheckedChange={handleToggle}
+                              className="mt-0.5"
                             />
                             {renderRoleText(role)}
-                          </div>
+                          </label>
                         </li>
                       )
                     })}
