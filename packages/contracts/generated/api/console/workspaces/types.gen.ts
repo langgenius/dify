@@ -225,13 +225,13 @@ export type ModelProviderCreditsResponse = {
   exhausted_at: number | null
   is_exhausted: boolean
   is_unlimited: boolean
-  model_billing_source: 'legacy_message_credits' | 'tokener'
+  model_billing_source?: 'legacy_message_credits' | 'tokener'
   next_credit_reset_date: number | null
   pool_type: 'paid' | 'trial' | null
   quota_limit: number | null
   quota_used: number | null
   remaining_credits: number | null
-  tokener_bootstrap_status:
+  tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
     | 'installing_plugin'
@@ -239,6 +239,7 @@ export type ModelProviderCreditsResponse = {
     | 'provisioning'
     | 'ready'
     | null
+  tokener_metering?: TokenerMeteringResponse | null
 }
 
 export type ModelProviderSummaryListResponse = {
@@ -857,11 +858,11 @@ export type SkillVersionUpdatePayload = {
 export type CurrentWorkspaceSummaryResponse = {
   credits: number | null
   id: string
-  model_billing_source: 'legacy_message_credits' | 'tokener'
+  model_billing_source?: 'legacy_message_credits' | 'tokener'
   name: string
   plan: CloudPlan | null
   role: TenantAccountRole
-  tokener_bootstrap_status:
+  tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
     | 'installing_plugin'
@@ -1446,6 +1447,21 @@ export type ProviderResponse = {
   supported_model_types: Array<ModelType>
   system_configuration: SystemConfigurationResponse
   tenant_id: string
+}
+
+export type TokenerMeteringResponse = {
+  available_usd_micro: string
+  balance_generated_at: string
+  currency: 'USD'
+  current_month:
+    | ({
+        status: 'available'
+      } & TokenerCurrentMonthAvailableMeteringResponse)
+    | ({
+        status: 'unavailable'
+      } & TokenerCurrentMonthUnavailableMeteringResponse)
+  tenant_id: string
+  usage_generated_at?: string | null
 }
 
 export type ModelProviderSummaryResponse = {
@@ -2048,10 +2064,6 @@ export type TenantInfoResponse = {
   plan?: CloudPlan | null
   role?: string | null
   status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
   tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
@@ -2060,6 +2072,10 @@ export type TenantInfoResponse = {
     | 'provisioning'
     | 'ready'
     | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
 }
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
@@ -2128,6 +2144,21 @@ export type SystemConfigurationResponse = {
   current_quota_type?: ProviderQuotaType | null
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
+}
+
+export type TokenerCurrentMonthAvailableMeteringResponse = {
+  billed_usd_micro: string
+  end_date: string
+  request_count: string
+  start_date: string
+  status: 'available'
+}
+
+export type TokenerCurrentMonthUnavailableMeteringResponse = {
+  end_date: string
+  error_code: string
+  start_date: string
+  status: 'unavailable'
 }
 
 export type ModelProviderCustomConfigurationSummaryResponse = {

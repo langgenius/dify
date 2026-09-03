@@ -1,5 +1,5 @@
 import io
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from flask import send_file
 from flask_restx import Resource
@@ -103,6 +103,33 @@ class ModelProviderSummaryListResponse(ResponseModel):
     plugins: dict[str, ModelProviderPluginSummaryResponse]
 
 
+class TokenerCurrentMonthAvailableMeteringResponse(ResponseModel):
+    status: Literal["available"]
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    billed_usd_micro: str = Field(pattern=r"^\d+$")
+    request_count: str = Field(pattern=r"^\d+$")
+
+
+class TokenerCurrentMonthUnavailableMeteringResponse(ResponseModel):
+    status: Literal["unavailable"]
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    error_code: str = Field(pattern=r"^[a-z0-9_]{1,100}$")
+
+
+class TokenerMeteringResponse(ResponseModel):
+    tenant_id: str
+    currency: Literal["USD"]
+    available_usd_micro: str = Field(pattern=r"^-?\d+$")
+    current_month: Annotated[
+        TokenerCurrentMonthAvailableMeteringResponse | TokenerCurrentMonthUnavailableMeteringResponse,
+        Field(discriminator="status"),
+    ]
+    balance_generated_at: str
+    usage_generated_at: str | None = None
+
+
 class ModelProviderCreditsResponse(ResponseModel):
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
     tokener_bootstrap_status: (
@@ -124,6 +151,7 @@ class ModelProviderCreditsResponse(ResponseModel):
     is_exhausted: bool
     exhausted_at: int | None
     next_credit_reset_date: int | None
+    tokener_metering: TokenerMeteringResponse | None = None
 
 
 class ProviderCredentialsResponse(ResponseModel):
@@ -205,7 +233,7 @@ class ModelProviderCreditsApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
-        credit_pool = WorkspaceService.get_effective_credit_pool(tenant_id, session=session)
+        credit_pool = WorkspaceService.get_model_provider_credits(tenant_id, session=session)
         return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 

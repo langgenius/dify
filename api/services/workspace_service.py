@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from flask_login import current_user
@@ -9,9 +10,13 @@ from configs import dify_config
 from core.model_billing_profile import ModelBillingProfileService, ModelBillingSource
 from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.tokener import TenantTokenerIntegrationStatus
 from services.account_service import TenantService
-from services.billing_service import BillingService
+from services.billing_service import BillingService, TokenerTenantMeteringResponse
+from services.errors.billing import BillingError
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -24,6 +29,7 @@ class EffectiveCreditPool:
     quota_used: int | None = None
     exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    tokener_metering: TokenerTenantMeteringResponse | None = None
 
     @property
     def remaining_credits(self) -> int | None:
@@ -118,6 +124,24 @@ class WorkspaceService:
             exhausted_at=exhausted_at,
             next_credit_reset_date=billing_info.get("next_credit_reset_date"),
         )
+
+    @classmethod
+    def get_model_provider_credits(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
+        """Return legacy credits or enrich a ready Tokener cohort with metering usage."""
+        credit_pool = cls.get_effective_credit_pool(tenant_id, session=session)
+        if (
+            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            or credit_pool.model_billing_source != ModelBillingSource.TOKENER
+            or credit_pool.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
+        ):
+            return credit_pool
+
+        try:
+            tokener_metering = BillingService.get_tokener_metering(tenant_id)
+        except BillingError:
+            logger.warning("Tokener metering usage is unavailable for tenant %s", tenant_id)
+            return credit_pool
+        return replace(credit_pool, tokener_metering=tokener_metering)
 
     @classmethod
     def get_current_workspace_summary(cls, tenant: Tenant, account_id: str, *, session: Session) -> dict[str, object]:

@@ -30,6 +30,7 @@ from controllers.console.workspace.model_providers import (
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from core.model_billing_profile import ModelBillingSource
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -38,6 +39,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_service import TokenerTenantMeteringResponse
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -265,12 +267,12 @@ class TestModelProviderCreditsApi:
         )
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
             return_value=credit_pool,
-        ) as get_effective_credit_pool:
+        ) as get_model_provider_credits:
             result = method(api, session, "tenant1")
 
-        get_effective_credit_pool.assert_called_once_with("tenant1", session=session)
+        get_model_provider_credits.assert_called_once_with("tenant1", session=session)
         assert result == {
             "model_billing_source": "legacy_message_credits",
             "tokener_bootstrap_status": None,
@@ -282,6 +284,7 @@ class TestModelProviderCreditsApi:
             "is_exhausted": False,
             "exhausted_at": None,
             "next_credit_reset_date": 1775001600,
+            "tokener_metering": None,
         }
 
     def test_get_without_effective_pool(self, unbound_session: Session):
@@ -290,7 +293,7 @@ class TestModelProviderCreditsApi:
         session = unbound_session
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
             return_value=EffectiveCreditPool(),
         ):
             result = method(api, session, "tenant1")
@@ -306,6 +309,52 @@ class TestModelProviderCreditsApi:
             "is_exhausted": True,
             "exhausted_at": None,
             "next_credit_reset_date": None,
+            "tokener_metering": None,
+        }
+
+    def test_get_tokener_metering_keeps_decimal_strings_and_nested_partial_status(
+        self, unbound_session: Session
+    ) -> None:
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        usage: TokenerTenantMeteringResponse = {
+            "tenant_id": VALID_UUID,
+            "currency": "USD",
+            "available_usd_micro": "12500000",
+            "current_month": {
+                "status": "unavailable",
+                "start_date": "2026-09-01",
+                "end_date": "2026-09-03",
+                "error_code": "metering_unavailable",
+            },
+            "balance_generated_at": "2026-09-03T06:00:00Z",
+        }
+        credit_pool = EffectiveCreditPool(
+            model_billing_source=ModelBillingSource.TOKENER,
+            tokener_bootstrap_status="ready",
+            tokener_metering=usage,
+        )
+
+        with patch(
+            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
+            return_value=credit_pool,
+        ):
+            result = method(api, unbound_session, VALID_UUID)
+
+        assert result["model_billing_source"] == "tokener"
+        assert result["is_exhausted"] is False
+        assert result["tokener_metering"] == {
+            "tenant_id": VALID_UUID,
+            "currency": "USD",
+            "available_usd_micro": "12500000",
+            "current_month": {
+                "status": "unavailable",
+                "start_date": "2026-09-01",
+                "end_date": "2026-09-03",
+                "error_code": "metering_unavailable",
+            },
+            "balance_generated_at": "2026-09-03T06:00:00Z",
+            "usage_generated_at": None,
         }
 
 

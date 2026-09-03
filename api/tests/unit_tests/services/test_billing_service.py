@@ -15,6 +15,7 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 import json
 import logging
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -32,6 +33,23 @@ from tests.unit_tests.config_override import config_overrides_context
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+
+def _tokener_metering_payload() -> dict[str, object]:
+    return {
+        "tenant_id": TENANT_ID,
+        "currency": "USD",
+        "available_usd_micro": "12500000",
+        "current_month": {
+            "status": "available",
+            "start_date": "2026-09-01",
+            "end_date": "2026-09-03",
+            "billed_usd_micro": "3750000",
+            "request_count": "42",
+        },
+        "balance_generated_at": "2026-09-03T06:00:00Z",
+        "usage_generated_at": "2026-09-03T05:59:30Z",
+    }
 
 
 def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
@@ -278,6 +296,129 @@ class TestBillingServiceSendRequest:
                 assert one_time_key not in repr(frame.f_locals)
             traceback_cursor = traceback_cursor.tb_next
         assert checked_parser_frame is True
+
+    def test_tokener_metering_uses_internal_billing_endpoint_and_preserves_decimal_strings(self) -> None:
+        payload = _tokener_metering_payload()
+        payload["available_usd_micro"] = "-12"
+        payload["partner_token"] = "must-not-reach-the-browser"
+        cast(dict[str, object], payload["current_month"])["partner_usage_id"] = "internal-only"
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081/"),
+            patch.object(BillingService, "_send_request", return_value=payload) as send_request,
+        ):
+            result = BillingService.get_tokener_metering(TENANT_ID)
+
+        assert result["available_usd_micro"] == "-12"
+        assert "partner_token" not in result
+        current_month = result["current_month"]
+        assert current_month["status"] == "available"
+        assert current_month["request_count"] == "42"
+        assert "partner_usage_id" not in current_month
+        send_request.assert_called_once_with(
+            "GET",
+            f"/internal/v1/tokener/tenants/{TENANT_ID}/metering",
+            base_url="http://dify-saas-billing:8081",
+        )
+
+    def test_tokener_metering_preserves_balance_when_monthly_rollup_is_unavailable(self) -> None:
+        payload = _tokener_metering_payload()
+        payload["current_month"] = {
+            "status": "unavailable",
+            "start_date": "2026-09-01",
+            "end_date": "2026-09-03",
+            "error_code": "metering_unavailable",
+        }
+        payload.pop("usage_generated_at")
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+        ):
+            result = BillingService.get_tokener_metering(TENANT_ID)
+
+        assert result["available_usd_micro"] == "12500000"
+        assert result["current_month"] == payload["current_month"]
+        assert "usage_generated_at" not in result
+
+    @pytest.mark.parametrize(
+        ("status_code", "expected_error"),
+        [
+            (httpx.codes.BAD_REQUEST, BillingUpstreamInvalidResponseError),
+            (httpx.codes.CONFLICT, BillingUpstreamInvalidResponseError),
+            (httpx.codes.BAD_GATEWAY, BillingUpstreamInvalidResponseError),
+            (httpx.codes.REQUEST_TIMEOUT, BillingUpstreamUnavailableError),
+            (httpx.codes.TOO_MANY_REQUESTS, BillingUpstreamUnavailableError),
+            (httpx.codes.SERVICE_UNAVAILABLE, BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_tokener_metering_maps_saas_status_without_leaking_response(
+        self,
+        status_code: int,
+        expected_error: type[Exception],
+    ) -> None:
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(
+                BillingService,
+                "_send_request",
+                side_effect=_BillingHTTPStatusError("sensitive upstream response", status_code),
+            ),
+            pytest.raises(expected_error) as exc_info,
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
+
+        assert "sensitive upstream response" not in str(exc_info.value)
+
+    @pytest.mark.parametrize(
+        "invalid_case",
+        [
+            "tenant",
+            "amount",
+            "date",
+            "timestamp",
+            "request-count",
+            "missing-usage-timestamp",
+            "mixed-status",
+        ],
+    )
+    def test_tokener_metering_rejects_mismatched_or_malformed_payload(self, invalid_case: str) -> None:
+        payload = _tokener_metering_payload()
+        current_month = cast(dict[str, object], payload["current_month"])
+        if invalid_case == "tenant":
+            payload["tenant_id"] = "22222222-2222-2222-2222-222222222222"
+        elif invalid_case == "amount":
+            payload["available_usd_micro"] = 10
+        elif invalid_case == "date":
+            current_month["start_date"] = "2026-02-31"
+        elif invalid_case == "timestamp":
+            payload["balance_generated_at"] = "2026-09-03T06:00:00"
+        elif invalid_case == "request-count":
+            current_month["request_count"] = "not-a-decimal"
+        elif invalid_case == "missing-usage-timestamp":
+            payload.pop("usage_generated_at")
+        else:
+            current_month.update(status="unavailable", error_code="metering_unavailable")
+            payload.pop("usage_generated_at")
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
+
+    def test_tokener_metering_requires_internal_url_and_maps_network_failure(self) -> None:
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL=" "),
+            pytest.raises(BillingUpstreamUnavailableError),
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
+
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", side_effect=httpx.RequestError("partner token detail")),
+            pytest.raises(BillingUpstreamUnavailableError) as exc_info,
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
+        assert "partner token detail" not in str(exc_info.value)
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
