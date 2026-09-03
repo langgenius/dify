@@ -27,7 +27,7 @@ _exporter: EnterpriseExporter | None = None
 
 
 def is_enabled() -> bool:
-    return bool(
+    return (
         dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
     )
 

@@ -1435,7 +1435,7 @@ class ConvertToWorkflowApi(Resource):
         # return app id
         return {
             "new_app_id": new_app_model.id,
-            "permission_keys": get_app_permission_keys(str(current_tenant_id), current_user.id, str(new_app_model.id)),
+            "permission_keys": get_app_permission_keys(current_tenant_id, current_user.id, str(new_app_model.id)),
         }
 
 

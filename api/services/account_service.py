@@ -173,7 +173,7 @@ class AccountService:
         roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
         for rbac_role in roles:
             if rbac_role.is_builtin and rbac_role.category == "global_system_default" and rbac_role.role_tag == tag:
-                return str(rbac_role.id)
+                return rbac_role.id
 
         raise ValueError(f"Builtin RBAC role not found for tag {tag!r} in tenant {tenant_id}")
 
@@ -1697,7 +1697,7 @@ class TenantService:
                 current_roles = RBACService.MemberRoles.get(
                     str(tenant.id), operator.id, old_owner_id, session=session
                 ).roles
-                remaining_role_ids = [str(r.id) for r in current_roles if str(r.id) != owner_role_id]
+                remaining_role_ids = [r.id for r in current_roles if r.id != owner_role_id]
                 RBACService.MemberRoles.replace(
                     tenant_id=str(tenant.id),
                     account_id=operator.id,
@@ -1992,7 +1992,7 @@ class RegisterService:
             "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
-            "role": str(role),
+            "role": role,
             "requires_setup": requires_setup,
         }
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS

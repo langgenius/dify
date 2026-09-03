@@ -154,7 +154,7 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
 
     for item in items:
         for account in item.accounts:
-            account_id = str(account.account_id or "").strip()
+            account_id = account.account_id or "".strip()
             if account_id and not account.account_name:
                 account.account_name = account_names.get(account_id, {}).get("name", "")
             account.avatar = account_names.get(account_id, {}).get("avatar", "")
@@ -175,12 +175,12 @@ def _move_resource_maintainer_first(items: list[svc.ResourceUserAccessPolicies],
     if not maintainer_id:
         return
 
-    normalized_maintainer_id = str(maintainer_id).strip()
+    normalized_maintainer_id = maintainer_id.strip()
     if not normalized_maintainer_id:
         return
 
     for index, item in enumerate(items):
-        account_id = str(item.account.account_id or "").strip()
+        account_id = item.account.account_id or "".strip()
         if account_id == normalized_maintainer_id:
             if index:
                 items.insert(0, items.pop(index))
