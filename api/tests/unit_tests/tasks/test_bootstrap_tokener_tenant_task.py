@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from tasks import bootstrap_tokener_tenant_task as task_module
 from tests.unit_tests.config_override import apply_config_overrides
@@ -26,6 +27,8 @@ def _persist_integration(
     *,
     status: TenantTokenerIntegrationStatus = TenantTokenerIntegrationStatus.PENDING,
     install_task_id: str | None = None,
+    create_profile: bool = True,
+    profile_source: str | None = "tokener",
 ) -> TenantTokenerIntegration:
     tenant = Tenant(name="Tokener tenant")
     session.add(tenant)
@@ -37,6 +40,13 @@ def _persist_integration(
         plugin_install_task_id=install_task_id,
     )
     session.add(integration)
+    if create_profile:
+        session.add(
+            TenantModelBillingProfile(
+                tenant_id=tenant.id,
+                model_billing_source=profile_source,
+            )
+        )
     session.commit()
     return integration
 
@@ -145,6 +155,42 @@ def test_run_bootstrap_is_noop_after_ready(monkeypatch: pytest.MonkeyPatch, sqli
     task_module._run_bootstrap(integration.tenant_id)
 
     install.assert_not_called()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
+    assert persisted is not None
+    assert persisted.attempt_count == 0
+
+
+@pytest.mark.parametrize(
+    ("create_profile", "profile_source"),
+    [
+        (False, None),
+        (True, None),
+    ],
+)
+def test_legacy_profile_authority_blocks_all_bootstrap_side_effects(
+    create_profile: bool,
+    profile_source: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(
+        sqlite_session,
+        create_profile=create_profile,
+        profile_source=profile_source,
+    )
+    install = MagicMock()
+    ensure_credential = MagicMock()
+    set_default = MagicMock()
+    monkeypatch.setattr(task_module, "_ensure_plugin_installed", install)
+    monkeypatch.setattr(task_module, "_ensure_managed_credential", ensure_credential)
+    monkeypatch.setattr(task_module, "_set_default_llm", set_default)
+
+    task_module._run_bootstrap(integration.tenant_id)
+
+    install.assert_not_called()
+    ensure_credential.assert_not_called()
+    set_default.assert_not_called()
     sqlite_session.expire_all()
     persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
     assert persisted is not None
@@ -328,3 +374,36 @@ def test_recovery_sweeper_retries_a_previous_broker_dispatch_failure(
     delay.side_effect = None
     assert task_module.sweep_pending_tokener_integrations_task.run() == 1
     assert delay.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("create_profile", "profile_source"),
+    [
+        (False, None),
+        (True, None),
+    ],
+)
+def test_recovery_sweeper_ignores_integrations_without_explicit_tokener_profile(
+    create_profile: bool,
+    profile_source: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    integration = _persist_integration(
+        sqlite_session,
+        create_profile=create_profile,
+        profile_source=profile_source,
+    )
+    integration.updated_at = naive_utc_now() - timedelta(minutes=10)
+    sqlite_session.commit()
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=True,
+        TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL=5,
+        TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE=100,
+    )
+    delay = MagicMock()
+    monkeypatch.setattr(task_module.bootstrap_tokener_tenant_task, "delay", delay)
+
+    assert task_module.sweep_pending_tokener_integrations_task.run() == 0
+    delay.assert_not_called()

@@ -101,6 +101,8 @@ const currentWorkspaceValue: GetWorkspacesCurrentSummaryResponse = {
   plan: 'sandbox',
   role: 'owner',
   credits: 7500,
+  model_billing_source: 'legacy_message_credits',
+  tokener_bootstrap_status: null,
 }
 const workspaceMenuAccessibleName = new RegExp(
   `${currentWorkspaceValue.name}.*common\\.mainNav\\.workspace\\.openMenu`,

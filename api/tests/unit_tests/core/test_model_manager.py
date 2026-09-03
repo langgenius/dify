@@ -22,6 +22,17 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChun
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderType
+from models.tokener import TenantTokenerIntegrationStatus
+from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
+
+
+@pytest.fixture(autouse=True)
+def _legacy_model_billing_profile():
+    with patch(
+        "core.model_manager.ModelBillingProfileService.resolve",
+        return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -140,6 +151,48 @@ def test_model_manager_does_not_wrap_custom_non_llm_model() -> None:
     model_instance = manager.get_model_instance(
         "tenant-1", "openai", ModelType.TEXT_EMBEDDING, "text-embedding-3-small"
     )
+
+    assert type(model_instance) is ModelInstance
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        TenantTokenerIntegrationStatus.PENDING,
+        TenantTokenerIntegrationStatus.READY,
+        TenantTokenerIntegrationStatus.FAILED,
+    ],
+)
+def test_tokener_workspace_rejects_hosted_system_models_before_instance_creation(
+    status: TenantTokenerIntegrationStatus,
+) -> None:
+    manager, bundle = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="gpt-4", model_type=ModelType.LLM)],
+    )
+    resolution = TenantModelBillingResolution(ModelBillingSource.TOKENER, status)
+
+    with (
+        patch("core.model_manager.ModelBillingProfileService.resolve", return_value=resolution),
+        pytest.raises(ModelCurrentlyNotSupportError, match="Hosted SYSTEM model"),
+    ):
+        manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+
+    bundle.configuration.get_current_credentials.assert_not_called()
+
+
+def test_tokener_workspace_keeps_custom_byok_models_available() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.CUSTOM,
+        restrict_models=[],
+    )
+    resolution = TenantModelBillingResolution(
+        ModelBillingSource.TOKENER,
+        TenantTokenerIntegrationStatus.PENDING,
+    )
+
+    with patch("core.model_manager.ModelBillingProfileService.resolve", return_value=resolution):
+        model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
 
     assert type(model_instance) is ModelInstance
 

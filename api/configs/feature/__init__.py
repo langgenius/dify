@@ -318,8 +318,13 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    TOKENER_NEW_TENANT_COHORT_ENABLED: bool = Field(
+        description="Assign newly created tenants to the managed Tokener model-billing cohort",
+        default=False,
+    )
+
     TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(
-        description="Provision and configure the managed Tokener model provider for newly created tenants",
+        description="Run event and worker processing for persisted Tokener tenant integrations",
         default=False,
     )
 

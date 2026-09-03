@@ -85,6 +85,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const {
+    modelBillingSource,
     usedCredits,
     totalCredits,
     isUnlimited,
@@ -173,6 +174,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .filter(Boolean)
       .join(', '),
   })
+
+  if (modelBillingSource === 'tokener') return null
 
   if (isLoading) {
     return (

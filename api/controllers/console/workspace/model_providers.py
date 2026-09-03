@@ -104,6 +104,18 @@ class ModelProviderSummaryListResponse(ResponseModel):
 
 
 class ModelProviderCreditsResponse(ResponseModel):
+    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    tokener_bootstrap_status: (
+        Literal[
+            "pending",
+            "installing_plugin",
+            "provisioning",
+            "configuring_provider",
+            "ready",
+            "failed",
+        ]
+        | None
+    ) = None
     pool_type: Literal["paid", "trial"] | None
     quota_limit: int | None = Field(description="Credit limit for the effective pool; -1 means unlimited.")
     quota_used: int | None

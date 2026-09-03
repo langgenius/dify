@@ -17,9 +17,15 @@ from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from models.model_billing import TenantModelBillingProfile
 from models.provider import Provider, ProviderCredential, ProviderType
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
+from services.model_billing_profile_service import (
+    InvalidModelBillingProfileError,
+    ModelBillingProfileResolutionError,
+    ModelBillingProfileService,
+)
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
@@ -351,6 +357,24 @@ def _set_default_llm(tenant_id: str) -> None:
 
 
 def _run_bootstrap(tenant_id: str) -> None:
+    try:
+        model_billing = ModelBillingProfileService.resolve(tenant_id)
+    except InvalidModelBillingProfileError:
+        raise _BootstrapStepError(
+            "tokener_model_billing_profile_invalid",
+            retryable=False,
+            stage=TenantTokenerIntegrationStatus.FAILED,
+        ) from None
+    except ModelBillingProfileResolutionError:
+        raise _BootstrapStepError(
+            "tokener_model_billing_profile_unavailable",
+            retryable=True,
+            stage=TenantTokenerIntegrationStatus.PENDING,
+        ) from None
+
+    if not model_billing.uses_tokener:
+        return
+
     snapshot = _begin_attempt(tenant_id)
     if snapshot is None or snapshot.status == TenantTokenerIntegrationStatus.READY:
         return
@@ -484,7 +508,12 @@ def sweep_pending_tokener_integrations_task() -> int:
         tenant_ids = list(
             session.scalars(
                 select(TenantTokenerIntegration.tenant_id)
+                .join(
+                    TenantModelBillingProfile,
+                    TenantModelBillingProfile.tenant_id == TenantTokenerIntegration.tenant_id,
+                )
                 .where(
+                    TenantModelBillingProfile.model_billing_source == "tokener",
                     TenantTokenerIntegration.status.in_(recoverable_statuses),
                     TenantTokenerIntegration.updated_at < stale_before,
                 )

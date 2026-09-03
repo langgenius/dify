@@ -45,6 +45,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
+from services.model_billing_profile_service import ModelBillingProfileService
 
 logger = logging.getLogger(__name__)
 
@@ -314,6 +315,7 @@ class ModelProviderService:
         bindings = PluginService.list_model_provider_bindings(tenant_id)
         provider_entities = PluginService.fetch_plugin_model_providers(tenant_id=tenant_id)
         states = self._load_provider_summary_states(tenant_id)
+        model_billing = ModelBillingProfileService.resolve(tenant_id)
 
         bindings_by_provider: dict[str, PluginModelProviderBinding] = {}
         for binding in bindings:
@@ -351,15 +353,20 @@ class ModelProviderService:
             custom_present = state.has_custom_provider or state.has_custom_models
             provider_binding = bindings_by_provider.get(provider_name)
             system_enabled = bool(
-                provider_binding
+                model_billing.uses_legacy_message_credits
+                and provider_binding
                 and self._has_system_provider_hosting_configuration(provider_name)
                 and provider_binding.source != PluginInstallationSource.Package
                 and provider_binding.verified
             )
-            preferred_provider_type = self._get_preferred_provider_type(
-                state,
-                custom_present=custom_present,
-                system_enabled=system_enabled,
+            preferred_provider_type = (
+                ProviderType.CUSTOM
+                if model_billing.uses_tokener
+                else self._get_preferred_provider_type(
+                    state,
+                    custom_present=custom_present,
+                    system_enabled=system_enabled,
+                )
             )
 
             provider_summaries.append(
@@ -854,10 +861,15 @@ class ModelProviderService:
         :param preferred_provider_type: preferred provider type
         :return:
         """
-        provider_configuration = self._get_provider_configuration(tenant_id, provider)
-
         # Convert preferred_provider_type to ProviderType
         preferred_provider_type_enum = ProviderType.value_of(preferred_provider_type)
+        if (
+            preferred_provider_type_enum == ProviderType.SYSTEM
+            and ModelBillingProfileService.resolve(tenant_id).uses_tokener
+        ):
+            raise ValueError("Hosted SYSTEM providers are disabled for this workspace.")
+
+        provider_configuration = self._get_provider_configuration(tenant_id, provider)
 
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)

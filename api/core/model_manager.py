@@ -36,6 +36,7 @@ from graphon.model_runtime.model_providers.base.speech2text_model import Speech2
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
+from services.model_billing_profile_service import ModelBillingProfileService
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -879,6 +880,11 @@ class ModelManager:
         configuration = provider_model_bundle.configuration
         if configuration.using_provider_type != ProviderType.SYSTEM:
             return
+
+        if ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener:
+            raise ModelCurrentlyNotSupportError(
+                f"Hosted SYSTEM model {model_type.value}/{model} is disabled for this workspace."
+            )
 
         # Hosted allowlists retain the existing comma-separated format. Model names
         # are matched exactly; model-type-specific entries will be introduced later.

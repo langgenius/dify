@@ -24,7 +24,19 @@ from models.provider import (
 )
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
+from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
 from services.model_provider_service import ModelProviderService, _ProviderSummaryState
+
+
+@pytest.fixture(autouse=True)
+def _legacy_model_billing_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        service_module,
+        "ModelBillingProfileService",
+        SimpleNamespace(
+            resolve=MagicMock(return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS))
+        ),
+    )
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
@@ -301,6 +313,52 @@ class TestModelProviderServiceConfiguration:
             "langgenius/remote/openai": True,
             "langgenius/unverified/openai": False,
         }
+
+    def test_tokener_provider_summary_disables_system_but_keeps_custom_configuration(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
+        provider = SimpleNamespace(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=None,
+            icon_small=None,
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+        )
+        state = _ProviderSummaryState(has_custom_provider=True)
+        monkeypatch.setattr(
+            service_module.ModelBillingProfileService,
+            "resolve",
+            MagicMock(return_value=TenantModelBillingResolution(ModelBillingSource.TOKENER)),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(return_value=[binding]),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(return_value=[provider]),
+        )
+        monkeypatch.setattr(
+            ModelProviderService,
+            "_load_provider_summary_states",
+            MagicMock(return_value={provider.provider: state}),
+        )
+        monkeypatch.setattr(
+            service_module.ext_hosting_provider.hosting_configuration,
+            "provider_map",
+            {provider.provider: SimpleNamespace(enabled=True, quotas=[SimpleNamespace()])},
+        )
+
+        providers, _ = ModelProviderService().get_provider_summary_list("tenant-1")
+
+        assert providers[0].system_configuration.enabled is False
+        assert providers[0].preferred_provider_type == ProviderType.CUSTOM
 
     def test_model_provider_binding_without_verified_field_fails_closed(self) -> None:
         binding = PluginModelProviderBinding.model_validate(
@@ -1057,6 +1115,25 @@ class TestModelProviderServiceListingsAndDefaults:
         )
 
         provider_configuration.switch_preferred_provider_type.assert_called_once_with(ProviderType.SYSTEM)
+
+    def test_tokener_workspace_rejects_switch_to_system(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        service = ModelProviderService()
+        get_configuration = MagicMock()
+        monkeypatch.setattr(service, "_get_provider_configuration", get_configuration)
+        monkeypatch.setattr(
+            service_module.ModelBillingProfileService,
+            "resolve",
+            MagicMock(return_value=TenantModelBillingResolution(ModelBillingSource.TOKENER)),
+        )
+
+        with pytest.raises(ValueError, match="Hosted SYSTEM providers are disabled"):
+            service.switch_preferred_provider(
+                tenant_id="tenant-1",
+                provider="openai",
+                preferred_provider_type=ProviderType.SYSTEM.value,
+            )
+
+        get_configuration.assert_not_called()
 
     @pytest.mark.parametrize(
         ("method_name", "provider_method_name"),
