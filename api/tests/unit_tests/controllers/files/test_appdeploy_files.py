@@ -40,7 +40,7 @@ from models.model import EndUser, UploadFile
 from models.tools import ToolFile
 from services.entities.file_grant_entities import FileGrantContext, FileGrantScope, FileKind, RemoteFile
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
-from services.file_grant_gateways import FILE_CONTENT_AUDIENCE
+from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
 from tests.unit_tests.file_grant_test_utils import issue_file_grant
 
@@ -113,6 +113,11 @@ def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
         patch("controllers.files.wraps.application_services", return_value=services),
     ):
         yield service
+
+
+@pytest.fixture
+def file_gateway(sqlite_db: FileGrantService) -> FileGrantFileGateway:
+    return cast(FileGrantFileGateway, sqlite_db._files)
 
 
 @pytest.fixture
@@ -209,11 +214,11 @@ def _persist_tool_file(session: Session, *, owner_id: str, mimetype: str = "imag
 
 
 def test_upload_stores_the_file_for_the_grant_end_user(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
 ) -> None:
     with (
-        patch.object(sqlite_db._files, "store_upload", wraps=sqlite_db._files.store_upload) as store_upload,
-        patch.object(sqlite_db._files._file_service, "upload_file", return_value=_stub_upload_file()),
+        patch.object(file_gateway, "store_upload", wraps=file_gateway.store_upload) as store_upload,
+        patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()),
     ):
         with app.test_request_context(
             "/files/appdeploy/upload",
@@ -230,11 +235,13 @@ def test_upload_stores_the_file_for_the_grant_end_user(
     assert store_upload.call_args.kwargs["context"].end_user_id == end_user.id
 
 
-def test_upload_answers_in_dify_s_own_upload_shape(app: Flask, end_user: EndUser, sqlite_db: FileGrantService) -> None:
+def test_upload_answers_in_dify_s_own_upload_shape(
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
+) -> None:
     """A client moving off ``POST /v1/files/upload`` must not meet a second shape."""
 
     with patch.object(
-        sqlite_db._files._file_service,
+        file_gateway._file_service,
         "upload_file",
         return_value=_stub_upload_file(created_by=end_user.id),
     ):
@@ -268,9 +275,9 @@ def test_upload_answers_in_dify_s_own_upload_shape(app: Flask, end_user: EndUser
 
 
 def test_upload_carries_every_key_dify_s_web_client_reads(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
 ) -> None:
-    with patch.object(sqlite_db._files._file_service, "upload_file", return_value=_stub_upload_file()):
+    with patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()):
         with app.test_request_context(
             "/files/appdeploy/upload",
             method="POST",
@@ -373,7 +380,7 @@ def test_upload_rejects_a_file_without_a_name(app: Flask, end_user: EndUser) -> 
 
 
 def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService
+    app: Flask, end_user: EndUser, sqlite_db: FileGrantService, file_gateway: FileGrantFileGateway
 ) -> None:
     url = "https://example.com/docs/report.pdf"
 
@@ -383,7 +390,7 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
             "fetch",
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ) as fetch,
-        patch.object(sqlite_db._files._file_service, "upload_file", return_value=_stub_upload_file()) as upload_file,
+        patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()) as upload_file,
     ):
         with app.test_request_context(
             "/files/appdeploy/remote-upload",
@@ -405,7 +412,7 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
 
 
 def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService
+    app: Flask, end_user: EndUser, sqlite_db: FileGrantService, file_gateway: FileGrantFileGateway
 ) -> None:
     """Dify's own remote upload answers under ``url``, so this one answers under both."""
 
@@ -417,7 +424,7 @@ def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ),
         patch.object(
-            sqlite_db._files._file_service,
+            file_gateway._file_service,
             "upload_file",
             return_value=_stub_upload_file(source_url=url),
         ),
@@ -460,7 +467,7 @@ def test_remote_upload_honours_the_size_precheck(app: Flask, end_user: EndUser, 
 
 
 def test_produced_stores_a_tool_file_and_returns_both_urls(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
 ) -> None:
     tool_file = SimpleNamespace(
         id="88888888-8888-4888-8888-888888888888",
@@ -469,7 +476,7 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
         mimetype="image/png",
     )
 
-    with patch.object(sqlite_db._files._tool_files, "create_file_by_raw", return_value=tool_file) as create_file:
+    with patch.object(file_gateway._tool_files, "create_file_by_raw", return_value=tool_file) as create_file:
         with app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
@@ -490,8 +497,8 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
     )
 
 
-def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, sqlite_db: FileGrantService) -> None:
-    with patch.object(sqlite_db._files._tool_files, "create_file_by_raw") as create_file:
+def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, file_gateway: FileGrantFileGateway) -> None:
+    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
         with app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
@@ -522,10 +529,10 @@ def one_megabyte_image_limit(config_overrides: Callable[..., None]) -> int:
 
 
 def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService, one_megabyte_image_limit: int
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway, one_megabyte_image_limit: int
 ) -> None:
     with patch.object(
-        sqlite_db._files._tool_files,
+        file_gateway._tool_files,
         "create_file_by_raw",
         return_value=SimpleNamespace(
             id="88888888-8888-4888-8888-888888888888",
@@ -548,11 +555,11 @@ def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(
 
 
 def test_produced_rejects_a_file_one_byte_over_the_per_extension_limit(
-    app: Flask, end_user: EndUser, sqlite_db: FileGrantService, one_megabyte_image_limit: int
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway, one_megabyte_image_limit: int
 ) -> None:
     """``create_file_by_raw`` has no limit of its own, so nothing else would stop this."""
 
-    with patch.object(sqlite_db._files._tool_files, "create_file_by_raw") as create_file:
+    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
         with app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
@@ -582,13 +589,16 @@ class _CountingStream:
 
 
 def test_produced_stops_reading_an_oversized_body_at_the_per_extension_limit(
-    end_user: EndUser, sqlite_db: FileGrantService, one_megabyte_image_limit: int
+    end_user: EndUser,
+    sqlite_db: FileGrantService,
+    file_gateway: FileGrantFileGateway,
+    one_megabyte_image_limit: int,
 ) -> None:
     """The caller is a worker running plugin code with no proxy body limit in front of it."""
 
     stream = _CountingStream(one_megabyte_image_limit * 64)
 
-    with patch.object(sqlite_db._files._tool_files, "create_file_by_raw") as create_file:
+    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
         with pytest.raises(FileTooLargeServiceError):
             sqlite_db.store_produced(
                 context=FileGrantContext(TENANT_ID, APP_ID, end_user.id),
@@ -715,8 +725,8 @@ def test_resolve_rejects_an_unbounded_batch(app: Flask, end_user: EndUser, sqlit
 
 
 @pytest.fixture
-def stored_bytes(sqlite_db: FileGrantService) -> Iterator[MagicMock]:
-    with patch.object(sqlite_db._files._storage, "load", return_value=iter([b"file-bytes"])) as load:
+def stored_bytes(file_gateway: FileGrantFileGateway) -> Iterator[MagicMock]:
+    with patch.object(file_gateway._storage, "load", return_value=iter([b"file-bytes"])) as load:
         yield load
 
 
