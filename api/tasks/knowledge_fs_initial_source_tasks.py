@@ -19,6 +19,7 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
 from services.credential_permission_service import CredentialPermissionService
+from services.knowledge_fs.initial_source_preview_job import KnowledgeFSInitialSourcePreviewJobService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSInitialOnlineDocumentSourcePayload,
@@ -282,8 +283,6 @@ def _start_workflow(
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
         pages = None
         if payload.preview_job_id:
-            from services.knowledge_fs.initial_source_preview_job import KnowledgeFSInitialSourcePreviewJobService
-
             pages = KnowledgeFSInitialSourcePreviewJobService.selected_content(
                 tenant_id=tenant_id,
                 account_id=account_id,
