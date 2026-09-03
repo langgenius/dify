@@ -988,12 +988,8 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    is_learn_dify: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
-    is_cloud_only: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
+    is_learn_dify: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_cloud_only: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),
@@ -2248,9 +2244,7 @@ class EndUser(Base, UserMixin):
     type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
-    _is_anonymous: Mapped[bool] = mapped_column(
-        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.true()
-    )
+    _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.true())
 
     @property
     @override
@@ -2365,9 +2359,7 @@ class Site(TypeBase):
 
     customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     chat_color_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    prompt_public: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
+    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     chat_color_theme_inverted: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.false(), default=False
     )

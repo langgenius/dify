@@ -1413,9 +1413,7 @@ class DatasetPermission(TypeBase):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    has_permission: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.true(), default=True
-    )
+    has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1688,9 +1686,7 @@ class Pipeline(TypeBase):
     description: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("''"))
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
-    is_published: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
