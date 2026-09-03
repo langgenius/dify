@@ -6,6 +6,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
@@ -13,7 +14,6 @@ from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse,
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, RBACRequirement
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import

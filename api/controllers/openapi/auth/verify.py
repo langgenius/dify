@@ -4,10 +4,10 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from configs import dify_config
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 

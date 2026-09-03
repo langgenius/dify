@@ -1,24 +1,33 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from inspect import unwrap
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import MINTABLE_PROFILES, SubjectType
 from controllers.openapi._models import SessionListQuery
 from controllers.openapi.account import (
     AccountSessionByIdApi,
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from extensions.ext_redis import redis_client
 from models import Account
-from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
+from models.oauth import OAuthAccessToken
 from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, auth_for
+
+PREFIX_OAUTH_ACCOUNT = MINTABLE_PROFILES[SubjectType.ACCOUNT].prefix
+
+
+@dataclass(frozen=True, slots=True)
+class _MintResult:
+    token_id: UUID
 
 
 def _mint_account_token(
@@ -27,19 +36,21 @@ def _mint_account_token(
     *,
     client_id: str = "integration-cli",
     device_label: str = "Test Device",
-) -> MintResult:
+) -> _MintResult:
     """Mint a real, persisted ``dfoa_`` access token for ``account``."""
-    return mint_oauth_token(
-        redis_client,
+    record = OAuthAccessToken(
         subject_email=account.email,
-        subject_issuer=None,
+        subject_issuer="dify:account",
         account_id=str(account.id),
         client_id=client_id,
         device_label=device_label,
         prefix=PREFIX_OAUTH_ACCOUNT,
-        ttl_days=14,
-        session=db_session,
+        token_hash=f"integration-{uuid4().hex}",
+        expires_at=datetime.now(UTC) + timedelta(days=14),
     )
+    db_session.add(record)
+    db_session.commit()
+    return _MintResult(token_id=UUID(str(record.id)))
 
 
 class TestSessionList:
@@ -54,7 +65,6 @@ class TestSessionList:
             with account_auth_context(account, token_id=mint.token_id):
                 result = unwrap(api.get)(
                     api,
-                    db_session_with_containers,
                     auth_data=auth_for(account, token_id=mint.token_id),
                     query=SessionListQuery(),
                 )
@@ -79,7 +89,6 @@ class TestSessionList:
             with account_auth_context(account, token_id=mine.token_id):
                 result = unwrap(api.get)(
                     api,
-                    db_session_with_containers,
                     auth_data=auth_for(account, token_id=mine.token_id),
                     query=SessionListQuery(),
                 )
@@ -97,9 +106,7 @@ class TestSessionRevoke:
         revoke_api = AccountSessionsSelfApi()
         with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
             with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(revoke_api.delete)(
-                    revoke_api, db_session_with_containers, auth_data=auth_for(account, token_id=mint.token_id)
-                )
+                result = unwrap(revoke_api.delete)(revoke_api, auth_data=auth_for(account, token_id=mint.token_id))
 
         assert result.status == "revoked"
 
@@ -109,7 +116,6 @@ class TestSessionRevoke:
             with account_auth_context(account, token_id=mint.token_id):
                 listing = unwrap(list_api.get)(
                     list_api,
-                    db_session_with_containers,
                     auth_data=auth_for(account, token_id=mint.token_id),
                     query=SessionListQuery(),
                 )
@@ -127,7 +133,6 @@ class TestSessionRevoke:
             with account_auth_context(account, token_id=mint.token_id):
                 result = unwrap(api.delete)(
                     api,
-                    db_session_with_containers,
                     session_id=session_id,
                     auth_data=auth_for(account, token_id=mint.token_id),
                 )
@@ -150,7 +155,6 @@ class TestSessionRevoke:
                 with pytest.raises(NotFound):
                     unwrap(api.delete)(
                         api,
-                        db_session_with_containers,
                         session_id=session_id,
                         auth_data=auth_for(outsider, token_id=uuid4()),
                     )

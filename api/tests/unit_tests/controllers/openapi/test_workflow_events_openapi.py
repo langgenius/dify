@@ -18,9 +18,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.data import AuthData
 from graphon.enums import WorkflowExecutionStatus
-from libs.oauth_bearer import Scope, TokenType
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser

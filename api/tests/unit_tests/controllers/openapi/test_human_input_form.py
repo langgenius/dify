@@ -13,9 +13,9 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import UnprocessableEntity
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
 from models.account import Account
 from models.enums import EndUserType
 from models.human_input import RecipientType

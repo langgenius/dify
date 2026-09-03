@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from constants.oauth_bearer import Scope
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model
 from controllers.common.wraps import RBACPermission, RBACResourceScope
@@ -31,7 +32,6 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory

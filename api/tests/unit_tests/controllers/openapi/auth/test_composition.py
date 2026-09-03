@@ -1,5 +1,6 @@
 import uuid
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.composition import account_pipeline, auth_router, external_sso_pipeline
 from controllers.openapi.auth.data import RBACRequirement, RequestContext
 from controllers.openapi.auth.flow import When
@@ -14,7 +15,6 @@ from controllers.openapi.auth.verify import (
 )
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
 from tests.unit_tests.config_override import config_overrides_context

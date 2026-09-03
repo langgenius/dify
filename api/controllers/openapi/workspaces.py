@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
@@ -37,7 +38,6 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService

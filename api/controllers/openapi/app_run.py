@@ -19,6 +19,7 @@ from werkzeug.exceptions import (
 )
 
 import services
+from constants.oauth_bearer import Scope
 from controllers.common.fields import EventStreamResponse
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.console.app.wraps import with_session
@@ -50,7 +51,6 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.oauth_bearer import Scope
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (

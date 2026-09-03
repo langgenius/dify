@@ -40,6 +40,7 @@ from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSour
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
@@ -142,6 +143,19 @@ from services.inner_mail_service import InnerMailService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_device_adapters import (
+    DifyConfigOAuthDeviceSettings,
+    EnterpriseOAuthDeviceSSOGateway,
+    EnvironmentOAuthDeviceTokenTTLPolicy,
+    OAuthDeviceTokenIssuanceGateway,
+    RedisExternalApprovalLimiter,
+)
+from services.oauth_device_application_service import (
+    DeviceWorkspaceQuery,
+    OAuthDeviceAccountQuery,
+    OAuthDeviceApplicationService,
+)
+from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.recommended_app_catalog_gateway import (
@@ -237,6 +251,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     files: FileService
     oauth_server: OAuthServerService
+    oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
@@ -290,6 +305,32 @@ def _build_oauth_server_service(
         repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
         tokens=RedisOAuthServerTokenRepository(redis=redis),
         access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
+
+
+def _build_oauth_device_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+    accounts: OAuthDeviceAccountQuery,
+    workspaces: DeviceWorkspaceQuery,
+) -> OAuthDeviceApplicationService:
+    token_repository = SQLAlchemyOAuthDeviceTokenRepository(session_factory=database_client, redis=redis)
+    return OAuthDeviceApplicationService(
+        store=DeviceFlowRedis(redis),
+        accounts=accounts,
+        workspaces=workspaces,
+        tokens=OAuthDeviceTokenIssuanceGateway(
+            tokens=token_repository,
+            ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy(),
+        ),
+        sessions=token_repository,
+        sso=EnterpriseOAuthDeviceSSOGateway(
+            redis=redis,
+            enterprise_service=EnterpriseService(),
+        ),
+        external_approval_limiter=RedisExternalApprovalLimiter(redis=redis),
+        settings=DifyConfigOAuthDeviceSettings(),
     )
 
 
@@ -576,6 +617,12 @@ def build_application_services(
         ),
         files=file_service,
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
+        oauth_device=_build_oauth_device_service(
+            database_client=database_client,
+            redis=redis,
+            accounts=accounts,
+            workspaces=workspace_query_repository,
+        ),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
