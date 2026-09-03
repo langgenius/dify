@@ -18258,7 +18258,6 @@ Flask blueprint initialization.
 | model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
-| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
