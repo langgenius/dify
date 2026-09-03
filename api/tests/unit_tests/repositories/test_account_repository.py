@@ -7,16 +7,26 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
-from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
+from services.entities.account_entities import (
+    AccountEmailResetStatus,
+    AccountInitialization,
+    AccountPasswordDigest,
+    AccountProfileChanges,
+)
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     PasswordLoginCompletion,
 )
 
 
-def _persist_account(session: Session) -> Account:
-    account = Account(name="Original", email="account@example.com")
-    account.id = "account-1"
+def _persist_account(
+    session: Session,
+    *,
+    account_id: str = "account-1",
+    email: str = "account@example.com",
+) -> Account:
+    account = Account(name="Original", email=email)
+    account.id = account_id
     account.interface_language = "en-US"
     account.interface_theme = "light"
     account.timezone = "UTC"
@@ -305,3 +315,71 @@ def test_account_repository_updates_email_and_removes_integrations_atomically(
     assert persisted.email == "new@example.com"
     assert persisted.normalized_email == "new@example.com"
     assert sqlite_session.get(AccountIntegrate, integration_id) is None
+
+
+def test_account_repository_rejects_case_variant_of_another_account_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    _persist_account(sqlite_session, account_id="account-2", email="Taken@Example.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="taken@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Account, "account-1")
+    assert persisted is not None
+    assert persisted.email == "account@example.com"
+
+
+def test_account_repository_rejects_unchanged_email_without_removing_integrations(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    integration = AccountIntegrate(
+        account_id="account-1",
+        provider="google",
+        open_id="google-user",
+        encrypted_token="encrypted-token",
+    )
+    sqlite_session.add(integration)
+    sqlite_session.commit()
+    integration_id = integration.id
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="account@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
+    sqlite_session.expire_all()
+    assert sqlite_session.get(AccountIntegrate, integration_id) is not None
+
+
+def test_account_repository_allows_changing_only_the_current_accounts_email_case(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session, email="Account@Example.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="account@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.UPDATED
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Account, "account-1")
+    assert persisted is not None
+    assert persisted.email == "account@example.com"

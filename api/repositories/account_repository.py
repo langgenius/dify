@@ -2,7 +2,7 @@
 
 from typing import override
 
-from sqlalchemy import case, delete, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -189,7 +189,14 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 return AccountEmailResetResult(status=AccountEmailResetStatus.ACCOUNT_NOT_FOUND)
             if account.email.lower() != expected_old_email.lower():
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_CHANGED)
-            if session.scalar(select(Account.id).where(Account.email == new_email).limit(1)) is not None:
+            if account.email == new_email:
+                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
+            duplicate_stmt = (
+                select(Account.id)
+                .where(func.lower(Account.email) == new_email.lower(), Account.id != account_id)
+                .limit(1)
+            )
+            if session.scalar(duplicate_stmt) is not None:
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
 
             account.email = new_email
