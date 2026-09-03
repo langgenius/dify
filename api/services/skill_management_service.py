@@ -3747,14 +3747,19 @@ class SkillManagementService:
 
     @staticmethod
     def _strip_single_root(paths: list[str]) -> dict[str, str]:
-        if not paths:
-            return {}
-        first_segments = {path.split("/", 1)[0] for path in paths if "/" in path}
-        root = next(iter(first_segments)) if len(first_segments) == 1 else None
-        if root is None or f"{root}/{_SKILL_MD}" not in paths or _SKILL_MD in paths:
+        if not paths or _SKILL_MD in paths:
             return {path: path for path in paths}
-        stripped = {path: path.removeprefix(f"{root}/") for path in paths}
-        return stripped
+        # Identify the root by the unique top-level `<root>/SKILL.md`, rather than
+        # requiring every path to share one first segment: tools like macOS Finder's
+        # "Compress" add a sibling `__MACOSX/` metadata folder that must not defeat
+        # stripping of the real skill folder.
+        skill_md_roots = {
+            path.split("/", 1)[0] for path in paths if path.count("/") == 1 and path.endswith(f"/{_SKILL_MD}")
+        }
+        if len(skill_md_roots) != 1:
+            return {path: path for path in paths}
+        root = next(iter(skill_md_roots))
+        return {path: path.removeprefix(f"{root}/") for path in paths}
 
     def _draft_payload_from_zip(
         self,
