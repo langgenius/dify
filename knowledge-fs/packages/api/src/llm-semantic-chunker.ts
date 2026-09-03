@@ -537,7 +537,9 @@ export function createLlmSemanticChunker({
           }
           input.signal?.throwIfAborted();
           if (!completion) {
-            throw new Error("LLM semantic chunking provider returned no completion");
+            throw new LlmSemanticChunkingOutputError(
+              "LLM semantic chunking provider returned no completion",
+            );
           }
           const resolvedCompletion = completion;
           const completionFingerprint = llmSemanticCompletionFingerprint({
@@ -2519,7 +2521,9 @@ async function collectProviderCompletion({
     throw new Error("LLM semantic chunking provider ended without a terminal event");
   }
   if (!text.trim()) {
-    throw new Error("LLM semantic chunking provider returned an empty response");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking provider returned an empty response",
+    );
   }
   const finishReason = terminalStringField(terminal.finishReason, "finishReason");
   const actualModel = terminalMetadataStringField(terminal.metadata, "model");
@@ -2652,20 +2656,41 @@ function parseSemanticChunkingOutput(text: string): LlmSemanticChunkingOutput {
     const start = trimmed.indexOf("{");
     const end = trimmed.lastIndexOf("}");
     if (start < 0 || end <= start) {
-      throw new Error("LLM semantic chunking provider returned non-JSON output");
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking provider returned non-JSON output",
+      );
     }
     try {
       parsed = JSON.parse(trimmed.slice(start, end + 1));
     } catch (error) {
-      throw new Error("LLM semantic chunking provider returned invalid JSON", { cause: error });
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking provider returned invalid JSON",
+        { cause: error },
+      );
     }
   }
   try {
     return LlmSemanticChunkingOutputSchema.parse(parsed);
   } catch (error) {
-    throw new Error("LLM semantic chunking provider returned an invalid response schema", {
-      cause: error,
-    });
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking provider returned an invalid response schema",
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * The reasoning model answered, but not with usable chunking output. Carrying a public code keeps
+ * the durable failure specific ("the model returned an unusable response") instead of the generic
+ * document-processing bucket; the provider text itself is never persisted.
+ */
+export class LlmSemanticChunkingOutputError extends Error {
+  readonly code = "MODEL_RUNTIME_RESPONSE_INVALID";
+  readonly retryable = false;
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "LlmSemanticChunkingOutputError";
   }
 }
 

@@ -9,10 +9,14 @@ import {
 import { DocumentCompilationCandidateSnapshotError } from "./document-compilation-candidate-runtime";
 import {
   type DocumentCompilationExecutionContext,
+  DocumentCompilationLeaseLostError,
   DocumentCompilationProcessingError,
   createDocumentCompilationRuntime,
   defaultDocumentCompilationErrorClassifier,
 } from "./document-compilation-runtime";
+import { DocumentPdfRenderError } from "./document-pdf-rasterizer";
+import { InvalidKnowledgeSpaceEmbeddingProfileError } from "./knowledge-space-embedding-resolver";
+import { LlmSemanticChunkingOutputError } from "./llm-semantic-chunker";
 
 const attemptId = "018f0d60-7a49-7cc2-9c1b-5b36f18fa101";
 const secondAttemptId = "018f0d60-7a49-7cc2-9c1b-5b36f18fa102";
@@ -147,6 +151,67 @@ describe("createDocumentCompilationRuntime", () => {
     expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
       code: expectedCode,
       retryable,
+    });
+  });
+
+  it("keeps coded non-retryable model failures specific instead of the generic bucket", () => {
+    const error = Object.assign(new Error("model rejected the prompt"), {
+      code: "dify_model_runtime_input",
+      retryable: false,
+    });
+
+    expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+      code: "MODEL_RUNTIME_FAILED",
+      retryable: false,
+    });
+  });
+
+  it.each([
+    [
+      new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking provider returned an invalid response schema",
+      ),
+      "MODEL_RUNTIME_RESPONSE_INVALID",
+      false,
+    ],
+    [
+      new InvalidKnowledgeSpaceEmbeddingProfileError("observed dimension 1024 expected 1536"),
+      "EMBEDDING_DIMENSION_INVALID",
+      false,
+    ],
+    [
+      new DocumentPdfRenderError("pdftoppm exited with code 1"),
+      "DOCUMENT_PDF_RENDER_FAILED",
+      false,
+    ],
+    [new DocumentCompilationLeaseLostError(), "DOCUMENT_COMPILATION_LEASE_LOST", true],
+    [
+      Object.assign(new Error("Structured parser unsupported file type"), {
+        code: "document_parser_unsupported_type",
+        retryable: false,
+      }),
+      "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+      false,
+    ],
+  ] as const)(
+    "classifies %s by its public code so the console can say what went wrong",
+    (error, expectedCode, retryable) => {
+      expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+        code: expectedCode,
+        retryable,
+      });
+      expect(JSON.stringify(defaultDocumentCompilationErrorClassifier(error))).not.toContain(
+        "pdftoppm",
+      );
+    },
+  );
+
+  it("derives retryability from the catalog when a coded error does not state it", () => {
+    const error = Object.assign(new Error("rate limited"), { code: "provider_rate_limited" });
+
+    expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+      code: "DOCUMENT_PARSER_RATE_LIMITED",
+      retryable: true,
     });
   });
 

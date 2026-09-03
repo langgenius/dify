@@ -2826,4 +2826,66 @@ describe('RetrievalTestPage', () => {
       within(record).getByRole('img', { name: 'dataset.newKnowledge.retrievalTest.queryImages' }),
     ).toHaveTextContent('2')
   })
+
+  it('does not offer to flag a trace that already has an unresolved bad case', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        open_bad_case_id: 'bad-case-open',
+        profile: {},
+        query: 'Why did retrieval miss the refund exception?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    renderPage({ searchParams: '?trace=trace-1' })
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.retrievalTest.savedBadCase'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.viewInQuality' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.retrievalTest.makeBadCase' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('treats a conflict on flagging as the trace already being an open bad case', async () => {
+    apiMock.createBadCase.mockRejectedValueOnce(new Response('', { status: 409 }))
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'Why did retrieval miss the refund exception?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?trace=trace-1' })
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.makeBadCase' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.reasonValues.lowScore',
+      }),
+    )
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.retrievalTest.savedBadCase'),
+    ).toBeInTheDocument()
+    expect(apiMock.refetchTraces).toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.retrievalTest.makeBadCase' }),
+    ).not.toBeInTheDocument()
+  })
 })

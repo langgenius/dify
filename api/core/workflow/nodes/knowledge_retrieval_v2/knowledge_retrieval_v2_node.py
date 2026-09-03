@@ -195,6 +195,10 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             query = self._resolve_query()
             run_context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             query_images, query_image_inputs = self._resolve_query_images(run_context)
+            if not query and not query_images:
+                raise KnowledgeFSRetrievalConfigurationError(
+                    "KnowledgeFS retrieval requires a query text or at least one query image"
+                )
             self._ensure_draft_bindings(run_context)
             filters, automatic_outcome = self._resolved_retrieval_filters(run_context=run_context, query=query)
             if automatic_outcome is not None:
@@ -255,12 +259,17 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         }
 
     def _resolve_query(self) -> str:
-        variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
+        """Return the bound query text, or an empty string when the node relies on query images."""
+
+        selector = self._node_data.query_variable_selector
+        if not selector:
+            return ""
+        variable = self.graph_runtime_state.variable_pool.get(selector)
+        if variable is None:
+            return ""
         if not isinstance(variable, StringSegment):
             raise KnowledgeFSRetrievalConfigurationError("KnowledgeFS query variable must be a string")
         query = variable.value.strip()
-        if not query:
-            raise KnowledgeFSRetrievalConfigurationError("KnowledgeFS query variable must not be empty")
         if len(query) > 16_000:
             raise KnowledgeFSRetrievalConfigurationError(
                 "KnowledgeFS query variable must contain at most 16000 characters"
@@ -445,6 +454,14 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         filters = self._node_data.metadata_filters.model_copy(deep=True) if self._node_data.metadata_filters else None
         mode = self._node_data.metadata_filtering_mode
         if mode == "automatic":
+            if not query:
+                # Condition extraction is text-only; an image-only query has nothing to extract from.
+                return filters, KnowledgeFSAutomaticMetadataFilterOutcome(
+                    conditions=[],
+                    usage=LLMUsage.empty_usage(),
+                    applied=False,
+                    reason="empty_query",
+                )
             outcome = self._resolve_automatic_metadata_filter(run_context=run_context, query=query)
             if not outcome.conditions:
                 return filters, outcome
@@ -610,6 +627,11 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 "top_k": self._node_data.top_n,
             }
 
+        if not query:
+            # Rerankers score documents against text. An image-only query keeps each space's own
+            # profile-defined scores and merges the balanced pool on those instead.
+            return self._merge_without_rerank(candidates)
+
         model_manager = self._rerank_model_manager or ModelManager.for_tenant(tenant_id=tenant_id)
         selection = self._node_data.reranking_model
         try:
@@ -674,6 +696,44 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             "top_k": self._node_data.top_n,
         }
 
+    def _merge_without_rerank(
+        self,
+        candidates: Sequence[_WorkflowRerankCandidate],
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        threshold = self._node_data.score_threshold
+        ranked = [
+            (candidate.item.score, candidate)
+            for candidate in candidates
+            if threshold is None or candidate.item.score >= threshold
+        ]
+        ranked.sort(
+            key=lambda row: (
+                -row[0],
+                row[1].space_index,
+                row[1].item_index,
+                row[1].item.node_id,
+            )
+        )
+        ranked = ranked[: self._node_data.top_n]
+        output = [
+            self._output_item(
+                control_space_id=candidate.control_space_id,
+                item=candidate.item,
+                score=score,
+            )
+            for score, candidate in ranked
+        ]
+        return output, {
+            "applied": False,
+            "candidate_count": len(candidates),
+            "duration_ms": 0.0,
+            "output_count": len(output),
+            "reason": "image_only_query",
+            "score_threshold": threshold,
+            "source": "custom" if self._node_data.reranking_model else "system-default",
+            "top_k": self._node_data.top_n,
+        }
+
     def _balanced_candidate_pool(
         self,
         responses: Sequence[tuple[str, KnowledgeFSRetrievalTestResponse]],
@@ -734,6 +794,9 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
     ) -> None:
         """Best-effort quality capture after every selected space returned no evidence."""
 
+        if not query:
+            # Failed-query triage is text-based; an image-only miss has no query to capture.
+            return
         for control_space_id, response in responses:
             try:
                 enqueue_workflow_failed_retrieval_capture(
@@ -836,7 +899,9 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         node_data: KnowledgeRetrievalV2NodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
-        mapping: dict[str, Sequence[str]] = {f"{node_id}.query": node_data.query_variable_selector}
+        mapping: dict[str, Sequence[str]] = {}
+        if node_data.query_variable_selector:
+            mapping[f"{node_id}.query"] = node_data.query_variable_selector
         if node_data.query_attachment_selector:
             mapping[f"{node_id}.queryAttachment"] = node_data.query_attachment_selector
         return mapping

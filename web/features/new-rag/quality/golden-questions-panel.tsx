@@ -371,7 +371,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                       question: item.question,
                     })}
                   />
-                  <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[200px]">
+                  <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
                     <DropdownMenuItem className="gap-2 px-3" onClick={() => void openEdit(item)}>
                       <span aria-hidden className="i-ri-edit-line size-4" />
                       {t(($) => $['newKnowledge.qualityPage.edit'])}

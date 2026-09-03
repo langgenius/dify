@@ -885,6 +885,7 @@
   "nodes.knowledgeRetrievalV2.profile.rerank": "rerank",
   "nodes.knowledgeRetrievalV2.profile.topK": "top K",
   "nodes.knowledgeRetrievalV2.profileManagedBySpace": "Retrieval profiles are managed in each KnowledgeFS space",
+  "nodes.knowledgeRetrievalV2.queryInputRequired": "Proporcione un texto de consulta o una imagen de consulta.",
   "nodes.knowledgeRetrievalV2.queryText": "Query text",
   "nodes.knowledgeRetrievalV2.spaceSearch": "Search KnowledgeFS spaces",
   "nodes.knowledgeRetrievalV2.topN": "Maximum merged results",

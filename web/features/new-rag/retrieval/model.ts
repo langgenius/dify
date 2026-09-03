@@ -69,6 +69,8 @@ export type RetrievalTestRecord =
       id: string
       kind: 'trace'
       mode: RetrievalTestMode
+      /** Bad case already filed for this trace that nobody has fixed or dismissed yet. */
+      openBadCaseId?: string
       query: string
       queryImages?: RetrievalQueryImage[]
       resultCount?: number
@@ -388,6 +390,7 @@ export function retrievalTestRecords(
         id: trace.id,
         kind: 'trace',
         mode: trace.mode === 'research' || trace.mode === 'deep' ? trace.mode : 'fast',
+        ...(trace.open_bad_case_id ? { openBadCaseId: trace.open_bad_case_id } : {}),
         query: trace.query,
         ...(trace.query_images?.length
           ? { queryImages: retrievalQueryImages(trace.query_images) }

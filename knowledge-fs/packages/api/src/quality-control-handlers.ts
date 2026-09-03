@@ -30,6 +30,7 @@ import {
   freezeQualityRuntimeSnapshot,
 } from "./quality-control";
 import {
+  QualityBadCaseAlreadyOpenError,
   QualityControlIdempotencyConflictError,
   QualityControlRevisionConflictError,
 } from "./quality-control-database-repository";
@@ -258,6 +259,9 @@ export function registerQualityControlHandlers({
       });
       return context.json(publicBadCase(badCase), 201);
     } catch (error) {
+      if (error instanceof QualityBadCaseAlreadyOpenError) {
+        return context.json({ code: QUALITY_BAD_CASE_ALREADY_OPEN, error: error.message }, 409);
+      }
       if (error instanceof KnowledgeSpaceAccessError) {
         return context.json({ error: publicQualityError(error) }, 403);
       }
@@ -971,6 +975,8 @@ async function issueReplayPermission(
     requestedBySubjectId: scope.subject.subjectId,
   };
 }
+
+export const QUALITY_BAD_CASE_ALREADY_OPEN = "QUALITY_BAD_CASE_ALREADY_OPEN";
 
 function publicQualityError(error: unknown) {
   if (error instanceof QualityControlRevisionConflictError) return error.message;

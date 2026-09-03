@@ -508,6 +508,8 @@ export const retrievalResultFactsAtom = atom((get) => {
     selectedHasNoResults: selected?.kind === 'local' && localRun?.status === 'no-results',
     selectedIsLoading,
     selectedMode,
+    selectedOpenBadCaseId:
+      selectedRecord?.kind === 'trace' ? selectedRecord.openBadCaseId : undefined,
     selectedQuery,
     selectedQueryImages: get(retrievalSelectedQueryImagesAtom),
     selectedResearchActive,

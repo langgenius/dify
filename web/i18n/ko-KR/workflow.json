@@ -885,6 +885,7 @@
   "nodes.knowledgeRetrievalV2.profile.rerank": "rerank",
   "nodes.knowledgeRetrievalV2.profile.topK": "top K",
   "nodes.knowledgeRetrievalV2.profileManagedBySpace": "Retrieval profiles are managed in each KnowledgeFS space",
+  "nodes.knowledgeRetrievalV2.queryInputRequired": "쿼리 텍스트 또는 쿼리 이미지 중 하나를 입력하세요",
   "nodes.knowledgeRetrievalV2.queryText": "Query text",
   "nodes.knowledgeRetrievalV2.spaceSearch": "Search KnowledgeFS spaces",
   "nodes.knowledgeRetrievalV2.topN": "Maximum merged results",

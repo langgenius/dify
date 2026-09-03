@@ -85,6 +85,7 @@ export interface ParserAdapter {
 }
 
 export type ProviderErrorCode =
+  | "document_parser_unsupported_type"
   | "provider_input"
   | "provider_rate_limited"
   | "provider_request_failed"
@@ -129,6 +130,14 @@ export class ProviderInputError extends ProviderError {
   constructor(message: string, options: { readonly cause?: unknown } = {}) {
     super(message, { ...options, code: "provider_input" });
     this.name = "ProviderInputError";
+  }
+}
+
+/** The file is readable but its format is not one the configured parser can handle. */
+export class ProviderUnsupportedFileTypeError extends ProviderError {
+  constructor(message: string, options: { readonly cause?: unknown } = {}) {
+    super(message, { ...options, code: "document_parser_unsupported_type", retryable: false });
+    this.name = "ProviderUnsupportedFileTypeError";
   }
 }
 
@@ -399,7 +408,7 @@ export function createNativeStructuredDataParser(
       const format = structuredDataFormat(input);
 
       if (!format) {
-        throw new Error("Structured parser unsupported file type");
+        throw new ProviderUnsupportedFileTypeError("Structured parser unsupported file type");
       }
 
       const elements = structuredDataElements(format, text, options.maxRows ?? defaultMaxRows);

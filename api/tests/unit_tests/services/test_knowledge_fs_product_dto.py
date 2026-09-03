@@ -704,6 +704,7 @@ def test_trace_response_translates_historical_retrieval_statistics() -> None:
             "durationMs": 1250,
             "id": "trace-1",
             "mode": "fast",
+            "openBadCaseId": "bad-case-1",
             "profile": {},
             "query": "How does retrieval work?",
             "resultCount": 4,
@@ -714,6 +715,7 @@ def test_trace_response_translates_historical_retrieval_statistics() -> None:
 
     assert trace.duration_ms == 1250
     assert trace.result_count == 4
+    assert trace.open_bad_case_id == "bad-case-1"
 
 
 def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:

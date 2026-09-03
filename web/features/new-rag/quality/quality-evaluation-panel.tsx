@@ -404,7 +404,7 @@ function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEv
       )}
       <p
         className={cn(
-          'system-sm-regular break-words whitespace-pre-wrap',
+          'system-sm-regular wrap-break-word whitespace-pre-wrap',
           evidence.available && evidence.text ? 'text-text-secondary' : 'text-text-quaternary',
         )}
       >

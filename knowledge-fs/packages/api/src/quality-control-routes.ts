@@ -44,6 +44,7 @@ export const QualityTraceSummarySchema = z
     finalScore: ScoreSchema,
     id: z.string().uuid(),
     mode: z.enum(["auto", "deep", "fast", "research"]),
+    openBadCaseId: z.string().uuid().optional(),
     profile: z.object({
       embeddingModel: z.string().optional(),
       embeddingVectorSpaceId: z.string().optional(),

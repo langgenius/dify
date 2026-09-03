@@ -10,6 +10,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient } from '@/service/client'
 import {
+  knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../../knowledge-fs-task-error'
@@ -150,6 +151,7 @@ export function DocumentTaskRow({
     task.errorCode ?? (task.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
   )
   const taskError = taskFailureMessageKey ? t(($) => $[taskFailureMessageKey]) : undefined
+  const taskErrorDetail = knowledgeFsTaskFailureDetail(task.failure, t)
   const recoveryPath = knowledgeFsTaskRecoveryPath(task.failure, knowledgeSpaceId)
   const recoveryLabel =
     task.failure?.action === 'configure_model'
@@ -208,6 +210,11 @@ export function DocumentTaskRow({
         {taskError && (
           <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
             {taskError}
+          </p>
+        )}
+        {taskError && taskErrorDetail && (
+          <p className="mt-0.5 system-2xs-regular wrap-break-word text-text-quaternary">
+            {taskErrorDetail}
           </p>
         )}
         {failedLifecycle === currentLifecycle && (

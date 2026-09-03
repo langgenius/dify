@@ -32,12 +32,28 @@ describe('knowledge-retrieval-v2/default', () => {
     expect(nodeDefault.defaultValue.mode).toBeUndefined()
   })
 
-  it('requires a query variable', () => {
-    const result = nodeDefault.checkValid(createPayload({ query_variable_selector: [] }), t)
-
-    expect(result).toEqual({
+  it('requires a query text or a query image variable, but not both', () => {
+    expect(
+      nodeDefault.checkValid(
+        createPayload({ query_variable_selector: [], query_attachment_selector: [] }),
+        t,
+      ),
+    ).toEqual({
       isValid: false,
-      errorMessage: 'errorMsg.fieldRequired',
+      errorMessage: 'nodes.knowledgeRetrievalV2.queryInputRequired',
+    })
+    expect(
+      nodeDefault.checkValid(
+        createPayload({
+          query_variable_selector: [],
+          query_attachment_selector: ['start', 'image'],
+        }),
+        t,
+      ),
+    ).toEqual({ isValid: true, errorMessage: '' })
+    expect(nodeDefault.checkValid(createPayload({ query_attachment_selector: [] }), t)).toEqual({
+      isValid: true,
+      errorMessage: '',
     })
   })
 

@@ -4123,6 +4123,124 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('dismisses a failed task from attention and restores it through undo', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              documentTitle: 'failed.pdf',
+              id: 'failed-task',
+              state: 'failed',
+            }),
+            task({ documentTitle: 'completed.pdf', id: 'completed-task', state: 'succeeded' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    await user.click(
+      within(panel).getByRole('button', {
+        name: /dataset\.newKnowledge\.dismissTask.*failed-task/,
+      }),
+    )
+
+    expect(within(panel).queryByText(/failed\.pdf/)).not.toBeInTheDocument()
+    expect(within(panel).getByText(/completed\.pdf/)).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.taskAttentionClear')).toBeInTheDocument()
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.taskDismissed', {
+      actionProps: expect.objectContaining({
+        children: 'dataset.newKnowledge.undoTaskDismissal',
+      }),
+    })
+
+    const toastOptions = toastMock.info.mock.calls.at(-1)?.[1]
+    act(() => toastOptions?.actionProps.onClick())
+
+    expect(within(panel).getByText(/failed\.pdf/)).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.taskAttentionErrorCount:{"count":1}'),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps a dismissed failed task hidden after the page remounts', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ documentTitle: 'failed.pdf', id: 'failed-task', state: 'failed' }),
+            task({ documentTitle: 'completed.pdf', id: 'completed-task', state: 'succeeded' }),
+          ],
+        },
+      ],
+    }
+
+    const firstRender = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: /dataset\.newKnowledge\.dismissTask.*failed-task/,
+      }),
+    )
+    firstRender.unmount()
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    expect(within(panel).queryByText(/failed\.pdf/)).not.toBeInTheDocument()
+    expect(within(panel).getByText(/completed\.pdf/)).toBeInTheDocument()
+  })
+
+  it('dismisses a completed task while keeping active tasks visible', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ documentTitle: 'completed.pdf', id: 'completed-task', state: 'succeeded' }),
+            task({ documentTitle: 'running.pdf', id: 'running-task', state: 'running' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.tasks/ }))
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    await user.click(
+      within(panel).getByRole('button', {
+        name: /dataset\.newKnowledge\.dismissTask.*completed-task/,
+      }),
+    )
+
+    expect(within(panel).queryByText(/completed\.pdf/)).not.toBeInTheDocument()
+    expect(within(panel).getByText(/running\.pdf/)).toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('button', {
+        name: /dataset\.newKnowledge\.dismissTask.*running-task/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows document, bulk re-index, and source tasks returned by the task list', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({})] }] }

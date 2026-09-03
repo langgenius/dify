@@ -104,7 +104,7 @@ export interface RerankDocumentsResult {
   model: string;
 }
 
-export type ProviderErrorCode = "provider_input" | "provider_response_invalid";
+export type ProviderErrorCode = "embedding_provider_input" | "embedding_provider_response_invalid";
 
 export class ProviderError extends Error {
   readonly code: ProviderErrorCode;
@@ -133,7 +133,7 @@ export class ProviderError extends Error {
 
 export class ProviderInputError extends ProviderError {
   constructor(message: string, options: { readonly cause?: unknown } = {}) {
-    super(message, { ...options, code: "provider_input" });
+    super(message, { ...options, code: "embedding_provider_input" });
     this.name = "ProviderInputError";
   }
 }
@@ -143,7 +143,7 @@ export class ProviderResponseError extends ProviderError {
     message: string,
     options: { readonly cause?: unknown; readonly status?: number } = {},
   ) {
-    super(message, { ...options, code: "provider_response_invalid" });
+    super(message, { ...options, code: "embedding_provider_response_invalid" });
     this.name = "ProviderResponseError";
   }
 }

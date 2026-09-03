@@ -183,7 +183,7 @@ export function KnowledgeUpgradeCard({
         </div>
       )}
       {failed && (
-        <div className="absolute inset-x-0 bottom-0 flex h-14 items-end justify-end gap-1 bg-gradient-to-b from-transparent to-components-card-bg p-2">
+        <div className="absolute inset-x-0 bottom-0 flex h-14 items-end justify-end gap-1 bg-linear-to-b from-transparent to-components-card-bg p-2">
           {canRetry && (
             <Button
               size="small"

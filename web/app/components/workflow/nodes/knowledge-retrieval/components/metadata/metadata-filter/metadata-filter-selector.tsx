@@ -67,7 +67,7 @@ const MetadataFilterSelector = ({
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        className="w-[280px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
           {visibleOptions.map((option) => (

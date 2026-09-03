@@ -497,6 +497,124 @@ def test_workflow_query_attachment_selector_is_part_of_the_variable_mapping() ->
     }
 
 
+def test_node_data_requires_a_query_text_or_a_query_image_variable() -> None:
+    image_only = KnowledgeRetrievalV2NodeData.model_validate(
+        {
+            "control_space_ids": ["space-a"],
+            "query_attachment_selector": ["start", "image"],
+            "title": "KnowledgeFS Retrieval",
+            "type": "knowledge-retrieval-v2",
+        }
+    )
+    assert image_only.query_variable_selector is None
+    assert image_only.query_attachment_selector == ["start", "image"]
+    assert KnowledgeRetrievalV2Node._extract_variable_selector_to_variable_mapping(
+        graph_config={}, node_id="node-1", node_data=image_only
+    ) == {"node-1.queryAttachment": ["start", "image"]}
+
+    text_only = KnowledgeRetrievalV2NodeData.model_validate(
+        {
+            "control_space_ids": ["space-a"],
+            "query_attachment_selector": [],
+            "query_variable_selector": ["start", "query"],
+            "title": "KnowledgeFS Retrieval",
+            "type": "knowledge-retrieval-v2",
+        }
+    )
+    assert text_only.query_attachment_selector is None
+
+    for selectors in (
+        {},
+        {"query_variable_selector": []},
+        {"query_variable_selector": [], "query_attachment_selector": []},
+    ):
+        with pytest.raises(ValidationError, match="query text or a query image"):
+            KnowledgeRetrievalV2NodeData.model_validate(
+                {
+                    "control_space_ids": ["space-a"],
+                    "title": "KnowledgeFS Retrieval",
+                    "type": "knowledge-retrieval-v2",
+                    **selectors,
+                }
+            )
+
+
+def test_image_only_query_retrieves_without_text_and_skips_the_text_reranker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_state = _runtime_state("")
+    runtime_state.variable_pool.add(
+        ["start", "image"],
+        FileSegment(
+            value=File(
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference="00000000-0000-4000-8000-000000000001",
+                filename="diagram.png",
+                mime_type="image/png",
+                size=12,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        node_module,
+        "issue_workflow_query_image_reference",
+        lambda **_kwargs: KnowledgeFSWorkflowQueryImageReference(
+            upload_file_id="00000000-0000-4000-8000-000000000001",
+            access_grant="short-lived-grant",
+            byte_size=12,
+            mime_type="image/png",
+        ),
+    )
+    service = RecordingCapabilityService(
+        {
+            "space-a": _response(mode="fast", score=0.6, space="a", text="A"),
+            "space-b": _response(mode="fast", score=0.9, space="b", text="B"),
+        }
+    )
+    rerank_model_manager = RecordingRerankModelManager()
+
+    result = _node(
+        service=service,
+        spaces=["space-a", "space-b"],
+        runtime_state=runtime_state,
+        node_data_overrides={
+            "metadata_filtering_mode": "automatic",
+            "query_attachment_selector": ["start", "image"],
+            "query_variable_selector": None,
+        },
+        rerank_model_manager=rerank_model_manager,
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.inputs["query"] == ""
+    assert result.inputs["query_images"] == [{"filename": "diagram.png", "mime_type": "image/png", "size": 12}]
+    for call in service.calls:
+        payload = call["payload"].model_dump(by_alias=True, exclude_none=True)  # type: ignore[attr-defined]
+        assert "query" not in payload or payload["query"] == ""
+        assert payload["queryImages"][0]["uploadFileId"] == "00000000-0000-4000-8000-000000000001"
+    # No text to rerank or to extract metadata conditions from: neither model is invoked.
+    assert rerank_model_manager.default_calls == []
+    assert rerank_model_manager.explicit_calls == []
+    metrics = result.outputs["metrics"].value
+    assert metrics["workflow_rerank"]["applied"] is False
+    assert metrics["workflow_rerank"]["reason"] == "image_only_query"
+    assert [item["metadata"]["score"] for item in result.outputs["result"].value] == [0.9, 0.6]
+
+
+def test_empty_query_without_images_fails_closed_as_a_configuration_error() -> None:
+    result = _node(
+        service=RecordingCapabilityService({"space-a": _response(mode="fast", score=0.8, space="a", text="A")}),
+        spaces=["space-a"],
+        runtime_state=_runtime_state("   "),
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "KnowledgeFSRetrievalConfigurationError"
+    assert result.error is not None
+    assert "query text or at least one query image" in result.error
+
+
 def test_manual_user_metadata_conditions_are_resolved_and_sent_with_legacy_filters() -> None:
     runtime_state = _runtime_state()
     runtime_state.variable_pool.add(["start", "department"], StringSegment(value="finance"))

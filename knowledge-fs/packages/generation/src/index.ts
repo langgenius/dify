@@ -1255,6 +1255,9 @@ export function createGenerationCache({
 }
 
 export class GenerationModelUnavailableError extends Error {
+  readonly code = "MODEL_RUNTIME_UNAVAILABLE";
+  readonly retryable = true;
+
   constructor(message = "Generation model is unavailable") {
     super(message);
     this.name = "GenerationModelUnavailableError";
