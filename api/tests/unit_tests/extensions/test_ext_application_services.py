@@ -23,6 +23,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
 from services.account_activation_adapters import (
@@ -53,6 +54,7 @@ from services.enterprise.enterprise_service import WebAppSettings
 from services.entities.mail_entities import InnerMailMessage
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -235,6 +237,25 @@ def test_build_application_services_wires_workflow_run_archives(
     assert workflow_run_archives._tasks._redis is redis
     assert workflow_run_archives._dispatcher is ext_application_services.dispatch_workflow_run_archive_download_task
     assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
+
+
+def test_build_application_services_wires_human_input_file_uploads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    human_input_file_uploads = services.human_input_file_uploads
+    assert isinstance(human_input_file_uploads, HumanInputFileUploadService)
+    assert isinstance(human_input_file_uploads._uploads, SQLAlchemyHumanInputFileUploadRepository)
+    assert human_input_file_uploads._uploads._session_factory is sqlite_session_factory
+    assert human_input_file_uploads._remote_files is services.remote_files
+    assert human_input_file_uploads._files is services.files
+    assert services.remote_files._files is services.files
 
 
 def test_build_application_services_wires_app_site_boundary(
