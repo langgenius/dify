@@ -15,18 +15,17 @@ type AccessPointCardProps = {
   icon: ReactNode | string
   status: AccessPointStatus
   title: string
-  busy?: boolean
   className?: string
   highlighted?: boolean
   onEnabledChange?: (enabled: boolean) => void
   showStatus?: boolean
   switchDisabled?: boolean
   switchLabel?: string
+  switchLoading?: boolean
 }
 
 export function AccessPointCard({
   actions,
-  busy = false,
   children,
   className,
   description,
@@ -37,6 +36,7 @@ export function AccessPointCard({
   status,
   switchDisabled = false,
   switchLabel,
+  switchLoading = false,
   title,
 }: AccessPointCardProps) {
   const { t } = useTranslation()
@@ -99,7 +99,7 @@ export function AccessPointCard({
               <Switch
                 checked={isEnabled}
                 disabled={switchDisabled}
-                loading={busy}
+                loading={switchLoading}
                 aria-label={switchLabel || title}
                 onCheckedChange={onEnabledChange}
               />

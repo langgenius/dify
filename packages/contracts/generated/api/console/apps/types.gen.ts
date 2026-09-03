@@ -1207,6 +1207,7 @@ export type ApiKeyList = {
 
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string

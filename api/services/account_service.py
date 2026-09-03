@@ -48,6 +48,13 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.account_email import normalize_email
+from services.account_forgot_password_service import (
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+    FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT,
+    FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX,
+)
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
@@ -79,8 +86,8 @@ from services.errors.account import (
     SeatsLimitExceededError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
@@ -155,7 +162,11 @@ class AccountService:
     CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
 
-    reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
+    reset_password_rate_limiter = RateLimiter(
+        prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+        max_attempts=FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+        time_window=FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+    )
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
@@ -163,7 +174,6 @@ class AccountService:
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
 
     LOGIN_MAX_ERROR_LIMITS = 5
-    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
 
@@ -446,7 +456,7 @@ class AccountService:
         session: Session,
     ) -> Account:
         """Create an account, preferring explicit user timezone over language-derived defaults."""
-        if not FeatureService.get_system_features().is_allow_register and not is_setup:
+        if not SystemFeatureService.is_registration_allowed() and not is_setup:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
@@ -458,7 +468,7 @@ class AccountService:
         # account into another workspace does not pass through here and costs no seat.
         # get_license() carries the full license payload that server-side enforcement needs;
         # the public system-features endpoint exposes only license status.
-        if not FeatureService.get_license().seats.is_available():
+        if not SystemFeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
@@ -1001,7 +1011,7 @@ class AccountService:
     @staticmethod
     @redis_fallback(default_return=None)
     def add_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             count = 0
@@ -1011,20 +1021,20 @@ class AccountService:
     @staticmethod
     @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             return False
 
         count = int(count)
-        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
+        if count > FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT:
             return True
         return False
 
     @staticmethod
     @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         redis_client.delete(key)
 
     @staticmethod
@@ -1139,7 +1149,7 @@ class TenantService:
         session: Session,
     ) -> Tenant:
         """Create tenant"""
-        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
+        if not SystemFeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -1202,10 +1212,10 @@ class TenantService:
         owner. It persists the legacy membership before creating the matching
         RBAC role binding, then makes the workspace current for the account.
         """
-        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
+        if not SystemFeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_license().workspaces
+        workspaces = SystemFeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -1938,9 +1948,9 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
-                FeatureService.is_workspace_creation_allowed()
+                SystemFeatureService.is_workspace_creation_allowed()
                 and create_workspace_required
-                and FeatureService.get_license().workspaces.is_available()
+                and SystemFeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

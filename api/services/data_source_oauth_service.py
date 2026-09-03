@@ -92,7 +92,7 @@ class DataSourceOAuthService:
         if not access_token:
             raise DataSourceOAuthConfigurationError("Internal secret is not set")
 
-        workspace_id = self._require_active_workspace(context)
+        workspace_id = context.active_workspace_id
         authorization = self._provider_gateway.authorize_internal(access_token, workspace_id)
         self._bindings.upsert_authorization(
             workspace_id=workspace_id,
@@ -112,7 +112,7 @@ class DataSourceOAuthService:
         if not code:
             raise InvalidDataSourceOAuthCodeError("Invalid code")
 
-        workspace_id = self._require_active_workspace(context)
+        workspace_id = context.active_workspace_id
         authorization = self._provider_gateway.authorize(code)
         self._bindings.upsert_authorization(
             workspace_id=workspace_id,
@@ -121,7 +121,7 @@ class DataSourceOAuthService:
         )
 
     def sync(self, context: RequestContext, *, binding_id: str) -> None:
-        workspace_id = self._require_active_workspace(context)
+        workspace_id = context.active_workspace_id
         binding = self._bindings.get_enabled(
             workspace_id=workspace_id,
             provider=self._provider_name,
@@ -139,10 +139,3 @@ class DataSourceOAuthService:
         )
         if not updated:
             raise DataSourceOAuthError("Data source binding not found")
-
-    @staticmethod
-    def _require_active_workspace(context: RequestContext) -> str:
-        workspace_id = context.active_workspace_id
-        if workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return workspace_id

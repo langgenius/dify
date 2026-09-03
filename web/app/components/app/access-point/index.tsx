@@ -33,15 +33,17 @@ type AccessPointProps = {
 }
 
 type AccessPointContentProps = AccessPointProps & {
-  canEdit: boolean
-  canManage: boolean
+  canDeploy: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   showEnvironmentTabs: boolean
 }
 
 function AccessPointContent({
   appId,
-  canEdit,
-  canManage,
+  canDeploy,
+  canManageAccessPoint,
+  canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
   const { t } = useTranslation()
@@ -108,14 +110,17 @@ function AccessPointContent({
         {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
           <BuiltInAccessPoints
             appId={appId}
+            canDeploy={canDeploy}
+            canManageAccessPoint={canManageAccessPoint}
+            canReleaseAndVersion={canReleaseAndVersion}
             highlightedAccessPoint={selectedHighlightedAccessPoint}
           />
         ) : (
           <DeployedEnvironmentAccessPoints
             appId={appId}
             environmentId={selectedEnvironment}
-            canEdit={canEdit}
-            canManage={canManage}
+            canManageAccessPoint={canManageAccessPoint}
+            canReleaseAndVersion={canReleaseAndVersion}
             highlightedAccessPoint={selectedHighlightedAccessPoint}
           />
         )}
@@ -136,14 +141,16 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
-  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canDeploy
+  const showEnvironmentTabs =
+    appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canViewAccessPoint
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
       <AccessPointContent
         appId={appId}
-        canEdit={capabilities.canEdit}
-        canManage={capabilities.canDeploy}
+        canDeploy={capabilities.canDeploy}
+        canManageAccessPoint={capabilities.canManageAccessPoint}
+        canReleaseAndVersion={capabilities.canReleaseAndVersion}
         showEnvironmentTabs={showEnvironmentTabs}
       />
     </AccessPointStateBoundary>
