@@ -101,7 +101,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           href={docLink('/api-reference/guides/agent')}
           target="_blank"
           rel="noreferrer"
-          aria-label={t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
           className={buttonVariants({ variant: 'secondary', size: 'medium' })}
         >
           <span aria-hidden className="i-ri-book-open-line size-4" />

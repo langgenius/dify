@@ -1300,15 +1300,6 @@ export const lintConfig = {
       },
     },
     {
-      files: [
-        'packages/dify-ui/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-        'packages/dify-ui/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-      ],
-      rules: {
-        'eslint-react/purity': 'off',
-      },
-    },
-    {
       files: ['cli/bin/**'],
       rules: {
         'antfu/no-top-level-await': 'off',
