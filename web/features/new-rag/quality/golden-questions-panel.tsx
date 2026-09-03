@@ -96,9 +96,11 @@ function GoldenAnnotation({ annotation }: { annotation: string }) {
 
 function GoldenQuestionEditorDialog({
   onOpenChange,
+  open,
   session,
 }: {
-  onOpenChange: (session: GoldenQuestionDialogState | undefined) => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
   session?: GoldenQuestionDialogState
 }) {
   const { t } = useTranslation('knowledgeSpace')
@@ -116,7 +118,7 @@ function GoldenQuestionEditorDialog({
 
   const close = () => {
     setError(undefined)
-    onOpenChange(undefined)
+    onOpenChange(false)
   }
   const submit = async (draft: GoldenQuestionDraft) => {
     if (!session) return
@@ -157,7 +159,7 @@ function GoldenQuestionEditorDialog({
       initialValue={session?.value ?? emptyGoldenQuestionDraft}
       knowledgeSpaceId={knowledgeSpaceId}
       mode={session?.mode ?? 'create'}
-      open={Boolean(session)}
+      open={open}
       pending={submitting || createMutation.isPending || updateMutation.isPending}
       sessionKey={session?.mode === 'edit' ? session.id : 'create'}
       onOpenChange={(open) => {
@@ -179,6 +181,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
   const [deleteIds, setDeleteIds] = useState<Set<string>>()
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [dialog, setDialog] = useState<GoldenQuestionDialogState>()
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const queryOptions =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.infiniteOptions({
@@ -201,11 +204,13 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
   const partiallySelected = selected.size > 0 && !allSelected
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: queryOptions.queryKey })
-  const openCreate = () =>
+  const openCreate = () => {
     setDialog({
       mode: 'create',
       value: emptyGoldenQuestionDraft,
     })
+    setDialogOpen(true)
+  }
   const openEdit = async (item: KnowledgeFsGoldenQuestionResponse) => {
     const expectedEvidenceIds = item.expected_evidence_ids ?? []
     const value: GoldenQuestionDraft = {
@@ -216,6 +221,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       tags: item.tags,
     }
     setDialog({ evidenceOptions: [], id: item.id, mode: 'edit', value })
+    setDialogOpen(true)
     if (expectedEvidenceIds.length === 0) return
     const evidenceOptions =
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches
@@ -458,7 +464,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         </div>
       )}
 
-      <GoldenQuestionEditorDialog session={dialog} onOpenChange={setDialog} />
+      <GoldenQuestionEditorDialog open={dialogOpen} session={dialog} onOpenChange={setDialogOpen} />
       <GoldenQuestionImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <AlertDialog
         open={Boolean(deleteIds)}
