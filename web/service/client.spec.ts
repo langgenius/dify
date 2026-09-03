@@ -584,7 +584,7 @@ describe('consoleQuery education defaults', () => {
     })
 
     await expect(
-      queryClient.fetchQuery(consoleQuery.account.education.get.queryOptions()),
+      queryClient.query(consoleQuery.account.education.get.queryOptions()),
     ).rejects.toThrow('education status failed')
 
     expect(request).toHaveBeenCalledTimes(1)
@@ -1599,6 +1599,70 @@ describe('consoleQuery Web app access mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.recent.get.key(),
     })
+  })
+})
+
+describe('consoleQuery App Instance mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should bypass a fresh list cache while waiting for a created app instance', async () => {
+    const appInstance = {
+      id: 'app-instance-1',
+      tenantId: 'tenant-1',
+      displayName: 'Production App',
+      description: '',
+      createdBy: { id: 'user-1', displayName: 'Ada' },
+      updatedBy: { id: 'user-1', displayName: 'Ada' },
+      createdAt: '2026-09-03T00:00:00Z',
+      updatedAt: '2026-09-03T00:00:00Z',
+    }
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ appInstances: [], pagination: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ appInstances: [appInstance], pagination: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+      },
+    })
+    const listInput = {
+      query: {
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
+    }
+    const listOptions = consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+      input: listInput,
+    })
+    queryClient.setQueryData(listOptions.queryKey, {
+      appInstances: [],
+      pagination: {},
+    })
+
+    const onSuccess =
+      consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions().onSuccess
+    const completion = onSuccess?.(
+      { appInstance },
+      { body: { displayName: appInstance.displayName } },
+      undefined,
+      createMutationContext(queryClient),
+    )
+    await completion
+
+    expect(request).toHaveBeenCalledTimes(2)
   })
 })
 
