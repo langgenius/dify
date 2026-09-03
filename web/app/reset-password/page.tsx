@@ -1,6 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -18,14 +18,13 @@ export default function CheckCode() {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const pageTitle = t(($) => $.resetPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const handleGetEMailVerificationCode = async () => {
+  const handleGetEMailVerificationCode = async (email: string) => {
     if (loading) return
     try {
       setLoading(true)
@@ -61,9 +60,9 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <Form
-        onFormSubmit={() => {
-          void handleGetEMailVerificationCode()
+      <Form<{ email: string }>
+        onFormSubmit={({ email }) => {
+          void handleGetEMailVerificationCode(email)
         }}
       >
         <Field
@@ -82,13 +81,17 @@ export default function CheckCode() {
             required
             autoComplete="email"
             spellCheck={false}
-            value={email}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-            onValueChange={setEmail}
           />
-          <FieldError>
-            {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
-          </FieldError>
+          <FieldValidity>
+            {({ validity }) => (
+              <FieldError>
+                {t(($) => $[validity.valueMissing ? 'error.emailEmpty' : 'error.emailInValid'], {
+                  ns: 'login',
+                })}
+              </FieldError>
+            )}
+          </FieldValidity>
         </Field>
         <Button type="submit" loading={loading} variant="primary" className="w-full">
           {t(($) => $.sendVerificationCode, { ns: 'login' })}
