@@ -36,25 +36,26 @@ Use the smallest boundary that includes the behavior owner and proves the produc
 - Test hooks directly only when the hook itself exposes a reusable public contract. Otherwise, exercise the hook through its owning component or feature.
 - Use React Testing Library for component and feature behavior visible through the DOM or external side effects.
 - Use integration tests for behavior that crosses meaningful module boundaries.
-- Use a real browser only when the contract depends on rendering-engine or native-input behavior that `happy-dom` and Testing Library cannot represent faithfully.
+- Use the `browser` project only for browser-owned behavior that `happy-dom` cannot represent faithfully.
 - Follow the [Dify UI testing contract] for the Storybook and Vitest boundary of Dify UI primitives.
 
 Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
 
 ### Browser Mode Admission
 
-`happy-dom` is the default choice for tests under `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on a browser's rendering engine. This split follows [Vitest test projects] and [Why Browser Mode].
+`happy-dom` is the default choice for tests under `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on browser-owned behavior. This split follows [Vitest test projects] and [Why Browser Mode].
 
-React Testing Library with `@testing-library/user-event` remains appropriate for the browser-like DOM interactions that `user-event` deliberately simulates. For example, use `user.tab()` in the `unit` project to verify basic sequential focus order among semantic controls when DOM order, disabled state, and `tabindex` are the contract. This protects Dify's markup and interaction behavior; it is not a browser-conformance test. See the [Testing Library user-event convenience APIs].
+First choose the test scope by the behavior owner, then choose the project by the environment needed to prove the asserted contract—not by an interaction label such as "focus," "keyboard," or "pointer." Use the `unit` project for Dify-owned markup, event handling, and DOM-observable state when `@testing-library/user-event`'s simulation is sufficient for the asserted result. For example, `user.tab()` can protect a focus sequence encoded by simple semantic markup when the assertion is determined by DOM order, disabled state, and `tabindex`; it does not validate the browser's native sequential focus navigation. See the [Testing Library user-event convenience APIs].
 
-Use the `browser` project only when the asserted contract depends on browser-owned behavior that `happy-dom` cannot represent faithfully, such as:
+Use the `browser` project only when you can name a browser-owned failure that `happy-dom` could miss, such as:
 
-- Layout geometry, CSS hit testing, responsive behavior, or pointer targeting.
-- Native sequential focus navigation or focus-event ordering when rendered visibility, `inert`, portals or focus traps, shadow DOM, or browser defaults can change the result.
-- Selection, scrolling, keyboard, or pointer behavior whose correctness depends on the browser's real input path rather than DOM events simulated by `user-event`.
-- Browser APIs, observers, or animation lifecycles whose real implementation affects the result.
+- CSS layout or rendered visibility changing geometry, hit testing, responsive behavior, or pointer targeting.
+- Native focus behavior or focus-event ordering changing because of browser-calculated focusability, `inert`, Shadow DOM traversal, or another browser default.
+- Selection, scrolling, real keyboard or pointer input, browser APIs, observers, or animation lifecycles whose native implementation changes the result.
 
-Rendering UI, reducing mocks, increasing confidence, or raising coverage is not enough reason to use Browser Mode. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must name the browser-owned behavior and why `happy-dom` is insufficient, exercise the smallest owner through semantic locators, and justify its additional runtime. Do not use forced interaction, fixed sleeps, private DOM or CSS assertions, or real network requests.
+The presence of a portal, focus trap, shadow root, observer, focus assertion, or keyboard or pointer interaction does not justify Browser Mode by itself. Name the browser-owned result it can change; if you cannot name one, Browser Mode is not the right project.
+
+Rendering UI, reducing mocks, increasing confidence, or raising coverage is not enough reason to use Browser Mode. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must exercise the smallest owner through semantic locators and justify its additional runtime with the browser-owned contract. Do not use forced interaction, fixed sleeps, private DOM or CSS assertions, or real network requests.
 
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
