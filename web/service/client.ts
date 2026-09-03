@@ -459,8 +459,8 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-        timezone: {
-          post: {
+        profile: {
+          patch: {
             mutationOptions: {
               onSuccess: async (_data, _variables, _onMutateResult, context) => {
                 await context.client.invalidateQueries({

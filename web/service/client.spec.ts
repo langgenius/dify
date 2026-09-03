@@ -636,12 +636,12 @@ describe('consoleQuery education defaults', () => {
 })
 
 describe('consoleQuery account profile mutation defaults', () => {
-  it('should invalidate the account profile after a timezone update', async () => {
+  it('should invalidate the account profile after a profile update', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-    await consoleQuery.account.timezone.post.mutationOptions().onSuccess?.(
+    await consoleQuery.account.profile.patch.mutationOptions().onSuccess?.(
       {
         id: 'user-1',
         name: 'Test User',
