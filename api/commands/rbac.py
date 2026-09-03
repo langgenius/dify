@@ -23,6 +23,11 @@ from services.enterprise.rbac_service import (
 _RBAC_DEFAULT_ACCESS_POLICY_ID = "default"
 _RBAC_RESOURCE_ACCESS_POLICY_BATCH_SIZE = 500
 
+_AGENT_MIGRATION_ROLE_STATE_LABEL = {
+    False: "would change",
+    True: "changed",
+}
+
 _LEGACY_ROLE_TO_BUILTIN_TAG = {
     TenantAccountRole.OWNER.value: "owner",
     TenantAccountRole.ADMIN.value: "admin",
@@ -1057,7 +1062,7 @@ def migrate_dataset_permissions_to_rbac(
 
 
 @click.command(
-    "migrate-agent-permissions-to-rbac",
+    "rbac-migrate-agent-permissions",
     help=(
         "Upgrade step for agent RBAC. Asks the RBAC service to replace agent.manage on every "
         "custom role with agent.create plus the agent.full_access binding. Dry run by default."
@@ -1088,6 +1093,7 @@ def migrate_agent_permissions_to_rbac(tenant_id: str | None, batch_size: int, ap
             if entry.skipped:
                 skipped_count += 1
             _emit_agent_migration_event(_agent_manage_role_event(workspace_id, entry, apply=apply))
-    click.echo(f"{tenant_count} tenant(s), {role_count} role(s) reported, {skipped_count} skipped")
+    role_state = _AGENT_MIGRATION_ROLE_STATE_LABEL[apply]
+    click.echo(f"{tenant_count} tenant(s), {role_count} role(s) {role_state}, {skipped_count} skipped")
     if not apply:
-        click.echo(click.style("Dry run: nothing written. Re-run with --apply.", fg="yellow"))
+        click.echo(click.style("Dry run: no changes written. Re-run with --apply.", fg="yellow"))

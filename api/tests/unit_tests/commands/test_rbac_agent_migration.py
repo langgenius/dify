@@ -48,6 +48,7 @@ def test_dry_run_by_default_and_one_event_per_role():
     }
     assert events[1]["reason"] == "policy row missing"
     assert "dry run" in result.output.lower()
+    assert "would change" in result.output
 
 
 def test_apply_flag_writes_and_reports_applied():
@@ -63,6 +64,7 @@ def test_apply_flag_writes_and_reports_applied():
     events = _events(result.output)
     assert [e["event"] for e in events] == ["agent_manage_role_migration_applied"] * 2
     assert {e["tenant_id"] for e in events} == {"t1", "t2"}
+    assert "changed" in result.output
 
 
 def test_tenant_id_option_limits_scope():
