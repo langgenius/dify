@@ -28,11 +28,15 @@ def test_initial_website_selection_populates_stable_canonical_urls() -> None:
     ]
 
 
-def test_initial_website_selection_rejects_canonical_duplicates() -> None:
-    with pytest.raises(ValidationError, match="canonical URLs must be unique"):
-        KnowledgeFSInitialWebsiteSourcePayload.model_validate(
-            _payload(urls=["https://docs.dify.ai/a/", "https://DOCS.dify.ai:443/a#section"])
-        )
+def test_initial_website_selection_preserves_canonical_duplicates() -> None:
+    payload = KnowledgeFSInitialWebsiteSourcePayload.model_validate(
+        _payload(urls=["https://docs.dify.ai/a/", "https://DOCS.dify.ai:443/a#section"])
+    )
+
+    assert [item.canonical_url for item in payload.selection] == [
+        "https://docs.dify.ai/a",
+        "https://docs.dify.ai/a",
+    ]
 
 
 def test_initial_website_selection_requires_crawl_limit_to_cover_selection() -> None:
