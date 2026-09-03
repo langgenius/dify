@@ -26,17 +26,19 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
     return <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
 
   if (status === 'error') {
+    const errorLabel = error || t(($) => $.error, { ns: 'common' })
+
     return (
       <Tooltip>
         <TooltipTrigger render={<span />}>
           <RiErrorWarningFill aria-hidden className="size-4 shrink-0 text-text-destructive" />
-          <span className="sr-only">{error || t(($) => $.error, { ns: 'common' })}</span>
+          <span className="sr-only">{errorLabel}</span>
         </TooltipTrigger>
         <TooltipContent
           sideOffset={4}
           className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary"
         >
-          {error}
+          {errorLabel}
         </TooltipContent>
       </Tooltip>
     )
