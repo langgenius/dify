@@ -24,10 +24,11 @@ from core.llm_generator.prompts import (
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_context import with_credit_usage_created_by
-from core.model_manager import ModelManager
+from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
+from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
@@ -36,12 +37,16 @@ from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+_SUGGESTED_QUESTIONS_MAX_TOKENS = 256
+_SUGGESTED_QUESTIONS_TIMEOUT_SECONDS = 30.0
+_LOW_REASONING_EFFORTS = ("none", "minimal", "low")
 
 
 class SuggestedQuestionsModelConfig(TypedDict):
@@ -72,6 +77,39 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
             normalized_parameters.pop(token_limit_key, None)
 
     return normalized_parameters, stop
+
+
+def _default_suggested_questions_model_parameters(model_instance: ModelInstance) -> dict[str, object]:
+    """Build a low-latency parameter set for the workspace default model."""
+    parameters: dict[str, object] = {
+        "max_tokens": _SUGGESTED_QUESTIONS_MAX_TOKENS,
+        "temperature": 0.0,
+    }
+
+    try:
+        model_schema = model_instance.get_model_schema()
+    except Exception:
+        logger.warning("Failed to inspect the default model schema for suggested questions", exc_info=True)
+        return parameters
+
+    parameter_rules = {rule.name: rule for rule in model_schema.parameter_rules}
+    thinking_rule = parameter_rules.get("thinking")
+    if thinking_rule is not None:
+        if thinking_rule.type == ParameterType.BOOLEAN:
+            parameters["thinking"] = False
+            return parameters
+        if "disabled" in thinking_rule.options:
+            parameters["thinking"] = "disabled"
+            return parameters
+
+    reasoning_effort_rule = parameter_rules.get("reasoning_effort")
+    if reasoning_effort_rule is not None:
+        for effort in _LOW_REASONING_EFFORTS:
+            if effort in reasoning_effort_rule.options:
+                parameters["reasoning_effort"] = effort
+                break
+
+    return parameters
 
 
 # ── Workflow instruction-suggestion tuning ────────────────────────────────
@@ -324,18 +362,16 @@ class LLMGenerator:
                 stop = []
             else:
                 # Default-model generation keeps the built-in suggested-questions tuning.
-                model_parameters = {
-                    "max_tokens": 2560,
-                    "temperature": 0.0,
-                }
+                model_parameters = _default_suggested_questions_model_parameters(model_instance)
                 stop = []
 
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=model_parameters,
-                stop=stop,
-                stream=False,
-            )
+            with use_plugin_daemon_request_timeout(_SUGGESTED_QUESTIONS_TIMEOUT_SECONDS):
+                response: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages),
+                    model_parameters=model_parameters,
+                    stop=stop,
+                    stream=False,
+                )
 
             text_content = response.message.get_text_content()
             questions = output_parser.parse(text_content) if text_content else []

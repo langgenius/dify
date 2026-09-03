@@ -4,6 +4,7 @@ import json
 from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -18,7 +19,7 @@ from core.model_manager import ModelInstance, ModelManager
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message
@@ -258,8 +259,56 @@ class TestLLMGenerator:
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
         assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 2560,
+            "max_tokens": 256,
             "temperature": 0.0,
+        }
+
+    def test_generate_suggested_questions_after_answer_uses_lowest_reasoning_effort(self, mock_model_instance):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = '["Question 1?"]'
+        mock_model_instance.invoke_llm.return_value = mock_response
+        mock_model_instance.get_model_schema.return_value.parameter_rules = [
+            SimpleNamespace(
+                name="reasoning_effort",
+                type=ParameterType.STRING,
+                options=["minimal", "low", "medium", "high"],
+            )
+        ]
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+
+        assert questions == ["Question 1?"]
+        assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": 256,
+            "temperature": 0.0,
+            "reasoning_effort": "minimal",
+        }
+
+    @pytest.mark.parametrize(
+        ("parameter_type", "options", "expected_value"),
+        [
+            (ParameterType.BOOLEAN, [], False),
+            (ParameterType.STRING, ["enabled", "disabled"], "disabled"),
+        ],
+    )
+    def test_generate_suggested_questions_after_answer_disables_thinking(
+        self, mock_model_instance, parameter_type, options, expected_value
+    ):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = '["Question 1?"]'
+        mock_model_instance.invoke_llm.return_value = mock_response
+        mock_model_instance.get_model_schema.return_value.parameter_rules = [
+            SimpleNamespace(name="thinking", type=parameter_type, options=options),
+            SimpleNamespace(name="reasoning_effort", type=ParameterType.STRING, options=["low", "high"]),
+        ]
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+
+        assert questions == ["Question 1?"]
+        assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": 256,
+            "temperature": 0.0,
+            "thinking": expected_value,
         }
 
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
@@ -337,7 +386,7 @@ class TestLLMGenerator:
             model_type=ModelType.LLM,
         )
         assert default_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 2560,
+            "max_tokens": 256,
             "temperature": 0.0,
         }
         assert default_model_instance.invoke_llm.call_args.kwargs["stop"] == []
