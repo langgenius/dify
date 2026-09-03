@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4 pb-4">
-        <Field title={t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflow' })} required>
+        <Field title={t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflow' })}>
           <VarReferencePicker
             nodeId={id}
             readonly={readOnly}

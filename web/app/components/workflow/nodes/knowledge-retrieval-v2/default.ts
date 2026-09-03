@@ -23,10 +23,10 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
   },
   checkValid(payload, t: TFunction<['workflow', 'common']>) {
     let errorMessage = ''
-    if (!payload.query_variable_selector?.length) {
-      errorMessage = t(($) => $['errorMsg.fieldRequired'], {
+    // Text and image are alternative query inputs: either one is enough, but not neither.
+    if (!payload.query_variable_selector?.length && !payload.query_attachment_selector?.length) {
+      errorMessage = t(($) => $['nodes.knowledgeRetrievalV2.queryInputRequired'], {
         ns: 'workflow',
-        field: t(($) => $['nodes.knowledgeRetrievalV2.queryText'], { ns: 'workflow' }),
       })
     } else if (!payload.control_space_ids?.length) {
       errorMessage = t(($) => $['errorMsg.fieldRequired'], {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.rag.entities import RerankingModelConfig, SupportedComparisonOperator
 from graphon.entities.base_node_data import BaseNodeData
@@ -35,7 +35,7 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
 
     type: NodeType = KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
     control_space_ids: list[ControlSpaceId] = Field(min_length=1, max_length=10)
-    query_variable_selector: list[VariableSelectorPart] = Field(min_length=2, max_length=10)
+    query_variable_selector: list[VariableSelectorPart] | None = Field(default=None, max_length=10)
     query_attachment_selector: list[VariableSelectorPart] | None = Field(default=None, max_length=10)
     mode: Literal["deep", "fast", "research"] | None = None
     reranking_model: RerankingModelConfig | None = None
@@ -56,11 +56,24 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
 
     @field_validator("query_variable_selector")
     @classmethod
-    def normalize_query_variable_selector(cls, values: list[str]) -> list[str]:
+    def normalize_query_variable_selector(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
         normalized = [value.strip() for value in values]
+        if not normalized:
+            return None
+        if len(normalized) < 2:
+            raise ValueError("KnowledgeFS query variable selector must contain at least two parts")
         if any(not value for value in normalized):
             raise ValueError("KnowledgeFS query variable selector must be non-empty")
         return normalized
+
+    @model_validator(mode="after")
+    def require_query_text_or_image(self) -> KnowledgeRetrievalV2NodeData:
+        # Either modality can drive retrieval on its own; a node that binds neither can never run.
+        if not self.query_variable_selector and not self.query_attachment_selector:
+            raise ValueError("KnowledgeFS retrieval requires a query text or a query image variable")
+        return self
 
     @field_validator("query_attachment_selector")
     @classmethod

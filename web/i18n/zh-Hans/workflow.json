@@ -885,6 +885,7 @@
   "nodes.knowledgeRetrievalV2.profile.rerank": "重排",
   "nodes.knowledgeRetrievalV2.profile.topK": "Top K",
   "nodes.knowledgeRetrievalV2.profileManagedBySpace": "检索配置由各 KnowledgeFS 空间管理",
+  "nodes.knowledgeRetrievalV2.queryInputRequired": "请至少提供查询文本或查询图片中的一项",
   "nodes.knowledgeRetrievalV2.queryText": "查询文本",
   "nodes.knowledgeRetrievalV2.spaceSearch": "搜索 KnowledgeFS 空间",
   "nodes.knowledgeRetrievalV2.topN": "合并结果数量上限",
