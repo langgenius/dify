@@ -8,7 +8,6 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, InternalServerError
 
 from controllers.console.app import audio as audio_module
@@ -34,7 +33,7 @@ from controllers.console.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models import Account, App, AppMode
+from models import Account
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
@@ -50,23 +49,11 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.controllers.audio_test_helpers import make_audio_file, make_chat_app
 
 
 def _file_data():
-    return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
-
-
-def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Audio app",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_audio_file()
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -79,7 +66,7 @@ def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "ok"})
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context("/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}):
         response = handler(api, app_model=app_model)
@@ -95,7 +82,7 @@ def test_agent_console_audio_api_uses_agent_draft(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
-    app_model = _app(app_id="backing-app-1")
+    app_model = make_chat_app(app_id="backing-app-1")
     agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
     calls: dict[str, object] = {}
 
@@ -169,7 +156,7 @@ def test_agent_console_audio_api_defaults_to_normal_draft(
     monkeypatch.setattr(
         audio_module,
         "resolve_agent_runtime_app_model",
-        lambda **_kwargs: _app(app_id="backing-app-1"),
+        lambda **_kwargs: make_chat_app(app_id="backing-app-1"),
     )
 
     def load_agent_soul_for_debug(**kwargs):
@@ -202,7 +189,7 @@ def test_agent_console_audio_api_checks_rbac_with_backing_app_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
-    app_model = _app(app_id="backing-app-1")
+    app_model = make_chat_app(app_id="backing-app-1")
     soul_loaded = False
 
     monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", lambda **_kwargs: app_model)
@@ -245,7 +232,7 @@ def test_agent_console_audio_api_preserves_missing_build_draft_404(
     monkeypatch.setattr(
         audio_module,
         "resolve_agent_runtime_app_model",
-        lambda **_kwargs: _app(app_id="backing-app-1"),
+        lambda **_kwargs: make_chat_app(app_id="backing-app-1"),
     )
     monkeypatch.setattr(
         AgentComposerService,
@@ -289,7 +276,7 @@ def test_console_audio_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context("/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}):
         with pytest.raises(expected):
@@ -300,7 +287,7 @@ def test_console_audio_api_unhandled_error(app: Flask, monkeypatch: pytest.Monke
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context("/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}):
         with pytest.raises(InternalServerError):
@@ -312,7 +299,7 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
 
     api = ChatMessageTextApi()
     handler = unwrap(api.post)
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context(
         "/console/api/apps/app/text-to-audio",
@@ -327,7 +314,7 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
 def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageTextApi()
     handler = unwrap(api.post)
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
     calls = {}
 
     def fake_transcript_tts(**kwargs):
@@ -355,7 +342,7 @@ def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPa
 
     api = ChatMessageTextApi()
     handler = unwrap(api.post)
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context(
         "/console/api/apps/app/text-to-audio",
@@ -372,7 +359,7 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
 
     api = TextModesApi()
     handler = unwrap(api.get)
-    app_model = _app(tenant_id="t1")
+    app_model = make_chat_app(tenant_id="t1")
 
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         response = handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
@@ -389,7 +376,7 @@ def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.Monke
 
     api = TextModesApi()
     handler = unwrap(api.get)
-    app_model = _app(tenant_id="t1")
+    app_model = make_chat_app(tenant_id="t1")
 
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         with pytest.raises(AppUnavailableError):
@@ -403,7 +390,7 @@ def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
     response_payload = {"text": "hello"}
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: response_payload)
 
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
 
     data = {"file": (io.BytesIO(b"x"), "sample.wav")}
     with app.test_request_context(
@@ -427,7 +414,7 @@ def test_audio_to_text_maps_audio_too_large(app: Flask, monkeypatch: pytest.Monk
         lambda **_kwargs: (_ for _ in ()).throw(AudioTooLargeServiceError("too large")),
     )
 
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
 
     data = {"file": (io.BytesIO(b"x"), "sample.wav")}
     with app.test_request_context(
@@ -446,7 +433,7 @@ def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
 
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
 
     with app.test_request_context(
         "/console/api/apps/app-1/text-to-audio",
@@ -465,7 +452,7 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
     monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context(
         "/console/api/apps/app-1/text-to-audio/voices",
@@ -483,7 +470,7 @@ def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "test"})
 
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
 
     data = {"file": (io.BytesIO(b"invalid"), "sample.xyz")}
     with app.test_request_context(
@@ -524,7 +511,7 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
         lambda **_kwargs: [{"name": "Voice 1", "value": "voice-1"}],
     )
 
-    app_model = _app()
+    app_model = make_chat_app()
 
     with app.test_request_context(
         "/console/api/apps/app-1/text-to-audio/voices?language=en-US",
