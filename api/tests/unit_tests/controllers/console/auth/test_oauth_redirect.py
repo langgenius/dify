@@ -44,7 +44,8 @@ def test_oauth_login_passes_relative_redirect_url_through(app: Flask) -> None:
 @pytest.mark.parametrize(
     ("redirect_url", "expected_target_url"),
     [
-        (REDIRECT_URL, REDIRECT_URL),
+        ("/", f"{CONSOLE_WEB_URL}/"),
+        (REDIRECT_URL, f"{CONSOLE_WEB_URL}{REDIRECT_URL}"),
         (f"{CONSOLE_WEB_URL}{REDIRECT_URL}", f"{CONSOLE_WEB_URL}{REDIRECT_URL}"),
         ("https://console.example.com.malicious.example/apps", CONSOLE_WEB_URL),
         ("//malicious.example.com/apps", CONSOLE_WEB_URL),
