@@ -30,7 +30,7 @@ fix:
 	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check --fix .
 
 typecheck:
-	@uv --directory "$(PROJECT_DIR)" run --project . basedpyright --level error src examples tests
+	@uv --directory "$(PROJECT_DIR)" run --project . --extra server basedpyright --level error src examples tests
 
 test:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server python -m pytest tests
