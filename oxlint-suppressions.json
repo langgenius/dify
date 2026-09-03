@@ -102,14 +102,6 @@
       "count": 2
     }
   },
-  "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -376,14 +368,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/debug/chat-user-input.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/debug/debug-with-multiple-model/chat-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -419,14 +403,6 @@
   },
   "web/app/components/app/configuration/debug/types.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -469,11 +445,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -633,9 +604,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -723,9 +691,6 @@
     }
   },
   "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -3515,9 +3480,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-non-null-asserted-optional-chain": {
       "count": 1
     }
@@ -3984,11 +3946,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-string.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4886,19 +4843,9 @@
       "count": 1
     }
   },
-  "web/app/forgot-password/ChangePasswordForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/forgot-password/ForgotPasswordForm.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/forgot-password/ForgotPasswordForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/init/InitPasswordPopup.tsx": {
@@ -4918,11 +4865,6 @@
   },
   "web/app/signin/layout.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signin/one-more-step.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

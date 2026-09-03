@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -28,7 +27,6 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -69,7 +67,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       const loginData = {
         email,
         password: encryptPassword(password),
-        language: locale,
         remember_me: true,
       }
 

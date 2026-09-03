@@ -42,7 +42,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -233,7 +233,10 @@ class ToolManager:
                             builtin_provider = None
                             logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
                         if builtin_provider is None:
-                            raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
+                            raise ToolProviderCredentialValidationError(
+                                f"Tool credential {credential_id} has been deleted. "
+                                "Select or authorize another credential."
+                            )
 
                     if builtin_provider is None:
                         with Session(db.engine) as session:
@@ -247,7 +250,10 @@ class ToolManager:
                                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                             )
                         if builtin_provider is None:
-                            raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
+                            raise ToolProviderCredentialValidationError(
+                                f"No workspace credential is configured for tool provider {provider_id}. "
+                                "Authorize the provider or select a credential."
+                            )
                 else:
                     builtin_provider = db.session.scalar(
                         select(BuiltinToolProvider)
@@ -259,7 +265,10 @@ class ToolManager:
                     )
 
                     if builtin_provider is None:
-                        raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+                        raise ToolProviderCredentialValidationError(
+                            f"No credential is configured for built-in tool provider {provider_id}. "
+                            "Authorize the provider or select a credential."
+                        )
 
                 from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
@@ -294,15 +303,24 @@ class ToolManager:
                     system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                     oauth_handler = OAuthHandler()
-                    refreshed_credentials = oauth_handler.refresh_credentials(
-                        tenant_id=tenant_id,
-                        user_id=builtin_provider.user_id,
-                        plugin_id=tool_provider.plugin_id,
-                        provider=provider_name,
-                        redirect_uri=redirect_uri,
-                        system_credentials=system_credentials or {},
-                        credentials=decrypted_credentials,
-                    )
+                    try:
+                        refreshed_credentials = oauth_handler.refresh_credentials(
+                            tenant_id=tenant_id,
+                            user_id=builtin_provider.user_id,
+                            plugin_id=tool_provider.plugin_id,
+                            provider=provider_name,
+                            redirect_uri=redirect_uri,
+                            system_credentials=system_credentials or {},
+                            credentials=decrypted_credentials,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to refresh OAuth credentials for tool provider %s", provider_id, exc_info=True
+                        )
+                        raise ToolProviderCredentialValidationError(
+                            f"OAuth credential for tool provider {provider_id} could not be refreshed. "
+                            "Reauthorize or select another credential."
+                        ) from exc
                     # update the credentials
                     builtin_provider.encrypted_credentials = json.dumps(
                         encrypter.encrypt(refreshed_credentials.credentials)
