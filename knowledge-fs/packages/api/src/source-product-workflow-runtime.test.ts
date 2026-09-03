@@ -24,6 +24,7 @@ import {
   createSourceProductWorkflowRuntime,
 } from "./source-product-workflow-runtime";
 import { SourceVersionConflictError } from "./source-repository";
+import type { WebsiteCrawlInput } from "./website-crawl-connector";
 
 const tenantId = "tenant-source-runtime";
 const knowledgeSpaceId = "space-source-runtime";
@@ -1106,7 +1107,7 @@ describe("source-product workflow provider imports", () => {
 
   it("fetches every selected URL even when multiple selections resolve to the same page", async () => {
     const source = sourceRecord("ambiguous-crawl-import", { type: "web" });
-    const crawl = vi.fn(async () => ({
+    const crawl = vi.fn(async (_input: WebsiteCrawlInput) => ({
       pages: [{ content: "one", sourceUrl: "https://example.test/selected", title: "One" }],
     }));
     const fixture = await createFixture({
