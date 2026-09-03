@@ -13,9 +13,15 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    grant_upload_file_access,
+)
 from extensions.ext_database import db
 from factories import file_factory
+from factories.file_factory.common import resolve_mapping_file_id
 from graphon.enums import NodeType
 from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
@@ -126,6 +132,53 @@ class BaseAppGenerator:
             )
         )
 
+    @staticmethod
+    def _variable_uses_default(*, variable_entity: "VariableEntity", raw_value: Any) -> bool:
+        if variable_entity.required or variable_entity.default is None:
+            return False
+        if raw_value is None:
+            return True
+        if (
+            variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
+            and not variable_entity.required
+            and isinstance(raw_value, str)
+            and not raw_value
+        ):
+            return False
+        return False
+
+    @staticmethod
+    def _grant_default_upload_file_access(
+        *,
+        user_inputs: Mapping[str, Any],
+        variables: Sequence["VariableEntity"],
+    ) -> None:
+        granted_upload_file_ids: list[str] = []
+        for variable_entity in variables:
+            if variable_entity.type not in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}:
+                continue
+            if not BaseAppGenerator._variable_uses_default(
+                variable_entity=variable_entity,
+                raw_value=user_inputs.get(variable_entity.variable),
+            ):
+                continue
+
+            default = variable_entity.default
+            if variable_entity.type == VariableEntityType.FILE and isinstance(default, dict):
+                upload_file_id = resolve_mapping_file_id(default, "upload_file_id")
+                if upload_file_id:
+                    granted_upload_file_ids.append(upload_file_id)
+            elif variable_entity.type == VariableEntityType.FILE_LIST and isinstance(default, list):
+                for item in default:
+                    if not isinstance(item, dict):
+                        continue
+                    upload_file_id = resolve_mapping_file_id(item, "upload_file_id")
+                    if upload_file_id:
+                        granted_upload_file_ids.append(upload_file_id)
+
+        if granted_upload_file_ids:
+            grant_upload_file_access(granted_upload_file_ids)
+
     def _prepare_user_inputs(
         self,
         *,
@@ -134,13 +187,14 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
-        user_inputs = user_inputs or {}
+        raw_user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
-            var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)
+            var.variable: self._validate_inputs(value=raw_user_inputs.get(var.variable), variable_entity=var)
             for var in variables
         }
         user_inputs = {k: self._sanitize_value(v) for k, v in user_inputs.items()}
+        self._grant_default_upload_file_access(user_inputs=raw_user_inputs, variables=variables)
         # Convert files in inputs to File
         entity_dictionary = {item.variable: item for item in variables}
         # Convert single file to File
