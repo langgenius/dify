@@ -17,8 +17,8 @@ import {
   TencentIconBig,
   WeaveIconBig,
 } from '@/app/components/base/icons/src/public/tracing'
-import OTelIconBig from '@/app/components/base/icons/src/public/tracing/OTelIconBig'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
+import { OtelIconBig } from './otel-icon'
 import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
@@ -45,7 +45,7 @@ const getIcon = (type: TracingProvider) => {
     [TracingProvider.mlflow]: MlflowIconBig,
     [TracingProvider.databricks]: DatabricksIconBig,
     [TracingProvider.tencent]: TencentIconBig,
-    [TracingProvider.otel]: OTelIconBig,
+    [TracingProvider.otel]: OtelIconBig,
   }[type]
 }
 

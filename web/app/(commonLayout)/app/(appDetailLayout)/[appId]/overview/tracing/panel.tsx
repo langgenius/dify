@@ -38,7 +38,6 @@ import {
   TencentIcon,
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
-import OTelIcon from '@/app/components/base/icons/src/public/tracing/OTelIcon'
 import Loading from '@/app/components/base/loading'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -50,6 +49,7 @@ import {
 } from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
+import { OtelIcon } from './otel-icon'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
 
@@ -118,7 +118,7 @@ const Panel: FC = () => {
     [TracingProvider.mlflow]: MlflowIcon,
     [TracingProvider.databricks]: DatabricksIcon,
     [TracingProvider.tencent]: TencentIcon,
-    [TracingProvider.otel]: OTelIcon,
+    [TracingProvider.otel]: OtelIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
