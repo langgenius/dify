@@ -1137,3 +1137,43 @@ class TestLegacyAgentManageKey:
             svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
         ):
             assert "agent.manage" in keys
+
+
+class TestMigrations:
+    def test_migrate_agent_manage_roles_posts_apply_flag(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "roles": [
+                {
+                    "role_id": "r1",
+                    "role_name": "ops",
+                    "added_keys": ["agent.create"],
+                    "removed_keys": ["agent.manage"],
+                    "bound_policies": ["agent.full_access"],
+                    "skipped": "",
+                },
+                {
+                    "role_id": "r2",
+                    "role_name": "stuck",
+                    "added_keys": [],
+                    "removed_keys": [],
+                    "bound_policies": [],
+                    "skipped": "policy row missing",
+                },
+            ]
+        }
+
+        report = svc.RBACService.Migrations.migrate_agent_manage_roles("tenant-1", apply=True)
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == f"{svc._INNER_PREFIX}/migrations/agent-manage-roles"
+        assert call.tenant_id == "tenant-1"
+        assert call.json == {"apply": True}
+        assert [entry.role_id for entry in report] == ["r1", "r2"]
+        assert report[0].bound_policies == ["agent.full_access"]
+        assert report[1].skipped == "policy row missing"
+
+    def test_migrate_agent_manage_roles_tolerates_missing_roles_key(self, mock_send: MagicMock):
+        mock_send.return_value = {}
+
+        assert svc.RBACService.Migrations.migrate_agent_manage_roles("tenant-1", apply=False) == []

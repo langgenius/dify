@@ -281,6 +281,21 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
         return value
 
 
+class LegacyAgentRoleMigration(_RBACModel):
+    """One custom role's outcome from the RBAC service's agent.manage migration."""
+
+    role_id: str
+    role_name: str = ""
+    added_keys: list[str] = Field(default_factory=list)
+    removed_keys: list[str] = Field(default_factory=list)
+    bound_policies: list[str] = Field(default_factory=list)
+    skipped: str = ""
+
+
+class _LegacyAgentRoleMigrationReport(_RBACModel):
+    roles: list[LegacyAgentRoleMigration] = Field(default_factory=list)
+
+
 class ResourceWhitelistResources(_RBACModel):
     unrestricted: bool = False
     resource_ids: list[str] = Field(default_factory=list)
@@ -1887,6 +1902,17 @@ class RBACService:
                 params={"account_id": account_id},
             )
             return data
+
+    class Migrations:
+        @staticmethod
+        def migrate_agent_manage_roles(tenant_id: str, *, apply: bool) -> list[LegacyAgentRoleMigration]:
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/migrations/agent-manage-roles",
+                tenant_id=tenant_id,
+                json={"apply": apply},
+            )
+            return _LegacyAgentRoleMigrationReport.model_validate(data or {}).roles
 
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""
