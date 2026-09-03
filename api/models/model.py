@@ -428,7 +428,7 @@ class App(Base):
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[AppStatus] = mapped_column(
-        EnumText(AppStatus, length=255), server_default=sa.text("'normal'"), default=AppStatus.NORMAL
+        EnumText(AppStatus, length=255), default=AppStatus.NORMAL
     )
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
@@ -989,16 +989,15 @@ class RecommendedApp(TypeBase):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     is_learn_dify: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+        sa.Boolean, nullable=False, default=False
     )
     is_cloud_only: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+        sa.Boolean, nullable=False, default=False
     )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        server_default=sa.text("'en-US'"),
         default="en-US",
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -1033,7 +1032,7 @@ class InstalledApp(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1117,14 +1116,13 @@ class ExporleBanner(TypeBase):
     status: Mapped[BannerStatus] = mapped_column(
         EnumText(BannerStatus, length=255),
         nullable=False,
-        server_default=sa.text("'enabled'"),
         default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'en-US'"), default="en-US"
+        String(255), nullable=False, default="en-US"
     )
 
 
