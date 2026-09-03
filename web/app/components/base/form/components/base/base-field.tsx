@@ -300,7 +300,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-80 bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>
@@ -330,7 +330,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-80 bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>

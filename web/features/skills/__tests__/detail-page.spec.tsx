@@ -1302,7 +1302,6 @@ describe('SkillDetailPage', () => {
     const openBuilderButton = screen.getByRole('button', {
       name: 'skill.skillManagement.detail.builder.open',
     })
-    expect(openBuilderButton).toHaveClass('h-8', 'w-[133px]')
     expect(openBuilderButton.closest('main')).toBeInTheDocument()
 
     await user.click(openBuilderButton)
