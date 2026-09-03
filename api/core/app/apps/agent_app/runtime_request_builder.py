@@ -301,7 +301,7 @@ def _build_user_file(
             "agent_user_file_unsupported",
             f"Agent App cannot send file '{file.filename or 'image'}' as vision content.",
         )
-    detail = getattr(content.detail, "value", content.detail)
+    detail = content.detail.value
     return DifyUserPromptFileConfig(
         filename=content.filename or file.filename or f"image.{content.format}",
         mime_type=content.mime_type,
