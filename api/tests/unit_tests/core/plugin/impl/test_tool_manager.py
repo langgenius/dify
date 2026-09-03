@@ -4,6 +4,7 @@ from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.tool import PluginToolManager
+from tests.unit_tests.core.plugin.impl.test_base_client_impl import _issue_41605_management_tools_list
 
 
 class _ResponseStub:
@@ -169,6 +170,24 @@ class TestPluginToolManager:
         assert [provider.plugin_id for provider in result] == ["langgenius/weather", "langgenius/search"]
         assert [tool.identity.name for tool in result[0].declaration.tools] == ["get_weather"]
         assert result[1].declaration.identity.name == "langgenius/search/search"
+
+    def test_fetch_tool_providers_skips_multiple_true_on_non_select_parameter(self, mocker: MockerFixture):
+        manager = PluginToolManager()
+        mocker.patch.object(
+            manager,
+            "_request",
+            return_value=_ResponseStub({"code": 0, "message": "", "data": _issue_41605_management_tools_list()}),
+        )
+
+        result = manager.fetch_tool_providers("tenant-1")
+
+        assert [provider.plugin_id for provider in result] == [
+            "langgenius/provider-0",
+            "langgenius/provider-1",
+            "langgenius/provider-2",
+            "langgenius/search",
+        ]
+        assert result[-1].declaration.identity.name == "langgenius/search/search"
 
     def test_fetch_tool_provider(self, mocker: MockerFixture):
         manager = PluginToolManager()

@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
@@ -89,6 +90,58 @@ def _tool_provider_payload(
             "tools": tools,
         },
     }
+
+
+def _valid_tool_declaration(name: str, provider: str) -> dict:
+    return {
+        "identity": {
+            "author": "langgenius",
+            "name": name,
+            "label": _i18n(name),
+            "provider": provider,
+        },
+        "description": {"human": _i18n(name), "llm": name},
+        "parameters": [],
+    }
+
+
+def _issue_41605_csv_files_provider() -> dict:
+    """Provider matching #41605: tools[6].parameters[0] sets multiple=true on a files parameter."""
+    tools = [_valid_tool_declaration(f"tool-{index}", "csv-import") for index in range(6)]
+    tools.append(
+        {
+            "identity": {
+                "author": "langgenius",
+                "name": "import_csv",
+                "label": _i18n("Import CSV"),
+                "provider": "csv-import",
+            },
+            "description": {"human": _i18n("Import CSV"), "llm": "Import CSV"},
+            "parameters": [
+                {
+                    "name": "csv_files",
+                    "label": _i18n("CSV files"),
+                    "type": "files",
+                    "form": "llm",
+                    "required": False,
+                    "multiple": True,
+                    "options": None,
+                    "placeholder": None,
+                }
+            ],
+        }
+    )
+    return _tool_provider_payload(plugin_id="community/csv-import", provider="csv-import", tools=tools)
+
+
+def _issue_41605_management_tools_list() -> list[dict]:
+    """List shaped like the #41605 traceback: data[3] is the invalid provider."""
+    leading = [
+        _tool_provider_payload(plugin_id=f"langgenius/provider-{index}", provider=f"provider-{index}")
+        for index in range(3)
+    ]
+    trailing = _tool_provider_payload(plugin_id="langgenius/search", provider="search")
+    return [*leading, _issue_41605_csv_files_provider(), trailing]
 
 
 class TestBasePluginClientImpl:
@@ -293,6 +346,42 @@ class TestBasePluginClientImpl:
         assert result[0].plugin_id == "langgenius/weather"
         assert "plugin_id=langgenius/broken" in caplog.text
         assert "non-object str" in caplog.text
+
+    def test_request_with_plugin_daemon_response_skips_multiple_true_on_non_select_parameter(
+        self, mocker: MockerFixture, caplog
+    ):
+        """#41605: multiple=true on a files parameter at data[3].tools[6].parameters[0]."""
+        invalid_provider = _issue_41605_csv_files_provider()
+        with pytest.raises(ValidationError, match="multiple is only valid"):
+            PluginToolProviderEntity.model_validate(invalid_provider)
+        assert len(invalid_provider["declaration"]["tools"]) == 7
+        assert invalid_provider["declaration"]["tools"][6]["parameters"][0]["name"] == "csv_files"
+
+        mixed_list = _issue_41605_management_tools_list()
+        assert mixed_list[3]["plugin_id"] == "community/csv-import"
+
+        client = BasePluginClient()
+        mocker.patch.object(
+            client,
+            "_request",
+            return_value=_ResponseStub({"code": 0, "message": "", "data": mixed_list}),
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = client._request_with_plugin_daemon_response(
+                "GET",
+                "plugin/tenant/management/tools",
+                list[PluginToolProviderEntity],
+            )
+
+        assert [provider.plugin_id for provider in result] == [
+            "langgenius/provider-0",
+            "langgenius/provider-1",
+            "langgenius/provider-2",
+            "langgenius/search",
+        ]
+        assert "plugin_id=community/csv-import" in caplog.text
+        assert "multiple is only valid for select and dynamic-select parameters" in caplog.text
 
     def test_request_with_plugin_daemon_response_all_invalid_list_returns_empty(self, mocker: MockerFixture):
         client = BasePluginClient()
