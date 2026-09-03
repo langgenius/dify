@@ -12,6 +12,7 @@
 - Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].
 - Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
 - Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
+- Follow [Accessible names and descriptions] when choosing or changing visible labels, ARIA naming, descriptions, or visually hidden text. Web owns localization and feature-specific status announcements; do not redefine the Dify UI naming contract locally.
 - Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Reuse the Web `Infotip` composite for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
 - For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
 - `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.
@@ -26,11 +27,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Accessibility
-
-When implementing, changing, or reviewing UI, read and follow the relevant sections of [Accessibility and UI rules] and the topic documents it references.
-
-[Accessibility and UI rules]: ../.agents/skills/frontend-code-review/references/accessibility-ui.md
+[Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
 [Button contract]: ../packages/dify-ui/src/button/README.md
 [Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
 [Dify UI package index]: ../packages/dify-ui/README.md

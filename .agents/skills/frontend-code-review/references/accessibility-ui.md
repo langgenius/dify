@@ -1,7 +1,5 @@
 # Accessibility And UI Rules
 
-Read the relevant sections when implementing or reviewing UI in `web/` or `packages/dify-ui/`. These requirements apply during implementation as well as review. Lists marked `Flag` identify issues to prevent while implementing and report when supported by review evidence.
-
 Accessibility findings are first-class review findings. Treat broken keyboard access, missing accessible names, focus loss, and unreachable popup content as correctness bugs, not polish.
 
 ## Review Evidence
