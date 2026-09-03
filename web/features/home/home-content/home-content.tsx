@@ -29,7 +29,6 @@ import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/task
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
@@ -56,7 +55,6 @@ const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['mainNav.home'], { ns: 'common' }))
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

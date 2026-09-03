@@ -34,9 +34,9 @@ class SQLAlchemyAccountRepository(AccountRepository):
     @override
     def find_by_email(self, email: str) -> AccountSnapshot | None:
         with self._session_factory() as session:
-            account = session.scalar(select(Account).where(Account.email == email).limit(1))
+            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account is None and email != email.lower():
-                account = session.scalar(select(Account).where(Account.email == email.lower()).limit(1))
+                account = session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
             return self._to_snapshot(account) if account is not None else None
 
     @override

@@ -5132,6 +5132,12 @@ Get dataset API keys
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/api-keys
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -8387,6 +8393,13 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 413 | File too large |  |
+| 415 | Unsupported file type |  |
+| 422 | Request payload validation failed |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /remote-files/{url}
 #### Parameters
@@ -8400,6 +8413,10 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [POST] /reset-password
 #### Request Body
@@ -15303,6 +15320,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
+| dataset_ids | [ string ], <br>**Default:**  |  | No |
 | id | string |  | Yes |
 | last_used_at | integer |  | No |
 | token | string |  | Yes |
@@ -16800,6 +16818,12 @@ Model class for provider custom model configuration.
 | batch | string |  | Yes |
 | dataset | [DatasetResponse](#datasetresponse) |  | Yes |
 | documents | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+
+#### DatasetApiKeyCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_ids | [ string ] |  | No |
 
 #### DatasetCreatePayload
 
@@ -18382,7 +18406,6 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string | Error code if account not found | No |
 | data | string | Reset token | No |
 | result | string | Operation result | Yes |
 
@@ -21335,7 +21358,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| url | string | URL to fetch | Yes |
+| url | string (uri) | URL to fetch | Yes |
 
 #### ReplaceUserAccessPolicies
 
