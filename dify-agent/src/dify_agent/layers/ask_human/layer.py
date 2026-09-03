@@ -70,7 +70,7 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
                 name=self.config.tool_name,
                 description=self.config.effective_tool_description,
                 prepare=self._prepare_tool_definition,
-                args_validator=cast("ArgsValidatorFunc[object, ...]", self._validate_tool_args),
+                args_validator=cast(ArgsValidatorFunc[object, ...], self._validate_tool_args),
                 sequential=True,
             )
         ]
