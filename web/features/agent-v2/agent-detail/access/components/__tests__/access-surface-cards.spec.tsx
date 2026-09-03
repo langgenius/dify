@@ -744,13 +744,19 @@ describe('Agent access surface cards', () => {
 
       await user.tab()
       expect(accessSwitch).toHaveFocus()
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
 
       await user.tab()
       await waitFor(() => {
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('agentV2.agentDetail.access.publishRequired', {
+            selector: '[data-open]',
+          }),
+        ).not.toBeInTheDocument()
       })
 
       await user.hover(
@@ -758,9 +764,11 @@ describe('Agent access surface cards', () => {
           name: 'agentV2.agentDetail.access.webApp.actions.launch',
         }),
       )
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
     })
   })
 
@@ -919,9 +927,11 @@ describe('Agent access surface cards', () => {
 
       await user.tab()
       expect(accessSwitch).toHaveFocus()
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
     })
   })
 

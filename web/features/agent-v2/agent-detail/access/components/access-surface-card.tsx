@@ -120,7 +120,7 @@ export function AccessSurfaceCard({
             {disabled && disabledReason ? (
               <Tooltip>
                 <TooltipTrigger render={switchControl} />
-                <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+                <TooltipContent>{disabledReason}</TooltipContent>
               </Tooltip>
             ) : (
               switchControl

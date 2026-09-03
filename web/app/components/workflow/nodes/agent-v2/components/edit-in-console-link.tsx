@@ -60,7 +60,7 @@ export function EditInConsoleLink({
           </Button>
         }
       />
-      <TooltipContent role="tooltip">{disabledMessage}</TooltipContent>
+      <TooltipContent>{disabledMessage}</TooltipContent>
     </Tooltip>
   )
 }

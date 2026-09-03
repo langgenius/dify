@@ -66,7 +66,7 @@ function WebAppLaunchAction({
   return (
     <Tooltip>
       <TooltipTrigger render={disabledButton} />
-      <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+      <TooltipContent>{disabledReason}</TooltipContent>
     </Tooltip>
   )
 }
