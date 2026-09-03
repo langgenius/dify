@@ -1,321 +1,314 @@
-"""Identity, storage, and file-ownership behind the AppDeploy file grant.
-
-An AppDeploy subject is asserted exactly once, when the enterprise control
-plane mints a grant. Everything downstream verifies the grant's signature and
-reads by primary key, so this module owns the only stateful step in the flow.
-
-Invariant: this module is the sole creator of ``EndUserType.APP_DEPLOY`` rows,
-and nothing else may retype one. ``end_users`` has no unique constraint, so a
-second creator would silently split one AppDeploy subject across two identities
-and strand its files; :meth:`EndUserService.get_or_create_end_user_by_type`
-excludes this type from the legacy retype it applies to the others for the same
-reason. New code that needs such an end user must call
-:meth:`FileGrantService.get_or_create_end_user`.
-"""
-
 from __future__ import annotations
 
 import base64
 import hashlib
-import os
-from collections.abc import Generator, Sequence
-from dataclasses import dataclass
-from typing import IO
+from collections.abc import Callable, Sequence
+from typing import IO, Protocol
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from services.entities.file_grant_entities import (
+    FileContent,
+    FileContentClaims,
+    FileContentRecord,
+    FileGrantClaims,
+    FileGrantContext,
+    FileGrantLimits,
+    FileGrantMintRequest,
+    FileGrantMintResult,
+    FileGrantScope,
+    FileKind,
+    FileRef,
+    RemoteFile,
+    ResolvedFile,
+    ResolvedFileAccess,
+    StoredProducedFile,
+    StoredUpload,
+)
+from services.errors.file_grant import (
+    AppNotFoundError,
+    EndUserNotFoundError,
+    GrantedFileNotFoundError,
+    GrantTtlTooLongError,
+    InvalidFileGrantError,
+    InvalidGrantRequestError,
+    InvalidSubjectError,
+    RemoteFileUnavailableError,
+    TooManyFileRefsError,
+)
 
-from core.tools.tool_file_manager import ToolFileManager, resolve_extension
-from extensions.ext_database import db
-from extensions.ext_storage import storage
-from libs.file_grant import FileKind
-from models.enums import CreatorUserRole, EndUserType
-from models.model import App, EndUser, UploadFile
-from models.tools import ToolFile
-from services.errors.file import FileTooLargeError
-from services.file_service import FileService
-
-
-class AppNotFoundError(Exception):
-    """The app named by a mint request does not exist in the given tenant."""
-
-
-class EndUserNotFoundError(Exception):
-    """The grant points at an AppDeploy end user that no longer exists."""
-
-
-@dataclass(frozen=True, slots=True)
-class FileRef:
-    id: str
-    kind: FileKind
-
-
-@dataclass(frozen=True, slots=True)
-class ResolvedFile:
-    id: str
-    kind: FileKind
-    name: str
-    size: int
-    extension: str
-    mime_type: str | None
+MAX_SESSION_GRANT_TTL_SECONDS = 7200
+MAX_WORKFLOW_EXECUTION_SECONDS = 24 * 60 * 60
+RUN_GRANT_EXPIRY_GRACE_SECONDS = 5 * 60
+MAX_RUN_GRANT_TTL_SECONDS = MAX_WORKFLOW_EXECUTION_SECONDS + RUN_GRANT_EXPIRY_GRACE_SECONDS
+MAX_FILE_GRANT_REFS = 100
 
 
-@dataclass(frozen=True, slots=True)
-class FileContent:
-    name: str
-    size: int
-    mime_type: str | None
-    stream: Generator
-
-
-class FileGrantService:
-    """Resolve AppDeploy identities and the files they own."""
-
-    @staticmethod
-    def session_id_for_subject(subject: str) -> str:
-        """Fold an opaque subject into the 255-char ``end_users.session_id`` column."""
-
-        digest = hashlib.sha256(subject.encode()).digest()
-        return base64.urlsafe_b64encode(digest).decode().rstrip("=")
-
-    @classmethod
-    def get_or_create_end_user(
-        cls,
+class FileGrantRepository(Protocol):
+    def get_or_create_subject(
+        self,
         *,
         tenant_id: str,
         app_id: str,
-        subject: str,
+        session_id: str,
+        external_user_id: str,
         is_anonymous: bool,
-    ) -> EndUser:
-        """Return the AppDeploy end user for a subject, creating it at most once.
+    ) -> str | None: ...
 
-        The common path is an unlocked read. Only a miss takes the app row lock
-        and re-reads under it, which is what makes concurrent first mints of the
-        same subject converge on a single row despite the missing constraint.
-        """
+    def subject_exists(self, context: FileGrantContext) -> bool: ...
 
-        session_id = cls.session_id_for_subject(subject)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-        with session_maker() as session:
-            end_user = cls._select_end_user(session, tenant_id=tenant_id, app_id=app_id, session_id=session_id)
-            if end_user is not None:
-                return end_user
-
-        with session_maker.begin() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
-            if app is None:
-                raise AppNotFoundError(app_id)
-
-            end_user = cls._select_end_user(session, tenant_id=tenant_id, app_id=app_id, session_id=session_id)
-            if end_user is None:
-                end_user = EndUser(
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    type=EndUserType.APP_DEPLOY,
-                    is_anonymous=is_anonymous,
-                    session_id=session_id,
-                    external_user_id=subject[:255],
-                )
-                session.add(end_user)
-
-        return end_user
-
-    @classmethod
-    def _load_end_user(cls, *, end_user_id: str, tenant_id: str) -> EndUser | None:
-        """Load the end user a grant points at, refusing a tenant mismatch."""
-
-        with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
-            return session.scalar(
-                select(EndUser)
-                .where(
-                    EndUser.id == end_user_id,
-                    EndUser.tenant_id == tenant_id,
-                    EndUser.type == EndUserType.APP_DEPLOY,
-                )
-                .limit(1)
-            )
-
-    @classmethod
-    def store_upload(
-        cls,
+    def resolve_owned_files(
+        self,
         *,
-        tenant_id: str,
-        end_user_id: str,
+        context: FileGrantContext,
+        refs: Sequence[FileRef],
+    ) -> list[ResolvedFile | None]: ...
+
+    def get_content_record(self, *, file_id: str, kind: FileKind) -> FileContentRecord | None: ...
+
+
+class FileGrantFiles(Protocol):
+    def store_upload_stream(
+        self,
+        *,
+        context: FileGrantContext,
+        filename: str,
+        stream: IO[bytes],
+        mimetype: str,
+    ) -> StoredUpload: ...
+
+    def store_upload(
+        self,
+        *,
+        context: FileGrantContext,
         filename: str,
         content: bytes,
         mimetype: str,
         source_url: str = "",
-    ) -> UploadFile:
-        """Store bytes as an ``upload_files`` row owned by the grant's end user."""
+    ) -> StoredUpload: ...
 
-        end_user = cls._load_end_user(end_user_id=end_user_id, tenant_id=tenant_id)
-        if end_user is None:
-            raise EndUserNotFoundError(end_user_id)
-
-        return FileService(db.engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=end_user,
-            source_url=source_url,
-        )
-
-    @staticmethod
     def store_produced(
+        self,
         *,
-        tenant_id: str,
-        end_user_id: str,
+        context: FileGrantContext,
         filename: str | None,
         stream: IO[bytes],
         mimetype: str,
-    ) -> ToolFile:
-        """Store bytes a workflow node produced as a ``tool_files`` row.
+    ) -> StoredProducedFile: ...
 
-        ``create_file_by_raw`` enforces no size limit of its own and the caller
-        is a worker running third-party plugin code, so the body arrives as a
-        stream and the read stops one byte past what its extension is allowed.
-        """
+    def open_content(self, record: FileContentRecord) -> FileContent: ...
 
-        extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
-        limit = FileService.file_size_limit(extension=extension)
-        content = stream.read(limit + 1)
-        if len(content) > limit:
-            raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
 
-        return ToolFileManager().create_file_by_raw(
-            user_id=end_user_id,
-            tenant_id=tenant_id,
-            conversation_id=None,
-            file_binary=content,
-            mimetype=mimetype,
-            filename=filename,
-        )
-
-    @classmethod
-    def resolve_files(
-        cls,
+class FileGrantTokens(Protocol):
+    def issue_grant(
+        self,
         *,
-        tenant_id: str,
-        end_user_id: str,
-        refs: Sequence[FileRef],
-    ) -> list[ResolvedFile | None]:
-        """Resolve file references owned by one end user, ``None`` per miss.
+        context: FileGrantContext,
+        scopes: Sequence[FileGrantScope],
+        ttl_seconds: int,
+    ) -> tuple[str, int]: ...
 
-        A file that exists but belongs to another owner or tenant resolves to
-        ``None`` exactly like a file that does not exist, so callers cannot use
-        this to probe for existence.
-        """
+    def decode_grant(self, token: str) -> FileGrantClaims | None: ...
 
-        with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
-            return [cls._resolve_file(session, tenant_id=tenant_id, end_user_id=end_user_id, ref=ref) for ref in refs]
+    def issue_content_urls(self, *, file_id: str, kind: FileKind) -> tuple[str, str]: ...
 
-    @classmethod
-    def load_content(cls, *, file_id: str, kind: FileKind) -> FileContent | None:
-        """Open the stored bytes of one file addressed by a content token."""
+    def decode_content_token(self, token: str) -> FileContentClaims | None: ...
 
-        with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
-            match kind:
-                case FileKind.UPLOAD:
-                    upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-                    if upload_file is None:
-                        return None
-                    return FileContent(
-                        name=upload_file.name,
-                        size=upload_file.size,
-                        mime_type=upload_file.mime_type,
-                        stream=storage.load(upload_file.key, stream=True),
-                    )
-                case FileKind.TOOL:
-                    tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id).limit(1))
-                    if tool_file is None:
-                        return None
-                    return FileContent(
-                        name=tool_file.name,
-                        size=tool_file.size,
-                        mime_type=tool_file.mimetype,
-                        stream=storage.load(tool_file.file_key, stream=True),
-                    )
+
+class FileGrantRemoteFiles(Protocol):
+    def fetch(self, url: str) -> RemoteFile | None: ...
+
+
+class FileGrantService:
+    def __init__(
+        self,
+        *,
+        repository: FileGrantRepository,
+        files: FileGrantFiles,
+        tokens: FileGrantTokens,
+        remote_files: FileGrantRemoteFiles,
+        limits: FileGrantLimits,
+        now: Callable[[], int],
+    ) -> None:
+        self._repository = repository
+        self._files = files
+        self._tokens = tokens
+        self._remote_files = remote_files
+        self._limits = limits
+        self._now = now
 
     @staticmethod
-    def _select_end_user(session: Session, *, tenant_id: str, app_id: str, session_id: str) -> EndUser | None:
-        return session.scalar(
-            select(EndUser)
-            .where(
-                EndUser.tenant_id == tenant_id,
-                EndUser.app_id == app_id,
-                EndUser.session_id == session_id,
-                EndUser.type == EndUserType.APP_DEPLOY,
-            )
-            .limit(1)
+    def session_id_for_subject(subject: str) -> str:
+        digest = hashlib.sha256(subject.encode()).digest()
+        return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+    def mint(self, request: FileGrantMintRequest) -> FileGrantMintResult:
+        self._validate_subject(request.subject)
+        self._validate_ref_count((*request.file_refs, *request.optional_file_refs))
+        ttl_seconds = self._effective_ttl_seconds(request)
+
+        end_user_id = self._repository.get_or_create_subject(
+            tenant_id=request.tenant_id,
+            app_id=request.app_id,
+            session_id=self.session_id_for_subject(request.subject),
+            external_user_id=request.subject[:255],
+            is_anonymous=request.is_anonymous,
+        )
+        if end_user_id is None:
+            raise AppNotFoundError(request.app_id)
+
+        context = FileGrantContext(request.tenant_id, request.app_id, end_user_id)
+        strict_file_count = len(request.file_refs)
+        resolved_files = self._repository.resolve_owned_files(
+            context=context,
+            refs=(*request.file_refs, *request.optional_file_refs),
+        )
+        strict_files = resolved_files[:strict_file_count]
+        if any(file is None for file in strict_files):
+            raise GrantedFileNotFoundError()
+        optional_files = resolved_files[strict_file_count:]
+        grant, expires_at = self._tokens.issue_grant(
+            context=context,
+            scopes=request.scopes,
+            ttl_seconds=ttl_seconds,
+        )
+        return FileGrantMintResult(
+            grant=grant,
+            expires_at=expires_at,
+            limits=self._limits,
+            files=tuple(file for file in strict_files if file is not None),
+            optional_files=tuple(self._with_access(file) if file is not None else None for file in optional_files),
         )
 
-    @classmethod
-    def _resolve_file(
-        cls,
-        session: Session,
+    def decode_grant(self, token: str) -> FileGrantClaims | None:
+        return self._tokens.decode_grant(token)
+
+    def store_upload(
+        self,
         *,
-        tenant_id: str,
-        end_user_id: str,
-        ref: FileRef,
-    ) -> ResolvedFile | None:
-        match ref.kind:
-            case FileKind.UPLOAD:
-                upload_file = session.scalar(
-                    select(UploadFile)
-                    .where(
-                        UploadFile.id == ref.id,
-                        UploadFile.tenant_id == tenant_id,
-                        UploadFile.created_by_role == CreatorUserRole.END_USER,
-                        UploadFile.created_by == end_user_id,
-                    )
-                    .limit(1)
-                )
-                if upload_file is None:
-                    return None
-                return ResolvedFile(
-                    id=upload_file.id,
-                    kind=FileKind.UPLOAD,
-                    name=upload_file.name,
-                    size=upload_file.size,
-                    extension=upload_file.extension,
-                    mime_type=upload_file.mime_type,
-                )
-            case FileKind.TOOL:
-                tool_file = session.scalar(
-                    select(ToolFile)
-                    .where(
-                        ToolFile.id == ref.id,
-                        ToolFile.tenant_id == tenant_id,
-                        ToolFile.user_id == end_user_id,
-                    )
-                    .limit(1)
-                )
-                if tool_file is None:
-                    return None
-                return ResolvedFile(
-                    id=tool_file.id,
-                    kind=FileKind.TOOL,
-                    name=tool_file.name,
-                    size=tool_file.size,
-                    extension=_extension_of(tool_file.name),
-                    mime_type=tool_file.mimetype,
-                )
+        context: FileGrantContext,
+        filename: str,
+        stream: IO[bytes],
+        mimetype: str,
+    ) -> StoredUpload:
+        return self._files.store_upload_stream(
+            context=context,
+            filename=filename,
+            stream=stream,
+            mimetype=mimetype,
+        )
 
+    def store_remote_upload(self, *, context: FileGrantContext, url: str) -> StoredUpload:
+        if not self._repository.subject_exists(context):
+            raise EndUserNotFoundError(context.end_user_id)
+        remote_file = self._remote_files.fetch(url)
+        if remote_file is None:
+            raise RemoteFileUnavailableError(url)
+        return self._files.store_upload(
+            context=context,
+            filename=remote_file.filename,
+            content=remote_file.content,
+            mimetype=remote_file.mimetype,
+            source_url=url,
+        )
 
-def _extension_of(filename: str | None) -> str:
-    """Normalize a filename suffix to the dotless lowercase ``upload_files`` form."""
+    def store_produced(
+        self,
+        *,
+        context: FileGrantContext,
+        filename: str | None,
+        stream: IO[bytes],
+        mimetype: str,
+    ) -> tuple[StoredProducedFile, ResolvedFileAccess]:
+        if not self._repository.subject_exists(context):
+            raise EndUserNotFoundError(context.end_user_id)
+        stored = self._files.store_produced(
+            context=context,
+            filename=filename,
+            stream=stream,
+            mimetype=mimetype,
+        )
+        file = ResolvedFile(stored.id, FileKind.TOOL, stored.name, stored.size, "", stored.mime_type)
+        return stored, self._with_access(file)
 
-    if not filename:
-        return ""
-    return os.path.splitext(filename)[1].lstrip(".").lower()
+    def resolve_files(
+        self,
+        *,
+        context: FileGrantContext,
+        refs: Sequence[FileRef],
+    ) -> list[ResolvedFile | None]:
+        self._validate_ref_count(refs)
+        if not self._repository.subject_exists(context):
+            raise EndUserNotFoundError(context.end_user_id)
+        return self._repository.resolve_owned_files(context=context, refs=refs)
+
+    def resolve_file_access(
+        self,
+        *,
+        context: FileGrantContext,
+        refs: Sequence[FileRef],
+    ) -> list[ResolvedFileAccess | None]:
+        return [
+            self._with_access(file) if file is not None else None
+            for file in self.resolve_files(context=context, refs=refs)
+        ]
+
+    def load_content(self, *, token: str, requested_file_id: str) -> FileContent | None:
+        claims = self._tokens.decode_content_token(token)
+        if claims is None:
+            raise InvalidFileGrantError()
+        if claims.file_id != requested_file_id:
+            return None
+        record = self._repository.get_content_record(file_id=requested_file_id, kind=claims.kind)
+        return self._files.open_content(record) if record is not None else None
+
+    def content_urls(self, *, file_id: str, kind: FileKind) -> tuple[str, str]:
+        return self._tokens.issue_content_urls(file_id=file_id, kind=kind)
+
+    def _with_access(self, file: ResolvedFile) -> ResolvedFileAccess:
+        external_url, internal_url = self._tokens.issue_content_urls(file_id=file.id, kind=file.kind)
+        return ResolvedFileAccess(file=file, external_url=external_url, internal_url=internal_url)
+
+    def _effective_ttl_seconds(self, request: FileGrantMintRequest) -> int:
+        if request.run_deadline is None:
+            if request.ttl_seconds > MAX_SESSION_GRANT_TTL_SECONDS:
+                raise GrantTtlTooLongError()
+            return request.ttl_seconds
+
+        now = self._now()
+        if FileGrantScope.PRODUCE not in request.scopes:
+            raise InvalidGrantRequestError("A run deadline requires the produce scope.")
+        if request.run_deadline <= now:
+            raise InvalidGrantRequestError("The run deadline has expired.")
+        if request.run_deadline > now + MAX_WORKFLOW_EXECUTION_SECONDS:
+            raise InvalidGrantRequestError("The run deadline exceeds the workflow execution limit.")
+        if request.ttl_seconds > MAX_RUN_GRANT_TTL_SECONDS:
+            raise GrantTtlTooLongError()
+        return min(request.ttl_seconds, request.run_deadline - now + RUN_GRANT_EXPIRY_GRACE_SECONDS)
+
+    @staticmethod
+    def _validate_subject(subject: str) -> None:
+        if not subject.strip() or "\x00" in subject:
+            raise InvalidSubjectError()
+
+    @staticmethod
+    def _validate_ref_count(refs: Sequence[FileRef]) -> None:
+        if len(refs) > MAX_FILE_GRANT_REFS:
+            raise TooManyFileRefsError(f"A file grant request may contain at most {MAX_FILE_GRANT_REFS} references.")
 
 
 __all__ = [
+    "MAX_FILE_GRANT_REFS",
+    "MAX_RUN_GRANT_TTL_SECONDS",
+    "MAX_SESSION_GRANT_TTL_SECONDS",
+    "MAX_WORKFLOW_EXECUTION_SECONDS",
+    "RUN_GRANT_EXPIRY_GRACE_SECONDS",
     "AppNotFoundError",
     "EndUserNotFoundError",
-    "FileContent",
     "FileGrantService",
-    "FileRef",
-    "ResolvedFile",
+    "GrantTtlTooLongError",
+    "GrantedFileNotFoundError",
+    "InvalidFileGrantError",
+    "InvalidGrantRequestError",
+    "InvalidSubjectError",
+    "RemoteFileUnavailableError",
+    "TooManyFileRefsError",
 ]

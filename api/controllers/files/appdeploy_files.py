@@ -14,17 +14,16 @@ step, minting the grant, already lives in ``inner_api``.
 
 from __future__ import annotations
 
+from typing import IO
 from urllib.parse import quote
 from uuid import UUID
 
-import httpx
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl, ValidationError
 from werkzeug.datastructures import FileStorage
 
 import services
-from controllers.common import helpers
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FilenameNotExistsError,
@@ -37,23 +36,28 @@ from controllers.common.errors import (
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.files import files_ns
 from controllers.files.wraps import FileGrantInvalidError, GrantedFileNotFoundError, file_grant_required
-from core.file import remote_fetcher
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.file_fields import FileResponse
 from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
-from libs.file_grant import (
+from libs.helper import dump_response
+from services.entities.file_grant_entities import (
+    FileContent,
     FileGrantClaims,
+    FileGrantContext,
     FileGrantScope,
     FileKind,
-    InvalidFileGrantError,
-    build_content_url,
-    decode_file_content_token,
+    FileRef,
+    StoredUpload,
 )
-from libs.helper import dump_response
-from models.model import UploadFile
-from services.file_grant_service import EndUserNotFoundError, FileContent, FileGrantService, FileRef
-from services.file_service import FileService
+from services.errors.file_grant import (
+    EndUserNotFoundError,
+    InvalidFileGrantError,
+    RemoteFileUnavailableError,
+    TooManyFileRefsError,
+)
+from services.file_grant_service import MAX_FILE_GRANT_REFS
 
 # Everything outside this whitelist is served as an attachment. Produced files
 # carry a plugin-declared MIME type, so SVG and the rest of the XML family must
@@ -77,7 +81,7 @@ class RemoteFileUploadPayload(BaseModel):
 
 
 class FileResolvePayload(BaseModel):
-    files: list[FileRefPayload] = Field(default_factory=list)
+    files: list[FileRefPayload] = Field(default_factory=list, max_length=MAX_FILE_GRANT_REFS)
 
 
 class FileContentQuery(BaseModel):
@@ -136,7 +140,7 @@ class GrantedFileUploadApi(Resource):
         upload_file = _store_upload(
             grant,
             filename=upload.filename or "",
-            content=upload.stream.read(),
+            stream=upload.stream,
             mimetype=upload.mimetype,
         )
         return _granted_file_response(upload_file), 201
@@ -166,31 +170,21 @@ class GrantedRemoteFileUploadApi(Resource):
         except ValidationError as exc:
             raise InvalidFileRequestError(str(exc)) from exc
 
-        url = str(payload.url)
         try:
-            response = remote_fetcher.make_request("HEAD", url=url)
-            if response.status_code != httpx.codes.OK:
-                response = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
-            if response.status_code != httpx.codes.OK:
-                raise RemoteFileUploadError(f"Failed to fetch file from {url}: {response.text}")
-        except httpx.RequestError as exc:
-            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {exc}")
-
-        file_info = helpers.guess_file_info_from_response(response)
-        if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-            raise FileTooLargeError()
-
-        content = (
-            response.content if response.request.method == "GET" else remote_fetcher.make_request("GET", url).content
-        )
-
-        upload_file = _store_upload(
-            grant,
-            filename=file_info.filename,
-            content=content,
-            mimetype=file_info.mimetype,
-            source_url=url,
-        )
+            upload_file = application_services().file_grants.store_remote_upload(
+                context=_grant_context(grant),
+                url=str(payload.url),
+            )
+        except RemoteFileUnavailableError as exc:
+            raise RemoteFileUploadError(f"Failed to fetch file from {payload.url}") from exc
+        except EndUserNotFoundError as exc:
+            raise GrantedFileNotFoundError() from exc
+        except services.errors.file.FileTooLargeError as exc:
+            raise FileTooLargeError(exc.description) from exc
+        except services.errors.file.BlockedFileExtensionError as exc:
+            raise BlockedFileExtensionError(exc.description) from exc
+        except services.errors.file.UnsupportedFileTypeError:
+            raise UnsupportedFileTypeError()
         return _remote_granted_file_response(upload_file), 201
 
 
@@ -213,23 +207,24 @@ class ProducedFileApi(Resource):
     def post(self, grant: FileGrantClaims):
         upload = _single_upload()
         try:
-            tool_file = FileGrantService.store_produced(
-                tenant_id=grant.tenant_id,
-                end_user_id=grant.sub,
+            tool_file, access = application_services().file_grants.store_produced(
+                context=_grant_context(grant),
                 filename=upload.filename,
                 stream=upload.stream,
                 mimetype=upload.mimetype,
             )
         except services.errors.file.FileTooLargeError as exc:
             raise FileTooLargeError(exc.description)
+        except EndUserNotFoundError as exc:
+            raise GrantedFileNotFoundError() from exc
 
         return ProducedFileResponse(
             id=tool_file.id,
             name=tool_file.name,
             size=tool_file.size,
-            mime_type=tool_file.mimetype,
-            url=build_content_url(file_id=tool_file.id, kind=FileKind.TOOL, external=True),
-            internal_url=build_content_url(file_id=tool_file.id, kind=FileKind.TOOL, external=False),
+            mime_type=tool_file.mime_type,
+            url=access.external_url,
+            internal_url=access.internal_url,
         ).model_dump(mode="json"), 201
 
 
@@ -256,11 +251,15 @@ class GrantedFileResolveApi(Resource):
             raise InvalidFileRequestError(str(exc)) from exc
 
         refs = [FileRef(id=ref.id, kind=ref.kind) for ref in payload.files]
-        resolved = FileGrantService.resolve_files(
-            tenant_id=grant.tenant_id,
-            end_user_id=grant.sub,
-            refs=refs,
-        )
+        try:
+            resolved = application_services().file_grants.resolve_file_access(
+                context=_grant_context(grant),
+                refs=refs,
+            )
+        except EndUserNotFoundError as exc:
+            raise GrantedFileNotFoundError() from exc
+        except TooManyFileRefsError as exc:
+            raise InvalidFileRequestError(str(exc)) from exc
 
         return FileResolveResponse(
             files=[ResolvedFileResponse.from_resolved(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
@@ -287,14 +286,12 @@ class GrantedFileContentApi(Resource):
             raise FileGrantInvalidError() from exc
 
         try:
-            claims = decode_file_content_token(query.token)
+            content = application_services().file_grants.load_content(
+                token=query.token,
+                requested_file_id=str(file_id),
+            )
         except InvalidFileGrantError as exc:
             raise FileGrantInvalidError() from exc
-
-        if claims.file_id != str(file_id):
-            raise GrantedFileNotFoundError()
-
-        content = FileGrantService.load_content(file_id=str(file_id), kind=claims.kind)
         if content is None:
             raise GrantedFileNotFoundError()
 
@@ -344,18 +341,15 @@ def _store_upload(
     grant: FileGrantClaims,
     *,
     filename: str,
-    content: bytes,
+    stream: IO[bytes],
     mimetype: str,
-    source_url: str = "",
-) -> UploadFile:
+) -> StoredUpload:
     try:
-        return FileGrantService.store_upload(
-            tenant_id=grant.tenant_id,
-            end_user_id=grant.sub,
+        return application_services().file_grants.store_upload(
+            context=_grant_context(grant),
             filename=filename,
-            content=content,
+            stream=stream,
             mimetype=mimetype,
-            source_url=source_url,
         )
     except EndUserNotFoundError as exc:
         raise GrantedFileNotFoundError() from exc
@@ -367,7 +361,11 @@ def _store_upload(
         raise UnsupportedFileTypeError()
 
 
-def _granted_file_response(upload_file: UploadFile) -> dict[str, object]:
+def _grant_context(grant: FileGrantClaims) -> FileGrantContext:
+    return FileGrantContext(tenant_id=grant.tenant_id, app_id=grant.app_id, end_user_id=grant.sub)
+
+
+def _granted_file_response(upload_file: StoredUpload) -> dict[str, object]:
     """Answer an upload exactly as dify's own upload endpoints answer it.
 
     A client moving off ``POST /v1/files/upload`` must not have to read a second
@@ -378,11 +376,11 @@ def _granted_file_response(upload_file: UploadFile) -> dict[str, object]:
     retrieves the file while keeping the grant its only way in.
     """
 
-    signed_url = build_content_url(file_id=upload_file.id, kind=FileKind.UPLOAD, external=True)
+    signed_url, _ = application_services().file_grants.content_urls(file_id=upload_file.id, kind=FileKind.UPLOAD)
     return dump_response(FileResponse, upload_file) | {"source_url": signed_url}
 
 
-def _remote_granted_file_response(upload_file: UploadFile) -> dict[str, object]:
+def _remote_granted_file_response(upload_file: StoredUpload) -> dict[str, object]:
     """Answer a remote upload with the upload shape plus dify's ``url`` key.
 
     Reuses the URL already signed for ``source_url`` rather than signing a

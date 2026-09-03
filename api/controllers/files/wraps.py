@@ -5,8 +5,9 @@ from functools import wraps
 
 from flask import request
 
+from extensions.ext_application_services import application_services
 from libs.exception import BaseHTTPException
-from libs.file_grant import FileGrantClaims, FileGrantScope, InvalidFileGrantError, decode_file_grant
+from services.entities.file_grant_entities import FileGrantClaims, FileGrantScope
 
 
 class FileGrantInvalidError(BaseHTTPException):
@@ -46,10 +47,9 @@ def _authenticated_claims(scope: FileGrantScope) -> FileGrantClaims:
     if scheme.lower() != "bearer" or not token:
         raise FileGrantInvalidError()
 
-    try:
-        claims = decode_file_grant(token)
-    except InvalidFileGrantError as exc:
-        raise FileGrantInvalidError() from exc
+    claims = application_services().file_grants.decode_grant(token)
+    if claims is None:
+        raise FileGrantInvalidError()
 
     if scope not in claims.scopes:
         raise FileGrantScopeDeniedError()

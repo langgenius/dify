@@ -2,6 +2,7 @@
 
 import time
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import cast
 
 import jwt
@@ -9,8 +10,10 @@ import pytest
 from flask import Flask
 
 from controllers.files.wraps import FileGrantInvalidError, FileGrantScopeDeniedError, file_grant_required
-from libs.file_grant import FILE_GRANT_AUDIENCE, FileGrantClaims, FileGrantScope, issue_file_grant
 from libs.passport import PassportService
+from services.entities.file_grant_entities import FileGrantClaims, FileGrantScope
+from services.file_grant_gateways import FILE_GRANT_AUDIENCE
+from tests.unit_tests.file_grant_test_utils import issue_file_grant, token_gateway
 
 SECRET_KEY = "file-grant-test-secret-long-enough-for-hs256"
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -21,6 +24,16 @@ END_USER_ID = "55555555-5555-4555-8555-555555555555"
 @pytest.fixture(autouse=True)
 def granted_config(config_overrides: Callable[..., None]) -> None:
     config_overrides(SECRET_KEY=SECRET_KEY)
+
+
+@pytest.fixture(autouse=True)
+def file_grant_service(granted_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    del granted_config
+    service = SimpleNamespace(decode_grant=token_gateway().decode_grant)
+    monkeypatch.setattr(
+        "controllers.files.wraps.application_services",
+        lambda: SimpleNamespace(file_grants=service),
+    )
 
 
 @file_grant_required(FileGrantScope.UPLOAD)

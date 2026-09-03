@@ -6,39 +6,41 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import jwt
 import pytest
 from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api.app.file_grants import (
-    MAX_RUN_GRANT_TTL_SECONDS,
-    MAX_SESSION_GRANT_TTL_SECONDS,
-    MAX_WORKFLOW_EXECUTION_SECONDS,
-    RUN_GRANT_EXPIRY_GRACE_SECONDS,
     EnterpriseFileGrantApi,
     GrantAppNotFoundError,
     GrantTtlTooLongError,
     InvalidGrantRequestError,
     InvalidSubjectError,
 )
+from extensions.ext_application_services import _build_file_grant_service
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from libs.file_grant import FILE_GRANT_AUDIENCE
 from models.enums import CreatorUserRole, EndUserType
 from models.model import App, EndUser, UploadFile
 from models.tools import ToolFile
 from services import end_user_service
 from services.end_user_service import EndUserService
-from services.file_grant_service import FileGrantService
+from services.file_grant_gateways import FILE_GRANT_AUDIENCE
+from services.file_grant_service import (
+    MAX_RUN_GRANT_TTL_SECONDS,
+    MAX_SESSION_GRANT_TTL_SECONDS,
+    MAX_WORKFLOW_EXECUTION_SECONDS,
+    RUN_GRANT_EXPIRY_GRACE_SECONDS,
+    FileGrantService,
+)
 
 CONTROLLER_MODULE = "controllers.inner_api.app.file_grants"
-SERVICE_MODULE = "services.file_grant_service"
 
 SECRET_KEY = "file-grant-test-secret-long-enough-for-hs256"
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -131,8 +133,11 @@ def _persist_tool_file(session: Session, *, owner_id: str, tenant_id: str = TENA
 
 
 @pytest.fixture
-def sqlite_db(sqlite_engine: Engine) -> Iterator[None]:
-    with patch(f"{SERVICE_MODULE}.db", MagicMock(engine=sqlite_engine)):
+def sqlite_db(sqlite_engine: Engine, granted_config: None) -> Iterator[None]:
+    del granted_config
+    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    services = SimpleNamespace(file_grants=service)
+    with patch(f"{CONTROLLER_MODULE}.application_services", return_value=services):
         yield
 
 
@@ -483,6 +488,6 @@ def test_app_deploy_end_users_have_exactly_one_writer() -> None:
                 referencing_modules.add(path.relative_to(api_root).as_posix())
 
     assert referencing_modules == {
+        "repositories/file_grant_repository.py",
         "services/end_user_service.py",
-        "services/file_grant_service.py",
     }
