@@ -16,12 +16,13 @@ Focus on:
 
 import inspect
 import uuid
+from collections.abc import Callable
 from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.service_api.dataset.segment import (
     ChildChunkApi,
@@ -2266,3 +2267,69 @@ class TestDatasetChildChunkApiDelete(SQLiteEndpointTest):
                     segment_id=segment_id,
                     child_chunk_id="cc-id",
                 )
+
+
+class TestModelValidateDecorator(SQLiteEndpointTest):
+    """The endpoint tests above supply valid bodies, so this is what covers the decorators."""
+
+    @staticmethod
+    def _setup_billing_mocks(mock_validate_token: Mock, mock_feature_svc: Mock, tenant_id: str) -> None:
+        """Configure mocks to neutralise billing/auth decorators."""
+        mock_validate_token.return_value = _api_token(tenant_id)
+
+        mock_features = Mock()
+        mock_features.billing.enabled = False
+        mock_feature_svc.get_features.return_value = mock_features
+
+        mock_vector_space = Mock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 0
+        mock_feature_svc.get_vector_space.return_value = mock_vector_space
+
+        mock_rate_limit = Mock()
+        mock_rate_limit.enabled = False
+        mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
+
+    @pytest.mark.parametrize(
+        ("call", "route", "method"),
+        [
+            (
+                lambda: DatasetSegmentApi().post(
+                    tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"
+                ),
+                "/datasets/d/documents/doc-id/segments/seg-id",
+                "POST",
+            ),
+            (
+                lambda: ChildChunkApi().post(tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"),
+                "/datasets/d/documents/doc-id/segments/seg-id/child_chunks",
+                "POST",
+            ),
+            (
+                lambda: DatasetChildChunkApi().patch(
+                    tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id", child_chunk_id="cc-id"
+                ),
+                "/datasets/d/documents/doc-id/segments/seg-id/child_chunks/cc-id",
+                "PATCH",
+            ),
+        ],
+    )
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_invalid_body_is_rejected_before_the_handler_runs(
+        self,
+        mock_validate_token: Mock,
+        mock_feature_svc: Mock,
+        app: Flask,
+        mock_tenant: Mock,
+        call: Callable[[], object],
+        route: str,
+        method: str,
+    ) -> None:
+        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+
+        with app.test_request_context(route, method=method, json={}, headers={"Authorization": "Bearer test_token"}):
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                call()
+
+        assert exc_info.value.code == 422

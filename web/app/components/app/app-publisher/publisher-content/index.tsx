@@ -33,14 +33,14 @@ import { useWorkflowLaunch } from './use-workflow-launch'
 import { useWorkflowTool } from './use-workflow-tool'
 
 type PublisherContentProps = AppPublisherProps & {
-  canAccessPoint: boolean
+  canViewAccessPoint: boolean
   open: boolean
   supportsMultiEnvironment: boolean
   onOpenStateChange: (open: boolean) => void
 }
 
 export function PublisherContent({
-  canAccessPoint,
+  canViewAccessPoint,
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
   disabled = false,
@@ -132,7 +132,7 @@ export function PublisherContent({
     hasTriggerNode,
     inputs,
     onClosePublisher: closePublisher,
-    onPublish: publish.handlePublish,
+    onPublish: publish.publishWorkflowTool,
     onRefreshData,
     outputs,
     toolPublished,
@@ -214,7 +214,7 @@ export function PublisherContent({
           actions: {
             appDetail,
             appURL,
-            canAccessPoint,
+            canViewAccessPoint,
             disabledFunctionButton,
             disabledFunctionTooltip,
             handleOpenRunConfig: workflowLaunch.openDialog,
@@ -239,7 +239,7 @@ export function PublisherContent({
         disabled={disabled}
         environmentPublisher={{
           appId: appDetail?.id,
-          canAccessPoint,
+          canViewAccessPoint,
           deployment: selectedEnvironmentDeployment,
           environmentId: selectedEnvironmentId,
           environmentName:

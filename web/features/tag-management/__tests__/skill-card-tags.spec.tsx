@@ -2,7 +2,7 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SkillCardTags } from '../components/skill-card-tags'
 
 const mocks = vi.hoisted(() => ({

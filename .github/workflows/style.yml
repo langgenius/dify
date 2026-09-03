@@ -114,7 +114,6 @@ jobs:
             pnpm-workspace.yaml
             knip.config.ts
             scripts/check-web-production-unused-after-knip-fix.mjs
-            .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
 
@@ -170,7 +169,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .nvmrc
             vite.config.ts
             lint.config.ts
             eslint.config.mjs

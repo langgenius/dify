@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -22,6 +21,7 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import UploadFile
@@ -44,6 +44,15 @@ def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFil
         key=f"upload/{file_id}/test.txt",
         size=size,
         created_by="user-123",
+    )
+
+
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
     )
 
 
@@ -82,17 +91,9 @@ def mock_account_context(mock_current_user):
 
 
 @pytest.fixture
-def mock_db(sqlite_engine: Engine):
-    with patch("controllers.console.files.db") as db_mock:
-        db_mock.engine = sqlite_engine
-        yield db_mock
-
-
-@pytest.fixture
-def mock_file_service(mock_db):
-    with patch("controllers.console.files.FileService") as fs:
-        instance = fs.return_value
-        yield instance
+def mock_file_service():
+    with patch("controllers.console.files.application_services") as services:
+        yield services.return_value.files
 
 
 class TestFileApiGet:
@@ -107,7 +108,7 @@ class TestFileApiGet:
                 return_value=50,
             ) as get_knowledge_file_size_limit,
         ):
-            data, status = get_method(api, "tenant-1")
+            data, status = get_method(api, _request_context())
 
         assert status == 200
         assert "file_size_limit" in data
@@ -186,6 +187,15 @@ class TestFileApiPost:
         assert status == 201
         assert response["id"] == "file-id-123"
         assert response["name"] == "test.txt"
+        mock_file_service.upload_file.assert_called_once_with(
+            filename="test.txt",
+            content=b"hello",
+            mimetype="text/plain",
+            user=mock_account_context,
+            tenant_id=None,
+            source=None,
+            default_file_size_limit=None,
+        )
 
     def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
         upload_file = _upload_file()
@@ -266,8 +276,10 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(FileTooLargeError):
+            with pytest.raises(FileTooLargeError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.__cause__ is error
 
     def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -283,8 +295,10 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(UnsupportedFileTypeError):
+            with pytest.raises(UnsupportedFileTypeError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.__cause__ is error
 
     def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -300,8 +314,11 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(BlockedFileExtensionError):
+            with pytest.raises(BlockedFileExtensionError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.description == error.description
+        assert error_info.value.__cause__ is error
 
 
 class TestFilePreviewApi:
@@ -311,9 +328,10 @@ class TestFilePreviewApi:
         mock_file_service.get_file_preview.return_value = "preview text"
 
         with app.test_request_context():
-            result = get_method(api, "tenant-123", "1234")
+            result = get_method(api, _request_context(workspace_id="tenant-123"), "1234")
 
         assert result == {"content": "preview text"}
+        mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
 
 
 class TestFileSupportTypeApi:
@@ -322,6 +340,6 @@ class TestFileSupportTypeApi:
         get_method = unwrap(api.get)
 
         with app.test_request_context():
-            result = get_method(api)
+            result = get_method(api, _request_context())
 
         assert result == {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

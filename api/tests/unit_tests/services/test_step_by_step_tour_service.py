@@ -15,7 +15,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from tests.unit_tests.model_factories import make_account_snapshot
 
 
-def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+def _context(*, workspace_id: str = "workspace-1") -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
@@ -176,15 +176,6 @@ def test_patch_state_complete_and_uncomplete_task() -> None:
 def test_rejects_unsupported_task_id() -> None:
     with pytest.raises(ValueError, match="Unsupported task_id"):
         StepByStepTourService._require_task_id("unknown")
-
-
-def test_rejects_missing_workspace_before_using_state_repository() -> None:
-    states = StateRepositoryStub()
-
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        _service(states=states).patch_state(_context(workspace_id=None), StepByStepTourPatch("skip"))
-
-    assert states.mutation_account_ids == []
 
 
 def test_get_state_rejects_unknown_admitted_account() -> None:

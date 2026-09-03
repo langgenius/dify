@@ -10,12 +10,12 @@ from services.entities.account_entities import AccountSnapshot
 from tests.unit_tests.model_factories import make_account_snapshot
 
 
-def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+def _context() -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
         account_id="account-1",
-        active_workspace_id=workspace_id,
+        active_workspace_id="workspace-1",
     )
 
 
@@ -87,16 +87,4 @@ def test_missing_account_does_not_call_billing(
     with pytest.raises(AccountNotFoundError):
         service.get_invoices(_context())
 
-    get_invoices.assert_not_called()
-
-
-def test_missing_workspace_does_not_query_account_or_billing(
-    service: BillingPortalService,
-    accounts: Mock,
-    get_invoices: MagicMock,
-) -> None:
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        service.get_invoices(_context(workspace_id=None))
-
-    accounts.get.assert_not_called()
     get_invoices.assert_not_called()

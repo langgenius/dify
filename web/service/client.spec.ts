@@ -1,4 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
@@ -583,7 +584,7 @@ describe('consoleQuery education defaults', () => {
     })
 
     await expect(
-      queryClient.fetchQuery(consoleQuery.account.education.get.queryOptions()),
+      queryClient.query(consoleQuery.account.education.get.queryOptions()),
     ).rejects.toThrow('education status failed')
 
     expect(request).toHaveBeenCalledTimes(1)
@@ -635,12 +636,12 @@ describe('consoleQuery education defaults', () => {
 })
 
 describe('consoleQuery account profile mutation defaults', () => {
-  it('should invalidate the account profile after a timezone update', async () => {
+  it('should invalidate the account profile after a profile update', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-    await consoleQuery.account.timezone.post.mutationOptions().onSuccess?.(
+    await consoleQuery.account.profile.patch.mutationOptions().onSuccess?.(
       {
         id: 'user-1',
         name: 'Test User',
@@ -661,6 +662,82 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('should invalidate the exact app detail after access mutations', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation(() => new Promise(() => {}))
+    const context = createMutationContext(queryClient)
+    const appDetail: AppDetail = {
+      enable_api: true,
+      enable_site: true,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'App',
+    }
+    const appSite: AppSiteResponse = {
+      app_id: 'app-1',
+      customize_token_strategy: 'fixed',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'App',
+      use_icon_as_answer_icon: false,
+    }
+
+    const results = [
+      consoleQuery.apps.byAppId.apiEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          appDetail,
+          null,
+          { params: { app_id: 'app-1' }, body: { enable_api: true } },
+          undefined,
+          context,
+        ),
+      consoleQuery.apps.byAppId.siteEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          appDetail,
+          null,
+          { params: { app_id: 'app-2' }, body: { enable_site: true } },
+          undefined,
+          context,
+        ),
+      consoleQuery.apps.byAppId.site.accessTokenReset.post
+        .mutationOptions()
+        .onSettled?.(appSite, null, { params: { app_id: 'app-3' } }, undefined, context),
+      consoleQuery.apps.byAppId.siteEnable.post
+        .mutationOptions()
+        .onSettled?.(
+          undefined,
+          new Error('request failed'),
+          { params: { app_id: 'app-4' }, body: { enable_site: false } },
+          undefined,
+          context,
+        ),
+    ]
+
+    expect(results).toEqual([undefined, undefined, undefined, undefined])
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-1' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-2' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-3' } },
+      }),
+    })
+  })
+
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -851,6 +928,7 @@ describe('consoleQuery app mutation defaults', () => {
           id: 'app-key-1',
           token: 'app-token',
           type: 'app',
+          dataset_ids: [],
         },
         { params: { resource_id: 'app-1' } },
         undefined,
@@ -861,8 +939,9 @@ describe('consoleQuery app mutation defaults', () => {
           id: 'dataset-key-1',
           token: 'dataset-token',
           type: 'dataset',
+          dataset_ids: [],
         },
-        undefined,
+        { body: {} },
         undefined,
         context,
       ),
@@ -1520,6 +1599,70 @@ describe('consoleQuery Web app access mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.recent.get.key(),
     })
+  })
+})
+
+describe('consoleQuery App Instance mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should bypass a fresh list cache while waiting for a created app instance', async () => {
+    const appInstance = {
+      id: 'app-instance-1',
+      tenantId: 'tenant-1',
+      displayName: 'Production App',
+      description: '',
+      createdBy: { id: 'user-1', displayName: 'Ada' },
+      updatedBy: { id: 'user-1', displayName: 'Ada' },
+      createdAt: '2026-09-03T00:00:00Z',
+      updatedAt: '2026-09-03T00:00:00Z',
+    }
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ appInstances: [], pagination: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ appInstances: [appInstance], pagination: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+      },
+    })
+    const listInput = {
+      query: {
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
+    }
+    const listOptions = consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+      input: listInput,
+    })
+    queryClient.setQueryData(listOptions.queryKey, {
+      appInstances: [],
+      pagination: {},
+    })
+
+    const onSuccess =
+      consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions().onSuccess
+    const completion = onSuccess?.(
+      { appInstance },
+      { body: { displayName: appInstance.displayName } },
+      undefined,
+      createMutationContext(queryClient),
+    )
+    await completion
+
+    expect(request).toHaveBeenCalledTimes(2)
   })
 })
 

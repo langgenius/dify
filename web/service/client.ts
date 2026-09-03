@@ -459,8 +459,8 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-        timezone: {
-          post: {
+        profile: {
+          patch: {
             mutationOptions: {
               onSuccess: async (_data, _variables, _onMutateResult, context) => {
                 await context.client.invalidateQueries({
@@ -525,6 +525,22 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
         byAppId: {
+          // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          apiEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, _variables, _onMutateResult, context) =>
@@ -555,6 +571,38 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.recent.get.key(),
                 })
+              },
+            },
+          },
+          siteEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
+          site: {
+            accessTokenReset: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
               },
             },
           },
@@ -1328,16 +1376,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
 
                     const listResponse = await context.client
-                      .fetchQuery(
-                        consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-                          input: {
-                            query: {
-                              pageNumber: 1,
-                              resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                      .query({
+                        ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions(
+                          {
+                            input: {
+                              query: {
+                                pageNumber: 1,
+                                resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                              },
                             },
                           },
-                        }),
-                      )
+                        ),
+                        staleTime: 0,
+                      })
                       .catch(() => undefined)
 
                     if (listResponse?.appInstances?.some((app) => app.id === appInstanceId)) break

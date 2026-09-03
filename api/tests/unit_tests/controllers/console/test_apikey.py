@@ -263,13 +263,6 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
             [(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True)],
         ),
         (
-            lambda: AgentApiKeyListApi().get(agent_id=api_id),
-            [
-                (RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, False),
-                (RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True),
-            ],
-        ),
-        (
             lambda: DatasetApiKeyApi().get(),
             [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
         ),

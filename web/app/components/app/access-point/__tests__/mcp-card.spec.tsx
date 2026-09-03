@@ -94,7 +94,7 @@ describe('MCPAccessPointCard', () => {
     render(
       <MCPAccessPointCard
         appInfo={appInfo}
-        canEdit
+        canManageAccessPoint
         triggerModeDisabled={false}
         workflow={undefined}
         workflowLoading={false}
@@ -125,7 +125,7 @@ describe('MCPAccessPointCard', () => {
     render(
       <MCPAccessPointCard
         appInfo={workflowAppInfo}
-        canEdit
+        canManageAccessPoint
         triggerModeDisabled={false}
         workflow={publishedWorkflow}
         workflowLoading={false}
@@ -147,7 +147,7 @@ describe('MCPAccessPointCard', () => {
     render(
       <MCPAccessPointCard
         appInfo={workflowAppInfo}
-        canEdit
+        canManageAccessPoint
         triggerModeDisabled={false}
         workflow={publishedWorkflow}
         workflowLoading={false}

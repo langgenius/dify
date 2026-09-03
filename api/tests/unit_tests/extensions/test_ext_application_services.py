@@ -2,7 +2,8 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from typing import cast
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import httpx
@@ -20,16 +21,22 @@ from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.account_oauth_repository import (
+    AccountServiceOAuthAccountRegistrationGateway,
+    AccountServiceOAuthSessionGateway,
+    AccountServiceOAuthWorkspaceGateway,
+    RegisterServiceOAuthInvitationGateway,
+)
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import recommended_app_catalog_gateway
-from services.account_activation_adapters import (
+from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RBACWorkspaceMemberAccessSync,
-    RegisterServiceInvitationTokenStore,
+    RedisInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_email_registration_adapters import (
@@ -38,6 +45,15 @@ from services.account_email_registration_adapters import (
     RedisEmailRegistrationSecurityGateway,
     TokenManagerEmailRegistrationTokenGateway,
 )
+from services.account_forgot_password_adapters import (
+    RateLimiterForgotPasswordSendLimiter,
+    RedisForgotPasswordSecurityGateway,
+    RedisForgotPasswordTokenGateway,
+)
+from services.account_oauth_adapters import (
+    DeploymentOAuthPolicyGateway,
+    RedisOAuthAccountClaimLock,
+)
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
@@ -45,6 +61,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -190,6 +207,21 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_reuses_file_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.files, FileService)
+    assert services.files._session_maker is sqlite_session_factory
+    assert services.web_app_runtime._file_service is services.files
 
 
 def test_build_application_services_wires_workflow_run_archives(
@@ -370,6 +402,24 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
     assert services.accounts.password._accounts is accounts
+    assert services.accounts.authentication._passwords is services.accounts.password._passwords
+    forgot_password = services.accounts.forgot_password
+    assert forgot_password._accounts is accounts
+    assert forgot_password._passwords is services.accounts.password._passwords
+    tokens = cast(RedisForgotPasswordTokenGateway, forgot_password._tokens)
+    send_limiter = cast(RateLimiterForgotPasswordSendLimiter, forgot_password._send_limits)
+    security = cast(RedisForgotPasswordSecurityGateway, forgot_password._security)
+    assert tokens._redis is send_limiter._rate_limiter._redis_client
+    assert send_limiter._rate_limiter.prefix == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX
+    assert (
+        send_limiter._rate_limiter.max_attempts
+        == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS
+    )
+    assert (
+        security._verification_failure_limit
+        == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT
+    )
+    assert security._verification_key_prefix == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
     assert services.accounts.change_email._accounts is accounts
@@ -382,12 +432,26 @@ def test_build_application_services_wires_account_profile_repository(
     assert email_registration._registration._session_factory is sqlite_session_factory
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.authentication._accounts is accounts
+    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
     assert services.notifications._accounts is accounts
     assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
+    oauth = services.accounts.oauth
+    assert oauth._accounts is accounts
+    assert oauth._integrations is integrations
+    assert oauth._memberships is services.workspace_queries._workspaces
+    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
+    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
+    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
+    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert oauth._sessions is not oauth._workspaces
+    assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
+    assert oauth._workspace_policy is oauth._registration_policy
     avatar_files = services.accounts.avatar._files
     assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
     assert avatar_files._session_factory is sqlite_session_factory
@@ -427,7 +491,7 @@ def test_build_application_services_wires_account_activation(
     )
 
     activation = services.account_activation
-    assert isinstance(activation._tokens, RegisterServiceInvitationTokenStore)
+    assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory
     assert isinstance(activation._workspace_policy, DeploymentWorkspaceInvitePolicy)
@@ -480,7 +544,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="private_all"),
@@ -517,7 +581,7 @@ def test_build_application_services_maps_known_enterprise_errors(
     enterprise_error: Exception,
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=enterprise_error,
@@ -540,7 +604,7 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="invalid"),
@@ -564,7 +628,7 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
 ) -> None:
     failure = TypeError("adapter bug")
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=failure,
@@ -588,7 +652,7 @@ def test_build_application_services_wires_webapp_permission(
 ) -> None:
     with (
         patch(
-            "extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True
+            "extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True
         ) as enabled,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
@@ -610,7 +674,12 @@ def test_build_application_services_wires_webapp_permission(
 
     assert requires_permission is True
     assert allowed is False
-    enabled.assert_called_once_with()
+    enabled.assert_has_calls(
+        [
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+        ]
+    )
     get_access_mode.assert_called_once_with("app-1")
     is_user_allowed.assert_called_once_with("user-1", "app-1")
 

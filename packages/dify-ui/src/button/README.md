@@ -119,8 +119,10 @@ for the other variants. Use a `className` override only for a documented layout 
 ## Related guides
 
 - Read [`IconButton`] for icon-only actions.
+- Read [Accessible names and descriptions] when choosing or changing a naming source.
 - Read [Base UI Button] for the upstream interaction and composition contract.
 
+[Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI Button]: https://base-ui.com/react/components/button
 [WAI-ARIA `aria-busy`]: https://www.w3.org/TR/wai-aria#aria-busy
 [`IconButton`]: ../icon-button/README.md
