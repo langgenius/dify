@@ -24,6 +24,9 @@ vi.mock('../home/banners', async (importOriginal) => {
 
 vi.mock('../hydration-server', () => ({
   HydrateQueryClient: ({ children }: { children: ReactNode }) => children,
+}))
+
+vi.mock('../prefetch-marketplace-dehydrated-state', () => ({
   prefetchMarketplaceDehydratedState: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -58,11 +61,7 @@ describe('Marketplace server entry', () => {
     const { default: Marketplace } = await import('../index')
     const element = await Marketplace({ variant: 'home' })
 
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        {element}
-      </QueryClientProvider>,
-    )
+    render(<QueryClientProvider client={new QueryClient()}>{element}</QueryClientProvider>)
 
     expect(screen.getByText('Server banners: 1')).toBeInTheDocument()
     expect(mockGetLocaleOnServer).toHaveBeenCalledOnce()
@@ -70,7 +69,8 @@ describe('Marketplace server entry', () => {
   })
 
   it('starts catalog prefetch without waiting for banners to finish', async () => {
-    const { prefetchMarketplaceDehydratedState } = await import('../hydration-server')
+    const { prefetchMarketplaceDehydratedState } =
+      await import('../prefetch-marketplace-dehydrated-state')
     let resolveBanners: (banners: PluginBanner[]) => void = () => {}
     mockGetLocaleOnServer.mockResolvedValue('en-US')
     mockFetchPluginBanners.mockImplementation(

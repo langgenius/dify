@@ -170,17 +170,19 @@ describe('marketplace template discovery', () => {
     })
     mocks.templateCollectionTemplates.mockResolvedValue({
       data: {
-        templates: [{
-          id: 'template-1',
-          template_name: 'Inbox',
-          readme: '# long',
-          review_comment: 'ship it',
-          dsl_file_key: 'dsl.yml',
-          partner_link: 'https://example.com',
-          asset_files: [{ name: 'a' }],
-          asset_tree_nodes: [{ path: '/' }],
-          dsl_raw_file_key: 'raw.yml',
-        }],
+        templates: [
+          {
+            id: 'template-1',
+            template_name: 'Inbox',
+            readme: '# long',
+            review_comment: 'ship it',
+            dsl_file_key: 'dsl.yml',
+            partner_link: 'https://example.com',
+            asset_files: [{ name: 'a' }],
+            asset_tree_nodes: [{ path: '/' }],
+            dsl_raw_file_key: 'raw.yml',
+          },
+        ],
       },
     })
 

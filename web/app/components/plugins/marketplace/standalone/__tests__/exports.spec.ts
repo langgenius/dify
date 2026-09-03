@@ -5,6 +5,9 @@ import { standaloneMarketplaceServer } from '../server'
 vi.mock('../../index', () => ({ default: () => null }))
 vi.mock('../../hydration-server', () => ({
   HydrateQueryClient: () => null,
+}))
+
+vi.mock('../../prefetch-marketplace-dehydrated-state', () => ({
   prefetchMarketplaceDehydratedState: vi.fn(),
 }))
 

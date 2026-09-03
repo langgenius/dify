@@ -13,8 +13,9 @@ import {
   sortCreatorCreations,
   toPublisherSortQuery,
 } from '../creator-profile/model'
-import { HydrateQueryClient, prefetchMarketplaceDehydratedState } from '../hydration-server'
+import { HydrateQueryClient } from '../hydration-server'
 import Marketplace from '../index'
+import { prefetchMarketplaceDehydratedState } from '../prefetch-marketplace-dehydrated-state'
 import { SERVER_PREFETCH_BUDGET_MS, withinServerBudget } from '../server-budget'
 
 export const standaloneMarketplaceServer = {
