@@ -31,6 +31,7 @@ from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourc
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -107,6 +108,7 @@ from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.notification_gateway import BillingNotificationGateway
@@ -202,6 +204,7 @@ class ApplicationServices:
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    human_input_file_uploads: HumanInputFileUploadService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -282,6 +285,8 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    file_service = FileService(session_factory=database_client)
+    remote_file_service = RemoteFileService(files=file_service)
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -449,6 +454,14 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        human_input_file_uploads=HumanInputFileUploadService(
+            uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
+            workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
+            files=file_service,
+            remote_files=remote_file_service,
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
@@ -473,9 +486,7 @@ def build_application_services(
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
             trial_enabled=trial_app_enabled,
         ),
-        remote_files=RemoteFileService(
-            files=FileService(session_factory=database_client),
-        ),
+        remote_files=remote_file_service,
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
