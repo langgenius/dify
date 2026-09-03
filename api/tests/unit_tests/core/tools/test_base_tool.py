@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.errors import ToolParameterValidationError
 
 
 class DummyCastType:
@@ -130,6 +131,35 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
         "app_id": "app-1",
         "message_id": "msg-1",
     }
+
+
+def test_invoke_rejects_malformed_object_parameter_naming_the_parameter(sqlite_session: Session):
+    """Bad JSON must fail at the tool boundary, not degrade to {} and fail deep downstream."""
+    tool = _build_tool()
+    tool.entity.parameters = [
+        ToolParameter.get_simple_instance(
+            name="subagent_tasks",
+            llm_description="Tasks to dispatch",
+            typ=ToolParameter.ToolParameterType.OBJECT,
+            required=True,
+        )
+    ]
+
+    truncated = '{"task_tickets": [{"task_id": "t1", "subagent_name": "a", "task_ticket": "x"}]'
+
+    with pytest.raises(ToolParameterValidationError) as excinfo:
+        list(
+            tool.invoke(
+                session=sqlite_session,
+                user_id="user-1",
+                tool_parameters={"subagent_tasks": truncated},
+            )
+        )
+
+    message = str(excinfo.value)
+    assert "subagent_tasks" in message
+    assert "not valid JSON" in message
+    assert tool.last_invocation is None
 
 
 def test_invoke_preserves_multiple_select_values(sqlite_session: Session):

@@ -222,13 +222,46 @@ class TestPluginParameterEntities:
         assert cast_parameter_value(parameter_type, value) == expected
 
     @pytest.mark.parametrize(
-        ("parameter_type", "value", "expected"),
+        ("value", "expected"),
         [
-            (PluginParameterType.ARRAY, "bad-json", ["bad-json"]),
-            (PluginParameterType.OBJECT, "bad-json", {}),
+            ("bad-json", ["bad-json"]),
+            ("plain text", ["plain text"]),
+            (1, [1]),
+            (None, []),
+            ("", []),
         ],
     )
-    def test_cast_parameter_value_array_and_object_invalid_json_fallback(self, parameter_type, value, expected):
+    def test_cast_parameter_value_array_wraps_non_json_scalars(self, value, expected):
+        assert cast_parameter_value(PluginParameterType.ARRAY, value) == expected
+
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "message"),
+        [
+            # Text that is clearly meant to be JSON must surface the decode error rather
+            # than degrading to {} / [raw string]; the caller cannot see the corruption
+            # otherwise and it resurfaces as an unrelated failure much further downstream.
+            (PluginParameterType.OBJECT, "bad-json", "is not valid JSON"),
+            (PluginParameterType.OBJECT, '{"a": 1', "is not valid JSON"),
+            (PluginParameterType.ARRAY, "[1, 2", "is not valid JSON"),
+            (PluginParameterType.ARRAY, '{"a": 1', "is not valid JSON"),
+            (PluginParameterType.OBJECT, "[1, 2]", "must be a JSON object"),
+            (PluginParameterType.OBJECT, 123, "must be a JSON object"),
+            (PluginParameterType.ARRAY, '{"a": 1}', "must be a JSON array"),
+        ],
+    )
+    def test_cast_parameter_value_array_and_object_reject_malformed_json(self, parameter_type, value, message):
+        with pytest.raises(ValueError, match=message):
+            cast_parameter_value(parameter_type, value)
+
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "expected"),
+        [
+            (PluginParameterType.OBJECT, None, {}),
+            (PluginParameterType.OBJECT, "", {}),
+            (PluginParameterType.OBJECT, "  ", {}),
+        ],
+    )
+    def test_cast_parameter_value_object_treats_unset_as_empty(self, parameter_type, value, expected):
         assert cast_parameter_value(parameter_type, value) == expected
 
     def test_cast_parameter_value_default_branch_and_wrapped_exception(self):

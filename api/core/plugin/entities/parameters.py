@@ -121,6 +121,21 @@ def _validate_date(value: Any, name: str = "date") -> str:
     return value
 
 
+def _parse_json_parameter(value: str, kind: str) -> Any:
+    """Parse a JSON-encoded parameter, surfacing decode errors instead of hiding them.
+
+    The payload itself is deliberately kept out of the message: it can be large and
+    can carry user data, and the decode position is what a caller (or an LLM
+    retrying a tool call) needs in order to correct the value.
+    """
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"The {kind} parameter is not valid JSON: {error.msg} (line {error.lineno} column {error.colno})."
+        ) from error
+
+
 def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
@@ -214,29 +229,40 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     raise ValueError("The var selector must be a string, dictionary, list or number.")
                 return value
             case PluginParameterType.ARRAY:
-                if not isinstance(value, list):
-                    # Try to parse JSON string for arrays
-                    if isinstance(value, str):
-                        try:
-                            parsed_value = json.loads(value)
-                            if isinstance(parsed_value, list):
-                                return parsed_value
-                        except (json.JSONDecodeError, ValueError):
-                            pass
-                    return [value]
-                return value
+                if isinstance(value, list):
+                    return value
+                if value is None:
+                    return []
+                if isinstance(value, str):
+                    stripped = value.strip()
+                    if not stripped:
+                        return []
+                    # Only text that is *meant* to be JSON is parsed. Anything else keeps the
+                    # long-standing convenience of being wrapped into a single-element array.
+                    if stripped[0] in "[{":
+                        parsed_value = _parse_json_parameter(stripped, "array")
+                        if not isinstance(parsed_value, list):
+                            raise ValueError(
+                                f"The array parameter must be a JSON array, got {type(parsed_value).__name__} instead."
+                            )
+                        return parsed_value
+                return [value]
             case PluginParameterType.OBJECT:
-                if not isinstance(value, dict):
-                    # Try to parse JSON string for objects
-                    if isinstance(value, str):
-                        try:
-                            parsed_value = json.loads(value)
-                            if isinstance(parsed_value, dict):
-                                return parsed_value
-                        except (json.JSONDecodeError, ValueError):
-                            pass
+                if isinstance(value, dict):
+                    return value
+                if value is None:
                     return {}
-                return value
+                if isinstance(value, str):
+                    stripped = value.strip()
+                    if not stripped:
+                        return {}
+                    parsed_value = _parse_json_parameter(stripped, "object")
+                    if isinstance(parsed_value, dict):
+                        return parsed_value
+                    raise ValueError(
+                        f"The object parameter must be a JSON object, got {type(parsed_value).__name__} instead."
+                    )
+                raise ValueError(f"The object parameter must be a JSON object, got {type(value).__name__} instead.")
             case _:
                 return str(value)
     except ValueError:
