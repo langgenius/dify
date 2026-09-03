@@ -11,6 +11,7 @@ from core.helper.encrypter import (
     decrypt_token,
     encrypt_token,
     get_decrypt_decoding,
+    is_obfuscated_token,
     obfuscated_token,
 )
 from libs.rsa import PrivkeyNotFoundError
@@ -283,3 +284,22 @@ class TestEdgeCases:
         # Key should only be loaded once regardless of token count
         mock_get_decoding.assert_called_once_with("tenant-123")
         assert mock_decrypt_with_decoding.call_count == 5
+
+
+class TestIsObfuscatedToken:
+    @pytest.mark.parametrize(
+        "value",
+        [
+            obfuscated_token("sk-1234567890abcdef"),
+            obfuscated_token("short"),
+            "*" * 20,
+            "*",
+            '{"aut************n"}',
+        ],
+    )
+    def test_should_detect_masked_display_values(self, value: str):
+        assert is_obfuscated_token(value) is True
+
+    @pytest.mark.parametrize("value", ["", "sk-1234567890abcdef", "Basic a*b", '{"authorization": "Bearer x*y"}'])
+    def test_should_not_treat_real_secrets_as_masked(self, value: str):
+        assert is_obfuscated_token(value) is False
