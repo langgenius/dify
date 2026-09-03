@@ -276,20 +276,14 @@ import {
   zPostFormHumanInputByFormTokenResponse,
   zPostKnowledgeFsQueryStreamBody,
   zPostKnowledgeFsQueryStreamResponse,
-  zPostKnowledgeFsSpacesByControlSpaceIdDocumentsBody,
-  zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath,
   zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexBody,
   zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexPath,
   zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse,
-  zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath,
   zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionBody,
   zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionPath,
   zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse,
-  zPostKnowledgeFsSpacesByControlSpaceIdQueriesBody,
-  zPostKnowledgeFsSpacesByControlSpaceIdQueriesPath,
-  zPostKnowledgeFsSpacesByControlSpaceIdQueriesResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksBody,
   zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPath,
   zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanBody,
@@ -2514,36 +2508,14 @@ export const get31 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
 
-/**
- * @deprecated
- */
-export const post37 = oc
-  .route({
-    deprecated: true,
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postKnowledgeFsSpacesByControlSpaceIdDocuments',
-    path: '/knowledge-fs/spaces/{control_space_id}/documents',
-    successStatus: 201,
-    tags: ['service_api'],
-  })
-  .input(
-    z.object({
-      body: zPostKnowledgeFsSpacesByControlSpaceIdDocumentsBody,
-      params: zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath,
-    }),
-  )
-  .output(zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
-
 export const documents2 = {
   get: get31,
-  post: post37,
   bulk,
   reindex,
   byDocumentId: byDocumentId2,
 }
 
-export const post38 = oc
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2555,7 +2527,7 @@ export const post38 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse)
 
 export const retry = {
-  post: post38,
+  post: post37,
 }
 
 export const delete11 = oc
@@ -2590,7 +2562,7 @@ export const jobs = {
   byJobId: byJobId3,
 }
 
-export const post39 = oc
+export const post38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2607,36 +2579,14 @@ export const post39 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse)
 
 export const admission = {
-  post: post39,
+  post: post38,
 }
 
-/**
- * @deprecated
- */
-export const post40 = oc
-  .route({
-    deprecated: true,
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postKnowledgeFsSpacesByControlSpaceIdQueries',
-    path: '/knowledge-fs/spaces/{control_space_id}/queries',
-    successStatus: 202,
-    tags: ['service_api'],
-  })
-  .input(
-    z.object({
-      body: zPostKnowledgeFsSpacesByControlSpaceIdQueriesBody,
-      params: zPostKnowledgeFsSpacesByControlSpaceIdQueriesPath,
-    }),
-  )
-  .output(zPostKnowledgeFsSpacesByControlSpaceIdQueriesResponse)
-
 export const queries = {
-  post: post40,
   admission,
 }
 
-export const post41 = oc
+export const post39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2653,7 +2603,7 @@ export const post41 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponse)
 
 export const plan = {
-  post: post41,
+  post: post39,
 }
 
 export const get33 = oc
@@ -2720,7 +2670,7 @@ export const get35 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse)
 
-export const post42 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2739,7 +2689,7 @@ export const post42 = oc
 
 export const researchTasks = {
   get: get35,
-  post: post42,
+  post: post40,
   plan,
   byTaskId: byTaskId3,
 }
@@ -2776,7 +2726,7 @@ export const settings = {
   patch: patch8,
 }
 
-export const post43 = oc
+export const post41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2788,7 +2738,7 @@ export const post43 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponse)
 
 export const crawl = {
-  post: post43,
+  post: post41,
 }
 
 export const get37 = oc
@@ -2811,7 +2761,7 @@ export const files2 = {
   get: get37,
 }
 
-export const post44 = oc
+export const post42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2828,10 +2778,10 @@ export const post44 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse)
 
 export const import_ = {
-  post: post44,
+  post: post42,
 }
 
-export const post45 = oc
+export const post43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2848,7 +2798,7 @@ export const post45 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse)
 
 export const importFiles = {
-  post: post45,
+  post: post43,
 }
 
 export const get38 = oc
@@ -2871,7 +2821,7 @@ export const pages = {
   get: get38,
 }
 
-export const post46 = oc
+export const post44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2883,7 +2833,7 @@ export const post46 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse)
 
 export const test = {
-  post: post46,
+  post: post44,
 }
 
 export const delete13 = oc
@@ -2959,7 +2909,7 @@ export const get40 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesResponse)
 
-export const post47 = oc
+export const post45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2978,7 +2928,7 @@ export const post47 = oc
 
 export const sources = {
   get: get40,
-  post: post47,
+  post: post45,
   bySourceId,
 }
 
@@ -3106,7 +3056,7 @@ export const knowledgeFs = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post48 = oc
+export const post46 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -3126,7 +3076,7 @@ export const post48 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post48,
+  post: post46,
 }
 
 /**
@@ -3256,7 +3206,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post49 = oc
+export const post47 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -3270,7 +3220,7 @@ export const post49 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post49,
+  post: post47,
 }
 
 /**
@@ -3359,7 +3309,7 @@ export const byWorkflowRunId2 = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post50 = oc
+export const post48 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -3373,7 +3323,7 @@ export const post50 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
-  post: post50,
+  post: post48,
   byWorkflowRunId: byWorkflowRunId2,
 }
 
@@ -3382,7 +3332,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post51 = oc
+export const post49 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -3401,7 +3351,7 @@ export const post51 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post51,
+  post: post49,
 }
 
 export const byTaskId4 = {
@@ -3417,7 +3367,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post52 = oc
+export const post50 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -3437,7 +3387,7 @@ export const post52 = oc
   .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
-  post: post52,
+  post: post50,
 }
 
 export const byWorkflowId = {

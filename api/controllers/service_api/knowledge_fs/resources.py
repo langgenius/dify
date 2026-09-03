@@ -45,7 +45,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
@@ -59,7 +58,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryCreatePayload,
-    KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskListResponse,
     KnowledgeFSResearchTaskPartialListResponse,
@@ -112,7 +110,6 @@ register_schema_models(
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSCursorQuery,
     KnowledgeFSDocumentChunkListQuery,
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
@@ -147,7 +144,6 @@ register_response_schema_models(
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSQueryAdmissionResponse,
-    KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskListResponse,
     KnowledgeFSResearchTaskPartialListResponse,
     KnowledgeFSResearchTaskPlanResponse,
@@ -334,20 +330,6 @@ class KnowledgeFSServiceDocumentsApi(Resource):
             query=(("cursor", query.cursor),) if query.cursor else (),
         )
         return dump_response(KnowledgeFSDocumentListResponse, raw)
-
-    @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentCreatePayload.__name__])
-    @service_api_ns.doc(deprecated=True)
-    @service_api_ns.response(
-        HTTPStatus.CREATED,
-        "KnowledgeFS document created",
-        service_api_ns.models[KnowledgeFSDocumentResponse.__name__],
-    )
-    @_service_api_errors
-    def post(self, control_space_id: str):
-        _ = control_space_id
-        raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS document creation is deprecated; use a Dify API upload BFF"
-        )
 
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")
@@ -577,23 +559,6 @@ class KnowledgeFSServiceBulkJobApi(Resource):
             control_space_id=control_space_id, operation_id="getBulkJob", resource_id=job_id
         )
         return dump_response(KnowledgeFSBulkJobResponse, raw)
-
-
-@service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/queries")
-class KnowledgeFSServiceQueriesApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[KnowledgeFSQueryCreatePayload.__name__])
-    @service_api_ns.doc(deprecated=True)
-    @service_api_ns.response(
-        HTTPStatus.ACCEPTED,
-        "KnowledgeFS query accepted",
-        service_api_ns.models[KnowledgeFSQueryResponse.__name__],
-    )
-    @_service_api_errors
-    def post(self, control_space_id: str):
-        _ = control_space_id
-        raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission streaming BFF flow"
-        )
 
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/queries/admission")
@@ -1078,7 +1043,6 @@ class KnowledgeFSServiceTraceMissingApi(Resource):
 
 __all__ = [
     "KnowledgeFSServiceDocumentsApi",
-    "KnowledgeFSServiceQueriesApi",
     "KnowledgeFSServiceResearchTasksApi",
     "KnowledgeFSServiceSettingsApi",
     "KnowledgeFSServiceSourcesApi",

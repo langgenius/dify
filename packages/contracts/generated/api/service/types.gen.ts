@@ -1386,12 +1386,6 @@ export type KnowledgeFsDocumentCompilationJobResponse = {
   version: number
 }
 
-export type KnowledgeFsDocumentCreatePayload = {
-  idempotency_key: string
-  name: string
-  text: string
-}
-
 export type KnowledgeFsDocumentDeletePayload = {
   expectedRevision: number
 }
@@ -1770,13 +1764,6 @@ export type KnowledgeFsQueryImageResponse = {
   name?: string | null
   preview_url?: string | null
   upload_file_id: string
-}
-
-export type KnowledgeFsQueryResponse = {
-  answer?: string | null
-  id: string
-  status: string
-  trace_id?: string | null
 }
 
 export type KnowledgeFsReadinessCapabilities = {
@@ -5491,22 +5478,6 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses]
 
-export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
-  body: KnowledgeFsDocumentCreatePayload
-  path: {
-    control_space_id: string
-  }
-  query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/documents'
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
-  201: KnowledgeFsDocumentResponse
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
-  PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses]
-
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkData = {
   body: KnowledgeFsBulkDocumentDeletePayload
   path: {
@@ -5720,22 +5691,6 @@ export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses = {
 
 export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
   PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses]
-
-export type PostKnowledgeFsSpacesByControlSpaceIdQueriesData = {
-  body: KnowledgeFsQueryCreatePayload
-  path: {
-    control_space_id: string
-  }
-  query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/queries'
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdQueriesResponses = {
-  202: KnowledgeFsQueryResponse
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdQueriesResponse =
-  PostKnowledgeFsSpacesByControlSpaceIdQueriesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQueriesResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionData = {
   body: KnowledgeFsQueryCreatePayload

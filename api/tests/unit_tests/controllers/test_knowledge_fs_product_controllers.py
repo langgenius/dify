@@ -132,7 +132,6 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/documents/reindex",
         "/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>/retry",
-        "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/queries/admission",
         "/knowledge-fs/query-stream",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
@@ -428,10 +427,8 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSGoldenQuestionEvidenceMatchResponse",
     }.issubset(console_ns.models)
     assert {
-        "KnowledgeFSDocumentCreatePayload",
         "KnowledgeFSQueryCreatePayload",
         "KnowledgeFSDocumentListResponse",
-        "KnowledgeFSQueryResponse",
         "KnowledgeFSResearchTaskListResponse",
         "KnowledgeFSSettingsPayload",
         "KnowledgeFSSettingsResponse",
@@ -1504,3 +1501,4 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
         control_space_id="control-1",
     )
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]
+
