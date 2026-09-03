@@ -126,10 +126,7 @@ function WorkspaceCardTrigger({
         </span>
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
-            <span
-              className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary"
-              title={name}
-            >
+            <span className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary">
               {name}
             </span>
             {showStatus && <span className="flex shrink-0 items-center">{status}</span>}
@@ -183,8 +180,8 @@ function WorkspaceMenuHeader({
   name: string
   status: ReactNode
   showInviteMembers: boolean
-  settingsLabel: ReactNode
-  inviteMembersLabel: ReactNode
+  settingsLabel: string
+  inviteMembersLabel: string
   onOpenSettings: () => void
   onInviteMembers: () => void
 }) {
@@ -205,6 +202,7 @@ function WorkspaceMenuHeader({
         </div>
         <button
           type="button"
+          title={settingsLabel}
           className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={onOpenSettings}
         >
@@ -218,6 +216,7 @@ function WorkspaceMenuHeader({
         {showInviteMembers && (
           <button
             type="button"
+            title={inviteMembersLabel}
             className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             onClick={onInviteMembers}
           >

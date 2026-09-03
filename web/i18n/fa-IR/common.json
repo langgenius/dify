@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} اعتبار",
   "mainNav.workspace.creditsUnit": "اعتبار",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "هیچ فضای کاری یافت نشد",
   "mainNav.workspace.openMenu": "باز کردن منوی فضای کاری",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

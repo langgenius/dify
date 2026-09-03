@@ -162,7 +162,6 @@
   "mcp.server.modal.parameters": "Parametri",
   "mcp.server.modal.parametersPlaceholder": "Scopul și constrângerile parametrului",
   "mcp.server.modal.parametersTip": "Adăugați descrieri pentru fiecare parametru pentru a ajuta LLM să înțeleagă scopul și constrângerile.",
-  "mcp.server.publishTip": "Aplicație nepublicată. Publicați aplicația mai întâi.",
   "mcp.server.reGen": "Doriți să regenerați URL-ul serverului? URL-ul actual va înceta să funcționeze imediat.",
   "mcp.server.title": "Server MCP",
   "mcp.server.url": "URL Server",

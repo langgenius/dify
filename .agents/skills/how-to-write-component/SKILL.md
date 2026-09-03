@@ -65,6 +65,12 @@ In architecture-audit and refactoring-design modes, do not modify code. In imple
 Run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and `packages/dify-ui/docs/testing.md` for Dify UI.
 
 [audit]: references/audit.md
+
+## Tailwind CSS
+
+- Write canonical Tailwind v4 classes; prefer canonical utilities over equivalent arbitrary values.
+- Common forms include `w-105` instead of `w-[420px]`, `px-2.25` instead of `px-[9px]`, `bg-linear-to-b` instead of `bg-gradient-to-b`, `wrap-break-word` instead of `break-words`, and `field-sizing-content` instead of `[field-sizing:content]`.
+
 [data]: references/data.md
 [interactions]: references/interactions.md
 [ownership]: references/ownership.md

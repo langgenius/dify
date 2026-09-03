@@ -2694,7 +2694,7 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. |  |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | `file_too_large` : File size exceeded. |  |

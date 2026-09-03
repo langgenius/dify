@@ -264,9 +264,9 @@ catalogs:
     cli-table3:
       specifier: 0.6.5
       version: 0.6.5
-    clsx:
-      specifier: 2.1.1
-      version: 2.1.1
+    cn:
+      specifier: 0.2.4
+      version: 0.2.4
     code-inspector-plugin:
       specifier: 1.6.6
       version: 1.6.6
@@ -555,9 +555,6 @@ catalogs:
     string-ts:
       specifier: 2.3.1
       version: 2.3.1
-    tailwind-merge:
-      specifier: 3.6.0
-      version: 3.6.0
     tailwindcss:
       specifier: 4.3.3
       version: 4.3.3
@@ -960,12 +957,9 @@ importers:
 
   packages/dify-ui:
     dependencies:
-      clsx:
+      cn:
         specifier: 'catalog:'
-        version: 2.1.1
-      tailwind-merge:
-        specifier: 'catalog:'
-        version: 3.6.0
+        version: 0.2.4
     devDependencies:
       '@base-ui/react':
         specifier: 'catalog:'
@@ -5475,6 +5469,11 @@ packages:
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
+
+  cn@0.2.4:
+    resolution: {integrity: sha512-SzQvoh5FwizWtQg9+JueKdjWhlfCZMdu5DqNHm9q1wUlRVmKb9WXlepR9bTTbPwzEOyX1ujJ6lcCppmn3bNUCg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   code-inspector-plugin@1.6.6:
     resolution: {integrity: sha512-NQ8CWmMbFiZ+ck34Zxw4/awjIYcyutNPiVCdPe2hVXMD/NG2D+aWAz8NI2krOIagGnbny8j/YCyoiDsNRbnAbQ==}
@@ -12763,6 +12762,8 @@ snapshots:
 
   clsx@2.1.1: {}
 
+  cn@0.2.4: {}
+
   code-inspector-plugin@1.6.6(supports-color@11.0.0):
     dependencies:
       '@code-inspector/core': 1.6.6(supports-color@11.0.0)
@@ -17149,7 +17150,7 @@ time:
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   cli-table3@0.6.5: '2024-05-12T16:36:50.079Z'
-  clsx@2.1.1: '2024-04-23T05:26:04.645Z'
+  cn@0.2.4: '2026-09-02T09:26:36.212Z'
   code-inspector-plugin@1.6.6: '2026-07-07T04:00:26.523Z'
   concurrently@10.0.5: '2026-08-15T03:33:20.323Z'
   copy-to-clipboard@4.0.2: '2026-04-24T22:15:18.933Z'
@@ -17247,7 +17248,6 @@ time:
   storybook@10.5.10: '2026-08-20T10:52:53.637Z'
   streamdown@2.6.0: '2026-08-24T14:07:33.027Z'
   string-ts@2.3.1: '2025-11-28T17:33:10.099Z'
-  tailwind-merge@3.6.0: '2026-05-10T12:56:43.142Z'
   tailwindcss@4.3.3: '2026-07-16T12:03:35.267Z'
   tldts@7.4.11: '2026-08-24T07:31:22.093Z'
   tsx@4.23.13: '2026-08-30T00:46:16.265Z'

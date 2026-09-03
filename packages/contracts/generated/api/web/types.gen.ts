@@ -1696,9 +1696,12 @@ export type PostRemoteFilesUploadData = {
 
 export type PostRemoteFilesUploadErrors = {
   400: unknown
+  404: unknown
   413: unknown
   415: unknown
+  422: unknown
   500: unknown
+  502: unknown
 }
 
 export type PostRemoteFilesUploadResponses = {
@@ -1721,6 +1724,7 @@ export type GetRemoteFilesByUrlErrors = {
   400: unknown
   404: unknown
   500: unknown
+  502: unknown
 }
 
 export type GetRemoteFilesByUrlResponses = {

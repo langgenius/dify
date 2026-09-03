@@ -10503,6 +10503,13 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 413 | File too large |  |
+| 415 | Unsupported file type |  |
+| 422 | Request payload validation failed |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /remote-files/{url}
 #### Parameters
@@ -10516,6 +10523,10 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [POST] /reset-password
 #### Request Body
@@ -20507,7 +20518,6 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string | Error code if account not found | No |
 | data | string | Reset token | No |
 | result | string | Operation result | Yes |
 
@@ -25990,7 +26000,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| url | string | URL to fetch | Yes |
+| url | string (uri) | URL to fetch | Yes |
 
 #### ReplaceUserAccessPolicies
 

@@ -1,6 +1,6 @@
 import json
 from hashlib import sha256
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -8,14 +8,18 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
+from controllers.console.error import NotAllowedCreateWorkspace
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
+from extensions.ext_redis import redis_client
 from models import AccountStatus, App, Dataset, TenantAccountJoin, TenantStatus
+from services import account_errors
+from services.account_login_adapters import RedisAccountSessionGateway
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
+from services.entities.account_login_entities import AuthTokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
-    AccountLoginError,
-    AccountPasswordError,
+    AccountNotFoundError,
     AccountRegisterError,
     SeatsLimitExceededError,
 )
@@ -33,6 +37,7 @@ class TestAccountService:
             patch("services.account_service.SystemFeatureService") as mock_feature_service,
             patch("services.account_service.BillingService") as mock_billing_service,
             patch("services.account_service.PassportService") as mock_passport_service,
+            patch("services.account_login_adapters.PassportService") as mock_login_passport_service,
         ):
             # Setup default mock returns
             mock_feature_service.is_registration_allowed.return_value = True
@@ -40,7 +45,10 @@ class TestAccountService:
             mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
             mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
-            mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
+            passport_service = MagicMock()
+            passport_service.issue.return_value = "mock_jwt_token"
+            mock_passport_service.return_value = passport_service
+            mock_login_passport_service.return_value = passport_service
 
             yield {
                 "feature_service": mock_feature_service,
@@ -48,9 +56,9 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
-    def test_create_account_and_login(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
-        Test account creation and login with correct password.
+        Test account creation with a password.
         """
         fake = Faker()
         email = fake.email()
@@ -69,10 +77,6 @@ class TestAccountService:
         )
         assert account.email == email
         assert account.status == AccountStatus.ACTIVE
-
-        # Login with correct password
-        logged_in = AccountService.authenticate(email, password, session=db_session_with_containers)
-        assert logged_in.id == account.id
 
     def test_create_account_without_password(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -133,7 +137,7 @@ class TestAccountService:
         # Setup mocks to disable registration
         mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = False
 
-        with pytest.raises(AccountNotFound):  # AccountNotFound exception
+        with pytest.raises(AccountNotFoundError):
             AccountService.create_account(
                 email=email,
                 name=name,
@@ -167,138 +171,6 @@ class TestAccountService:
             )
 
         dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY  # Reset config for other tests
-
-    def test_authenticate_account_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication with non-existent account.
-        """
-        fake = Faker()
-        email = fake.email()
-        password = generate_valid_password(fake)
-        with pytest.raises(AccountPasswordError):
-            AccountService.authenticate(email, password, session=db_session_with_containers)
-
-    def test_authenticate_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test authentication with banned account.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account first
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-
-        # Ban the account
-        account.status = AccountStatus.BANNED
-
-        db_session_with_containers.commit()
-
-        with pytest.raises(AccountLoginError):
-            AccountService.authenticate(email, password, session=db_session_with_containers)
-
-    def test_authenticate_wrong_password(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test authentication with wrong password.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        correct_password = generate_valid_password(fake)
-        wrong_password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account first
-        AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=correct_password,
-            session=db_session_with_containers,
-        )
-
-        with pytest.raises(AccountPasswordError):
-            AccountService.authenticate(email, wrong_password, session=db_session_with_containers)
-
-    def test_authenticate_with_invite_token(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication with invite token to set password for account without password.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        new_password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account without password
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=None,
-            session=db_session_with_containers,
-        )
-
-        # Authenticate with invite token to set password
-        authenticated_account = AccountService.authenticate(
-            email,
-            new_password,
-            invite_token="valid_invite_token",
-            session=db_session_with_containers,
-        )
-
-        assert authenticated_account.id == account.id
-        assert authenticated_account.password is not None
-        assert authenticated_account.password_salt is not None
-
-    def test_authenticate_pending_account_activation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication activates pending account.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account with pending status
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-        account.status = AccountStatus.PENDING
-
-        db_session_with_containers.commit()
-
-        # Authenticate should activate the account
-        authenticated_account = AccountService.authenticate(email, password, session=db_session_with_containers)
-        assert authenticated_account.status == AccountStatus.ACTIVE
-        assert authenticated_account.initialized_at is not None
 
     def test_create_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -590,7 +462,9 @@ class TestAccountService:
         db_session_with_containers.refresh(account)
         assert account.status == AccountStatus.ACTIVE
 
-    def test_logout(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_authentication_service_logout(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test logout functionality.
         """
@@ -612,19 +486,18 @@ class TestAccountService:
             session=db_session_with_containers,
         )
 
-        # Login first to get refresh token
-        token_pair = AccountService.login(account, session=db_session_with_containers)
+        # Issue a refresh token through the session adapter used by the application service.
+        RedisAccountSessionGateway(redis=redis_client).issue(account.id)
 
-        # Logout
-        AccountService.logout(account=account)
+        application_services().accounts.authentication.logout(account.id)
 
         # Verify refresh token was deleted from Redis
-        from extensions.ext_redis import redis_client
-
         refresh_token_key = f"account_refresh_token:{account.id}"
         assert redis_client.get(refresh_token_key) is None
 
-    def test_refresh_token_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_authentication_service_refresh_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful token refresh.
         """
@@ -651,28 +524,26 @@ class TestAccountService:
             account=account, name=tenant_name, is_setup=True, session=db_session_with_containers
         )
 
-        # Login to get initial tokens
-        initial_token_pair = AccountService.login(account, session=db_session_with_containers)
+        initial_token_pair = RedisAccountSessionGateway(redis=redis_client).issue(account.id)
 
-        # Refresh token
-        new_token_pair = AccountService.refresh_token(
-            initial_token_pair.refresh_token, session=db_session_with_containers
-        )
+        new_token_pair = application_services().accounts.authentication.refresh(initial_token_pair.refresh_token)
 
-        assert isinstance(new_token_pair, TokenPair)
+        assert isinstance(new_token_pair, AuthTokenPair)
         assert new_token_pair.access_token == "new_mock_access_token"
         assert new_token_pair.refresh_token != initial_token_pair.refresh_token
 
-    def test_refresh_token_invalid_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_authentication_service_refresh_rejects_invalid_token(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test refresh token with invalid token.
         """
         fake = Faker()
         invalid_token = fake.uuid4()
-        with pytest.raises(ValueError, match="Invalid refresh token"):
-            AccountService.refresh_token(invalid_token, session=db_session_with_containers)
+        with pytest.raises(account_errors.InvalidRefreshTokenError, match="Invalid refresh token"):
+            application_services().accounts.authentication.refresh(invalid_token)
 
-    def test_refresh_token_invalid_account(
+    def test_authentication_service_refresh_rejects_missing_account(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
@@ -696,17 +567,15 @@ class TestAccountService:
             session=db_session_with_containers,
         )
 
-        # Login to get tokens
-        token_pair = AccountService.login(account, session=db_session_with_containers)
+        token_pair = RedisAccountSessionGateway(redis=redis_client).issue(account.id)
 
         # Delete account
 
         db_session_with_containers.delete(account)
         db_session_with_containers.commit()
 
-        # Try to refresh token with deleted account
-        with pytest.raises(ValueError, match="Invalid account"):
-            AccountService.refresh_token(token_pair.refresh_token, session=db_session_with_containers)
+        with pytest.raises(account_errors.InvalidRefreshTokenError, match="Invalid account"):
+            application_services().accounts.authentication.refresh(token_pair.refresh_token)
 
     def test_load_user_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -847,96 +716,6 @@ class TestAccountService:
 
         assert loaded_account is not None
         assert loaded_account.id == account.id
-
-    def test_get_user_through_email_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting user through email successfully.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-
-        # Get user through email
-        found_user = AccountService.get_user_through_email(email, session=db_session_with_containers)
-
-        assert found_user is not None
-        assert found_user.id == account.id
-
-    def test_get_user_through_email_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting user through non-existent email.
-        """
-        fake = Faker()
-        domain = f"test-{fake.random_letters(10)}.com"
-        non_existent_email = fake.email(domain=domain)
-        found_user = AccountService.get_user_through_email(non_existent_email, session=db_session_with_containers)
-        assert found_user is None
-
-    def test_get_user_through_email_banned_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting banned user through email raises Unauthorized.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-
-        # Ban the account
-        account.status = AccountStatus.BANNED
-
-        db_session_with_containers.commit()
-
-        with pytest.raises(Unauthorized):  # Unauthorized exception
-            AccountService.get_user_through_email(email, session=db_session_with_containers)
-
-    def test_get_user_through_email_in_freeze(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting user through email that is in freeze period.
-        """
-        fake = Faker()
-        email_in_freeze = fake.email()
-        # Setup mocks
-        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-
-        with pytest.raises(AccountRegisterError):
-            AccountService.get_user_through_email(email_in_freeze, session=db_session_with_containers)
-
-        # Reset config
-        dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
 
 class TestTenantService:

@@ -391,6 +391,9 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
 
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
+
     schemas = payload["components"]["schemas"]
     expected_property_descriptions = {
         ("AgentThought", "tool_labels"): "Labels for tools used.",
@@ -661,6 +664,17 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         "remote_url",
         "local_file",
     }
+
+
+def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    web_path = next(path for path in written_paths if path.name == "web-openapi.json")
+    payload = json.loads(web_path.read_text(encoding="utf-8"))
+
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
 
 
 def test_standalone_inline_model_name_includes_list_constraints():
