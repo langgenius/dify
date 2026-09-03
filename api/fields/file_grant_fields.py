@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fields.base import ResponseModel
-from libs.file_grant import FileKind, build_content_url
-
-if TYPE_CHECKING:
-    from services.file_grant_service import ResolvedFile
+from services.entities.file_grant_entities import FileKind, ResolvedFileAccess
 
 
 class ResolvedFileResponse(ResponseModel):
     """One requested file reference, either resolved or accounted for.
 
-    Both the grant mint and the resolve endpoint answer batches item by item so
-    that one missing file cannot fail a whole run. A file that exists but belongs
-    to another owner is reported exactly like one that never existed, so neither
-    caller can use the answer to probe for existence.
+    The resolve endpoint and optional mint references answer item by item so one
+    missing history file cannot fail a whole run. A file that exists but belongs
+    to another owner is reported exactly like one that never existed.
     """
 
     id: str
@@ -32,12 +26,13 @@ class ResolvedFileResponse(ResponseModel):
     error: str | None = None
 
     @classmethod
-    def from_resolved(cls, file_id: str, file: ResolvedFile | None) -> ResolvedFileResponse:
-        """Describe one reference, signing URLs only for a file that resolved."""
+    def from_resolved(cls, file_id: str, access: ResolvedFileAccess | None) -> ResolvedFileResponse:
+        """Describe one resolved reference without performing infrastructure work."""
 
-        if file is None:
+        if access is None:
             return cls(id=file_id, ok=False, error="not_found")
 
+        file = access.file
         return cls(
             id=file.id,
             ok=True,
@@ -46,8 +41,8 @@ class ResolvedFileResponse(ResponseModel):
             size=file.size,
             extension=file.extension,
             mime_type=file.mime_type,
-            url=build_content_url(file_id=file.id, kind=file.kind, external=True),
-            internal_url=build_content_url(file_id=file.id, kind=file.kind, external=False),
+            url=access.external_url,
+            internal_url=access.internal_url,
         )
 
 

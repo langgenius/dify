@@ -1,34 +1,42 @@
 """Mint AppDeploy file grants for the enterprise control plane.
 
-This is the only endpoint that asserts an AppDeploy identity: it upserts the
-subject's ``EndUser`` row, validates the files the caller claims to reference,
-and signs a short-lived grant. Every other file endpoint is stateless from
-here on and trusts the grant's signature.
+This is the only endpoint that asserts an AppDeploy identity: the application
+service upserts the subject's ``EndUser`` row, validates the files the caller
+claims to reference, and signs a short-lived grant.
 """
 
 from __future__ import annotations
 
-import time
-
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 
-from configs import dify_config
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
-from libs.file_grant import FileGrantScope, FileKind, issue_file_grant
-from services.file_grant_service import AppNotFoundError, FileGrantService, FileRef
-
-MAX_SESSION_GRANT_TTL_SECONDS = 7200
-MAX_WORKFLOW_EXECUTION_SECONDS = 24 * 60 * 60
-RUN_GRANT_EXPIRY_GRACE_SECONDS = 5 * 60
-MAX_RUN_GRANT_TTL_SECONDS = MAX_WORKFLOW_EXECUTION_SECONDS + RUN_GRANT_EXPIRY_GRACE_SECONDS
+from services.entities.file_grant_entities import FileGrantMintRequest, FileGrantScope, FileKind, FileRef
+from services.file_grant_service import (
+    AppNotFoundError,
+    EndUserNotFoundError,
+    TooManyFileRefsError,
+)
+from services.file_grant_service import (
+    GrantedFileNotFoundError as ServiceGrantedFileNotFoundError,
+)
+from services.file_grant_service import (
+    GrantTtlTooLongError as ServiceGrantTtlTooLongError,
+)
+from services.file_grant_service import (
+    InvalidGrantRequestError as ServiceInvalidGrantRequestError,
+)
+from services.file_grant_service import (
+    InvalidSubjectError as ServiceInvalidSubjectError,
+)
 
 
 class InvalidGrantRequestError(BaseHTTPException):
@@ -73,27 +81,6 @@ class FileGrantMintPayload(BaseModel):
     file_ids: list[FileGrantFileRef] = Field(default_factory=list)
     optional_file_ids: list[FileGrantFileRef] = Field(default_factory=list)
     run_deadline: int | None = None
-
-
-def _effective_grant_ttl_seconds(payload: FileGrantMintPayload, *, now: int) -> int:
-    ttl_seconds = payload.ttl_seconds
-    if payload.run_deadline is None:
-        if ttl_seconds > MAX_SESSION_GRANT_TTL_SECONDS:
-            raise GrantTtlTooLongError()
-        return ttl_seconds
-
-    if FileGrantScope.PRODUCE not in payload.scopes:
-        raise InvalidGrantRequestError("A run deadline requires the produce scope.")
-    if payload.run_deadline <= now:
-        raise InvalidGrantRequestError("The run deadline has expired.")
-    if payload.run_deadline > now + MAX_WORKFLOW_EXECUTION_SECONDS:
-        raise InvalidGrantRequestError("The run deadline exceeds the workflow execution limit.")
-    if ttl_seconds > MAX_RUN_GRANT_TTL_SECONDS:
-        raise GrantTtlTooLongError()
-    return min(
-        ttl_seconds,
-        payload.run_deadline - now + RUN_GRANT_EXPIRY_GRACE_SECONDS,
-    )
 
 
 class FileGrantLimits(ResponseModel):
@@ -151,88 +138,62 @@ class EnterpriseFileGrantApi(Resource):
         except ValidationError as exc:
             raise InvalidGrantRequestError(str(exc)) from exc
 
-        ttl_seconds = _effective_grant_ttl_seconds(payload, now=int(time.time()))
-        # A NUL reaches `external_user_id` verbatim, and PostgreSQL rejects it at
-        # the driver, which would surface a malformed subject as a 500.
-        if not payload.subject.strip() or "\x00" in payload.subject:
-            raise InvalidSubjectError()
-
         try:
-            end_user = FileGrantService.get_or_create_end_user(
-                tenant_id=payload.tenant_id,
-                app_id=payload.app_id,
-                subject=payload.subject,
-                is_anonymous=payload.is_anonymous,
+            result = application_services().file_grants.mint(
+                FileGrantMintRequest(
+                    tenant_id=payload.tenant_id,
+                    app_id=payload.app_id,
+                    subject=payload.subject,
+                    is_anonymous=payload.is_anonymous,
+                    scopes=tuple(payload.scopes),
+                    ttl_seconds=payload.ttl_seconds,
+                    file_refs=tuple(FileRef(id=ref.id, kind=ref.kind) for ref in payload.file_ids),
+                    optional_file_refs=tuple(FileRef(id=ref.id, kind=ref.kind) for ref in payload.optional_file_ids),
+                    run_deadline=payload.run_deadline,
+                )
             )
         except AppNotFoundError as exc:
             raise GrantAppNotFoundError() from exc
-
-        files = _resolve_strict(payload, end_user_id=end_user.id)
-        optional_files = _resolve_lenient(payload, end_user_id=end_user.id)
-
-        grant, expires_at = issue_file_grant(
-            end_user_id=end_user.id,
-            tenant_id=payload.tenant_id,
-            app_id=payload.app_id,
-            scopes=payload.scopes,
-            ttl_seconds=ttl_seconds,
-        )
+        except ServiceGrantTtlTooLongError as exc:
+            raise GrantTtlTooLongError() from exc
+        except ServiceInvalidSubjectError as exc:
+            raise InvalidSubjectError() from exc
+        except (ServiceInvalidGrantRequestError, TooManyFileRefsError) as exc:
+            raise InvalidGrantRequestError(str(exc)) from exc
+        except (EndUserNotFoundError, ServiceGrantedFileNotFoundError) as exc:
+            raise GrantedFileNotFoundError() from exc
 
         return FileGrantMintResponse(
-            grant=grant,
-            expires_at=expires_at,
+            grant=result.grant,
+            expires_at=result.expires_at,
             limits=FileGrantLimits(
-                file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
-                image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
-                audio_file_size_limit=dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
-                video_file_size_limit=dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
-                workflow_file_upload_limit=dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
-                batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
+                file_size_limit=result.limits.file_size_limit,
+                image_file_size_limit=result.limits.image_file_size_limit,
+                audio_file_size_limit=result.limits.audio_file_size_limit,
+                video_file_size_limit=result.limits.video_file_size_limit,
+                workflow_file_upload_limit=result.limits.workflow_file_upload_limit,
+                batch_count_limit=result.limits.batch_count_limit,
             ),
-            files=files,
-            optional_files=optional_files,
+            files=[
+                FileGrantFileMetadata(
+                    id=file.id,
+                    kind=file.kind,
+                    name=file.name,
+                    size=file.size,
+                    extension=file.extension,
+                    mime_type=file.mime_type,
+                )
+                for file in result.files
+            ],
+            optional_files=[
+                ResolvedFileResponse.from_resolved(ref.id, access)
+                for ref, access in zip(
+                    payload.optional_file_ids,
+                    result.optional_files,
+                    strict=True,
+                )
+            ],
         ).model_dump(mode="json")
-
-
-def _resolve_strict(payload: FileGrantMintPayload, *, end_user_id: str) -> list[FileGrantFileMetadata]:
-    """Resolve the whole batch or fail it, without signing any URL.
-
-    Grants outlive the ``FILES_ACCESS_TIMEOUT`` window, so URLs are signed only
-    when a worker is about to read the bytes.
-    """
-
-    resolved = FileGrantService.resolve_files(
-        tenant_id=payload.tenant_id,
-        end_user_id=end_user_id,
-        refs=[FileRef(id=ref.id, kind=ref.kind) for ref in payload.file_ids],
-    )
-    if any(file is None for file in resolved):
-        raise GrantedFileNotFoundError()
-
-    return [
-        FileGrantFileMetadata(
-            id=file.id,
-            kind=file.kind,
-            name=file.name,
-            size=file.size,
-            extension=file.extension,
-            mime_type=file.mime_type,
-        )
-        for file in resolved
-        if file is not None
-    ]
-
-
-def _resolve_lenient(payload: FileGrantMintPayload, *, end_user_id: str) -> list[ResolvedFileResponse]:
-    """Resolve history files item by item so one miss cannot block a run."""
-
-    refs = [FileRef(id=ref.id, kind=ref.kind) for ref in payload.optional_file_ids]
-    resolved = FileGrantService.resolve_files(
-        tenant_id=payload.tenant_id,
-        end_user_id=end_user_id,
-        refs=refs,
-    )
-    return [ResolvedFileResponse.from_resolved(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
 
 
 __all__ = [
