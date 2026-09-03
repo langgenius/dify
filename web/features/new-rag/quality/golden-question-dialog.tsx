@@ -77,19 +77,17 @@ export function GoldenQuestionDialog({
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
-          {open && (
-            <GoldenQuestionDialogSession
-              key={sessionKey}
-              evidenceOptions={evidenceOptions}
-              error={error}
-              initialValue={initialValue}
-              knowledgeSpaceId={knowledgeSpaceId}
-              mode={mode}
-              onOpenChange={onOpenChange}
-              onSubmit={onSubmit}
-              pending={pending}
-            />
-          )}
+          <GoldenQuestionDialogSession
+            key={sessionKey}
+            evidenceOptions={evidenceOptions}
+            error={error}
+            initialValue={initialValue}
+            knowledgeSpaceId={knowledgeSpaceId}
+            mode={mode}
+            onOpenChange={onOpenChange}
+            onSubmit={onSubmit}
+            pending={pending}
+          />
         </DialogViewport>
       </DialogPortal>
     </Dialog>
