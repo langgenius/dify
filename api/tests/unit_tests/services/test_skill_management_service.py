@@ -2684,7 +2684,10 @@ def test_import_skill_package_strips_root_alongside_macos_metadata_folder() -> N
     )
 
     assert imported["name"] == "expense-sop"
-    assert "SKILL.md" in [item["path"] for item in imported["files"]]
+    imported_paths = [item["path"] for item in imported["files"]]
+    assert "SKILL.md" in imported_paths
+    assert "references/policy.md" in imported_paths
+    assert not any(path.startswith("__MACOSX") for path in imported_paths)
 
 
 def test_import_skill_package_rejects_missing_frontmatter_description() -> None:

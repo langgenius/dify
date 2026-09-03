@@ -3752,14 +3752,17 @@ class SkillManagementService:
         # Identify the root by the unique top-level `<root>/SKILL.md`, rather than
         # requiring every path to share one first segment: tools like macOS Finder's
         # "Compress" add a sibling `__MACOSX/` metadata folder that must not defeat
-        # stripping of the real skill folder.
+        # stripping of the real skill folder. Entries outside the detected root
+        # (like `__MACOSX/...`) are dropped rather than passed through, matching
+        # skill_package_service._normalize_members(ignore_outside_selected_root=True).
         skill_md_roots = {
             path.split("/", 1)[0] for path in paths if path.count("/") == 1 and path.endswith(f"/{_SKILL_MD}")
         }
         if len(skill_md_roots) != 1:
             return {path: path for path in paths}
         root = next(iter(skill_md_roots))
-        return {path: path.removeprefix(f"{root}/") for path in paths}
+        prefix = f"{root}/"
+        return {path: path.removeprefix(prefix) for path in paths if path == root or path.startswith(prefix)}
 
     def _draft_payload_from_zip(
         self,
@@ -3780,6 +3783,8 @@ class SkillManagementService:
                 skill_md_content = ""
                 for info in infos:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
+                    if raw_path not in path_map:
+                        continue
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
                         items.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))
