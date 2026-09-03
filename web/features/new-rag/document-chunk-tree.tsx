@@ -4,7 +4,7 @@ import type { DocumentChunkTree } from './document-detail-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
@@ -39,6 +39,7 @@ export function DocumentChunkTreePanel({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const treeHeadingId = useId()
   const [collapsedChunkIds, setCollapsedChunkIds] = useState<Set<string>>(() => new Set())
   const [focusedChunkId, setFocusedChunkId] = useState<string>()
   const [treeHasFocus, setTreeHasFocus] = useState(false)
@@ -194,7 +195,7 @@ export function DocumentChunkTreePanel({
 
   return (
     <aside className="min-h-52 overflow-hidden">
-      <h2 className="px-2 pb-2 system-xs-regular text-text-tertiary">
+      <h2 id={treeHeadingId} className="px-2 pb-2 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.documentContents'])}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
@@ -230,7 +231,7 @@ export function DocumentChunkTreePanel({
           aria-activedescendant={
             currentFocusedChunkId ? `document-chunk-treeitem-${currentFocusedChunkId}` : undefined
           }
-          aria-label={t(($) => $['newKnowledge.documentContents'])}
+          aria-labelledby={treeHeadingId}
           className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden"
           role="tree"
           tabIndex={0}

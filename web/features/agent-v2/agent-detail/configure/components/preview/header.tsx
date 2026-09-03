@@ -66,10 +66,12 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
 
 function PreviewModeItem({
   previewEnabled,
+  label,
   disabledTip,
   children,
 }: {
   previewEnabled: boolean
+  label: string
   disabledTip: string
   children: ReactNode
 }) {
@@ -90,7 +92,7 @@ function PreviewModeItem({
       <PopoverTrigger
         openOnHover
         nativeButton={false}
-        aria-label={disabledTip}
+        aria-label={`${label}. ${disabledTip}`}
         render={<span className="inline-flex" />}
       >
         {item}
@@ -165,7 +167,11 @@ export function AgentPreviewHeader({
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
-          <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
+          <PreviewModeItem
+            previewEnabled={previewEnabled}
+            label={previewLabel}
+            disabledTip={previewDisabledTip}
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
@@ -222,7 +228,6 @@ export function AgentPreviewHeader({
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t(($) => $['agentDetail.configure.workingDirectory.open'])}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
               <span className="px-0.5 system-sm-medium">
