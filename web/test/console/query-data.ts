@@ -143,10 +143,12 @@ const ensureSystemFeatures = (queryClient: QueryClient) => {
 }
 
 const seedPendingSystemFeatures = (queryClient: QueryClient) => {
-  void queryClient.prefetchQuery({
-    queryKey: consoleQuery.systemFeatures.get.queryKey(),
-    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
-  })
+  void queryClient
+    .query({
+      queryKey: consoleQuery.systemFeatures.get.queryKey(),
+      queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
+    })
+    .catch(() => undefined)
 }
 
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {

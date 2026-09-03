@@ -38,7 +38,7 @@ type TestEdge = {
   }
 }
 
-const mockFetchQuery = vi.fn()
+const mockQuery = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
@@ -50,7 +50,7 @@ let mockEdges: unknown[] = [{ id: 'existing-edge', source: 'old', target: 'old-2
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
-    fetchQuery: mockFetchQuery,
+    query: mockQuery,
   }),
 }))
 
@@ -107,7 +107,7 @@ describe('useInsertSnippet', () => {
 
   describe('Insert Flow', () => {
     it('should append remapped snippet graph into current workflow graph', async () => {
-      mockFetchQuery.mockResolvedValue({
+      mockQuery.mockResolvedValue({
         graph: {
           nodes: [
             {
@@ -155,7 +155,7 @@ describe('useInsertSnippet', () => {
         await result.current.handleInsertSnippet('snippet-1')
       })
 
-      expect(mockFetchQuery).toHaveBeenCalledTimes(1)
+      expect(mockQuery).toHaveBeenCalledTimes(1)
       expect(mockSetNodes).toHaveBeenCalledTimes(1)
       expect(mockSetEdges).toHaveBeenCalledTimes(1)
 
@@ -189,7 +189,7 @@ describe('useInsertSnippet', () => {
     })
 
     it('should remap variable selectors that reference nodes inside the snippet', async () => {
-      mockFetchQuery.mockResolvedValue({
+      mockQuery.mockResolvedValue({
         graph: {
           nodes: [
             {
@@ -246,7 +246,7 @@ describe('useInsertSnippet', () => {
     })
 
     it('should remap structural node ids inside a loop snippet', async () => {
-      mockFetchQuery.mockResolvedValue({
+      mockQuery.mockResolvedValue({
         graph: {
           nodes: [
             {
@@ -331,7 +331,7 @@ describe('useInsertSnippet', () => {
             },
           },
         ]
-        mockFetchQuery.mockResolvedValue({
+        mockQuery.mockResolvedValue({
           graph: {
             nodes: [
               {
@@ -450,7 +450,7 @@ describe('useInsertSnippet', () => {
     )
 
     it('should show error toast when fetching snippet workflow fails', async () => {
-      mockFetchQuery.mockRejectedValue(new Error('insert failed'))
+      mockQuery.mockRejectedValue(new Error('insert failed'))
 
       const { result } = renderHook(() => useInsertSnippet())
 

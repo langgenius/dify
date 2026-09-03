@@ -535,7 +535,7 @@ describe('CheckCode', () => {
       serviceBaseMocks.get
         .mockRejectedValueOnce(new Response(null, { status: 401 }))
         .mockReturnValueOnce(profileResponse)
-      await queryClient.prefetchQuery(profileQueryOptions)
+      await queryClient.query(profileQueryOptions).catch(() => undefined)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')
 
       render(

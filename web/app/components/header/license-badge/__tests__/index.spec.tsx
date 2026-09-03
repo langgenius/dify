@@ -13,10 +13,12 @@ const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicens
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
-    void queryClient.prefetchQuery({
-      queryKey: consoleQuery.systemFeatures.license.get.queryOptions().queryKey,
-      queryFn: () => new Promise(() => {}),
-    })
+    void queryClient
+      .query({
+        queryKey: consoleQuery.systemFeatures.license.get.queryOptions().queryKey,
+        queryFn: () => new Promise(() => {}),
+      })
+      .catch(() => undefined)
   }
   return renderWithConsoleQuery(<LicenseBadge />, { queryClient })
 }
