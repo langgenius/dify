@@ -156,7 +156,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         </InputGroup>
         <Link
           href={`/reset-password?${searchParams.toString()}`}
-          className={`absolute end-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+          className={`absolute inset-e-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
           tabIndex={isEmailSetup ? 0 : -1}
           aria-disabled={!isEmailSetup}
         >

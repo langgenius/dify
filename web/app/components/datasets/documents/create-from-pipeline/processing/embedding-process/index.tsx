@@ -230,7 +230,7 @@ const EmbeddingProcess = ({
                     >
                       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
                     </PopoverTrigger>
-                    <PopoverContent className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary">
+                    <PopoverContent className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary">
                       {indexingStatusDetail.error}
                     </PopoverContent>
                   </Popover>
