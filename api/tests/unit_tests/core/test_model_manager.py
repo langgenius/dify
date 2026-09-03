@@ -16,6 +16,7 @@ from core.entities.provider_entities import (
     RestrictModel,
 )
 from core.errors.error import ModelCurrentlyNotSupportError
+from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -23,7 +24,6 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderType
 from models.tokener import TenantTokenerIntegrationStatus
-from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
 
 
 @pytest.fixture(autouse=True)

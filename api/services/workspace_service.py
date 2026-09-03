@@ -6,12 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.model_billing_profile import ModelBillingProfileService, ModelBillingSource
 from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.billing_service import BillingService
 from services.feature_service import FeatureService
-from services.model_billing_profile_service import ModelBillingProfileService, ModelBillingSource
 
 
 @dataclass(frozen=True)
@@ -165,7 +165,10 @@ class WorkspaceService:
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
         tenant_info["model_billing_source"] = feature.model_billing_source
-        tenant_info["tokener_bootstrap_status"] = feature.tokener_bootstrap_status
+        model_billing = ModelBillingProfileService.resolve(tenant.id, session=session)
+        tenant_info["tokener_bootstrap_status"] = (
+            model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
+        )
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(

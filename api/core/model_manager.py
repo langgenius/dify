@@ -18,6 +18,7 @@ from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.model_billing_profile import ModelBillingProfileService
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
@@ -36,7 +37,6 @@ from graphon.model_runtime.model_providers.base.speech2text_model import Speech2
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
-from services.model_billing_profile_service import ModelBillingProfileService
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")

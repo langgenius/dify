@@ -4,17 +4,17 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
-from models.account import Tenant
-from models.model_billing import TenantModelBillingProfile
-from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
-from services import model_billing_profile_service as service_module
-from services.model_billing_profile_service import (
+from core import model_billing_profile as service_module
+from core.model_billing_profile import (
     InvalidModelBillingProfileError,
     ModelBillingProfileCacheUnavailableError,
     ModelBillingProfileResolutionError,
     ModelBillingProfileService,
     ModelBillingSource,
 )
+from models.account import Tenant
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 
 _CACHE_KEY = "tenant:model-billing-source:v1:tenant-1"
 

@@ -18,6 +18,7 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_created_by,
 )
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
+from core.model_billing_profile import ModelBillingProfileResolutionError, ModelBillingProfileService
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -26,7 +27,6 @@ from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
-from services.model_billing_profile_service import ModelBillingProfileResolutionError, ModelBillingProfileService
 
 logger = logging.getLogger(__name__)
 

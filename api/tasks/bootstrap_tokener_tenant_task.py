@@ -12,6 +12,11 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.model_billing_profile import (
+    InvalidModelBillingProfileError,
+    ModelBillingProfileResolutionError,
+    ModelBillingProfileService,
+)
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
@@ -21,11 +26,6 @@ from models.model_billing import TenantModelBillingProfile
 from models.provider import Provider, ProviderCredential, ProviderType
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
-from services.model_billing_profile_service import (
-    InvalidModelBillingProfileError,
-    ModelBillingProfileResolutionError,
-    ModelBillingProfileService,
-)
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)

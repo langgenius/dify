@@ -135,7 +135,11 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   if (mockCurrentWorkspace)
     queryClient.setQueryData(
       consoleQuery.workspaces.current.summary.get.queryKey(),
-      mockCurrentWorkspace,
+      {
+        ...mockCurrentWorkspace,
+        model_billing_source: mockCurrentWorkspace.model_billing_source ?? 'legacy_message_credits',
+        tokener_bootstrap_status: mockCurrentWorkspace.tokener_bootstrap_status ?? null,
+      },
     )
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import CredentialConfiguration
+from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from enums import DeploymentEdition
@@ -24,7 +25,6 @@ from models.provider import (
 )
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
 from services.model_provider_service import ModelProviderService, _ProviderSummaryState
 
 

@@ -105,7 +105,6 @@ describe('billing utils', () => {
       },
       ...overrides,
       model_billing_source: overrides.model_billing_source ?? 'legacy_message_credits',
-      tokener_bootstrap_status: overrides.tokener_bootstrap_status ?? null,
     })
 
     it('should parse plan type correctly', () => {

@@ -3,14 +3,14 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
+from core.model_billing_profile import (
+    ModelBillingSource,
+    TenantModelBillingResolution,
+)
 from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant
 from models.tokener import TenantTokenerIntegrationStatus
 from services.credit_pool_service import CreditPoolBalance
-from services.model_billing_profile_service import (
-    ModelBillingSource,
-    TenantModelBillingResolution,
-)
 from services.workspace_service import WorkspaceService
 
 
