@@ -638,7 +638,12 @@ Returns:
     int: HTTP status code 201 for success
 
 Raises:
-    RemoteFileUploadError: Failed to fetch file from remote URL
+    RemoteFileInvalidUrlError: Remote file URL is invalid
+    RemoteFileUrlBlockedError: Remote file URL is blocked
+    RemoteFileNotFoundError: Remote file does not exist
+    RemoteFileAccessDeniedError: Remote file requires authorization
+    RemoteFileUnavailableError: Remote file is unavailable
+    RemoteFileInvalidResponseError: Remote file response is invalid
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
 
@@ -653,10 +658,13 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Remote file uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Bad request - invalid URL or parameters |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
-| 500 | Failed to fetch remote file |  |
+| 422 | Request payload validation failed |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /remote-files/{url}
 **Get information about a remote file**
@@ -687,9 +695,10 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Remote file information retrieved successfully | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
-| 400 | Bad request - invalid URL |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
 | 404 | Remote file not found |  |
-| 500 | Failed to fetch remote file |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /saved-messages
 Retrieve paginated list of saved messages for a completion application.
