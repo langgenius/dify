@@ -761,6 +761,37 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv._is_uuid("123e4567-e89b-12d3-a456-426614174000") is True
         assert wv._is_uuid("not-a-uuid") is False
 
+    def test_get_uuids_returns_doc_id_from_metadata(self):
+        """_get_uuids should reuse Dify's own doc_id instead of hashing content."""
+        wv = WeaviateVector.__new__(WeaviateVector)
+        doc_id = "123e4567-e89b-12d3-a456-426614174000"
+        doc = Document(page_content="same content", metadata={"doc_id": doc_id})
+
+        assert wv._get_uuids([doc]) == [doc_id]
+
+    def test_get_uuids_does_not_collide_for_identical_content_across_documents(self):
+        """Two documents with identical page_content but different doc_id must not
+        produce the same Weaviate UUID, otherwise one overwrites the other."""
+        wv = WeaviateVector.__new__(WeaviateVector)
+        doc_id_a = "123e4567-e89b-12d3-a456-426614174000"
+        doc_id_b = "223e4567-e89b-12d3-a456-426614174000"
+        doc_a = Document(page_content="duplicate segment text", metadata={"doc_id": doc_id_a})
+        doc_b = Document(page_content="duplicate segment text", metadata={"doc_id": doc_id_b})
+
+        uuids = wv._get_uuids([doc_a, doc_b])
+
+        assert uuids == [doc_id_a, doc_id_b]
+        assert uuids[0] != uuids[1]
+
+    def test_get_uuids_falls_back_to_random_uuid_when_doc_id_missing(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        doc = Document(page_content="no doc id here", metadata={})
+
+        uuids = wv._get_uuids([doc])
+
+        assert len(uuids) == 1
+        assert wv._is_uuid(uuids[0])
+
     def test_delete_by_metadata_field_returns_when_collection_is_missing(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
