@@ -30,6 +30,7 @@ from core.plugin.impl.exc import (
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
+    PluginDaemonUnavailableError,
     PluginInvokeError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
@@ -317,23 +318,25 @@ class TestPluginRuntimeResourceLimits:
             call_kwargs = mock_request.call_args[1]
             assert call_kwargs["timeout"] is not None
 
-    def test_timeout_error_handling(self, plugin_client, mock_config):
+    def test_timeout_error_handling(self, plugin_client, mock_config, mocker):
         """Test handling of timeout errors."""
-        # Arrange
-        with patch("httpx.request", side_effect=httpx.TimeoutException("Request timeout"), autospec=True):
-            # Act & Assert
-            with pytest.raises(PluginDaemonInnerError) as exc_info:
-                plugin_client._request("GET", "plugin/test-tenant/test")
-            assert exc_info.value.code == -500
+        mocker.patch(
+            "core.plugin.impl.base._httpx_client.request",
+            side_effect=httpx.TimeoutException("Request timeout"),
+        )
 
-    def test_streaming_request_timeout(self, plugin_client, mock_config):
+        with pytest.raises(PluginDaemonUnavailableError, match="Request to Plugin Daemon Service failed"):
+            plugin_client._request("GET", "plugin/test-tenant/test")
+
+    def test_streaming_request_timeout(self, plugin_client, mock_config, mocker):
         """Test timeout handling for streaming requests."""
-        # Arrange
-        with patch("httpx.stream", side_effect=httpx.TimeoutException("Stream timeout"), autospec=True):
-            # Act & Assert
-            with pytest.raises(PluginDaemonInnerError) as exc_info:
-                list(plugin_client._stream_request("POST", "plugin/test-tenant/stream"))
-            assert exc_info.value.code == -500
+        mocker.patch(
+            "core.plugin.impl.base._httpx_client.stream",
+            side_effect=httpx.TimeoutException("Stream timeout"),
+        )
+
+        with pytest.raises(PluginDaemonUnavailableError, match="Request to Plugin Daemon Service failed"):
+            list(plugin_client._stream_request("POST", "plugin/test-tenant/stream"))
 
     def test_resource_limit_error_from_daemon(self, plugin_client, mock_config):
         """Test handling of resource limit errors from plugin daemon."""

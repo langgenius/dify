@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
-from core.plugin.impl.exc import PluginRuntimeError
+from core.plugin.impl.exc import PluginDaemonUnavailableError, PluginRuntimeError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from libs.rate_limit import _BearerRateLimited
@@ -47,6 +47,11 @@ def _create_api_app():
                 "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
                 lambda_request_id="lambda-request-id",
             )
+
+    @api.route("/plugin-daemon-unavailable")
+    class PluginDaemonUnavailable(Resource):
+        def get(self):
+            raise PluginDaemonUnavailableError("no available node, plugin runtime not found")
 
     # Note: We avoid altering default_mediatype to keep normal error paths
 
@@ -131,6 +136,19 @@ def test_external_api_plugin_runtime_error(mocker):
             "lambda_request_id": "lambda-request-id",
         },
         "status": 502,
+    }
+
+
+def test_external_api_plugin_daemon_unavailable():
+    app = _create_api_app()
+
+    res = app.test_client().get("/api/plugin-daemon-unavailable")
+
+    assert res.status_code == 503
+    assert res.get_json() == {
+        "code": "plugin_daemon_unavailable",
+        "message": "no available node, plugin runtime not found",
+        "status": 503,
     }
 
 

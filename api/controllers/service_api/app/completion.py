@@ -43,6 +43,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from core.plugin.impl.exc import PluginDaemonUnavailableError
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
@@ -272,6 +273,8 @@ class CompletionApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except PluginDaemonUnavailableError:
+            raise
         except ValueError as e:
             raise e
         except Exception:
@@ -458,6 +461,8 @@ class ChatApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except PluginDaemonUnavailableError:
+            raise
         except ValueError as e:
             raise e
         except Exception:

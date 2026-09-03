@@ -10,7 +10,7 @@ from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
-from core.plugin.impl.exc import PluginRuntimeError
+from core.plugin.impl.exc import PluginDaemonUnavailableError, PluginRuntimeError
 from extensions.ext_logging import get_request_id
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
@@ -117,6 +117,16 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         }
         return _finalize(e, data, status_code), status_code
 
+    def handle_plugin_daemon_unavailable_error(e: PluginDaemonUnavailableError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 503
+        data = {
+            "code": "plugin_daemon_unavailable",
+            "message": e.description,
+            "status": status_code,
+        }
+        return _finalize(e, data, status_code), status_code
+
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
@@ -139,6 +149,7 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
     api.errorhandler(ValueError)(handle_value_error)
     api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
     api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
+    api.errorhandler(PluginDaemonUnavailableError)(handle_plugin_daemon_unavailable_error)
     api.errorhandler(Exception)(handle_general_exception)
 
 

@@ -26,12 +26,17 @@ from core.plugin.impl.exc import (
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
+    PluginDaemonUnavailableError,
     PluginInvokeError,
     PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
     PluginRuntimeError,
     PluginUniqueIdentifierError,
+    is_plugin_runtime_unavailable,
+)
+from core.plugin.impl.exc import (
+    PluginDaemonError as PluginDaemonTypedError,
 )
 from core.trigger.errors import (
     EventIgnoreError,
@@ -149,7 +154,7 @@ class BasePluginClient:
             response = _httpx_client.request(**request_kwargs)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonUnavailableError(description="Request to Plugin Daemon Service failed")
 
         return response
 
@@ -259,7 +264,7 @@ class BasePluginClient:
                         yield line
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonUnavailableError(description="Request to Plugin Daemon Service failed")
 
     def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
@@ -312,10 +317,9 @@ class BasePluginClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
-            if e.response.status_code < 500:
-                raise PluginDaemonClientSideError(description=str(e))
-            else:
-                raise PluginDaemonInternalServerError(description=str(e))
+            self._raise_for_plugin_daemon_http_error(e)
+        except (PluginDaemonTypedError, PluginDaemonInnerError):
+            raise
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
             logger.exception("Failed to request plugin daemon, url: %s", path)
@@ -340,6 +344,8 @@ class BasePluginClient:
             try:
                 error = PluginDaemonError.model_validate(json.loads(rep.message))
             except Exception as e:
+                if is_plugin_runtime_unavailable(rep.message):
+                    raise PluginDaemonUnavailableError(description=rep.message) from e
                 raise ValueError(f"{rep.message}, code: {rep.code}") from e
 
             self._handle_plugin_daemon_error(error.error_type, error.message)
@@ -377,6 +383,8 @@ class BasePluginClient:
                 raise ValueError(line_data.get("error", line))
 
             if rep.code != 0:
+                if is_plugin_runtime_unavailable(rep.message):
+                    raise PluginDaemonUnavailableError(description=rep.message)
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError.model_validate(json.loads(rep.message))
@@ -391,10 +399,36 @@ class BasePluginClient:
                 raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
             yield rep.data
 
+    def _raise_for_plugin_daemon_http_error(self, error: httpx.HTTPStatusError) -> None:
+        """Classify a plugin-daemon HTTP error from its JSON body, not status alone.
+
+        Dispatch can return HTTP 404 with ``PluginDaemonInternalServerError``
+        when the plugin runtime is not registered yet. That is a transient
+        availability failure, not a client-side invalid parameter.
+        """
+        try:
+            json_response = error.response.json()
+            rep = PluginDaemonBasicResponse[dict[str, Any]].model_validate(json_response)
+            if is_plugin_runtime_unavailable(rep.message):
+                raise PluginDaemonUnavailableError(description=rep.message)
+            if rep.code != 0:
+                parsed_error = PluginDaemonError.model_validate(json.loads(rep.message))
+                self._handle_plugin_daemon_error(parsed_error.error_type, parsed_error.message)
+        except (PluginDaemonTypedError, PluginDaemonInnerError):
+            raise
+        except Exception:
+            logger.debug("Failed to parse plugin daemon HTTP error body", exc_info=True)
+
+        if error.response.status_code < 500:
+            raise PluginDaemonClientSideError(description=str(error)) from error
+        raise PluginDaemonInternalServerError(description=str(error)) from error
+
     def _handle_plugin_daemon_error(self, error_type: str, message: str):
         """
         handle the error from plugin daemon
         """
+        if is_plugin_runtime_unavailable(message):
+            raise PluginDaemonUnavailableError(description=message)
         match error_type:
             case PluginDaemonInnerError.__name__:
                 raise PluginDaemonInnerError(code=-500, message=message)
