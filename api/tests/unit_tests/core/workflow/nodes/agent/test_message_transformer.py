@@ -194,3 +194,110 @@ def test_transform_keeps_plain_link_as_text() -> None:
 
     assert text == "Link: https://dify.ai\n"
     assert files.value == []
+
+
+def test_transform_log_message_memoizes_provider_icon_lookup() -> None:
+    log_msg_1 = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id="log-1",
+            parent_id=None,
+            error=None,
+            status=ToolInvokeMessage.LogMessage.LogStatus.START,
+            data={},
+            label="Tool start",
+            metadata={"provider": "builtin/test_tool"},
+        ),
+    )
+    log_msg_2 = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id="log-2",
+            parent_id="log-1",
+            error=None,
+            status=ToolInvokeMessage.LogMessage.LogStatus.SUCCESS,
+            data={},
+            label="Tool end",
+            metadata={"provider": "builtin/test_tool"},
+        ),
+    )
+
+    builtin_provider = SimpleNamespace(
+        name="builtin/test_tool",
+        icon="icon.svg",
+        icon_dark="icon_dark.svg",
+    )
+
+    transformer = AgentMessageTransformer()
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller.list_plugins", return_value=[]) as mock_plugins,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            return_value=[builtin_provider],
+        ) as mock_builtin,
+    ):
+        events = list(
+            transformer.transform(
+                messages=_message_stream([log_msg_1, log_msg_2]),
+                tool_info={},
+                parameters_for_log={},
+                user_id="user-id",
+                tenant_id="tenant-id",
+                conversation_id=None,
+                node_type=BuiltinNodeTypes.AGENT,
+                node_id="node-id",
+                node_execution_id="execution-id",
+            )
+        )
+
+    assert mock_plugins.call_count == 1
+    assert mock_builtin.call_count == 1
+
+    assert log_msg_1.message.metadata["icon"] == "icon.svg"
+    assert log_msg_1.message.metadata["icon_dark"] == "icon_dark.svg"
+    assert log_msg_2.message.metadata["icon"] == "icon.svg"
+    assert log_msg_2.message.metadata["icon_dark"] == "icon_dark.svg"
+
+
+def test_transform_log_message_fails_open_on_provider_scan_error() -> None:
+    log_msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id="log-1",
+            parent_id=None,
+            error=None,
+            status=ToolInvokeMessage.LogMessage.LogStatus.START,
+            data={},
+            label="Tool start",
+            metadata={"provider": "failing/provider"},
+        ),
+    )
+
+    transformer = AgentMessageTransformer()
+    with (
+        patch(
+            "core.plugin.impl.plugin.PluginInstaller.list_plugins",
+            side_effect=RuntimeError("Plugin daemon unreachable"),
+        ),
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            side_effect=RuntimeError("Database query failed"),
+        ),
+    ):
+        events = list(
+            transformer.transform(
+                messages=_message_stream([log_msg]),
+                tool_info={"icon": "fallback_icon.svg"},
+                parameters_for_log={},
+                user_id="user-id",
+                tenant_id="tenant-id",
+                conversation_id=None,
+                node_type=BuiltinNodeTypes.AGENT,
+                node_id="node-id",
+                node_execution_id="execution-id",
+            )
+        )
+
+    # Should not raise; metadata falls back to tool_info icon
+    assert log_msg.message.metadata["icon"] == "fallback_icon.svg"
+    assert log_msg.message.metadata["icon_dark"] is None

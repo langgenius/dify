@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast
 
@@ -28,6 +29,7 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 
+logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -62,6 +64,7 @@ class AgentMessageTransformer:
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
         llm_usage = LLMUsage.empty_usage()
         variables: dict[str, Any] = {}
+        provider_icon_cache: dict[str, tuple[str, str | None]] = {}
 
         for message in message_stream:
             if message.type in {
@@ -196,32 +199,42 @@ class AgentMessageTransformer:
                 if message.message.metadata:
                     icon = tool_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)
-                    if dict_metadata.get("provider"):
-                        manager = PluginInstaller()
-                        plugins = manager.list_plugins(tenant_id)
-                        try:
-                            current_plugin = next(
-                                plugin
-                                for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
-                            )
-                            icon = current_plugin.declaration.icon
-                        except StopIteration:
-                            pass
-                        icon_dark = None
-                        try:
-                            builtin_tool = next(
-                                provider
-                                for provider in BuiltinToolManageService.list_builtin_tools(
-                                    user_id,
-                                    tenant_id,
+                    provider = dict_metadata.get("provider")
+                    if provider:
+                        if provider in provider_icon_cache:
+                            icon, icon_dark = provider_icon_cache[provider]
+                        else:
+                            icon_dark = None
+                            try:
+                                manager = PluginInstaller()
+                                plugins = manager.list_plugins(tenant_id)
+                                try:
+                                    current_plugin = next(
+                                        plugin for plugin in plugins if f"{plugin.plugin_id}/{plugin.name}" == provider
+                                    )
+                                    icon = current_plugin.declaration.icon
+                                except StopIteration:
+                                    pass
+                            except Exception as e:
+                                logger.debug("Failed to enrich provider icon from plugins: %s", e)
+
+                            try:
+                                builtin_tool = next(
+                                    prov
+                                    for prov in BuiltinToolManageService.list_builtin_tools(
+                                        user_id,
+                                        tenant_id,
+                                    )
+                                    if prov.name == provider
                                 )
-                                if provider.name == dict_metadata["provider"]
-                            )
-                            icon = builtin_tool.icon
-                            icon_dark = builtin_tool.icon_dark
-                        except StopIteration:
-                            pass
+                                icon = builtin_tool.icon
+                                icon_dark = builtin_tool.icon_dark
+                            except StopIteration:
+                                pass
+                            except Exception as e:
+                                logger.debug("Failed to enrich provider icon from builtin tools: %s", e)
+
+                            provider_icon_cache[provider] = (icon, icon_dark)
 
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
