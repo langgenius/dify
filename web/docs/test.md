@@ -36,7 +36,7 @@ Use the smallest boundary that includes the behavior owner and proves the produc
 - Test hooks directly only when the hook itself exposes a reusable public contract. Otherwise, exercise the hook through its owning component or feature.
 - Use React Testing Library for component and feature behavior visible through the DOM or external side effects.
 - Use integration tests for behavior that crosses meaningful module boundaries.
-- Use a real browser for layout, responsive behavior, browser-specific APIs, animation, and focus behavior that `happy-dom` cannot represent faithfully.
+- Use a real browser only when the contract depends on rendering-engine or native-input behavior that `happy-dom` and Testing Library cannot represent faithfully.
 - Follow the [Dify UI testing contract] for the Storybook and Vitest boundary of Dify UI primitives.
 
 Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
@@ -45,10 +45,13 @@ Test the behavior owner. Barrel exports, pass-through wrappers, and purely prese
 
 `happy-dom` is the default choice for tests under `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on a browser's rendering engine. This split follows [Vitest test projects] and [Why Browser Mode].
 
+React Testing Library with `@testing-library/user-event` remains appropriate for the browser-like DOM interactions that `user-event` deliberately simulates. For example, use `user.tab()` in the `unit` project to verify basic sequential focus order among semantic controls when DOM order, disabled state, and `tabindex` are the contract. This protects Dify's markup and interaction behavior; it is not a browser-conformance test. See the [Testing Library user-event convenience APIs].
+
 Use the `browser` project only when the asserted contract depends on browser-owned behavior that `happy-dom` cannot represent faithfully, such as:
 
 - Layout geometry, CSS hit testing, responsive behavior, or pointer targeting.
-- Native focus, selection, scrolling, keyboard, or pointer behavior.
+- Native sequential focus navigation or focus-event ordering when rendered visibility, `inert`, portals or focus traps, shadow DOM, or browser defaults can change the result.
+- Selection, scrolling, keyboard, or pointer behavior whose correctness depends on the browser's real input path rather than DOM events simulated by `user-event`.
 - Browser APIs, observers, or animation lifecycles whose real implementation affects the result.
 
 Rendering UI, reducing mocks, increasing confidence, or raising coverage is not enough reason to use Browser Mode. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must name the browser-owned behavior and why `happy-dom` is insufficient, exercise the smallest owner through semantic locators, and justify its additional runtime. Do not use forced interaction, fixed sleeps, private DOM or CSS assertions, or real network requests.
@@ -179,6 +182,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 - [React Testing Library documentation]
 - [Testing Library query guidance]
 - [Testing Library user-event guidance]
+- [Testing Library user-event convenience APIs]
 
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
@@ -186,6 +190,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles
 [Testing Library query guidance]: https://testing-library.com/docs/queries/about
 [Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
+[Testing Library user-event convenience APIs]: https://testing-library.com/docs/user-event/convenience
 [Vite+ testing configuration]: https://viteplus.dev/guide/test
 [Vitest Browser Mode documentation]: https://v4.vitest.dev/guide/browser
 [Vitest Browser Mode locators]: https://v4.vitest.dev/api/browser/locators
