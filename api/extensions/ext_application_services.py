@@ -85,9 +85,18 @@ from services.account_email_registration_adapters import (
     TokenManagerEmailRegistrationTokenGateway,
 )
 from services.account_email_registration_service import AccountEmailRegistrationService
+from services.account_forgot_password_adapters import (
+    CeleryForgotPasswordNotificationGateway,
+    RateLimiterForgotPasswordSendLimiter,
+    RedisForgotPasswordSecurityGateway,
+    RedisForgotPasswordTokenGateway,
+    SecureForgotPasswordCodeGenerator,
+    SystemFeatureServiceForgotPasswordRegistrationPolicy,
+)
+from services.account_forgot_password_service import AccountForgotPasswordService
 from services.account_initialization_service import AccountInitializationService
 from services.account_integration_service import AccountIntegrationService
-from services.account_password_hasher import LegacyAccountPasswordHasher
+from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -179,6 +188,7 @@ class AccountServices:
     deletion: AccountDeletionService
     deletion_feedback: AccountDeletionFeedbackService
     education: AccountEducationService
+    forgot_password: AccountForgotPasswordService
     initialization: AccountInitializationService
     integrations: AccountIntegrationService
     password: AccountPasswordService
@@ -201,6 +211,7 @@ class ApplicationServices:
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    files: FileService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -280,6 +291,8 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    file_service = FileService(session_factory=database_client)
+    passwords = DefaultAccountPasswordHasher()
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -365,6 +378,23 @@ def build_application_services(
                     redis_client=redis,
                 ),
             ),
+            forgot_password=AccountForgotPasswordService(
+                accounts=accounts,
+                passwords=passwords,
+                tokens=RedisForgotPasswordTokenGateway(
+                    redis=redis,
+                    expiry_seconds=int(dify_config.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES * 60),
+                ),
+                codes=SecureForgotPasswordCodeGenerator(),
+                notifications=CeleryForgotPasswordNotificationGateway(),
+                send_limits=RateLimiterForgotPasswordSendLimiter(redis=redis),
+                security=RedisForgotPasswordSecurityGateway(
+                    redis=redis,
+                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
+                    verification_lockout_duration=dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION,
+                ),
+                registration=SystemFeatureServiceForgotPasswordRegistrationPolicy(),
+            ),
             initialization=AccountInitializationService(
                 accounts=accounts,
                 invitation_required=deployment_edition == DeploymentEdition.CLOUD,
@@ -373,7 +403,7 @@ def build_application_services(
             integrations=AccountIntegrationService(integrations=integrations),
             password=AccountPasswordService(
                 accounts=accounts,
-                passwords=LegacyAccountPasswordHasher(),
+                passwords=passwords,
             ),
             profile=AccountProfileService(accounts=accounts),
         ),
@@ -428,7 +458,7 @@ def build_application_services(
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
-            file_service=FileService(session_factory=database_client),
+            file_service=file_service,
             workspace_features=feature_gateway.get_workspace_features,
             files_url=dify_config.FILES_URL,
         ),
@@ -447,6 +477,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        files=file_service,
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,

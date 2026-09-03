@@ -923,6 +923,50 @@ def test_rejects_unknown_provider_type_at_config_boundary():
         )
 
 
+@pytest.mark.parametrize("provider_type", ["api", "workflow"])
+def test_provider_scoped_tool_accepts_authorized_without_credential_id(provider_type: str):
+    """``api`` / ``workflow`` credentials live on the provider record, so the
+    runtime resolves them from ``provider_id`` alone. An authorized tool of
+    these types must validate without a fabricated ``credential_ref.id``."""
+    config = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "api-provider-1",
+                    "provider_type": provider_type,
+                    "tool_name": "get_pet",
+                    "credential_type": "api-key",
+                }
+            ]
+        }
+    )
+
+    tool = config.dify_tools[0]
+    # No id is invented; the provider_id already locates the credential.
+    assert tool.credential_ref is None
+    assert tool.credential_type == "api-key"
+
+
+@pytest.mark.parametrize("provider_type", ["plugin", "builtin"])
+def test_tool_scoped_provider_still_requires_credential_id(provider_type: str):
+    """Tool-level credential providers (plugin / builtin) select a specific
+    stored secret, so an authorized tool without a ``credential_ref.id`` is
+    still rejected at the config boundary."""
+    with pytest.raises(ValueError, match="credential_ref.id is required"):
+        AgentSoulToolsConfig.model_validate(
+            {
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/search/search",
+                        "provider_type": provider_type,
+                        "tool_name": "search",
+                        "credential_type": "api-key",
+                    }
+                ]
+            }
+        )
+
+
 # ── provider-level entries (tool_name omitted = all tools of the provider) ───
 
 
