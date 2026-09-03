@@ -13,6 +13,7 @@ first patched 3.x release, and the KnowledgeFS production-dependency audit block
 ## Verification
 
 - `pnpm security:dependencies`: passed.
+- `pnpm ci:workflow:test`: passed.
 - `pnpm --filter @knowledge/api typecheck`: passed.
 - `git diff --check`: passed.
 
