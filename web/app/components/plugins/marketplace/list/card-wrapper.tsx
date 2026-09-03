@@ -77,6 +77,7 @@ const CardWrapperComponent = ({
           trackMarketplaceSiteCardClick({
             itemId,
             itemType: 'plugin',
+            itemName: pluginLabel,
             section,
           })
         }}

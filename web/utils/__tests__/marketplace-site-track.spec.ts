@@ -42,6 +42,7 @@ describe('marketplace site track bridge', () => {
     trackMarketplaceSiteCardClick({
       itemId: 'org/name',
       itemType: 'plugin',
+      itemName: 'OpenAI',
       section: 'partners',
     })
     markMarketplaceSiteSearch('openai')
@@ -60,6 +61,7 @@ describe('marketplace site track bridge', () => {
       click_target: 'card',
       item_id: 'org/name',
       item_type: 'plugin',
+      item_name: 'OpenAI',
       section: 'partners',
     })
   })

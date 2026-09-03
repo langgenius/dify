@@ -180,6 +180,7 @@ function TrendingCard({
         trackMarketplaceBannerClick(banner, {
           item_id: card.item_id,
           item_type: card.item_type,
+          display_name: card.display_name,
           link: href,
         })
       }}

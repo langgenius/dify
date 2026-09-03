@@ -20,6 +20,7 @@ describe('buildMarketplaceBannerClickProperties', () => {
       buildMarketplaceBannerClickProperties(recommendBanner, {
         item_id: 'langgenius/dropbox',
         item_type: 'plugin',
+        display_name: 'Dropbox',
         link: '/plugin/langgenius/dropbox',
       }),
     ).toEqual({
@@ -31,6 +32,7 @@ describe('buildMarketplaceBannerClickProperties', () => {
       language: 'en',
       item_id: 'langgenius/dropbox',
       item_type: 'plugin',
+      item_name: 'Dropbox',
       link: '/plugin/langgenius/dropbox',
     })
   })
@@ -45,6 +47,7 @@ describe('buildMarketplaceBannerClickProperties', () => {
         {
           item_id: 'tpl-1',
           item_type: 'template',
+          display_name: 'Support Bot',
           link: '/templates?tid=tpl-1',
         },
       ),
@@ -53,6 +56,7 @@ describe('buildMarketplaceBannerClickProperties', () => {
       click_target: 'recommendation',
       item_id: 'tpl-1',
       item_type: 'template',
+      item_name: 'Support Bot',
     })
   })
 

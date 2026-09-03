@@ -13,7 +13,7 @@ const THEME_TYPE_BY_BANNER = {
   partner: 'partner',
 } as const
 
-export type MarketplaceBannerCardClick = Pick<BannerRecommendCard, 'item_id' | 'item_type'> & {
+export type MarketplaceBannerCardClick = Pick<BannerRecommendCard, 'item_id' | 'item_type' | 'display_name'> & {
   link: string
 }
 
@@ -43,6 +43,7 @@ export const buildMarketplaceBannerClickProperties = (
     properties.theme_type = THEME_TYPE_BY_BANNER[banner.content.theme_type]
     properties.item_id = cardClick?.item_id
     properties.item_type = cardClick?.item_type
+    properties.item_name = cardClick?.display_name
   }
 
   if (banner.style_type === 'blog') properties.target_type = banner.content.link_target_type

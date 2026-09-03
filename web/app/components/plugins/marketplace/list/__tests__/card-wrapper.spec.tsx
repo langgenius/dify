@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -66,6 +67,10 @@ vi.mock('../../detail-dialog', () => ({
 
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
+}))
+
+vi.mock('@/utils/marketplace-site-track', () => ({
+  trackMarketplaceSiteCardClick: vi.fn(),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -151,6 +156,13 @@ describe('CardWrapper', () => {
     renderCardWrapper({ linkToMarketplaceDetail: true })
 
     expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
+    fireEvent.click(screen.getByRole('link'))
+    expect(trackMarketplaceSiteCardClick).toHaveBeenCalledWith({
+      itemId: 'dify/plugin-a',
+      itemType: 'plugin',
+      itemName: 'Plugin A',
+      section: 'list',
+    })
   })
 
   it('renders install and marketplace detail actions when install button is shown', () => {
