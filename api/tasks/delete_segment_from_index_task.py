@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_storage import storage
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
 
@@ -63,10 +64,25 @@ def delete_segment_from_index_task(
             if dataset.is_multimodal:
                 # delete segment attachment binding
                 segment_attachment_bindings = session.scalars(
-                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                    select(SegmentAttachmentBinding).where(
+                        SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                        SegmentAttachmentBinding.dataset_id == dataset.id,
+                        SegmentAttachmentBinding.document_id == document_id,
+                        SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                    )
                 ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                    attachment_storage_keys = list(
+                        dict.fromkeys(
+                            session.scalars(
+                                select(UploadFile.key).where(
+                                    UploadFile.tenant_id == dataset.tenant_id,
+                                    UploadFile.id.in_(attachment_ids),
+                                )
+                            ).all()
+                        )
+                    )
                     index_processor.clean(
                         session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
                     )
@@ -74,13 +90,27 @@ def delete_segment_from_index_task(
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):
                         segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
+                            SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset.id,
+                            SegmentAttachmentBinding.document_id == document_id,
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000]),
                         )
                         session.execute(segment_attachment_bind_delete_stmt)
 
                     # delete upload file
-                    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
+                    session.execute(
+                        delete(UploadFile).where(
+                            UploadFile.tenant_id == dataset.tenant_id,
+                            UploadFile.id.in_(attachment_ids),
+                        )
+                    )
                     session.commit()
+
+                    for storage_key in attachment_storage_keys:
+                        try:
+                            storage.delete(storage_key)
+                        except Exception:
+                            logger.exception("Failed to delete segment attachment from storage, key: %s", storage_key)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
