@@ -33,6 +33,7 @@ const canContinueConversation = (status?: string) =>
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
 export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
+export const difyBuilderDraftAtom = atom('')
 export const difyBuilderLocalErrorAtom = atom('')
 export const difyBuilderChecklistErrorsAtom = atom<ChecklistErrorPayload[]>([])
 export const difyBuilderCanvasRefreshGenerationAtom = atom(0)
@@ -44,6 +45,7 @@ export const difyBuilderChecklistEvaluatedGenerationAtom = atom(-1)
 export const difyBuilderScopedAtoms = [
   difyBuilderRuntimeAtom,
   difyBuilderSelectedModelAtom,
+  difyBuilderDraftAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderChecklistErrorsAtom,
   difyBuilderCanvasRefreshGenerationAtom,
@@ -95,6 +97,9 @@ export const difyBuilderCanComposeAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   return !view || isTerminalStatus(view.run_status) || canContinueConversation(view.run_status)
 })
+export const difyBuilderCanSendDraftAtom = atom(
+  (get) => get(difyBuilderCanComposeAtom) && Boolean(get(difyBuilderDraftAtom).trim()),
+)
 export const difyBuilderModelReadonlyAtom = atom((get) => get(difyBuilderInteractionBusyAtom))
 export const difyBuilderCanvasLockedAtom = atom(
   (get) =>
@@ -164,6 +169,16 @@ export const difyBuilderStartPromptAtom = atom(null, async (get, set, text: stri
   return shouldStartBuildSession(nodes, edgeCount)
     ? runtime.session.startBuild(runtime.appId, prompt, selectedModel)
     : runtime.session.startEdit(runtime.appId, prompt, selectedModel)
+})
+
+export const difyBuilderSendDraftAtom = atom(null, async (get, set) => {
+  const draft = get(difyBuilderDraftAtom)
+  const prompt = draft.trim()
+  if (!prompt || !get(difyBuilderCanComposeAtom)) return false
+
+  const sent = await set(difyBuilderStartPromptAtom, prompt)
+  if (sent && get(difyBuilderDraftAtom) === draft) set(difyBuilderDraftAtom, '')
+  return sent
 })
 
 export const difyBuilderStartRunFixAtom = atom(null, async (get, set, failedRunId: string) => {
@@ -246,6 +261,7 @@ export const difyBuilderRegisterChecklistErrorsAtom = atom(
 export const difyBuilderResetAtom = atom(null, (get, set) => {
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
+  set(difyBuilderDraftAtom, '')
   set(difyBuilderLocalErrorAtom, '')
   set(difyBuilderChecklistErrorsAtom, [])
   set(difyBuilderCanvasRefreshGenerationAtom, 0)

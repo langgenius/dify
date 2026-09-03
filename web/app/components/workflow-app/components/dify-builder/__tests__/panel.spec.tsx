@@ -1,5 +1,5 @@
 import type { SessionView } from '../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import DifyBuilderPanel from '../panel'
@@ -121,6 +121,57 @@ describe('DifyBuilderPanel', () => {
     await user.type(composer, 'Make the repair smaller')
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
     expect(mocks.sendMessage).toHaveBeenCalledWith('Make the repair smaller')
+    await waitFor(() => expect(composer).toHaveValue(''))
+  })
+
+  it('does not submit while Enter confirms an IME composition', async () => {
+    renderPanel()
+    const composer = screen.getByRole('textbox', {
+      name: 'workflow.difyBuilder.messagePlaceholder',
+    })
+
+    fireEvent.change(composer, { target: { value: '你好' } })
+    fireEvent.compositionStart(composer)
+    await act(async () => {
+      fireEvent.keyDown(composer, { isComposing: true, key: 'Enter' })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+    expect(composer).toHaveValue('你好')
+  })
+
+  it('keeps Enter blocked briefly after an IME composition ends', async () => {
+    vi.useFakeTimers()
+    try {
+      renderPanel()
+      const composer = screen.getByRole('textbox', {
+        name: 'workflow.difyBuilder.messagePlaceholder',
+      })
+
+      fireEvent.change(composer, { target: { value: '你好' } })
+      fireEvent.compositionStart(composer)
+      fireEvent.compositionEnd(composer)
+      await act(async () => {
+        fireEvent.keyDown(composer, { isComposing: false, key: 'Enter' })
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mocks.sendMessage).not.toHaveBeenCalled()
+      expect(composer).toHaveValue('你好')
+
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      vi.useRealTimers()
+      fireEvent.keyDown(composer, { isComposing: false, key: 'Enter' })
+
+      await waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledWith('你好'))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('allows a terminal session to start a new flow from the composer', async () => {
