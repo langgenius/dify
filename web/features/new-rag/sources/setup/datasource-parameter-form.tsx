@@ -165,7 +165,7 @@ function DatasourceParameterField({
               <ParameterLabel label={label} required={parameter.required} />
             </FieldLabel>
             {description && (
-              <FieldDescription id={descriptionId} className="mt-0.5 py-0 break-words">
+              <FieldDescription id={descriptionId} className="mt-0.5 py-0 wrap-break-word">
                 {description}
               </FieldDescription>
             )}

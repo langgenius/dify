@@ -64,7 +64,7 @@ export function CreateUploadQueue({
   }
 
   return (
-    <div className="mx-[14.5px] -mt-[3.5px] mb-[14.5px] space-y-3">
+    <div className="mx-[14.5px] mt-[-3.5px] mb-[14.5px] space-y-3">
       <input
         id={inputId}
         className="peer sr-only"

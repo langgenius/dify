@@ -99,7 +99,7 @@ export function KnowledgeSpaceActions({
           >
             <span aria-hidden className="i-ri-more-fill size-5 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[186px]">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-46.5">
             {canEdit && (
               <DropdownMenuItem onClick={openSettings}>
                 <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />

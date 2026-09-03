@@ -195,7 +195,7 @@ function SkillBuilderThinkingMessage({
           {reasoning ? (
             <Markdown
               content={reasoning}
-              className="text-[12px]! leading-[18px]! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-[18px]!"
+              className="text-[12px]! leading-4.5! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-4.5!"
             />
           ) : visibleProgressStages.length ? (
             <ol className="flex flex-col gap-1">
@@ -211,7 +211,7 @@ function SkillBuilderThinkingMessage({
           ) : (
             <Markdown
               content={t(($) => $['skillManagement.detail.builder.thinkingUnavailable'])}
-              className="text-[12px]! leading-[18px]! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-[18px]!"
+              className="text-[12px]! leading-4.5! [&_p]:my-0 [&_p]:text-[12px]! [&_p]:leading-4.5!"
             />
           )}
         </div>
@@ -268,7 +268,7 @@ const skillBuilderEmptyIconCells = skillBuilderEmptyIconCellOpacities.map((opaci
 
 function SkillBuilderEmptyIcon() {
   return (
-    <div className="dify-blue-glass-surface relative flex h-[50px] w-12 items-center justify-center rounded-xl p-2 shadow-lg backdrop-blur-[5px]">
+    <div className="dify-blue-glass-surface relative flex h-12.5 w-12 items-center justify-center rounded-xl p-2 shadow-lg backdrop-blur-[5px]">
       <div
         aria-hidden
         className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25"
@@ -804,18 +804,18 @@ export function SkillBuilderPanel({
   }
 
   return (
-    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle">
+    <aside className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2"
       />
       <SkillBuilderGridTexture
         aria-hidden
-        className="pointer-events-none absolute top-0 left-0 z-[2]"
+        className="pointer-events-none absolute top-0 left-0 z-2"
       />
       <SkillBuilderGridTexture
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-0 z-[1] origin-center scale-y-[-1]"
+        className="pointer-events-none absolute bottom-0 left-0 z-1 origin-center scale-y-[-1]"
       />
       <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 pr-3 pl-4">
         <h2 className="system-xs-semibold-uppercase text-text-secondary">
@@ -830,7 +830,7 @@ export function SkillBuilderPanel({
           >
             <span aria-hidden className="i-ri-restart-line size-4" />
           </button>
-          <span aria-hidden className="flex h-8 w-[9px] items-center justify-center">
+          <span aria-hidden className="flex h-8 w-2.25 items-center justify-center">
             <span className="h-3.5 w-px bg-divider-subtle" />
           </span>
           <button
@@ -851,7 +851,7 @@ export function SkillBuilderPanel({
       >
         <div
           className={cn(
-            'min-h-0 scrollbar-thin overflow-y-auto px-4 pt-4 pb-[11px]',
+            'min-h-0 scrollbar-thin overflow-y-auto px-4 pt-4 pb-2.75',
             messages.length > 0 ? 'flex-1' : 'shrink-0',
           )}
         >
@@ -861,7 +861,7 @@ export function SkillBuilderPanel({
                 message.role === 'user' ? (
                   <div
                     key={message.id}
-                    className="flex w-full max-w-[720px] flex-col items-end gap-1 self-end pl-8"
+                    className="flex w-full max-w-180 flex-col items-end gap-1 self-end pl-8"
                   >
                     {!!message.attachments?.length && (
                       <SkillBuilderMessageAttachments attachments={message.attachments} />
@@ -869,7 +869,7 @@ export function SkillBuilderPanel({
                     <div className="flex max-w-72 flex-col items-end rounded-2xl bg-background-default-dimmed px-2 py-2">
                       <Markdown
                         content={message.content}
-                        className="px-2 py-1 text-[14px]! leading-[20px]! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-[20px]!"
+                        className="px-2 py-1 text-[14px]! leading-5! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-5!"
                       />
                     </div>
                     <div aria-hidden className="h-4 w-full" />
@@ -878,7 +878,7 @@ export function SkillBuilderPanel({
                   <div
                     key={message.id}
                     className={cn(
-                      'flex w-full max-w-[720px] flex-col items-start gap-1 text-text-secondary',
+                      'flex w-full max-w-180 flex-col items-start gap-1 text-text-secondary',
                       message.tone === 'error' &&
                         'rounded-xl border border-state-destructive-border bg-state-destructive-hover px-3 py-2 text-text-destructive',
                     )}
@@ -898,7 +898,7 @@ export function SkillBuilderPanel({
                       <>
                         <Markdown
                           content={message.content}
-                          className="px-1 text-[14px]! leading-[20px]! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-[20px]! [&_p+p]:mt-2"
+                          className="px-1 text-[14px]! leading-5! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-5! [&_p+p]:mt-2"
                         />
                         <div className="mt-1 flex h-7 items-center gap-0.5 px-0.5 text-text-tertiary">
                           <button
@@ -1004,7 +1004,7 @@ export function SkillBuilderPanel({
           className={cn(
             'relative flex shrink-0 items-end justify-end px-4 pt-3 pb-4',
             messages.length > 0 &&
-              'bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2',
+              'bg-linear-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2',
           )}
         >
           <div className="flex w-full flex-col items-end justify-end">
@@ -1048,7 +1048,7 @@ export function SkillBuilderPanel({
               <textarea
                 value={prompt}
                 rows={1}
-                className="[field-sizing:content] max-h-40 min-h-6 w-full resize-none bg-transparent px-0 py-0 body-md-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
+                className="field-sizing-content max-h-40 min-h-6 w-full resize-none bg-transparent px-0 py-0 body-md-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
                 placeholder={inputPlaceholder}
                 disabled={isSending}
                 onChange={(event) => setPrompt(event.target.value)}

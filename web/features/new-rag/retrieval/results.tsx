@@ -323,7 +323,7 @@ export function FailedResult({
         aria-hidden
         className="mt-0.75 i-ri-alert-fill size-3.5 shrink-0 text-text-destructive"
       />
-      <p className="min-w-0 flex-1 system-sm-regular break-words text-text-secondary">
+      <p className="min-w-0 flex-1 system-sm-regular wrap-break-word text-text-secondary">
         {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
         {' — '}
         <span>{description}</span>

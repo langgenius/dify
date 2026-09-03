@@ -99,7 +99,7 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
           {content !== undefined && (
             <pre
               aria-label={file.name}
-              className="size-full overflow-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-4 font-mono text-[13px] leading-5.5 break-words whitespace-pre-wrap text-text-primary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="size-full overflow-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-4 font-mono text-[13px] leading-5.5 wrap-break-word whitespace-pre-wrap text-text-primary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {content}
             </pre>

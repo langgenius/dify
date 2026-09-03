@@ -149,10 +149,10 @@ export function DocumentUploadForm({
         <span className="flex size-11 items-center justify-center rounded-[10px] bg-components-icon-bg-midnight-soft">
           <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
         </span>
-        <span className="text-[14px] leading-[17px] font-medium text-text-primary">
+        <span className="text-[14px] leading-4.25 font-medium text-text-primary">
           {t(($) => $['newKnowledge.uploadDropZoneTitle'])}
         </span>
-        <span className="text-[12px] leading-[15px] font-normal text-text-placeholder">
+        <span className="text-[12px] leading-3.75 font-normal text-text-placeholder">
           {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
         </span>
       </button>

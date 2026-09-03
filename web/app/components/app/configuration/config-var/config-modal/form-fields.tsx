@@ -169,7 +169,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             <SelectPortal>
               <SelectPositioner>
                 <SelectPopup>
-                  <SelectList className="max-h-[140px] overflow-y-auto">
+                  <SelectList className="max-h-35 overflow-y-auto">
                     <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
                       <SelectItemText>
                         {t(($) => $['variableConfig.startChecked'], { ns: 'appDebug' })}
@@ -217,7 +217,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 <SelectPortal>
                   <SelectPositioner>
                     <SelectPopup>
-                      <SelectList className="max-h-[140px] overflow-y-auto">
+                      <SelectList className="max-h-35 overflow-y-auto">
                         <SelectItem value={EMPTY_SELECT_VALUE}>
                           <SelectItemText>
                             {t(($) => $['variableConfig.noDefaultValue'], { ns: 'appDebug' })}
