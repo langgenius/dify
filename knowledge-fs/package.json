@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "overrides": {
-      "fast-uri": "3.1.5",
+      "fast-uri": "3.1.6",
       "ip-address": "10.3.1",
       "sharp": "0.35.3"
     }
