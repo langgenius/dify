@@ -138,7 +138,11 @@ _NODE_SNIPPETS: dict[str, str] = {
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
-    Source handle for downstream edges = the case_id ("true" / "false").""",
+    Source handle for downstream edges = the case_id ("true" / "false").
+    CRITICAL: ``variable_selector`` is ["<upstream-node-id>", "<output-var>"] —
+    the value being TESTED. It is NOT the branch name: never write
+    ["true","false"] or ["true", ...]. Point it at a real upstream output
+    (e.g. ["<llm-node-id>", "text"]).""",
     "question-classifier": """\
 - question-classifier:
     {"query_variable_selector": ["<src>", "<var>"],
