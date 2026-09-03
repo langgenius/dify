@@ -1176,14 +1176,14 @@ class TestResourcePermissions:
         )
 
         mock_send.assert_not_called()
+        # KnowledgeFS reuses the legacy dataset permission points.
         expected = [
-            "knowledge_space_read",
-            "knowledge_space_create",
-            "knowledge_space_edit",
-            "knowledge_space_delete",
-            "knowledge_space_access_config",
-            "knowledge_space_document_write",
-            "knowledge_space_query",
+            "dataset_readonly",
+            "dataset_create_and_management",
+            "dataset_edit",
+            "dataset_delete",
+            "dataset_access_config",
+            "dataset_retrieval_recall",
         ]
         assert out == {"control-1": expected, "control-2": expected}
 
@@ -1192,8 +1192,8 @@ class TestResourcePermissions:
     ):
         mock_send.return_value = {
             "data": [
-                {"control_space_id": "control-1", "permission_keys": ["knowledge_space_read"]},
-                {"control_space_id": "control-2", "permission_keys": ["knowledge_space_query"]},
+                {"control_space_id": "control-1", "permission_keys": ["dataset_readonly"]},
+                {"control_space_id": "control-2", "permission_keys": ["dataset_retrieval_recall"]},
             ]
         }
 
@@ -1206,8 +1206,8 @@ class TestResourcePermissions:
         assert call.endpoint == "/rbac/knowledge-fs/permission-keys/batch"
         assert call.json == {"control_space_ids": ["control-1", "control-2"]}
         assert out == {
-            "control-1": ["knowledge_space_read"],
-            "control-2": ["knowledge_space_query"],
+            "control-1": ["dataset_readonly"],
+            "control-2": ["dataset_retrieval_recall"],
         }
 
     def test_app_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
