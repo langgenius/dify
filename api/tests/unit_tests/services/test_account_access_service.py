@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from services.account_access_service import AccountAccessService
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
 from services.entities.account_access_entities import (
@@ -18,8 +18,8 @@ from services.entities.account_entities import AccountSnapshot
 NOW = datetime(2026, 8, 25, 12, tzinfo=UTC)
 
 
-def _context(*, token_id: str | None = "token-1") -> RequestContext:
-    return RequestContext("request-1", "trace-1", "account-1", None, token_id)
+def _context(*, token_id: str | None = "token-1") -> AccountRequestContext:
+    return AccountRequestContext("request-1", "trace-1", "account-1", token_id)
 
 
 def _account() -> AccountSnapshot:

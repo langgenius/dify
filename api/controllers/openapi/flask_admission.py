@@ -15,7 +15,7 @@ from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from libs.rate_limit import RateLimit, enforce
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from models.account import Account, AccountStatus
 
 
@@ -27,7 +27,7 @@ def openapi_account_admission[T, **P, R](
     require_valid_enterprise_license: bool = True,
     rate_limit: RateLimit | None = None,
 ) -> Callable[
-    [Callable[Concatenate[T, RequestContext, P], R]],
+    [Callable[Concatenate[T, AccountRequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
 ]:
     """Authenticate an account bearer and inject framework-neutral identity.
@@ -39,7 +39,7 @@ def openapi_account_admission[T, **P, R](
     """
 
     def decorator(
-        view: Callable[Concatenate[T, RequestContext, P], R],
+        view: Callable[Concatenate[T, AccountRequestContext, P], R],
     ) -> Callable[Concatenate[T, P], R | Response]:
         @wraps(view)
         def inject_request_context(
@@ -61,11 +61,10 @@ def openapi_account_admission[T, **P, R](
             if rate_limit is not None:
                 enforce(rate_limit, key=f"account:{account_id}")
 
-            context = RequestContext(
+            context = AccountRequestContext(
                 request_id=get_request_id(),
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
                 account_id=account_id,
-                active_workspace_id=account.current_tenant_id,
                 access_token_id=str(auth_data.token_id) if auth_data.token_id is not None else None,
             )
             return view(self, context, *args, **kwargs)

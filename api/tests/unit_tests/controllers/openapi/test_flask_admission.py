@@ -13,7 +13,7 @@ from controllers.openapi.auth.data import AuthData
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from models.account import Account, AccountStatus
 
 
@@ -65,17 +65,16 @@ def test_admission_builds_stable_request_context(
         editions=frozenset({DeploymentEdition.ENTERPRISE}),
         rate_limit=LIMIT_ME_PER_ACCOUNT,
     )
-    def view(_self: object, context: RequestContext) -> RequestContext:
+    def view(_self: object, context: AccountRequestContext) -> AccountRequestContext:
         return context
 
     with Flask(__name__).test_request_context("/openapi/v1/account"):
         context = view(object())
 
-    assert context == RequestContext(
+    assert context == AccountRequestContext(
         request_id="request-1",
         trace_id="trace-1",
         account_id="11111111-1111-1111-1111-111111111111",
-        active_workspace_id=None,
         access_token_id="22222222-2222-2222-2222-222222222222",
     )
     assert captured == {
@@ -91,7 +90,7 @@ def test_admission_rejects_uninitialized_account(monkeypatch: pytest.MonkeyPatch
     _install_fake_transport(monkeypatch, _auth_data(status=AccountStatus.UNINITIALIZED), {})
 
     @flask_admission.openapi_account_admission(scope=Scope.FULL)
-    def view(_self: object, _context: RequestContext) -> None:
+    def view(_self: object, _context: AccountRequestContext) -> None:
         raise AssertionError("view must not run")
 
     with Flask(__name__).test_request_context("/openapi/v1/account"):
@@ -109,7 +108,7 @@ def test_admission_rejects_missing_auth_data(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(flask_admission.auth_router, "guard", guard)
 
     @flask_admission.openapi_account_admission(scope=Scope.FULL)
-    def view(_self: object, _context: RequestContext) -> None:
+    def view(_self: object, _context: AccountRequestContext) -> None:
         raise AssertionError("view must not run")
 
     with Flask(__name__).test_request_context("/openapi/v1/account"):

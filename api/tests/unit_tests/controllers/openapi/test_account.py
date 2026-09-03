@@ -16,7 +16,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from services.entities.account_access_entities import AccountSessionPage
 
 if not hasattr(builtins, "MethodView"):
@@ -102,18 +102,17 @@ def test_session_by_id_rejects_malformed_uuid(app: Flask) -> None:
 _ACCOUNT_MOD = "controllers.openapi.account"
 
 
-def _request_context() -> RequestContext:
-    return RequestContext(
+def _request_context() -> AccountRequestContext:
+    return AccountRequestContext(
         request_id="request-1",
         trace_id="trace-1",
         account_id="account-1",
-        active_workspace_id=None,
         access_token_id="token-1",
     )
 
 
 class _SessionListService:
-    def list_sessions(self, _context: RequestContext, *, page: int, limit: int) -> AccountSessionPage:
+    def list_sessions(self, _context: AccountRequestContext, *, page: int, limit: int) -> AccountSessionPage:
         return AccountSessionPage(page=page, limit=limit, total=0, items=())
 
 

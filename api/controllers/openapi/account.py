@@ -21,7 +21,7 @@ from controllers.openapi.flask_admission import openapi_account_admission
 from extensions.ext_application_services import application_services
 from libs.oauth_bearer import Scope
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
 from services.entities.account_access_entities import AccountSessionSnapshot, AccountWorkspaceSnapshot
 from services.entities.account_entities import AccountSnapshot
@@ -31,7 +31,7 @@ from services.entities.account_entities import AccountSnapshot
 class AccountApi(Resource):
     @openapi_account_admission(scope=Scope.FULL, rate_limit=LIMIT_ME_PER_ACCOUNT)
     @returns(200, AccountResponse, description="Account info")
-    def get(self, request_context: RequestContext):
+    def get(self, request_context: AccountRequestContext):
         try:
             snapshot = application_services().accounts.access.get(request_context)
         except AccountNotFoundError:
@@ -49,7 +49,7 @@ class AccountApi(Resource):
 class AccountSessionsSelfApi(Resource):
     @openapi_account_admission(scope=Scope.FULL)
     @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, request_context: RequestContext):
+    def delete(self, request_context: AccountRequestContext):
         application_services().accounts.access.revoke_current_session(request_context)
         return RevokeResponse(status="revoked")
 
@@ -59,7 +59,7 @@ class AccountSessionsApi(Resource):
     @openapi_account_admission(scope=Scope.FULL)
     @returns(200, SessionListResponse, description="Session list")
     @accepts(query=SessionListQuery)
-    def get(self, request_context: RequestContext, *, query: SessionListQuery):
+    def get(self, request_context: AccountRequestContext, *, query: SessionListQuery):
         page = application_services().accounts.access.list_sessions(
             request_context,
             page=query.page,
@@ -78,7 +78,7 @@ class AccountSessionsApi(Resource):
 class AccountSessionByIdApi(Resource):
     @openapi_account_admission(scope=Scope.FULL)
     @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, request_context: RequestContext, session_id: str):
+    def delete(self, request_context: AccountRequestContext, session_id: str):
         try:
             token_id = str(UUID(session_id))
         except ValueError:

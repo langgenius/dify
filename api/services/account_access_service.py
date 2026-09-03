@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
 from services.account_ports import (
     AccountSessionRepository,
@@ -32,7 +32,7 @@ class AccountAccessService:
         self._invalidate_token_cache = invalidate_token_cache
         self._now = now
 
-    def get(self, context: RequestContext) -> AccountAccessSnapshot:
+    def get(self, context: AccountRequestContext) -> AccountAccessSnapshot:
         account = self._accounts.get(context.account_id)
         if account is None:
             raise AccountNotFoundError
@@ -48,7 +48,7 @@ class AccountAccessService:
             default_workspace_id=default_workspace_id,
         )
 
-    def list_sessions(self, context: RequestContext, *, page: int, limit: int) -> AccountSessionPage:
+    def list_sessions(self, context: AccountRequestContext, *, page: int, limit: int) -> AccountSessionPage:
         total, sessions = self._sessions.list_active(
             account_id=context.account_id,
             active_at=self._now(),
@@ -57,15 +57,15 @@ class AccountAccessService:
         )
         return AccountSessionPage(page=page, limit=limit, total=total, items=tuple(sessions))
 
-    def revoke_current_session(self, context: RequestContext) -> None:
+    def revoke_current_session(self, context: AccountRequestContext) -> None:
         if context.access_token_id is None:
             raise RuntimeError("OpenAPI account admission did not resolve an access token")
         self._revoke(context, token_id=context.access_token_id, require_owned=False)
 
-    def revoke_session(self, context: RequestContext, *, token_id: str) -> None:
+    def revoke_session(self, context: AccountRequestContext, *, token_id: str) -> None:
         self._revoke(context, token_id=token_id, require_owned=True)
 
-    def _revoke(self, context: RequestContext, *, token_id: str, require_owned: bool) -> None:
+    def _revoke(self, context: AccountRequestContext, *, token_id: str, require_owned: bool) -> None:
         revocation = self._sessions.revoke(
             account_id=context.account_id,
             token_id=token_id,

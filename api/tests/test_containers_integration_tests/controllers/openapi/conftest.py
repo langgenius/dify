@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.data import AuthData
 from libs.oauth_bearer import Scope, TokenType
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -95,11 +95,10 @@ def request_context_for(
     account: Account,
     *,
     token_id: uuid.UUID | None = None,
-) -> RequestContext:
-    return RequestContext(
+) -> AccountRequestContext:
+    return AccountRequestContext(
         request_id="integration-request",
         trace_id="integration-trace",
         account_id=str(account.id),
-        active_workspace_id=account.current_tenant_id,
         access_token_id=str(token_id) if token_id is not None else None,
     )
