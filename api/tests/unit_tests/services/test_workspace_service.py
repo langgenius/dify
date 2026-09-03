@@ -161,3 +161,90 @@ def test_tokener_workspace_summary_never_reads_legacy_credit_pool(
     assert result["model_billing_source"] == "tokener"
     assert result["tokener_bootstrap_status"] == status.value
     get_pool.assert_not_called()
+
+
+def test_get_tenant_info_uses_authoritative_legacy_profile_for_cloud_credits() -> None:
+    tenant = Tenant(name="Legacy workspace")
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(role="owner")
+    feature = SimpleNamespace(
+        billing=SimpleNamespace(
+            enabled=True,
+            subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
+        ),
+        can_replace_logo=False,
+        next_credit_reset_date=1775001600,
+    )
+    resolution = TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
+    paid_pool = CreditPoolBalance(
+        tenant_id=tenant.id,
+        pool_type="paid",
+        quota_limit=100,
+        quota_used=20,
+    )
+
+    with (
+        patch("services.workspace_service.current_user", SimpleNamespace(id="account-1")),
+        patch(
+            "services.workspace_service.dify_config",
+            SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        ),
+        patch("services.workspace_service.FeatureService.get_features", return_value=feature),
+        patch(
+            "services.workspace_service.ModelBillingProfileService.resolve",
+            return_value=resolution,
+        ) as resolve,
+        patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool) as get_pool,
+    ):
+        result = WorkspaceService.get_tenant_info(tenant, session)
+
+    assert result is not None
+    assert result["model_billing_source"] == "legacy_message_credits"
+    assert result["tokener_bootstrap_status"] is None
+    assert result["next_credit_reset_date"] == 1775001600
+    assert result["trial_credits"] == 100
+    assert result["trial_credits_used"] == 20
+    resolve.assert_called_once_with(tenant.id, session=session)
+    get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="paid", session=session)
+
+
+def test_get_tenant_info_tokener_profile_skips_legacy_credit_pool() -> None:
+    tenant = Tenant(name="Tokener workspace")
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(role="owner")
+    feature = SimpleNamespace(
+        billing=SimpleNamespace(
+            enabled=True,
+            subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
+        ),
+        can_replace_logo=False,
+        next_credit_reset_date=1775001600,
+    )
+    resolution = TenantModelBillingResolution(
+        ModelBillingSource.TOKENER,
+        TenantTokenerIntegrationStatus.PENDING,
+    )
+
+    with (
+        patch("services.workspace_service.current_user", SimpleNamespace(id="account-1")),
+        patch(
+            "services.workspace_service.dify_config",
+            SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        ),
+        patch("services.workspace_service.FeatureService.get_features", return_value=feature),
+        patch(
+            "services.workspace_service.ModelBillingProfileService.resolve",
+            return_value=resolution,
+        ) as resolve,
+        patch("services.credit_pool_service.CreditPoolService.get_pool") as get_pool,
+    ):
+        result = WorkspaceService.get_tenant_info(tenant, session)
+
+    assert result is not None
+    assert result["model_billing_source"] == "tokener"
+    assert result["tokener_bootstrap_status"] == "pending"
+    assert "next_credit_reset_date" not in result
+    assert "trial_credits" not in result
+    assert "trial_credits_used" not in result
+    resolve.assert_called_once_with(tenant.id, session=session)
+    get_pool.assert_not_called()

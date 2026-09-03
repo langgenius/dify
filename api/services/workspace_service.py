@@ -164,8 +164,8 @@ class WorkspaceService:
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
-        tenant_info["model_billing_source"] = feature.model_billing_source
         model_billing = ModelBillingProfileService.resolve(tenant.id, session=session)
+        tenant_info["model_billing_source"] = model_billing.model_billing_source.value
         tenant_info["tokener_bootstrap_status"] = (
             model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
         )
@@ -186,10 +186,7 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and feature.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
-        ):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and model_billing.uses_legacy_message_credits:
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
             from services.credit_pool_service import CreditPoolBalance, CreditPoolService
