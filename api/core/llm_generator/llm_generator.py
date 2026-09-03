@@ -38,7 +38,7 @@ from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
@@ -344,7 +344,8 @@ class LLMGenerator:
                     tenant_id=tenant_id,
                     model_type=ModelType.LLM,
                 )
-        except InvokeAuthorizationError:
+        except Exception:
+            logger.exception("Failed to resolve the suggested-questions model")
             return []
 
         prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
