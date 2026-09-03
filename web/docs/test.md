@@ -190,8 +190,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles
 [Testing Library query guidance]: https://testing-library.com/docs/queries/about
-[Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
 [Testing Library user-event convenience APIs]: https://testing-library.com/docs/user-event/convenience
+[Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
 [Vite+ testing configuration]: https://viteplus.dev/guide/test
 [Vitest Browser Mode documentation]: https://v4.vitest.dev/guide/browser
 [Vitest Browser Mode locators]: https://v4.vitest.dev/api/browser/locators
