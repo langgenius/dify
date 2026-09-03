@@ -1,16 +1,15 @@
 import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
+import DifyBuilderComposer from './composer'
 import { DifyBuilderConversation } from './conversation'
 import { getDefaultActionPayload, isClientOnlyAction } from './interactions/action-payload'
-import DifyBuilderModelSelector from './model-selector'
 import {
   difyBuilderActionsAtom,
-  difyBuilderCanComposeAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderConversationAtom,
@@ -21,13 +20,21 @@ import {
   difyBuilderRecheckReadyAtom,
   difyBuilderResetAtom,
   difyBuilderRetryCanvasRefreshAtom,
-  difyBuilderStartPromptAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
 
 const FORM_ACTION_IDS = new Set(['provide_testdata', 'submit_edit_rules', 'submit_requirements'])
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
+
+const DifyBuilderPanelBackground = memo(() => {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <AgentBuildGridTexture className="absolute top-0 right-0" />
+      <AgentBuildGridTexture className="absolute right-0 bottom-0 origin-center scale-y-[-1]" />
+    </div>
+  )
+})
 
 const DifyBuilderActionBar = ({
   actionValidity,
@@ -82,7 +89,6 @@ const DifyBuilderPanel = () => {
   const { t } = useTranslation()
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const actions = useAtomValue(difyBuilderActionsAtom)
-  const canCompose = useAtomValue(difyBuilderCanComposeAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const conversation = useAtomValue(difyBuilderConversationAtom)
@@ -94,9 +100,7 @@ const DifyBuilderPanel = () => {
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
-  const startPrompt = useSetAtom(difyBuilderStartPromptAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
-  const [draft, setDraft] = useState('')
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionPayloads, setActionPayloads] = useState<Record<string, Record<string, unknown>>>({})
@@ -133,13 +137,6 @@ const DifyBuilderPanel = () => {
     setActionValidity((current) => ({ ...current, [actionId]: valid }))
   }, [])
 
-  const send = useCallback(async () => {
-    const prompt = draft.trim()
-    if (!prompt || !canCompose) return
-    const sent = await startPrompt(prompt)
-    if (sent) setDraft('')
-  }, [canCompose, draft, startPrompt])
-
   const handleAction = useCallback(
     async (action: Action) => {
       if (interactionBusy || pendingActionId !== null || actionValidity[action.id] === false) return
@@ -175,7 +172,6 @@ const DifyBuilderPanel = () => {
   const handleReset = () => {
     reset()
     pinnedToBottomRef.current = true
-    setDraft('')
     setPendingActionId(null)
     setChangesExpanded(false)
     setActionPayloads({})
@@ -188,10 +184,7 @@ const DifyBuilderPanel = () => {
       className="flex h-full w-90 shrink-0 bg-background-body py-1 pr-1"
     >
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-section shadow-xl">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <AgentBuildGridTexture className="absolute top-0 right-0" />
-          <AgentBuildGridTexture className="absolute right-0 bottom-0 origin-center scale-y-[-1]" />
-        </div>
+        <DifyBuilderPanelBackground />
 
         <header className="relative z-10 flex h-11 shrink-0 items-center justify-between bg-gradient-to-b from-background-section to-transparent pr-3 pl-[18px]">
           <div className="relative flex h-full items-center gap-1 system-xs-semibold-uppercase text-text-primary after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-text-accent">
@@ -282,39 +275,7 @@ const DifyBuilderPanel = () => {
             recheckReady={recheckReady}
             onAction={(action) => void handleAction(action)}
           />
-          <div className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1">
-            <div className="flex h-full flex-col items-end justify-end p-1.5">
-              <textarea
-                value={draft}
-                disabled={!canCompose}
-                aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
-                placeholder={
-                  canCompose
-                    ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
-                    : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
-                }
-                className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || event.shiftKey || !draft.trim()) return
-                  event.preventDefault()
-                  void send()
-                }}
-              />
-              <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
-                <DifyBuilderModelSelector />
-                <button
-                  type="button"
-                  disabled={!canCompose || !draft.trim()}
-                  aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border-[0.5px] border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
-                  onClick={() => void send()}
-                >
-                  <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <DifyBuilderComposer />
         </footer>
       </div>
     </aside>
