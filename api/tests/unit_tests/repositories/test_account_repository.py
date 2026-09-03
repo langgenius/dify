@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -109,6 +110,23 @@ def test_account_repository_finds_email_with_lowercase_fallback(
     assert account is not None
     assert account.id == "account-1"
     assert account.email == "account@example.com"
+
+
+def test_account_repository_fails_closed_for_duplicate_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add_all(
+        [
+            Account(name="First", email="duplicate@example.com"),
+            Account(name="Second", email="duplicate@example.com"),
+        ]
+    )
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    with pytest.raises(MultipleResultsFound):
+        repository.find_by_email("duplicate@example.com")
 
 
 def test_account_integration_repository_lists_integrations(

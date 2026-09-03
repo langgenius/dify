@@ -14,7 +14,7 @@ import { fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { asyncRunSafe } from '@/utils'
 
-export function useAccessPointActions(appId: string, canEdit: boolean) {
+export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setAppDetail = useAppStore((state) => state.setAppDetail)
@@ -64,7 +64,7 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
 
   const saveSiteConfig = useCallback(
     async (params: ConfigParams) => {
-      if (!canEdit) return
+      if (!canManageAccessPoint) return
       const [error] = await asyncRunSafe<App>(
         updateAppSiteConfig({
           url: `/apps/${appId}/site`,
@@ -83,7 +83,7 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       }
       handleResult(error)
     },
-    [appId, canEdit, handleResult, queryClient],
+    [appId, canManageAccessPoint, handleResult, queryClient],
   )
 
   return {

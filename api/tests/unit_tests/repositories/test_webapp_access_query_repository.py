@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.enums import CustomizeTokenStrategy
 from models.model import Site
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import WebAppAccessUnavailableError
@@ -19,7 +20,7 @@ def test_find_app_id_by_code_returns_matching_site_app(sqlite_session_factory: s
                 code="site-code",
                 title="Test Site",
                 default_language="en-US",
-                customize_token_strategy="uuid",
+                customize_token_strategy=CustomizeTokenStrategy.UUID,
             )
         )
 

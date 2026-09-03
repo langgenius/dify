@@ -1,12 +1,12 @@
 'use client'
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -130,8 +130,12 @@ export default function CheckCode() {
         <Input
           ref={codeInputRef}
           id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onValueChange={setCode}
           maxLength={6}
           className="mt-1"
           placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
