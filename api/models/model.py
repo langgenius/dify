@@ -1821,7 +1821,7 @@ class Message(Base):
 
     @property
     def retriever_resources(self) -> Any:
-        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
+        return self.message_metadata_dict.get("retriever_resources", []) if self.message_metadata else []
 
     @property
     def message_files(self) -> list[MessageFileInfo]:
