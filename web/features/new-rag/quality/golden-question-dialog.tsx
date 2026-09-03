@@ -12,6 +12,7 @@ import {
   DialogPopup,
   DialogPortal,
   DialogTitle,
+  DialogViewport,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -75,19 +76,21 @@ export function GoldenQuestionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
-        {open && (
-          <GoldenQuestionDialogSession
-            key={sessionKey}
-            evidenceOptions={evidenceOptions}
-            error={error}
-            initialValue={initialValue}
-            knowledgeSpaceId={knowledgeSpaceId}
-            mode={mode}
-            onOpenChange={onOpenChange}
-            onSubmit={onSubmit}
-            pending={pending}
-          />
-        )}
+        <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
+          {open && (
+            <GoldenQuestionDialogSession
+              key={sessionKey}
+              evidenceOptions={evidenceOptions}
+              error={error}
+              initialValue={initialValue}
+              knowledgeSpaceId={knowledgeSpaceId}
+              mode={mode}
+              onOpenChange={onOpenChange}
+              onSubmit={onSubmit}
+              pending={pending}
+            />
+          )}
+        </DialogViewport>
       </DialogPortal>
     </Dialog>
   )
@@ -179,21 +182,24 @@ function GoldenQuestionDialogSession({
     matchMutation.data?.candidates ??
     evidenceOptions.filter((option) => !initialValue.expectedEvidenceIds.includes(option.node_id))
   return (
-    <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-140 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-        <div className="flex items-center justify-between">
-          <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['qualityPage.closeDialog'])}
-                className="static size-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-        </div>
+    <DialogPopup className="relative flex max-h-[calc(100dvh-2rem)] w-140 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border-0 p-0 shadow-xl">
+      <div className="relative z-1 flex shrink-0 items-center justify-between bg-components-panel-bg px-6 pt-6 pb-5">
+        <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['qualityPage.closeDialog'])}
+              className="static size-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      <form
+        className="flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-6 pb-6"
+        onSubmit={handleSubmit}
+      >
         <Field name="question" invalid={questionInvalid}>
           <FieldLabel>
             {t(($) => $['qualityPage.question'])}
