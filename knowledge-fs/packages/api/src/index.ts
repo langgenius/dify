@@ -1567,7 +1567,7 @@ export function createKnowledgeGateway({
     app.use("*", createDifyIntegrationStateMiddleware(difyIntegrationStates));
   }
   if (capabilityGrantProvenance) {
-    app.use("*", createCapabilityGrantAdmissionMiddleware(capabilityGrantProvenance));
+    app.use("*", createCapabilityGrantAdmissionMiddleware(capabilityGrantProvenance, { spaces }));
   }
   app.use(
     "/knowledge-spaces/*",

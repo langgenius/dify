@@ -1,6 +1,6 @@
 import type { AuthSubject } from "@knowledge/core";
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createCapabilityGrantAdmissionMiddleware } from "./capability-grant-admission-middleware";
 import { createInMemoryCapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
@@ -62,11 +62,53 @@ describe("capability grant admission middleware", () => {
       repository.get({ grantId, knowledgeSpaceId, tenantId: subject.tenantId }),
     ).resolves.toBeNull();
   });
+
+  it("does not recreate a grant when a durable Space deletion is replayed after completion", async () => {
+    const repository = createInMemoryCapabilityGrantProvenanceRepository();
+    const admit = vi.spyOn(repository, "admit");
+    const getForDeletion = vi.fn(async () => null);
+    const deletionGrant = grant({
+      action: "knowledge_spaces.delete",
+      callerKind: "internal_worker",
+      resource: { id: knowledgeSpaceId, parent_id: null, type: "knowledge_space" },
+    });
+
+    const response = await appWith(repository, deletionGrant, {
+      spaces: { getForDeletion },
+    }).request("/work");
+
+    expect(response.status).toBe(200);
+    expect(getForDeletion).toHaveBeenCalledWith({
+      id: knowledgeSpaceId,
+      tenantId: subject.tenantId,
+    });
+    expect(admit).not.toHaveBeenCalled();
+  });
+
+  it("still persists the deletion grant while the target Space exists", async () => {
+    const repository = createInMemoryCapabilityGrantProvenanceRepository();
+    const getForDeletion = vi.fn(async () => ({ id: knowledgeSpaceId }) as never);
+    const deletionGrant = grant({
+      action: "knowledge_spaces.delete",
+      callerKind: "internal_worker",
+      resource: { id: knowledgeSpaceId, parent_id: null, type: "knowledge_space" },
+    });
+
+    const response = await appWith(repository, deletionGrant, {
+      spaces: { getForDeletion },
+    }).request("/work");
+
+    expect(response.status).toBe(200);
+    await expect(
+      repository.get({ grantId, knowledgeSpaceId, tenantId: subject.tenantId }),
+    ).resolves.toMatchObject({ action: "knowledge_spaces.delete" });
+  });
 });
 
 function appWith(
   repository: ReturnType<typeof createInMemoryCapabilityGrantProvenanceRepository>,
   capabilityV2Grant: DifyCapabilityV2SanitizedGrant,
+  options: Parameters<typeof createCapabilityGrantAdmissionMiddleware>[1] = {},
 ) {
   const app = new Hono<KnowledgeGatewayEnv>();
   app.use("*", async (context, next) => {
@@ -74,7 +116,7 @@ function appWith(
     context.set("capabilityV2Grant", capabilityV2Grant);
     await next();
   });
-  app.use("*", createCapabilityGrantAdmissionMiddleware(repository));
+  app.use("*", createCapabilityGrantAdmissionMiddleware(repository, options));
   app.get("/work", (context) => context.json({ ok: true }));
   return app;
 }

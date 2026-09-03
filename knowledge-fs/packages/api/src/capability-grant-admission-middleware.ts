@@ -7,6 +7,11 @@ import {
 } from "./capability-grant-provenance";
 import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
+
+interface CapabilityGrantAdmissionMiddlewareOptions {
+  readonly spaces?: Pick<KnowledgeSpaceRepository, "getForDeletion"> | undefined;
+}
 
 /** Convert the transient verified claims summary to the only durable authorization representation. */
 export function capabilityGrantAdmissionFromDify(
@@ -50,6 +55,7 @@ export function capabilityGrantAdmissionFromDify(
  */
 export function createCapabilityGrantAdmissionMiddleware(
   grants: CapabilityGrantProvenanceRepository,
+  { spaces }: CapabilityGrantAdmissionMiddlewareOptions = {},
 ): MiddlewareHandler<KnowledgeGatewayEnv> {
   return async (context, next) => {
     const verified = context.get("capabilityV2Grant");
@@ -62,6 +68,22 @@ export function createCapabilityGrantAdmissionMiddleware(
       if (verified.resource.type !== "namespace") {
         return context.json({ error: "Forbidden" }, 403);
       }
+      await next();
+      return;
+    }
+    if (
+      spaces &&
+      admission.action === "knowledge_spaces.delete" &&
+      admission.callerKind === "internal_worker" &&
+      admission.resource.type === "knowledge_space" &&
+      !(await spaces.getForDeletion({
+        id: admission.knowledgeSpaceId,
+        tenantId: admission.tenantId,
+      }))
+    ) {
+      // A completed durable deletion removes the Space and its grants but deliberately retains
+      // the idempotency ledger. Let the deletion handler authenticate that ledger replay without
+      // trying to recreate a grant whose Space FK can no longer exist.
       await next();
       return;
     }
