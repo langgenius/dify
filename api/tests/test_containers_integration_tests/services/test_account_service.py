@@ -280,86 +280,6 @@ class TestAccountService:
                 session=db_session_with_containers,
             )
 
-    def test_link_account_integrate_new_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test linking account with new OAuth provider.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=None,
-            session=db_session_with_containers,
-        )
-
-        # Link with new provider
-        AccountService.link_account_integrate(
-            "new-google", "google_open_id_123", account, session=db_session_with_containers
-        )
-
-        # Verify integration was created
-        from models import AccountIntegrate
-
-        integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider="new-google")
-            .first()
-        )
-        assert integration is not None
-        assert integration.open_id == "google_open_id_123"
-
-    def test_link_account_integrate_existing_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test linking account with existing provider (should update).
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=None,
-            session=db_session_with_containers,
-        )
-
-        # Link with provider first time
-        AccountService.link_account_integrate(
-            "exists-google", "google_open_id_123", account, session=db_session_with_containers
-        )
-
-        # Link with same provider but different open_id (should update)
-        AccountService.link_account_integrate(
-            "exists-google", "google_open_id_456", account, session=db_session_with_containers
-        )
-
-        # Verify integration was updated
-        from models import AccountIntegrate
-
-        integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider="exists-google")
-            .first()
-        )
-        assert integration.open_id == "google_open_id_456"
-
     def test_update_login_info(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test updating login information.
@@ -1967,52 +1887,6 @@ class TestRegisterService:
         assert account.current_tenant is not None
         assert account.current_tenant.name == f"{name}'s Workspace"
 
-    def test_register_with_oauth(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test account registration with OAuth integration.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        open_id = fake.uuid4()
-        provider = fake.random_element(elements=("google", "github", "microsoft"))
-        language = fake.random_element(elements=("en-US", "zh-CN"))
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_license.return_value.workspaces.is_available.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Execute registration with OAuth
-        account = RegisterService.register(
-            email=email,
-            name=name,
-            password=None,
-            open_id=open_id,
-            provider=provider,
-            language=language,
-            session=db_session_with_containers,
-        )
-
-        # Verify account was created
-        assert account.email == email
-        assert account.name == name
-        assert account.status == "active"
-        assert account.initialized_at is not None
-
-        # Verify OAuth integration was created
-        from models import AccountIntegrate
-
-        integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider=provider)
-            .first()
-        )
-        assert integration is not None
-        assert integration.open_id == open_id
-
     def test_register_with_pending_status(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -2509,52 +2383,6 @@ class TestRegisterService:
         assert invitation_data["account_id"] == str(account.id)
         assert invitation_data["email"] == account.email
         assert invitation_data["workspace_id"] == tenant.id
-
-    def test_is_valid_invite_token_valid(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test validation of valid invite token.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-
-        # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
-
-        # Execute validation
-        is_valid = RegisterService.is_valid_invite_token(token)
-
-        # Verify token is valid
-        assert is_valid is True
-
-    def test_is_valid_invite_token_invalid(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test validation of invalid invite token.
-        """
-        fake = Faker()
-        invalid_token = fake.uuid4()
-        # Execute validation with non-existent token
-        is_valid = RegisterService.is_valid_invite_token(invalid_token)
-
-        # Verify token is invalid
-        assert is_valid is False
 
     def test_revoke_token_with_workspace_and_email(
         self, db_session_with_containers: Session, mock_external_service_dependencies

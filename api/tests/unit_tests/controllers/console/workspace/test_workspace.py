@@ -205,6 +205,7 @@ class TestWorkspaceQueryRepository:
                 ),
                 TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
                 TenantAccountJoin(tenant_id=archived.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=archived.id, account_id="account-3"),
                 TenantAccountJoin(tenant_id=other_account.id, account_id="account-2"),
             ]
         )
@@ -233,6 +234,8 @@ class TestWorkspaceQueryRepository:
             ),
         )
         assert set(membership_ids) == {earlier.id, later.id, archived.id}
+        assert repository.has_active_membership("account-1") is True
+        assert repository.has_active_membership("account-3") is False
 
 
 class TestDeploymentWorkspacePlanGateway:

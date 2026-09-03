@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from constants.languages import languages
 from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
@@ -21,9 +22,16 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
+from libs.oauth import GitHubOAuth, GoogleOAuth
 from libs.passport import PassportService
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.account_oauth_repository import (
+    AccountServiceOAuthAccountRegistrationGateway,
+    AccountServiceOAuthSessionGateway,
+    AccountServiceOAuthWorkspaceGateway,
+    RegisterServiceOAuthInvitationGateway,
+)
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
@@ -103,6 +111,12 @@ from services.account_login_adapters import (
     TurnstileHumanVerificationGateway,
 )
 from services.account_login_service import ConsoleAuthenticationService
+from services.account_oauth_adapters import (
+    DeploymentOAuthPolicyGateway,
+    DifyOAuthProviderGateway,
+    RedisOAuthAccountClaimLock,
+)
+from services.account_oauth_service import AccountOAuthService, OAuthProviderGateway
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
@@ -200,6 +214,7 @@ class AccountServices:
     forgot_password: AccountForgotPasswordService
     initialization: AccountInitializationService
     integrations: AccountIntegrationService
+    oauth: AccountOAuthService
     password: AccountPasswordService
     profile: AccountProfileService
 
@@ -275,6 +290,55 @@ def _build_oauth_server_service(
         repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
         tokens=RedisOAuthServerTokenRepository(redis=redis),
         access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
+
+
+def _build_account_oauth_service(
+    *,
+    database_client: sessionmaker[Session],
+    deployment_edition: DeploymentEdition,
+    redis: RedisClientWrapper,
+    accounts: SQLAlchemyAccountRepository,
+    integrations: SQLAlchemyAccountIntegrationRepository,
+    memberships: WorkspaceQueryRepository,
+) -> AccountOAuthService:
+    providers: dict[str, OAuthProviderGateway] = {}
+    if dify_config.GITHUB_CLIENT_ID and dify_config.GITHUB_CLIENT_SECRET:
+        providers["github"] = DifyOAuthProviderGateway(
+            provider_name="github",
+            client=GitHubOAuth(
+                client_id=dify_config.GITHUB_CLIENT_ID,
+                client_secret=dify_config.GITHUB_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/github",
+            ),
+        )
+    if dify_config.GOOGLE_CLIENT_ID and dify_config.GOOGLE_CLIENT_SECRET:
+        providers["google"] = DifyOAuthProviderGateway(
+            provider_name="google",
+            client=GoogleOAuth(
+                client_id=dify_config.GOOGLE_CLIENT_ID,
+                client_secret=dify_config.GOOGLE_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
+            ),
+        )
+
+    policy = DeploymentOAuthPolicyGateway(
+        billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
+    )
+    return AccountOAuthService(
+        providers=providers,
+        accounts=accounts,
+        integrations=integrations,
+        memberships=memberships,
+        invitations=RegisterServiceOAuthInvitationGateway(session_factory=database_client),
+        account_claims=RedisOAuthAccountClaimLock(client=redis),
+        registration=AccountServiceOAuthAccountRegistrationGateway(session_factory=database_client),
+        workspaces=AccountServiceOAuthWorkspaceGateway(session_factory=database_client),
+        sessions=AccountServiceOAuthSessionGateway(session_factory=database_client),
+        registration_policy=policy,
+        workspace_policy=policy,
+        supported_languages=languages,
+        now=naive_utc_now,
     )
 
 
@@ -426,6 +490,14 @@ def build_application_services(
                 now=naive_utc_now,
             ),
             integrations=AccountIntegrationService(integrations=integrations),
+            oauth=_build_account_oauth_service(
+                database_client=database_client,
+                deployment_edition=deployment_edition,
+                redis=redis,
+                accounts=accounts,
+                integrations=integrations,
+                memberships=workspace_query_repository,
+            ),
             password=AccountPasswordService(
                 accounts=accounts,
                 passwords=passwords,

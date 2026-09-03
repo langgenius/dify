@@ -36,9 +36,9 @@ export function FileTabs({
               <div
                 key={file.path}
                 className={cn(
-                  'group/tab flex h-11 max-w-[214px] shrink-0 items-center border-r-[0.5px] border-divider-subtle',
+                  'group/tab flex h-11 max-w-53.5 shrink-0 items-center border-r-[0.5px] border-divider-subtle',
                   selected && 'bg-components-panel-bg',
-                  !closable && 'w-[106px]',
+                  !closable && 'w-26.5',
                 )}
               >
                 <button

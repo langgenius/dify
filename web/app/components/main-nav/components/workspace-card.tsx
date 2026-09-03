@@ -325,7 +325,7 @@ export function WorkspaceCard() {
           placement="bottom-start"
           sideOffset={-workspaceMenuTriggerHeight}
           alignOffset={workspaceMenuAlignOffset}
-          className="w-[280px] overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          className="w-70 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <WorkspaceMenuHeader
             name={currentWorkspace.name}
