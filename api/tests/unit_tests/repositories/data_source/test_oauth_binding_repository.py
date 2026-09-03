@@ -203,16 +203,17 @@ def test_null_disabled_state_is_treated_as_enabled(
         session.flush()
         binding_id = binding.id
         session.execute(
-            update(DataSourceOauthBinding)
-            .where(DataSourceOauthBinding.id == binding_id)
-            .values(disabled=None)
+            update(DataSourceOauthBinding).where(DataSourceOauthBinding.id == binding_id).values(disabled=None)
         )
 
-    assert repository.get_enabled(
-        workspace_id="workspace-1",
-        provider="notion",
-        binding_id=binding_id,
-    ) is not None
+    assert (
+        repository.get_enabled(
+            workspace_id="workspace-1",
+            provider="notion",
+            binding_id=binding_id,
+        )
+        is not None
+    )
     assert [summary.id for summary in repository.list_enabled_bindings(workspace_id="workspace-1")] == [binding_id]
     assert (
         repository.change_disabled_state(

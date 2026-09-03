@@ -1670,12 +1670,18 @@ export const zPipelineUploadFileResponse = z.object({
   size: z.int(),
 })
 
+export const zPreProcessingRuleKey = z.enum([
+  'remove_extra_spaces',
+  'remove_stopwords',
+  'remove_urls_emails',
+])
+
 /**
  * PreProcessingRule
  */
 export const zPreProcessingRule = z.object({
   enabled: z.boolean(),
-  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
+  id: zPreProcessingRuleKey,
 })
 
 /**

@@ -101,9 +101,7 @@ def test_celery_dispatcher_forwards_owned_identifiers_to_injected_delay() -> Non
 
 def test_sync_dataset_dispatches_snapshot_after_tenant_scoped_read() -> None:
     dataset_ref = DatasetRef("workspace-1", "dataset-1")
-    documents = DocumentReaderStub(
-        active_refs=(dataset_ref.document("document-1"), dataset_ref.document("document-2"))
-    )
+    documents = DocumentReaderStub(active_refs=(dataset_ref.document("document-1"), dataset_ref.document("document-2")))
     dispatcher = DispatcherRecorder()
     service = DocumentSyncApplicationService(
         dataset_access=DatasetAccessStub(), documents=documents, dispatcher=dispatcher

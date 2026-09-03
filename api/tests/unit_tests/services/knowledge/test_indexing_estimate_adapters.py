@@ -494,9 +494,7 @@ def test_gateway_rejects_invalid_existing_document_source(
         runner_factory=RecordingIndexingRunner,
     )
     expected_error = (
-        EstimateSourceNotFoundError
-        if document.data_source_type == "notion_import"
-        else UnsupportedEstimateSourceError
+        EstimateSourceNotFoundError if document.data_source_type == "notion_import" else UnsupportedEstimateSourceError
     )
 
     with pytest.raises(expected_error, match=expected_message):

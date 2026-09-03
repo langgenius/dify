@@ -25,9 +25,7 @@ def _authorization() -> DataSourceOAuthAuthorization:
 class RecordingProviderGateway:
     authorization_url: str = "https://notion.example/authorize"
     authorization: DataSourceOAuthAuthorization = field(default_factory=_authorization)
-    refreshed_source_info: Mapping[str, object] = field(
-        default_factory=lambda: {"pages": [{"page_id": "page-1"}]}
-    )
+    refreshed_source_info: Mapping[str, object] = field(default_factory=lambda: {"pages": [{"page_id": "page-1"}]})
     events: list[tuple[str, object]] = field(default_factory=list)
 
     def get_authorization_url(self) -> str:
