@@ -52,6 +52,7 @@ def test_parent_destination_uses_non_secret_provider_scope() -> None:
         scope=destination_scope("langsmith", "https://smith.example", "project-a"),
         unified=True,
     )
+    assert "secret" not in destination.scope
 
 
 def test_parent_destination_uses_service_name_for_otel_scope() -> None:
