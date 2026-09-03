@@ -854,6 +854,57 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     assert result is source
 
 
+def test_source_edit_reimports_when_selection_adds_a_canonical_duplicate() -> None:
+    source = SimpleNamespace(
+        metadata={"crawled": {"https://docs.dify.ai/a": {}}},
+        status="active",
+        type="web",
+        uri="https://docs.dify.ai",
+    )
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {
+                "kind": "website_crawl",
+                "sourceUrls": [
+                    "https://docs.dify.ai/a/",
+                    "https://DOCS.dify.ai:443/a#section",
+                ],
+            },
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+
+    assert console_resources._source_edit_requires_import(source, payload) is True
+
+
+def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged() -> None:
+    source = SimpleNamespace(
+        metadata={
+            "crawled": {
+                "https://docs.dify.ai/a/": {},
+                "https://DOCS.dify.ai:443/a#stored": {},
+            }
+        },
+        status="active",
+        type="web",
+        uri="https://docs.dify.ai",
+    )
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {
+                "kind": "website_crawl",
+                "sourceUrls": [
+                    "https://docs.dify.ai/a#selected",
+                    "https://docs.dify.ai/a/",
+                ],
+            },
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+
+    assert console_resources._source_edit_requires_import(source, payload) is False
+
+
 def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() -> None:
     provider_item_id = '["workspace-a","page-a"]'
     identity_hash = sha256(f"online-document\0{provider_item_id}".encode()).hexdigest()

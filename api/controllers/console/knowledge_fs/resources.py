@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Callable
 from contextlib import ExitStack
 from datetime import UTC
@@ -769,8 +770,12 @@ def _source_edit_requires_import(source: KnowledgeFSSourceResponse, payload: Kno
         return True
     if selection.kind == "website_crawl":
         crawled = source.metadata.get("crawled")
-        current_urls = set(crawled) if isinstance(crawled, dict) else set()
-        selected_urls = {normalize_knowledge_fs_source_url(url) for url in selection.source_urls}
+        current_urls = (
+            Counter(normalize_knowledge_fs_source_url(url) for url in crawled)
+            if isinstance(crawled, dict)
+            else Counter[str]()
+        )
+        selected_urls = Counter(normalize_knowledge_fs_source_url(url) for url in selection.source_urls)
         return selected_urls != current_urls
 
     marker = source.metadata.get("__knowledgeFsProviderSelection")
