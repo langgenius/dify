@@ -48,6 +48,12 @@ export const Markdown = memo((props: MarkdownProps) => {
 
   return (
     <div
+      // `dir="auto"` lets the browser pick text direction per paragraph
+      // from the Unicode bidi algorithm, so RTL-locale content (Farsi,
+      // Arabic, Hebrew, Urdu) renders right-to-left while LTR content
+      // (English code blocks, URLs) renders left-to-right within the
+      // same message. See #41758.
+      dir="auto"
       className={cn('markdown-body', 'text-text-primary!', className)}
       data-testid="markdown-body"
     >

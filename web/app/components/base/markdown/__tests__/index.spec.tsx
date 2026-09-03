@@ -122,4 +122,16 @@ describe('Markdown', () => {
     const props = getLastWrapperProps()
     expect(props.mode).toBe('streaming')
   })
+
+  it('should set dir="auto" on the markdown container so RTL-locale content renders right-to-left', () => {
+    // Regression for #41758: previously the container had no dir attribute,
+    // so RTL-locale content (Farsi, Arabic, Hebrew, Urdu) was rendered LTR.
+    // The `auto` value lets the browser pick direction per paragraph, which
+    // is the right behaviour for mixed-direction content (e.g. Arabic prose
+    // with English code blocks).
+    const { container } = render(<Markdown content="محتوا" />)
+    const root = container.querySelector('[data-testid="markdown-body"]')
+    expect(root).not.toBeNull()
+    expect(root!.getAttribute('dir')).toBe('auto')
+  })
 })
