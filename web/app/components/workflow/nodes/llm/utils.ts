@@ -24,7 +24,7 @@ const isLLMEnvironmentVariableValue = (value: unknown): value is LLMEnvironmentV
 }
 
 export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>
-  modelSelector !== undefined && (modelSelector.length === 0 || modelSelector[0] === 'env')
+  modelSelector != null && (modelSelector.length === 0 || modelSelector[0] === 'env')
 
 export const getLLMEnvironmentModel = (
   modelSelector: ValueSelector | undefined,
