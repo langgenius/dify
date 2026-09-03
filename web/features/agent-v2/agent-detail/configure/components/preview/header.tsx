@@ -242,7 +242,6 @@ export function AgentPreviewHeader({
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t(($) => $['agentDetail.configure.preview.chatFeatures'])}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
               <span className="px-0.5 system-sm-medium">

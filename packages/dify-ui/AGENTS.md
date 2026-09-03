@@ -29,6 +29,11 @@ then read only the guide for the contract being changed.
 A component needs a local README only when it owns a substantial Dify-specific contract that its
 types, stories, and upstream documentation do not express. Do not create one for completeness.
 
+## Accessibility
+
+When implementing, changing, or reviewing UI primitives, read and follow the relevant sections of [Accessibility and UI rules] and the topic documents it references.
+
+[Accessibility and UI rules]: ../../.agents/skills/frontend-code-review/references/accessibility-ui.md
 [Button contract]: src/button/README.md
 [Forms]: docs/forms.md
 [Icon Button contract]: src/icon-button/README.md

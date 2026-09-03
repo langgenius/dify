@@ -164,10 +164,8 @@ const MCPDetailContent: FC<Props> = ({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <div
-                      aria-label={serverUrlLabel}
-                      className="truncate system-xs-regular text-text-secondary"
-                    >
+                    <div className="truncate system-xs-regular text-text-secondary">
+                      <span className="sr-only">{`${serverUrlLabel}: `}</span>
                       {detail.server_url}
                     </div>
                   }

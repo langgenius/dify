@@ -3,7 +3,6 @@ import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
@@ -270,7 +269,7 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should render suggestion icon with tooltip for suggested models', async () => {
+  it('should include the suggestion in the suggested model accessible name', () => {
     renderPopupItem(
       <PopupItem
         {...previewCardProps()}
@@ -287,14 +286,8 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
-    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
-
-    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
-
-    await userEvent.hover(suggestionIcon)
-
     expect(
-      await screen.findByText('common.modelProvider.selector.suggestionTip'),
+      screen.getByRole('button', { name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/ }),
     ).toBeInTheDocument()
   })
 

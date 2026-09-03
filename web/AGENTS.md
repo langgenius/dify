@@ -26,6 +26,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Accessibility
+
+When implementing, changing, or reviewing UI, read and follow the relevant sections of [Accessibility and UI rules] and the topic documents it references.
+
+[Accessibility and UI rules]: ../.agents/skills/frontend-code-review/references/accessibility-ui.md
 [Button contract]: ../packages/dify-ui/src/button/README.md
 [Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
 [Dify UI package index]: ../packages/dify-ui/README.md

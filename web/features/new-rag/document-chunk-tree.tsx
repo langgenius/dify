@@ -159,7 +159,6 @@ export function DocumentChunkTreePanel({
         key={chunk.id}
         id={`document-chunk-treeitem-${chunk.id}`}
         aria-expanded={hasChildren ? expanded : undefined}
-        aria-label={label}
         aria-level={depth + 1}
         aria-posinset={positionInSet}
         aria-selected={selectedChunkId === chunk.id}

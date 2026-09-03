@@ -49,13 +49,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       </div>
 
       <div className="flex w-full items-center justify-center gap-1">
-        <Button
-          size="small"
-          variant="secondary"
-          onClick={onCancel}
-          aria-label={cancelTxt}
-          className="flex-1"
-        >
+        <Button size="small" variant="secondary" onClick={onCancel} className="flex-1">
           {cancelTxt}
         </Button>
         <Button
@@ -63,7 +57,6 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
           variant="primary"
           tone={variant === 'delete' ? 'destructive' : 'default'}
           onClick={onConfirm}
-          aria-label={confirmTxt}
           className="flex-1"
         >
           {confirmTxt}

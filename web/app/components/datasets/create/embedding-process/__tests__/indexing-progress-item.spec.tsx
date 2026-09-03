@@ -93,7 +93,7 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByText('Parse failed')).toBeInTheDocument()
   })
 
   it('should show priority label when billing is enabled', () => {
