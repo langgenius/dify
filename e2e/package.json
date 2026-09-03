@@ -26,8 +26,7 @@
     "e2e:web:build": "tsx ./scripts/setup.ts web-build",
     "seed": "tsx ./scripts/run-cucumber.ts --seed-only",
     "test:unit": "vp test run",
-    "type-check": "tsc",
-    "verify:environment-webapp": "tsx ./scripts/verify-environment-webapp.ts"
+    "type-check": "tsc"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
