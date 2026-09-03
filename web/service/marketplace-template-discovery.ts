@@ -32,7 +32,32 @@ const FAILED_COLLECTIONS_RESULT: MarketplaceTemplateCollectionsResult = {
   ok: false,
 }
 
-const COLLECTION_PREVIEW_TEMPLATE_LIMIT = 24
+const COLLECTION_PREVIEW_TEMPLATE_LIMIT = 20
+
+type MarketplaceTemplateListExtras = {
+  asset_files?: unknown
+  asset_tree_nodes?: unknown
+  dsl_file_key?: unknown
+  dsl_raw_file_key?: unknown
+  partner_link?: unknown
+  readme?: unknown
+  review_comment?: unknown
+}
+
+export const toListTemplate = (template: MarketplaceTemplate): MarketplaceTemplate => {
+  const {
+    asset_files: _assetFiles,
+    asset_tree_nodes: _assetTreeNodes,
+    dsl_file_key: _dslFileKey,
+    dsl_raw_file_key: _dslRawFileKey,
+    partner_link: _partnerLink,
+    readme: _readme,
+    review_comment: _reviewComment,
+    ...listFields
+  } = template as MarketplaceTemplate & MarketplaceTemplateListExtras
+
+  return listFields
+}
 const COLLECTION_FETCH_BATCH_SIZE = 5
 const COLLECTIONS_CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -82,7 +107,10 @@ async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollec
                 { signal: budget },
               )
 
-              return [collection.name, collectionResponse.data?.templates ?? []] as const
+              return [
+                collection.name,
+                (collectionResponse.data?.templates ?? []).map(toListTemplate),
+              ] as const
             } catch (error) {
               if (budget.aborted) throw error
               hadCollectionFailure = true
@@ -152,7 +180,7 @@ export async function searchMarketplaceTemplates({
     return {
       ok: true,
       page,
-      templates: response.data?.templates ?? [],
+      templates: (response.data?.templates ?? []).map(toListTemplate),
       total: response.data?.total ?? 0,
     }
   } catch {

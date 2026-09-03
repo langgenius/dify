@@ -52,7 +52,7 @@ describe('marketplace template discovery', () => {
       1,
       {
         params: { collectionName: 'featured' },
-        body: { limit: 24 },
+        body: { limit: 20 },
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
@@ -159,6 +159,42 @@ describe('marketplace template discovery', () => {
       },
     })
     expect(result).toEqual({ ok: true, page: 2, templates: [{ id: 'template-1' }], total: 1 })
+  })
+
+  it('strips list-unused template fields before they can enter the RSC payload', async () => {
+    const { getMarketplaceTemplateCollectionsAndTemplates } = await importDiscovery()
+    mocks.templateCollections.mockResolvedValue({
+      data: {
+        collections: [{ name: 'featured', label: {}, description: {}, priority: 1 }],
+      },
+    })
+    mocks.templateCollectionTemplates.mockResolvedValue({
+      data: {
+        templates: [{
+          id: 'template-1',
+          template_name: 'Inbox',
+          readme: '# long',
+          review_comment: 'ship it',
+          dsl_file_key: 'dsl.yml',
+          partner_link: 'https://example.com',
+          asset_files: [{ name: 'a' }],
+          asset_tree_nodes: [{ path: '/' }],
+          dsl_raw_file_key: 'raw.yml',
+        }],
+      },
+    })
+
+    const result = await getMarketplaceTemplateCollectionsAndTemplates()
+    const [template] = result.templatesByCollection.featured ?? []
+
+    expect(template).toMatchObject({ id: 'template-1', template_name: 'Inbox' })
+    expect(template).not.toHaveProperty('readme')
+    expect(template).not.toHaveProperty('review_comment')
+    expect(template).not.toHaveProperty('dsl_file_key')
+    expect(template).not.toHaveProperty('partner_link')
+    expect(template).not.toHaveProperty('asset_files')
+    expect(template).not.toHaveProperty('asset_tree_nodes')
+    expect(template).not.toHaveProperty('dsl_raw_file_key')
   })
 
   it('marks a failed template search instead of reporting an empty result', async () => {
