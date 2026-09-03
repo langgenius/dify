@@ -1,4 +1,5 @@
 'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,7 +13,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useCountDown } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -20,14 +21,19 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
+
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -64,26 +70,29 @@ const ChangePasswordForm = () => {
     },
   })
 
-  const handleChangePassword = useCallback(async () => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    try {
-      await changePasswordWithToken({
-        url: '/forgot-password/resets',
-        body: {
-          token,
-          new_password: password,
-          password_confirm: confirmPassword,
-        },
-      })
-      setShowSuccess(true)
-      setLeftTime(AUTO_REDIRECT_TIME)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [confirmPassword, isSubmitting, password, token])
+  const handleChangePassword = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      try {
+        await changePasswordWithToken({
+          url: '/forgot-password/resets',
+          body: {
+            token,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+          },
+        })
+        setShowSuccess(true)
+        setLeftTime(AUTO_REDIRECT_TIME)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isSubmitting, token],
+  )
 
   return (
     <div
@@ -101,7 +110,10 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <Form onFormSubmit={() => void handleChangePassword()}>
+            <Form<PasswordFormValues>
+              actionsRef={formActionsRef}
+              onFormSubmit={(formValues) => void handleChangePassword(formValues)}
+            >
               <Field
                 name="password"
                 validate={(value) => {
@@ -121,8 +133,10 @@ const ChangePasswordForm = () => {
                     required
                     autoComplete="new-password"
                     spellCheck={false}
-                    value={password}
-                    onValueChange={setPassword}
+                    onValueChange={() => {
+                      if (confirmPasswordRef.current?.value)
+                        formActionsRef.current?.validate('confirmPassword')
+                    }}
                     placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   />
                   <InputGroupAddon align="inline-end">
@@ -150,17 +164,25 @@ const ChangePasswordForm = () => {
                     ) : null
                   }
                 </FieldValidity>
-                <FieldError>
-                  {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
-                    ns: 'login',
-                  })}
-                </FieldError>
+                <FieldValidity>
+                  {({ validity }) => (
+                    <FieldError>
+                      {t(
+                        ($) =>
+                          $[
+                            validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'
+                          ],
+                        { ns: 'login' },
+                      )}
+                    </FieldError>
+                  )}
+                </FieldValidity>
               </Field>
               <Field
                 name="confirmPassword"
-                validate={(value) => {
+                validate={(value, formValues) => {
                   const confirmationValue = String(value)
-                  return !confirmationValue || confirmationValue === password
+                  return !confirmationValue || confirmationValue === formValues.password
                     ? null
                     : t(($) => $['account.notEqual'], { ns: 'common' })
                 }}
@@ -173,8 +195,7 @@ const ChangePasswordForm = () => {
                     required
                     autoComplete="new-password"
                     spellCheck={false}
-                    value={confirmPassword}
-                    onValueChange={setConfirmPassword}
+                    ref={confirmPasswordRef}
                     placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   />
                   <InputGroupAddon align="inline-end">

@@ -1,4 +1,5 @@
 'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -10,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { validPassword } from '@/config'
@@ -20,6 +21,11 @@ import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
+
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -28,8 +34,8 @@ const ChangePasswordForm = () => {
 
   const { data: verifyTokenRes, refetch: revalidateToken } = useVerifyForgotPasswordToken(token)
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const isVerifyingToken = !isTokenMissing && !verifyTokenRes
@@ -43,27 +49,30 @@ const ChangePasswordForm = () => {
         : t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(documentTitle)
 
-  const handleChangePassword = useCallback(async () => {
-    if (isSubmitting) return
-    const resetToken = verifyTokenRes?.token ?? ''
+  const handleChangePassword = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isSubmitting) return
+      const resetToken = verifyTokenRes?.token ?? ''
 
-    setIsSubmitting(true)
-    try {
-      await changePasswordWithToken({
-        url: '/forgot-password/resets',
-        body: {
-          token: resetToken,
-          new_password: password,
-          password_confirm: confirmPassword,
-        },
-      })
-      setShowSuccess(true)
-    } catch {
-      await revalidateToken()
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [confirmPassword, isSubmitting, password, revalidateToken, verifyTokenRes?.token])
+      setIsSubmitting(true)
+      try {
+        await changePasswordWithToken({
+          url: '/forgot-password/resets',
+          body: {
+            token: resetToken,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+          },
+        })
+        setShowSuccess(true)
+      } catch {
+        await revalidateToken()
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isSubmitting, revalidateToken, verifyTokenRes?.token],
+  )
 
   return (
     <div
@@ -102,10 +111,11 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <Form
+            <Form<PasswordFormValues>
+              actionsRef={formActionsRef}
               className="relative"
-              onFormSubmit={() => {
-                void handleChangePassword()
+              onFormSubmit={(formValues) => {
+                void handleChangePassword(formValues)
               }}
             >
               <Field
@@ -126,8 +136,10 @@ const ChangePasswordForm = () => {
                   required
                   autoComplete="new-password"
                   spellCheck={false}
-                  value={password}
-                  onValueChange={setPassword}
+                  onValueChange={() => {
+                    if (confirmPasswordRef.current?.value)
+                      formActionsRef.current?.validate('confirmPassword')
+                  }}
                   placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                 />
                 <FieldValidity>
@@ -139,17 +151,25 @@ const ChangePasswordForm = () => {
                     ) : null
                   }
                 </FieldValidity>
-                <FieldError>
-                  {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
-                    ns: 'login',
-                  })}
-                </FieldError>
+                <FieldValidity>
+                  {({ validity }) => (
+                    <FieldError>
+                      {t(
+                        ($) =>
+                          $[
+                            validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'
+                          ],
+                        { ns: 'login' },
+                      )}
+                    </FieldError>
+                  )}
+                </FieldValidity>
               </Field>
               <Field
                 name="confirmPassword"
-                validate={(value) => {
+                validate={(value, formValues) => {
                   const confirmationValue = String(value)
-                  return !confirmationValue || confirmationValue === password
+                  return !confirmationValue || confirmationValue === formValues.password
                     ? null
                     : t(($) => $['account.notEqual'], { ns: 'common' })
                 }}
@@ -161,8 +181,7 @@ const ChangePasswordForm = () => {
                   required
                   autoComplete="new-password"
                   spellCheck={false}
-                  value={confirmPassword}
-                  onValueChange={setConfirmPassword}
+                  ref={confirmPasswordRef}
                   placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                 />
                 <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>

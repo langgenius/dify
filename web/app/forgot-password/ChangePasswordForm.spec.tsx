@@ -134,11 +134,12 @@ describe('ChangePasswordForm', () => {
       expect(mockChangePassword).not.toHaveBeenCalled()
     })
 
-    it('associates a password mismatch with the confirmation field', async () => {
+    it('revalidates the confirmation field when the password changes', async () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      await user.type(passwordInput, VALID_PASSWORD)
       const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
 
@@ -146,6 +147,15 @@ describe('ChangePasswordForm', () => {
       expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
       expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
       expect(confirmPasswordInput).toHaveFocus()
+      expect(mockChangePassword).not.toHaveBeenCalled()
+
+      await user.clear(passwordInput)
+      await user.type(passwordInput, 'DifferentPass123!')
+
+      await waitFor(() => {
+        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+      })
+      expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
       expect(mockChangePassword).not.toHaveBeenCalled()
     })
 
