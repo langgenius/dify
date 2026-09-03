@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LanguagesSupported, languages, localeMap } from '../language'
+import { languages, LanguagesSupported, localeMap } from '../language'
 import { loadI18nResource } from '../load-resource'
 
 describe('Swedish locale registration', () => {
@@ -11,8 +11,9 @@ describe('Swedish locale registration', () => {
 
   it('loads the Swedish workflow resources', async () => {
     const resource = await loadI18nResource('sv-SE', 'workflow')
+    const translations = resource.default as Record<string, string>
 
-    expect(resource.default['common.publish']).toBe('Publicera')
-    expect(resource.default['nodes.common.errorHandle.title']).toBe('Felhantering')
+    expect(translations['common.publish']).toBe('Publicera')
+    expect(translations['nodes.common.errorHandle.title']).toBe('Felhantering')
   })
 })
