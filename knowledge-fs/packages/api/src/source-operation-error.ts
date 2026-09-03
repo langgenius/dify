@@ -111,7 +111,20 @@ export function safeSourceOperationError(
     return { code: CONFIG_FAILURES.websiteCrawl.code, message: error.message };
   }
 
+  // Dify datasource-runtime failures (auth, timeouts, rejected requests) carry a stable code that
+  // the common catalog aliases to a specific SOURCE_PROVIDER_* failure. Only the code is kept:
+  // the runtime message may echo provider request details.
+  const runtimeCode = difyDatasourceRuntimeCode(error);
+  if (runtimeCode) {
+    return { code: runtimeCode, message: SOURCE_OPERATION_FAILURES[kind].message };
+  }
   return SOURCE_OPERATION_FAILURES[kind];
+}
+
+function difyDatasourceRuntimeCode(error: unknown): string | undefined {
+  if (!(error instanceof Error) || !("code" in error)) return undefined;
+  const code = (error as { readonly code?: unknown }).code;
+  return typeof code === "string" && code.startsWith("dify_datasource_runtime_") ? code : undefined;
 }
 
 export function sourceOperationFailureMetadata(

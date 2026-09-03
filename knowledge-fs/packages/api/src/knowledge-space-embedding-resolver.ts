@@ -74,7 +74,11 @@ export class KnowledgeSpaceEmbeddingProfileChangedError extends Error {
   }
 }
 
-export class InvalidKnowledgeSpaceEmbeddingProfileError extends Error {}
+export class InvalidKnowledgeSpaceEmbeddingProfileError extends Error {
+  /** Runtime dimension/profile mismatches are a model-configuration failure, not a parse failure. */
+  readonly code = "EMBEDDING_DIMENSION_INVALID";
+  readonly retryable = false;
+}
 
 /**
  * Resolves the active profile in tenant + knowledge-space scope and reuses provider instances only

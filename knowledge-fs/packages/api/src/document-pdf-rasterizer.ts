@@ -114,6 +114,9 @@ export interface RasterizeDocumentPdfMultimodalAssetsResult {
 }
 
 export class DocumentPdfRenderError extends Error {
+  readonly code = "DOCUMENT_PDF_RENDER_FAILED";
+  readonly retryable = false;
+
   constructor(message: string, options?: { readonly cause?: unknown }) {
     super(message, { cause: options?.cause });
     this.name = "DocumentPdfRenderError";

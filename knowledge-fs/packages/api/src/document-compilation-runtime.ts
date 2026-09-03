@@ -147,6 +147,9 @@ export class DocumentCompilationProcessingError extends Error {
 }
 
 export class DocumentCompilationLeaseLostError extends Error {
+  readonly code = "DOCUMENT_COMPILATION_LEASE_LOST";
+  readonly retryable = true;
+
   constructor(message = "Document compilation execution lease was lost", options?: ErrorOptions) {
     super(message, options);
     this.name = "DocumentCompilationLeaseLostError";
@@ -754,25 +757,33 @@ export function defaultDocumentCompilationErrorClassifier(
     });
     return { code: failure.code, message: failure.message, retryable: error.retryable };
   }
-  if (isParserProviderError(error)) {
-    const failure = knowledgeFsFailureForCode(error.code, {
-      ...(stage ? { stage } : {}),
-    });
-    return { code: failure.code, message: failure.message, retryable: error.retryable === true };
-  }
-  if (isRetryableProviderError(error)) {
-    const failure = knowledgeFsFailureForCode(
-      typeof error.code === "string" && error.code.trim()
-        ? error.code
-        : "DOCUMENT_COMPILATION_RETRYABLE",
-      { ...(stage ? { stage } : {}) },
-    );
+  // Any coded error keeps its specific public failure: parser provider codes, model-runtime and
+  // embedding codes, PDF rendering, lease loss, and the like all carry a `code` that the catalog
+  // (or its alias table) resolves. Retry follows the error's own flag, or the catalog policy when
+  // the error does not state one, so a non-retryable model response no longer collapses into the
+  // generic "document could not be processed" bucket.
+  const code = codedErrorCode(error);
+  if (code) {
+    const failure = knowledgeFsFailureForCode(code, { ...(stage ? { stage } : {}) });
+    const retryable =
+      typeof (error as { readonly retryable?: unknown }).retryable === "boolean"
+        ? (error as { readonly retryable: boolean }).retryable
+        : failure.retryPolicy === "automatic";
     return {
       code: failure.code,
       message: failure.message,
-      ...("refreshBaseHeadRevision" in error && error.refreshBaseHeadRevision === true
-        ? { refreshBaseHeadRevision: true }
-        : {}),
+      ...(retryable && refreshesBaseHeadRevision(error) ? { refreshBaseHeadRevision: true } : {}),
+      retryable,
+    };
+  }
+  if (isRetryableProviderError(error)) {
+    const failure = knowledgeFsFailureForCode("DOCUMENT_COMPILATION_RETRYABLE", {
+      ...(stage ? { stage } : {}),
+    });
+    return {
+      code: failure.code,
+      message: failure.message,
+      ...(refreshesBaseHeadRevision(error) ? { refreshBaseHeadRevision: true } : {}),
       retryable: true,
     };
   }
@@ -786,20 +797,17 @@ export function defaultDocumentCompilationErrorClassifier(
   };
 }
 
-function isParserProviderError(
-  error: unknown,
-): error is Error & { readonly code: string; readonly retryable?: boolean } {
+function codedErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error) || !("code" in error)) return undefined;
+  const code = (error as { readonly code?: unknown }).code;
+  return typeof code === "string" && code.trim() ? code.trim() : undefined;
+}
+
+function refreshesBaseHeadRevision(error: unknown): boolean {
   return (
     error instanceof Error &&
-    "code" in error &&
-    typeof (error as { readonly code?: unknown }).code === "string" &&
-    [
-      "provider_input",
-      "provider_rate_limited",
-      "provider_request_failed",
-      "provider_response_invalid",
-      "provider_timeout",
-    ].includes((error as { readonly code: string }).code)
+    "refreshBaseHeadRevision" in error &&
+    (error as { readonly refreshBaseHeadRevision?: unknown }).refreshBaseHeadRevision === true
   );
 }
 

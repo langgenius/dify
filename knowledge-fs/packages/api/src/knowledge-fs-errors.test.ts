@@ -125,6 +125,54 @@ describe("KnowledgeFS public errors", () => {
     });
   });
 
+  it("keeps model, embedding, and datasource runtime failures specific", () => {
+    expect(knowledgeFsFailureForCode("dify_model_runtime_response_invalid")).toMatchObject({
+      action: "retry",
+      category: "dependency",
+      code: "MODEL_RUNTIME_RESPONSE_INVALID",
+      retryPolicy: "manual",
+    });
+    expect(knowledgeFsFailureForCode("embedding_provider_input")).toMatchObject({
+      code: "MODEL_RUNTIME_FAILED",
+    });
+    expect(knowledgeFsFailureForCode("embedding_provider_response_invalid")).toMatchObject({
+      code: "MODEL_RUNTIME_RESPONSE_INVALID",
+    });
+    expect(knowledgeFsFailureForCode("dify_datasource_runtime_timeout")).toMatchObject({
+      category: "timeout",
+      code: "SOURCE_PROVIDER_TIMEOUT",
+      retryPolicy: "manual",
+    });
+    expect(knowledgeFsFailureForCode("dify_datasource_runtime_request_failed")).toMatchObject({
+      code: "SOURCE_PROVIDER_UNAVAILABLE",
+    });
+    expect(knowledgeFsFailureForCode("dify_datasource_runtime_response_invalid")).toMatchObject({
+      action: "configure_source",
+      code: "SOURCE_PROVIDER_REJECTED",
+    });
+    expect(knowledgeFsFailureForCode("document_parser_unsupported_type")).toMatchObject({
+      action: "reupload",
+      category: "validation",
+      code: "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+      retryPolicy: "never",
+    });
+    // Source workflow diagnostics that used to collapse into the generic operation failure.
+    expect(knowledgeFsFailureForCode("SOURCE_CRAWL_PAGE_NOT_FOUND")).toMatchObject({
+      action: "configure_source",
+      category: "not_found",
+      code: "SOURCE_CRAWL_PAGE_NOT_FOUND",
+    });
+    expect(knowledgeFsFailureForCode("SOURCE_WORKFLOW_CONTENT_TOO_LARGE")).toMatchObject({
+      category: "validation",
+      code: "SOURCE_WORKFLOW_CONTENT_TOO_LARGE",
+      retryPolicy: "never",
+    });
+    expect(knowledgeFsFailureForCode("SOURCE_WORKFLOW_EXTERNAL_TIMEOUT")).toMatchObject({
+      category: "timeout",
+      code: "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT",
+    });
+  });
+
   it("never exposes an unregistered diagnostic code in the structured contract", () => {
     expect(knowledgeFsFailureForCode("database_password_leaked")).toMatchObject({
       category: "internal",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isRegisteredKnowledgeFsErrorCode } from "./knowledge-fs-errors";
+import { isRegisteredKnowledgeFsErrorCode, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import { OnlineDocumentConnectorConfigError } from "./online-document-connector";
 import { OnlineDriveConnectorConfigError } from "./online-drive-connector";
 import {
@@ -37,6 +37,26 @@ describe("safeSourceOperationError", () => {
     expect(sourceOperationFailureMetadata(failure)).toEqual({
       error: SOURCE_OPERATION_FAILURES.websiteCrawl.message,
       errorCode: SOURCE_OPERATION_FAILURES.websiteCrawl.code,
+    });
+  });
+
+  it("keeps the datasource runtime code and drops its message", () => {
+    const error = Object.assign(
+      new Error("GET https://api.notion.com/v1/pages?token=secret failed with 401"),
+      { code: "dify_datasource_runtime_request_failed", retryable: false, status: 401 },
+    );
+
+    const failure = safeSourceOperationError("onlineDocumentRequest", error);
+
+    expect(failure).toEqual({
+      code: "dify_datasource_runtime_request_failed",
+      message: SOURCE_OPERATION_FAILURES.onlineDocumentRequest.message,
+    });
+    expect(JSON.stringify(failure)).not.toContain("secret");
+    // The persisted code resolves to the specific provider failure when it is read back.
+    expect(knowledgeFsFailureForCode(failure.code)).toMatchObject({
+      code: "SOURCE_PROVIDER_UNAVAILABLE",
+      retryPolicy: "manual",
     });
   });
 
