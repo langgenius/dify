@@ -206,8 +206,14 @@ export function sourceHasPendingAsyncImport(source: Source) {
 }
 
 export function sourceDisplayStatus(source: Source): SourceDisplayStatus {
-  if (isInitialSource(source) && source.status === 'disabled' && source.metadata.preview === true)
+  if (isInitialSource(source) && source.status === 'disabled' && source.metadata.preview === true) {
+    if (source.syncWorkflow) {
+      const workflowStatus = sourceWorkflowStatus(source.syncWorkflow.state)
+      return workflowStatus === 'active' ? 'initializing' : workflowStatus
+    }
+
     return 'initializing'
+  }
 
   if (isInitialSource(source) && source.status === 'disabled' && source.metadata.initialImport) {
     if (source.syncWorkflow) {

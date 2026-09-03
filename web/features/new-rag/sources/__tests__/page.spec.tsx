@@ -1010,6 +1010,16 @@ describe('SourcesPage', () => {
               status: 'disabled',
             }),
             source({
+              id: 'syncing-initial-source',
+              metadata: {
+                clientRequestId: 'initial-website-source:operation-3',
+                preview: true,
+              },
+              name: 'Syncing initial website',
+              status: 'disabled',
+              syncWorkflow: sourceWorkflow('importing'),
+            }),
+            source({
               id: 'failed',
               metadata: {
                 clientRequestId: 'initial-website-source:operation-2',
@@ -1032,6 +1042,13 @@ describe('SourcesPage', () => {
     expect(within(initializingRow).getByRole('status')).toHaveTextContent(
       'Initial documents: knowledgeSpace.sourceStatus.initializing',
     )
+    const syncingRow = screen.getByRole('row', { name: /Syncing initial website/ })
+    expect(within(syncingRow).getByRole('status')).toHaveTextContent(
+      'Syncing initial website: knowledgeSpace.sourceStatus.syncing',
+    )
+    expect(
+      within(syncingRow).getByText('knowledgeSpace.sourceSyncProgress:{"completed":0,"total":1}'),
+    ).toBeInTheDocument()
     const failedRow = screen.getByRole('row', { name: /Initial website/ })
     expect(within(failedRow).getByText('knowledgeSpace.sourceStatus.error')).toBeInTheDocument()
 
