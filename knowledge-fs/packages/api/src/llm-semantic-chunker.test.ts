@@ -13,6 +13,7 @@ import { createInMemoryDocumentSemanticWindowCheckpointRepository } from "./docu
 
 import {
   DEFAULT_MAX_SEMANTIC_WINDOWS,
+  LlmSemanticChunkingOutputError,
   type LlmSemanticCompletionCatalogEntry,
   type LlmSemanticWindowManifestEntry,
   type SemanticChunkingLlmProvider,
@@ -1511,6 +1512,36 @@ describe("LLM semantic chunker", () => {
         retrievalProfile: profile(),
       }),
     ).rejects.toThrow(error);
+  });
+
+  it("classifies an unknown response unit ID as an invalid model-runtime response", async () => {
+    const chunker = createLlmSemanticChunker({
+      maxChunkChars: 20,
+      reasoningProviderFactory: () =>
+        new ScriptedProvider([
+          ({ units }) => ({ chunks: [chunkRange(units[0]?.id, "u-missing")] }),
+        ]),
+    });
+
+    const failure = chunker.chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "paragraph",
+          metadata: {},
+          sectionPath: ["Validation"],
+          text: "Alpha. Beta.",
+          type: "paragraph",
+        },
+      ]),
+      retrievalProfile: profile(),
+    });
+
+    await expect(failure).rejects.toBeInstanceOf(LlmSemanticChunkingOutputError);
+    await expect(failure).rejects.toMatchObject({
+      code: "MODEL_RUNTIME_RESPONSE_INVALID",
+      retryable: false,
+    });
   });
 
   it("drops ungrounded image OCR entities and their relations without discarding the chunk", async () => {

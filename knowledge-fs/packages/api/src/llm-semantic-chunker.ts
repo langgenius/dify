@@ -2836,7 +2836,9 @@ function validateAndMaterializeWindowOutput({
     const start = unitIndex.get(candidate.startUnitId);
     const end = unitIndex.get(candidate.endUnitId);
     if (start === undefined || end === undefined) {
-      throw new Error("LLM semantic chunking response referenced an unknown unit ID");
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking response referenced an unknown unit ID",
+      );
     }
     if (start !== expectedStart || end < start) {
       throw new Error(
