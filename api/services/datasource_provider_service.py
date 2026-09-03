@@ -851,6 +851,7 @@ class DatasourceProviderService:
         if user is not None:
             query = CredentialPermissionService.apply_visibility_filter(
                 query,
+                tenant_id=tenant_id,
                 model_id_column=DatasourceProvider.id,
                 model_user_id_column=DatasourceProvider.user_id,
                 model_visibility_column=DatasourceProvider.visibility,

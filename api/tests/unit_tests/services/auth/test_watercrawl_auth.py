@@ -10,7 +10,7 @@ from services.auth.errors import (
     InvalidDataSourceApiKeyAuthCredentialsError,
 )
 from services.auth.watercrawl.watercrawl import WatercrawlAuth
-from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
+from services.entities.data_source.api_key_auth import DataSourceApiKeyAuthCredentials
 
 
 def _credentials(

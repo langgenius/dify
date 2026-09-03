@@ -10,7 +10,7 @@ from services.auth.errors import (
     DataSourceApiKeyAuthProviderUnavailableError,
     InvalidDataSourceApiKeyAuthCredentialsError,
 )
-from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
+from services.entities.data_source.api_key_auth import DataSourceApiKeyAuthCredentials
 
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina",

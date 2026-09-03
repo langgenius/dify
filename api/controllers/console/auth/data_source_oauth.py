@@ -23,13 +23,13 @@ from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.data_source_oauth_service import (
+from services.data_source.oauth_service import (
     DataSourceOAuthConfigurationError,
     DataSourceOAuthError,
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from services.entities.data_source.oauth import DataSourceOAuthCallback
 
 from .. import console_ns
 
@@ -117,7 +117,7 @@ class OAuthDataSource(Resource):
     )
     def get(self, request_context: RequestContext, provider: str):
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             authorization = service.start_authorization(request_context)
         except InvalidDataSourceOAuthProviderError:
             return _invalid_provider_response()
@@ -142,7 +142,7 @@ class OAuthDataSourceCallback(Resource):
     def get(self, provider: str):
         query = query_params_from_request(OAuthDataSourceCallbackQuery)
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             callback = service.complete_callback(
                 code=query.code,
                 error=query.error,
@@ -173,7 +173,7 @@ class OAuthDataSourceBinding(Resource):
         if not query.code:
             return {"error": "Invalid code"}, HTTPStatus.BAD_REQUEST
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             service.bind(request_context, code=query.code)
         except InvalidDataSourceOAuthProviderError:
             return _invalid_provider_response()
@@ -199,7 +199,7 @@ class OAuthDataSourceSync(Resource):
     @console_account_admission()
     def get(self, request_context: RequestContext, provider: str, binding_id: UUID):
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             service.sync(
                 request_context,
                 binding_id=str(binding_id),

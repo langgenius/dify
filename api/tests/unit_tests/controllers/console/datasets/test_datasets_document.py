@@ -1,6 +1,6 @@
 import datetime
+import json
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -46,11 +46,11 @@ from controllers.console.datasets.error import (
     InvalidMetadataError,
 )
 from core.entities.knowledge_entities import IndexingEstimate
+from core.rag.entities.dataset_reference import DatasetRef, DocumentRef
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset, DatasetPermissionEnum
+from models.dataset import Dataset, DatasetPermissionEnum, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.dataset_ref_service import DatasetRef, DocumentRef
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
@@ -196,6 +196,15 @@ def make_document(**overrides):
     return DatasetDocument(**attrs)
 
 
+def make_process_rule(rules: dict[str, object] | None) -> DatasetProcessRule:
+    return DatasetProcessRule(
+        dataset_id="ds-1",
+        mode=ProcessRuleMode.CUSTOM,
+        rules=json.dumps(rules) if rules is not None else None,
+        created_by="u1",
+    )
+
+
 @pytest.fixture
 def tenant_ctx():
     return (MagicMock(is_dataset_editor=True, id="u1"), "tenant-1")
@@ -271,9 +280,8 @@ class TestGetProcessRuleApi:
         document = MagicMock(dataset_id="ds-1")
         session = MagicMock()
         dataset = MagicMock()
-        dataset.get_latest_process_rule.return_value = SimpleNamespace(
-            mode="custom",
-            rules_dict={"segmentation": {"delimiter": "---", "max_tokens": 123}},
+        dataset.get_latest_process_rule.return_value = make_process_rule(
+            {"segmentation": {"delimiter": "---", "max_tokens": 123}}
         )
 
         with (
@@ -305,7 +313,7 @@ class TestGetProcessRuleApi:
         user, _ = patch_tenant
         session = MagicMock()
         dataset = MagicMock()
-        dataset.get_latest_process_rule.return_value = SimpleNamespace(mode="custom", rules_dict=None)
+        dataset.get_latest_process_rule.return_value = make_process_rule(None)
         with (
             app.test_request_context("/?document_id=doc-1"),
             patch(
@@ -1543,7 +1551,7 @@ class TestDocumentPermissionCases:
         document = MagicMock(dataset_id="ds-1")
         session = MagicMock()
         dataset = MagicMock()
-        dataset.get_latest_process_rule.return_value = SimpleNamespace(mode="custom", rules_dict={"a": 1})
+        dataset.get_latest_process_rule.return_value = make_process_rule({"a": 1})
         with (
             app.test_request_context("/?document_id=doc-1"),
             patch(

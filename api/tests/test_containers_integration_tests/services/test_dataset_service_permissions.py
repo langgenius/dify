@@ -9,6 +9,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from core.rag.entities.dataset_reference import DatasetRef
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
@@ -20,7 +21,7 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
-from services.dataset_ref_service import DatasetRef, DatasetRefService
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
 

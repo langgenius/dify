@@ -1,32 +1,10 @@
-"""Typed resource references for dataset ownership chains."""
-
-from typing import NamedTuple
+"""ORM-backed compatibility helpers for dataset ownership chains."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.entities.dataset_reference import DatasetRef, DocumentRef, SegmentRef
 from models.dataset import Dataset, Document
-
-
-class DatasetRef(NamedTuple):
-    """Dataset identifiers used to scope downstream resource lookups."""
-
-    tenant_id: str
-    dataset_id: str
-
-
-class DocumentRef(NamedTuple):
-    """Owner-bound lookup coordinates, not proof that a document is authorized or exists."""
-
-    dataset: DatasetRef
-    document_id: str
-
-
-class SegmentRef(NamedTuple):
-    """Segment identifiers used to scope downstream resource lookups."""
-
-    document: DocumentRef
-    segment_id: str
 
 
 class DatasetRefService:
@@ -46,12 +24,12 @@ class DatasetRefService:
     @staticmethod
     def create_document_ref_from_id(dataset_ref: DatasetRef, document_id: str) -> DocumentRef:
         """Bind a candidate document ID; ownership is enforced when the ref is consumed."""
-        return DocumentRef(dataset=dataset_ref, document_id=document_id)
+        return dataset_ref.document(document_id)
 
     @staticmethod
     def create_segment_ref(document_ref: DocumentRef, segment_id: str) -> SegmentRef:
         """Bind a candidate segment ID; ownership is enforced when the ref is consumed."""
-        return SegmentRef(document=document_ref, segment_id=segment_id)
+        return document_ref.segment(segment_id)
 
     @staticmethod
     def get_document_by_ref(document_ref: DocumentRef, *, session: Session) -> Document | None:

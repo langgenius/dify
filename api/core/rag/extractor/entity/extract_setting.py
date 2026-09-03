@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from models.dataset import Document
 from models.model import UploadFile
@@ -15,6 +15,7 @@ class NotionInfo(BaseModel):
     notion_page_type: str
     document: Document | None = None
     tenant_id: str
+    notion_access_token: str | None = Field(default=None, exclude=True, repr=False)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 

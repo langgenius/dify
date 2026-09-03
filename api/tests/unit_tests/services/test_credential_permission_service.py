@@ -132,6 +132,7 @@ class TestApplyVisibilityFilter:
 
         query = CredentialPermissionService.apply_visibility_filter(
             select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id),
+            tenant_id=tenant_id,
             model_id_column=TriggerSubscription.id,
             model_user_id_column=TriggerSubscription.user_id,
             model_visibility_column=TriggerSubscription.visibility,
@@ -190,6 +191,7 @@ class TestApplyVisibilityFilter:
 
         query = CredentialPermissionService.apply_visibility_filter(
             select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id),
+            tenant_id=tenant_id,
             model_id_column=TriggerSubscription.id,
             model_user_id_column=TriggerSubscription.user_id,
             model_visibility_column=TriggerSubscription.visibility,
@@ -199,3 +201,41 @@ class TestApplyVisibilityFilter:
 
         visible_ids = {subscription.id for subscription in sqlite_session.scalars(query)}
         assert visible_ids == {team_subscription.id, owned_subscription.id, shared_subscription.id}
+
+    def test_actor_entry_point_scopes_partial_permissions_by_tenant(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        user_id: str,
+        other_user_id: str,
+    ) -> None:
+        other_tenant_id = str(uuid4())
+        shared_subscription = _subscription(
+            tenant_id=tenant_id,
+            owner_id=other_user_id,
+            name="shared",
+            visibility=PermissionEnum.PARTIAL_TEAM,
+        )
+        sqlite_session.add(shared_subscription)
+        sqlite_session.flush()
+        sqlite_session.add(
+            CredentialPermission(
+                credential_id=shared_subscription.id,
+                credential_type=CredentialType.TRIGGER_SUBSCRIPTION,
+                account_id=user_id,
+                tenant_id=other_tenant_id,
+            )
+        )
+        sqlite_session.commit()
+
+        query = CredentialPermissionService.apply_visibility_filter_for_actor(
+            select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id),
+            tenant_id=tenant_id,
+            model_id_column=TriggerSubscription.id,
+            model_user_id_column=TriggerSubscription.user_id,
+            model_visibility_column=TriggerSubscription.visibility,
+            credential_type=CredentialType.TRIGGER_SUBSCRIPTION,
+            actor_id=user_id,
+        )
+
+        assert sqlite_session.scalars(query).all() == []

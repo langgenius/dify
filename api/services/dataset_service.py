@@ -7,10 +7,9 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Annotated, Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import ColumnElement, delete, exists, func, select, update
 from sqlalchemy.orm import Session
@@ -20,6 +19,7 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
+from core.rag.entities.dataset_reference import DatasetRef, SegmentRef
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -65,11 +65,12 @@ from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from services import dataset_api_key_service
-from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
+from services.dataset_ref_service import DatasetRefService
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.feature_entities import FeatureModel
+from services.entities.knowledge_entities.indexing_estimate import normalize_indexing_estimate_args
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -119,121 +120,6 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
-
-
-class _EstimatePreProcessingRule(BaseModel):
-    id: str = Field(min_length=1)
-    enabled: bool
-
-    @field_validator("id")
-    @classmethod
-    def _validate_id(cls, v: str) -> str:
-        if v not in DatasetProcessRule.PRE_PROCESSING_RULES:
-            raise ValueError("Process rule pre_processing_rules id is invalid")
-        return v
-
-
-class _EstimateSegmentation(BaseModel):
-    separator: str = Field(min_length=1)
-    max_tokens: int = Field(gt=0)
-
-
-class _EstimateRules(BaseModel):
-    pre_processing_rules: list[_EstimatePreProcessingRule]
-    segmentation: _EstimateSegmentation
-
-    @field_validator("pre_processing_rules")
-    @classmethod
-    def _deduplicate(cls, v: list[_EstimatePreProcessingRule]) -> list[_EstimatePreProcessingRule]:
-        seen: dict[str, _EstimatePreProcessingRule] = {}
-        for rule in v:
-            seen[rule.id] = rule
-        return list(seen.values())
-
-
-class _EstimateHierarchicalRules(_EstimateRules):
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: _EstimateSegmentation | None = None
-
-
-class _SummaryIndexSettingDisabled(BaseModel):
-    enable: Literal[False] = False
-
-
-class _SummaryIndexSettingEnabled(BaseModel):
-    enable: Literal[True]
-    model_name: str = Field(min_length=1)
-    model_provider_name: str = Field(min_length=1)
-
-
-_SummaryIndexSetting = Annotated[
-    _SummaryIndexSettingDisabled | _SummaryIndexSettingEnabled,
-    Field(discriminator="enable"),
-]
-
-
-class _AutomaticProcessRule(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    mode: Literal[ProcessRuleMode.AUTOMATIC]
-    summary_index_setting: _SummaryIndexSetting | None = None
-
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
-        if v is None:
-            return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
-        return v
-
-
-class _CustomProcessRule(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    mode: Literal[ProcessRuleMode.CUSTOM]
-    rules: _EstimateRules
-    summary_index_setting: _SummaryIndexSetting | None = None
-
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
-        if v is None:
-            return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
-        return v
-
-
-class _HierarchicalProcessRule(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    mode: Literal[ProcessRuleMode.HIERARCHICAL]
-    rules: _EstimateHierarchicalRules
-    summary_index_setting: _SummaryIndexSetting | None = None
-
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
-        if v is None:
-            return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
-        return v
-
-
-_EstimateProcessRule = Annotated[
-    _AutomaticProcessRule | _CustomProcessRule | _HierarchicalProcessRule,
-    Field(discriminator="mode"),
-]
-
-
-class _EstimateArgs(BaseModel):
-    info_list: dict[str, Any]
-    process_rule: _EstimateProcessRule
 
 
 class DatasetService:
@@ -3176,20 +3062,7 @@ class DocumentService:
 
     @classmethod
     def estimate_args_validate(cls, args: dict[str, Any]):
-        try:
-            validated = _EstimateArgs.model_validate(args)
-        except ValidationError as e:
-            first = e.errors()[0]
-            original = first.get("ctx", {}).get("error")
-            raise ValueError(str(original) if isinstance(original, ValueError) else first["msg"]) from e
-        process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
-        if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
-            process_rule_dict["rules"] = {}
-        elif validated.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
-            rules = process_rule_dict.get("rules")
-            if isinstance(rules, dict) and not rules.get("parent_mode"):
-                rules["parent_mode"] = "paragraph"
-        args["process_rule"] = process_rule_dict
+        args["process_rule"] = normalize_indexing_estimate_args(args)
 
     @staticmethod
     def batch_update_document_status(
