@@ -240,12 +240,26 @@ def make_request(
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
-                # Check if this is a Squid SSRF rejection
+                # Distinguish Squid's own response (where Squid generated
+                # the 401/403 for an ACL match) from a Squid-forwarded
+                # upstream response (where the upstream server returned
+                # 401/403 and Squid only added a ``Via`` header). Only the
+                # first is an SSRF rejection; the second is
+                # application-level authorization on the target and must
+                # surface to the caller as the original status, not be
+                # re-raised as ToolSSRFError. See #41434.
                 server_header = response.headers.get("server", "").lower()
                 via_header = response.headers.get("via", "").lower()
 
-                # Squid typically identifies itself in Server or Via headers
-                if "squid" in server_header or "squid" in via_header:
+                # Squid identifies itself as the origin server in the
+                # ``Server`` header (``Server: squid/4.10``). The ``Via``
+                # header is only used as a fallback when the upstream
+                # response strips the ``Server`` header entirely; Squid
+                # also adds a ``Via`` header to every request it forwards,
+                # so a non-empty ``Server`` from the upstream always wins
+                # over the forwarded ``Via`` marker.
+                is_squid_own_response = "squid" in server_header or (not server_header and "squid" in via_header)
+                if is_squid_own_response:
                     # The deny ACL is usually ``to_private_networks`` (RFC1918 +
                     # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
                     # which specific ACL tripped from Squid's response alone, but
