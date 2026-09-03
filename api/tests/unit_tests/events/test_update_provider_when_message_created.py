@@ -10,16 +10,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity, CreditUsageCreatedBy
 from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.model_billing_profile import (
+    ModelBillingProfileResolutionError,
+    ModelBillingSource,
+    TenantModelBillingResolution,
+)
 from events.event_handlers import update_provider_when_message_created
 from models import AppMode, Message, TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
 from models.tokener import TenantTokenerIntegrationStatus
-from services.model_billing_profile_service import (
-    ModelBillingProfileResolutionError,
-    ModelBillingSource,
-    TenantModelBillingResolution,
-)
 
 
 @pytest.fixture

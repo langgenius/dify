@@ -34,6 +34,7 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
+from core.model_billing_profile import ModelBillingProfileService
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import DeploymentEdition
@@ -62,7 +63,6 @@ from models.provider import (
 )
 from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
-from services.model_billing_profile_service import ModelBillingProfileService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime

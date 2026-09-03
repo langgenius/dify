@@ -151,17 +151,6 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 
 class FeatureModel(FeatureResponseModel):
     model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
-    tokener_bootstrap_status: (
-        Literal[
-            "pending",
-            "installing_plugin",
-            "provisioning",
-            "configuring_provider",
-            "ready",
-            "failed",
-        ]
-        | None
-    ) = None
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True

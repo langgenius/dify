@@ -16,6 +16,7 @@ from core.entities.provider_entities import (
     ProviderQuotaType,
 )
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
+from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
@@ -36,7 +37,6 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.model_billing_profile_service import ModelBillingSource, TenantModelBillingResolution
 from tests.unit_tests.config_override import config_overrides_context
 
 

@@ -13,6 +13,7 @@ from core.db.session_factory import session_factory
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
+from core.model_billing_profile import ModelBillingProfileService
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
@@ -45,7 +46,6 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_billing_profile_service import ModelBillingProfileService
 
 logger = logging.getLogger(__name__)
 

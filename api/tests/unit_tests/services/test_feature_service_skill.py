@@ -32,5 +32,4 @@ def test_empty_tenant_id_keeps_legacy_defaults_without_profile_query(
     features = FeatureService.get_features("")
 
     assert features.model_billing_source == "legacy_message_credits"
-    assert features.tokener_bootstrap_status is None
     resolve.assert_not_called()
