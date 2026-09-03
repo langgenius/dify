@@ -21,6 +21,10 @@ type DifyCoreToolProviderType = Literal["plugin", "builtin", "api", "workflow", 
 DIFY_CORE_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.core.tools"
 
 
+def _default_parameters_json_schema() -> dict[str, JsonValue]:
+    return {"type": "object", "properties": {}, "required": []}
+
+
 class DifyCoreToolConfig(LayerConfig):
     """Prepared API-routed tool declaration exposed to the model."""
 
@@ -32,9 +36,7 @@ class DifyCoreToolConfig(LayerConfig):
     description: str | None = None
     runtime_parameters: dict[str, JsonValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
-    parameters_json_schema: dict[str, JsonValue] = Field(  # pyrefly: ignore[bad-assignment]
-        default_factory=lambda: {"type": "object", "properties": {}, "required": []}
-    )
+    parameters_json_schema: dict[str, JsonValue] = Field(default_factory=_default_parameters_json_schema)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

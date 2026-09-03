@@ -30,7 +30,7 @@ fix:
 	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check --fix .
 
 typecheck:
-	@uv --directory "$(PROJECT_DIR)" run --project . --extra server pyrefly check
+	@uv --directory "$(PROJECT_DIR)" run --project . --group dev --extra server pyrefly check
 
 test:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server python -m pytest tests

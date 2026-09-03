@@ -20,7 +20,7 @@ from typing import Any, ClassVar, cast
 from pydantic import JsonValue, ValidationError
 from pydantic_ai import Tool
 from pydantic_ai.exceptions import ModelRetry
-from pydantic_ai.tools import DeferredToolRequests, RunContext, ToolDefinition
+from pydantic_ai.tools import ArgsValidatorFunc, DeferredToolRequests, RunContext, ToolDefinition
 from typing_extensions import Self, override
 
 from agenton.layers import EmptyRuntimeState, NoLayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
@@ -70,7 +70,7 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
                 name=self.config.tool_name,
                 description=self.config.effective_tool_description,
                 prepare=self._prepare_tool_definition,
-                args_validator=self._validate_tool_args,  # pyrefly: ignore[bad-argument-type]
+                args_validator=cast("ArgsValidatorFunc[object, ...]", self._validate_tool_args),
                 sequential=True,
             )
         ]

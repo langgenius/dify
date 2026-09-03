@@ -18,7 +18,7 @@ from collections import OrderedDict
 from collections.abc import AsyncGenerator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Generic, cast
+from typing import Any, Generic, Self, cast
 
 from pydantic import JsonValue
 
@@ -131,7 +131,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None,
         user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None,
         tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None,
-    ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]":
+    ) -> Self:
         """Create a reusable compositor plan from serializable graph config.
 
         ``providers`` resolve graph node ``type`` ids. ``node_providers`` are
@@ -168,7 +168,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
                 )
             )
 
-        return cls(  # pyrefly: ignore[bad-return]
+        return cls(
             nodes,
             prompt_transformer=prompt_transformer,
             user_prompt_transformer=user_prompt_transformer,
