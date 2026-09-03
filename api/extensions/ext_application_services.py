@@ -129,6 +129,7 @@ from services.recommended_app_catalog_gateway import (
     RemoteRecommendedAppCatalogGateway,
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
+from services.remote_file_service import RemoteFileService
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
@@ -218,6 +219,7 @@ class ApplicationServices:
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
+    remote_files: RemoteFileService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
@@ -501,6 +503,9 @@ def build_application_services(
             catalog=recommended_app_catalog,
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
             trial_enabled=trial_app_enabled,
+        ),
+        remote_files=RemoteFileService(
+            files=FileService(session_factory=database_client),
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workflow_run_archives=WorkflowRunArchiveService(
