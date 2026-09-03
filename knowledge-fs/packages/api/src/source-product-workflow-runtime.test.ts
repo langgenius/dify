@@ -1068,7 +1068,7 @@ describe("source-product workflow provider imports", () => {
     expect(deleteRun).toHaveBeenCalledOnce();
   });
 
-  it("fails a selected URL crawl import when the second crawl does not contain every URL", async () => {
+  it("fails a selected URL crawl import when an exact page fetch returns no page", async () => {
     const source = sourceRecord("selected-url-crawl-import", { type: "web" });
     const fixture = await createFixture({
       contentStore: {
@@ -1082,14 +1082,17 @@ describe("source-product workflow provider imports", () => {
       }),
       source,
       websiteCrawl: {
-        crawl: vi.fn(async () => ({
-          pages: [
-            {
-              content: "selected",
-              sourceUrl: "https://example.test/selected",
-              title: "Selected",
-            },
-          ],
+        crawl: vi.fn(async ({ selectedUrl }) => ({
+          pages:
+            selectedUrl === "https://example.test/missing"
+              ? []
+              : [
+                  {
+                    content: "selected",
+                    sourceUrl: "https://example.test/selected",
+                    title: "Selected",
+                  },
+                ],
         })),
       },
     });
@@ -1101,8 +1104,11 @@ describe("source-product workflow provider imports", () => {
     });
   });
 
-  it("fails a selected URL crawl import when canonical matching is ambiguous", async () => {
+  it("fetches every selected URL even when multiple selections resolve to the same page", async () => {
     const source = sourceRecord("ambiguous-crawl-import", { type: "web" });
+    const crawl = vi.fn(async () => ({
+      pages: [{ content: "one", sourceUrl: "https://example.test/selected", title: "One" }],
+    }));
     const fixture = await createFixture({
       contentStore: {
         deleteRun: vi.fn(async () => ({ deleted: 0, hasMore: false })),
@@ -1111,24 +1117,21 @@ describe("source-product workflow provider imports", () => {
       },
       inventory: [],
       run: providerRun(source.id, "crawl-import", {
-        selectedSourceUrls: ["https://example.test/selected#preview"],
+        selectedSourceUrls: [
+          "https://example.test/selected#preview",
+          "https://example.test/selected/",
+        ],
       }),
       source,
-      websiteCrawl: {
-        crawl: vi.fn(async () => ({
-          pages: [
-            { content: "one", sourceUrl: "https://example.test/selected", title: "One" },
-            { content: "two", sourceUrl: "https://example.test/selected/", title: "Two" },
-          ],
-        })),
-      },
+      websiteCrawl: { crawl },
     });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
-    await expect(fixture.getRun()).resolves.toMatchObject({
-      lastErrorCode: "SOURCE_CRAWL_PAGE_AMBIGUOUS",
-      state: "failed",
-    });
+    expect(crawl).toHaveBeenCalledTimes(2);
+    expect(crawl.mock.calls.map(([input]) => input.selectedUrl)).toEqual([
+      "https://example.test/selected#preview",
+      "https://example.test/selected/",
+    ]);
   });
 
   it("imports only the selected URLs from the second crawl", async () => {

@@ -43,7 +43,7 @@ import {
 } from "./source-product-workflow";
 import type { SourceProviderCatalog } from "./source-provider-catalog";
 import type { SourceRepository } from "./source-repository";
-import type { WebsiteCrawlConnector } from "./website-crawl-connector";
+import type { CrawledPage, WebsiteCrawlConnector } from "./website-crawl-connector";
 
 const encoder = new TextEncoder();
 const PROVIDER_SELECTION_METADATA_KEY = "__knowledgeFsProviderSelection";
@@ -685,12 +685,24 @@ async function processCrawlPreview(
       `Website crawl returned more than ${maxCrawlPages} pages`,
     );
   }
+  await stageCrawlPages(input, execution, result.pages);
+  return result.pages.length === 0 ? "zero_results" : "preview_ready";
+}
+
+async function stageCrawlPages(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  pages: readonly CrawledPage[],
+  pageIdFor: (page: CrawledPage) => string = (page) =>
+    createHash("sha256").update(page.sourceUrl, "utf8").digest("hex"),
+): Promise<SourceCrawlPreviewPage[]> {
   let staged: SourceCrawlPreviewPage[] = [];
-  for (const page of result.pages) {
+  const allStaged: SourceCrawlPreviewPage[] = [];
+  for (const page of pages) {
     const run = execution.run();
     const body = encoder.encode(page.content);
     const contentHash = createHash("sha256").update(body).digest("hex");
-    const pageId = createHash("sha256").update(page.sourceUrl, "utf8").digest("hex");
+    const pageId = pageIdFor(page);
     const contentObjectKey = await execution.external(() =>
       input.contentStore.put({
         body,
@@ -701,7 +713,7 @@ async function processCrawlPreview(
         tenantId: run.tenantId,
       }),
     );
-    staged.push({
+    const stagedPage = {
       contentHash,
       contentObjectKey,
       createdAt: iso((input.now ?? Date.now)()),
@@ -711,7 +723,9 @@ async function processCrawlPreview(
       runId: run.id,
       sourceUrl: page.sourceUrl,
       ...(page.title ? { title: page.title.slice(0, 500) } : {}),
-    });
+    };
+    staged.push(stagedPage);
+    allStaged.push(stagedPage);
     if (staged.length >= 50) {
       const batch = staged;
       staged = [];
@@ -733,7 +747,7 @@ async function processCrawlPreview(
       }),
     );
   }
-  return result.pages.length === 0 ? "zero_results" : "preview_ready";
+  return allStaged;
 }
 
 async function processCrawlImport(
@@ -766,32 +780,47 @@ async function processSelectedCrawlImport(
   execution: RuntimeExecution,
   source: Source,
 ): Promise<void> {
-  const requestedUrls = new Set(selectedSourceUrls(execution.run()));
-  const previewState = await processCrawlPreview(input, execution, source);
-  if (previewState === "zero_results") {
-    throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
-  }
-
-  const crawledPages: SourceCrawlPreviewPage[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await input.repository.listCrawlPages({
-      ...(cursor ? { cursor } : {}),
-      limit: 200,
-      runId: execution.run().id,
-    });
-    crawledPages.push(...page.items);
-    cursor = page.nextCursor;
-  } while (cursor);
-
-  const selectedPages = [...requestedUrls].map((sourceUrl) =>
-    matchSelectedCrawlPage(sourceUrl, crawledPages),
-  );
-  if (new Set(selectedPages.map((page) => page.pageId)).size !== selectedPages.length)
+  if (!input.websiteCrawl) {
     throw runtimeError(
-      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
-      "Selected crawl URLs resolved to the same page",
+      "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
+      "Website crawl provider is unavailable",
     );
+  }
+  const requestedUrls = selectedSourceUrls(execution.run());
+  const connectorSource = await execution.external(() =>
+    resolveSource(input, source, execution.run().tenantId),
+  );
+  const selectedPages: SourceCrawlPreviewPage[] = [];
+  for (const [index, requestedUrl] of requestedUrls.entries()) {
+    const initial = execution.run();
+    const result = await execution.external(
+      (signal) =>
+        input.websiteCrawl?.crawl({
+          selectedUrl: requestedUrl,
+          signal,
+          source: connectorSource,
+          tenantId: initial.tenantId,
+          userId: workflowSubjectId(initial),
+        }) ??
+        Promise.reject(
+          runtimeError(
+            "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
+            "Website crawl provider is unavailable",
+          ),
+        ),
+    );
+    const [page] = result.pages;
+    if (!page) {
+      throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
+    }
+    selectedPages.push(
+      ...(await stageCrawlPages(input, execution, [page], (candidate) =>
+        createHash("sha256")
+          .update(`${index}\0${requestedUrl}\0${candidate.sourceUrl}`, "utf8")
+          .digest("hex"),
+      )),
+    );
+  }
   await execution.mutate((current) =>
     input.repository.checkpoint({
       checkpoint: "selection-frozen",
@@ -800,49 +829,11 @@ async function processSelectedCrawlImport(
       progressCompleted: 0,
       progressFailed: 0,
       progressSkipped: 0,
-      progressTotal: requestedUrls.size,
+      progressTotal: requestedUrls.length,
       state: "importing",
     }),
   );
   await importCrawlPages(input, execution, source, selectedPages);
-}
-
-function matchSelectedCrawlPage(
-  requestedUrl: string,
-  candidates: readonly SourceCrawlPreviewPage[],
-): SourceCrawlPreviewPage {
-  const exact = candidates.filter((candidate) => candidate.sourceUrl === requestedUrl);
-  if (exact.length > 1)
-    throw runtimeError(
-      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
-      "Selected crawl page matched more than one result",
-    );
-  const [exactMatch] = exact;
-  if (exactMatch) return exactMatch;
-
-  const canonicalRequestedUrl = canonicalCrawlUrl(requestedUrl);
-  const canonical = candidates.filter(
-    (candidate) => canonicalCrawlUrl(candidate.sourceUrl) === canonicalRequestedUrl,
-  );
-  if (canonical.length > 1)
-    throw runtimeError(
-      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
-      "Selected crawl page canonical URL matched more than one result",
-    );
-  const [canonicalMatch] = canonical;
-  if (canonicalMatch) return canonicalMatch;
-  throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
-}
-
-function canonicalCrawlUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    url.hash = "";
-    if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
-    return url.toString();
-  } catch {
-    return value.trim();
-  }
 }
 
 async function importCrawlPages(

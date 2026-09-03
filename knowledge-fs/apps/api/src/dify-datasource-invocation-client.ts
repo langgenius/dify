@@ -40,11 +40,9 @@ export function createDifyDatasourceInvocationClient(input: {
         case "get_website_crawl":
           yield* input.client.getWebsiteCrawl({
             ...common,
-            datasourceParameters: withCrawlOptions(
-              config,
-              invocation.source,
-              invocation.source.uri,
-            ),
+            datasourceParameters: invocation.selectedUrl
+              ? withExactPageOptions(config, invocation.source, invocation.selectedUrl)
+              : withCrawlOptions(config, invocation.source, invocation.source.uri),
           });
           return;
         case "get_online_document_pages":
@@ -195,6 +193,25 @@ function withCrawlOptions(
     },
     uri,
   );
+}
+
+function withExactPageOptions(
+  config: DifyDatasourceSourceConfig,
+  source: Source,
+  selectedUrl: string,
+): Record<string, unknown> {
+  const parameters = withCrawlOptions(config, source, selectedUrl);
+  const subpagesParameter = /jina|watercrawl/u.test(
+    `${config.pluginId} ${config.provider} ${config.datasource}`.toLowerCase(),
+  )
+    ? "crawl_sub_pages"
+    : "crawl_subpages";
+  return {
+    ...parameters,
+    url: selectedUrl,
+    limit: 1,
+    [subpagesParameter]: false,
+  };
 }
 
 function decodeNextPageParameters(token: string): Record<string, unknown> {
