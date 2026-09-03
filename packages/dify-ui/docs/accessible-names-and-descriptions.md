@@ -10,11 +10,17 @@ keyboard interaction, and focus management. Dify UI and its consumers still own 
 label content, composition, and product meaning. Use this guide to choose those naming and
 description sources. Open a component guide only when the decision reaches that component.
 
+Use [ARIA in HTML][html-naming] for authoring conformance and the [name and description computation
+specification][accname] to understand the current computation model. APG and MDN provide authoring
+guidance; Base UI documents the behavior and usage guidance of the primitives Dify wraps. The Dify
+conventions below choose among valid options without making a prohibited naming relationship valid.
+
 ## Start Here
 
-An accessible name identifies a control or region. An accessible description adds optional help,
-instructions, or consequences. State such as checked, expanded, or disabled remains on the control,
-and changing status remains with the feature's status or live-region owner.
+An accessible name is the flat string that identifies a named element to assistive technology; not
+every role permits one. An accessible description adds optional help, instructions, or consequences.
+State such as checked, expanded, or disabled remains separate from the name, and changing status
+remains with the feature's status or live-region owner.
 
 For each changed element:
 
@@ -58,10 +64,12 @@ field error relationships.
 
 ## Overrides and References
 
-Authoring preference differs from computation priority. A resolving `aria-labelledby` takes
-precedence over `aria-label` and normal native or content naming. An empty referenced label can
-leave the name empty. A non-empty `aria-label` also overrides normal native or content naming;
-these sources are not concatenated. See the [computation steps][computation].
+Authoring preference differs from computation priority. An `aria-labelledby` value with at least
+one valid ID reference is evaluated first. If its computed text is non-empty, it takes precedence
+over `aria-label` and normal native or content naming. If its result is empty, name computation
+continues to lower-priority sources; do not rely on that fallback to excuse a broken reference. A
+non-empty `aria-label` also overrides normal native or content naming; these sources are not
+concatenated. See the [computation steps][computation].
 
 - With `aria-labelledby`, reference the intended text directly. Multiple IDs are read in attribute
   order; do not build chains of elements that each use `aria-labelledby`.
@@ -119,13 +127,17 @@ with a second label or a competing error association:
 
 Use `DialogTitle` and, when useful, `DialogDescription` for a short dialog summary. Do not turn a
 whole form or rich dialog body into one description. Per [Base UI Tooltip guidance], Tooltip is a
-supplemental visual label for a trigger that already has an accessible name; use [Overlay] choices
-for essential, structured, interactive, or touch-reachable information.
+supplemental visual label, not the trigger's accessible-name source. Base UI specifically recommends
+an `aria-label` that closely matches the Tooltip content; apply that to icon-only triggers. When
+persistent visible trigger text already supplies the name, preserve the content-derived name per
+W3C and MDN guidance instead of adding a redundant override merely because Tooltip is present. Use
+[Overlay] choices for essential, structured, interactive, or touch-reachable information.
 
 Prefer descriptions associated with DOM text. When considering `aria-description`, verify target
 browser and assistive-technology behavior. The [AccName 1.2 working draft] gives
 `aria-describedby` precedence over `aria-description`, followed by applicable native description
-sources and unused `title` fallback. Do not stack mechanisms to force repeated output.
+sources and unused `title` fallback. It specifies using only the first applicable source, even when
+that source computes to an empty description. Do not stack mechanisms to force repeated output.
 
 ## Hidden Text and Safe Removal
 
