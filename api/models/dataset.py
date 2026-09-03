@@ -622,10 +622,6 @@ class Document(Base):
             return data_source_info_dict
         return {}
 
-    @property
-    def data_source_detail_dict(self) -> dict[str, Any]:
-        return self.get_data_source_detail_dict(session=db.session())
-
     def get_data_source_detail_dict(self, *, session: Session) -> dict[str, Any]:
         if self.data_source_info:
             if self.data_source_type == "upload_file":
@@ -665,10 +661,6 @@ class Document(Base):
             return session.get(DatasetProcessRule, self.dataset_process_rule_id)
         return None
 
-    @property
-    def dataset(self) -> Dataset | None:
-        return self.get_dataset(session=db.session())
-
     def get_dataset(self, *, session: Session) -> Dataset | None:
         """Load the owning dataset with the caller-owned database session."""
         return session.get(Dataset, self.dataset_id)
@@ -694,10 +686,6 @@ class Document(Base):
             or 0
         )
 
-    @property
-    def uploader(self):
-        return self.get_uploader(session=db.session())
-
     def get_uploader(self, *, session: Session) -> str | None:
         user = session.scalar(select(Account).where(Account.id == self.created_by))
         return user.name if user else None
@@ -709,10 +697,6 @@ class Document(Base):
     @property
     def last_update_date(self):
         return self.updated_at
-
-    @property
-    def doc_metadata_details(self) -> list[DocMetadataDetailItem] | None:
-        return self.get_doc_metadata_details(session=db.session())
 
     def get_doc_metadata_details(self, *, session: Session) -> list[DocMetadataDetailItem] | None:
         if self.doc_metadata:
