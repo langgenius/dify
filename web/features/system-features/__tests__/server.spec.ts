@@ -7,6 +7,7 @@ let queryClient: QueryClient
 const mocks = vi.hoisted(() => ({
   connection: vi.fn(async () => undefined),
   getSystemFeatures: vi.fn(),
+  queryKey: [['console', 'systemFeatures', 'get'], { type: 'query' }] as const,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -24,7 +25,7 @@ vi.mock('@/service/server', () => ({
     systemFeatures: {
       get: {
         queryOptions: () => ({
-          queryKey: ['console', 'system-features'],
+          queryKey: mocks.queryKey,
           queryFn: mocks.getSystemFeatures,
           retry: false,
         }),
@@ -36,12 +37,23 @@ vi.mock('@/service/server', () => ({
 describe('System Features server requests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.resetModules()
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.connection.mockResolvedValue(undefined)
     mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
   })
 
-  it.each(['prefetch', 'ensure'] as const)(
+  it('exposes only domain-level server operations', async () => {
+    const server = await import('../server')
+
+    expect(Object.keys(server).sort()).toEqual([
+      'dehydrateSystemFeatures',
+      'getOptionalSystemFeatures',
+      'getSystemFeatures',
+    ])
+  })
+
+  it.each(['optional', 'required'] as const)(
     'waits for the request boundary before the %s query starts',
     async (operation) => {
       let establishConnection!: () => void
@@ -51,9 +63,9 @@ describe('System Features server requests', () => {
             establishConnection = () => resolve(undefined)
           }),
       )
-      const { ensureSystemFeatures, prefetchSystemFeatures } = await import('../server')
+      const { getOptionalSystemFeatures, getSystemFeatures } = await import('../server')
 
-      const result = operation === 'prefetch' ? prefetchSystemFeatures() : ensureSystemFeatures()
+      const result = operation === 'optional' ? getOptionalSystemFeatures() : getSystemFeatures()
       await Promise.resolve()
 
       expect(mocks.getSystemFeatures).not.toHaveBeenCalled()
@@ -61,25 +73,84 @@ describe('System Features server requests', () => {
       establishConnection()
       await expect(result).resolves.toEqual({ deployment_edition: 'CLOUD' })
       expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
-      expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
-        deployment_edition: 'CLOUD',
-      })
     },
   )
 
-  it('keeps prefetch failures soft', async () => {
-    mocks.getSystemFeatures.mockRejectedValue(new Error('System Features unavailable'))
-    const { prefetchSystemFeatures } = await import('../server')
+  it('uses the same query key as client consumers', async () => {
+    const { systemFeaturesQueryOptions } = await import('../client')
+    const { getOptionalSystemFeatures } = await import('../server')
 
-    await expect(prefetchSystemFeatures()).resolves.toBeUndefined()
-    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
+    await getOptionalSystemFeatures()
+
+    expect(queryClient.getQueryCache().getAll()[0]?.queryKey).toEqual(
+      systemFeaturesQueryOptions().queryKey,
+    )
   })
 
-  it('preserves ensure failures for hard route gates', async () => {
+  it('reuses a successful optional lookup for the rest of the request', async () => {
+    const { getOptionalSystemFeatures } = await import('../server')
+
+    await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
+    await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
+
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
+  })
+
+  it('keeps optional failures soft without repeating the failed request', async () => {
+    mocks.getSystemFeatures.mockRejectedValue(new Error('System Features unavailable'))
+    const { getOptionalSystemFeatures } = await import('../server')
+
+    await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
+    await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
+
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryData(mocks.queryKey)).toBeUndefined()
+  })
+
+  it('does not dehydrate an optional failure', async () => {
+    mocks.getSystemFeatures.mockRejectedValue(new Error('System Features unavailable'))
+    const { dehydrateSystemFeatures, getOptionalSystemFeatures } = await import('../server')
+
+    await getOptionalSystemFeatures()
+
+    expect(dehydrateSystemFeatures().queries).toEqual([])
+  })
+
+  it('allows a required lookup to retry after an optional failure', async () => {
+    mocks.getSystemFeatures
+      .mockRejectedValueOnce(new Error('System Features unavailable'))
+      .mockResolvedValueOnce({ deployment_edition: 'CLOUD' })
+    const { getOptionalSystemFeatures, getSystemFeatures } = await import('../server')
+
+    await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
+    await expect(getSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
+
+    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves required failures for hard route gates', async () => {
     const error = new Error('System Features unavailable')
     mocks.getSystemFeatures.mockRejectedValue(error)
-    const { ensureSystemFeatures } = await import('../server')
+    const { getSystemFeatures } = await import('../server')
 
-    await expect(ensureSystemFeatures()).rejects.toBe(error)
+    await expect(getSystemFeatures()).rejects.toBe(error)
+  })
+
+  it('dehydrates the successful request-local query', async () => {
+    const { dehydrateSystemFeatures, getOptionalSystemFeatures } = await import('../server')
+
+    await getOptionalSystemFeatures()
+
+    expect(dehydrateSystemFeatures()).toMatchObject({
+      queries: [
+        {
+          queryKey: mocks.queryKey,
+          state: {
+            data: { deployment_edition: 'CLOUD' },
+            status: 'success',
+          },
+        },
+      ],
+    })
   })
 })

@@ -1,5 +1,24 @@
-import { dehydrate } from '@tanstack/react-query'
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+  QueryClientProvider,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { render, screen } from '@testing-library/react'
+import { createElement, Suspense } from 'react'
 import { getQueryClient } from '../get-query-client'
+
+function PendingQuery({
+  queryKey,
+  queryFn,
+}: {
+  queryKey: string[]
+  queryFn: () => Promise<string>
+}) {
+  const { data } = useSuspenseQuery({ queryKey, queryFn })
+  return createElement('div', null, data)
+}
 
 describe('getQueryClient', () => {
   it('includes pending queries in dehydrated state', async () => {
@@ -9,12 +28,14 @@ describe('getQueryClient', () => {
     const queryPromise = new Promise<string>((resolve) => {
       resolveQuery = resolve
     })
+    const serverQueryFn = vi.fn(() => queryPromise)
     const queryExecution = queryClient.query({
       queryKey,
-      queryFn: () => queryPromise,
+      queryFn: serverQueryFn,
     })
+    const dehydratedState = dehydrate(queryClient)
 
-    expect(dehydrate(queryClient).queries).toEqual(
+    expect(dehydratedState.queries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           queryKey,
@@ -23,8 +44,33 @@ describe('getQueryClient', () => {
       ]),
     )
 
+    const clientQueryFn = vi.fn(async () => 'client fallback')
+    const browserQueryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    render(
+      createElement(
+        QueryClientProvider,
+        { client: browserQueryClient },
+        createElement(
+          HydrationBoundary,
+          { state: dehydratedState },
+          createElement(
+            Suspense,
+            { fallback: createElement('div', null, 'Loading pending query') },
+            createElement(PendingQuery, { queryKey, queryFn: clientQueryFn }),
+          ),
+        ),
+      ),
+    )
+    expect(screen.getByText('Loading pending query')).toBeInTheDocument()
+
     resolveQuery('ready')
     await queryExecution
+    expect(await screen.findByText('ready')).toBeInTheDocument()
+    expect(serverQueryFn).toHaveBeenCalledTimes(1)
+    expect(clientQueryFn).not.toHaveBeenCalled()
     queryClient.removeQueries({ queryKey })
+    browserQueryClient.clear()
   })
 })
