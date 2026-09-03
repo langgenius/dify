@@ -1376,16 +1376,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
 
                     const listResponse = await context.client
-                      .fetchQuery(
-                        consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-                          input: {
-                            query: {
-                              pageNumber: 1,
-                              resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                      .query({
+                        ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions(
+                          {
+                            input: {
+                              query: {
+                                pageNumber: 1,
+                                resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                              },
                             },
                           },
-                        }),
-                      )
+                        ),
+                        staleTime: 0,
+                      })
                       .catch(() => undefined)
 
                     if (listResponse?.appInstances?.some((app) => app.id === appInstanceId)) break
