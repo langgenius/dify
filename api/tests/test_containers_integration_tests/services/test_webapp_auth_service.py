@@ -7,7 +7,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
 from services.enterprise.enterprise_service import WebAppAccessMode
 from services.webapp_auth_service import WebAppAuthService
@@ -19,9 +20,9 @@ def _create_account_and_tenant(session: Session) -> tuple[Account, Tenant]:
         email=f"test_{uuid.uuid4().hex[:8]}@example.com",
         name=fake.name(),
         interface_language="en-US",
-        status="active",
+        status=AccountStatus.ACTIVE,
     )
-    tenant = Tenant(name=fake.company(), status="normal")
+    tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
     session.add_all([account, tenant])
     session.flush()
     session.add(
@@ -59,8 +60,8 @@ def _create_app_and_site(session: Session, tenant: Tenant) -> tuple[App, Site]:
         code=fake.unique.lexify(text="??????"),
         description=fake.text(max_nb_chars=100),
         default_language="en-US",
-        status="normal",
-        customize_token_strategy="not_allow",
+        status=AppStatus.NORMAL,
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
     )
     session.add(site)
     session.commit()

@@ -52,6 +52,26 @@ class ForgotPasswordResetPayload(BaseModel):
         return valid_password(value)
 
 
+class ForgotPasswordTokenBase(BaseModel):
+    token_type: Literal["reset_password"] = "reset_password"
+    account_id: str | None = None
+    email: EmailStr
+    code: str = Field(min_length=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ForgotPasswordVerificationTokenData(ForgotPasswordTokenBase):
+    pass
+
+
+class ForgotPasswordResetTokenData(ForgotPasswordTokenBase):
+    phase: Literal["reset"]
+
+
+type ForgotPasswordTokenData = ForgotPasswordResetTokenData | ForgotPasswordVerificationTokenData
+
+
 class ChangeEmailTokenBase(BaseModel):
     """Stored change-email token payload.
 

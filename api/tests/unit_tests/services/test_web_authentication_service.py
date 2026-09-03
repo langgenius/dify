@@ -197,7 +197,7 @@ def service_fixture() -> ServiceFixture:
 
 
 def request_context() -> RequestContext:
-    return RequestContext("request-1", "trace-1", "", None, "127.0.0.1")
+    return RequestContext("request-1", "trace-1", "", "", "127.0.0.1")
 
 
 def test_password_login_authenticates_and_issues_token(service_fixture: ServiceFixture) -> None:

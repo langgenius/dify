@@ -37,7 +37,7 @@ def app() -> Flask:
 
 @pytest.fixture
 def context() -> RequestContext:
-    return RequestContext("request-1", "trace-1", "", None, "127.0.0.1")
+    return RequestContext("request-1", "trace-1", "", "", "127.0.0.1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,7 +120,7 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
         result = unwrap(LoginStatusApi.get)(
             LoginStatusApi(),
             LoginStatusQuery(app_code="site-code", user_id="session-1"),
-            RequestContext("request-1", None, "", None, "127.0.0.1"),
+            RequestContext("request-1", None, "", "", "127.0.0.1"),
         )
 
     assert result == {"logged_in": True, "app_logged_in": False}

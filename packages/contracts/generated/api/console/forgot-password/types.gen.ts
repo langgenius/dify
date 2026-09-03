@@ -10,7 +10,6 @@ export type ForgotPasswordSendPayload = {
 }
 
 export type ForgotPasswordEmailResponse = {
-  code?: string | null
   data?: string | null
   result: string
 }

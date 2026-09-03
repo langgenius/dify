@@ -58,7 +58,7 @@ def test_find_app_id_by_code_returns_matching_site_app(sqlite_session_factory: s
                 code="site-code",
                 title="Test Site",
                 default_language="en-US",
-                customize_token_strategy="uuid",
+                customize_token_strategy=CustomizeTokenStrategy.UUID,
             )
         )
 

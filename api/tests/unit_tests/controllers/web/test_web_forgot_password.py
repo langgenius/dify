@@ -30,7 +30,7 @@ from services.web_authentication_service import (
 
 @pytest.fixture
 def context() -> RequestContext:
-    return RequestContext("request-1", "trace-1", "", None, "127.0.0.1")
+    return RequestContext("request-1", "trace-1", "", "", "127.0.0.1")
 
 
 @dataclass(frozen=True, slots=True)

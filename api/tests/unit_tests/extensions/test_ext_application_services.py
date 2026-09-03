@@ -1,6 +1,7 @@
 """Tests for application-service dependency wiring."""
 
 import json
+from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -20,7 +21,7 @@ from repositories.account_integration_repository import SQLAlchemyAccountIntegra
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import recommended_app_catalog_gateway
+from services import account_forgot_password_service, recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -34,6 +35,11 @@ from services.account_email_registration_adapters import (
     BillingAccountRegistrationPolicyGateway,
     RedisEmailRegistrationSecurityGateway,
     TokenManagerEmailRegistrationTokenGateway,
+)
+from services.account_forgot_password_adapters import (
+    RateLimiterForgotPasswordSendLimiter,
+    RedisForgotPasswordSecurityGateway,
+    RedisForgotPasswordTokenGateway,
 )
 from services.account_service import AccountService
 from services.app_site_service import AppSiteService
@@ -399,6 +405,23 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
     assert services.accounts.password._accounts is accounts
+    forgot_password = services.accounts.forgot_password
+    assert forgot_password._accounts is accounts
+    assert forgot_password._passwords is services.accounts.password._passwords
+    tokens = cast(RedisForgotPasswordTokenGateway, forgot_password._tokens)
+    send_limiter = cast(RateLimiterForgotPasswordSendLimiter, forgot_password._send_limits)
+    security = cast(RedisForgotPasswordSecurityGateway, forgot_password._security)
+    assert tokens._redis is send_limiter._rate_limiter._redis_client
+    assert send_limiter._rate_limiter.prefix == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX
+    assert (
+        send_limiter._rate_limiter.max_attempts
+        == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS
+    )
+    assert (
+        security._verification_failure_limit
+        == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT
+    )
+    assert security._verification_key_prefix == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
     assert services.accounts.change_email._accounts is accounts

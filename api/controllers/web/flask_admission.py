@@ -38,7 +38,7 @@ def web_anonymous_admission[T, **P, R](
                 request_id=get_request_id(),
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
                 account_id="",
-                active_workspace_id=None,
+                active_workspace_id="",
                 remote_ip=extract_remote_ip(request),
             )
             return view(self, context, *args, **kwargs)

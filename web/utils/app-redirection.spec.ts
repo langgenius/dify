@@ -14,10 +14,30 @@ describe('app-redirection', () => {
    * - App mode (workflow, advanced-chat, chat, completion, agent-chat)
    */
   describe('getRedirectionPath', () => {
-    it('returns access point path when app ACL cannot access guarded pages', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+    it('returns access point path when it is the only accessible app page', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPointView],
+      }
       const result = getRedirectionPath(app)
       expect(result).toBe('/app/app-123/access-point')
+    })
+
+    it('returns the app list when no app page is accessible', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+
+      expect(getRedirectionPath(app)).toBe('/apps')
+    })
+
+    it('returns the access point path for Access Point managers', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPointManage],
+      }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/access-point')
     })
 
     it('returns workflow path for workflow mode when app ACL can access layout', () => {
@@ -92,7 +112,11 @@ describe('app-redirection', () => {
     })
 
     it('handles different app IDs', () => {
-      const app1 = { id: 'abc-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+      const app1 = {
+        id: 'abc-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPointView],
+      }
       const app2 = {
         id: 'xyz-789',
         mode: AppModeEnum.WORKFLOW,
@@ -125,11 +149,11 @@ describe('app-redirection', () => {
       expect(getRedirectionPath(app, { isRbacEnabled: true })).toBe('/app/app-123/access-config')
     })
 
-    it('returns access point path for access config only apps when RBAC is disabled', () => {
+    it('returns access point path when RBAC is disabled and Access Point remains accessible', () => {
       const app = {
         id: 'app-123',
         mode: AppModeEnum.CHAT,
-        permission_keys: [AppACLPermission.AccessConfig],
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
       }
 
       expect(getRedirectionPath(app, { isRbacEnabled: false })).toBe('/app/app-123/access-point')
@@ -173,8 +197,12 @@ describe('app-redirection', () => {
     /**
      * Tests that the redirection function is called with the correct path
      */
-    it('calls redirection function with access point path when app ACL cannot access guarded pages', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+    it('calls redirection function with access point path when it is accessible', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPointView],
+      }
       const mockRedirect = vi.fn()
 
       getRedirection(app, mockRedirect)

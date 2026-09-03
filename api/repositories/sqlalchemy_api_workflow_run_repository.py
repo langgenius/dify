@@ -1229,9 +1229,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Delete a workflow pause state.
 
-        Permanently removes the pause state for a workflow run, including
-        the stored state file. Used for cleanup operations when a paused
-        workflow is no longer needed.
+        Removes the pause record for a workflow run and attempts to delete its
+        stored state file. Used for cleanup operations when a paused workflow
+        is no longer needed.
 
         Args:
             pause_entity: The pause entity to delete
@@ -1241,8 +1241,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             _WorkflowRunError: If workflow is not paused
 
         Note:
-            This operation is irreversible. The stored workflow state will be
-            permanently deleted along with the pause record.
+            Storage deletion is best-effort. If it fails, the pause record is
+            still deleted and the orphaned object key is logged for cleanup.
         """
         with self._session_maker() as session, session.begin():
             # Get the pause model by ID
@@ -1252,8 +1252,18 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             self._delete_pause_model(session, pause_model)
 
     @staticmethod
-    def _delete_pause_model(session: Session, pause_model: WorkflowPause):
-        storage.delete(pause_model.state_object_key)
+    def _delete_pause_model(session: Session, pause_model: WorkflowPause) -> None:
+        try:
+            storage.delete(pause_model.state_object_key)
+        except Exception:
+            # Keeping the database row would block the next pause because workflow_run_id is unique.
+            logger.exception(
+                "Failed to delete state object for workflow pause; continuing with pause record deletion, "
+                "pause_id=%s, workflow_run_id=%s, object_key=%s",
+                pause_model.id,
+                pause_model.workflow_run_id,
+                pause_model.state_object_key,
+            )
 
         # Delete the pause record
         session.delete(pause_model)
