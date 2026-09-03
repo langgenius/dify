@@ -54,6 +54,9 @@ def test_preview_task_persists_running_and_completed_states() -> None:
             return_value=session_context,
         ),
         patch("tasks.knowledge_fs_initial_source_preview_tasks.session_factory.get_session_maker"),
+        patch(
+            "tasks.knowledge_fs_initial_source_preview_tasks.cleanup_knowledge_fs_initial_source_preview.apply_async"
+        ) as schedule_cleanup,
     ):
         run_knowledge_fs_initial_source_preview.run(
             tenant_id="tenant-1",
@@ -79,6 +82,12 @@ def test_preview_task_persists_running_and_completed_states() -> None:
             result=result,
         ),
     ]
+    job_service.store_content.assert_called_once_with(
+        tenant_id="tenant-1", account_id="account-1", job_id="job-1", result=result
+    )
+    schedule_cleanup.assert_called_once_with(
+        kwargs={"account_id": "account-1", "job_id": "job-1", "tenant_id": "tenant-1"}, countdown=3600
+    )
     job_service.release_active_job.assert_called_once_with(
         tenant_id="tenant-1",
         account_id="account-1",

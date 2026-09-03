@@ -373,6 +373,7 @@ export function registerSourceProductHandlers(input: {
             ...principal(context),
             idempotencyKey: headers["Idempotency-Key"],
             knowledgeSpaceId: params.id,
+            ...(body.pages ? { pages: body.pages } : {}),
             sourceId: params.sourceId,
             sourceUrls: body.sourceUrls,
           }),

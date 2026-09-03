@@ -365,6 +365,13 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       claimableAt.delete(run.id);
       return save({
         ...run,
+        ...(terminal && run.payload.stagedPages
+          ? {
+              payload: Object.fromEntries(
+                Object.entries(run.payload).filter(([key]) => key !== "stagedPages"),
+              ),
+            }
+          : {}),
         activeSlot: terminal ? undefined : run.activeSlot,
         checkpoint:
           state === "preview_ready"

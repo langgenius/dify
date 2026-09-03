@@ -72,7 +72,8 @@ def run_knowledge_fs_initial_source_preview(
             ),
         )
         result.configuration_fingerprint = knowledge_fs_initial_preview_configuration_fingerprint(preview_payload)
-        job_service.transition_status(
+        job_service.store_content(tenant_id=tenant_id, account_id=account_id, job_id=job_id, result=result)
+        completed = job_service.transition_status(
             tenant_id=tenant_id,
             account_id=account_id,
             job_id=job_id,
@@ -80,6 +81,11 @@ def run_knowledge_fs_initial_source_preview(
             allowed_from=("running",),
             result=result,
         )
+        if completed:
+            cleanup_knowledge_fs_initial_source_preview.apply_async(
+                kwargs={"account_id": account_id, "job_id": job_id, "tenant_id": tenant_id},
+                countdown=60 * 60,
+            )
     except KnowledgeFSInitialSourcePreviewCanceledError:
         logger.info(
             "KnowledgeFS initial source preview canceled",
@@ -118,4 +124,9 @@ def _preview_was_canceled(
         return True
 
 
-__all__ = ["run_knowledge_fs_initial_source_preview"]
+@shared_task(queue="dataset")
+def cleanup_knowledge_fs_initial_source_preview(*, tenant_id: str, account_id: str, job_id: str) -> None:
+    KnowledgeFSInitialSourcePreviewJobService.cleanup_content(tenant_id=tenant_id, account_id=account_id, job_id=job_id)
+
+
+__all__ = ["cleanup_knowledge_fs_initial_source_preview", "run_knowledge_fs_initial_source_preview"]

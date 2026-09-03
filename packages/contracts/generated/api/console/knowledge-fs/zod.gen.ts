@@ -480,13 +480,6 @@ export const zKnowledgeFsSourceDeletePayload = z.object({
 })
 
 /**
- * KnowledgeFSCrawlImportPayload
- */
-export const zKnowledgeFsCrawlImportPayload = z.object({
-  sourceUrls: z.array(z.string()).min(1).max(200),
-})
-
-/**
  * KnowledgeFSSourceSyncPolicyResponse
  */
 export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
@@ -1944,6 +1937,24 @@ export const zKnowledgeFsSourceEditSyncPolicyPayload = z.object({
 })
 
 /**
+ * KnowledgeFSCrawlImportPagePayload
+ */
+export const zKnowledgeFsCrawlImportPagePayload = z.object({
+  content: z.string().max(10000000),
+  description: z.string().nullish(),
+  sourceUrl: z.string().min(1).max(4096),
+  title: z.string().max(500).nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlImportPayload
+ */
+export const zKnowledgeFsCrawlImportPayload = z.object({
+  pages: z.array(zKnowledgeFsCrawlImportPagePayload).min(1).max(200).nullish(),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
  * KnowledgeFSSourceImportPagePayload
  */
 export const zKnowledgeFsSourceImportPagePayload = z.object({
@@ -2282,6 +2293,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255).nullish(),
   previewConfigurationFingerprint: z.string().length(64).nullish(),
+  previewJobId: z.string().min(1).max(255).nullish(),
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   root_url: z.string().min(1).max(4096),

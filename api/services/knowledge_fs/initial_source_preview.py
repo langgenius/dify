@@ -110,6 +110,7 @@ class KnowledgeFSInitialSourcePreviewService:
                 _raise_if_canceled(is_canceled)
                 for website_page in website_message.result.web_info_list or []:
                     pages_by_url[website_page.source_url] = KnowledgeFSInitialSourcePreviewPageResponse(
+                        content=website_page.content,
                         description=website_page.description or None,
                         source_url=website_page.source_url,
                         title=website_page.title or None,

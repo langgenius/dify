@@ -622,6 +622,9 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         const terminal = state === "completed" || state === "zero_results";
         const next = await writeFenced(database, tx, current, {
           ...current,
+          ...(terminal && current.payload.stagedPages
+            ? { payload: Object.fromEntries(Object.entries(current.payload).filter(([key]) => key !== "stagedPages")) }
+            : {}),
           activeSlot: terminal ? undefined : current.activeSlot,
           checkpoint:
             state === "preview_ready"

@@ -319,6 +319,18 @@ export const createSourceCrawlImportWorkflowRoute = createRoute({
         "application/json": {
           schema: z
             .object({
+              pages: z
+                .array(
+                  z.object({
+                    content: z.string().max(10_000_000),
+                    description: z.string().nullable().optional(),
+                    sourceUrl: z.string().url().max(4096),
+                    title: z.string().nullable().optional(),
+                  }),
+                )
+                .min(1)
+                .max(200)
+                .optional(),
               sourceUrls: z.array(z.string().url().max(4096)).min(1).max(200),
             })
             .strict(),

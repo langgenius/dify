@@ -1664,6 +1664,7 @@ describe('CreateKnowledgePage', () => {
             url: 'https://docs.dify.ai',
           },
           pluginId: 'langgenius/firecrawl_datasource',
+          previewJobId: 'website-preview-1',
           provider: 'firecrawl',
           providerDisplayName: 'Firecrawl',
           root_url: 'https://docs.dify.ai/',

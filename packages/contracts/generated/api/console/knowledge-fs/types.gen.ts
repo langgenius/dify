@@ -1023,6 +1023,7 @@ export type KnowledgeFsAsyncSourceImportPayload =
     } & KnowledgeFsAsyncOnlineDriveImportPayload)
 
 export type KnowledgeFsCrawlImportPayload = {
+  pages?: Array<KnowledgeFsCrawlImportPagePayload> | null
   sourceUrls: Array<string>
 }
 
@@ -1345,6 +1346,7 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
   }
   pluginId?: string | null
   previewConfigurationFingerprint?: string | null
+  previewJobId?: string | null
   provider: string
   providerDisplayName?: string | null
   root_url: string
@@ -1992,6 +1994,13 @@ export type KnowledgeFsAsyncOnlineDriveImportPayload = {
   items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
   kind: 'online-drive-import'
   syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
+export type KnowledgeFsCrawlImportPagePayload = {
+  content: string
+  description?: string | null
+  sourceUrl: string
+  title?: string | null
 }
 
 export type KnowledgeFsSourceFileBucketResponse = {

@@ -500,6 +500,12 @@ export interface SourceProductWorkflowService {
     input: SourceWorkflowPrincipal & {
       readonly idempotencyKey: string;
       readonly knowledgeSpaceId: string;
+      readonly pages?: readonly {
+        readonly content: string;
+        readonly description?: string | null;
+        readonly sourceUrl: string;
+        readonly title?: string | null;
+      }[];
       readonly sourceId: string;
       readonly sourceUrls: readonly string[];
     },
@@ -764,11 +770,24 @@ export function createSourceProductWorkflowService(input: {
           `Crawl import must contain 1-${maxImportItems} source URLs`,
         );
       }
+      if (
+        request.pages &&
+        (request.pages.length !== sourceUrls.length ||
+          request.pages.some((page, index) => page.sourceUrl !== sourceUrls[index]))
+      ) {
+        throw new SourceWorkflowError(
+          "SOURCE_IMPORT_ITEMS_INVALID",
+          "Crawl import pages must match source URLs in order",
+        );
+      }
       return start(request, {
         idempotencyKey: request.idempotencyKey,
         knowledgeSpaceId: request.knowledgeSpaceId,
         kind: "crawl-import",
-        payload: { selectedSourceUrls: sourceUrls },
+        payload: {
+          selectedSourceUrls: sourceUrls,
+          ...(request.pages ? { stagedPages: request.pages } : {}),
+        },
         progressTotal: sourceUrls.length,
         requiredPermissionScope: requiredSourceScope(source),
         sourceId: request.sourceId,

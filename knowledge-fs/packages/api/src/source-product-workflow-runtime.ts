@@ -780,6 +780,26 @@ async function processSelectedCrawlImport(
   execution: RuntimeExecution,
   source: Source,
 ): Promise<void> {
+  const stagedPages = selectedStagedPages(execution.run());
+  if (stagedPages.length) {
+    const selectedPages = await stageCrawlPages(input, execution, stagedPages, (page) =>
+      createHash("sha256").update(page.sourceUrl, "utf8").digest("hex"),
+    );
+    await execution.mutate((current) =>
+      input.repository.checkpoint({
+        checkpoint: "selection-frozen",
+        fence: fence(current),
+        now: iso((input.now ?? Date.now)()),
+        progressCompleted: 0,
+        progressFailed: 0,
+        progressSkipped: 0,
+        progressTotal: selectedPages.length,
+        state: "importing",
+      }),
+    );
+    await importCrawlPages(input, execution, source, selectedPages);
+    return;
+  }
   if (!input.websiteCrawl) {
     throw runtimeError(
       "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
@@ -3262,6 +3282,18 @@ function selectedSourceUrls(run: SourceWorkflowRun): readonly string[] {
     throw runtimeError("SOURCE_WORKFLOW_PAYLOAD_INVALID", "Crawl source URL selection is invalid");
   }
   return value as string[];
+}
+
+function selectedStagedPages(run: SourceWorkflowRun): readonly CrawledPage[] {
+  const value = run.payload.stagedPages;
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (page): page is CrawledPage =>
+      typeof page === "object" &&
+      page !== null &&
+      typeof page.content === "string" &&
+      typeof page.sourceUrl === "string",
+  );
 }
 
 function requiredPayloadString(record: Record<string, unknown>, key: string): string {

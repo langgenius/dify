@@ -232,6 +232,7 @@ class KnowledgeFSInitialWebsiteSourcePayload(KnowledgeFSInitialSyncPolicyPayload
     preview_configuration_fingerprint: str | None = Field(
         default=None, min_length=64, max_length=64, alias="previewConfigurationFingerprint"
     )
+    preview_job_id: str | None = Field(default=None, min_length=1, max_length=255, alias="previewJobId")
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
@@ -284,6 +285,7 @@ def knowledge_fs_initial_preview_configuration_fingerprint(
 
 
 class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
+    content: str | None = Field(default=None, exclude=True)
     description: str | None = None
     source_url: str = Field(validation_alias=AliasChoices("source_url", "sourceUrl"))
     title: str | None = None
@@ -2537,8 +2539,18 @@ class KnowledgeFSAsyncSourceImportPayload(RootModel[KnowledgeFSAsyncSourceImport
     pass
 
 
+class KnowledgeFSCrawlImportPagePayload(BaseModel):
+    content: str = Field(max_length=10_000_000)
+    description: str | None = None
+    source_url: str = Field(min_length=1, max_length=4_096, alias="sourceUrl")
+    title: str | None = Field(default=None, max_length=500)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSCrawlImportPayload(BaseModel):
     source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
+    pages: list[KnowledgeFSCrawlImportPagePayload] | None = Field(default=None, min_length=1, max_length=200)
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
@@ -2549,6 +2561,12 @@ class KnowledgeFSCrawlImportPayload(BaseModel):
         if any(not source_url or len(source_url) > 4_096 for source_url in normalized):
             raise ValueError("source URLs must be non-empty and at most 4096 characters")
         return normalized
+
+    @model_validator(mode="after")
+    def validate_pages(self) -> KnowledgeFSCrawlImportPayload:
+        if self.pages is not None and [page.source_url for page in self.pages] != self.source_urls:
+            raise ValueError("crawl import pages must match source URLs in order")
+        return self
 
 
 class KnowledgeFSCrawledPageResponse(ResponseModel):

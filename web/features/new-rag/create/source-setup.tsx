@@ -201,6 +201,7 @@ function CreateSourceSetupSession({
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const crawlAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
+  const previewFingerprintRef = useRef<string | undefined>(undefined)
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],
@@ -257,6 +258,7 @@ function CreateSourceSetupSession({
     crawlAttemptRef.current += 1
     const jobId = previewJobIdRef.current
     previewJobIdRef.current = undefined
+    previewFingerprintRef.current = undefined
     if (jobId)
       void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
         .delete({
@@ -278,7 +280,6 @@ function CreateSourceSetupSession({
         params: { job_id: jobId },
       })
       if (response.status === 'completed' && response.result) {
-        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
         setPreviewPages(
           (response.result.pages ?? []).map((page) => ({
             description: page.description ?? undefined,
@@ -287,6 +288,7 @@ function CreateSourceSetupSession({
             title: page.title ?? page.source_url,
           })),
         )
+        previewFingerprintRef.current = response.result.configuration_fingerprint ?? undefined
         setCrawlState('success')
       } else if (response.status === 'canceled') {
         if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
@@ -382,8 +384,8 @@ function CreateSourceSetupSession({
         })
       }
       if (crawlAttemptRef.current !== attempt) return
-      previewJobIdRef.current = undefined
       if (response.status !== 'completed' || !response.result) {
+        previewJobIdRef.current = undefined
         setCrawlState(response.status === 'canceled' ? 'stopped' : 'error')
         return
       }
@@ -395,11 +397,13 @@ function CreateSourceSetupSession({
           title: page.title ?? page.source_url,
         })),
       )
+      previewFingerprintRef.current = response.result.configuration_fingerprint ?? undefined
       setCrawlState('success')
     } catch {
       if (crawlAttemptRef.current === attempt) {
         const jobId = previewJobIdRef.current
         previewJobIdRef.current = undefined
+        previewFingerprintRef.current = undefined
         if (jobId)
           void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
             .delete({
@@ -447,6 +451,10 @@ function CreateSourceSetupSession({
       provider: installedProviderOption.plugin.provider,
       providerDisplayName: installedProviderOption.label,
       parameters,
+      ...(previewJobIdRef.current ? { previewJobId: previewJobIdRef.current } : {}),
+      ...(previewFingerprintRef.current
+        ? { previewConfigurationFingerprint: previewFingerprintRef.current }
+        : {}),
       root_url: sourceUri,
       selection: selectedPages.map((page) => ({
         source_url: page.sourceUrl,

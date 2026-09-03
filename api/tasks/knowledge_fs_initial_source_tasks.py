@@ -280,16 +280,33 @@ def _start_workflow(
     payload: KnowledgeFSInitialSourcePayload,
 ):
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
-        return facade.import_selected_source_crawl(
+        pages = None
+        if payload.preview_job_id:
+            from services.knowledge_fs.initial_source_preview_job import KnowledgeFSInitialSourcePreviewJobService
+
+            pages = KnowledgeFSInitialSourcePreviewJobService.selected_content(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                job_id=payload.preview_job_id,
+                source_urls=[selection.source_url for selection in payload.selection],
+                configuration_fingerprint=knowledge_fs_initial_preview_configuration_fingerprint(payload),
+            )
+        workflow = facade.import_selected_source_crawl(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             source_id=source_id,
             payload=KnowledgeFSCrawlImportPayload(
                 sourceUrls=[selection.source_url for selection in payload.selection],
+                pages=pages,
             ),
             idempotency_key=f"{request_id}:crawl-import",
         )
+        if payload.preview_job_id:
+            KnowledgeFSInitialSourcePreviewJobService.cleanup_content(
+                tenant_id=tenant_id, account_id=account_id, job_id=payload.preview_job_id
+            )
+        return workflow
     if isinstance(payload, KnowledgeFSInitialOnlineDocumentSourcePayload):
         import_payload = KnowledgeFSSourceWorkflowImportPayload(
             KnowledgeFSOnlineDocumentWorkflowImportPayload(

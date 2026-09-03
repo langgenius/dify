@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
+from hashlib import sha256
 from typing import Literal
 
 from celery import current_app as celery_app
 
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from models.account import Account
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.product_dto import (
@@ -19,6 +22,8 @@ from services.knowledge_fs.product_dto import (
 )
 
 _JOB_TTL_SECONDS = 60 * 60
+_CONTENT_MANIFEST_TTL_SECONDS = 2 * _JOB_TTL_SECONDS
+logger = logging.getLogger(__name__)
 _RELEASE_ACTIVE_JOB_SCRIPT = """
 local current = redis.call('GET', KEYS[1])
 if current == ARGV[1] then
@@ -56,6 +61,10 @@ def _job_key(*, tenant_id: str, account_id: str, job_id: str) -> str:
 
 def _active_job_key(*, tenant_id: str, account_id: str) -> str:
     return f"knowledge_fs:initial_source_preview:{tenant_id}:{account_id}:active"
+
+
+def _content_key(*, tenant_id: str, account_id: str, job_id: str) -> str:
+    return f"knowledge_fs:initial_source_preview:{tenant_id}:{account_id}:{job_id}:content"
 
 
 class KnowledgeFSInitialSourcePreviewJobService:
@@ -106,6 +115,91 @@ class KnowledgeFSInitialSourcePreviewJobService:
         if raw is None:
             raise KnowledgeFSInitialSourcePreviewJobNotFoundError(job_id)
         return KnowledgeFSInitialSourcePreviewJobResponse.model_validate_json(raw)
+
+    @staticmethod
+    def store_content(
+        *, tenant_id: str, account_id: str, job_id: str, result: KnowledgeFSInitialSourcePreviewResponse
+    ) -> None:
+        pages: dict[str, dict[str, object]] = {}
+        saved_keys: list[str] = []
+        try:
+            for page in result.pages or []:
+                if page.content is None:
+                    continue
+                page_digest = sha256(page.source_url.encode()).hexdigest()
+                object_key = f"knowledge_fs/initial_source_previews/{tenant_id}/{account_id}/{job_id}/{page_digest}.md"
+                storage.save(object_key, page.content.encode())
+                saved_keys.append(object_key)
+                pages[page.source_url] = {
+                    "description": page.description,
+                    "objectKey": object_key,
+                    "sourceUrl": page.source_url,
+                    "title": page.title,
+                }
+            redis_client.setex(
+                _content_key(tenant_id=tenant_id, account_id=account_id, job_id=job_id),
+                _CONTENT_MANIFEST_TTL_SECONDS,
+                json.dumps(pages, ensure_ascii=False, separators=(",", ":")),
+            )
+        except Exception:
+            for object_key in saved_keys:
+                storage.delete(object_key)
+            raise
+
+    @classmethod
+    def selected_content(
+        cls,
+        *,
+        tenant_id: str,
+        account_id: str,
+        job_id: str,
+        source_urls: list[str],
+        configuration_fingerprint: str,
+    ) -> list[dict[str, object]]:
+        job = cls.get(tenant_id=tenant_id, account_id=account_id, job_id=job_id)
+        if (
+            job.status != "completed"
+            or job.result is None
+            or job.result.configuration_fingerprint != configuration_fingerprint
+        ):
+            raise KnowledgeFSInitialSourcePreviewJobNotFoundError(job_id)
+        raw = redis_client.get(_content_key(tenant_id=tenant_id, account_id=account_id, job_id=job_id))
+        if raw is None:
+            raise KnowledgeFSInitialSourcePreviewJobNotFoundError(job_id)
+        pages = json.loads(raw)
+        try:
+            selected = [pages[source_url] for source_url in source_urls]
+            return [
+                {
+                    "content": storage.load_once(page["objectKey"]).decode(),
+                    "description": page["description"],
+                    "sourceUrl": page["sourceUrl"],
+                    "title": page["title"],
+                }
+                for page in selected
+            ]
+        except (KeyError, TypeError, UnicodeDecodeError) as exc:
+            raise KnowledgeFSInitialSourcePreviewJobNotFoundError(job_id) from exc
+
+    @staticmethod
+    def cleanup_content(*, tenant_id: str, account_id: str, job_id: str) -> None:
+        key = _content_key(tenant_id=tenant_id, account_id=account_id, job_id=job_id)
+        raw = redis_client.get(key)
+        if raw is None:
+            return
+        pages = json.loads(raw)
+        cleanup_failed = False
+        for page in pages.values():
+            try:
+                storage.delete(page["objectKey"])
+            except Exception:
+                cleanup_failed = True
+                logger.exception(
+                    "KnowledgeFS initial source preview content cleanup failed",
+                    extra={"account_id": account_id, "job_id": job_id, "tenant_id": tenant_id},
+                )
+        if not cleanup_failed:
+            redis_client.delete(key)
 
     @classmethod
     def cancel(cls, *, tenant_id: str, account_id: str, job_id: str) -> KnowledgeFSInitialSourcePreviewJobResponse:

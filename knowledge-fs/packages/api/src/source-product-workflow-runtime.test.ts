@@ -1105,6 +1105,44 @@ describe("source-product workflow provider imports", () => {
     });
   });
 
+  it("imports staged preview pages without calling the website provider", async () => {
+    const source = sourceRecord("staged-crawl-import", { type: "web" });
+    const bodies = new Map<string, Uint8Array>();
+    const crawl = vi.fn();
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: bodies.size, hasMore: false })),
+        get: vi.fn(async ({ contentObjectKey }) => bodies.get(contentObjectKey) ?? null),
+        put: vi.fn(async ({ body, pageId }) => {
+          const key = `staged/${pageId}`;
+          bodies.set(key, body);
+          return key;
+        }),
+      },
+      inventory: [],
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: ["https://example.test/selected"],
+        stagedPages: [
+          {
+            content: "preview body",
+            sourceUrl: "https://example.test/selected",
+            title: "Selected",
+          },
+        ],
+      }),
+      source,
+      websiteCrawl: { crawl },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(crawl).not.toHaveBeenCalled();
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      payload: { selectedSourceUrls: ["https://example.test/selected"] },
+      progressCompleted: 1,
+      state: "completed",
+    });
+  });
+
   it("fetches every selected URL even when multiple selections resolve to the same page", async () => {
     const source = sourceRecord("ambiguous-crawl-import", { type: "web" });
     const crawl = vi.fn(async (_input: WebsiteCrawlInput) => ({

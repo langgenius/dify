@@ -11,7 +11,11 @@ from services.knowledge_fs.initial_source_preview_job import (
     KnowledgeFSInitialSourcePreviewJobNotFoundError,
     KnowledgeFSInitialSourcePreviewJobService,
 )
-from services.knowledge_fs.product_dto import KnowledgeFSInitialWebsiteSourcePreviewPayload
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSInitialSourcePreviewPageResponse,
+    KnowledgeFSInitialSourcePreviewResponse,
+    KnowledgeFSInitialWebsiteSourcePreviewPayload,
+)
 
 
 def _payload() -> KnowledgeFSInitialWebsiteSourcePreviewPayload:
@@ -109,9 +113,7 @@ def test_start_releases_the_active_preview_slot_when_enqueue_fails() -> None:
         service.start(tenant_id="tenant-1", account=account, payload=_payload())
 
     job_id = redis_eval.call_args.args[3]
-    delete.assert_called_once_with(
-        f"knowledge_fs:initial_source_preview:tenant-1:account-1:{job_id}"
-    )
+    delete.assert_called_once_with(f"knowledge_fs:initial_source_preview:tenant-1:account-1:{job_id}")
     assert redis_eval.call_args.args[2:] == (
         "knowledge_fs:initial_source_preview:tenant-1:account-1:active",
         job_id,
@@ -201,3 +203,60 @@ def test_terminal_canceled_status_cannot_be_overwritten() -> None:
     assert transitioned is False
     assert '"status":"completed"' in eval_status.call_args.args[3]
     assert eval_status.call_args.args[5:] == ("running",)
+
+
+def test_completed_preview_keeps_content_private_and_selectable() -> None:
+    result = KnowledgeFSInitialSourcePreviewResponse(
+        configurationFingerprint="a" * 64,
+        kind="website_crawl",
+        pages=[
+            KnowledgeFSInitialSourcePreviewPageResponse(
+                content="# Preview body",
+                source_url="https://docs.dify.ai/page",
+                title="Page",
+            )
+        ],
+    )
+    cache: dict[str, str] = {}
+    objects: dict[str, bytes] = {}
+
+    with (
+        patch(
+            "services.knowledge_fs.initial_source_preview_job.redis_client.setex",
+            side_effect=lambda key, _ttl, value: cache.__setitem__(key, value),
+        ),
+        patch(
+            "services.knowledge_fs.initial_source_preview_job.storage.save",
+            side_effect=lambda key, value: objects.__setitem__(key, value),
+        ),
+    ):
+        KnowledgeFSInitialSourcePreviewJobService.set_status(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1", status="completed", result=result
+        )
+        KnowledgeFSInitialSourcePreviewJobService.store_content(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1", result=result
+        )
+
+    public_value = cache["knowledge_fs:initial_source_preview:tenant-1:account-1:job-1"]
+    assert "Preview body" not in public_value
+
+    with (
+        patch("services.knowledge_fs.initial_source_preview_job.redis_client.get", side_effect=cache.get),
+        patch("services.knowledge_fs.initial_source_preview_job.storage.load_once", side_effect=objects.get),
+    ):
+        pages = KnowledgeFSInitialSourcePreviewJobService.selected_content(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            job_id="job-1",
+            source_urls=["https://docs.dify.ai/page"],
+            configuration_fingerprint="a" * 64,
+        )
+
+    assert pages == [
+        {
+            "content": "# Preview body",
+            "description": None,
+            "sourceUrl": "https://docs.dify.ai/page",
+            "title": "Page",
+        }
+    ]
