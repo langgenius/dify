@@ -48,6 +48,13 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.account_email import normalize_email
+from services.account_forgot_password_service import (
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+    FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT,
+    FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX,
+)
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
@@ -155,7 +162,11 @@ class AccountService:
     CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
 
-    reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
+    reset_password_rate_limiter = RateLimiter(
+        prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+        max_attempts=FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+        time_window=FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+    )
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
@@ -163,7 +174,6 @@ class AccountService:
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
 
     LOGIN_MAX_ERROR_LIMITS = 5
-    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
 
@@ -1001,7 +1011,7 @@ class AccountService:
     @staticmethod
     @redis_fallback(default_return=None)
     def add_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             count = 0
@@ -1011,20 +1021,20 @@ class AccountService:
     @staticmethod
     @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         count = redis_client.get(key)
         if count is None:
             return False
 
         count = int(count)
-        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
+        if count > FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT:
             return True
         return False
 
     @staticmethod
     @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
+        key = f"{FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX}:{email}"
         redis_client.delete(key)
 
     @staticmethod
