@@ -37,45 +37,6 @@ def upgrade():
         ),
         sa.PrimaryKeyConstraint("tenant_id", name=op.f("tenant_model_billing_profile_pkey")),
     )
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        op.execute(
-            sa.text(
-                """
-                INSERT INTO tenant_model_billing_profiles (tenant_id, model_billing_source)
-                SELECT tenant_id, 'tokener'
-                FROM tenant_tokener_integrations
-                ON CONFLICT (tenant_id) DO UPDATE
-                SET model_billing_source = EXCLUDED.model_billing_source
-                """
-            )
-        )
-    elif bind.dialect.name in {"mysql", "mariadb"}:
-        op.execute(
-            sa.text(
-                """
-                INSERT INTO tenant_model_billing_profiles (tenant_id, model_billing_source)
-                SELECT tenant_id, 'tokener'
-                FROM tenant_tokener_integrations
-                ON DUPLICATE KEY UPDATE model_billing_source = VALUES(model_billing_source)
-                """
-            )
-        )
-    else:
-        op.execute(
-            sa.text(
-                """
-                INSERT INTO tenant_model_billing_profiles (tenant_id, model_billing_source)
-                SELECT integration.tenant_id, 'tokener'
-                FROM tenant_tokener_integrations AS integration
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM tenant_model_billing_profiles AS profile
-                    WHERE profile.tenant_id = integration.tenant_id
-                )
-                """
-            )
-        )
 
 
 def downgrade():
