@@ -7,7 +7,7 @@ import zipfile
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -55,6 +55,7 @@ TOOL_FILE = "99999999-9999-9999-9999-999999999999"
 SKILL_FILE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 UPLOAD_FILE = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 NORMALIZED_SKILL_FILE = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+RETIRED_SKILL_FILE = "dddddddd-dddd-dddd-dddd-dddddddddddd"
 
 AGENT_CONFIG_TABLES = (Agent, AgentConfigDraft, AgentConfigSnapshot)
 
@@ -103,11 +104,16 @@ def _snapshot(*, soul: AgentSoulConfig | None = None) -> AgentConfigSnapshot:
     )
 
 
-def _service(sqlite_session: Session) -> AgentConfigService:
+def _service(
+    sqlite_session: Session,
+    *,
+    tool_file_collection_enqueuer=None,
+) -> AgentConfigService:
     """Bind service-owned sessions to the current test's isolated SQLite engine."""
 
     return AgentConfigService(
         session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        tool_file_collection_enqueuer=tool_file_collection_enqueuer or (lambda **_kwargs: None),
     )
 
 
@@ -328,6 +334,7 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
             version_id=BUILD_DRAFT,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=USER,
+            soul=_soul(config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=RETIRED_SKILL_FILE)]),
         ),
     )
     file_source = ToolFile(
@@ -350,7 +357,17 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         name="alpha.zip",
     )
     skill_source.id = SKILL_FILE
-    sqlite_session.add_all([file_source, skill_source])
+    retired_skill = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=100,
+        mimetype="application/zip",
+        file_key="retired-skill-key",
+        name="alpha.zip",
+    )
+    retired_skill.id = RETIRED_SKILL_FILE
+    sqlite_session.add_all([file_source, skill_source, retired_skill])
     sqlite_session.commit()
     skill_ref = AgentConfigSkillRefConfig(
         name="alpha",
@@ -359,7 +376,8 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         size=321,
         mime_type="application/zip",
     )
-    service = _service(sqlite_session)
+    collection_enqueuer = MagicMock()
+    service = _service(sqlite_session, tool_file_collection_enqueuer=collection_enqueuer)
 
     with (
         patch(f"{MODULE}.storage.load_once", return_value=b"skill-archive"),
@@ -394,6 +412,10 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
     assert persisted is not None
     assert persisted.config_snapshot.config_files[0].file_id == TOOL_FILE
     assert persisted.config_snapshot.config_skills[0].file_id == NORMALIZED_SKILL_FILE
+    collection_enqueuer.assert_called_once_with(
+        tenant_id=TENANT,
+        candidate_ids={TOOL_FILE, SKILL_FILE, NORMALIZED_SKILL_FILE, RETIRED_SKILL_FILE},
+    )
     persisted_source = sqlite_session.get(ToolFile, TOOL_FILE)
     assert persisted_source is not None
     assert persisted_source.user_id == END_USER
@@ -641,6 +663,37 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
     persisted = sqlite_session.get(AgentConfigDraft, DRAFT)
     assert persisted is not None
     assert persisted.config_snapshot.config_skills == []
+
+
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_upload_skill_enqueues_replaced_and_new_tool_files_after_commit(sqlite_session: Session) -> None:
+    _persist_target(
+        sqlite_session,
+        _draft(soul=_soul(config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=RETIRED_SKILL_FILE)])),
+    )
+    collection_enqueuer = MagicMock()
+    service = _service(sqlite_session, tool_file_collection_enqueuer=collection_enqueuer)
+    skill_ref = AgentConfigSkillRefConfig(name="alpha", file_id=NORMALIZED_SKILL_FILE)
+
+    with patch.object(service._skill_normalizer, "normalize", return_value=(skill_ref, object())):
+        service.upload_skill_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            content=b"skill-archive",
+            filename="alpha.zip",
+        )
+
+    collection_enqueuer.assert_called_once_with(
+        tenant_id=TENANT,
+        candidate_ids={RETIRED_SKILL_FILE, NORMALIZED_SKILL_FILE},
+    )
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(AgentConfigDraft, DRAFT)
+    assert persisted is not None
+    assert persisted.config_snapshot.config_skills[0].file_id == NORMALIZED_SKILL_FILE
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
