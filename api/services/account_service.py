@@ -31,7 +31,7 @@ from libs.helper import RateLimiter, TokenManager
 from libs.helper import timezone as validate_timezone
 from libs.key_providers import generate_key_pair
 from libs.passport import PassportService
-from libs.password import compare_password, hash_password, valid_password
+from libs.password import hash_password, valid_password
 from libs.token import generate_csrf_token
 from models.account import (
     Account,
@@ -56,10 +56,6 @@ from services.account_forgot_password_service import (
     FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX,
 )
 from services.billing_service import BillingService
-from services.email_code_login_challenge import (
-    EmailCodeLoginChallengeResult,
-    EmailCodeLoginChallengeStore,
-)
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -69,18 +65,15 @@ from services.entities.auth_entities import (
 )
 from services.errors.account import (
     AccountAlreadyInTenantError,
-    AccountLoginError,
     AccountNormalizedEmailAlreadyInUseError,
+    AccountNotFoundError,
     AccountNotLinkTenantError,
-    AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
     EmailDomainSuspendedError,
     InvalidActionError,
-    LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
-    RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
     SeatsLimitExceededError,
@@ -93,7 +86,6 @@ from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
 )
-from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_owner_transfer_task import (
     send_new_owner_transfer_notify_email_task,
@@ -166,9 +158,6 @@ class AccountService:
         prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
         max_attempts=FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
         time_window=FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
-    )
-    email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -398,10 +387,14 @@ class AccountService:
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
+        return AccountService.get_account_jwt_token_for_account_id(account.id)
+
+    @staticmethod
+    def get_account_jwt_token_for_account_id(account_id: str) -> str:
         exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
         payload = {
-            "user_id": account.id,
+            "user_id": account_id,
             "exp": exp,
             "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
@@ -409,37 +402,6 @@ class AccountService:
 
         token: str = PassportService().issue(payload)
         return token
-
-    @staticmethod
-    def authenticate(email: str, password: str, invite_token: str | None = None, *, session: Session) -> Account:
-        """authenticate account with email and password"""
-
-        account = session.scalar(select(Account).where(Account.email == email).limit(1))
-        if not account:
-            raise AccountPasswordError("Invalid email or password.")
-
-        if account.status == AccountStatus.BANNED:
-            raise AccountLoginError("Account is banned.")
-
-        if password and invite_token and account.password is None:
-            # if invite_token is valid, set password and password_salt
-            salt = secrets.token_bytes(16)
-            base64_salt = base64.b64encode(salt).decode()
-            password_hashed = hash_password(password, salt)
-            base64_password_hashed = base64.b64encode(password_hashed).decode()
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
-
-        if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
-
-        if account.status == AccountStatus.PENDING:
-            account.status = AccountStatus.ACTIVE
-            account.initialized_at = naive_utc_now()
-
-        session.commit()
-
-        return account
 
     @staticmethod
     def create_account(
@@ -457,9 +419,7 @@ class AccountService:
     ) -> Account:
         """Create an account, preferring explicit user timezone over language-derived defaults."""
         if not SystemFeatureService.is_registration_allowed() and not is_setup:
-            from controllers.console.error import AccountNotFound
-
-            raise AccountNotFound()
+            raise AccountNotFoundError("Account registration is disabled.")
 
         if check_normalized_email:
             AccountService.ensure_registration_email_available(email, session=session)
@@ -554,35 +514,6 @@ class AccountService:
         return account
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account, *, session: Session):
-        """Link account integrate"""
-        try:
-            # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = session.scalar(
-                select(AccountIntegrate)
-                .where(AccountIntegrate.account_id == account.id, AccountIntegrate.provider == provider)
-                .limit(1)
-            )
-
-            if account_integrate:
-                # If it exists, update the record
-                account_integrate.open_id = open_id
-                account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = naive_utc_now()
-            else:
-                # If it does not exist, create a new record
-                account_integrate = AccountIntegrate(
-                    account_id=account.id, provider=provider, open_id=open_id, encrypted_token=""
-                )
-                session.add(account_integrate)
-
-            session.commit()
-            logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
-        except Exception as e:
-            logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
-            raise LinkAccountIntegrateError("Failed to link account.") from e
-
-    @staticmethod
     def update_account_email(account: Account, email: str, session: Session) -> Account:
         """Update account email"""
         account.email = email
@@ -613,38 +544,39 @@ class AccountService:
             account.status = AccountStatus.ACTIVE
             session.commit()
 
-        access_token = AccountService.get_account_jwt_token(account=account)
-        refresh_token = _generate_refresh_token()
-        csrf_token = generate_csrf_token(account.id)
+        return AccountService.issue_token_pair(account.id)
 
-        AccountService._store_refresh_token(refresh_token, account.id)
+    @staticmethod
+    def issue_token_pair(account_id: str) -> TokenPair:
+        access_token = AccountService.get_account_jwt_token_for_account_id(account_id)
+        refresh_token = _generate_refresh_token()
+        csrf_token = generate_csrf_token(account_id)
+
+        AccountService._store_refresh_token(refresh_token, account_id)
 
         return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
-    def logout(*, account: Account):
-        refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
+    def revoke_token_pair(account_id: str) -> None:
+        refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account_id))
         if refresh_token:
-            AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
+            AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account_id)
 
     @staticmethod
-    def refresh_token(refresh_token: str, *, session: Session) -> TokenPair:
-        # Verify the refresh token
+    def resolve_refresh_token(refresh_token: str) -> str:
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
             raise RefreshTokenNotFoundError("Invalid refresh token")
+        return account_id.decode("utf-8")
 
-        account = AccountService.load_user(account_id.decode("utf-8"), session)
-        if not account:
-            raise RefreshTokenAccountNotFoundError("Invalid account")
-
-        # Generate new access token and refresh token
-        new_access_token = AccountService.get_account_jwt_token(account)
+    @staticmethod
+    def rotate_token_pair(refresh_token: str, account_id: str) -> TokenPair:
+        new_access_token = AccountService.get_account_jwt_token_for_account_id(account_id)
         new_refresh_token = _generate_refresh_token()
 
-        AccountService._delete_refresh_token(refresh_token, account.id)
-        AccountService._store_refresh_token(new_refresh_token, account.id)
-        csrf_token = generate_csrf_token(account.id)
+        AccountService._delete_refresh_token(refresh_token, account_id)
+        AccountService._store_refresh_token(new_refresh_token, account_id)
+        csrf_token = generate_csrf_token(account_id)
 
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
@@ -903,36 +835,6 @@ class AccountService:
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "owner_transfer")
 
-    @classmethod
-    def send_email_code_login_email(
-        cls,
-        account: Account | None = None,
-        email: str | None = None,
-        language: str = "en-US",
-    ):
-        email = account.email if account else email
-        if email is None:
-            raise ValueError("Email must be provided.")
-        email = email.lower()
-        if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
-
-            raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
-
-        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = EmailCodeLoginChallengeStore.create(
-            account_id=str(account.id) if account else None,
-            email=email,
-            code=code,
-        )
-        send_email_code_login_mail_task.delay(
-            language=language,
-            to=account.email if account else email,
-            code=code,
-        )
-        cls.email_code_login_rate_limiter.increment_rate_limit(email)
-        return token
-
     @staticmethod
     def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
@@ -946,38 +848,6 @@ class AccountService:
             return account
 
         return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
-
-    @classmethod
-    def verify_email_code_login_challenge(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
-        return EmailCodeLoginChallengeStore.verify(email=email, code=code, token=token)
-
-    @classmethod
-    def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
-            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
-            if freeze_type == "email_domain_suspended":
-                raise EmailDomainSuspendedError()
-            raise AccountRegisterError(
-                description=(
-                    "This email account has been deleted within the past "
-                    "30 days and is temporarily unavailable for new account registration"
-                )
-            )
-
-        account = session.scalar(select(Account).where(Account.email == email).limit(1))
-        if not account:
-            return None
-
-        if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
-
-        return account
-
-    @classmethod
-    def get_account_freeze_type(cls, email: str):
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return None
-        return BillingService.get_email_freeze_type(email)
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -1890,8 +1760,6 @@ class RegisterService:
         email: str,
         name: str,
         password: str | None = None,
-        open_id: str | None = None,
-        provider: str | None = None,
         language: str | None = None,
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
@@ -1919,9 +1787,6 @@ class RegisterService:
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
-
-            if open_id is not None and provider is not None:
-                AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
                 SystemFeatureService.is_workspace_creation_allowed()
@@ -2074,11 +1939,6 @@ class RegisterService:
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
-
-    @classmethod
-    def is_valid_invite_token(cls, token: str) -> bool:
-        data = redis_client.get(cls._get_invitation_token_key(token))
-        return data is not None
 
     @classmethod
     def revoke_token(cls, workspace_id: str | None, email: str | None, token: str):

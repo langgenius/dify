@@ -206,6 +206,7 @@ class TestWorkspaceQueryRepository:
                 ),
                 TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
                 TenantAccountJoin(tenant_id=archived.id, account_id="account-1"),
+                TenantAccountJoin(tenant_id=archived.id, account_id="account-3"),
                 TenantAccountJoin(tenant_id=other_account.id, account_id="account-2"),
             ]
         )
@@ -216,6 +217,8 @@ class TestWorkspaceQueryRepository:
         membership_ids = repository.list_ids_for_account("account-1")
         access_workspaces = repository.list_account_access_workspaces("account-1")
 
+        assert repository.has_active_for_account("account-1") is True
+        assert repository.has_active_for_account("missing-account") is False
         assert result == (
             WorkspaceRecord(
                 id=earlier.id,
@@ -237,6 +240,8 @@ class TestWorkspaceQueryRepository:
         assert set(access_by_id) == {earlier.id, later.id, archived.id}
         assert access_by_id[earlier.id].current is True
         assert access_by_id[earlier.id].role == "normal"
+        assert repository.has_active_membership("account-1") is True
+        assert repository.has_active_membership("account-3") is False
 
 
 class TestDeploymentWorkspacePlanGateway:

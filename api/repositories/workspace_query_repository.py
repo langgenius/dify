@@ -6,12 +6,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantAccountJoin, TenantStatus
+from services.account_login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.workspace_query_service import WorkspaceQuery, WorkspaceRecord
 
 
-class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery):
+class WorkspaceQueryRepository(
+    WorkspaceQuery,
+    AccountWorkspaceMembershipQuery,
+    AccountWorkspaceSnapshotQuery,
+    ConsoleAuthWorkspaceQuery,
+):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -80,3 +86,21 @@ class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, 
                 )
                 for workspace_id, name, role, current in session.execute(stmt).all()
             )
+
+    @override
+    def has_active_for_account(self, account_id: str) -> bool:
+        stmt = (
+            select(Tenant.id)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(
+                TenantAccountJoin.account_id == account_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(stmt) is not None
+
+    @override
+    def has_active_membership(self, account_id: str) -> bool:
+        return self.has_active_for_account(account_id)

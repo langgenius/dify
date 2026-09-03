@@ -165,5 +165,137 @@ class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
 
 
+class InvalidOAuthProviderError(AccountApplicationError):
+    """The requested Console OAuth provider is unavailable."""
+
+
+class OAuthProviderRequestError(AccountApplicationError):
+    """The remote OAuth provider could not complete the request."""
+
+
+class OAuthProviderAuthorizationError(AccountApplicationError):
+    """The remote OAuth provider rejected the authorization exchange."""
+
+    def __init__(self, description: str) -> None:
+        super().__init__(description)
+        self.description = description
+
+
+class OAuthIdentityLockUnavailableError(AccountApplicationError):
+    """The OAuth account claim could not be acquired or its lease was lost."""
+
+
+class InvalidOAuthInvitationError(AccountApplicationError):
+    """The OAuth callback references an invitation that can no longer be resolved."""
+
+
+class OAuthInvitationAccountMismatchError(AccountApplicationError):
+    """The OAuth identity does not own the account referenced by the invitation."""
+
+    def __init__(self, invite_token: str) -> None:
+        super().__init__(invite_token)
+        self.invite_token = invite_token
+
+
+class OAuthAccountBannedError(AccountApplicationError):
+    """The OAuth identity resolves to a banned Console account."""
+
+
+class OAuthAccountNotFoundError(AccountApplicationError):
+    """An account disappeared while the OAuth use case was running."""
+
+
+class OAuthWorkspaceCreationNotAllowedError(AccountApplicationError):
+    """Workspace policy prevents provisioning a workspace for the OAuth account."""
+
+
+class OAuthSeatsLimitExceededError(AccountApplicationError):
+    """Account registration would exceed the licensed seat limit."""
+
+
+class OAuthRegistrationError(AccountApplicationError):
+    """The OAuth account could not be registered."""
+
+    def __init__(self, description: str) -> None:
+        super().__init__(description)
+        self.description = description
+
+
 class EducationRateLimitExceededError(AccountApplicationError):
     """Too many education verification or activation requests were made."""
+
+
+class LoginRateLimitError(AccountApplicationError):
+    """Too many failed password-login attempts were made for the address."""
+
+
+class InvalidLoginCredentialsError(AccountApplicationError):
+    """The supplied login credentials are invalid."""
+
+
+class LoginAccountBannedError(AccountApplicationError):
+    """The account is banned from signing in."""
+
+
+class InvalidLoginInvitationEmailError(AccountApplicationError):
+    """The invitation belongs to a different email address."""
+
+
+class LoginWorkspaceLimitError(AccountApplicationError):
+    """A required workspace cannot be created because the limit was reached."""
+
+
+class LoginWorkspaceCreationNotAllowedError(AccountApplicationError):
+    """Workspace creation is disabled for this deployment."""
+
+
+class LoginSeatLimitError(AccountApplicationError):
+    """A new account cannot be created because the seat limit was reached."""
+
+
+class EmailCodeSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the email-code send policy."""
+
+
+class EmailCodeSendRateLimitError(AccountApplicationError):
+    """Too many email-code messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class HumanVerificationRejectedError(AccountApplicationError):
+    """The anti-bot challenge was rejected."""
+
+
+class HumanVerificationUnavailableError(AccountApplicationError):
+    """The anti-bot verification provider is unavailable."""
+
+
+class EmailCodeLoginUnavailableError(AccountApplicationError):
+    """The email-code challenge store is unavailable."""
+
+
+class InvalidEmailCodeTokenError(AccountApplicationError):
+    """The email-code token is invalid or no longer usable."""
+
+
+class EmailCodeEmailMismatchError(AccountApplicationError):
+    """The email-code token belongs to a different address."""
+
+
+class InvalidEmailCodeError(AccountApplicationError):
+    """The supplied email verification code is invalid."""
+
+
+class InvalidRefreshTokenError(AccountApplicationError):
+    """The refresh token cannot be exchanged for a new session."""
+
+
+class ResetPasswordEmailRateLimitError(AccountApplicationError):
+    """Too many reset-password messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
