@@ -38,7 +38,7 @@ function externalAccessDraftFromServer(
 }
 
 export function ExternalAccessSection() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const externalAccess =
@@ -62,8 +62,8 @@ export function ExternalAccessSection() {
   const showSaveError = (error?: unknown) =>
     toast.error(
       error instanceof Response && error.status === 403
-        ? t(($) => $['newKnowledge.permissionRestricted'])
-        : t(($) => $['newKnowledge.settings.saveFailed']),
+        ? t(($) => $.permissionRestricted)
+        : t(($) => $['settings.saveFailed']),
     )
 
   const save = async (nextDraft: ExternalAccessDraft) => {
@@ -114,10 +114,10 @@ export function ExternalAccessSection() {
   return (
     <div className="flex flex-col gap-4">
       <div className="h-px bg-divider-subtle" />
-      <SettingsFieldRow label={t(($) => $['newKnowledge.settings.apiAccessLabel'])}>
+      <SettingsFieldRow label={t(($) => $['settings.apiAccessLabel'])}>
         <div className="flex min-h-7 items-center gap-2">
           <Switch
-            aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
+            aria-label={t(($) => $.apiAgentAccess)}
             aria-describedby={API_ACCESS_DESCRIPTION_ID}
             checked={current.apiEnabled}
             disabled={disabled}
@@ -129,15 +129,15 @@ export function ExternalAccessSection() {
             id={API_ACCESS_DESCRIPTION_ID}
             className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $['newKnowledge.settings.apiAccessDescription'])}
+            {t(($) => $['settings.apiAccessDescription'])}
           </p>
         </div>
       </SettingsFieldRow>
 
-      <SettingsFieldRow label={t(($) => $['newKnowledge.settings.workflowAccessLabel'])}>
+      <SettingsFieldRow label={t(($) => $['settings.workflowAccessLabel'])}>
         <div className="flex min-h-7 items-center gap-2">
           <Switch
-            aria-label={t(($) => $['newKnowledge.workflowAccess'])}
+            aria-label={t(($) => $.workflowAccess)}
             aria-describedby={WORKFLOW_ACCESS_DESCRIPTION_ID}
             checked={current.workflowEnabled}
             disabled={disabled}
@@ -149,7 +149,7 @@ export function ExternalAccessSection() {
             id={WORKFLOW_ACCESS_DESCRIPTION_ID}
             className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $['newKnowledge.settings.workflowAccessDescription'])}
+            {t(($) => $['settings.workflowAccessDescription'])}
           </p>
         </div>
       </SettingsFieldRow>

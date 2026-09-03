@@ -13,7 +13,7 @@ import { retrievalComposerModeAtom } from './state/graph'
 import { retrievalKnowledgeSpaceIdAtom, retrievalLocationQuery } from './state/inputs'
 
 function RetrievalTestSurface() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const mode = useAtomValue(retrievalComposerModeAtom)
 
@@ -21,10 +21,10 @@ function RetrievalTestSurface() {
     <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
-          {t(($) => $['newKnowledge.retrievalTest.title'])}
+          {t(($) => $['retrievalTest.title'])}
         </h1>
         <p className="mt-1 w-full system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.retrievalTest.description'])}
+          {t(($) => $['retrievalTest.description'])}
         </p>
       </header>
       <KnowledgeModelReadinessBanner

@@ -33,7 +33,7 @@ import {
 } from './use-bulk-actions'
 
 function BulkReindexAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const disabled = useAtomValue(selectionResultsUnavailableAtom)
   const reindexDisabled = useAtomValue(selectionReindexDisabledAtom)
@@ -41,15 +41,15 @@ function BulkReindexAction() {
   const { busy, pending, run } = useBulkReindexAction()
   const disabledReason =
     unavailableReason === 'tasks'
-      ? t(($) => $['newKnowledge.tasksErrorDescription'])
+      ? t(($) => $.tasksErrorDescription)
       : unavailableReason === 'sources'
-        ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+        ? t(($) => $.sourcesErrorDescription)
         : unavailableReason === 'documents'
-          ? t(($) => $['newKnowledge.documentsErrorDescription'])
+          ? t(($) => $.documentsErrorDescription)
           : unavailableReason === 'loading'
             ? tCommon(($) => $.loading)
             : unavailableReason === 'partial'
-              ? t(($) => $['newKnowledge.partialDocumentResults'])
+              ? t(($) => $.partialDocumentResults)
               : undefined
 
   return (
@@ -63,7 +63,7 @@ function BulkReindexAction() {
         size="small"
         onClick={() => void run()}
       >
-        {t(($) => $['newKnowledge.reindexDocuments'])}
+        {t(($) => $.reindexDocuments)}
       </Button>
       {disabled && disabledReason && (
         <span
@@ -71,7 +71,7 @@ function BulkReindexAction() {
           className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
           role="status"
         >
-          {t(($) => $['newKnowledge.reindexDocuments'])}
+          {t(($) => $.reindexDocuments)}
           {' · '}
           {disabledReason}
         </span>
@@ -81,7 +81,7 @@ function BulkReindexAction() {
 }
 
 function BulkDownloadAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canDownload = useAtomValue(documentCanDownloadAtom)
   const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
   const disabled = !canDownload || !downloadableDocumentIds.length
@@ -98,17 +98,18 @@ function BulkDownloadAction() {
         size="small"
         onClick={() => void run()}
       >
-        {t(($) => $['newKnowledge.downloadDocuments'])}
+        {t(($) => $.downloadDocuments)}
       </Button>
       <span id="document-download-unavailable" className="sr-only">
-        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+        {t(($) => $.documentActionsUnavailable)}
       </span>
     </>
   )
 }
 
 function BulkAvailabilityAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
+  const { t: tDataset } = useTranslation('dataset')
   const actionVisible = useAtomValue(selectionAvailabilityActionVisibleAtom)
   const actionDisabled = useAtomValue(selectionAvailabilityDisabledAtom)
   const targetEnabled = useAtomValue(selectionAvailabilityTargetEnabledAtom)
@@ -125,7 +126,7 @@ function BulkAvailabilityAction() {
       loading={pending}
       onClick={() => void run()}
     >
-      {t(($) => (targetEnabled ? $.enable : $['newKnowledge.disableSource']))}
+      {targetEnabled ? tDataset(($) => $.enable) : t(($) => $.disableSource)}
     </Button>
   )
 }
@@ -183,7 +184,7 @@ function BulkRemoveAction() {
 }
 
 export function DocumentBulkActionsToolbar() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const clearSelectedDocuments = useSetAtom(clearDocumentSelectionAtom)
@@ -194,12 +195,12 @@ export function DocumentBulkActionsToolbar() {
   return (
     <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
       <div
-        aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
+        aria-label={t(($) => $.bulkDocumentActions)}
         className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
         role="group"
       >
         <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">
-          {t(($) => $['newKnowledge.documentsSelected'], {
+          {t(($) => $.documentsSelected, {
             count: selectedDocumentIds.size,
           })}
         </span>
@@ -211,7 +212,7 @@ export function DocumentBulkActionsToolbar() {
         <Button
           variant="ghost"
           size="small"
-          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+          aria-label={t(($) => $.clearDocumentSelection)}
           className="size-6.5 shrink-0 px-0"
           disabled={busy}
           onClick={() => {

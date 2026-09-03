@@ -14,7 +14,7 @@ import {
 } from './state'
 
 export function InventoryPanel() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const empty = useAtomValue(overviewShowEmptyModulesAtom)
   const error = useAtomValue(overviewInventoryErrorAtom)
   const indexing = useAtomValue(overviewShowIndexingAtom)
@@ -26,25 +26,25 @@ export function InventoryPanel() {
         {
           color: 'bg-util-colors-blue-blue-500',
           segment: 'border-util-colors-blue-blue-500 bg-util-colors-blue-blue-100',
-          label: t(($) => $['newKnowledge.overview.webCrawl']),
+          label: t(($) => $['overview.webCrawl']),
           value: inventory.source_categories.crawl,
         },
         {
           color: 'bg-util-colors-green-green-500',
           segment: 'border-util-colors-green-green-500 bg-util-colors-green-green-100',
-          label: t(($) => $['newKnowledge.overview.onlineDocuments']),
+          label: t(($) => $['overview.onlineDocuments']),
           value: inventory.source_categories.online_documents,
         },
         {
           color: 'bg-util-colors-purple-purple-500',
           segment: 'border-util-colors-purple-purple-500 bg-util-colors-purple-purple-100',
-          label: t(($) => $['newKnowledge.overview.onlineDrives']),
+          label: t(($) => $['overview.onlineDrives']),
           value: inventory.source_categories.online_drives,
         },
         {
           color: 'bg-util-colors-orange-orange-500',
           segment: 'border-util-colors-orange-orange-500 bg-util-colors-orange-orange-50',
-          label: t(($) => $['newKnowledge.overview.uploads']),
+          label: t(($) => $['overview.uploads']),
           value: inventory.source_categories.uploads,
         },
       ]
@@ -56,7 +56,7 @@ export function InventoryPanel() {
     return (
       <section className="flex h-68.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
-          {t(($) => $['newKnowledge.overview.inventory'])}
+          {t(($) => $['overview.inventory'])}
         </h2>
         <Panel className="flex h-54.75 border border-components-panel-border p-4 shadow-none">
           <OverviewErrorInline />
@@ -68,7 +68,7 @@ export function InventoryPanel() {
     return (
       <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65' : 'h-68.75')}>
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
-          {t(($) => $['newKnowledge.overview.inventory'])}
+          {t(($) => $['overview.inventory'])}
         </h2>
         <Panel
           className={cn(
@@ -80,13 +80,13 @@ export function InventoryPanel() {
             icon="i-ri-file-text-line"
             title={
               indexing
-                ? t(($) => $['newKnowledge.overview.indexingInProgress'])
-                : t(($) => $['newKnowledge.documentsEmptyTitle'])
+                ? t(($) => $['overview.indexingInProgress'])
+                : t(($) => $.documentsEmptyTitle)
             }
             description={
               indexing
-                ? t(($) => $['newKnowledge.overview.indexingInProgressDescription'])
-                : t(($) => $['newKnowledge.documentsEmptyDescription'])
+                ? t(($) => $['overview.indexingInProgressDescription'])
+                : t(($) => $.documentsEmptyDescription)
             }
           />
         </Panel>
@@ -96,7 +96,7 @@ export function InventoryPanel() {
   return (
     <section className="flex min-w-0 flex-col gap-2 pt-6">
       <h2 className="flex h-6 items-center text-[15px] leading-6 font-medium text-text-secondary">
-        {t(($) => $['newKnowledge.overview.inventory'])}
+        {t(($) => $['overview.inventory'])}
       </h2>
       <Panel className="overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
@@ -118,7 +118,7 @@ export function InventoryPanel() {
           <>
             <div
               className="flex h-6 gap-0.5 overflow-hidden"
-              aria-label={t(($) => $['newKnowledge.overview.sources'])}
+              aria-label={t(($) => $['overview.sources'])}
             >
               {visibleCategories.map((category) => (
                 <span

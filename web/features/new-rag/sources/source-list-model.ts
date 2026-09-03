@@ -54,9 +54,9 @@ export function sourceLastSyncAt(source: Source) {
 }
 
 export function sourceSyncPolicyTranslationKey(policy: SourceSyncPolicy) {
-  if (!policy.enabled || policy.mode === 'manual') return 'newKnowledge.syncPolicyManual' as const
-  if (policy.mode === 'interval') return 'newKnowledge.syncPolicyDaily' as const
-  return 'newKnowledge.syncPolicyCustom' as const
+  if (!policy.enabled || policy.mode === 'manual') return 'syncPolicyManual' as const
+  if (policy.mode === 'interval') return 'syncPolicyDaily' as const
+  return 'syncPolicyCustom' as const
 }
 
 export function sourceSyncMode(source: Source): SourceSyncPolicy['mode'] {

@@ -52,7 +52,7 @@ export function SourceActions({
   ensureModelSetupReady: () => Promise<boolean>
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
@@ -89,7 +89,7 @@ export function SourceActions({
       try {
         result = await mutation()
       } catch {
-        toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+        toast.error(t(($) => $.sourcesErrorDescription))
         try {
           await queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -233,7 +233,7 @@ export function SourceActions({
       )}
       <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
+          aria-label={t(($) => $.sourceActions, { name: source.name })}
           disabled={Boolean(pendingAction)}
           className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
         >
@@ -252,16 +252,14 @@ export function SourceActions({
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
-              {syncAction === 'retry'
-                ? tCommon(($) => $['operation.retry'])
-                : t(($) => $['newKnowledge.syncNow'])}
+              {syncAction === 'retry' ? tCommon(($) => $['operation.retry']) : t(($) => $.syncNow)}
             </DropdownMenuItem>
           )}
           {sourceUri && (
             <DropdownMenuLinkItem
               render={
                 <a
-                  aria-label={t(($) => $['newKnowledge.openSource'])}
+                  aria-label={t(($) => $.openSource)}
                   href={sourceUri}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -270,7 +268,7 @@ export function SourceActions({
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
               <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t(($) => $['newKnowledge.openSource'])}
+              {t(($) => $.openSource)}
             </DropdownMenuLinkItem>
           )}
           {canEdit && (
@@ -297,8 +295,8 @@ export function SourceActions({
                 )}
               />
               {source.status === 'disabled'
-                ? t(($) => $.enable)
-                : t(($) => $['newKnowledge.disableSource'])}
+                ? t(($) => $.enable, { ns: 'dataset' })
+                : t(($) => $.disableSource)}
             </DropdownMenuItem>
           )}
           {canRemove && (
@@ -315,7 +313,7 @@ export function SourceActions({
                 className="h-7 gap-2 px-2 system-sm-medium"
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                {t(($) => $['newKnowledge.removeSource'])}
+                {t(($) => $.removeSource)}
               </DropdownMenuItem>
             </>
           )}
@@ -352,7 +350,7 @@ export function SourceActions({
                 })
               }
             >
-              {t(($) => $['newKnowledge.removeSource'])}
+              {t(($) => $.removeSource)}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

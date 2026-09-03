@@ -105,7 +105,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   const handleSave = async () => {
     const endpoint = formData.settings.endpoint.trim()
     if (!isValidHttpEndpoint(endpoint)) {
-      setEndpointError(t(($) => $['newKnowledge.invalidRootUrl'], { ns: 'dataset' }))
+      setEndpointError(t(($) => $['validation.invalidHttpUrl'], { ns: 'dataset' }))
       return
     }
     if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {

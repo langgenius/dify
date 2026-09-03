@@ -22,7 +22,7 @@ export function KnowledgeModelReadinessBanner({
   className?: string
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -44,12 +44,12 @@ export function KnowledgeModelReadinessBanner({
     ? tCommon(($) => $['api.actionFailed'])
     : readiness?.configuration_state === 'validation-failed'
       ? tCommon(($) => $['api.actionFailed'])
-      : t(($) => $['newKnowledge.overview.attention.modelReadiness.title'])
+      : t(($) => $['overview.attention.modelReadiness.title'])
   const description = query.isError
     ? undefined
     : readiness?.active_profile_available
-      ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
-      : t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing'])
+      ? t(($) => $['overview.attention.modelReadiness.description'])
+      : t(($) => $['overview.attention.modelReadiness.profilesMissing'])
 
   return (
     <KnowledgeModelReadinessNotice
@@ -63,7 +63,7 @@ export function KnowledgeModelReadinessBanner({
             className={knowledgeModelReadinessActionClassName}
             href={newKnowledgeSettingsReturnPath(knowledgeSpaceId, { capability, returnTo })}
           >
-            {t(($) => $['newKnowledge.overview.attention.action.configureModels'])}
+            {t(($) => $['overview.attention.action.configureModels'])}
           </Link>
         )
       }

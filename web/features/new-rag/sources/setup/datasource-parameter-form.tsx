@@ -58,7 +58,7 @@ function DatasourceParameterField({
   value: DatasourceParameterValue | undefined
   onChange: (value: DatasourceParameterValue | undefined) => void
 }) {
-  const { i18n, t } = useTranslation('dataset')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const generatedId = useId()
   const [numberDraft, setNumberDraft] = useState<string>()
   const [touched, setTouched] = useState(false)
@@ -68,15 +68,15 @@ function DatasourceParameterField({
   const descriptionId = description ? `${generatedId}-description` : undefined
   const errorId = `${generatedId}-error`
   const label =
-    parameter.labelTranslationKey === 'newKnowledge.rootUrl'
-      ? t(($) => $['newKnowledge.rootUrl'])
-      : parameter.labelTranslationKey === 'newKnowledge.includeSubpages'
-        ? t(($) => $['newKnowledge.includeSubpages'])
-        : parameter.labelTranslationKey === 'newKnowledge.maxPages'
-          ? t(($) => $['newKnowledge.maxPages'])
+    parameter.labelTranslationKey === 'rootUrl'
+      ? t(($) => $.rootUrl)
+      : parameter.labelTranslationKey === 'includeSubpages'
+        ? t(($) => $.includeSubpages)
+        : parameter.labelTranslationKey === 'maxPages'
+          ? t(($) => $.maxPages)
           : localizedDatasourceText(parameter.label, i18n.language, parameter.name)
   const placeholder = parameter.placeholderTranslationKey
-    ? t(($) => $['newKnowledge.rootUrlPlaceholder'])
+    ? t(($) => $.rootUrlPlaceholder)
     : localizedDatasourceText(parameter.placeholder, i18n.language, '')
   const invalid = Boolean(
     (parameter.required && (value === undefined || (typeof value === 'string' && !value.trim()))) ||
@@ -87,12 +87,12 @@ function DatasourceParameterField({
   const showError = touched && invalid
   const error = showError
     ? parameter.name === 'url' && typeof value === 'string' && value
-      ? t(($) => $['newKnowledge.invalidRootUrl'])
-      : parameter.labelTranslationKey === 'newKnowledge.maxPages' &&
+      ? t(($) => $['validation.invalidHttpUrl'], { ns: 'dataset' })
+      : parameter.labelTranslationKey === 'maxPages' &&
           parameter.min !== undefined &&
           parameter.max !== undefined
         ? `${label}: ${parameter.min}–${parameter.max}`
-        : t(($) => $['newKnowledge.invalidDatasourceParameter'], { parameter: label })
+        : t(($) => $.invalidDatasourceParameter, { parameter: label })
     : undefined
   const describedBy =
     [descriptionId, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
@@ -108,7 +108,7 @@ function DatasourceParameterField({
         <FieldLabel>
           <ParameterLabel label={label} required={parameter.required} />
         </FieldLabel>
-        <FieldDescription>{t(($) => $['newKnowledge.providerUnavailable'])}</FieldDescription>
+        <FieldDescription>{t(($) => $.providerUnavailable)}</FieldDescription>
       </Field>
     )
 
@@ -354,7 +354,7 @@ export function WebsiteDatasourceParameterForm({
   schemas: DatasourceParameterSchema[]
   onChange: (parameters: DatasourceParameters) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [optionsOpen, setOptionsOpen] = useState(false)
   const primarySchemas = schemas.filter((schema) => schema.required)
   const optionSchemas = schemas.filter((schema) => !schema.required)
@@ -402,10 +402,10 @@ export function WebsiteDatasourceParameterForm({
                 aria-hidden
                 className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
               />
-              <span className="truncate">{t(($) => $['newKnowledge.crawlOptions'])}</span>
+              <span className="truncate">{t(($) => $.crawlOptions)}</span>
               {!optionsOpen && usingDefaultOptions && (
                 <span aria-hidden className="ml-auto shrink-0 system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.usingDefaults'])}
+                  {t(($) => $.usingDefaults)}
                 </span>
               )}
             </CollapsibleTrigger>
@@ -417,7 +417,7 @@ export function WebsiteDatasourceParameterForm({
                 variant="tertiary"
                 onClick={resetOptions}
               >
-                {t(($) => $['newKnowledge.resetToDefaults'])}
+                {t(($) => $.resetToDefaults)}
               </Button>
             )}
           </div>

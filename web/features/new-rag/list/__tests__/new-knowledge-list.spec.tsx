@@ -287,10 +287,10 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: ({ onChange, value }: { onChange: (value: string[]) => void; value: string[] }) => (
     <button
       type="button"
-      aria-label="dataset.newKnowledge.tags"
+      aria-label="knowledgeSpace.tags"
       onClick={() => onChange(value.length ? [] : ['tag-1', 'tag-2'])}
     >
-      dataset.newKnowledge.tags
+      knowledgeSpace.tags
     </button>
   ),
 }))
@@ -306,7 +306,7 @@ vi.mock('../knowledge-space-card-tags', () => ({
     knowledgeSpace: { tags?: Array<{ id: string; name: string }> }
   }) => (
     <div>
-      <span>dataset.newKnowledge.tags</span>
+      <span>knowledgeSpace.tags</span>
       {knowledgeSpace.tags?.map((tag) => tag.name).join(', ')}
     </div>
   ),
@@ -444,7 +444,7 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.emptyTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.emptyTitle')).not.toBeInTheDocument()
   })
 
   it('shows and retries an upgrade recovery error', async () => {
@@ -455,9 +455,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.errorTitle' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.errorTitle' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
@@ -926,7 +924,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.learnMore' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.learnMore' })).toHaveAttribute(
       'href',
       'https://docs.example.com/use-dify/knowledge/readme',
     )
@@ -976,16 +974,16 @@ describe('NewKnowledgeList', () => {
       }),
     ).toHaveAttribute('href', '/datasets/new/space-2')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
-    expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
+    expect(within(list).getByText('knowledgeSpace.noDescription')).toBeInTheDocument()
     expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
-    expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
-    expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
+    expect(within(list).getAllByText('knowledgeSpace.cardType')).toHaveLength(2)
+    expect(within(list).getAllByText('knowledgeSpace.tags')).toHaveLength(2)
     expect(within(list).getByText('Customer support, Public docs')).toBeInTheDocument()
     expect(within(supportCardItem!).getByText('12')).toBeInTheDocument()
-    expect(supportCard).toHaveAccessibleDescription('dataset.newKnowledge.overview.linkedApps: 0')
+    expect(supportCard).toHaveAccessibleDescription('knowledgeSpace.overview.linkedApps: 0')
     expect(
       within(list).getByRole('link', { name: 'Engineering handbook' }),
-    ).toHaveAccessibleDescription('dataset.newKnowledge.overview.linkedApps: 0')
+    ).toHaveAccessibleDescription('knowledgeSpace.overview.linkedApps: 0')
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -1015,10 +1013,10 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'Support knowledge' })).toHaveAccessibleDescription(
-      'dataset.newKnowledge.overview.linkedApps: 3',
+      'knowledgeSpace.overview.linkedApps: 3',
     )
     expect(screen.getByRole('link', { name: 'Engineering handbook' })).toHaveAccessibleDescription(
-      'dataset.newKnowledge.overview.linkedApps: 0',
+      'knowledgeSpace.overview.linkedApps: 0',
     )
   })
 
@@ -1071,7 +1069,7 @@ describe('NewKnowledgeList', () => {
 
     const dialog = await screen.findByRole('alertdialog')
     const confirmationInput = within(dialog).getByRole('textbox', {
-      name: /^dataset\.newKnowledge\.settings\.deleteConfirmPrompt/,
+      name: /^knowledgeSpace\.settings\.deleteConfirmPrompt/,
     })
     const deleteButton = within(dialog).getByRole('button', {
       name: 'common.operation.delete',
@@ -1127,8 +1125,8 @@ describe('NewKnowledgeList', () => {
     expect(screen.queryByText('external API panel')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.serviceApi.title' })).toBeInTheDocument()
 
-    const tags = screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })
-    const creators = screen.getByRole('button', { name: 'dataset.newKnowledge.creators' })
+    const tags = screen.getByRole('button', { name: 'knowledgeSpace.tags' })
+    const creators = screen.getByRole('button', { name: 'dataset.creatorFilter.creators' })
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
     const create = screen.getByRole('link', { name: 'common.operation.create' })
 
@@ -1210,7 +1208,7 @@ describe('NewKnowledgeList', () => {
 
     const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.queryByRole('checkbox', { name: /Pending member/ })).not.toBeInTheDocument()
     const creatorSearch = screen.getByRole('textbox', {
       name: 'app.studio.filters.searchCreators',
@@ -1225,7 +1223,7 @@ describe('NewKnowledgeList', () => {
     await user.click(screen.getByRole('checkbox', { name: /Bob/ }))
 
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 2' }),
+      screen.getByRole('button', { name: 'dataset.creatorFilter.creators: 2' }),
     ).toBeInTheDocument()
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe(
@@ -1257,7 +1255,7 @@ describe('NewKnowledgeList', () => {
       query: { creator_ids: ['account-2'], limit: 30, page: 1 },
     })
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 1' }),
+      screen.getByRole('button', { name: 'dataset.creatorFilter.creators: 1' }),
     ).toBeInTheDocument()
   })
 
@@ -1277,11 +1275,11 @@ describe('NewKnowledgeList', () => {
       searchParams: `?creator_ids=${creatorIdsFromUrl.join(';')}`,
     })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators: 100' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators: 100' }))
 
     const unselectedCreator = screen.getByRole('checkbox', { name: /Member 101/ })
     expect(unselectedCreator).toHaveAttribute('aria-disabled', 'true')
-    expect(unselectedCreator).toHaveAccessibleDescription('dataset.newKnowledge.maxCreators: 100')
+    expect(unselectedCreator).toHaveAccessibleDescription('dataset.creatorFilter.maxCreators: 100')
     const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
     expect(options?.input(1).query.creator_ids).toHaveLength(100)
   })
@@ -1294,7 +1292,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
   })
@@ -1307,7 +1305,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('alert')).toHaveTextContent('common.error')
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(membersMock.refetch).toHaveBeenCalledOnce()
@@ -1321,7 +1319,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.creators' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('checkbox', { name: /Alice/ })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('common.error')
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -1334,26 +1332,26 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     const connectSource = screen.getByRole('link', {
-      name: 'dataset.newKnowledge.connectSource',
+      name: 'knowledgeSpace.connectSource',
     })
     const uploadFiles = screen.getByRole('link', {
-      name: 'dataset.newKnowledge.uploadFiles',
+      name: 'knowledgeSpace.uploadFiles',
     })
     const startEmpty = screen.getByRole('link', {
-      name: 'dataset.newKnowledge.startEmpty',
+      name: 'knowledgeSpace.startEmpty',
     })
 
     expect(connectSource).toHaveAttribute('href', '/datasets/new/create?start=source')
     expect(connectSource).toHaveAccessibleDescription(
-      'dataset.newKnowledge.connectSourceDescription dataset.firstEmpty.recommended',
+      'knowledgeSpace.connectSourceDescription dataset.firstEmpty.recommended',
     )
     expect(uploadFiles).toHaveAttribute('href', '/datasets/new/create?start=upload')
-    expect(uploadFiles).toHaveAccessibleDescription('dataset.newKnowledge.uploadFilesDescription')
+    expect(uploadFiles).toHaveAccessibleDescription('knowledgeSpace.uploadFilesDescription')
     expect(startEmpty).toHaveAttribute('href', '/datasets/new/create?start=empty')
-    expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
-    expect(screen.getByText('dataset.newKnowledge.connectSourceDescription')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.uploadFilesDescription')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.startEmptyDescription')).toBeInTheDocument()
+    expect(startEmpty).toHaveAccessibleDescription('knowledgeSpace.startEmptyDescription')
+    expect(screen.getByText('knowledgeSpace.connectSourceDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.uploadFilesDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.startEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
     expect(screen.queryByTestId('empty-knowledge-card')).not.toBeInTheDocument()
   })
@@ -1365,11 +1363,11 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     const uploadFiles = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.uploadFiles',
+      name: 'knowledgeSpace.uploadFiles',
     })
     expect(uploadFiles).toBeDisabled()
     expect(uploadFiles).toHaveAccessibleDescription(
-      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+      'knowledgeSpace.uploadFilesDescription dataset.cornerLabel.unavailable',
     )
   })
 
@@ -1380,9 +1378,9 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.queryByRole('link', { name: 'common.operation.create' })).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.readOnlyEmpty')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.connectSource' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.connectSource' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1393,7 +1391,7 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(
-      screen.queryByRole('link', { name: /^dataset\.newKnowledge\.startEmpty/ }),
+      screen.queryByRole('link', { name: /^knowledgeSpace\.startEmpty/ }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: /common\.operation\.create/ }),
@@ -1402,14 +1400,14 @@ describe('NewKnowledgeList', () => {
       screen.queryByRole('button', { name: 'dataset.externalAPIPanelTitle' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('external API panel')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.readOnlyEmpty')).toBeInTheDocument()
   })
 
   it.each([404, 503])('shows an unavailable state for a %s response', (status) => {
     queryMock.error = { status }
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(screen.getByText('dataset.newKnowledge.unavailableTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.unavailableTitle')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 
@@ -1418,7 +1416,7 @@ describe('NewKnowledgeList', () => {
     queryMock.error = new Error('request failed')
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(screen.getByText('dataset.newKnowledge.errorTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.errorTitle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(queryMock.refetch).toHaveBeenCalledOnce()
   })
@@ -1467,7 +1465,7 @@ describe('NewKnowledgeList', () => {
       const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
       expect(options?.input(1).query.query).toBe('support')
     })
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
 })

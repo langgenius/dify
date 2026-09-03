@@ -799,14 +799,14 @@ const source = (overrides: Partial<Source> = {}): Source => ({
 function openTasksDrawer() {
   fireEvent.click(
     screen.getByRole('button', {
-      name: /dataset\.newKnowledge\.tasksWithAttention/,
+      name: /knowledgeSpace\.tasksWithAttention/,
     }),
   )
 }
 
 async function waitForDocumentFilesStaged() {
   await waitFor(() =>
-    expect(screen.queryByText('dataset.newKnowledge.uploadingFiles')).not.toBeInTheDocument(),
+    expect(screen.queryByText('knowledgeSpace.uploadingFiles')).not.toBeInTheDocument(),
   )
 }
 
@@ -1072,7 +1072,7 @@ describe('DocumentsPage', () => {
       searchParams: '?query=report&status=failed',
     })
 
-    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
+    const metadata = screen.getByRole('button', { name: 'knowledgeSpace.metadata' })
     expect(metadata).toBeEnabled()
     await user.click(metadata)
     expect(
@@ -1096,7 +1096,7 @@ describe('DocumentsPage', () => {
       ).not.toBeInTheDocument()
     })
     const rowActions = screen.getByRole('button', {
-      name: /dataset\.newKnowledge\.documentActions/,
+      name: /knowledgeSpace\.documentActions/,
     })
     expect(rowActions).toBeEnabled()
     await user.click(rowActions)
@@ -1104,16 +1104,14 @@ describe('DocumentsPage', () => {
     expect(rowMenuItems).toHaveLength(4)
     expect(rowMenuItems.map((item) => item.textContent)).toEqual([
       'common.operation.rename',
-      'dataset.newKnowledge.retryTask',
-      'dataset.newKnowledge.downloadDocuments',
+      'knowledgeSpace.retryTask',
+      'knowledgeSpace.downloadDocuments',
       'common.operation.delete',
     ])
     expect(rowMenuItems[2]).not.toHaveAttribute('aria-disabled', 'true')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
-    expect(screen.getByRole('combobox')).toHaveTextContent(
-      'dataset.newKnowledge.documentStatus.failed',
-    )
+    expect(screen.getByRole('combobox')).toHaveTextContent('knowledgeSpace.documentStatus.failed')
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
   })
@@ -1147,14 +1145,14 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const failedStatus = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.modelConfiguration',
+      name: 'knowledgeSpace.documentStatus.failed: knowledgeSpace.taskFailure.modelConfiguration',
     })
-    expect(screen.queryByText('dataset.newKnowledge.taskFailure.modelConfiguration')).toBeNull()
+    expect(screen.queryByText('knowledgeSpace.taskFailure.modelConfiguration')).toBeNull()
 
     await user.hover(failedStatus)
 
     expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.modelConfiguration'),
+      await screen.findByText('knowledgeSpace.taskFailure.modelConfiguration'),
     ).toBeInTheDocument()
   })
 
@@ -1188,28 +1186,28 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const failedStatus = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.documentProcessing',
+      name: 'knowledgeSpace.documentStatus.failed: knowledgeSpace.taskFailure.documentProcessing',
     })
     await user.hover(failedStatus)
     expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.documentProcessing'),
+      await screen.findByText('knowledgeSpace.taskFailure.documentProcessing'),
     ).toBeInTheDocument()
     expect(screen.queryByText('cef52296-3aa7-41ec-9953-2bbe030fdf6c')).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(
-      within(panel).getByText('dataset.newKnowledge.taskFailure.documentProcessing'),
+      within(panel).getByText('knowledgeSpace.taskFailure.documentProcessing'),
     ).toBeInTheDocument()
     expect(within(panel).queryByText('DOCUMENT_COMPILATION_FAILED')).not.toBeInTheDocument()
     expect(
       within(panel).queryByRole('button', {
-        name: 'dataset.newKnowledge.taskFailure.technicalDetails',
+        name: 'knowledgeSpace.taskFailure.technicalDetails',
       }),
     ).not.toBeInTheDocument()
     expect(
@@ -1226,10 +1224,8 @@ describe('DocumentsPage', () => {
     downloadDocumentMutation.mockResolvedValue(file)
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
-    await user.click(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
-    )
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.downloadDocuments' }))
 
     expect(downloadDocumentMutation).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', document_id: 'report' },
@@ -1265,9 +1261,9 @@ describe('DocumentsPage', () => {
     downloadDocumentMutation.mockResolvedValue(file)
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     const download = await screen.findByRole('menuitem', {
-      name: 'dataset.newKnowledge.downloadDocuments',
+      name: 'knowledgeSpace.downloadDocuments',
     })
     expect(download).toBeEnabled()
     await user.click(download)
@@ -1306,18 +1302,18 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'Canceled report.pdf' }))
     const bulkActions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
       within(bulkActions).getByRole('button', {
-        name: 'dataset.newKnowledge.downloadDocuments',
+        name: 'knowledgeSpace.downloadDocuments',
       }),
     ).toBeDisabled()
 
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     expect(
       await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.downloadDocuments',
+        name: 'knowledgeSpace.downloadDocuments',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
     expect(downloadDocumentMutation).not.toHaveBeenCalled()
@@ -1338,17 +1334,17 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const bulkActions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
       within(bulkActions).getByRole('button', {
-        name: 'dataset.newKnowledge.downloadDocuments',
+        name: 'knowledgeSpace.downloadDocuments',
       }),
     ).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     expect(
       await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.downloadDocuments',
+        name: 'knowledgeSpace.downloadDocuments',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
   })
@@ -1358,7 +1354,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(
       await screen.findByRole('button', {
         name: 'dataset.metadata.datasetMetadata.addMetaData',
@@ -1390,7 +1386,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(
       await screen.findByRole('button', {
         name: 'dataset.metadata.datasetMetadata.addMetaData',
@@ -1417,7 +1413,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
 
     expect(
       await screen.findByRole('button', {
@@ -1435,9 +1431,9 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     expect(
-      await screen.findByText('dataset.newKnowledge.documentLoadErrorDescription'),
+      await screen.findByText('knowledgeSpace.documentLoadErrorDescription'),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -1464,7 +1460,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(
       await screen.findByRole('button', {
         name: 'dataset.metadata.datasetMetadata.addMetaData',
@@ -1528,7 +1524,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
     const nameInput = screen.getByRole('textbox', {
       name: 'dataset.metadata.datasetMetadata.name',
@@ -1551,7 +1547,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
     const nameInput = screen.getByRole('textbox', {
       name: 'dataset.metadata.datasetMetadata.name',
@@ -1585,7 +1581,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
     await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -1605,12 +1601,12 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: /dataset\.newKnowledge\.documentActions/,
+        name: /knowledgeSpace\.documentActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.reindexDocument',
+        name: 'knowledgeSpace.reindexDocument',
       }),
     )
 
@@ -1619,9 +1615,7 @@ describe('DocumentsPage', () => {
       params: { control_space_id: 'space-1' },
     })
     await waitFor(() =>
-      expect(toastMock.success).toHaveBeenCalledWith(
-        'dataset.newKnowledge.documentsReindexStarted',
-      ),
+      expect(toastMock.success).toHaveBeenCalledWith('knowledgeSpace.documentsReindexStarted'),
     )
   })
 
@@ -1642,20 +1636,20 @@ describe('DocumentsPage', () => {
       render(<DocumentsPage knowledgeSpaceId="space-1" />)
       await user.click(
         screen.getByRole('button', {
-          name: /dataset\.newKnowledge\.documentActions/,
+          name: /knowledgeSpace\.documentActions/,
         }),
       )
 
       expect(
         await screen.findByRole('menuitem', {
-          name: 'dataset.newKnowledge.reindexDocument',
+          name: 'knowledgeSpace.reindexDocument',
         }),
       ).toHaveAttribute('aria-disabled', 'true')
       expect(
-        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+        screen.getByRole('menuitem', { name: 'knowledgeSpace.downloadDocuments' }),
       ).toHaveAttribute('aria-disabled', 'true')
       expect(
-        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+        screen.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }),
       ).toHaveAttribute('aria-disabled', 'true')
       expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
       expect(downloadDocumentMutation).not.toHaveBeenCalled()
@@ -1677,17 +1671,17 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: /dataset\.newKnowledge\.documentActions/,
+        name: /knowledgeSpace\.documentActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.reindexDocument',
+        name: 'knowledgeSpace.reindexDocument',
       }),
     )
 
     expect(toastMock.success).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
+    expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
   })
 
   it('retries a failed document from its row action', async () => {
@@ -1709,17 +1703,17 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: /dataset\.newKnowledge\.documentActions/,
+        name: /knowledgeSpace\.documentActions/,
       }),
     )
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.reindexDocument' }),
     ).not.toBeInTheDocument()
     const retry = await screen.findByRole('menuitem', {
-      name: 'dataset.newKnowledge.retryTask',
+      name: 'knowledgeSpace.retryTask',
     })
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.disableSource' }),
     ).not.toBeInTheDocument()
     expect(retry).toBeEnabled()
     expect(retry).not.toHaveAttribute('aria-disabled', 'true')
@@ -1734,9 +1728,7 @@ describe('DocumentsPage', () => {
         },
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.documentStatus.queued'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.documentStatus.queued')).toBeInTheDocument()
   })
 
   it('renames a document through its user-facing display metadata', async () => {
@@ -1744,9 +1736,9 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
-    const input = screen.getByRole('textbox', { name: 'dataset.newKnowledge.documentColumn' })
+    const input = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
     await user.clear(input)
     await user.type(input, 'Renamed handbook.pdf')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -1770,10 +1762,8 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
-    await user.click(
-      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
-    )
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
     expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
       body: { enabled: false, expectedRowVersion: 1 },
@@ -1786,8 +1776,8 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document({ enabled: false })] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(screen.getByText('dataset.newKnowledge.documentStatus.disabled')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    expect(screen.getByText('knowledgeSpace.documentStatus.disabled')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
 
     expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
@@ -1801,7 +1791,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
@@ -1820,7 +1810,7 @@ describe('DocumentsPage', () => {
     })
 
     expect(
-      await screen.findByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+      await screen.findByRole('heading', { name: 'knowledgeSpace.addDocument' }),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => {
@@ -1829,7 +1819,7 @@ describe('DocumentsPage', () => {
       expect(urlUpdate?.options.history).toBe('replace')
     })
     expect(
-      screen.queryByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+      screen.queryByRole('heading', { name: 'knowledgeSpace.addDocument' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1837,16 +1827,14 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     await waitFor(() => {
       const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
       expect(urlUpdate?.searchParams.get('upload')).toBe('1')
       expect(urlUpdate?.options.history).toBe('replace')
     })
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.addDocument' })).toBeInTheDocument()
   })
 
   it('consumes an upload URL request without opening the form for a read-only user', async () => {
@@ -1857,7 +1845,7 @@ describe('DocumentsPage', () => {
     })
 
     expect(
-      screen.queryByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+      screen.queryByRole('heading', { name: 'knowledgeSpace.addDocument' }),
     ).not.toBeInTheDocument()
     await waitFor(() => {
       const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
@@ -1924,10 +1912,10 @@ describe('DocumentsPage', () => {
     expect(screen.getAllByText('Notion support SOP').length).toBeGreaterThan(0)
     expect(screen.getAllByText('v2').length).toBeGreaterThan(0)
     for (const status of ['ready', 'queued', 'processing', 'failed', 'disabled'])
-      expect(
-        screen.getAllByText(`dataset.newKnowledge.documentStatus.${status}`).length,
-      ).toBeGreaterThan(0)
-    expect(screen.getByText('dataset.newKnowledge.lastReadyRevisionHint')).toBeInTheDocument()
+      expect(screen.getAllByText(`knowledgeSpace.documentStatus.${status}`).length).toBeGreaterThan(
+        0,
+      )
+    expect(screen.getByText('knowledgeSpace.lastReadyRevisionHint')).toBeInTheDocument()
   })
 
   it('does not derive document availability from disabled or unresolved sources', () => {
@@ -1947,7 +1935,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getAllByText('dataset.newKnowledge.documentStatus.ready')).toHaveLength(2)
+    expect(screen.getAllByText('knowledgeSpace.documentStatus.ready')).toHaveLength(2)
     expect(screen.getByRole('checkbox', { name: 'Archived.pdf' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Orphaned.pdf' })).toBeEnabled()
   })
@@ -1966,17 +1954,17 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
+    const emptyState = screen.getByText('knowledgeSpace.documentsEmptyTitle').parentElement
     expect(emptyState).not.toBeNull()
-    expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(screen.getByText('knowledgeSpace.documentsEmptyDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.documentsDropHint')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
     expect(
       screen.queryByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":2}',
       }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.metadata' })).toBeEnabled()
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
@@ -1989,11 +1977,9 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.metadata' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'knowledgeSpace.tasks' })).not.toBeInTheDocument()
   })
 
   it('shows the drop target while dragging and previews dropped files in the upload form', () => {
@@ -2003,20 +1989,20 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const documentSurface = screen
-      .getByRole('heading', { name: 'dataset.newKnowledge.documents' })
+      .getByRole('heading', { name: 'knowledgeSpace.documents' })
       .closest('section')
     expect(documentSurface).not.toBeNull()
     fireEvent.dragEnter(documentSurface!, {
       dataTransfer: { files: [droppedFile], types: ['Files'] },
     })
 
-    expect(screen.getByText('dataset.newKnowledge.dropFilesHere')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.dropFilesHere')).toBeInTheDocument()
 
     fireEvent.dragLeave(documentSurface!, {
       dataTransfer: { files: [droppedFile], types: ['Files'] },
     })
 
-    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.dropFilesHere')).not.toBeInTheDocument()
 
     fireEvent.dragEnter(documentSurface!, {
       dataTransfer: { files: [droppedFile], types: ['Files'] },
@@ -2029,10 +2015,8 @@ describe('DocumentsPage', () => {
       },
     })
 
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.addDocument' })).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.dropFilesHere')).not.toBeInTheDocument()
     expect(screen.getByText('handbook.md')).toBeInTheDocument()
   })
 
@@ -2042,7 +2026,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
 
     const documentSurface = screen
-      .getByRole('heading', { name: 'dataset.newKnowledge.addDocument' })
+      .getByRole('heading', { name: 'knowledgeSpace.addDocument' })
       .closest('section')
     expect(documentSurface).not.toBeNull()
 
@@ -2050,7 +2034,7 @@ describe('DocumentsPage', () => {
       dataTransfer: { files: [droppedFile], types: ['Files'] },
     })
 
-    expect(screen.getByText('dataset.newKnowledge.dropFilesHere')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.dropFilesHere')).toBeInTheDocument()
 
     fireEvent.drop(documentSurface!, {
       dataTransfer: {
@@ -2060,7 +2044,7 @@ describe('DocumentsPage', () => {
       },
     })
 
-    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.dropFilesHere')).not.toBeInTheDocument()
     expect(await screen.findByText('handbook.md')).toBeInTheDocument()
   })
 
@@ -2069,9 +2053,9 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeSpace.uploadDocuments')).not.toBeInTheDocument()
     const addDocument = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.addDocument',
+      name: 'knowledgeSpace.addDocument',
     })
     expect(addDocument).toBeDisabled()
     expect(addDocument).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
@@ -2083,12 +2067,13 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
+    const emptyState = screen.getByText('knowledgeSpace.documentsEmptyTitle').parentElement
     expect(emptyState).not.toBeNull()
-    expect(screen.queryByText('dataset.newKnowledge.documentsDropHint')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toHaveAttribute('aria-describedby', 'documents-readonly-reason')
+    expect(screen.queryByText('knowledgeSpace.documentsDropHint')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toHaveAttribute(
+      'aria-describedby',
+      'documents-readonly-reason',
+    )
     const dataTransfer = {
       dropEffect: 'copy',
       files: [new File(['one'], 'one.md', { type: 'text/markdown' })],
@@ -2112,7 +2097,7 @@ describe('DocumentsPage', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     ).not.toBeInTheDocument()
   })
@@ -2126,9 +2111,9 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.documentPermissionRestricted')).toBeVisible()
-    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSpace.documentPermissionRestricted')).toBeVisible()
+    expect(screen.queryByLabelText('knowledgeSpace.uploadDocuments')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -2137,22 +2122,20 @@ describe('DocumentsPage', () => {
       'aria-describedby',
       'documents-readonly-reason',
     )
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     for (const item of await screen.findAllByRole('menuitem'))
       expect(item).toHaveAttribute('aria-disabled', 'true')
     await user.keyboard('{Escape}')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).not.toBeInTheDocument()
     expect(
-      within(screen.getByRole('dialog')).getByText(
-        'dataset.newKnowledge.documentPermissionRestricted',
-      ),
+      within(screen.getByRole('dialog')).getByText('knowledgeSpace.documentPermissionRestricted'),
     ).toBeInTheDocument()
   })
 
@@ -2163,7 +2146,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
+    const addDocument = screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })
     expect(addDocument).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -2175,23 +2158,21 @@ describe('DocumentsPage', () => {
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })).toBeInTheDocument()
   })
 
   it('stages one or multiple files before uploading them through the Dify API contract', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    const input = screen.getByLabelText('knowledgeSpace.uploadDocuments')
     expect(input).toHaveAttribute('hidden')
     expect(input).toHaveAttribute('tabindex', '-1')
     expect(input).toHaveAttribute(
@@ -2210,20 +2191,20 @@ describe('DocumentsPage', () => {
     )
     await waitForDocumentFilesStaged()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { upload_id: 'staged-one.md' },
       params: { control_space_id: 'space-1' },
     })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    const multipleInput = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    const multipleInput = screen.getByLabelText('knowledgeSpace.uploadDocuments')
     await user.upload(multipleInput, [
       new File(['two'], 'two.md', { type: 'text/markdown' }),
       new File(['three'], 'three.txt', { type: 'text/plain' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     const documentInvalidation = queryClient.invalidateQueries.mock.calls.find(
@@ -2266,26 +2247,26 @@ describe('DocumentsPage', () => {
       )
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
-    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+    await user.upload(screen.getByLabelText('knowledgeSpace.uploadDocuments'), [
       new File(['one'], 'one.pdf', { type: 'application/pdf' }),
       new File(['two'], 'two.pdf', { type: 'application/pdf' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     const uploadRegion = screen.getByRole('region', {
-      name: 'dataset.newKnowledge.uploadDocuments',
+      name: 'knowledgeSpace.uploadDocuments',
     })
     const [firstRow, secondRow] = within(uploadRegion).getAllByRole('listitem')
     if (!firstRow || !secondRow) throw new Error('Expected two staged upload rows')
     await waitFor(() => expect(firstRow).toHaveAttribute('aria-busy', 'true'))
-    expect(within(firstRow).getByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+    expect(within(firstRow).getByText('knowledgeSpace.uploadingFiles')).toBeVisible()
     expect(secondRow).not.toHaveAttribute('aria-busy')
 
     await act(async () => resolveFirstUpload({}))
     await waitFor(() => expect(secondRow).toHaveAttribute('aria-busy', 'true'))
     expect(firstRow).not.toHaveAttribute('aria-busy')
-    expect(within(secondRow).getByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+    expect(within(secondRow).getByText('knowledgeSpace.uploadingFiles')).toBeVisible()
 
     await act(async () => resolveSecondUpload({}))
   })
@@ -2299,10 +2280,10 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), file)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.upload(screen.getByLabelText('knowledgeSpace.uploadDocuments'), file)
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     const preview = await screen.findByRole('button', { name: 'PDF preview' })
     expect(preview).toHaveAttribute('data-url', 'blob:handbook')
@@ -2322,12 +2303,12 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [file] },
     })
 
-    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'knowledgeSpace.preview' })).toBeNull()
   })
 
   it('prompts for model setup before uploading staged documents', async () => {
@@ -2335,17 +2316,17 @@ describe('DocumentsPage', () => {
     settingsState.configurationState = 'setup-required'
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', {
-      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
+      name: 'knowledgeSpace.overview.attention.modelReadiness.title',
     })
     await user.click(
       within(dialog).getByRole('button', {
@@ -2386,13 +2367,13 @@ describe('DocumentsPage', () => {
     )
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     expect(settingsState.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -2427,13 +2408,13 @@ describe('DocumentsPage', () => {
     settingsState.refetch.mockResolvedValueOnce({ data: undefined, isError: true })
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
@@ -2443,9 +2424,9 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['draft'], 'draft.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
@@ -2453,10 +2434,8 @@ describe('DocumentsPage', () => {
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(discardStagedUploadMutation).toHaveBeenCalledWith('staged-draft.md')
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeSpace.uploadDocuments')).not.toBeInTheDocument()
   })
 
   it('times out an exact 15 MiB staging request and discards a late success', async () => {
@@ -2477,7 +2456,7 @@ describe('DocumentsPage', () => {
     try {
       const maxSizeFile = new File(['boundary'], 'boundary.txt', { type: 'text/plain' })
       Object.defineProperty(maxSizeFile, 'size', { value: 15 * 1024 * 1024 })
-      fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
         target: { files: [maxSizeFile] },
       })
 
@@ -2492,8 +2471,8 @@ describe('DocumentsPage', () => {
 
       expect(stagingSignal?.aborted).toBe(true)
       expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
-      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
       expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
 
       await act(async () => {
@@ -2526,7 +2505,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
     const maxSizeFile = new File(['draft'], 'draft.txt', { type: 'text/plain' })
     Object.defineProperty(maxSizeFile, 'size', { value: 15 * 1024 * 1024 })
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [maxSizeFile] },
     })
 
@@ -2535,9 +2514,7 @@ describe('DocumentsPage', () => {
 
     expect(stagingSignal?.aborted).toBe(true)
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toBeInTheDocument()
 
     await act(async () => {
       rejectStaging(new Error('late staging failure'))
@@ -2564,7 +2541,7 @@ describe('DocumentsPage', () => {
         }),
     )
     render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [canceledFile, failedFile] },
     })
 
@@ -2579,7 +2556,7 @@ describe('DocumentsPage', () => {
     })
 
     expect(toastMock.error).toHaveBeenCalledOnce()
-    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
+    expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
@@ -2591,12 +2568,12 @@ describe('DocumentsPage', () => {
       type: 'application/octet-stream',
     })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [validFile, unsupportedFile] },
     })
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     await waitFor(() =>
       expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
@@ -2612,16 +2589,14 @@ describe('DocumentsPage', () => {
     const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
     const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.upload(screen.getByLabelText('knowledgeSpace.uploadDocuments'), [
       emptyFile,
       oneByteFile,
     ])
 
-    expect(
-      screen.getByText(/dataset\.newKnowledge\.selectedFiles:.*"total":2.*"valid":1/),
-    ).toBeVisible()
-    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    expect(screen.getByText(/knowledgeSpace\.selectedFiles:.*"total":2.*"valid":1/)).toBeVisible()
+    expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
     await waitFor(() =>
       expect(stageUploadMutation).toHaveBeenCalledWith(
         {
@@ -2631,7 +2606,7 @@ describe('DocumentsPage', () => {
       ),
     )
     expect(stageUploadMutation).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
   })
 
   it('rejects oversized files before invoking an upload contract', async () => {
@@ -2640,15 +2615,15 @@ describe('DocumentsPage', () => {
     const oversizedFile = new File(['one'], 'oversized.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [oversizedFile] },
     })
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
     expect(
-      screen.getByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize:.*"size":15/),
+      screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
     ).toBeVisible()
   })
 
@@ -2659,8 +2634,8 @@ describe('DocumentsPage', () => {
     const file = new File(['one'], 'handbook.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [file] },
     })
 
@@ -2672,10 +2647,8 @@ describe('DocumentsPage', () => {
         { signal: expect.any(AbortSignal) },
       ),
     )
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
-    expect(
-      screen.queryByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
-    ).toBeNull()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+    expect(screen.queryByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeNull()
   })
 
   it('rejects empty files locally with a field-level reason', async () => {
@@ -2683,15 +2656,15 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [emptyFile] },
     })
 
     expect(stageUploadMutation).not.toHaveBeenCalled()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
-    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
   })
 
   it('reports local exclusions and API upload failures', async () => {
@@ -2700,25 +2673,25 @@ describe('DocumentsPage', () => {
     const oversizedFile = new File(['large'], 'too-large.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    const input = screen.getByLabelText('knowledgeSpace.uploadDocuments')
     await user.upload(input, [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       oversizedFile,
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     queryClient.invalidateQueries.mockClear()
     uploadMutation.mutateAsync.mockRejectedValueOnce(new Error('quota exceeded'))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.upload(screen.getByLabelText('knowledgeSpace.uploadDocuments'), [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
@@ -2729,7 +2702,7 @@ describe('DocumentsPage', () => {
 
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentsPermissionDescription',
+      'knowledgeSpace.documentsPermissionDescription',
     )
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
 
@@ -2737,7 +2710,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     )
     expect(documentsQuery.refetch).toHaveBeenCalledOnce()
@@ -2753,29 +2726,27 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentsErrorDescription',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.documentsErrorDescription')
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
       within(actions).getByRole('button', {
-        name: 'dataset.newKnowledge.reindexDocuments',
+        name: 'knowledgeSpace.reindexDocuments',
       }),
     ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
     expect(
       within(actions).getByText(
-        'dataset.newKnowledge.reindexDocuments · dataset.newKnowledge.documentsErrorDescription',
+        'knowledgeSpace.reindexDocuments · knowledgeSpace.documentsErrorDescription',
       ),
     ).toBeVisible()
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     )
     expect(documentsQuery.refetch).toHaveBeenCalledOnce()
@@ -2788,13 +2759,11 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentsPermissionDescription',
+      'knowledgeSpace.documentsPermissionDescription',
     )
     expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeSpace.uploadDocuments')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'knowledgeSpace.tasks' })).not.toBeInTheDocument()
   })
 
   it('keeps cached refresh retries busy while their queries are fetching', () => {
@@ -2808,12 +2777,12 @@ describe('DocumentsPage', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
   })
@@ -2825,7 +2794,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
   })
 
   it('does not disable a failed dependency retry for an unrelated background refresh', () => {
@@ -2837,7 +2806,7 @@ describe('DocumentsPage', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     ).not.toHaveAttribute('aria-disabled')
   })
@@ -2850,7 +2819,7 @@ describe('DocumentsPage', () => {
     sourcesQuery.error = new Error('source background refresh failed')
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const retry = screen.getByRole('button', {
-      name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+      name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
     })
 
     await user.click(retry)
@@ -2872,7 +2841,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('button', {
-          name: 'common.operation.retry · dataset.newKnowledge.sourcesErrorDescription',
+          name: 'common.operation.retry · knowledgeSpace.sourcesErrorDescription',
         }),
       ).toHaveFocus(),
     )
@@ -2880,7 +2849,7 @@ describe('DocumentsPage', () => {
     sourcesQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus(),
     )
   })
 
@@ -2891,7 +2860,7 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -2960,7 +2929,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const searchbox = screen.getByRole('searchbox', {
-      name: 'dataset.newKnowledge.searchDocuments',
+      name: 'knowledgeSpace.searchDocuments',
     })
     await user.click(searchbox)
     expect(searchbox).toHaveFocus()
@@ -2973,7 +2942,7 @@ describe('DocumentsPage', () => {
     documentsQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus(),
     )
   })
 
@@ -2983,8 +2952,8 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
     const reindex = within(
-      screen.getByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
-    ).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' })
+      screen.getByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' }),
+    ).getByRole('button', { name: 'knowledgeSpace.reindexDocuments' })
     act(() => reindex.focus())
 
     documentsQuery.error = { status: 403 }
@@ -3033,14 +3002,14 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'later page',
     )
 
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.partialDocumentResults')).toBeInTheDocument()
   })
 
   it('blocks selection until filtered cursor pages are complete', async () => {
@@ -3052,7 +3021,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'product',
     )
 
@@ -3061,7 +3030,7 @@ describe('DocumentsPage', () => {
       'true',
     )
     expect(
-      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
+      screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAllDocuments' }),
     ).toHaveAttribute('aria-disabled', 'true')
   })
 
@@ -3072,19 +3041,15 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourcesErrorDescription',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.sourcesErrorDescription')
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.sourcesErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.sourcesErrorDescription',
       }),
     )
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
-    expect(
-      within(documentRow).getByText('dataset.newKnowledge.documentStatus.ready'),
-    ).toBeInTheDocument()
+    expect(within(documentRow).getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
     expect(screen.getByRole('combobox')).toBeEnabled()
   })
 
@@ -3094,10 +3059,10 @@ describe('DocumentsPage', () => {
     tasksQuery.isFetchNextPageError = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     )
 
@@ -3110,11 +3075,11 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.error = new Error('task refresh failed')
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
     const panel = screen.getByRole('dialog')
     await user.click(
       within(panel).getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     )
 
@@ -3140,20 +3105,20 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     const panel = screen.getByRole('dialog')
     await user.click(
       within(panel).getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     )
 
     tasksQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     const documentRetry = within(panel).getByRole('button', {
-      name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
     })
     await waitFor(() => expect(documentRetry).toHaveFocus())
     await user.click(documentRetry)
@@ -3178,16 +3143,16 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const taskTrigger = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.tasksWithAttention:{"count":0} · dataset.newKnowledge.taskHistoryIncomplete',
+      name: 'knowledgeSpace.tasksWithAttention:{"count":0} · knowledgeSpace.taskHistoryIncomplete',
     })
     expect(taskTrigger).toHaveTextContent('0+')
     await user.click(taskTrigger)
     expect(
-      within(screen.getByRole('dialog')).queryByText('dataset.newKnowledge.noBackgroundTasks'),
+      within(screen.getByRole('dialog')).queryByText('knowledgeSpace.noBackgroundTasks'),
     ).not.toBeInTheDocument()
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'dataset.newKnowledge.loadMore',
+        name: 'knowledgeSpace.loadMore',
       }),
     )
 
@@ -3212,16 +3177,14 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
 
     const panel = screen.getByRole('dialog')
     expect(within(panel).queryByText('later-document')).not.toBeInTheDocument()
     expect(
-      within(panel).getByText(
-        'dataset.newKnowledge.addDocument · dataset.newKnowledge.documentColumn',
-      ),
+      within(panel).getByText('knowledgeSpace.addDocument · knowledgeSpace.documentColumn'),
     ).toBeInTheDocument()
-    await user.click(within(panel).getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(within(panel).getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -3242,7 +3205,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
     await waitFor(() => expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce())
   })
 
@@ -3262,15 +3225,15 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
 
     const panel = screen.getByRole('dialog')
     expect(within(panel).getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentsErrorDescription',
+      'knowledgeSpace.documentsErrorDescription',
     )
     await user.click(
       within(panel).getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     )
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
@@ -3286,7 +3249,7 @@ describe('DocumentsPage', () => {
 
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
     expect(
-      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.disabled'),
+      within(documentRow).queryByText('knowledgeSpace.documentStatus.disabled'),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
@@ -3304,27 +3267,23 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.tasksErrorDescription',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tasksErrorDescription')
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     )
     expect(tasksQuery.refetch).toHaveBeenCalledOnce()
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })).toBeInTheDocument()
   })
 
   it('reports and retries cached task refresh failures from the document empty state', async () => {
@@ -3333,12 +3292,10 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.tasksErrorDescription',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tasksErrorDescription')
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.tasksErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
       }),
     )
     expect(tasksQuery.refetch).toHaveBeenCalledOnce()
@@ -3372,13 +3329,13 @@ describe('DocumentsPage', () => {
 
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
     expect(
-      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.ready'),
+      within(documentRow).queryByText('knowledgeSpace.documentStatus.ready'),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('region', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
+    expect(screen.getByRole('region', { name: 'knowledgeSpace.documents' })).toHaveAttribute(
       'aria-busy',
       'true',
     )
@@ -3393,9 +3350,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
-    expect(
-      within(documentRow).getByText('dataset.newKnowledge.documentStatus.ready'),
-    ).toBeInTheDocument()
+    expect(within(documentRow).getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
     )
@@ -3411,7 +3366,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'product',
     )
 
@@ -3420,11 +3375,11 @@ describe('DocumentsPage', () => {
       'true',
     )
     expect(
-      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
+      screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAllDocuments' }),
     ).toHaveAttribute('aria-disabled', 'true')
     await user.click(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     )
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
@@ -3441,13 +3396,13 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'sso',
     )
 
     expect(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
   })
@@ -3466,7 +3421,7 @@ describe('DocumentsPage', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+        name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
       }),
     ).not.toHaveAttribute('aria-disabled')
   })
@@ -3476,12 +3431,12 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()], nextCursor: 'next' }] }
     documentsQuery.hasNextPage = true
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
     documentsQuery.isFetchNextPageError = true
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     const retry = screen.getByRole('button', {
-      name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
+      name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
     })
     await waitFor(() => expect(retry).toHaveFocus())
     await user.click(retry)
@@ -3509,29 +3464,29 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
 
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }).closest('section'),
+      screen.getByRole('heading', { name: 'knowledgeSpace.documents' }).closest('section'),
     ).toHaveClass('pb-[calc(7rem+env(safe-area-inset-bottom,0px))]')
     expect(
-      within(actions).getByText('dataset.newKnowledge.documentsSelected:{"count":1}'),
+      within(actions).getByText('knowledgeSpace.documentsSelected:{"count":1}'),
     ).toBeInTheDocument()
     const reindex = within(actions).getByRole('button', {
-      name: 'dataset.newKnowledge.reindexDocuments',
+      name: 'knowledgeSpace.reindexDocuments',
     })
     expect(reindex).toBeEnabled()
     const orderedActions = within(actions).getAllByRole('button')
-    expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
-    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
+    expect(orderedActions[0]).toHaveAccessibleName('knowledgeSpace.reindexDocuments')
+    expect(orderedActions[1]).toHaveAccessibleName('knowledgeSpace.downloadDocuments')
     expect(orderedActions[1]).toBeEnabled()
-    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
+    expect(orderedActions[2]).toHaveAccessibleName('knowledgeSpace.disableSource')
     expect(orderedActions[2]).toBeEnabled()
     expect(orderedActions[3]).toHaveAccessibleName('common.operation.remove')
     expect(orderedActions[3]).toBeEnabled()
-    expect(orderedActions[4]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(orderedActions[4]).toHaveAccessibleName('knowledgeSpace.clearDocumentSelection')
     expect(actions.firstElementChild).toHaveTextContent(
-      'dataset.newKnowledge.documentsSelected:{"count":1}',
+      'knowledgeSpace.documentsSelected:{"count":1}',
     )
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
@@ -3540,7 +3495,7 @@ describe('DocumentsPage', () => {
       params: { control_space_id: 'space-1' },
     })
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus(),
     )
   })
 
@@ -3561,17 +3516,17 @@ describe('DocumentsPage', () => {
       render(<DocumentsPage knowledgeSpaceId="space-1" />)
       await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
       const actions = screen.getByRole('group', {
-        name: 'dataset.newKnowledge.bulkDocumentActions',
+        name: 'knowledgeSpace.bulkDocumentActions',
       })
 
       expect(
-        within(actions).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
+        within(actions).getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }),
       ).toBeDisabled()
       expect(
-        within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+        within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
       ).toBeDisabled()
       expect(
-        within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+        within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }),
       ).toBeDisabled()
       expect(within(actions).getByRole('button', { name: 'common.operation.remove' })).toBeEnabled()
     },
@@ -3589,11 +3544,11 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
 
     expect(
-      within(actions).queryByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+      within(actions).queryByRole('button', { name: 'knowledgeSpace.disableSource' }),
     ).not.toBeInTheDocument()
     expect(within(actions).getByRole('button', { name: 'common.operation.remove' })).toBeEnabled()
   })
@@ -3616,14 +3571,12 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
 
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
     ).toBeEnabled()
-    await user.click(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
-    )
+    await user.click(within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }))
 
     expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
       body: {
@@ -3637,7 +3590,7 @@ describe('DocumentsPage', () => {
     })
     await waitFor(() =>
       expect(
-        screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+        screen.queryByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' }),
       ).not.toBeInTheDocument(),
     )
   })
@@ -3659,7 +3612,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     await user.click(within(actions).getByRole('button', { name: 'dataset.enable' }))
 
@@ -3688,15 +3641,13 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
-    )
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAllDocuments' }))
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
 
     expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }),
     ).toBeDisabled()
     expect(bulkUpdateLogicalDocumentsMutation).not.toHaveBeenCalled()
   })
@@ -3707,13 +3658,11 @@ describe('DocumentsPage', () => {
     updateLogicalDocumentMutation.mockRejectedValueOnce({ status: 409 })
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
-    await user.click(
-      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
-    )
+    await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
-    expect(toastMock.warning).toHaveBeenCalledWith('dataset.newKnowledge.taskActionFailed')
+    expect(toastMock.warning).toHaveBeenCalledWith('knowledgeSpace.taskActionFailed')
   })
 
   it('downloads selected active revisions as a ZIP archive', async () => {
@@ -3737,10 +3686,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     await user.click(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
     )
 
     expect(downloadDocumentsMutation).toHaveBeenCalledWith({
@@ -3785,10 +3734,10 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     const download = within(actions).getByRole('button', {
-      name: 'dataset.newKnowledge.downloadDocuments',
+      name: 'knowledgeSpace.downloadDocuments',
     })
     expect(download).toBeEnabled()
     await user.click(download)
@@ -3827,10 +3776,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Pending.pdf' }))
 
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
     ).toBeDisabled()
     expect(downloadDocumentsMutation).not.toHaveBeenCalled()
   })
@@ -3848,15 +3797,13 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
-    )
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAllDocuments' }))
 
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
     ).toBeDisabled()
     expect(downloadDocumentsMutation).not.toHaveBeenCalled()
   })
@@ -3904,12 +3851,12 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
     expect(
       screen.getByRole('dialog', {
-        name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
+        name: 'knowledgeSpace.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
   })
@@ -3925,13 +3872,13 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const actions = screen.getByRole('group', {
-      name: 'dataset.newKnowledge.bulkDocumentActions',
+      name: 'knowledgeSpace.bulkDocumentActions',
     })
     expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
+      within(actions).getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }),
     ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
     expect(
-      within(actions).getByText('dataset.newKnowledge.reindexDocuments · common.loading'),
+      within(actions).getByText('knowledgeSpace.reindexDocuments · common.loading'),
     ).toBeVisible()
 
     tasksQuery.data = { pages: [{ items: [] }] }
@@ -3942,7 +3889,7 @@ describe('DocumentsPage', () => {
 
     expect(
       within(actions).getByText(
-        'dataset.newKnowledge.reindexDocuments · dataset.newKnowledge.sourcesErrorDescription',
+        'knowledgeSpace.reindexDocuments · knowledgeSpace.sourcesErrorDescription',
       ),
     ).toBeVisible()
   })
@@ -3987,12 +3934,12 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Missing.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
     expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Missing.pdf' })).toBeChecked()
     expect(toastMock.warning).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentsReindexPartial:{"missing":1,"queued":1}',
+      'knowledgeSpace.documentsReindexPartial:{"missing":1,"queued":1}',
     )
   })
 
@@ -4036,11 +3983,11 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Disabled.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
     expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Disabled.pdf' })).toBeChecked()
-    expect(toastMock.warning).toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
+    expect(toastMock.warning).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
   })
 
   it('clears stale selection and refreshes after every re-index target is missing', async () => {
@@ -4054,15 +4001,15 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toBeChecked()
     expect(
-      screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      screen.queryByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' }),
     ).not.toBeInTheDocument()
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentsReindexPartial:{"missing":1,"queued":0}',
+      'knowledgeSpace.documentsReindexPartial:{"missing":1,"queued":0}',
     )
   })
 
@@ -4097,16 +4044,14 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const trigger = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.tasksWithAttention:{"count":3}',
+      name: 'knowledgeSpace.tasksWithAttention:{"count":3}',
     })
     expect(trigger).toHaveTextContent('3')
     expect(trigger).toHaveAttribute('data-has-error', 'true')
     await user.click(trigger)
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
-    expect(
-      within(panel).getByText('dataset.newKnowledge.backgroundTasksDescription'),
-    ).toBeInTheDocument()
-    expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    expect(within(panel).getByText('knowledgeSpace.backgroundTasksDescription')).toBeInTheDocument()
+    expect(within(panel).getByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
     expect(
       within(panel).getByText((_, element) =>
         Boolean(
@@ -4118,7 +4063,7 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
     expect(
       within(panel).getByRole('button', {
-        name: /dataset\.newKnowledge\.retryTask.*canceled/,
+        name: /knowledgeSpace\.retryTask.*canceled/,
       }),
     ).toBeInTheDocument()
   })
@@ -4144,23 +4089,23 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     await user.click(
       within(panel).getByRole('button', {
-        name: /dataset\.newKnowledge\.dismissTask.*failed-task/,
+        name: /knowledgeSpace\.dismissTask.*failed-task/,
       }),
     )
 
     expect(within(panel).queryByText(/failed\.pdf/)).not.toBeInTheDocument()
     expect(within(panel).getByText(/completed\.pdf/)).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.taskAttentionClear')).toBeInTheDocument()
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.taskDismissed', {
+    expect(screen.getByText('knowledgeSpace.taskAttentionClear')).toBeInTheDocument()
+    expect(toastMock.info).toHaveBeenCalledWith('knowledgeSpace.taskDismissed', {
       actionProps: expect.objectContaining({
-        children: 'dataset.newKnowledge.undoTaskDismissal',
+        children: 'knowledgeSpace.undoTaskDismissal',
       }),
     })
 
@@ -4169,7 +4114,7 @@ describe('DocumentsPage', () => {
 
     expect(within(panel).getByText(/failed\.pdf/)).toBeInTheDocument()
     expect(
-      screen.getByText('dataset.newKnowledge.taskAttentionErrorCount:{"count":1}'),
+      screen.getByText('knowledgeSpace.taskAttentionErrorCount:{"count":1}'),
     ).toBeInTheDocument()
   })
 
@@ -4190,20 +4135,20 @@ describe('DocumentsPage', () => {
     const firstRender = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: /dataset\.newKnowledge\.dismissTask.*failed-task/,
+        name: /knowledgeSpace\.dismissTask.*failed-task/,
       }),
     )
     firstRender.unmount()
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(within(panel).queryByText(/failed\.pdf/)).not.toBeInTheDocument()
     expect(within(panel).getByText(/completed\.pdf/)).toBeInTheDocument()
   })
@@ -4223,12 +4168,12 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.tasks/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.tasks/ }))
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     await user.click(
       within(panel).getByRole('button', {
-        name: /dataset\.newKnowledge\.dismissTask.*completed-task/,
+        name: /knowledgeSpace\.dismissTask.*completed-task/,
       }),
     )
 
@@ -4236,7 +4181,7 @@ describe('DocumentsPage', () => {
     expect(within(panel).getByText(/running\.pdf/)).toBeInTheDocument()
     expect(
       within(panel).queryByRole('button', {
-        name: /dataset\.newKnowledge\.dismissTask.*running-task/,
+        name: /knowledgeSpace\.dismissTask.*running-task/,
       }),
     ).not.toBeInTheDocument()
   })
@@ -4273,22 +4218,20 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
     expect(
-      within(panel).getByText('dataset.newKnowledge.reindexDocuments · sso-enterprise.pdf'),
+      within(panel).getByText('knowledgeSpace.reindexDocuments · sso-enterprise.pdf'),
     ).toBeInTheDocument()
     expect(
-      within(panel).getByText(
-        'dataset.newKnowledge.overview.operation.source_sync · Notion support SOP',
-      ),
+      within(panel).getByText('knowledgeSpace.overview.operation.source_sync · Notion support SOP'),
     ).toBeInTheDocument()
     expect(within(panel).queryByText(/ · 1$/)).not.toBeInTheDocument()
-    expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+    expect(within(panel).getByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
   })
 
   it('shows a single deletion document title and its checkpoint progress', async () => {
@@ -4316,19 +4259,19 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(
       within(panel).getByText(
-        'dataset.newKnowledge.overview.operation.document_delete · dify使用问题反馈.xlsx',
+        'knowledgeSpace.overview.operation.document_delete · dify使用问题反馈.xlsx',
       ),
     ).toBeInTheDocument()
     expect(within(panel).getByText((content) => content.startsWith('10%'))).toBeInTheDocument()
     expect(
-      within(panel).queryByText('dataset.newKnowledge.overview.operation.document_delete · 1'),
+      within(panel).queryByText('knowledgeSpace.overview.operation.document_delete · 1'),
     ).not.toBeInTheDocument()
   })
 
@@ -4358,18 +4301,18 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":2}',
       }),
     )
 
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · Alpha.pdf · task-a',
+        name: 'knowledgeSpace.interruptTask · knowledgeSpace.addDocument · Alpha.pdf · task-a',
       }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · Beta.pdf · task-b',
+        name: 'knowledgeSpace.interruptTask · knowledgeSpace.addDocument · Beta.pdf · task-b',
       }),
     ).toBeInTheDocument()
   })
@@ -4381,7 +4324,7 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
@@ -4389,11 +4332,9 @@ describe('DocumentsPage', () => {
     tasksQuery.isPending = true
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(within(panel).getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-    expect(
-      within(panel).queryByText('dataset.newKnowledge.noBackgroundTasks'),
-    ).not.toBeInTheDocument()
+    expect(within(panel).queryByText('knowledgeSpace.noBackgroundTasks')).not.toBeInTheDocument()
   })
 
   it('prevents duplicate interrupt requests and refreshes both resources', async () => {
@@ -4411,10 +4352,10 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    const interrupt = screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' })
+    const interrupt = screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })
     await user.dblClick(interrupt)
 
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
@@ -4444,16 +4385,16 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
 
     tasksQuery.data = {
       pages: [{ items: [task({ id: 'shared-task', state: 'failed' })] }],
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    const retry = screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })
+    const retry = screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })
     expect(retry).toHaveAttribute('aria-disabled', 'true')
     await user.click(retry)
     expect(retryMutation.mutateAsync).not.toHaveBeenCalled()
@@ -4470,15 +4411,13 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     expect(retryMutation.mutateAsync).toHaveBeenCalledOnce()
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.taskActionFailed',
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.taskActionFailed')
 
     tasksQuery.data = {
       pages: [
@@ -4493,7 +4432,7 @@ describe('DocumentsPage', () => {
       ],
     }
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskActionFailed')).not.toBeInTheDocument()
   })
 
   it('does not restore an action failure after its drawer cycle closes', async () => {
@@ -4511,19 +4450,19 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await act(async () => rejectCancel?.(new Error('cancel failed after close')))
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskActionFailed')).not.toBeInTheDocument()
   })
 
   it('does not move focus when an action from an older drawer cycle succeeds', async () => {
@@ -4541,10 +4480,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     tasksQuery.data = {
@@ -4553,11 +4492,11 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":2}',
       }),
     )
     const nextAction = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · new-action',
+      name: 'knowledgeSpace.interruptTask · knowledgeSpace.addDocument · sso-enterprise.pdf · new-action',
     })
     act(() => nextAction.focus())
     expect(nextAction).toHaveFocus()
@@ -4583,16 +4522,16 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":2}',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · pending-action',
+        name: 'knowledgeSpace.interruptTask · knowledgeSpace.addDocument · sso-enterprise.pdf · pending-action',
       }),
     )
     const nextAction = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.interruptTask · dataset.newKnowledge.addDocument · sso-enterprise.pdf · focus-target',
+      name: 'knowledgeSpace.interruptTask · knowledgeSpace.addDocument · sso-enterprise.pdf · focus-target',
     })
     act(() => nextAction.focus())
 
@@ -4615,10 +4554,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     tasksQuery.data = {
       pages: [{ items: [task({ id: 'advanced-success', state: 'running' })] }],
@@ -4643,10 +4582,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
 
     queryClient.invalidateQueries.mockClear()
     documentsQuery.error = { status: 403 }
@@ -4658,7 +4597,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     ).toBeInTheDocument()
   })
@@ -4677,10 +4616,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
 
     permissionStateMock.error = new Error('permission query unavailable')
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -4690,9 +4629,7 @@ describe('DocumentsPage', () => {
     )
 
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
-    expect(
-      screen.getByText(/dataset\.newKnowledge\.processingTaskState\.canceled/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/knowledgeSpace\.processingTaskState\.canceled/)).toBeInTheDocument()
   })
 
   it('drops a delayed action failure after the task lifecycle advances', async () => {
@@ -4710,10 +4647,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     tasksQuery.data = { pages: [{ items: [task({ id: 'advanced', state: 'running' })] }] }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -4721,7 +4658,7 @@ describe('DocumentsPage', () => {
     tasksQuery.data = { pages: [{ items: [task({ id: 'advanced', state: 'failed' })] }] }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskActionFailed')).not.toBeInTheDocument()
   })
 
   it('offers retry for an interrupted task when the operation is retryable', async () => {
@@ -4734,11 +4671,11 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
     expect(retryMutation.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({ task_id: 'canceled', task_kind: 'document' }),
@@ -4787,15 +4724,13 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     await waitFor(() => expect(screen.queryByText('Old parser error')).not.toBeInTheDocument())
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
   })
 
   it('ignores a delayed retry response older than the current failed list snapshot', async () => {
@@ -4825,10 +4760,10 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     tasksQuery.data = {
       pages: [
@@ -4855,9 +4790,9 @@ describe('DocumentsPage', () => {
       ),
     )
 
-    expect(await screen.findByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).not.toBeInTheDocument()
   })
 
@@ -4901,7 +4836,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       ).toHaveTextContent('1'),
     )
@@ -4963,12 +4898,10 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
 
     tasksQuery.data = {
       pages: [
@@ -4987,7 +4920,7 @@ describe('DocumentsPage', () => {
     }
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const error = await screen.findByText('dataset.newKnowledge.taskFailure.temporary')
+    const error = await screen.findByText('knowledgeSpace.taskFailure.temporary')
     expect(error).toHaveClass('whitespace-pre-wrap', 'wrap-break-word')
     expect(error).not.toHaveClass('truncate')
   })
@@ -5030,7 +4963,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -5040,7 +4973,7 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.documentsPermissionDescription',
+        'knowledgeSpace.documentsPermissionDescription',
       ),
     )
     expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
@@ -5094,7 +5027,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -5103,7 +5036,7 @@ describe('DocumentsPage', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.documentsPermissionDescription',
+        'knowledgeSpace.documentsPermissionDescription',
       ),
     )
     expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
@@ -5148,7 +5081,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.documentsPermissionDescription',
+        'knowledgeSpace.documentsPermissionDescription',
       ),
     )
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
@@ -5280,10 +5213,10 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
     await waitFor(() => expect(documentsQuery.refetch).toHaveBeenCalled())
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
     await act(async () => resolveDocumentsRefetch({ error: null }))
@@ -5404,7 +5337,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const retry = await screen.findByRole('button', {
-      name: 'common.operation.retry · dataset.newKnowledge.documentsPermissionDescription',
+      name: 'common.operation.retry · knowledgeSpace.documentsPermissionDescription',
     })
     await user.click(retry)
 
@@ -5577,12 +5510,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -5603,9 +5534,9 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskFailure.temporary')).not.toBeInTheDocument()
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
@@ -5626,12 +5557,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -5652,9 +5581,9 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskFailure.temporary')).not.toBeInTheDocument()
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
@@ -5681,12 +5610,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -5700,10 +5627,8 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
-    expect(screen.getByText('dataset.newKnowledge.taskFailure.temporary')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
     expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
   })
 
@@ -5733,17 +5658,15 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
     expect(reconciliationSignal?.aborted).toBe(true)
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
 
     await act(async () => {
@@ -5757,12 +5680,10 @@ describe('DocumentsPage', () => {
       )
     })
 
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskFailure.temporary')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.retryTask' }),
     ).not.toBeInTheDocument()
   })
 
@@ -5791,13 +5712,11 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     expect(toastMock.error).toHaveBeenCalledTimes(1)
     expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
   })
@@ -5832,9 +5751,9 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-      ).not.toHaveTextContent('1'),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.tasks' })).not.toHaveTextContent(
+        '1',
+      ),
     )
     expect(streamProcessingTaskEvents).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -5860,9 +5779,7 @@ describe('DocumentsPage', () => {
       ],
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-    ).not.toHaveTextContent('1')
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.tasks' })).not.toHaveTextContent('1')
 
     tasksQuery.data = {
       pages: [
@@ -5880,9 +5797,9 @@ describe('DocumentsPage', () => {
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-      ).not.toHaveTextContent('1'),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.tasks' })).not.toHaveTextContent(
+        '1',
+      ),
     )
 
     tasksQuery.data = {
@@ -5903,7 +5820,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       ).toHaveTextContent('1'),
     )
@@ -5928,7 +5845,7 @@ describe('DocumentsPage', () => {
     }
 
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(screen.getByText('dataset.newKnowledge.documentStatus.queued')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.documentStatus.queued')).toBeInTheDocument()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
 
     tasksQuery.data = {
@@ -5986,9 +5903,9 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }),
-      ).not.toHaveTextContent('1'),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.tasks' })).not.toHaveTextContent(
+        '1',
+      ),
     )
 
     tasksQuery.data = {
@@ -6009,7 +5926,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       ).toHaveTextContent('1'),
     )
@@ -6072,7 +5989,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       ).toHaveTextContent('1'),
     )
@@ -6136,7 +6053,7 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
     await waitFor(() => expect(screen.getByText(/80%/)).toBeInTheDocument())
@@ -6160,7 +6077,7 @@ describe('DocumentsPage', () => {
     }
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.tasks' })).toBeInTheDocument()
   })
 
   it('lets an equal-timestamp terminal list row replace an active stream override', async () => {
@@ -6189,11 +6106,11 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
   })
 
   it('moves focus to the drawer close button when an external update removes a task action', async () => {
@@ -6206,10 +6123,10 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    const action = screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' })
+    const action = screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })
     act(() => action.focus())
 
     tasksQuery.data = {
@@ -6259,17 +6176,13 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":2}',
       }),
     )
 
     expect(screen.getAllByRole('listitem')).toHaveLength(100)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
   })
 
   it('keeps a failed task actionable when one hundred active tasks fill the drawer', async () => {
@@ -6298,14 +6211,12 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":101}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":101}',
       }),
     )
 
     expect(screen.getAllByRole('listitem')).toHaveLength(100)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
   })
 
   it('keeps an active task actionable when one hundred failed tasks fill the drawer', async () => {
@@ -6335,17 +6246,15 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":101}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":101}',
       }),
     )
 
     expect(screen.getAllByRole('listitem')).toHaveLength(100)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })).toBeInTheDocument()
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'dataset.newKnowledge.loadMore',
+        name: 'knowledgeSpace.loadMore',
       }),
     )
     expect(screen.getAllByRole('listitem')).toHaveLength(101)
@@ -6369,10 +6278,10 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tasks' }))
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'dataset.newKnowledge.loadMore',
+        name: 'knowledgeSpace.loadMore',
       }),
     )
 
@@ -6400,15 +6309,15 @@ describe('DocumentsPage', () => {
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1} · dataset.newKnowledge.taskHistoryIncomplete',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1} · knowledgeSpace.taskHistoryIncomplete',
       }),
     )
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'dataset.newKnowledge.loadMore',
+        name: 'knowledgeSpace.loadMore',
       }),
     )
-    const action = screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' })
+    const action = screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' })
     act(() => action.focus())
 
     tasksQuery.data = {
@@ -6449,7 +6358,7 @@ describe('DocumentsPage', () => {
       expect(taskOptions?.refetchInterval).toBeUndefined()
       expect(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":20}',
         }),
       ).toBeInTheDocument()
     } finally {
@@ -6611,10 +6520,10 @@ describe('DocumentsPage', () => {
     try {
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":7}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":7}',
         }),
       )
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+      fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
       await act(async () => {})
       expect(retryStreamCalls).toEqual([undefined])
 
@@ -6667,7 +6576,7 @@ describe('DocumentsPage', () => {
       expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
       expect(
         within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
-          'dataset.newKnowledge.documentStatus.queued',
+          'knowledgeSpace.documentStatus.queued',
         ),
       ).toBeInTheDocument()
 
@@ -6679,7 +6588,7 @@ describe('DocumentsPage', () => {
       expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(3)
       expect(
         within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
-          'dataset.newKnowledge.documentStatus.processing',
+          'knowledgeSpace.documentStatus.processing',
         ),
       ).toBeInTheDocument()
     } finally {
@@ -6791,7 +6700,7 @@ describe('DocumentsPage', () => {
       await act(async () => {})
 
       expect(streamCounts.get('rotated-terminal')).toBe(2)
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.taskFailedNotification')
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.taskFailedNotification')
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -6879,15 +6788,15 @@ describe('DocumentsPage', () => {
     try {
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       )
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+      fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
       await act(async () => {})
       expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+        screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }),
       ).toBeInTheDocument()
 
       await act(async () => {
@@ -6902,7 +6811,7 @@ describe('DocumentsPage', () => {
       })
 
       expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+        screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }),
       ).toBeInTheDocument()
       expect(screen.queryByText('OLD_FAILURE')).not.toBeInTheDocument()
     } finally {
@@ -6945,12 +6854,12 @@ describe('DocumentsPage', () => {
     try {
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+          name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
         }),
       )
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+      fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
       await act(async () => {})
       await act(async () => rejectPoll?.(new Response(null, { status: 403 })))
 
@@ -7147,7 +7056,7 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       expect(streamProcessingTaskEvents).not.toHaveBeenCalled()
-      expect(screen.getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+      expect(screen.getByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -7201,9 +7110,9 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       await act(async () => {})
       expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
-      expect(screen.getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+      expect(screen.getByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+        screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
       ).not.toBeInTheDocument()
     } finally {
       rendered.unmount()
@@ -7373,7 +7282,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getAllByRole('row')).toHaveLength(101)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(screen.getAllByRole('row')).toHaveLength(151)
     expect(screen.getByRole('table').parentElement).toHaveFocus()
   })
@@ -7403,14 +7312,10 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('combobox'))
-    await user.click(
-      screen.getByRole('option', { name: 'dataset.newKnowledge.documentStatus.failed' }),
-    )
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.documentStatus.failed' }))
 
-    expect(screen.getByText('dataset.newKnowledge.noMatchingDocuments')).toBeInTheDocument()
-    expect(
-      screen.queryByText('dataset.newKnowledge.partialDocumentResults'),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.noMatchingDocuments')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.partialDocumentResults')).not.toBeInTheDocument()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
@@ -7430,12 +7335,12 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'source title from next page',
     )
 
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.partialDocumentResults')).toBeInTheDocument()
   })
 
   it('bounds automatic cursor exhaustion and leaves all further loading explicit', async () => {
@@ -7461,22 +7366,22 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchDocuments' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchDocuments' }),
       'sso',
     )
 
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.partialDocumentResults')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-describedby',
       'partial-document-results',
     )
-    const loadMore = screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })
+    const loadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
     expect(loadMore).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), 'missing')
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.noMatchingDocuments')).not.toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.partialDocumentResults')).toBeInTheDocument()
     await user.click(loadMore)
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
@@ -7494,7 +7399,7 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.loadMore' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
@@ -7522,11 +7427,11 @@ describe('DocumentsPage', () => {
     )
     expect(
       within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
-        'dataset.newKnowledge.documentStatus.ready',
+        'knowledgeSpace.documentStatus.ready',
       ),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.loadMore' }),
     ).not.toBeInTheDocument()
   })
 
@@ -7537,13 +7442,11 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentsPermissionTitle',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.documentsPermissionTitle')
     expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeSpace.uploadDocuments')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.tasksWithAttention:{"count":1}' }),
     ).not.toBeInTheDocument()
   })
 
@@ -7557,19 +7460,20 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
-    expect(await screen.findByText('dataset.newKnowledge.taskActionFailed')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toHaveAttribute(
+    expect(await screen.findByText('knowledgeSpace.taskActionFailed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toHaveAttribute(
       'aria-busy',
       'false',
     )
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('trusts same-version stream progress after a local retry', async () => {
@@ -7603,16 +7507,16 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalled())
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeNull()
   })
 
   it('retries a permission-blocked failed-task poll after permission returns', async () => {
@@ -7660,12 +7564,10 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.clearDocumentSelection' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.clearDocumentSelection' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus(),
     )
     rendered.unmount()
   })
@@ -7674,26 +7576,28 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
     emptyPage.unmount()
 
     reindexMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     documentsQuery.data = { pages: [{ items: [document()] }] }
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
   })
 
   it('locks uploads after a write mutation reveals revoked permission', async () => {
@@ -7704,36 +7608,34 @@ describe('DocumentsPage', () => {
       error: null,
     })
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
+    const addDocument = screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })
     await user.click(addDocument)
 
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
-    expect(toastMock.error).not.toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
-    const restriction = screen.getByText('dataset.newKnowledge.documentPermissionRestricted')
+    expect(toastMock.error).not.toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
+    const restriction = screen.getByText('knowledgeSpace.documentPermissionRestricted')
     expect(restriction).toBeInTheDocument()
     expect(restriction).toHaveAttribute('role', 'status')
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
-    expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus()
 
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
     permissionStateMock.spaceKeys = []
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
 
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
     permissionStateMock.spaceKeys = ['knowledge_space_document_write']
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled(),
     )
   })
 
@@ -7754,13 +7656,13 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
 
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      screen.getByLabelText('knowledgeSpace.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     const documentsHeading = screen.getByRole('heading', {
-      name: 'dataset.newKnowledge.addDocument',
+      name: 'knowledgeSpace.addDocument',
     })
     documentsHeading.focus()
     expect(documentsHeading).toHaveFocus()
@@ -7768,7 +7670,7 @@ describe('DocumentsPage', () => {
     await act(async () => rejectUpload(new Response(null, { status: 403 })))
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
 
-    expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus()
   })
 
   it('locks re-indexing after a write mutation reveals revoked permission', async () => {
@@ -7781,18 +7683,18 @@ describe('DocumentsPage', () => {
     })
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
-    expect(toastMock.error).not.toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
+    expect(toastMock.error).not.toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
     expect(
-      screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      screen.queryByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus()
   })
 
   it('locks task actions after a write mutation reveals revoked permission', async () => {
@@ -7807,20 +7709,18 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(
-      within(screen.getByRole('dialog')).getByText(
-        'dataset.newKnowledge.documentPermissionRestricted',
-      ),
+      within(screen.getByRole('dialog')).getByText('knowledgeSpace.documentPermissionRestricted'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.taskActionFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.taskActionFailed')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
 
@@ -7828,7 +7728,7 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     const dialog = screen.getByRole('dialog')
     expect(
-      within(dialog).getByText('dataset.newKnowledge.documentPermissionRestricted'),
+      within(dialog).getByText('knowledgeSpace.documentPermissionRestricted'),
     ).toBeInTheDocument()
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -7869,17 +7769,17 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.interruptTask' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.change(screen.getByLabelText('knowledgeSpace.uploadDocuments'), {
       target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
     })
     await waitForDocumentFilesStaged()
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())
 
@@ -7895,7 +7795,7 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).not.toBeInTheDocument()
 
     await act(async () =>
@@ -7905,7 +7805,7 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).not.toBeInTheDocument()
   })
 
@@ -7928,12 +7828,10 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.temporary')).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = sharedTaskData
@@ -7943,7 +7841,7 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
   })
 
@@ -7973,7 +7871,7 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
   })
 
@@ -8015,12 +7913,12 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+        name: 'knowledgeSpace.tasksWithAttention:{"count":1}',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
     expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+      await screen.findByRole('button', { name: 'knowledgeSpace.interruptTask' }),
     ).toBeInTheDocument()
 
     tasksQuery.data = {
@@ -8034,9 +7932,7 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalled())
-    expect(await screen.findByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.taskFailure.internal')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
   })
 })

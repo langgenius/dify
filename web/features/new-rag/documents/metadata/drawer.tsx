@@ -91,7 +91,7 @@ function useMetadataFieldMutation() {
         return true
       } catch (error) {
         if (responseStatus(error) === 403) denyWrite()
-        else toast.error(t(($) => $['newKnowledge.settings.saveFailed'], { ns: 'dataset' }))
+        else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
         return false
       }
     },
@@ -346,8 +346,8 @@ export function DocumentMetadataDrawer() {
                 {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
-                      {t(($) => $['newKnowledge.documentLoadErrorDescription'], {
-                        ns: 'dataset',
+                      {t(($) => $.documentLoadErrorDescription, {
+                        ns: 'knowledgeSpace',
                       })}
                     </span>
                     <Button

@@ -157,7 +157,7 @@ function ConnectedSourceConfigurationFields({
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onInitialSourceChange?: (source?: InitialSource) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { credentialId, datasource, pluginId, provider, providerDisplayName } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
@@ -441,7 +441,7 @@ function ConnectedSourceConfigurationFields({
             disabled={disabled || loading || !parametersValid}
             onClick={() => void requestPreview()}
           >
-            {t(($) => $['newKnowledge.preview'])}
+            {t(($) => $.preview)}
           </Button>
         )}
         {loading && (
@@ -451,11 +451,9 @@ function ConnectedSourceConfigurationFields({
         )}
         {error && (
           <div role="alert" className="rounded-lg bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.providerLoadFailed'])}
-            </p>
+            <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
             <Button className="mt-3" onClick={() => void requestPreview()}>
-              {t(($) => $['newKnowledge.retryProviderLoad'])}
+              {t(($) => $.retryProviderLoad)}
             </Button>
           </div>
         )}
@@ -463,7 +461,7 @@ function ConnectedSourceConfigurationFields({
           <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
             <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
               <Checkbox
-                aria-label={t(($) => $['newKnowledge.selectAll'])}
+                aria-label={t(($) => $.selectAll)}
                 aria-describedby={selectionAtLimit ? SELECTION_LIMIT_ID : undefined}
                 checked={
                   selectableResources.length > 0 &&
@@ -483,14 +481,14 @@ function ConnectedSourceConfigurationFields({
               />
               <span className="system-xs-medium text-text-secondary">
                 {draft.sourceType === 'onlineDocuments'
-                  ? t(($) => $['newKnowledge.selectPagesToSync'])
-                  : t(($) => $['newKnowledge.selectFilesAndFolders'])}
+                  ? t(($) => $.selectPagesToSync)
+                  : t(($) => $.selectFilesAndFolders)}
               </span>
               <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.pagesSelected'], { count: selected.size })}
+                {t(($) => $.pagesSelected, { count: selected.size })}
                 {selectionAtLimit && (
                   <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
-                    {t(($) => $['newKnowledge.maxPages'])}: {MAX_SELECTION}
+                    {t(($) => $.maxPages)}: {MAX_SELECTION}
                   </span>
                 )}
               </span>
@@ -559,7 +557,7 @@ function ConnectedSourceConfigurationFields({
                       loading={loadingMore}
                       onClick={() => void requestPreview({ append: true, ...request })}
                     >
-                      {t(($) => $['newKnowledge.loadMore'])}
+                      {t(($) => $.loadMore)}
                       {parent ? ` · ${resourceName(parent)}` : ''}
                     </Button>
                   )

@@ -51,7 +51,7 @@ export function DocumentUploadFileList({
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   variant?: 'compact' | 'form'
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [previewFile, setPreviewFile] = useState<File>()
 
@@ -64,13 +64,13 @@ export function DocumentUploadFileList({
             documentUploadFileExtension(item.file.name).toLocaleUpperCase() || 'FILE'
           const fileUploading = uploadProgress.get(item.file) === 'pending'
           const status = fileUploading
-            ? t(($) => $['newKnowledge.uploadingFiles'])
+            ? t(($) => $.uploadingFiles)
             : issue
               ? issue === 'fileSize'
-                ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'], {
+                ? t(($) => $['documentUploadExclusion.fileSize'], {
                     size: fileSizeLimitMb,
                   })
-                : t(($) => $[`newKnowledge.documentUploadExclusion.${issue}`])
+                : t(($) => $[`documentUploadExclusion.${issue}`])
               : idleStatus
           return (
             <li
@@ -129,7 +129,7 @@ export function DocumentUploadFileList({
                       type="button"
                       onClick={() => setPreviewFile(item.file)}
                     >
-                      {t(($) => $['newKnowledge.preview'])}
+                      {t(($) => $.preview)}
                     </Button>
                   )
                 )}

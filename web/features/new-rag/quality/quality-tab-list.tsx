@@ -7,21 +7,21 @@ const qualityTabClassName =
   'h-7 rounded-md border-0 px-2.5 py-0 system-xs-medium text-text-tertiary data-active:bg-background-default data-active:text-text-primary data-active:shadow-xs'
 
 export function QualityTabList() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <TabsList
-      aria-label={t(($) => $['newKnowledge.qualityPage.title'])}
+      aria-label={t(($) => $['qualityPage.title'])}
       className="flex h-8 items-center gap-0 rounded-lg bg-background-section-burn p-0.5"
     >
       <TabsTab value="golden" className={qualityTabClassName}>
-        {t(($) => $['newKnowledge.qualityPage.goldenTab'])}
+        {t(($) => $['qualityPage.goldenTab'])}
       </TabsTab>
       <TabsTab value="bad" className={qualityTabClassName}>
-        {t(($) => $['newKnowledge.qualityPage.badCasesTab'])}
+        {t(($) => $['qualityPage.badCasesTab'])}
       </TabsTab>
       <TabsTab value="evaluation" className={qualityTabClassName}>
-        {t(($) => $['newKnowledge.qualityPage.evaluationTab'])}
+        {t(($) => $['qualityPage.evaluationTab'])}
       </TabsTab>
     </TabsList>
   )

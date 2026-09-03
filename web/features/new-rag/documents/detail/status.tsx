@@ -22,7 +22,7 @@ function focusDocumentDetailTitle() {
 }
 
 export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const isLookingUpTask = useAtomValue(documentTaskIsLookingUpAtom)
   const latestTask = useAtomValue(documentLatestTaskAtom)
@@ -43,11 +43,9 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
             aria-hidden
             className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
           />
-          <span className="min-w-0 flex-1">
-            {t(($) => $['newKnowledge.documentReindexStatus'])}
-          </span>
+          <span className="min-w-0 flex-1">{t(($) => $.documentReindexStatus)}</span>
           <Button size="small" variant="ghost-accent" onClick={onViewTasks}>
-            {t(($) => $['newKnowledge.viewTask'])}
+            {t(($) => $.viewTask)}
           </Button>
         </div>
       )}
@@ -57,11 +55,9 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
           role="alert"
         >
           <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
-          <span className="min-w-0 flex-1">
-            {t(($) => $['newKnowledge.documentReindexFailed'])}
-          </span>
+          <span className="min-w-0 flex-1">{t(($) => $.documentReindexFailed)}</span>
           <Button size="small" variant="ghost" onClick={onViewTasks}>
-            {t(($) => $['newKnowledge.viewTask'])}
+            {t(($) => $.viewTask)}
           </Button>
         </div>
       )}
@@ -71,7 +67,7 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
         >
-          <span>{t(($) => $['newKnowledge.tasksErrorDescription'])}</span>
+          <span>{t(($) => $.tasksErrorDescription)}</span>
           <Button onClick={() => void retryTasks()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
@@ -91,14 +87,14 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
             </span>
           ) : (
             <>
-              <span>{t(($) => $['newKnowledge.documentTaskLookupIncomplete'])}</span>
+              <span>{t(($) => $.documentTaskLookupIncomplete)}</span>
               <Button
                 onClick={() => {
                   continueLookup()
                   requestAnimationFrame(focusDocumentDetailTitle)
                 }}
               >
-                {t(($) => $['newKnowledge.continueCheckingTaskStatus'])}
+                {t(($) => $.continueCheckingTaskStatus)}
               </Button>
             </>
           )}
@@ -109,7 +105,7 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
 }
 
 export function DocumentPermissionRecoveryNotice() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
   const permissionRecoveryNeeded = useAtomValue(documentPermissionRecoveryNeededAtom)
@@ -131,7 +127,7 @@ export function DocumentPermissionRecoveryNotice() {
       className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
       role="alert"
     >
-      <span>{t(($) => $['newKnowledge.documentPermissionRestricted'])}</span>
+      <span>{t(($) => $.documentPermissionRestricted)}</span>
       <Button
         ref={permissionRetryRef}
         disabled={permissionRecoveryBusy}

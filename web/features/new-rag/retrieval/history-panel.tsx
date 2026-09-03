@@ -11,7 +11,7 @@ import {
 } from './state/graph'
 
 export function RetrievalHistoryPanel() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { activeRecordKey, displayRecords, hasNextPage, isFetchingNextPage } =
     useAtomValue(retrievalHistoryFactsAtom)
   const selectRecord = useSetAtom(selectRetrievalRecordAtom)
@@ -21,7 +21,7 @@ export function RetrievalHistoryPanel() {
     <div className="mt-3 flex min-h-0 flex-1 flex-col pt-6">
       <div className="flex shrink-0 items-center pb-2 pl-3">
         <h2 className="system-xs-medium text-text-tertiary">
-          {t(($) => $['newKnowledge.retrievalTest.records'])}
+          {t(($) => $['retrievalTest.records'])}
         </h2>
       </div>
       <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
@@ -39,14 +39,14 @@ export function RetrievalHistoryPanel() {
             {hasNextPage && (
               <div className="px-3 py-2">
                 <Button className="w-full" disabled={isFetchingNextPage} onClick={loadMore}>
-                  {t(($) => $['newKnowledge.loadMore'])}
+                  {t(($) => $.loadMore)}
                 </Button>
               </div>
             )}
           </div>
         ) : (
           <p className="px-3 py-5 body-sm-regular text-text-quaternary">
-            {t(($) => $['newKnowledge.retrievalTest.emptyRecords'])}
+            {t(($) => $['retrievalTest.emptyRecords'])}
           </p>
         )}
       </div>

@@ -75,12 +75,12 @@ const Operations = ({
             >
               <span aria-hidden className="mr-1 i-ri-arrow-up-circle-line size-4" />
               <span className="min-w-0 flex-1">
-                {t(($) => $['newKnowledge.upgrade.menuLabel'], { ns: 'dataset' })}
+                {t(($) => $['upgrade.menuLabel'], { ns: 'knowledgeSpace' })}
               </span>
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
-                aria-label={t(($) => $['newKnowledge.upgrade.guideTitle'], { ns: 'dataset' })}
+                aria-label={t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeSpace' })}
                 className="ml-0 w-8 shrink-0 rounded-l-none px-2 text-text-quaternary [&>span:last-child]:hidden"
               >
                 <span aria-hidden className="i-ri-question-line size-4" />
@@ -93,10 +93,10 @@ const Operations = ({
                 <DropdownMenuArrow />
                 <div role="presentation" className="px-4 pt-3.5">
                   <div className="system-md-medium text-text-primary">
-                    {t(($) => $['newKnowledge.upgrade.guideTitle'], { ns: 'dataset' })}
+                    {t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeSpace' })}
                   </div>
                   <p className="mt-2 system-sm-regular text-text-secondary">
-                    {t(($) => $['newKnowledge.upgrade.guideDescription'], { ns: 'dataset' })}
+                    {t(($) => $['upgrade.guideDescription'], { ns: 'knowledgeSpace' })}
                   </p>
                 </div>
                 <DropdownMenuLinkItem
@@ -105,7 +105,7 @@ const Operations = ({
                   rel="noreferrer"
                   className="mt-1 mb-1 justify-end system-xs-medium text-text-accent"
                 >
-                  {t(($) => $['newKnowledge.learnMore'], { ns: 'dataset' })}
+                  {t(($) => $.learnMore, { ns: 'knowledgeSpace' })}
                 </DropdownMenuLinkItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

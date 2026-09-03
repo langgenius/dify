@@ -25,7 +25,7 @@ export function RetrievalModeSegmentedControl({
   value: RetrievalMode
   onChange: (value: RetrievalMode) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <SegmentedControl<RetrievalMode>
@@ -48,7 +48,7 @@ export function RetrievalModeSegmentedControl({
               'grow border-0 px-2.5 py-1.25 system-sm-regular text-text-tertiary capitalize data-checked:bg-components-panel-bg data-checked:font-medium data-checked:text-text-primary',
           )}
         >
-          {t(($) => $[`newKnowledge.settings.retrievalMode.${mode}`])}
+          {t(($) => $[`settings.retrievalMode.${mode}`])}
         </SegmentedControlItem>
       ))}
     </SegmentedControl>

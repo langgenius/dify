@@ -82,13 +82,13 @@ function draftsMatch(left: BasicDraft, right: BasicDraft) {
 }
 
 function BasicInformationSkeleton() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tSettings } = useTranslation('datasetSettings')
 
   return (
     <div className="flex flex-col gap-4 pt-2">
       <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-        {t(($) => $['newKnowledge.settings.basicInfo'])}
+        {t(($) => $['settings.basicInfo'])}
       </h2>
       {[
         tSettings(($) => $['form.nameAndIcon']),
@@ -104,7 +104,7 @@ function BasicInformationSkeleton() {
 }
 
 export function BasicInformationSection() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -206,8 +206,8 @@ export function BasicInformationSection() {
   const showSaveError = (error?: unknown) =>
     toast.error(
       error instanceof Response && error.status === 403
-        ? t(($) => $['newKnowledge.permissionRestricted'])
-        : t(($) => $['newKnowledge.settings.saveFailed']),
+        ? t(($) => $.permissionRestricted)
+        : t(($) => $['settings.saveFailed']),
     )
 
   const performSave = async () => {
@@ -294,7 +294,7 @@ export function BasicInformationSection() {
         >
           <span aria-hidden className="i-ri-error-warning-line size-4 text-text-warning" />
           <span className="min-w-0 flex-1 system-xs-regular text-text-warning">
-            {t(($) => $['newKnowledge.settings.serverConflict'])}
+            {t(($) => $['settings.serverConflict'])}
           </span>
         </div>
       )}
@@ -308,7 +308,7 @@ export function BasicInformationSection() {
         }}
       >
         <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-          {t(($) => $['newKnowledge.settings.basicInfo'])}
+          {t(($) => $['settings.basicInfo'])}
         </h2>
 
         <SettingsFieldRow label={tSettings(($) => $['form.nameAndIcon'])}>
@@ -351,7 +351,7 @@ export function BasicInformationSection() {
                   className="mt-1 system-xs-regular text-text-destructive"
                   role="alert"
                 >
-                  {t(($) => $['newKnowledge.settings.nameRequired'])}
+                  {t(($) => $['settings.nameRequired'])}
                 </p>
               )}
               {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
@@ -373,7 +373,7 @@ export function BasicInformationSection() {
               name="knowledge-description"
               value={current.description}
               disabled={fieldsDisabled}
-              placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
+              placeholder={t(($) => $['settings.descriptionPlaceholder'])}
               className={cn(
                 'min-h-20 resize-none',
                 descriptionInvalid && 'ring-1 ring-text-destructive',
@@ -419,7 +419,7 @@ export function BasicInformationSection() {
               {tCommon(($) => $['operation.cancel'])}
             </Button>
             <Button type="submit" variant="primary" disabled={saveDisabled} loading={isSaving}>
-              {t(($) => $['newKnowledge.settings.saveChanges'])}
+              {t(($) => $['settings.saveChanges'])}
             </Button>
           </div>
         )}

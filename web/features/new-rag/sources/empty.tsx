@@ -44,7 +44,7 @@ export function SourcesEmpty({
   canAddSource: boolean
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <div className="mt-2.5 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
@@ -75,7 +75,7 @@ export function SourcesEmpty({
         })}
         {canAddSource ? (
           <Link
-            aria-label={t(($) => $['newKnowledge.moreProviders'])}
+            aria-label={t(($) => $.moreProviders)}
             href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
             className="inline-flex size-8 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
@@ -94,11 +94,9 @@ export function SourcesEmpty({
         )}
       </div>
       <div className="flex flex-col items-center gap-1.5 pt-1.5">
-        <h2 className="title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
-        </h2>
+        <h2 className="title-xl-semi-bold text-text-primary">{t(($) => $.sourcesEmptyTitle)}</h2>
         <p className="w-full max-w-110 body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.sourcesEmptyDescription'])}
+          {t(($) => $.sourcesEmptyDescription)}
         </p>
       </div>
       {canAddSource && (
@@ -107,7 +105,7 @@ export function SourcesEmpty({
           className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['newKnowledge.addSource'])}
+          {t(($) => $.addSource)}
         </Link>
       )}
     </div>

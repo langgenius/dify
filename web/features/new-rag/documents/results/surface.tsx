@@ -58,7 +58,7 @@ function focusNextRecoveryTarget() {
 }
 
 function DocumentQueryRecoveryNotice() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const canRead = useAtomValue(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
@@ -92,15 +92,15 @@ function DocumentQueryRecoveryNotice() {
       <span className="system-xs-regular text-text-tertiary">
         {t(($) =>
           responseStatus(documentRecovery.error) === 403
-            ? $['newKnowledge.documentsPermissionDescription']
-            : $['newKnowledge.documentsErrorDescription'],
+            ? $.documentsPermissionDescription
+            : $.documentsErrorDescription,
         )}
       </span>
       {responseStatus(documentRecovery.error) !== 403 && (
         <Button
           id={DOCUMENT_RETRY_BUTTON_ID}
           ref={documentsRetryButtonRef}
-          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
           aria-busy={documentRecovery.isRefetching}
           loading={documentRecovery.isRefetching}
           size="small"
@@ -120,7 +120,7 @@ function DocumentQueryRecoveryNotice() {
 }
 
 function DependencyRecoveryBoundary({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const canRead = useAtomValue(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
@@ -150,11 +150,11 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
   const sourceRecovery = recovery.sourceError || recovery.sourceIsFetchNextPageError
   const description = blocking
     ? taskBlocking
-      ? t(($) => $['newKnowledge.tasksErrorDescription'])
-      : t(($) => $['newKnowledge.sourcesErrorDescription'])
+      ? t(($) => $.tasksErrorDescription)
+      : t(($) => $.sourcesErrorDescription)
     : sourceRecovery
-      ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-      : t(($) => $['newKnowledge.tasksErrorDescription'])
+      ? t(($) => $.sourcesErrorDescription)
+      : t(($) => $.tasksErrorDescription)
 
   return (
     <>
@@ -190,9 +190,7 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
         >
           <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
           <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-            {taskBlocking
-              ? t(($) => $['newKnowledge.tasksErrorDescription'])
-              : t(($) => $['newKnowledge.sourcesErrorDescription'])}
+            {taskBlocking ? t(($) => $.tasksErrorDescription) : t(($) => $.sourcesErrorDescription)}
           </p>
           <Button
             id={DEPENDENCY_RETRY_BUTTON_ID}
@@ -220,7 +218,7 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
 }
 
 function DocumentCollectionState() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const canRead = useAtomValue(documentCanReadAtom)
   const documents = useAtomValue(documentsAtom)
@@ -254,15 +252,15 @@ function DocumentCollectionState() {
       >
         <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
         <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.documentsErrorTitle'])}
+          {t(($) => $.documentsErrorTitle)}
         </h2>
         <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.documentsErrorDescription'])}
+          {t(($) => $.documentsErrorDescription)}
         </p>
         <Button
           id={DOCUMENT_RETRY_BUTTON_ID}
           ref={retryButtonRef}
-          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
           aria-busy={recovery.isFetching}
           className="mt-4"
           loading={recovery.isFetching}

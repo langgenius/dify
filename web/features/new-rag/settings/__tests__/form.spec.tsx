@@ -391,12 +391,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     const nameError = screen.getByRole('alert')
-    expect(nameError).toHaveTextContent('dataset.newKnowledge.settings.nameRequired')
+    expect(nameError).toHaveTextContent('knowledgeSpace.settings.nameRequired')
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAttribute('aria-describedby', nameError.id)
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -409,7 +409,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Updated camera specs')
     const saveButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.saveChanges',
+      name: 'knowledgeSpace.settings.saveChanges',
     })
     await user.click(saveButton)
 
@@ -448,7 +448,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.type(nameInput, 'Updated without conflict flash')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     )
 
@@ -471,22 +471,20 @@ describe('KnowledgeSettingsPage workflows', () => {
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Saving camera specs')
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
 
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
     const saveButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.saveChanges',
+      name: 'knowledgeSpace.settings.saveChanges',
     })
     expect(saveButton).toHaveAttribute('aria-disabled', 'true')
-    expect(saveButton).toHaveTextContent('dataset.newKnowledge.settings.saveChanges')
+    expect(saveButton).toHaveTextContent('knowledgeSpace.settings.saveChanges')
     expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
     const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.apiAgentAccess',
+      name: 'knowledgeSpace.apiAgentAccess',
     })
     const reasoningSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(reasoningSelector).toBeEnabled()
@@ -539,7 +537,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.type(descriptionInput, 'Updated product documentation')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     )
 
@@ -570,7 +568,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     )
 
@@ -613,7 +611,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'datasetSettings.form.desc',
     })
     const saveButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.saveChanges',
+      name: 'knowledgeSpace.settings.saveChanges',
     })
     const invalidDescription = '知'.repeat(2001)
     fireEvent.change(descriptionInput, { target: { value: invalidDescription } })
@@ -651,7 +649,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     const user = userEvent.setup()
     renderForm()
 
-    await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+    await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
     await waitFor(() => {
@@ -670,7 +668,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).toBeDisabled()
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
@@ -695,15 +693,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.apiAgentAccess',
+      name: 'knowledgeSpace.apiAgentAccess',
     })
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.workflowAccess',
+      name: 'knowledgeSpace.workflowAccess',
     })
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(apiAccessSwitch).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.apiAccessDescription',
+      'knowledgeSpace.settings.apiAccessDescription',
     )
 
     await user.click(apiAccessSwitch)
@@ -756,17 +754,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Unsaved camera notes')
-    await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+    await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
 
     await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
     expect(nameInput).toBeEnabled()
     expect(nameInput).toHaveValue('Unsaved camera notes')
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })).toBeEnabled()
     expect(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.settings.topKLabel' }),
-    ).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
     ).toBeEnabled()
 
     finishExternalAccessSave(externalAccess)
@@ -784,10 +780,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     renderForm()
 
     const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.apiAgentAccess',
+      name: 'knowledgeSpace.apiAgentAccess',
     })
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.workflowAccess',
+      name: 'knowledgeSpace.workflowAccess',
     })
     await user.click(apiAccessSwitch)
 
@@ -823,11 +819,11 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.workflowAccess',
+      name: 'knowledgeSpace.workflowAccess',
     })
     expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'false')
     expect(workflowAccessSwitch).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.workflowAccessDescription',
+      'knowledgeSpace.settings.workflowAccessDescription',
     )
     await user.click(workflowAccessSwitch)
 
@@ -859,15 +855,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.workflowAccess',
+      name: 'knowledgeSpace.workflowAccess',
     })
     await user.click(workflowAccessSwitch)
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
   })
 
   it('keeps the API access edit and shows an error toast after failure', async () => {
@@ -882,16 +878,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.apiAgentAccess',
+      name: 'knowledgeSpace.apiAgentAccess',
     })
     expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
     await user.click(apiAccessSwitch)
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
   })
 
   it('requires the exact knowledge name before deletion', async () => {
@@ -905,7 +901,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'common.operation.delete',
     })
     const confirmationInput = within(dialog).getByRole('textbox', {
-      name: /^dataset\.newKnowledge\.settings\.deleteConfirmPrompt/,
+      name: /^knowledgeSpace\.settings\.deleteConfirmPrompt/,
     })
 
     expect(confirmationInput).toHaveAttribute('placeholder', 'Camera Technical Spec')
@@ -936,15 +932,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Camera specs draft')
     const saveButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.saveChanges',
+      name: 'knowledgeSpace.settings.saveChanges',
     })
     await user.click(saveButton)
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(nameInput).toHaveValue('Camera specs draft')
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(saveButton).toBeEnabled()
 
     await user.click(saveButton)
@@ -959,14 +955,14 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
@@ -1035,11 +1031,11 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     const error = screen.getByRole('alert')
     const trigger = screen.getByRole('button', { name: /Workspace owner/ })
-    expect(error).toHaveTextContent('dataset.newKnowledge.settings.membersRequired')
+    expect(error).toHaveTextContent('knowledgeSpace.settings.membersRequired')
     expect(trigger).toHaveAttribute('aria-invalid', 'true')
     expect(trigger).toHaveAttribute('aria-describedby', error.id)
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
     ).toBeDisabled()
   })
 
@@ -1048,7 +1044,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     renderForm()
 
     const topKInput = screen.getByRole('textbox', {
-      name: 'dataset.newKnowledge.settings.topKLabel',
+      name: 'knowledgeSpace.settings.topKLabel',
     })
     const thresholdInput = screen.getByRole('textbox', {
       name: 'appDebug.datasetConfig.score_threshold',
@@ -1064,8 +1060,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     expect(topKInput).toHaveValue('10')
-    expect(screen.getByText('dataset.newKnowledge.settings.topKMinimum')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.settings.scoreRange')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.settings.topKMinimum')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.settings.scoreRange')).toBeInTheDocument()
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
         {
@@ -1125,7 +1121,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.embeddingModelLabel',
+        name: 'knowledgeSpace.settings.embeddingModelLabel',
       }),
     )
     const dialog = await screen.findByRole('alertdialog')
@@ -1150,7 +1146,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -1166,7 +1162,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(thresholdSwitch)
     expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
 
-    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.deep'))
+    await user.click(screen.getByText('knowledgeSpace.settings.retrievalMode.deep'))
     expect(thresholdSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
   })
@@ -1204,9 +1200,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.permissionRestricted'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.permissionRestricted'),
     )
-    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.permissionRestricted')).not.toBeInTheDocument()
     expect(thresholdInput).toHaveValue('0.72')
   })
 
@@ -1253,7 +1249,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'common.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.rerankModelRequired',
+      'knowledgeSpace.settings.rerankModelRequired',
     )
     await user.click(rerankSelector)
 
@@ -1284,7 +1280,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
       expect.anything(),
     )
-    expect(screen.queryByText('dataset.newKnowledge.settings.rerankModelRequired')).toBeNull()
+    expect(screen.queryByText('knowledgeSpace.settings.rerankModelRequired')).toBeNull()
     await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
   })
@@ -1295,14 +1291,14 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -1319,7 +1315,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     renderForm()
 
     const reasoningSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
@@ -1331,7 +1327,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(rerankSelector).toBeEnabled()
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeEnabled()
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(rerankSelector)
 
@@ -1409,7 +1405,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     renderForm()
 
     const reasoningSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
@@ -1482,14 +1478,14 @@ describe('KnowledgeSettingsPage workflows', () => {
 
       await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
         screen.getByRole('button', {
-          name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+          name: 'knowledgeSpace.settings.systemReasoningModelLabel',
         }),
       )
       expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
 
       fireEvent.change(
         screen.getByRole('textbox', {
-          name: 'dataset.newKnowledge.settings.topKLabel',
+          name: 'knowledgeSpace.settings.topKLabel',
         }),
         { target: { value: '8' } },
       )
@@ -1546,11 +1542,11 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(nameInput).toHaveValue('Version B')
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.settings.serverConflict',
+      'knowledgeSpace.settings.serverConflict',
     )
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).toBeDisabled()
 
@@ -1598,47 +1594,47 @@ describe('KnowledgeSettingsPage workflows', () => {
       'datasetSettings.form.embeddingModel · common.modelProvider.systemReasoningModel.key · common.modelProvider.rerankModel.key',
     )
     const reasoningSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     expect(reasoningSelector).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.systemReasoningModelRequired',
+      'knowledgeSpace.settings.systemReasoningModelRequired',
     )
     const embeddingSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.embeddingModelLabel',
+      name: 'knowledgeSpace.settings.embeddingModelLabel',
     })
     expect(embeddingSelector).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.embeddingModelRequired',
+      'knowledgeSpace.settings.embeddingModelRequired',
     )
     const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.rerankModelRequired',
+      'knowledgeSpace.settings.rerankModelRequired',
     )
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
     expect(
-      screen.queryByText('dataset.newKnowledge.settings.systemReasoningModelRequired'),
+      screen.queryByText('knowledgeSpace.settings.systemReasoningModelRequired'),
     ).not.toBeInTheDocument()
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
     expect(
-      screen.queryByText('dataset.newKnowledge.settings.embeddingModelRequired'),
+      screen.queryByText('knowledgeSpace.settings.embeddingModelRequired'),
     ).not.toBeInTheDocument()
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     await user.click(rerankSelector)
     expect(
-      screen.queryByText('dataset.newKnowledge.settings.rerankModelRequired'),
+      screen.queryByText('knowledgeSpace.settings.rerankModelRequired'),
     ).not.toBeInTheDocument()
 
     await waitFor(() =>
@@ -1666,10 +1662,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
@@ -1682,12 +1678,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'dataset.newKnowledge.apiAgentAccess',
+      name: 'knowledgeSpace.apiAgentAccess',
     })
 
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(apiAccessSwitch).toHaveAccessibleDescription(
-      'dataset.newKnowledge.settings.apiAccessDescription',
+      'knowledgeSpace.settings.apiAccessDescription',
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -1736,7 +1732,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     ).toBeInTheDocument()
   })
@@ -1747,7 +1743,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1804,7 +1800,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1856,14 +1852,14 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
       }),
     )
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
   })
 
@@ -1875,20 +1871,22 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
     })
 
-    expect(screen.getByText('dataset.newKnowledge.settings.viewOnly')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.settings.viewOnly')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     ).toBeDisabled()
-    expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
-    ).toHaveAttribute('aria-disabled', 'true')
-    expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(
       screen.queryByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
+        name: 'knowledgeSpace.settings.saveChanges',
       }),
     ).not.toBeInTheDocument()
     expect(

@@ -233,9 +233,9 @@ describe('AddExternalAPIModal', () => {
 
       const alerts = await screen.findAllByRole('alert')
       expect(alerts).toHaveLength(1)
-      expect(alerts[0]).toHaveTextContent('dataset.newKnowledge.invalidRootUrl')
+      expect(alerts[0]).toHaveTextContent('dataset.validation.invalidHttpUrl')
       expect(endpointInput).toHaveAttribute('aria-invalid', 'true')
-      expect(endpointInput).toHaveAccessibleDescription('dataset.newKnowledge.invalidRootUrl')
+      expect(endpointInput).toHaveAccessibleDescription('dataset.validation.invalidHttpUrl')
       expect(createExternalAPI).not.toHaveBeenCalled()
       expect(mockNotify).not.toHaveBeenCalled()
     })

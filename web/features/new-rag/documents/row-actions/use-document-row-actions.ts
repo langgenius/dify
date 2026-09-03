@@ -94,7 +94,7 @@ function useDocumentInvalidation() {
 }
 
 export function useRenameDocumentAction(document: LogicalDocument) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'rename')
@@ -121,7 +121,7 @@ export function useRenameDocumentAction(document: LogicalDocument) {
         return true
       } catch (error) {
         if (responseStatus(error) === 403) onWriteDenied()
-        else toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
+        else toast.error(t(($) => $['settings.saveFailed']))
         return false
       } finally {
         finish()
@@ -163,7 +163,7 @@ export function useDownloadDocumentAction(
       })
       return true
     } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully']))
+      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return false
     } finally {
       finish()
@@ -177,7 +177,7 @@ export function useToggleDocumentAvailabilityAction(
   document: LogicalDocument,
   status: DocumentDisplayStatus,
 ) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'toggle-availability')
@@ -200,8 +200,8 @@ export function useToggleDocumentAvailabilityAction(
       if (responseStatus(error) === 403) onWriteDenied()
       else if (responseStatus(error) === 409) {
         invalidateDocuments()
-        toast.warning(t(($) => $['newKnowledge.taskActionFailed']))
-      } else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+        toast.warning(t(($) => $.taskActionFailed))
+      } else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()
@@ -212,7 +212,7 @@ export function useToggleDocumentAvailabilityAction(
 }
 
 export function useRemoveDocumentAction(document: LogicalDocument) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const onDocumentRemoved = useSetAtom(removeDocumentFromSelectionAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -236,7 +236,7 @@ export function useRemoveDocumentAction(document: LogicalDocument) {
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+      else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()
@@ -260,7 +260,7 @@ export function useRetryDocumentTaskAction(
   documentId: string,
   task: DocumentProcessingTask | undefined,
 ) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -291,7 +291,7 @@ export function useRetryDocumentTaskAction(
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.taskActionFailed']))
+      else toast.error(t(($) => $.taskActionFailed))
       return false
     } finally {
       finish()
@@ -312,7 +312,7 @@ export function useRetryDocumentTaskAction(
 }
 
 export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -333,15 +333,14 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
       })
       const item = result.items[0]
       if (!item || item.status === 'not_found')
-        toast.error(t(($) => $['newKnowledge.documentsReindexPartial'], { missing: 1, queued: 0 }))
-      else if (item.status === 'disabled')
-        toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
-      else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+        toast.error(t(($) => $.documentsReindexPartial, { missing: 1, queued: 0 }))
+      else if (item.status === 'disabled') toast.error(t(($) => $.documentsReindexFailed))
+      else toast.success(t(($) => $.documentsReindexStarted))
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else toast.error(t(($) => $.documentsReindexFailed))
       return false
     } finally {
       finish()

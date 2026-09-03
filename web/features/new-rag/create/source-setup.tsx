@@ -98,7 +98,7 @@ function websiteSourceUri(parameters: Record<string, boolean | number | string>,
 
 export function CreateSourceSetup(props: CreateSourceSetupProps) {
   const { disabled, draft, onDraftChange, onSourceTypeChange } = props
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const datasourcePluginsQuery = useDataSourceList(true)
   const datasourceAuthQuery = useGetDataSourceListAuth()
   const providerOptions = useMemo(
@@ -141,13 +141,9 @@ export function CreateSourceSetup(props: CreateSourceSetupProps) {
       />
 
       <Fieldset disabled={disabled}>
-        <FieldsetLegend className="sr-only">
-          {t(($) => $['newKnowledge.providerLabel'])}
-        </FieldsetLegend>
+        <FieldsetLegend className="sr-only">{t(($) => $.providerLabel)}</FieldsetLegend>
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <span className="system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.providerLabel'])}
-          </span>
+          <span className="system-xs-medium text-text-secondary">{t(($) => $.providerLabel)}</span>
           <Button
             type="button"
             variant="ghost-accent"
@@ -158,7 +154,7 @@ export function CreateSourceSetup(props: CreateSourceSetupProps) {
               globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
             }
           >
-            {t(($) => $['newKnowledge.moreProviders'])}
+            {t(($) => $.moreProviders)}
             <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </Button>
         </div>
@@ -196,7 +192,7 @@ function CreateSourceSetupSession({
   onDraftChange,
   onInitialSourceChange,
 }: CreateSourceSetupProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const datasourcePluginsQuery = useDataSourceList(true)
   const datasourceAuthQuery = useGetDataSourceListAuth()
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
@@ -481,16 +477,14 @@ function CreateSourceSetupSession({
         </div>
       ) : datasourcePluginsQuery.error || datasourceAuthQuery.error ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.providerLoadFailed'])}
-          </p>
+          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
           <Button
             className="mt-3"
             onClick={() =>
               void Promise.all([datasourcePluginsQuery.refetch(), datasourceAuthQuery.refetch()])
             }
           >
-            {t(($) => $['newKnowledge.retryProviderLoad'])}
+            {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
       ) : installedProviderOption && !credential ? (
@@ -544,13 +538,11 @@ function CreateSourceSetupSession({
               disabled={disabled || crawlState === 'running' || !previewReady}
               onClick={() => void startPreview()}
             >
-              {crawlState === 'running'
-                ? t(($) => $['newKnowledge.crawling'])
-                : t(($) => $['newKnowledge.crawlAndPreview'])}
+              {crawlState === 'running' ? t(($) => $.crawling) : t(($) => $.crawlAndPreview)}
             </Button>
           )}
           <section
-            aria-label={t(($) => $['newKnowledge.crawlPreview'])}
+            aria-label={t(($) => $.crawlPreview)}
             className={cn(
               crawlState === 'running'
                 ? 'flex h-60 flex-col gap-3.5 overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle p-4'
@@ -565,10 +557,10 @@ function CreateSourceSetupSession({
                   <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
                 </span>
                 <p className="mt-2 system-xs-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.pagesAppearTitle'])}
+                  {t(($) => $.pagesAppearTitle)}
                 </p>
                 <p className="mt-2 system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.pagesAppearDescription'])}
+                  {t(($) => $.pagesAppearDescription)}
                 </p>
               </div>
             )}
@@ -583,7 +575,7 @@ function CreateSourceSetupSession({
                   aria-live="polite"
                   className="min-w-0 flex-1 truncate system-xs-medium text-text-primary"
                 >
-                  {t(($) => $['newKnowledge.crawlingPages'], {
+                  {t(($) => $.crawlingPages, {
                     count: previewPages.length,
                     host: installedProviderOption.label,
                   })}
@@ -597,7 +589,7 @@ function CreateSourceSetupSession({
                   loading={stoppingPreview}
                   onClick={() => void stopPreview()}
                 >
-                  {t(($) => $['newKnowledge.stopCrawl'])}
+                  {t(($) => $.stopCrawl)}
                 </Button>
               </div>
             )}
@@ -623,12 +615,12 @@ function CreateSourceSetupSession({
               ))}
             {crawlState === 'error' && (
               <p role="alert" className="system-xs-regular text-text-destructive">
-                {t(($) => $['newKnowledge.crawlStartFailed'])}
+                {t(($) => $.crawlStartFailed)}
               </p>
             )}
             {crawlState === 'stopped' && (
               <p role="status" className="system-xs-regular text-text-secondary">
-                {t(($) => $['newKnowledge.crawlStopped'])}
+                {t(($) => $.crawlStopped)}
               </p>
             )}
             {crawlState === 'success' && (

@@ -40,21 +40,21 @@ function responseStatus(error: unknown) {
 
 const knowledgeSpacePageTitle = (
   pathname: string,
-  t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
   tCommon: ReturnType<typeof useTranslation<'common'>>['t'],
 ) => {
   const [, root, view, , section, detail] = pathname.split('/')
-  if (root !== 'datasets' || view !== 'new') return t(($) => $.knowledge)
+  if (root !== 'datasets' || view !== 'new') return t(($) => $.knowledge, { ns: 'dataset' })
 
-  if (!section) return t(($) => $['newKnowledge.overviewTitle'])
-  if (section === 'sources' && detail === 'new') return t(($) => $['newKnowledge.addSource'])
-  if (section === 'sources') return t(($) => $['newKnowledge.sources'])
-  if (section === 'documents') return t(($) => $['newKnowledge.documents'])
-  if (section === 'retrieval') return t(($) => $['newKnowledge.retrievalTest.title'])
-  if (section === 'quality') return t(($) => $['newKnowledge.quality'])
+  if (!section) return t(($) => $.overviewTitle)
+  if (section === 'sources' && detail === 'new') return t(($) => $.addSource)
+  if (section === 'sources') return t(($) => $.sources)
+  if (section === 'documents') return t(($) => $.documents)
+  if (section === 'retrieval') return t(($) => $['retrievalTest.title'])
+  if (section === 'quality') return t(($) => $.quality)
   if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
 
-  return t(($) => $.knowledge)
+  return t(($) => $.knowledge, { ns: 'dataset' })
 }
 
 const isDocumentDetailPath = (pathname: string) =>
@@ -73,7 +73,8 @@ export function KnowledgeSpaceShell({
   children: ReactNode
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
+  const { t: tDataset } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { t: tApp } = useTranslation('app')
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
@@ -111,7 +112,7 @@ export function KnowledgeSpaceShell({
           ? 'active'
           : 'inactive'
   const knowledgeSpaceName =
-    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
+    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge, { ns: 'dataset' })
   const pageTitle = knowledgeSpacePageTitle(pathname, t, tCommon)
   const documentTitle = `${pageTitle} · ${knowledgeSpaceName}`
   const documentTitleOwnedByChild =
@@ -142,20 +143,14 @@ export function KnowledgeSpaceShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-6 text-center">
           <span aria-hidden className="i-ri-book-open-line size-8 text-text-tertiary" />
           <h1 className="mt-4 title-2xl-semi-bold text-text-primary">
-            {t(($) =>
-              notFound ? $['newKnowledge.notFoundTitle'] : $['newKnowledge.detailErrorTitle'],
-            )}
+            {t(($) => (notFound ? $.notFoundTitle : $.detailErrorTitle))}
           </h1>
           <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-            {t(($) =>
-              notFound
-                ? $['newKnowledge.notFoundDescription']
-                : $['newKnowledge.detailErrorDescription'],
-            )}
+            {t(($) => (notFound ? $.notFoundDescription : $.detailErrorDescription))}
           </p>
           <div className="mt-5 flex gap-2">
             <Button nativeButton={false} render={<Link href={newKnowledgeListPath} />}>
-              {t(($) => $['newKnowledge.backToList'])}
+              {t(($) => $.backToList)}
             </Button>
             {!notFound && (
               <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
@@ -230,7 +225,7 @@ export function KnowledgeSpaceShell({
                     href={newKnowledgeListPath}
                     className="truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   >
-                    {t(($) => $.knowledge)}
+                    {t(($) => $.knowledge, { ns: 'dataset' })}
                   </Link>
                 </div>
                 <DialogTrigger
@@ -281,7 +276,7 @@ export function KnowledgeSpaceShell({
           >
             <Link
               href={overviewPath}
-              aria-label={t(($) => $['newKnowledge.overviewTitle'])}
+              aria-label={t(($) => $.overviewTitle)}
               aria-current={overviewActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -292,11 +287,11 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(overviewActive ? 'i-ri-layout-grid-fill' : 'i-ri-layout-grid-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.overviewTitle'])}
+              {sidebarExpanded && t(($) => $.overviewTitle)}
             </Link>
             <Link
               href={sourcesPath}
-              aria-label={t(($) => $['newKnowledge.sourceColumn'])}
+              aria-label={t(($) => $.sourceColumn)}
               aria-current={sourcesActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -307,11 +302,11 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(sourcesActive ? 'i-ri-book-open-fill' : 'i-ri-book-open-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.sourceColumn'])}
+              {sidebarExpanded && t(($) => $.sourceColumn)}
             </Link>
             <Link
               href={documentsPath}
-              aria-label={t(($) => $['newKnowledge.documentColumn'])}
+              aria-label={t(($) => $.documentColumn)}
               aria-current={documentsActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -322,11 +317,11 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(documentsActive ? 'i-ri-file-text-fill' : 'i-ri-file-text-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.documentColumn'])}
+              {sidebarExpanded && t(($) => $.documentColumn)}
             </Link>
             <Link
               href={retrievalTestPath}
-              aria-label={t(($) => $['newKnowledge.retrievalTest.title'])}
+              aria-label={t(($) => $['retrievalTest.title'])}
               aria-current={retrievalTestActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -337,11 +332,11 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(retrievalTestActive ? 'i-ri-search-eye-fill' : 'i-ri-search-eye-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.retrievalTest.title'])}
+              {sidebarExpanded && t(($) => $['retrievalTest.title'])}
             </Link>
             <Link
               href={qualityPath}
-              aria-label={t(($) => $['newKnowledge.quality'])}
+              aria-label={t(($) => $.quality)}
               aria-current={qualityActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -352,7 +347,7 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(qualityActive ? 'i-ri-shield-check-fill' : 'i-ri-shield-check-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.quality'])}
+              {sidebarExpanded && t(($) => $.quality)}
             </Link>
             <Link
               href={settingsPath}
@@ -372,7 +367,7 @@ export function KnowledgeSpaceShell({
           </nav>
           <div className={cn('shrink-0 py-2', sidebarExpanded ? 'px-3' : 'px-2')}>
             <Button
-              aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
+              aria-label={t(($) => $.apiAgentAccess)}
               variant="ghost"
               className={cn(
                 navItemClassName,
@@ -384,17 +379,15 @@ export function KnowledgeSpaceShell({
               {navIcon('i-custom-vender-knowledge-api-aggregate')}
               {sidebarExpanded && (
                 <span className="min-w-0 flex-1 truncate text-left">
-                  {t(($) => $['newKnowledge.apiAgentAccess'])}
+                  {t(($) => $.apiAgentAccess)}
                 </span>
               )}
               <span className="sr-only">
-                {t(($) =>
-                  apiAccessStatus === 'active'
-                    ? $['newKnowledge.apiAccessActive']
-                    : apiAccessStatus === 'inactive'
-                      ? $['newKnowledge.apiAccessInactive']
-                      : $.unavailable,
-                )}
+                {apiAccessStatus === 'active'
+                  ? t(($) => $.apiAccessActive)
+                  : apiAccessStatus === 'inactive'
+                    ? t(($) => $.apiAccessInactive)
+                    : tDataset(($) => $.unavailable)}
               </span>
               <span
                 aria-hidden

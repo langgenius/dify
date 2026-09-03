@@ -32,7 +32,7 @@ export function KnowledgeSpaceActions({
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -50,7 +50,7 @@ export function KnowledgeSpaceActions({
     onSuccess: () => {
       setDeleteDialogOpen(false)
       setDeleteConfirmation('')
-      toast.success(t(($) => $.datasetDeleted))
+      toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
       })
@@ -129,16 +129,16 @@ export function KnowledgeSpaceActions({
         <AlertDialogContent initialFocus={deleteCancelRef}>
           <div className="px-6 pt-6">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['newKnowledge.settings.deleteDialogTitle'], { name })}
+              {t(($) => $['settings.deleteDialogTitle'], { name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.settings.deleteDialogDescription'])}
+              {t(($) => $['settings.deleteDialogDescription'])}
             </AlertDialogDescription>
             <label
               htmlFor={`knowledge-delete-confirmation-${knowledgeSpace.control_space_id}`}
               className="mt-5 block system-sm-medium text-text-secondary"
             >
-              {t(($) => $['newKnowledge.settings.deleteConfirmPrompt'], { name })}
+              {t(($) => $['settings.deleteConfirmPrompt'], { name })}
             </label>
             <Input
               id={`knowledge-delete-confirmation-${knowledgeSpace.control_space_id}`}

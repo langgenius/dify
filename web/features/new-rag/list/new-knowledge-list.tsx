@@ -98,7 +98,7 @@ export function NewKnowledgeList({
   view: 'legacy' | 'new'
   onViewChange: (value: 'legacy' | 'new') => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
@@ -245,14 +245,14 @@ export function NewKnowledgeList({
 
   return (
     <section
-      aria-label={t(($) => $['newKnowledge.new'])}
+      aria-label={t(($) => $.new)}
       className="relative flex grow flex-col overflow-y-auto bg-background-body"
     >
       <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
         <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $.knowledge)}
+              {t(($) => $.knowledge, { ns: 'dataset' })}
             </h1>
             <KnowledgeViewSwitcher value={view} onChange={onViewChange} />
           </div>
@@ -268,7 +268,9 @@ export function NewKnowledgeList({
                   aria-hidden
                   className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
                 />
-                <span className="system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
+                <span className="system-xs-medium">
+                  {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
+                </span>
               </Button>
             )}
             <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
@@ -319,13 +321,13 @@ export function NewKnowledgeList({
           <div className="px-4 pt-2 pb-8 sm:px-8">
             {isUnavailableError(knowledgeSpacesQuery.error) ? (
               <NewKnowledgePageState
-                title={t(($) => $['newKnowledge.unavailableTitle'])}
-                description={t(($) => $['newKnowledge.unavailableDescription'])}
+                title={t(($) => $.unavailableTitle)}
+                description={t(($) => $.unavailableDescription)}
               />
             ) : (
               <NewKnowledgePageState
-                title={t(($) => $['newKnowledge.errorTitle'])}
-                description={t(($) => $['newKnowledge.errorDescription'])}
+                title={t(($) => $.errorTitle)}
+                description={t(($) => $.errorDescription)}
                 action={
                   <Button onClick={() => void knowledgeSpacesQuery.refetch()}>
                     {tCommon(($) => $['operation.retry'])}
@@ -337,8 +339,8 @@ export function NewKnowledgeList({
         ) : upgradeRecoveryError && !hasVisibleKnowledge ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgePageState
-              title={t(($) => $['newKnowledge.errorTitle'])}
-              description={t(($) => $['newKnowledge.errorDescription'])}
+              title={t(($) => $.errorTitle)}
+              description={t(($) => $.errorDescription)}
               action={
                 <Button onClick={refetchUpgradeRecovery}>
                   {tCommon(($) => $['operation.retry'])}
@@ -350,7 +352,7 @@ export function NewKnowledgeList({
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgePageState
               title={tCommon(($) => $['operation.noSearchResults'], {
-                content: t(($) => $.knowledge),
+                content: t(($) => $.knowledge, { ns: 'dataset' }),
               })}
               description={searchValue.trim()}
               action={
@@ -369,20 +371,23 @@ export function NewKnowledgeList({
         ) : !hasVisibleKnowledge ? (
           <div className="flex min-h-105 items-center justify-center px-6 text-center text-text-tertiary">
             {tCommon(($) => $['operation.noSearchResults'], {
-              content: t(($) => $.knowledge),
+              content: t(($) => $.knowledge, { ns: 'dataset' }),
             })}
           </div>
         ) : (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             {upgradeRecoveryError && (
               <div className="mb-4 flex items-center justify-center gap-3" role="alert">
-                <span>{t(($) => $['newKnowledge.errorDescription'])}</span>
+                <span>{t(($) => $.errorDescription)}</span>
                 <Button onClick={refetchUpgradeRecovery}>
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>
             )}
-            <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
+            <ul
+              className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+              aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
+            >
               {pendingUpgradeCards.map((upgrade) => (
                 <KnowledgeUpgradeCard
                   key={upgrade.job.id}
@@ -403,7 +408,7 @@ export function NewKnowledgeList({
             </ul>
             {knowledgeSpacesQuery.isFetchNextPageError ? (
               <div className="mt-6 flex items-center justify-center gap-3" role="alert">
-                <span>{t(($) => $['newKnowledge.errorDescription'])}</span>
+                <span>{t(($) => $.errorDescription)}</span>
                 <Button onClick={() => void knowledgeSpacesQuery.fetchNextPage()}>
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
@@ -414,7 +419,7 @@ export function NewKnowledgeList({
                   loading={knowledgeSpacesQuery.isFetchingNextPage}
                   onClick={() => void knowledgeSpacesQuery.fetchNextPage()}
                 >
-                  {t(($) => $['newKnowledge.loadMore'])}
+                  {t(($) => $.loadMore)}
                 </Button>
               </div>
             ) : null}

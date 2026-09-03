@@ -199,11 +199,11 @@ describe('QualityEvaluationPanel', () => {
     renderPanel()
 
     expect(
-      await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle'),
+      await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     ).toBeEnabled()
   })
@@ -221,7 +221,7 @@ describe('QualityEvaluationPanel', () => {
 
     renderPanel()
 
-    expect(await screen.findByText('dataset.newKnowledge.retrievalTest.justNow')).toBeVisible()
+    expect(await screen.findByText('knowledgeSpace.retrievalTest.justNow')).toBeVisible()
     expect(await screen.findByText('2 hours ago')).toBeVisible()
     dateNowSpy.mockRestore()
   })
@@ -235,7 +235,7 @@ describe('QualityEvaluationPanel', () => {
     renderPanel()
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
 
@@ -246,15 +246,15 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
 
     const dialog = screen.getByRole('dialog', {
-      name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+      name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
     })
     expect(dialog).toHaveClass(
       'fixed',
@@ -264,11 +264,11 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_other:{"count":6}',
+      'knowledgeSpace.qualityPage.evaluation.dialogDescription_other:{"count":6}',
     )
     expect(
       screen.getByRole('radio', {
-        name: 'dataset.newKnowledge.settings.retrievalMode.fast',
+        name: 'knowledgeSpace.settings.retrievalMode.fast',
       }),
     ).toBeChecked()
     expect(screen.getAllByRole('radio')).toHaveLength(3)
@@ -282,19 +282,19 @@ describe('QualityEvaluationPanel', () => {
     })
     renderPanel()
 
-    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
 
     expect(
       screen.getByRole('dialog', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+        name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
       }),
     ).toHaveAccessibleDescription(
-      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_one:{"count":1}',
+      'knowledgeSpace.qualityPage.evaluation.dialogDescription_one:{"count":1}',
     )
   })
 
@@ -302,29 +302,27 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
     await user.click(
       screen.getByRole('radio', {
-        name: 'dataset.newKnowledge.settings.retrievalMode.deep',
+        name: 'knowledgeSpace.settings.retrievalMode.deep',
       }),
     )
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.cancel' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.cancel' }))
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
 
     expect(
       screen.getByRole('radio', {
-        name: 'dataset.newKnowledge.settings.retrievalMode.fast',
+        name: 'knowledgeSpace.settings.retrievalMode.fast',
       }),
     ).toBeChecked()
   })
@@ -333,15 +331,15 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.start',
+        name: 'knowledgeSpace.qualityPage.evaluation.start',
       }),
     )
 
@@ -364,7 +362,7 @@ describe('QualityEvaluationPanel', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.singleRun.reRun' }))
     expect(
       screen.getByRole('dialog', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+        name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
       }),
     ).toBeVisible()
   })
@@ -389,25 +387,25 @@ describe('QualityEvaluationPanel', () => {
 
     renderPanel(queryClient)
 
-    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+        name: 'knowledgeSpace.qualityPage.evaluation.run',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.start',
+        name: 'knowledgeSpace.qualityPage.evaluation.start',
       }),
     )
 
     expect(
       await screen.findByRole('heading', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.reportTitle',
+        name: 'knowledgeSpace.qualityPage.evaluation.reportTitle',
       }),
     ).toBeVisible()
     expect(
-      screen.getAllByText('dataset.newKnowledge.qualityPage.evaluation.state.queued'),
+      screen.getAllByText('knowledgeSpace.qualityPage.evaluation.state.queued'),
     ).not.toHaveLength(0)
   })
 
@@ -432,29 +430,29 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
-    await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.queued')
+    await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.queued')
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluationTab',
+        name: 'knowledgeSpace.qualityPage.evaluationTab',
       }),
     )
 
     expect(
-      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(serviceMock.listReplays).toHaveBeenCalledTimes(2)
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
 
     expect(
-      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(screen.getByText('1/1')).toBeVisible()
   })
@@ -478,25 +476,25 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
     expect(
-      await screen.findAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluationTab',
+        name: 'knowledgeSpace.qualityPage.evaluationTab',
       }),
     )
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
 
     expect(
-      screen.getAllByText('dataset.newKnowledge.qualityPage.evaluation.state.passed'),
+      screen.getAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(screen.getByText('1/1')).toBeVisible()
   })
@@ -511,26 +509,26 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
       }),
     )
     await screen.findByText('Who can change workspace permissions?')
     await user.click(
       screen.getByRole('button', {
-        name: /^dataset\.newKnowledge\.qualityPage\.evaluation\.openEvidenceDetails/,
+        name: /^knowledgeSpace\.qualityPage\.evaluation\.openEvidenceDetails/,
       }),
     )
 
     expect(
       await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.evidenceDetailsTitle',
+        name: 'knowledgeSpace.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).toBeVisible()
     const matchedSection = screen.getByRole('region', {
-      name: 'dataset.newKnowledge.qualityPage.evaluation.passed',
+      name: 'knowledgeSpace.qualityPage.evaluation.passed',
     })
     const missingSection = screen.getByRole('region', {
-      name: 'dataset.newKnowledge.qualityPage.evaluation.missed',
+      name: 'knowledgeSpace.qualityPage.evaluation.missed',
     })
     expect(
       within(matchedSection).getByText('Workspace owners can change member permissions.'),
@@ -543,12 +541,10 @@ describe('QualityEvaluationPanel', () => {
       query: { evidence_item_id: 'item-1' },
     })
 
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.closeDialog' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.closeDialog' }))
     expect(
       screen.queryByRole('dialog', {
-        name: 'dataset.newKnowledge.qualityPage.evaluation.evidenceDetailsTitle',
+        name: 'knowledgeSpace.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).not.toBeInTheDocument()
   })

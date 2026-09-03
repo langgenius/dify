@@ -85,13 +85,11 @@ describe('KnowledgeUpgradeDialog', () => {
     })
 
     const startButton = await screen.findByRole('button', {
-      name: 'dataset.newKnowledge.upgrade.start',
+      name: 'knowledgeSpace.upgrade.start',
     })
     await waitFor(() => expect(startButton).toBeEnabled())
     await user.click(startButton)
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.upgrade.startFailed',
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.upgrade.startFailed')
     await user.click(startButton)
 
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(dataset, job))

@@ -206,7 +206,7 @@ const selectedFailureMessageKeyAtom = atom((get) => {
     knowledgeFsTaskFailureMessageKey(
       selectedResearchTask.failure ?? undefined,
       selectedResearchTask.error ?? undefined,
-    ) ?? 'newKnowledge.taskFailure.research'
+    ) ?? 'taskFailure.research'
   )
 })
 

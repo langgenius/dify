@@ -31,8 +31,8 @@ export function KnowledgeSpaceCardTags({
   )
   const replaceTagsMutation = useMutation({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions(),
-    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'])),
-    onSuccess: () => toast.success(t(($) => $['actionMsg.modifiedSuccessfully'])),
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+    onSuccess: () => toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' })),
     onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.get.key(),

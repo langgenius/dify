@@ -191,7 +191,7 @@ function ConnectedSourceEditDialogContent({
   source: Source
 }) {
   const { t: tCommon } = useTranslation('common')
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const datasourcePluginsQuery = useDataSourceList(true)
   const {
     data: connectionsData,
@@ -305,8 +305,8 @@ function ConnectedSourceEditDialogContent({
         ) : unavailable || !installedProviderOption || !previewBinding ? (
           <p role="alert" className="py-8 system-sm-regular text-text-destructive">
             {datasourcePluginsQuery.isError || connectionsError
-              ? t(($) => $['newKnowledge.providerLoadFailed'])
-              : t(($) => $['newKnowledge.providerUnavailable'])}
+              ? t(($) => $.providerLoadFailed)
+              : t(($) => $.providerUnavailable)}
           </p>
         ) : (
           <ConnectedSourceEditForm
@@ -341,7 +341,7 @@ function BasicSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [initialSource] = useState(source)
   const [nextName, setNextName] = useState(initialSource.name)
@@ -383,7 +383,7 @@ function BasicSourceEditDialogContent({
       <div className="mt-5">
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
-            {t(($) => $['newKnowledge.sourceName'])}
+            {t(($) => $.sourceName)}
           </FieldLabel>
           <Input
             id={`source-name-${initialSource.id}`}
@@ -444,7 +444,7 @@ function WebsiteSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [initialSource] = useState(source)
   const providerName = sourceProviderDetails(initialSource).name ?? ''
@@ -660,9 +660,7 @@ function WebsiteSourceEditDialogContent({
 
   const sourceNameField = (
     <Field name="sourceName" className="gap-1.5">
-      <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
-        {t(($) => $['newKnowledge.sourceName'])}
-      </FieldLabel>
+      <FieldLabel htmlFor={`source-name-${initialSource.id}`}>{t(($) => $.sourceName)}</FieldLabel>
       <Input
         id={`source-name-${initialSource.id}`}
         autoComplete="off"
@@ -713,8 +711,8 @@ function WebsiteSourceEditDialogContent({
                 ) : (
                   <p role="alert" className="pt-7 system-sm-regular text-text-destructive">
                     {providerLoadFailed
-                      ? t(($) => $['newKnowledge.providerLoadFailed'])
-                      : t(($) => $['newKnowledge.providerUnavailable'])}
+                      ? t(($) => $.providerLoadFailed)
+                      : t(($) => $.providerUnavailable)}
                   </p>
                 )}
               </div>
@@ -740,12 +738,12 @@ function WebsiteSourceEditDialogContent({
                 variant="primary"
                 onClick={() => void startPreview()}
               >
-                {t(($) => $['newKnowledge.preview'])}
+                {t(($) => $.preview)}
               </Button>
             )}
             {previewError && (
               <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-                {t(($) => $['newKnowledge.providerLoadFailed'])}
+                {t(($) => $.providerLoadFailed)}
               </p>
             )}
             {previewPages.length > 0 && (

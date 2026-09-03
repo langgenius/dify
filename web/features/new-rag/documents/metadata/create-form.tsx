@@ -24,7 +24,7 @@ export function DocumentMetadataCreateForm({
   onClose: () => void
   onCreate: (name: string, type: DocumentMetadataType) => Promise<boolean>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [name, setName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
@@ -36,7 +36,7 @@ export function DocumentMetadataCreateForm({
   )
   const nameError = useMemo(() => {
     if (!nameErrorKind) return undefined
-    return t(($) => $[`metadata.checkName.${nameErrorKind}`], { max: 255 })
+    return t(($) => $[`metadata.checkName.${nameErrorKind}`], { max: 255, ns: 'dataset' })
   }, [nameErrorKind, t])
 
   const close = () => {
@@ -72,16 +72,16 @@ export function DocumentMetadataCreateForm({
       >
         <span aria-hidden className="i-ri-arrow-left-line size-4" />
         <span className="system-xs-semibold-uppercase">
-          {t(($) => $['metadata.createMetadata.back'])}
+          {t(($) => $['metadata.createMetadata.back'], { ns: 'dataset' })}
         </span>
       </button>
       <h3 className="mb-1 flex h-6 items-center system-xl-semibold text-text-primary">
-        {t(($) => $['metadata.createMetadata.title'])}
+        {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
       </h3>
       <div className="mt-2 space-y-3">
         <fieldset>
           <legend className="py-1 system-sm-semibold text-text-secondary">
-            {t(($) => $['metadata.createMetadata.type'])}
+            {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
           </legend>
           <div className="mt-1 grid grid-cols-3 gap-2">
             {metadataTypes.map((candidate) => (
@@ -104,11 +104,11 @@ export function DocumentMetadataCreateForm({
         </fieldset>
         <label className="block">
           <span className="block py-1 system-sm-semibold text-text-secondary">
-            {t(($) => $['metadata.createMetadata.name'])}
+            {t(($) => $['metadata.createMetadata.name'], { ns: 'dataset' })}
           </span>
           <div className="mt-1">
             <Input
-              aria-label={t(($) => $['metadata.createMetadata.name'])}
+              aria-label={t(($) => $['metadata.createMetadata.name'], { ns: 'dataset' })}
               aria-describedby={nameTouched && nameError ? nameErrorId : undefined}
               aria-invalid={nameTouched && Boolean(nameError) ? true : undefined}
               disabled={pending}
@@ -117,7 +117,9 @@ export function DocumentMetadataCreateForm({
                 setName(event.target.value)
                 setNameTouched(true)
               }}
-              placeholder={t(($) => $['metadata.createMetadata.namePlaceholder'])}
+              placeholder={t(($) => $['metadata.createMetadata.namePlaceholder'], {
+                ns: 'dataset',
+              })}
               value={name}
             />
           </div>

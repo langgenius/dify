@@ -238,20 +238,19 @@ describe('OperationsDropdown', () => {
       await user.click(screen.getByLabelText('Dataset operations'))
 
       const upgradeItem = await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.upgrade.menuLabel',
+        name: 'knowledgeSpace.upgrade.menuLabel',
       })
       const guideItem = screen.getByRole('menuitem', {
-        name: 'dataset.newKnowledge.upgrade.guideTitle',
+        name: 'knowledgeSpace.upgrade.guideTitle',
       })
       expect(upgradeItem).not.toContainElement(guideItem)
 
       await user.click(guideItem)
-      expect(
-        await screen.findByText('dataset.newKnowledge.upgrade.guideDescription'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.learnMore' }),
-      ).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/knowledge-base')
+      expect(await screen.findByText('knowledgeSpace.upgrade.guideDescription')).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.learnMore' })).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en/guides/knowledge-base',
+      )
     })
 
     it('opens the knowledge upgrade confirmation from an editable legacy card', async () => {
@@ -265,16 +264,16 @@ describe('OperationsDropdown', () => {
 
       await user.click(screen.getByLabelText('Dataset operations'))
       await user.click(
-        await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+        await screen.findByRole('menuitem', { name: 'knowledgeSpace.upgrade.menuLabel' }),
       )
 
       expect(
         await screen.findByRole('alertdialog', {
-          name: 'dataset.newKnowledge.upgrade.dialogTitle',
+          name: 'knowledgeSpace.upgrade.dialogTitle',
         }),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.upgrade.start' }),
+        screen.getByRole('button', { name: 'knowledgeSpace.upgrade.start' }),
       ).toBeInTheDocument()
     })
 
@@ -290,7 +289,7 @@ describe('OperationsDropdown', () => {
       const operationsTrigger = screen.getByLabelText('Dataset operations')
       await user.click(operationsTrigger)
       await user.click(
-        await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+        await screen.findByRole('menuitem', { name: 'knowledgeSpace.upgrade.menuLabel' }),
       )
       await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
@@ -329,7 +328,7 @@ describe('OperationsDropdown', () => {
       await user.click(screen.getByLabelText('Dataset operations'))
 
       expect(
-        screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+        screen.queryByRole('menuitem', { name: 'knowledgeSpace.upgrade.menuLabel' }),
       ).not.toBeInTheDocument()
     })
 

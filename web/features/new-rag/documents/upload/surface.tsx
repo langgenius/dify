@@ -33,7 +33,7 @@ import { DocumentStagingCanceledError } from './model'
 import { useDocumentUploadSession } from './use-document-upload-session'
 
 function DocumentUploadHeader() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canRead = useAtomValue(documentCanReadAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
@@ -48,14 +48,10 @@ function DocumentUploadHeader() {
         className="title-xl-semi-bold leading-6 text-text-primary"
         tabIndex={-1}
       >
-        {t(($) => (formOpen ? $['newKnowledge.addDocument'] : $['newKnowledge.documents']))}
+        {t(($) => (formOpen ? $.addDocument : $.documents))}
       </h2>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) =>
-          formOpen
-            ? $['newKnowledge.uploadFilesDescription']
-            : $['newKnowledge.documentsDescription'],
-        )}
+        {t(($) => (formOpen ? $.uploadFilesDescription : $.documentsDescription))}
       </p>
       {canRead && !canWrite && (
         <p
@@ -64,7 +60,7 @@ function DocumentUploadHeader() {
           role="status"
         >
           <span aria-hidden className="i-ri-lock-line size-3.5" />
-          {t(($) => $['newKnowledge.documentPermissionRestricted'])}
+          {t(($) => $.documentPermissionRestricted)}
         </p>
       )}
     </header>
@@ -72,7 +68,7 @@ function DocumentUploadHeader() {
 }
 
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
@@ -133,15 +129,15 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       const detailItems = exclusions.slice(0, 3).map(({ filename, reasonKey }) => {
         const reason =
           reasonKey === 'fileSize'
-            ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'], {
+            ? t(($) => $['documentUploadExclusion.fileSize'], {
                 size: fileSizeLimitMb,
               })
-            : t(($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`])
+            : t(($) => $[`documentUploadExclusion.${reasonKey}`])
         return `${filename} (${reason})`
       })
       if (exclusions.length > detailItems.length)
         detailItems.push(
-          t(($) => $['newKnowledge.documentUploadExclusion.more'], {
+          t(($) => $['documentUploadExclusion.more'], {
             count: exclusions.length - detailItems.length,
           }),
         )
@@ -165,7 +161,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       }
       if (!uploadableFiles.length) {
         toast.error(
-          t(($) => $['newKnowledge.documentUploadRejected'], {
+          t(($) => $.documentUploadRejected, {
             details: formatExclusionDetails(localExclusions),
           }),
         )
@@ -184,13 +180,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         const exclusionDetails = formatExclusionDetails(localExclusions)
         if (localExclusions.length)
           toast.warning(
-            t(($) => $['newKnowledge.documentUploadPartial'], {
+            t(($) => $.documentUploadPartial, {
               accepted: uploadableFiles.length,
               details: exclusionDetails,
               excluded: localExclusions.length,
             }),
           )
-        else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
+        else toast.success(t(($) => $.documentUploadStarted))
         void Promise.allSettled([
           queryClient.invalidateQueries({
             predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
@@ -206,7 +202,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         if (responseStatus(error) === 403) {
           cancel()
           denyWrite()
-        } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+        } else toast.error(t(($) => $.documentUploadFailed))
         return false
       }
     },
@@ -231,7 +227,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         await stageFiles(files)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
-        toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+        toast.error(t(($) => $.documentUploadFailed))
         throw error
       }
     },
@@ -287,7 +283,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
     >
       {!uploadAvailable && (
         <span id="documents-upload-unavailable" className="sr-only">
-          {t(($) => $['cornerLabel.unavailable'])}
+          {t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
         </span>
       )}
       <DocumentUploadHeader />

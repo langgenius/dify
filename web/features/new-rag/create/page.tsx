@@ -80,12 +80,12 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
 }
 
 export function CreateKnowledgePage() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tDatasetCreation } = useTranslation('datasetCreation')
   const { t: tWorkflow } = useTranslation('workflow')
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
-  useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
+  useDocumentTitle(t(($) => $.createTitle))
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -126,7 +126,7 @@ export function CreateKnowledgePage() {
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
   const validUploads = uploads.filter(({ issue }) => !issue)
-  const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
+  const createErrorMessage = t(($) => $.createFailed)
   const normalizedName = name.trim()
   const normalizedDescription = description.trim()
   const nameLengthInvalid = Array.from(normalizedName).length > NAME_MAX_LENGTH
@@ -328,7 +328,7 @@ export function CreateKnowledgePage() {
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
                 <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['newKnowledge.createTitle'])}
+                  {t(($) => $.createTitle)}
                 </DialogTitle>
               </header>
 
@@ -340,13 +340,13 @@ export function CreateKnowledgePage() {
                     invalid={nameLengthInvalid}
                     validate={(value) => {
                       if (typeof value === 'string' && value.length > 0 && !value.trim())
-                        return t(($) => $['newKnowledge.nameRequired'])
+                        return t(($) => $.nameRequired)
 
                       return null
                     }}
                   >
                     <FieldLabel>
-                      {t(($) => $['newKnowledge.name'])}
+                      {t(($) => $.name)}
                       <span aria-hidden className="ml-0.5 text-text-destructive">
                         *
                       </span>
@@ -357,7 +357,7 @@ export function CreateKnowledgePage() {
                         nameLengthInvalid ? 'knowledge-create-name-error' : undefined
                       }
                       disabled={submissionLocked}
-                      placeholder={t(($) => $['newKnowledge.namePlaceholder'])}
+                      placeholder={t(($) => $.namePlaceholder)}
                       required
                       value={name}
                       onValueChange={(value) => {
@@ -365,16 +365,14 @@ export function CreateKnowledgePage() {
                         resetUnsubmittedError()
                       }}
                     />
-                    <FieldError match="valueMissing">
-                      {t(($) => $['newKnowledge.nameRequired'])}
-                    </FieldError>
+                    <FieldError match="valueMissing">{t(($) => $.nameRequired)}</FieldError>
                     <FieldError id="knowledge-create-name-error" match={nameLengthInvalid}>
                       {tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])}
                     </FieldError>
                     <FieldError match="customError" />
                   </Field>
                   <Field name="description" className="gap-1.5" invalid={descriptionLengthInvalid}>
-                    <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
+                    <FieldLabel>{t(($) => $.description)}</FieldLabel>
                     <Textarea
                       autoComplete="off"
                       aria-describedby={
@@ -383,16 +381,14 @@ export function CreateKnowledgePage() {
                       className="min-h-20"
                       disabled={submissionLocked}
                       name="description"
-                      placeholder={t(($) => $['newKnowledge.descriptionPlaceholder'])}
+                      placeholder={t(($) => $.descriptionPlaceholder)}
                       value={description}
                       onValueChange={(value) => {
                         setDescription(value)
                         resetUnsubmittedError()
                       }}
                     />
-                    <FieldDescription>
-                      {t(($) => $['newKnowledge.descriptionHelp'])}
-                    </FieldDescription>
+                    <FieldDescription>{t(($) => $.descriptionHelp)}</FieldDescription>
                     <FieldError
                       id="knowledge-create-description-error"
                       match={descriptionLengthInvalid}
@@ -411,27 +407,23 @@ export function CreateKnowledgePage() {
                         if (value) setVisibility(value)
                       }}
                     >
-                      <SelectLabel>{t(($) => $['newKnowledge.permission'])}</SelectLabel>
+                      <SelectLabel>{t(($) => $.permission)}</SelectLabel>
                       <SelectTrigger
                         aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
                       >
                         {t(($) =>
                           visibility === 'all_team_members'
-                            ? $['newKnowledge.permissionAllMembers']
-                            : $['newKnowledge.permissionOnlyMe'],
+                            ? $.permissionAllMembers
+                            : $.permissionOnlyMe,
                         )}
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="only_me">
-                          <SelectItemText>
-                            {t(($) => $['newKnowledge.permissionOnlyMe'])}
-                          </SelectItemText>
+                          <SelectItemText>{t(($) => $.permissionOnlyMe)}</SelectItemText>
                           <SelectItemIndicator />
                         </SelectItem>
                         <SelectItem value="all_team_members">
-                          <SelectItemText>
-                            {t(($) => $['newKnowledge.permissionAllMembers'])}
-                          </SelectItemText>
+                          <SelectItemText>{t(($) => $.permissionAllMembers)}</SelectItemText>
                           <SelectItemIndicator />
                         </SelectItem>
                       </SelectContent>
@@ -441,7 +433,7 @@ export function CreateKnowledgePage() {
                         id={permissionDescriptionId}
                         className="py-0.5 body-xs-regular text-text-tertiary"
                       >
-                        {t(($) => $['newKnowledge.permissionRestricted'])}
+                        {t(($) => $.permissionRestricted)}
                       </p>
                     )}
                   </div>
@@ -450,14 +442,14 @@ export function CreateKnowledgePage() {
                 <div className="flex flex-col gap-3">
                   <Fieldset>
                     <FieldsetLegend className="py-0 system-md-semibold">
-                      {t(($) => $['newKnowledge.startWith'])}
+                      {t(($) => $.startWith)}
                     </FieldsetLegend>
                     <p className="pb-1.5 body-xs-regular text-text-tertiary">
-                      {t(($) => $['newKnowledge.startWithHelp'])}
+                      {t(($) => $.startWithHelp)}
                     </p>
                     <RadioGroup<NewKnowledgeStartMode>
                       value={startMode}
-                      aria-label={t(($) => $['newKnowledge.startWith'])}
+                      aria-label={t(($) => $.startWith)}
                       className="mt-2 flex-col items-stretch gap-2"
                       disabled={submissionLocked}
                       onValueChange={(value) => {
@@ -469,15 +461,15 @@ export function CreateKnowledgePage() {
                         value="empty"
                         icon="i-ri-folder-6-line"
                         selected={startMode === 'empty'}
-                        title={t(($) => $['newKnowledge.startEmpty'])}
-                        description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                        title={t(($) => $.startEmpty)}
+                        description={t(($) => $.startEmptyDescription)}
                       />
                       <StartMode
                         value="source"
                         icon="i-custom-public-new-rag-connect-source"
                         selected={startMode === 'source'}
-                        title={t(($) => $['newKnowledge.connectSource'])}
-                        description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                        title={t(($) => $.connectSource)}
+                        description={t(($) => $.connectSourceDescription)}
                         endAdornment={
                           startMode === 'upload' ? (
                             <span
@@ -507,8 +499,8 @@ export function CreateKnowledgePage() {
                         icon="i-ri-file-text-line"
                         selected={startMode === 'upload'}
                         disabled={!uploadAvailable}
-                        title={t(($) => $['newKnowledge.uploadFiles'])}
-                        description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+                        title={t(($) => $.uploadFiles)}
+                        description={t(($) => $.uploadFilesDescription)}
                       >
                         <CreateUploadQueue
                           disabled={submissionPending}
@@ -535,7 +527,7 @@ export function CreateKnowledgePage() {
                       className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
                       role="alert"
                     >
-                      {t(($) => $['newKnowledge.documentUploadFailed'])}
+                      {t(($) => $.documentUploadFailed)}
                     </div>
                   )}
                 </div>
@@ -554,7 +546,7 @@ export function CreateKnowledgePage() {
                       submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked
                     }
                   >
-                    {t(($) => $['newKnowledge.createTitle'])}
+                    {t(($) => $.createTitle)}
                   </Button>
                 </div>
               </div>
@@ -563,7 +555,7 @@ export function CreateKnowledgePage() {
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">
-            <KnowledgeIllustration title={t(($) => $['newKnowledge.illustrationHeadline'])} />
+            <KnowledgeIllustration title={t(($) => $.illustrationHeadline)} />
           </aside>
         </DialogPopup>
       </DialogPortal>

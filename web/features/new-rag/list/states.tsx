@@ -29,7 +29,11 @@ export function NewKnowledgeLoadingState() {
   const { t } = useTranslation('common')
 
   return (
-    <div className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} role="status" aria-label={t(($) => $.loading)}>
+    <div
+      className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+      role="status"
+      aria-label={t(($) => $.loading, { ns: 'common' })}
+    >
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
@@ -88,9 +92,9 @@ function EmptyAction({
   recommended?: boolean
   title: string
 }) {
-  const { t } = useTranslation('dataset')
-  const unavailable = t(($) => $['cornerLabel.unavailable'])
-  const recommendedLabel = t(($) => $['firstEmpty.recommended'])
+  const { t } = useTranslation('knowledgeSpace')
+  const unavailable = t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })
+  const recommendedLabel = t(($) => $['firstEmpty.recommended'], { ns: 'dataset' })
   const descriptionId = useId()
   const unavailableId = useId()
   const recommendedId = useId()
@@ -199,7 +203,7 @@ export function NewKnowledgeEmptyState({
   canCreate: boolean
   uploadAvailable: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canStart = canCreate
 
   return (
@@ -211,11 +215,9 @@ export function NewKnowledgeEmptyState({
             <span aria-hidden className="i-custom-public-new-rag-book-open size-6" />
           </div>
           <div className="flex w-full flex-col items-center gap-1">
-            <h2 className="system-xl-semibold text-text-primary">
-              {t(($) => $['newKnowledge.emptyTitle'])}
-            </h2>
+            <h2 className="system-xl-semibold text-text-primary">{t(($) => $.emptyTitle)}</h2>
             <p className="w-full max-w-146.5 text-[13px]/5 font-normal text-text-tertiary">
-              {t(($) => $['newKnowledge.emptyDescription'])}
+              {t(($) => $.emptyDescription)}
             </p>
           </div>
         </div>
@@ -226,16 +228,16 @@ export function NewKnowledgeEmptyState({
                 recommended
                 iconClassName="i-custom-public-new-rag-connect-source"
                 iconSizeClassName="size-3"
-                title={t(($) => $['newKnowledge.connectSource'])}
-                description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                title={t(($) => $.connectSource)}
+                description={t(($) => $.connectSourceDescription)}
                 href={newKnowledgeCreatePathWithStartMode('source')}
               />
             )}
             {canCreate && (
               <EmptyAction
                 iconClassName="i-ri-file-text-line"
-                title={t(($) => $['newKnowledge.uploadFiles'])}
-                description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+                title={t(($) => $.uploadFiles)}
+                description={t(($) => $.uploadFilesDescription)}
                 href={uploadAvailable ? newKnowledgeCreatePathWithStartMode('upload') : undefined}
               />
             )}
@@ -243,13 +245,13 @@ export function NewKnowledgeEmptyState({
               <>
                 <div className="flex h-4 items-center gap-2 system-xs-medium-uppercase text-text-tertiary">
                   <span className="h-px flex-1 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_0%,rgba(16,24,40,0.08)_100%)]" />
-                  <span>{t(($) => $['firstEmpty.or'])}</span>
+                  <span>{t(($) => $['firstEmpty.or'], { ns: 'dataset' })}</span>
                   <span className="h-px flex-1 bg-[linear-gradient(to_left,rgba(255,255,255,0.01)_0%,rgba(16,24,40,0.08)_100%)]" />
                 </div>
                 <EmptyAction
                   iconClassName="i-ri-folder-6-line"
-                  title={t(($) => $['newKnowledge.startEmpty'])}
-                  description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                  title={t(($) => $.startEmpty)}
+                  description={t(($) => $.startEmptyDescription)}
                   href={newKnowledgeCreatePathWithStartMode('empty')}
                 />
               </>
@@ -257,7 +259,7 @@ export function NewKnowledgeEmptyState({
           </div>
         ) : (
           <span className="mt-6 body-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.readOnlyEmpty'])}
+            {t(($) => $.readOnlyEmpty)}
           </span>
         )}
       </div>

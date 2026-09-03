@@ -24,9 +24,7 @@ describe('KnowledgeFS task error presentation', () => {
       retryPolicy: 'after_configuration',
     })
 
-    expect(knowledgeFsTaskFailureMessageKey(modelFailure)).toBe(
-      'newKnowledge.taskFailure.modelConfiguration',
-    )
+    expect(knowledgeFsTaskFailureMessageKey(modelFailure)).toBe('taskFailure.modelConfiguration')
     expect(knowledgeFsTaskRecoveryPath(modelFailure, 'space-1')).toBe(
       '/datasets/new/space-1/settings',
     )
@@ -43,22 +41,22 @@ describe('KnowledgeFS task error presentation', () => {
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'timeout', code: 'MODEL_RUNTIME_TIMEOUT' }),
       ),
-    ).toBe('newKnowledge.taskFailure.modelTimeout')
+    ).toBe('taskFailure.modelTimeout')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'dependency', code: 'MODEL_RUNTIME_RESPONSE_INVALID' }),
       ),
-    ).toBe('newKnowledge.taskFailure.modelResponseInvalid')
+    ).toBe('taskFailure.modelResponseInvalid')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'configuration', code: 'EMBEDDING_DIMENSION_INVALID' }),
       ),
-    ).toBe('newKnowledge.taskFailure.embeddingDimension')
+    ).toBe('taskFailure.embeddingDimension')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'authorization', code: 'KNOWLEDGE_FS_ACCESS_DENIED' }),
       ),
-    ).toBe('newKnowledge.taskFailure.access')
+    ).toBe('taskFailure.access')
   })
 
   it('keeps permanent model configuration failures distinct from transient validation outages', () => {
@@ -70,7 +68,7 @@ describe('KnowledgeFS task error presentation', () => {
           retryPolicy: 'after_configuration',
         }),
       ),
-    ).toBe('newKnowledge.taskFailure.modelConfiguration')
+    ).toBe('taskFailure.modelConfiguration')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({
@@ -79,45 +77,45 @@ describe('KnowledgeFS task error presentation', () => {
           retryPolicy: 'automatic',
         }),
       ),
-    ).toBe('newKnowledge.taskFailure.modelService')
+    ).toBe('taskFailure.modelService')
   })
 
   it('distinguishes document, parser, source, and upload failures', () => {
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'DOCUMENT_COMPILATION_FAILED' }))).toBe(
-      'newKnowledge.taskFailure.documentProcessing',
+      'taskFailure.documentProcessing',
     )
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'DOCUMENT_PARSER_UNAVAILABLE' }))).toBe(
-      'newKnowledge.taskFailure.parserUnavailable',
+      'taskFailure.parserUnavailable',
     )
     expect(
       knowledgeFsTaskFailureMessageKey(failure({ code: 'DOCUMENT_PARSER_UNSUPPORTED_TYPE' })),
-    ).toBe('newKnowledge.taskFailure.parserUnsupportedType')
+    ).toBe('taskFailure.parserUnsupportedType')
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_SYNC_FAILED' }))).toBe(
-      'newKnowledge.taskFailure.source',
+      'taskFailure.source',
     )
     expect(
       knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_DOCUMENT_COMPILATION_FAILED' })),
-    ).toBe('newKnowledge.taskFailure.sourceDocumentCompilation')
+    ).toBe('taskFailure.sourceDocumentCompilation')
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_CRAWL_PAGE_NOT_FOUND' }))).toBe(
-      'newKnowledge.taskFailure.sourceCrawlPageNotFound',
+      'taskFailure.sourceCrawlPageNotFound',
     )
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_PROVIDER_TIMEOUT' }))).toBe(
-      'newKnowledge.taskFailure.sourceProviderTimeout',
+      'taskFailure.sourceProviderTimeout',
     )
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'UPLOAD_INTEGRITY_MISMATCH' }))).toBe(
-      'newKnowledge.taskFailure.upload',
+      'taskFailure.upload',
     )
   })
 
   it('provides safe compatibility behavior for legacy error codes', () => {
     expect(knowledgeFsTaskFailureMessageKey(undefined, 'SOURCE_OPERATION_FAILED')).toBe(
-      'newKnowledge.taskFailure.source',
+      'taskFailure.source',
     )
     expect(knowledgeFsTaskFailureMessageKey(undefined, 'PARSER_FAILED')).toBe(
-      'newKnowledge.taskFailure.temporary',
+      'taskFailure.temporary',
     )
     expect(knowledgeFsTaskFailureMessageKey(undefined, 'UNREGISTERED_FAILURE')).toBe(
-      'newKnowledge.taskFailure.internal',
+      'taskFailure.internal',
     )
   })
 
@@ -140,12 +138,12 @@ describe('KnowledgeFS task error presentation', () => {
         t,
       ),
     ).toBe(
-      'newKnowledge.taskFailure.failedAtStage:{"stage":"newKnowledge.taskFailure.stage.chunking_indexing"} · newKnowledge.taskFailure.reference:{"traceId":"task-1"}',
+      'taskFailure.failedAtStage:{"stage":"taskFailure.stage.chunking_indexing"} · taskFailure.reference:{"traceId":"task-1"}',
     )
     // Source workflow checkpoints have no user-facing label: only the reference remains.
     expect(
       knowledgeFsTaskFailureDetail(failure({ stage: 'materialized', traceId: 'run-1' }), t),
-    ).toBe('newKnowledge.taskFailure.reference:{"traceId":"run-1"}')
+    ).toBe('taskFailure.reference:{"traceId":"run-1"}')
     expect(knowledgeFsTaskFailureDetail(failure(), t)).toBeUndefined()
     expect(knowledgeFsTaskFailureDetail(undefined, t)).toBeUndefined()
   })

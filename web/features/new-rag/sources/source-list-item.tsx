@@ -51,7 +51,7 @@ export function SourceRow({
   onCheckedChange: (checked: boolean) => void
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const syncWorkflow = source.syncWorkflow
   const displayStatus = sourceDisplayStatus(source)
@@ -79,14 +79,14 @@ export function SourceRow({
       providerName === 'Notion' ||
       providerName === 'Google Docs' ||
       providerName === 'Confluence')
-      ? t(($) => $['newKnowledge.onlineDocuments'])
+      ? t(($) => $.onlineDocuments)
       : source.type === 'connector' &&
           (providerKind === 'online-drive' ||
             providerName === 'Google Drive' ||
             providerName === 'OneDrive' ||
             providerName === 'Amazon S3')
-        ? t(($) => $['newKnowledge.onlineDrive'])
-        : t(($) => $[`newKnowledge.sourceType.${source.type}`])
+        ? t(($) => $.onlineDrive)
+        : t(($) => $[`sourceType.${source.type}`])
   const sourceIcon =
     provider.iconClass ?? (source.type === 'web' ? 'i-ri-global-line' : 'i-ri-links-line')
 
@@ -111,7 +111,7 @@ export function SourceRow({
       </td>
       <td className="min-w-0 @min-[768px]/knowledge-content:col-start-2 @min-[768px]/knowledge-content:row-start-2 @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-start-auto @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $['metadata.createMetadata.type'])}
+          {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
         </p>
         <div className="min-w-0 text-xs leading-4 font-normal">
           <TruncatedSourceValue className="text-text-primary">
@@ -126,7 +126,7 @@ export function SourceRow({
       </td>
       <td className="min-w-0 @min-[768px]/knowledge-content:col-start-3 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $['newKnowledge.statusColumn'])}
+          {t(($) => $.statusColumn)}
         </p>
         <span
           role="status"
@@ -150,7 +150,7 @@ export function SourceRow({
             />
           )}
           <span className="sr-only">{source.name}: </span>
-          {t(($) => $[`newKnowledge.sourceStatus.${displayStatus}`])}
+          {t(($) => $[`sourceStatus.${displayStatus}`])}
           {displayStatus === 'error' && syncFailureMessageKey && (
             <Infotip
               aria-label={t(($) => $[syncFailureMessageKey])}
@@ -164,7 +164,7 @@ export function SourceRow({
       </td>
       <td className="min-w-0 @min-[768px]/knowledge-content:hidden @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $['newKnowledge.syncPolicyColumn'])}
+          {t(($) => $.syncPolicyColumn)}
         </p>
         <TruncatedSourceValue className="text-xs leading-4 font-normal text-text-secondary">
           {syncPolicy ?? '—'}
@@ -172,7 +172,7 @@ export function SourceRow({
       </td>
       <td className="min-w-0 text-xs leading-4 font-normal text-text-secondary @min-[768px]/knowledge-content:col-start-4 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $['newKnowledge.lastSyncColumn'])}
+          {t(($) => $.lastSyncColumn)}
         </p>
         {displayStatus === 'syncing' && syncWorkflow ? (
           <span className="inline-flex min-w-0 items-center gap-1.5 text-text-accent">
@@ -180,7 +180,7 @@ export function SourceRow({
               aria-hidden
               className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
             />
-            {t(($) => $['newKnowledge.sourceSyncProgress'], {
+            {t(($) => $.sourceSyncProgress, {
               completed:
                 syncWorkflow.progressCompleted +
                 syncWorkflow.progressFailed +

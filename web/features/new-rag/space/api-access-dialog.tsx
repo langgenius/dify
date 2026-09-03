@@ -25,7 +25,7 @@ export function KnowledgeFsApiAccessDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tAppApi } = useTranslation('appApi')
   const { t: tCommon } = useTranslation('common')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -50,7 +50,7 @@ export function KnowledgeFsApiAccessDialog({
           <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
             <div>
               <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['newKnowledge.apiAgentAccess'])}
+                {t(($) => $.apiAgentAccess)}
               </DialogTitle>
               <DialogDescription className="mt-1 body-xs-regular text-text-tertiary">
                 {tCommon(($) => $['appMenus.apiAccessTip'])}
@@ -70,7 +70,7 @@ export function KnowledgeFsApiAccessDialog({
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
             <section>
               <p className="system-xs-semibold-uppercase text-text-tertiary">
-                {t(($) => $['serviceApi.card.endpoint'])}
+                {t(($) => $['serviceApi.card.endpoint'], { ns: 'dataset' })}
               </p>
               <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 pr-1 pl-3">
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
@@ -86,21 +86,21 @@ export function KnowledgeFsApiAccessDialog({
               </div>
             ) : status === 'unavailable' ? (
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
-                {t(($) => $.unavailable)}
+                {t(($) => $.unavailable, { ns: 'dataset' })}
               </div>
             ) : status === 'inactive' ? (
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.apiAccessInactive'])}
+                {t(($) => $.apiAccessInactive)}
               </div>
             ) : !canManageApiKey ? (
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.settings.viewOnly'])}
+                {t(($) => $['settings.viewOnly'])}
               </div>
             ) : (
               <div className="flex justify-end">
                 <Button type="button" onClick={openApiKeyModal}>
                   <span aria-hidden className="i-ri-key-2-line size-4 shrink-0" />
-                  {t(($) => $['serviceApi.card.apiKey'])}
+                  {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
                 </Button>
               </div>
             )}

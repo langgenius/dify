@@ -18,7 +18,7 @@ import { useDocumentDetailTitle } from './title-sync'
 import { DocumentDetailWorkspace } from './workspace'
 
 function DocumentDetailContent() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const document = useAtomValue(documentDetailQueryDataAtom)
   const documentError = useAtomValue(documentDetailQueryErrorAtom)
@@ -38,17 +38,17 @@ function DocumentDetailContent() {
   if (documentErrorStatus === 403 || documentErrorStatus === 404)
     return (
       <DocumentErrorState
-        description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
-        title={t(($) => $['newKnowledge.documentNotFoundTitle'])}
+        description={t(($) => $.documentNotFoundDescription)}
+        title={t(($) => $.documentNotFoundTitle)}
       />
     )
 
   if (!document) {
     return (
       <DocumentErrorState
-        description={t(($) => $['newKnowledge.documentLoadErrorDescription'])}
+        description={t(($) => $.documentLoadErrorDescription)}
         onRetry={() => void refreshDocument()}
-        title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
+        title={t(($) => $.documentLoadErrorTitle)}
       />
     )
   }

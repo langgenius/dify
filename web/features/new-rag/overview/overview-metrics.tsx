@@ -96,15 +96,15 @@ export function OverviewMetrics() {
   const empty = useAtomValue(overviewShowEmptyModulesAtom)
   const loading = useAtomValue(overviewStatsPendingAtom)
   const stats = useAtomValue(overviewStatsDataAtom)
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['newKnowledge.overview.queries'])}
-        help={t(($) => $['newKnowledge.overview.queriesHelp'])}
+        title={t(($) => $['overview.queries'])}
+        help={t(($) => $['overview.queriesHelp'])}
         value={stats ? compactNumber(stats.queries.value) : '—'}
         change={
           stats
@@ -117,28 +117,28 @@ export function OverviewMetrics() {
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['newKnowledge.overview.answerRate'])}
-        help={t(($) => $['newKnowledge.overview.answerRateHelp'])}
+        title={t(($) => $['overview.answerRate'])}
+        help={t(($) => $['overview.answerRateHelp'])}
         value={stats ? `${Math.round(stats.answer_rate.value * 100)}%` : '—'}
         change={stats ? changeLabel(stats.answer_rate.change_percentage_points, 'pp') : undefined}
       />
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['newKnowledge.overview.documents'])}
+        title={t(($) => $['overview.documents'])}
         value={stats ? compactNumber(stats.documents) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['newKnowledge.overview.linkedApps'])}
+        title={t(($) => $['overview.linkedApps'])}
         value={stats ? compactNumber(stats.linked_apps) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['newKnowledge.overview.freshness'])}
-        help={t(($) => $['newKnowledge.overview.freshnessHelp'])}
+        title={t(($) => $['overview.freshness'])}
+        help={t(($) => $['overview.freshnessHelp'])}
         value={formatDuration(stats?.freshness_seconds)}
       />
     </div>
@@ -151,15 +151,15 @@ export function QueryOutcomesChart() {
   const error = useAtomValue(overviewOutcomesErrorAtom)
   const loading = useAtomValue(overviewOutcomesPendingAtom)
   const buckets = outcomes?.buckets
-  const { t, i18n } = useTranslation('dataset')
+  const { t, i18n } = useTranslation('knowledgeSpace')
   const chartOptions = useMemo(
     () =>
       buildQueryOutcomesChartOptions({
         buckets: buckets ?? [],
         labels: {
-          answered: t(($) => $['newKnowledge.overview.answered']),
-          lowConfidence: t(($) => $['newKnowledge.overview.lowConfidence']),
-          noEvidence: t(($) => $['newKnowledge.overview.noEvidence']),
+          answered: t(($) => $['overview.answered']),
+          lowConfidence: t(($) => $['overview.lowConfidence']),
+          noEvidence: t(($) => $['overview.noEvidence']),
         },
         locale: i18n.language,
       }),
@@ -171,7 +171,7 @@ export function QueryOutcomesChart() {
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $['newKnowledge.overview.queryOutcomes'])}
+            {t(($) => $['overview.queryOutcomes'])}
           </h2>
         </div>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
@@ -185,21 +185,21 @@ export function QueryOutcomesChart() {
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $['newKnowledge.overview.queryOutcomes'])}
+            {t(($) => $['overview.queryOutcomes'])}
             <Infotip
-              aria-label={t(($) => $['newKnowledge.overview.answerRateHelp'])}
+              aria-label={t(($) => $['overview.answerRateHelp'])}
               className="ml-1 inline-flex size-4 align-middle"
               popupClassName="max-w-[260px] border-0 bg-text-primary text-text-primary-on-surface"
             >
-              {t(($) => $['newKnowledge.overview.answerRateHelp'])}
+              {t(($) => $['overview.answerRateHelp'])}
             </Infotip>
           </h2>
         </div>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <EmptyInline
             icon="i-ri-time-line"
-            title={t(($) => $['newKnowledge.overview.noQueryData'])}
-            description={t(($) => $['newKnowledge.overview.noQueryDataDescription'])}
+            title={t(($) => $['overview.noQueryData'])}
+            description={t(($) => $['overview.noQueryDataDescription'])}
           />
         </Panel>
       </section>
@@ -209,13 +209,13 @@ export function QueryOutcomesChart() {
     <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $['newKnowledge.overview.queryOutcomes'])}
+          {t(($) => $['overview.queryOutcomes'])}
           <Infotip
-            aria-label={t(($) => $['newKnowledge.overview.answerRateHelp'])}
+            aria-label={t(($) => $['overview.answerRateHelp'])}
             className="ml-1 inline-flex size-4 align-middle"
             popupClassName="max-w-[260px] border-0 bg-text-primary text-text-primary-on-surface"
           >
-            {t(($) => $['newKnowledge.overview.answerRateHelp'])}
+            {t(($) => $['overview.answerRateHelp'])}
           </Infotip>
         </h2>
       </div>
@@ -235,7 +235,7 @@ export function QueryOutcomesChart() {
         ) : buckets?.length ? (
           <>
             <p className="sr-only">
-              {t(($) => $['newKnowledge.overview.queryOutcomes'])}: {buckets.length}
+              {t(($) => $['overview.queryOutcomes'])}: {buckets.length}
             </p>
             <ReactECharts
               option={chartOptions}
@@ -246,8 +246,8 @@ export function QueryOutcomesChart() {
         ) : (
           <EmptyInline
             icon="i-ri-line-chart-line"
-            title={t(($) => $['newKnowledge.overview.noActivity'])}
-            description={t(($) => $['newKnowledge.overview.noActivityDescription'])}
+            title={t(($) => $['overview.noActivity'])}
+            description={t(($) => $['overview.noActivityDescription'])}
           />
         )}
       </Panel>

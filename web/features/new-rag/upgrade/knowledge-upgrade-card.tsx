@@ -28,7 +28,7 @@ export function KnowledgeUpgradeCard({
   onSucceeded?: (controlSpaceId: string) => void
   onSettled?: (upgrade: KnowledgeUpgrade) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const { canRetry, dataset } = upgrade
@@ -76,9 +76,9 @@ export function KnowledgeUpgradeCard({
     if (job.status === 'succeeded') {
       if (job.new_control_space_id) onSucceeded?.(job.new_control_space_id)
       toast.success(
-        t(($) => $['newKnowledge.upgrade.completeTitle']),
+        t(($) => $['upgrade.completeTitle']),
         {
-          description: t(($) => $['newKnowledge.upgrade.completeDescription'], {
+          description: t(($) => $['upgrade.completeDescription'], {
             name: dataset.name,
           }),
         },
@@ -90,9 +90,9 @@ export function KnowledgeUpgradeCard({
     }
 
     toast.error(
-      t(($) => $['newKnowledge.upgrade.failedTitle']),
+      t(($) => $['upgrade.failedTitle']),
       {
-        description: t(($) => $['newKnowledge.upgrade.failedToastDescription'], {
+        description: t(($) => $['upgrade.failedToastDescription'], {
           name: dataset.name,
         }),
       },
@@ -117,9 +117,7 @@ export function KnowledgeUpgradeCard({
           contentOpacity,
         )}
       >
-        {failed
-          ? failureMessage || t(($) => $['newKnowledge.upgrade.failedDescription'])
-          : dataset.description}
+        {failed ? failureMessage || t(($) => $['upgrade.failedDescription']) : dataset.description}
       </p>
       <div className={cn('flex h-6 min-w-0 gap-1 overflow-hidden px-4 py-1', contentOpacity)}>
         {dataset.tags.slice(0, 3).map((tag) => (
@@ -139,14 +137,14 @@ export function KnowledgeUpgradeCard({
       >
         <span
           className="flex shrink-0 items-center gap-1 system-xs-medium"
-          aria-label={`${t(($) => $['newKnowledge.documents'])}: ${active ? `${job.completed_documents}/${totalDocuments}` : totalDocuments}`}
+          aria-label={`${t(($) => $.documents)}: ${active ? `${job.completed_documents}/${totalDocuments}` : totalDocuments}`}
         >
           <span aria-hidden className="i-ri-file-text-fill size-3 text-text-quaternary" />
           {active ? `${job.completed_documents}/${totalDocuments}` : totalDocuments}
         </span>
         <span
           className="flex shrink-0 items-center gap-1 system-xs-medium"
-          aria-label={`${t(($) => $['newKnowledge.sources'])}: ${active ? `${job.completed_sources}/${totalSources}` : totalSources}`}
+          aria-label={`${t(($) => $.sources)}: ${active ? `${job.completed_sources}/${totalSources}` : totalSources}`}
         >
           <span aria-hidden className="i-ri-database-2-fill size-3 text-text-quaternary" />
           {active ? `${job.completed_sources}/${totalSources}` : totalSources}
@@ -156,10 +154,10 @@ export function KnowledgeUpgradeCard({
         </span>
         <span className="min-w-0 truncate">
           {active
-            ? t(($) => $['newKnowledge.upgrade.migratingDocuments'])
+            ? t(($) => $['upgrade.migratingDocuments'])
             : failed
-              ? t(($) => $['newKnowledge.upgrade.justNow'])
-              : t(($) => $['newKnowledge.upgrade.upgradedJustNow'])}
+              ? t(($) => $['upgrade.justNow'])
+              : t(($) => $['upgrade.upgradedJustNow'])}
         </span>
       </div>
       {(active || failed) && (
@@ -177,9 +175,7 @@ export function KnowledgeUpgradeCard({
               className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
             />
           )}
-          {active
-            ? t(($) => $['newKnowledge.upgrade.statusUpgrading'])
-            : t(($) => $['newKnowledge.upgrade.statusFailed'])}
+          {active ? t(($) => $['upgrade.statusUpgrading']) : t(($) => $['upgrade.statusFailed'])}
         </div>
       )}
       {failed && (
@@ -198,7 +194,7 @@ export function KnowledgeUpgradeCard({
             href="mailto:support@dify.ai"
             className={buttonVariants({ variant: 'secondary-accent', size: 'small' })}
           >
-            {t(($) => $['newKnowledge.upgrade.contactSupport'])}
+            {t(($) => $['upgrade.contactSupport'])}
           </a>
         </div>
       )}
