@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Countdown from '@/app/components/signin/countdown'
 import Link from '@/next/link'
@@ -14,27 +14,33 @@ type DeleteAccountProps = {
   onConfirm: () => void
 }
 
+type VerifyEmailFormValues = {
+  verificationCode: string
+}
+
 export default function VerifyEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const emailToken = useAccountDeleteStore((state) => state.sendEmailToken)
-  const [verificationCode, setVerificationCode] = useState('')
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
   const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useConfirmDeleteAccount()
 
-  const handleConfirm = useCallback(async () => {
-    if (isDeleting) return
+  const handleConfirm = useCallback(
+    async (verificationCode: string) => {
+      if (isDeleting) return
 
-    try {
-      const ret = await confirmDeleteAccount({ code: verificationCode, token: emailToken })
-      if (ret.result === 'success') props.onConfirm()
-    } catch (error) {
-      console.error(error)
-    }
-  }, [emailToken, verificationCode, confirmDeleteAccount, isDeleting, props])
+      try {
+        const ret = await confirmDeleteAccount({ code: verificationCode, token: emailToken })
+        if (ret.result === 'success') props.onConfirm()
+      } catch (error) {
+        console.error(error)
+      }
+    },
+    [emailToken, confirmDeleteAccount, isDeleting, props],
+  )
   return (
-    <Form
-      onFormSubmit={() => {
-        void handleConfirm()
+    <Form<VerifyEmailFormValues>
+      onFormSubmit={({ verificationCode }) => {
+        void handleConfirm(verificationCode)
       }}
     >
       <div className="pt-1 body-md-medium text-text-destructive">
@@ -58,8 +64,6 @@ export default function VerifyEmail(props: DeleteAccountProps) {
           minLength={6}
           maxLength={6}
           placeholder={t(($) => $['account.verificationPlaceholder'], { ns: 'common' }) as string}
-          value={verificationCode}
-          onValueChange={setVerificationCode}
         />
         <FieldError match="valueMissing">
           {t(($) => $['account.verificationPlaceholder'], { ns: 'common' })}
