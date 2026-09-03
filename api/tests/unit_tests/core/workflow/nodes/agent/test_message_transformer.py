@@ -271,4 +271,3 @@ def test_close_unclosed_think_tags_helper() -> None:
     assert has_unclosed_think("<think>open")
     assert not has_unclosed_think("<think>open</think>done")
     assert close_unclosed_think_tags("<think>a\n<think>b") == "<think>a\n</think><think>b</think>"
-
