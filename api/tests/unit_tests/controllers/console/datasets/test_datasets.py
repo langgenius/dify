@@ -1035,6 +1035,31 @@ class TestDatasetKnowledgeFSUpgradeApi:
         )
         enqueue.assert_called_once_with(snapshots, tenant_id="tenant-1", job_id="upgrade-job-1")
 
+    def test_create_is_unavailable_when_knowledge_fs_is_disabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        api = DatasetKnowledgeFSUpgradeApi()
+        method = unwrap(api.post)
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
+
+        with app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"), pytest.raises(NotFound):
+            method(api, "tenant-1", make_account(), dataset_id)
+
+    def test_create_rejects_a_missing_dataset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeApi()
+        method = unwrap(api.post)
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
+
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=None),
+            pytest.raises(NotFound, match="Dataset not found"),
+        ):
+            method(api, "tenant-1", make_account(), dataset_id)
+
     def test_create_requires_idempotency_key(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
