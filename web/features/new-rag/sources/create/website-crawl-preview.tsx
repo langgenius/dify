@@ -403,17 +403,15 @@ const CrawlPageList = memo(
 )
 
 function EmptyPreview() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   return (
     <div className="flex min-h-38.75 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default-subtle px-6 text-center">
       <span className="flex size-10 items-center justify-center rounded-[10px] bg-background-section-burn">
         <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
       </span>
-      <p className="mt-2.5 system-xs-semibold text-text-primary">
-        {t(($) => $['newKnowledge.pagesAppearTitle'])}
-      </p>
+      <p className="mt-2.5 system-xs-semibold text-text-primary">{t(($) => $.pagesAppearTitle)}</p>
       <p className="mt-2.5 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.pagesAppearDescription'])}
+        {t(($) => $.pagesAppearDescription)}
       </p>
     </div>
   )
@@ -438,7 +436,7 @@ export function WebsiteCrawlPreview({
   providerName?: string
   syncPolicyField?: ReactNode
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const router = useRouter()
   const parameterSchemas = useMemo(
     () =>
@@ -636,7 +634,7 @@ export function WebsiteCrawlPreview({
   const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
   const host = normalizedURL?.host ?? providerName
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
-  const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
+  const crawlingStatusText = t(($) => $.crawlingPages, {
     count: completedCount,
     host,
   })
@@ -1090,13 +1088,13 @@ export function WebsiteCrawlPreview({
 
   const primaryLabel =
     starting || (active && !pollPaused)
-      ? t(($) => $['newKnowledge.crawling'])
+      ? t(($) => $.crawling)
       : (requestError && requestError !== 'CANCEL_FAILED') ||
           (run && (isFailed(run.state) || isCanceled(run.state)))
-        ? t(($) => $['newKnowledge.retryCrawl'])
+        ? t(($) => $.retryCrawl)
         : run && isSuccessful(run.state) && pagesLoaded && pages.length === 0
-          ? t(($) => $['newKnowledge.adjustAndRecrawl'])
-          : t(($) => $['newKnowledge.crawlAndPreview'])
+          ? t(($) => $.adjustAndRecrawl)
+          : t(($) => $.crawlAndPreview)
   const canReconcileUncertainOperation =
     uncertainOperation && (requestError === 'START_FAILED' || requestError === 'RETRY_FAILED')
 
@@ -1177,9 +1175,9 @@ export function WebsiteCrawlPreview({
   const cancel = () => void discardAndCancel()
 
   return (
-    <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
+    <section aria-label={t(($) => $.crawlAndPreview)}>
       <p role="status" className="sr-only">
-        {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
+        {t(($) => $.providerConnected, { provider: providerName })}
       </p>
       <Form onFormSubmit={handleSubmit}>
         <Fieldset disabled={locked} className="space-y-4">
@@ -1187,7 +1185,7 @@ export function WebsiteCrawlPreview({
             additionalPrimaryField={
               <Field name="sourceName" className="gap-1.5">
                 <FieldLabel>
-                  {t(($) => $['newKnowledge.sourceName'])}
+                  {t(($) => $.sourceName)}
                   <span className="ml-0.5 text-text-destructive">*</span>
                 </FieldLabel>
                 <Input
@@ -1197,7 +1195,7 @@ export function WebsiteCrawlPreview({
                   required
                   maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                   value={sourceName}
-                  placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+                  placeholder={t(($) => $.sourceNamePlaceholder)}
                   onValueChange={setSourceName}
                 />
               </Field>
@@ -1250,21 +1248,19 @@ export function WebsiteCrawlPreview({
                 disabled={stopping}
                 onClick={() => void stop()}
               >
-                {stopping
-                  ? t(($) => $['newKnowledge.stoppingCrawl'])
-                  : t(($) => $['newKnowledge.stopCrawl'])}
+                {stopping ? t(($) => $.stoppingCrawl) : t(($) => $.stopCrawl)}
               </Button>
             </div>
             {requestError === 'CANCEL_FAILED' && (
               <p role="alert" className="px-4 pb-3 system-xs-regular text-text-destructive">
-                {t(($) => $['newKnowledge.crawlFailedDescription'])}
+                {t(($) => $.crawlFailedDescription)}
               </p>
             )}
             {run.progressTotal !== undefined && run.progressTotal > 0 && (
               <progress
                 max={run.progressTotal}
                 value={Math.min(completedCount, run.progressTotal)}
-                aria-label={t(($) => $['newKnowledge.crawlProgress'], { host })}
+                aria-label={t(($) => $.crawlProgress, { host })}
                 className="sr-only"
               />
             )}
@@ -1312,7 +1308,7 @@ export function WebsiteCrawlPreview({
               aria-live="polite"
               className="px-4 py-3 system-xs-semibold text-text-primary"
             >
-              {t(($) => $['newKnowledge.crawlStopped'])}
+              {t(($) => $.crawlStopped)}
             </p>
             <CrawlPageList
               pages={pages}
@@ -1328,20 +1324,20 @@ export function WebsiteCrawlPreview({
           >
             <span aria-hidden className="i-ri-error-warning-fill size-6 text-text-destructive" />
             <p className="system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.crawlFailed'], { host })}
+              {t(($) => $.crawlFailed, { host })}
             </p>
             <p className="max-w-lg system-xs-regular text-text-tertiary">
               {is403
-                ? t(($) => $['newKnowledge.crawlFailed403'])
+                ? t(($) => $.crawlFailed403)
                 : isTimeout
-                  ? t(($) => $['newKnowledge.crawlFailedTimeout'])
+                  ? t(($) => $.crawlFailedTimeout)
                   : isProviderError
-                    ? t(($) => $['newKnowledge.crawlFailedProvider'], {
+                    ? t(($) => $.crawlFailedProvider, {
                         provider: providerName,
                       })
                     : requestError === 'START_FAILED'
-                      ? t(($) => $['newKnowledge.crawlStartFailed'])
-                      : t(($) => $['newKnowledge.crawlFailedDescription'])}
+                      ? t(($) => $.crawlStartFailed)
+                      : t(($) => $.crawlFailedDescription)}
             </p>
           </div>
         )}
@@ -1355,10 +1351,10 @@ export function WebsiteCrawlPreview({
               <span aria-hidden className="i-ri-global-line size-5.5 text-text-tertiary" />
             </span>
             <p className="system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.noPagesFound'], { host })}
+              {t(($) => $.noPagesFound, { host })}
             </p>
             <p className="max-w-lg system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.noPagesFoundDescription'])}
+              {t(($) => $.noPagesFoundDescription)}
             </p>
           </div>
         )}
@@ -1367,19 +1363,19 @@ export function WebsiteCrawlPreview({
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
           <Button type="button" disabled={discarding} loading={discarding} onClick={cancel}>
-            {t(($) => $['newKnowledge.cancelAddSource'])}
+            {t(($) => $.cancelAddSource)}
           </Button>
           <span id="add-source-selection-requirement" className="sr-only">
-            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+            {t(($) => $.addSourceRequiresSelection)}
           </span>
           <Button variant="primary" disabled aria-describedby="add-source-selection-requirement">
-            {t(($) => $['newKnowledge.addSource'])}
+            {t(($) => $.addSource)}
           </Button>
         </div>
       )}
       {discardError && requestError !== 'CANCEL_FAILED' && (
         <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
-          {t(($) => $['newKnowledge.crawlFailedDescription'])}
+          {t(($) => $.crawlFailedDescription)}
         </p>
       )}
     </section>

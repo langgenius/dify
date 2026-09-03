@@ -27,12 +27,12 @@ describe('KnowledgeViewSwitcher', () => {
     render(<KnowledgeViewSwitcher value="new" onChange={vi.fn()} />)
 
     const trigger = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.guideTitle',
+      name: 'knowledgeSpace.guideTitle',
     })
     const guide = screen.getByRole('dialog', {
-      name: 'dataset.newKnowledge.guideTitle',
+      name: 'knowledgeSpace.guideTitle',
     })
-    within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }).focus()
+    within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }).focus()
 
     await user.keyboard('{Escape}')
 
@@ -48,9 +48,9 @@ describe('KnowledgeViewSwitcher', () => {
     await user.click(
       within(
         screen.getByRole('dialog', {
-          name: 'dataset.newKnowledge.guideTitle',
+          name: 'knowledgeSpace.guideTitle',
         }),
-      ).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }),
+      ).getByRole('button', { name: 'knowledgeSpace.gotIt' }),
     )
 
     expect(guideStorageMock.setDismissed).toHaveBeenCalledWith(true)

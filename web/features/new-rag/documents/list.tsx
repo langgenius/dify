@@ -86,8 +86,8 @@ function DocumentStatus({
   failureReason?: string
   status: DocumentDisplayStatus
 }) {
-  const { t } = useTranslation('dataset')
-  const statusLabel = t(($) => $[`newKnowledge.documentStatus.${status}`])
+  const { t } = useTranslation('knowledgeSpace')
+  const statusLabel = t(($) => $[`documentStatus.${status}`])
   const content = (
     <>
       <span
@@ -133,12 +133,12 @@ function DocumentStatus({
 }
 
 function TaskTrigger() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const { activeTaskCount, attentionTaskCount, hasTaskError, historyIncomplete } =
     useAtomValue(taskTriggerFactsAtom)
   const incompleteTaskHistoryHint = historyIncomplete
-    ? ` · ${t(($) => $['newKnowledge.taskHistoryIncomplete'])}`
+    ? ` · ${t(($) => $.taskHistoryIncomplete)}`
     : ''
   const attentionTaskBadge =
     attentionTaskCount || historyIncomplete
@@ -146,15 +146,15 @@ function TaskTrigger() {
       : undefined
   const tasksButtonLabel = `${
     attentionTaskCount || historyIncomplete
-      ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTaskCount })
-      : t(($) => $['newKnowledge.tasks'])
+      ? t(($) => $.tasksWithAttention, { count: attentionTaskCount })
+      : t(($) => $.tasks)
   }${incompleteTaskHistoryHint}`
   const tasksLiveStatus = `${
     hasTaskError
-      ? t(($) => $['newKnowledge.taskAttentionErrorCount'], { count: attentionTaskCount })
+      ? t(($) => $.taskAttentionErrorCount, { count: attentionTaskCount })
       : attentionTaskCount || historyIncomplete
-        ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTaskCount })
-        : t(($) => $['newKnowledge.taskAttentionClear'])
+        ? t(($) => $.taskAttentionCount, { count: attentionTaskCount })
+        : t(($) => $.taskAttentionClear)
   }${incompleteTaskHistoryHint}`
 
   return (
@@ -173,7 +173,7 @@ function TaskTrigger() {
             activeTaskCount && 'motion-reduce:animate-none',
           )}
         />
-        {t(($) => $['newKnowledge.tasks'])}
+        {t(($) => $.tasks)}
         {attentionTaskBadge && (
           <span
             aria-hidden
@@ -254,7 +254,7 @@ function DocumentTitleCell({ document }: { document: LogicalDocument }) {
 }
 
 function DocumentSourceCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const sourceFactsAtom = useMemo(() => createDocumentRowSourceFactsAtom(documentId), [documentId])
   const { pending, source } = useAtomValue(sourceFactsAtom)
@@ -270,14 +270,14 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
           <span className="sr-only">{tCommon(($) => $.loading)}</span>
         </span>
       ) : (
-        <span className="block truncate">{source ?? t(($) => $['newKnowledge.manualUpload'])}</span>
+        <span className="block truncate">{source ?? t(($) => $.manualUpload)}</span>
       )}
     </td>
   )
 }
 
 function DocumentStatusCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
   const { failureMessageKey, status, statusPending } = useAtomValue(statusFactsAtom)
@@ -324,7 +324,7 @@ const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
 ))
 
 export function DocumentsEmpty() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
   const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
   const canWrite = useAtomValue(documentCanWriteAtom)
@@ -341,15 +341,15 @@ export function DocumentsEmpty() {
         <span aria-hidden className="i-ri-file-text-fill size-6" />
       </span>
       <h2 className="text-base leading-[normal] font-semibold text-text-primary">
-        {t(($) => $['newKnowledge.documentsEmptyTitle'])}
+        {t(($) => $.documentsEmptyTitle)}
       </h2>
       <p className="w-115 max-w-full text-[13px] leading-4 font-normal text-text-tertiary">
-        {t(($) => $['newKnowledge.documentsEmptyDescription'])}
+        {t(($) => $.documentsEmptyDescription)}
       </p>
       <div className="flex items-center gap-2">
         <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
           <span aria-hidden className="i-ri-file-text-line size-4" />
-          {t(($) => $['newKnowledge.metadata'])}
+          {t(($) => $.metadata)}
         </Button>
         <Button
           className="gap-1 pl-3"
@@ -361,20 +361,18 @@ export function DocumentsEmpty() {
           onClick={() => void setUploadRequest('1')}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['newKnowledge.addDocument'])}
+          {t(($) => $.addDocument)}
         </Button>
       </div>
       {canUpload && (
-        <p className="system-xs-regular text-text-quaternary">
-          {t(($) => $['newKnowledge.documentsDropHint'])}
-        </p>
+        <p className="system-xs-regular text-text-quaternary">{t(($) => $.documentsDropHint)}</p>
       )}
     </div>
   )
 }
 
 function DocumentsToolbar() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [filter, setFilter] = useAtom(documentFilterAtom)
   const [search, setSearch] = useAtom(documentSearchAtom)
   const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
@@ -397,41 +395,37 @@ function DocumentsToolbar() {
           if (value) void setFilter(value)
         }}
       >
-        <SelectLabel className="sr-only">
-          {t(($) => $['newKnowledge.documentFilterLabel'])}
-        </SelectLabel>
+        <SelectLabel className="sr-only">{t(($) => $.documentFilterLabel)}</SelectLabel>
         <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
           {filter === 'all'
-            ? t(($) => $['newKnowledge.allDocumentStatuses'])
-            : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
+            ? t(($) => $.allDocumentStatuses)
+            : t(($) => $[`documentStatus.${filter}`])}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">
-            <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
+            <SelectItemText>{t(($) => $.allDocumentStatuses)}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
           {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
             <SelectItem key={status} value={status}>
-              <SelectItemText>
-                {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-              </SelectItemText>
+              <SelectItemText>{t(($) => $[`documentStatus.${status}`])}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <SearchInput
-        aria-label={t(($) => $['newKnowledge.searchDocuments'])}
+        aria-label={t(($) => $.searchDocuments)}
         className="@min-[768px]/knowledge-content:w-60"
         value={search}
         onValueChange={(value) => void setSearch(value)}
-        placeholder={t(($) => $['newKnowledge.searchDocuments'])}
+        placeholder={t(($) => $.searchDocuments)}
       />
       <span className="min-w-0 flex-1" />
       {showTasks && <TaskTrigger />}
       <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
         <span aria-hidden className="i-ri-file-text-line size-4" />
-        {t(($) => $['newKnowledge.metadata'])}
+        {t(($) => $.metadata)}
       </Button>
       <Button
         className="gap-1 pl-3"
@@ -443,14 +437,14 @@ function DocumentsToolbar() {
         onClick={() => void setUploadRequest('1')}
       >
         <span aria-hidden className="i-ri-add-line size-4" />
-        {t(($) => $['newKnowledge.addDocument'])}
+        {t(($) => $.addDocument)}
       </Button>
     </div>
   )
 }
 
 function DocumentsTableHeader() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const {
     allSelected,
     canWrite,
@@ -478,33 +472,28 @@ function DocumentsTableHeader() {
                   ? PARTIAL_RESULTS_DESCRIPTION_ID
                   : undefined
             }
-            aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
+            aria-label={t(($) => $.selectAllDocuments)}
             onCheckedChange={() => {
               if (!selectionDisabled) toggleAllFilteredDocuments()
             }}
           />
         </th>
-        <th className="py-2 pr-6 font-normal">{t(($) => $['newKnowledge.documentColumn'])}</th>
+        <th className="py-2 pr-6 font-normal">{t(($) => $.documentColumn)}</th>
         <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
-          {t(($) => $['newKnowledge.sourceColumn'])}
+          {t(($) => $.sourceColumn)}
         </th>
-        <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
-          {t(($) => $['newKnowledge.statusColumn'])}
-        </th>
+        <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">{t(($) => $.statusColumn)}</th>
         <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
-          {t(($) => $['newKnowledge.updatedColumn'])}
+          {t(($) => $.updatedColumn)}
         </th>
-        <th
-          className="w-10 py-2 font-normal"
-          aria-label={t(($) => $['newKnowledge.actionsColumn'])}
-        />
+        <th className="w-10 py-2 font-normal" aria-label={t(($) => $.actionsColumn)} />
       </tr>
     </thead>
   )
 }
 
 function DocumentsTable() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { documents, resultsIncomplete, sourcesPending, tasksPending } = useAtomValue(
     documentTableContentFactsAtom,
@@ -578,7 +567,7 @@ function DocumentsTable() {
             className="py-16 text-center body-sm-regular text-text-tertiary"
             role="status"
           >
-            {t(($) => $['newKnowledge.noMatchingDocuments'])}
+            {t(($) => $.noMatchingDocuments)}
           </p>
         )}
         {resultsIncomplete && (
@@ -595,7 +584,7 @@ function DocumentsTable() {
             )}
             role="status"
           >
-            {t(($) => $['newKnowledge.partialDocumentResults'])}
+            {t(($) => $.partialDocumentResults)}
           </p>
         )}
         {completingResults && (
@@ -619,17 +608,17 @@ function DocumentsTable() {
               }))
             }}
           >
-            {t(($) => $['newKnowledge.loadMore'])}
+            {t(($) => $.loadMore)}
           </Button>
         </div>
       ) : isFetchNextPageError ? (
         <div className="mt-5 flex items-center justify-center gap-3" role="alert">
           <span className="system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.documentsErrorDescription'])}
+            {t(($) => $.documentsErrorDescription)}
           </span>
           <Button
             ref={loadMoreButtonRef}
-            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
             aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
             onBlur={(event) => {
@@ -657,7 +646,7 @@ function DocumentsTable() {
               loadMoreResults()
             }}
           >
-            {t(($) => $['newKnowledge.loadMore'])}
+            {t(($) => $.loadMore)}
           </Button>
         </div>
       ) : null}
@@ -666,7 +655,7 @@ function DocumentsTable() {
 }
 
 export function DocumentsList() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <>
@@ -676,7 +665,7 @@ export function DocumentsList() {
       </div>
       <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
-        {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
+        {t(($) => $.lastReadyRevisionHint)}
       </p>
       <DocumentPermissionRecoveryBulkRegion>
         <DocumentBulkActionsToolbar />
@@ -686,7 +675,7 @@ export function DocumentsList() {
 }
 
 export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: number }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <div
@@ -699,11 +688,9 @@ export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: numb
         <span aria-hidden className="i-ri-file-excel-fill size-6 text-text-success" />
         <span aria-hidden className="i-ri-file-text-fill size-6 text-text-tertiary" />
       </div>
-      <p className="mt-4 system-md-semibold text-text-primary">
-        {t(($) => $['newKnowledge.dropFilesHere'])}
-      </p>
+      <p className="mt-4 system-md-semibold text-text-primary">{t(($) => $.dropFilesHere)}</p>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
+        {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
       </p>
     </div>
   )

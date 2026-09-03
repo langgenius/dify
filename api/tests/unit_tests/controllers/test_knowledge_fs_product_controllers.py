@@ -45,6 +45,7 @@ from services.knowledge_fs.product_remote import (
 from services.knowledge_fs.service_api_authorization import (
     KnowledgeFSServiceApiAuthorizationError,
     KnowledgeFSServiceApiProfile,
+    KnowledgeFSServiceApiScopeError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -132,7 +133,6 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/documents/reindex",
         "/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>/retry",
-        "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/queries/admission",
         "/knowledge-fs/query-stream",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
@@ -428,10 +428,8 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSGoldenQuestionEvidenceMatchResponse",
     }.issubset(console_ns.models)
     assert {
-        "KnowledgeFSDocumentCreatePayload",
         "KnowledgeFSQueryCreatePayload",
         "KnowledgeFSDocumentListResponse",
-        "KnowledgeFSQueryResponse",
         "KnowledgeFSResearchTaskListResponse",
         "KnowledgeFSSettingsPayload",
         "KnowledgeFSSettingsResponse",
@@ -1504,3 +1502,30 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
         control_space_id="control-1",
     )
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        # An unknown or wrong-kind key is an invalid credential (401).
+        (
+            KnowledgeFSServiceApiAuthorizationError("bad key"),
+            service_resources.KnowledgeFSInvalidCredentialHTTPError,
+        ),
+        # A real key bound to other knowledge bases is out of scope for this space (403).
+        (
+            KnowledgeFSServiceApiScopeError("out of scope"),
+            service_resources.KnowledgeFSServiceAccessDeniedHTTPError,
+        ),
+    ],
+)
+def test_service_api_errors_distinguish_unknown_key_from_out_of_scope_key(
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    @service_resources._service_api_errors
+    def view() -> None:
+        raise raised
+
+    with pytest.raises(expected):
+        view()

@@ -23,7 +23,7 @@ import {
 import { useRefreshDocumentWritePermission } from './write-permission'
 
 export function DocumentReindexAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const canCancel = useAtomValue(documentCanCancelReindexAtom)
   const cancelBusy = useAtomValue(documentReindexCancelBusyAtom)
@@ -50,17 +50,16 @@ export function DocumentReindexAction() {
       return readiness.status === 'ready' ? reindexDocument(refreshWritePermission) : undefined
     },
     onSuccess: (result) => {
-      if (result === 'started') toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
-      else if (result === 'document-missing')
-        toast.error(t(($) => $['newKnowledge.documentNotFoundTitle']))
-      else if (result === 'failed') toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
+      if (result === 'started') toast.success(t(($) => $.documentsReindexStarted))
+      else if (result === 'document-missing') toast.error(t(($) => $.documentNotFoundTitle))
+      else if (result === 'failed') toast.error(t(($) => $.documentsReindexFailed))
     },
   })
   const guardBusy = startReindexMutation.isPending
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
-    if (result === 'failed') toast.error(t(($) => $['newKnowledge.taskActionFailed']))
+    if (result === 'failed') toast.error(t(($) => $.taskActionFailed))
   }
 
   return (
@@ -76,10 +75,10 @@ export function DocumentReindexAction() {
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
         {t(($) =>
           inProgress
-            ? $['newKnowledge.cancelDocumentReindex']
+            ? $.cancelDocumentReindex
             : failed
-              ? $['newKnowledge.retryReindexDocument']
-              : $['newKnowledge.reindexDocument'],
+              ? $.retryReindexDocument
+              : $.reindexDocument,
         )}
       </Button>
       <KnowledgeModelSetupDialog

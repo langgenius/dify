@@ -590,17 +590,17 @@ function renderPage(
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(
-    screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+    screen.getByRole('textbox', { name: 'knowledgeSpace.name' }),
     '  Product handbook  ',
   )
   await user.type(
-    screen.getByRole('textbox', { name: /dataset\.newKnowledge\.description/ }),
+    screen.getByRole('textbox', { name: /knowledgeSpace\.description/ }),
     '  Internal answers  ',
   )
 }
 
 async function choosePermission(user: ReturnType<typeof userEvent.setup>, optionName: string) {
-  await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }))
+  await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' }))
   await user.click(await screen.findByRole('option', { name: optionName }))
 }
 
@@ -775,15 +775,15 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     const createButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.createTitle',
+      name: 'knowledgeSpace.createTitle',
     })
     expect(createButton).toBeEnabled()
     await user.click(createButton)
 
-    expect(screen.getByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.nameRequired')).toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
 
-    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), 'Handbook')
+    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Handbook')
     expect(createButton).toBeEnabled()
   })
 
@@ -792,11 +792,8 @@ describe('CreateKnowledgePage', () => {
     const boundaryName = '知'.repeat(40)
     renderPage()
 
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
-      boundaryName,
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), boundaryName)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -809,14 +806,14 @@ describe('CreateKnowledgePage', () => {
     const invalidName = '知'.repeat(41)
     renderPage()
 
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     await user.type(nameInput, invalidName)
 
     expect(nameInput).toHaveValue(invalidName)
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
     const createButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.createTitle',
+      name: 'knowledgeSpace.createTitle',
     })
     expect(createButton).toBeEnabled()
     await user.click(createButton)
@@ -829,9 +826,9 @@ describe('CreateKnowledgePage', () => {
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     renderPage(queryClient)
     await fillRequiredFields(user)
-    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
+    await choosePermission(user, 'knowledgeSpace.permissionOnlyMe')
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.create).toHaveBeenCalledWith({
@@ -879,11 +876,11 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     renderPage()
     await fillRequiredFields(user)
-    expect(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }),
-    ).toHaveTextContent('dataset.newKnowledge.permissionAllMembers')
+    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toHaveTextContent(
+      'knowledgeSpace.permissionAllMembers',
+    )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.create).toHaveBeenCalledWith({
@@ -900,14 +897,14 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
 
     const permission = screen.getByRole('combobox', {
-      name: 'dataset.newKnowledge.permission',
+      name: 'knowledgeSpace.permission',
     })
     expect(permission).toBeEnabled()
-    expect(permission).toHaveTextContent('dataset.newKnowledge.permissionOnlyMe')
-    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+    expect(permission).toHaveTextContent('knowledgeSpace.permissionOnlyMe')
+    expect(screen.queryByText('knowledgeSpace.permissionRestricted')).not.toBeInTheDocument()
 
-    await choosePermission(user, 'dataset.newKnowledge.permissionAllMembers')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await choosePermission(user, 'knowledgeSpace.permissionAllMembers')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -922,13 +919,13 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
 
     const permission = screen.getByRole('combobox', {
-      name: 'dataset.newKnowledge.permission',
+      name: 'knowledgeSpace.permission',
     })
     expect(permission).toBeDisabled()
-    expect(permission).toHaveTextContent('dataset.newKnowledge.permissionOnlyMe')
-    expect(permission).toHaveAccessibleDescription('dataset.newKnowledge.permissionRestricted')
-    expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(permission).toHaveTextContent('knowledgeSpace.permissionOnlyMe')
+    expect(permission).toHaveAccessibleDescription('knowledgeSpace.permissionRestricted')
+    expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -948,7 +945,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     const createButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.createTitle',
+      name: 'knowledgeSpace.createTitle',
     })
 
     await user.dblClick(createButton)
@@ -964,10 +961,10 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
     expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -999,7 +996,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1023,7 +1020,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1045,17 +1042,17 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'guide.txt', { type: 'text/plain' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     expect(
       await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
+        name: 'knowledgeSpace.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -1080,15 +1077,13 @@ describe('CreateKnowledgePage', () => {
       renderPage()
       await fillRequiredFields(user)
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.createFailed',
-      )
-      const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+      const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
       expect(nameInput).toBeEnabled()
       await user.clear(nameInput)
       await user.type(nameInput, 'Updated handbook')
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
       expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -1109,15 +1104,11 @@ describe('CreateKnowledgePage', () => {
       renderPage()
       await fillRequiredFields(user)
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.createFailed',
-      )
-      expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })).toBeDisabled()
-      expect(
-        screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' }),
-      ).toBeDisabled()
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+      expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
+      expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
       expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -1134,7 +1125,7 @@ describe('CreateKnowledgePage', () => {
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
     renderPage(queryClient)
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
@@ -1147,18 +1138,18 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentUploadFailed',
+      'knowledgeSpace.documentUploadFailed',
     )
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
     })
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     expect(nameInput).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toBeDisabled()
     await user.type(nameInput, ' changed')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -1173,9 +1164,9 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledTimes(2)
@@ -1188,25 +1179,25 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
+    const startEmpty = screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' })
     expect(startEmpty).toBeChecked()
-    expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
+    expect(startEmpty).toHaveAccessibleDescription('knowledgeSpace.startEmptyDescription')
     const connectSource = screen.getByRole('radio', {
-      name: 'dataset.newKnowledge.connectSource',
+      name: 'knowledgeSpace.connectSource',
     })
-    const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
+    const uploadFiles = screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })
     expect(connectSource).toBeEnabled()
     expect(uploadFiles).toBeEnabled()
 
     await user.click(connectSource)
     expect(connectSource).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.websiteCrawl' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.websiteCrawl' })).toBeChecked()
     const onlineDocuments = screen.getByRole('radio', {
-      name: 'dataset.newKnowledge.onlineDocuments',
+      name: 'knowledgeSpace.onlineDocuments',
     })
     expect(onlineDocuments).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
     expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'WaterCrawl' })).not.toBeInTheDocument()
@@ -1215,21 +1206,19 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.websiteCrawl' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.moreProviders' })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
-    ).toBeDisabled()
-    expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
-    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
-    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSpace.pagesAppearTitle')).toBeInTheDocument()
+    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
     expect(rootUrl).toBeEnabled()
     expect(sourceName).toBeEnabled()
     await user.type(rootUrl, 'https://docs.dify.ai')
     await user.type(sourceName, 'Dify docs')
     const crawlAndPreview = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.crawlAndPreview',
+      name: 'knowledgeSpace.crawlAndPreview',
     })
     expect(crawlAndPreview).toBeEnabled()
     await user.click(crawlAndPreview)
@@ -1237,13 +1226,13 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).not.toHaveBeenCalled()
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText(/^dataset\.newKnowledge\.pagesCrawled/)).toBeInTheDocument()
-    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toBeInTheDocument()
+    expect(screen.getByText(/^knowledgeSpace\.pagesCrawled/)).toBeInTheDocument()
+    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
-    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('1')
+    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('1')
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
-    const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+    const uploadInput = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
     })
     expect(uploadInput).toBeInTheDocument()
@@ -1251,7 +1240,7 @@ describe('CreateKnowledgePage', () => {
     expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
   })
 
   it('prompts for provider installation when source setup has no installed integration', async () => {
@@ -1261,11 +1250,11 @@ describe('CreateKnowledgePage', () => {
 
     renderPage()
 
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.connectSource' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
     expect(screen.queryByRole('radio', { name: 'Firecrawl' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.moreProviders' })).toBeEnabled()
   })
 
   it('clears a completed crawl when the installed provider changes during setup', async () => {
@@ -1275,21 +1264,19 @@ describe('CreateKnowledgePage', () => {
     const view = renderPage()
 
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.connectSource' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
     )
 
     datasourceQueryMock.plugins.data = [jinaDatasourcePlugin]
@@ -1298,8 +1285,8 @@ describe('CreateKnowledgePage', () => {
 
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
     expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSpace.pagesAppearTitle')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
   })
 
   it('disables upload before creating a space when direct upload is unavailable', () => {
@@ -1308,11 +1295,11 @@ describe('CreateKnowledgePage', () => {
 
     renderPage()
 
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })).toBeChecked()
-    const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' })).toBeChecked()
+    const uploadFiles = screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })
     expect(uploadFiles).toBeDisabled()
     expect(uploadFiles).toHaveAccessibleDescription(
-      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+      'knowledgeSpace.uploadFilesDescription dataset.cornerLabel.unavailable',
     )
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
@@ -1322,16 +1309,16 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     renderPage()
 
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })).toBeChecked()
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
     await fillRequiredFields(user)
-    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await choosePermission(user, 'knowledgeSpace.permissionOnlyMe')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1357,7 +1344,7 @@ describe('CreateKnowledgePage', () => {
     try {
       renderPage()
       await user.upload(
-        screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        screen.getByLabelText('knowledgeSpace.uploadFiles', {
           selector: 'input[type="file"]',
         }),
         new File(['content'], 'handbook.md', { type: 'text/markdown' }),
@@ -1376,24 +1363,24 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
-    expect(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-    ).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
+    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toHaveTextContent(
+      'knowledgeSpace.syncPolicyDaily',
+    )
     await user.keyboard('{Enter}')
     expect(serviceMock.create).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
-    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
-    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     expect(serviceMock.create).not.toHaveBeenCalled()
     expect(routerMock.replace).not.toHaveBeenCalled()
@@ -1409,20 +1396,18 @@ describe('CreateKnowledgePage', () => {
     })
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' })).toBeEnabled()
     const syncPolicy = screen.getByRole('combobox', {
-      name: 'dataset.newKnowledge.syncPolicy',
+      name: 'knowledgeSpace.syncPolicy',
     })
-    expect(syncPolicy).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
+    expect(syncPolicy).toHaveTextContent('knowledgeSpace.syncPolicyDaily')
     await user.click(syncPolicy)
-    await user.click(
-      await screen.findByRole('option', { name: 'dataset.newKnowledge.syncPolicyManual' }),
-    )
-    expect(syncPolicy).toHaveTextContent('dataset.newKnowledge.syncPolicyManual')
+    await user.click(await screen.findByRole('option', { name: 'knowledgeSpace.syncPolicyManual' }))
+    expect(syncPolicy).toHaveTextContent('knowledgeSpace.syncPolicyManual')
     expect(screen.getByText('Getting started')).toBeInTheDocument()
   })
 
@@ -1431,22 +1416,20 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'source'
     renderPage()
     await fillRequiredFields(user)
-    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
     await user.type(rootUrl, 'https://docs.dify.ai')
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByText('Getting started')
 
     expect(rootUrl).toBeEnabled()
     await user.clear(rootUrl)
 
     expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
   })
 
   it('creates an initial source from a Jina Reader preview job', async () => {
@@ -1472,18 +1455,18 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai/introduction',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify introduction',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     await user.click(await screen.findByRole('checkbox', { name: 'Dify introduction' }))
     expect(serviceMock.getCrawlStatus).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1527,10 +1510,10 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'Tavily' }))
     await user.type(screen.getByRole('textbox', { name: /Search query/ }), 'agentic RAG')
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Tavily research',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     expect(serviceMock.startWebsitePreview).toHaveBeenCalledWith({
       body: {
@@ -1544,7 +1527,7 @@ describe('CreateKnowledgePage', () => {
       },
     })
     await user.click(await screen.findByRole('checkbox', { name: 'Tavily result' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source).toEqual(
@@ -1571,31 +1554,29 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.crawlingPages',
-    )
-    const stopButton = screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' })
+    expect(await screen.findByRole('status')).toHaveTextContent('knowledgeSpace.crawlingPages')
+    const stopButton = screen.getByRole('button', { name: 'knowledgeSpace.stopCrawl' })
     expect(stopButton).toBeEnabled()
 
     await user.click(stopButton)
     expect(serviceMock.cancelWebsitePreview).toHaveBeenCalledWith({
       params: { job_id: 'website-preview-1' },
     })
-    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlingPages')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.crawlingPages')
 
     resolveCancellation?.({ job_id: 'website-preview-1', status: 'canceled' })
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlStopped'),
+      expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.crawlStopped'),
     )
   })
 
@@ -1615,17 +1596,17 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     const stopButton = await screen.findByRole('button', {
-      name: 'dataset.newKnowledge.stopCrawl',
+      name: 'knowledgeSpace.stopCrawl',
     })
     await user.click(stopButton)
     await waitFor(() => expect(stopButton).toBeEnabled())
@@ -1636,7 +1617,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.cancelWebsitePreview).toHaveBeenNthCalledWith(2, {
       params: { job_id: 'website-preview-1' },
     })
-    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlStopped')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.crawlStopped')
   })
 
   it('submits selected preview URLs for the server-side crawl import', async () => {
@@ -1645,20 +1626,20 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await waitFor(() =>
-      expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('1'),
+      expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('1'),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1707,14 +1688,14 @@ describe('CreateKnowledgePage', () => {
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, notionDatasourcePlugin]
     renderPage()
 
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
 
     expect(
-      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+      screen.getByText('knowledgeSpace.providerNotConfigured:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.connectProvider:{"provider":"Notion"}',
+        name: 'knowledgeSpace.connectProvider:{"provider":"Notion"}',
       }),
     ).toBeEnabled()
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
@@ -1744,25 +1725,21 @@ describe('CreateKnowledgePage', () => {
     })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
+    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
     await user.type(sourceName, 'Notion handbook')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Product handbook' }))
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
     )
     await user.clear(sourceName)
     await user.type(sourceName, 'Renamed handbook')
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1811,13 +1788,13 @@ describe('CreateKnowledgePage', () => {
     })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Outline' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Outline handbook',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     await waitFor(() => expect(serviceMock.previewInitialSource).toHaveBeenCalledOnce())
     expect(serviceMock.previewInitialSource).toHaveBeenCalledWith({
@@ -1857,13 +1834,13 @@ describe('CreateKnowledgePage', () => {
     })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.type(screen.getByRole('textbox', { name: 'Workspace' }), 'Product')
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Notion handbook',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await screen.findByRole('checkbox', { name: 'Product handbook' })
 
     const workspace = screen.getByRole('textbox', { name: 'Workspace' })
@@ -1871,7 +1848,7 @@ describe('CreateKnowledgePage', () => {
     await user.clear(workspace)
 
     expect(screen.queryByRole('checkbox', { name: 'Product handbook' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.preview' })).toBeDisabled()
   })
 
   it('creates a knowledge space atomically with a selected drive file', async () => {
@@ -1898,20 +1875,18 @@ describe('CreateKnowledgePage', () => {
     })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Drive runbook',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Runbook.pdf' }))
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1968,13 +1943,13 @@ describe('CreateKnowledgePage', () => {
     })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Team docs',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     await waitFor(() =>
       expect(serviceMock.previewInitialSource).toHaveBeenCalledWith({
@@ -1982,7 +1957,7 @@ describe('CreateKnowledgePage', () => {
       }),
     )
     await user.click(await screen.findByRole('checkbox', { name: 'Launch plan' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -2056,8 +2031,8 @@ describe('CreateKnowledgePage', () => {
       },
     )
     renderPage()
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     const folderButton = await screen.findByRole('button', { name: 'Plans' })
     expect(folderButton).toHaveAttribute('aria-expanded', 'false')
@@ -2065,7 +2040,7 @@ describe('CreateKnowledgePage', () => {
     expect(folderButton).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByRole('checkbox', { name: 'Folder child.pdf' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
     expect(
       await screen.findByRole('checkbox', { name: 'Second root file.pdf' }),
@@ -2116,22 +2091,22 @@ describe('CreateKnowledgePage', () => {
       })
     renderPage()
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
       'Drive archive',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
-    await user.click(await screen.findByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await screen.findByRole('checkbox', { name: 'File 201.pdf' })
-    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' }))
 
     expect(screen.getByRole('checkbox', { name: 'File 201.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('200')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('200')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source.selection).toHaveLength(200)
@@ -2142,29 +2117,29 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'source'
     renderPage()
     await fillRequiredFields(user)
-    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
-    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
     expect(rootUrl).toHaveAttribute('maxlength', '2048')
     expect(sourceName).toHaveAttribute('maxlength', '200')
 
     await user.type(rootUrl, 'https://user:secret@docs.dify.ai')
     await user.type(sourceName, 'Dify docs')
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
     expect(serviceMock.create).not.toHaveBeenCalled()
 
     await user.clear(rootUrl)
     await user.type(rootUrl, 'https://docs.dify.ai')
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
 
     const crawlAndPreview = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.crawlAndPreview',
+      name: 'knowledgeSpace.crawlAndPreview',
     })
     expect(crawlAndPreview).toBeEnabled()
     await user.click(crawlAndPreview)
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled()
   })
 
   it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {
@@ -2175,7 +2150,7 @@ describe('CreateKnowledgePage', () => {
     const oversizedFile = new File(['content'], 'oversized.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       oversizedFile,
@@ -2183,10 +2158,10 @@ describe('CreateKnowledgePage', () => {
 
     expect(screen.getByText('oversized.pdf')).toBeInTheDocument()
     expect(
-      screen.getByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
+      screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'knowledgeSpace.preview' })).toBeNull()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
@@ -2199,11 +2174,9 @@ describe('CreateKnowledgePage', () => {
     const file = new File(['content'], 'handbook.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
 
-    expect(
-      screen.getByText(/dataset\.newKnowledge\.documentUploadFormats:.*"size":50/),
-    ).toBeVisible()
+    expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":50/)).toBeVisible()
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       file,
@@ -2215,7 +2188,7 @@ describe('CreateKnowledgePage', () => {
       }),
     )
     expect(
-      screen.queryByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
+      screen.queryByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/),
     ).not.toBeInTheDocument()
   })
 
@@ -2227,17 +2200,15 @@ describe('CreateKnowledgePage', () => {
     const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
 
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       emptyFile,
     )
 
     expect(screen.getByText('empty.txt')).toBeInTheDocument()
-    expect(
-      screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
     expect(serviceMock.stageUpload).not.toHaveBeenCalled()
     expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(serviceMock.create).not.toHaveBeenCalled()
@@ -2255,17 +2226,15 @@ describe('CreateKnowledgePage', () => {
     const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
 
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       [emptyFile, oneByteFile],
     )
 
     expect(screen.getByText('empty.txt')).toBeInTheDocument()
-    expect(
-      screen.getByText(/dataset\.newKnowledge\.selectedFiles:.*"total":2.*"valid":1/),
-    ).toBeVisible()
-    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    expect(screen.getByText(/knowledgeSpace\.selectedFiles:.*"total":2.*"valid":1/)).toBeVisible()
+    expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
     await waitFor(() =>
       expect(serviceMock.stageUpload).toHaveBeenCalledWith({
         body: { file: expect.objectContaining({ name: 'one-byte.txt', size: 1 }) },
@@ -2273,7 +2242,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1)
     const createButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.createTitle',
+      name: 'knowledgeSpace.createTitle',
     })
     await waitFor(() => expect(createButton).not.toHaveAttribute('data-disabled'))
     await user.click(createButton)
@@ -2298,7 +2267,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     fireEvent.change(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       {
@@ -2310,36 +2279,34 @@ describe('CreateKnowledgePage', () => {
         },
       },
     )
-    const queue = screen.getByRole('list', { name: 'dataset.newKnowledge.uploadFiles' })
+    const queue = screen.getByRole('list', { name: 'knowledgeSpace.uploadFiles' })
     const handbookRow = within(queue).getByText('handbook.md').closest('li')
     const policyRow = within(queue).getByText('policy.pdf').closest('li')
     expect(handbookRow).not.toBeNull()
     expect(policyRow).not.toBeNull()
     await waitFor(() =>
-      expect(
-        within(queue).getAllByRole('button', { name: 'dataset.newKnowledge.preview' }),
-      ).toHaveLength(2),
+      expect(within(queue).getAllByRole('button', { name: 'knowledgeSpace.preview' })).toHaveLength(
+        2,
+      ),
     )
-    expect(screen.queryByText('dataset.newKnowledge.previewUnavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.previewUnavailable')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     expect(
-      await within(handbookRow as HTMLElement).findByText('dataset.newKnowledge.uploadingFiles'),
+      await within(handbookRow as HTMLElement).findByText('knowledgeSpace.uploadingFiles'),
     ).toBeVisible()
     expect(
       within(handbookRow as HTMLElement).queryByRole('button', {
-        name: 'dataset.newKnowledge.preview',
+        name: 'knowledgeSpace.preview',
       }),
     ).toBeNull()
     expect(
-      within(policyRow as HTMLElement).getByText(
-        'dataset.newKnowledge.uploadCharactersUnavailable',
-      ),
+      within(policyRow as HTMLElement).getByText('knowledgeSpace.uploadCharactersUnavailable'),
     ).toBeVisible()
     expect(
       within(policyRow as HTMLElement).getByRole('button', {
-        name: 'dataset.newKnowledge.preview',
+        name: 'knowledgeSpace.preview',
       }),
     ).toBeEnabled()
   })
@@ -2358,13 +2325,13 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.getSpace).toHaveBeenCalledOnce())
     expect(serviceMock.upload).not.toHaveBeenCalled()
@@ -2394,7 +2361,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     fireEvent.change(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       { target: { files: [file] } },
@@ -2403,7 +2370,7 @@ describe('CreateKnowledgePage', () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     const preview = await screen.findByRole('dialog', { name: 'handbook.md' })
     expect(within(preview).getByLabelText('handbook.md')).toHaveTextContent('# 让状态可分析')
@@ -2418,17 +2385,17 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentUploadFailed',
+      'knowledgeSpace.documentUploadFailed',
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -2440,24 +2407,20 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     const dialog = screen.getByRole('dialog', {
-      name: 'dataset.newKnowledge.createTitle',
+      name: 'knowledgeSpace.createTitle',
     })
     expect(
-      within(dialog).getByRole('heading', { name: 'dataset.newKnowledge.createTitle' }),
+      within(dialog).getByRole('heading', { name: 'knowledgeSpace.createTitle' }),
     ).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('dataset.newKnowledge.namePlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('knowledgeSpace.namePlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('knowledgeSpace.descriptionPlaceholder')).toBeInTheDocument()
     expect(
-      screen.getByPlaceholderText('dataset.newKnowledge.descriptionPlaceholder'),
+      screen.getByRole('textbox', { name: /^knowledgeSpace\.description$/ }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: /^dataset\.newKnowledge\.description$/ }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.descriptionHelp')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.startWithHelp')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.illustrationHeadline')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.descriptionHelp')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.startWithHelp')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.illustrationHeadline')).toBeInTheDocument()
     expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
@@ -2475,10 +2438,7 @@ describe('CreateKnowledgePage', () => {
   it('closes an unsaved draft without confirmation', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
-      'Draft knowledge',
-    )
+    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Draft knowledge')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
@@ -2489,10 +2449,7 @@ describe('CreateKnowledgePage', () => {
   it('does not protect an unsaved draft from browser unload', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
-      'Draft knowledge',
-    )
+    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Draft knowledge')
     const event = new Event('beforeunload', { cancelable: true })
 
     act(() => window.dispatchEvent(event))
@@ -2506,15 +2463,15 @@ describe('CreateKnowledgePage', () => {
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
     renderPage()
     await user.upload(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByText('dataset.newKnowledge.documentUploadFailed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    expect(await screen.findByText('knowledgeSpace.documentUploadFailed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 

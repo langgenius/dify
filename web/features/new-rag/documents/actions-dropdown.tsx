@@ -86,7 +86,7 @@ function RenameDocumentDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [nextTitle, setNextTitle] = useState(document.title)
   const { busy, pending, run } = useRenameDocumentAction(document)
@@ -113,7 +113,7 @@ function RenameDocumentDialog({
             {document.title}
           </DialogDescription>
           <label className="mt-5 block system-sm-medium text-text-secondary" htmlFor={inputId}>
-            {t(($) => $['newKnowledge.documentColumn'])}
+            {t(($) => $.documentColumn)}
           </label>
           <Input
             id={inputId}
@@ -143,7 +143,7 @@ function RenameDocumentDialog({
 }
 
 function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const { task } = useDocumentActionFacts(document.id)
   const { busy, run } = useRetryDocumentTaskAction(document.id, task)
@@ -158,13 +158,13 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
       onClick={() => void run()}
     >
       <span aria-hidden className="i-ri-restart-line size-4" />
-      {t(($) => $['newKnowledge.retryTask'])}
+      {t(($) => $.retryTask)}
     </DropdownMenuItem>
   )
 }
 
 function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useReindexDocumentAction(document, status)
@@ -178,7 +178,7 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
       onClick={() => void run()}
     >
       <span aria-hidden className="i-ri-loop-left-line size-4" />
-      {t(($) => $['newKnowledge.reindexDocument'])}
+      {t(($) => $.reindexDocument)}
     </DropdownMenuItem>
   )
 }
@@ -193,7 +193,7 @@ function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) 
 }
 
 function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canDownload = useAtomValue(documentCanDownloadAtom)
   const { status, tasksPending } = useDocumentActionFacts(document.id)
   const { busy, run } = useDownloadDocumentAction(document, status, tasksPending)
@@ -207,13 +207,13 @@ function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
       onClick={() => void run()}
     >
       <span aria-hidden className="i-ri-download-line size-4" />
-      {t(($) => $['newKnowledge.downloadDocuments'])}
+      {t(($) => $.downloadDocuments)}
     </DropdownMenuItem>
   )
 }
 
 function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDocument }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canEdit = useDocumentCanEdit()
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useToggleDocumentAvailabilityAction(document, status)
@@ -235,7 +235,7 @@ function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDoc
           document.enabled ? 'i-ri-indeterminate-circle-line' : 'i-ri-checkbox-circle-line',
         )}
       />
-      {document.enabled ? t(($) => $['newKnowledge.disableSource']) : t(($) => $.enable)}
+      {document.enabled ? t(($) => $.disableSource) : t(($) => $.enable, { ns: 'dataset' })}
     </DropdownMenuItem>
   )
 }
@@ -318,7 +318,7 @@ export function DocumentActionsDropdown({
   className?: string
   document: LogicalDocument
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const busy = useDocumentRowActionBusy(document.id)
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
@@ -328,7 +328,7 @@ export function DocumentActionsDropdown({
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
+          aria-label={t(($) => $.documentActions, { name: document.title })}
           disabled={busy}
           className={cn(
             'ml-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
@@ -355,7 +355,7 @@ export function DocumentActionsDropdown({
         </DropdownMenuContent>
       </DropdownMenu>
       <span id={unavailableReasonId} className="sr-only">
-        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+        {t(($) => $.documentActionsUnavailable)}
       </span>
       <RenameDocumentDialog
         key={renameDialogOpen ? 'open' : 'closed'}

@@ -54,7 +54,7 @@ export function CreateUploadQueue({
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
   const validUploadCount = uploads.filter(({ issue }) => !issue).length
@@ -71,7 +71,7 @@ export function CreateUploadQueue({
         multiple
         type="file"
         accept={DOCUMENT_UPLOAD_ACCEPT}
-        aria-label={t(($) => $['newKnowledge.uploadFiles'])}
+        aria-label={t(($) => $.uploadFiles)}
         disabled={disabled}
         onChange={(event) => {
           addFiles([...(event.currentTarget.files ?? [])])
@@ -113,29 +113,27 @@ export function CreateUploadQueue({
                 : 'i-ri-upload-cloud-2-line',
             )}
           />
-          {uploading
-            ? t(($) => $['newKnowledge.uploadingFiles'])
-            : t(($) => $['newKnowledge.uploadDropZoneTitle'])}
+          {uploading ? t(($) => $.uploadingFiles) : t(($) => $.uploadDropZoneTitle)}
         </span>
         <span className="system-2xs-medium text-text-tertiary">
-          {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
+          {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
         </span>
       </label>
 
       {!!uploads.length && (
-        <section aria-label={t(($) => $['newKnowledge.uploadFiles'])}>
+        <section aria-label={t(($) => $.uploadFiles)}>
           <h3 className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.selectedFiles'], {
+            {t(($) => $.selectedFiles, {
               total: uploads.length,
               valid: validUploadCount,
             })}
           </h3>
           <DocumentUploadFileList
-            ariaLabel={t(($) => $['newKnowledge.uploadFiles'])}
+            ariaLabel={t(($) => $.uploadFiles)}
             className="mt-2"
             disabled={disabled}
             fileSizeLimitMb={fileSizeLimitMb}
-            idleStatus={t(($) => $['newKnowledge.uploadCharactersUnavailable'])}
+            idleStatus={t(($) => $.uploadCharactersUnavailable)}
             items={uploads}
             uploadProgress={uploadPhases}
             variant="compact"

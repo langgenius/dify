@@ -90,7 +90,7 @@ async function queryFailure(error: unknown) {
 }
 
 export function RetrievalRuntimeController() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
@@ -426,7 +426,7 @@ export function RetrievalRuntimeController() {
         )
         await refetchResearchTasks()
       } catch {
-        toast.error(t(($) => $['newKnowledge.retrievalTest.failedDescription']))
+        toast.error(t(($) => $['retrievalTest.failedDescription']))
       } finally {
         runInFlightRef.current = false
       }
@@ -455,7 +455,7 @@ export function RetrievalRuntimeController() {
         })
         await Promise.all([refetchResearchTasks(), refetchResearchPartials()])
       } catch {
-        toast.error(t(($) => $['newKnowledge.taskActionFailed']))
+        toast.error(t(($) => $.taskActionFailed))
       }
     },
     [knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],

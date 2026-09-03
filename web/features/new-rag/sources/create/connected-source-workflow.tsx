@@ -371,7 +371,7 @@ function ResourceList({
   selectionScope: SelectableResource[]
   selected: ReadonlyMap<string, SelectableResource>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const selectableResources = selectionScope.filter(isSelectableResource)
   const driveContainers = selectionScope.filter(isDriveContainer)
   const allDriveContainersLoaded = driveContainers.every(
@@ -390,7 +390,7 @@ function ResourceList({
     <div className="flex h-78 flex-col overflow-hidden rounded-xl border border-divider-regular">
       <div className="flex h-7.5 shrink-0 items-center gap-2 border-b border-divider-subtle px-3">
         <Checkbox
-          aria-label={t(($) => $['newKnowledge.selectAll'])}
+          aria-label={t(($) => $.selectAll)}
           aria-describedby={selectionLimitVisible && !allSelected ? selectionLimitId : undefined}
           checked={allSelected}
           disabled={
@@ -399,9 +399,7 @@ function ResourceList({
           indeterminate={!allSelected && someSelected}
           onCheckedChange={onToggleAll}
         />
-        <span className="system-xs-medium text-text-primary">
-          {t(($) => $['newKnowledge.selectAll'])}
-        </span>
+        <span className="system-xs-medium text-text-primary">{t(($) => $.selectAll)}</span>
         <span className="ml-auto truncate system-xs-regular text-text-tertiary">
           {connectionLabel(connection, resources, providerRegion)}
         </span>
@@ -493,7 +491,7 @@ function ResourceList({
       {hasMore && (
         <div className="border-t border-divider-subtle px-3 py-2 text-center">
           <Button size="small" variant="ghost" loading={loadingMore} onClick={onLoadMore}>
-            {t(($) => $['newKnowledge.loadMore'])}
+            {t(($) => $.loadMore)}
           </Button>
         </div>
       )}
@@ -534,7 +532,7 @@ function ResourceConfiguration({
   provider: SourceProvider
   providerRegion?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
@@ -1318,11 +1316,9 @@ function ResourceConfiguration({
         </div>
       ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.providerLoadFailed'])}
-          </p>
+          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
           <Button className="mt-3" onClick={() => globalThis.location.reload()}>
-            {t(($) => $['newKnowledge.retryProviderLoad'])}
+            {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
       ) : (
@@ -1334,16 +1330,16 @@ function ResourceConfiguration({
                 className="min-w-0 flex-1 system-xs-semibold text-text-primary"
               >
                 {driveTransport && draft.provider !== 'Google Docs'
-                  ? t(($) => $['newKnowledge.selectFilesAndFolders'])
+                  ? t(($) => $.selectFilesAndFolders)
                   : draft.provider === 'Google Docs'
-                    ? t(($) => $['newKnowledge.selectFoldersAndDocsToSync'])
-                    : t(($) => $['newKnowledge.selectPagesToSync'])}
+                    ? t(($) => $.selectFoldersAndDocsToSync)
+                    : t(($) => $.selectPagesToSync)}
               </h3>
               <span role="status" className="system-xs-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.pagesSelected'], { count: selected.size })}
+                {t(($) => $.pagesSelected, { count: selected.size })}
                 {selectionLimitVisible && (
                   <span id={selectionLimitId} className="ml-2 text-text-destructive">
-                    {t(($) => $['newKnowledge.maxPages'])}: {MAX_SELECTION}
+                    {t(($) => $.maxPages)}: {MAX_SELECTION}
                   </span>
                 )}
               </span>
@@ -1355,7 +1351,7 @@ function ResourceConfiguration({
             ) : queryError ? (
               <div className="rounded-xl bg-background-section p-4">
                 <p className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.providerLoadFailed'])}
+                  {t(($) => $.providerLoadFailed)}
                 </p>
                 <Button
                   className="mt-3"
@@ -1363,7 +1359,7 @@ function ResourceConfiguration({
                     void (driveTransport ? filesQuery.refetch() : pagesQuery.refetch())
                   }
                 >
-                  {t(($) => $['newKnowledge.retryProviderLoad'])}
+                  {t(($) => $.retryProviderLoad)}
                 </Button>
               </div>
             ) : (
@@ -1397,12 +1393,12 @@ function ResourceConfiguration({
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.addSourceFailed'])}
+          {t(($) => $.addSourceFailed)}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
         <Button type="button" onClick={onExit}>
-          {t(($) => $['newKnowledge.cancelAddSource'])}
+          {t(($) => $.cancelAddSource)}
         </Button>
         <Button
           variant="primary"
@@ -1417,7 +1413,7 @@ function ResourceConfiguration({
           }
           onClick={() => void submit()}
         >
-          {t(($) => $['newKnowledge.addSource'])}
+          {t(($) => $.addSource)}
         </Button>
       </div>
     </div>
@@ -1449,7 +1445,7 @@ function AppliedResourceConfiguration({
   provider: SourceProvider
   providerRegion?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [appliedParameters, setAppliedParameters] = useState<DatasourceParameters | undefined>(
     () => (parametersValid ? parameters : undefined),
   )
@@ -1476,7 +1472,7 @@ function AppliedResourceConfiguration({
           className="w-full"
           onClick={() => setAppliedParameters(parameters)}
         >
-          {t(($) => $['newKnowledge.preview'])}
+          {t(($) => $.preview)}
         </Button>
       )}
       {!parametersApplied && (
@@ -1555,7 +1551,7 @@ function ConnectedSourceWorkflowSession({
   onDraftChange,
   onExit,
 }: ConnectedSourceWorkflowProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
@@ -1780,9 +1776,7 @@ function ConnectedSourceWorkflowSession({
         </div>
       ) : queryError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.providerLoadFailed'])}
-          </p>
+          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
           <Button
             className="mt-3"
             onClick={() =>
@@ -1794,25 +1788,25 @@ function ConnectedSourceWorkflowSession({
               ])
             }
           >
-            {t(($) => $['newKnowledge.retryProviderLoad'])}
+            {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
       ) : providerOptions.length === 0 ? null : !installedProviderOption ? (
         <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.providerUnavailable'])}
+          {t(($) => $.providerUnavailable)}
         </div>
       ) : !provider ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{installedProviderOption.label}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.providerUnavailable'])}
+            {t(($) => $.providerUnavailable)}
           </p>
         </div>
       ) : !provider.available ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{provider.displayName}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
+            {provider.unavailableReason ?? t(($) => $.providerUnavailable)}
           </p>
         </div>
       ) : connection?.status === 'active' ? (
@@ -1835,23 +1829,23 @@ function ConnectedSourceWorkflowSession({
       ) : connection?.status === 'provisioning' ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionProvisioning'], {
+            {t(($) => $.connectionProvisioning, {
               provider: provider.displayName,
             })}
           </p>
           <Button className="mt-3" onClick={() => void connectionsQuery.refetch()}>
-            {t(($) => $['newKnowledge.refreshConnectionStatus'])}
+            {t(($) => $.refreshConnectionStatus)}
           </Button>
         </div>
       ) : connection ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionNeedsAttention'], {
+            {t(($) => $.connectionNeedsAttention, {
               provider: provider.displayName,
             })}
           </p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
+            {t(($) => $.providerCredentialRequiredDescription, {
               provider: providerDraft.provider,
             })}
           </p>
@@ -1866,10 +1860,10 @@ function ConnectedSourceWorkflowSession({
                 )
               }
             >
-              {t(($) => $['newKnowledge.connectProvider'], { provider: providerDraft.provider })}
+              {t(($) => $.connectProvider, { provider: providerDraft.provider })}
             </Button>
             <Button loading={provisioningConnection} onClick={() => void provisionConnection(true)}>
-              {t(($) => $['newKnowledge.retryProviderLoad'])}
+              {t(($) => $.retryProviderLoad)}
             </Button>
           </div>
         </div>
@@ -1878,14 +1872,14 @@ function ConnectedSourceWorkflowSession({
           <div className="text-center">
             <Loading />
             <p className="mt-2 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.connectingProvider'])}
+              {t(($) => $.connectingProvider)}
             </p>
           </div>
         </div>
       ) : provisionError ? (
         <div className="rounded-xl bg-background-section p-4">
           <p role="alert" className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionFailed'], { provider: providerDraft.provider })}
+            {t(($) => $.connectionFailed, { provider: providerDraft.provider })}
           </p>
           <Button
             className="mt-3"
@@ -1897,7 +1891,7 @@ function ConnectedSourceWorkflowSession({
               void provisionConnection(true)
             }}
           >
-            {t(($) => $['newKnowledge.retryProviderLoad'])}
+            {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
       ) : (
@@ -1924,10 +1918,10 @@ function ConnectedSourceWorkflowSession({
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>
-            {t(($) => $['newKnowledge.cancelAddSource'])}
+            {t(($) => $.cancelAddSource)}
           </Button>
           <Button variant="primary" disabled>
-            {t(($) => $['newKnowledge.addSource'])}
+            {t(($) => $.addSource)}
           </Button>
         </div>
       )}

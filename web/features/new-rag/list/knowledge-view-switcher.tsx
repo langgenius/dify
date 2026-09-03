@@ -22,7 +22,7 @@ export type KnowledgeViewSwitcherProps = {
 }
 
 export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const docLink = useDocLink()
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
@@ -39,7 +39,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
     <div className="relative flex max-w-full shrink-0">
       <SegmentedControl
         className="max-w-full rounded-md p-px"
-        aria-label={t(($) => $['newKnowledge.viewLabel'])}
+        aria-label={t(($) => $.viewLabel)}
         value={value}
         onValueChange={(value) => onChange(value)}
       >
@@ -47,18 +47,18 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"
           value="legacy"
         >
-          {t(($) => $['newKnowledge.legacy'])}
+          {t(($) => $.legacy)}
         </SegmentedControlItem>
         <SegmentedControlItem
           className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
           value="new"
         >
-          {t(($) => $['newKnowledge.new'])}
+          {t(($) => $.new)}
         </SegmentedControlItem>
       </SegmentedControl>
       <Popover open={guideOpen} onOpenChange={setGuideOpenOverride}>
         <PopoverTrigger
-          aria-label={t(($) => $['newKnowledge.guideTitle'])}
+          aria-label={t(($) => $.guideTitle)}
           render={
             <button
               type="button"
@@ -81,10 +81,10 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           </span>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">
-              {t(($) => $['newKnowledge.guideTitle'])}
+              {t(($) => $.guideTitle)}
             </PopoverTitle>
             <PopoverDescription className="mt-2 system-sm-regular text-text-secondary">
-              {t(($) => $['newKnowledge.guideDescription'])}
+              {t(($) => $.guideDescription)}
             </PopoverDescription>
             <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
               <a
@@ -93,10 +93,10 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
                 rel="noreferrer"
                 className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
-                {t(($) => $['newKnowledge.learnMore'])}
+                {t(($) => $.learnMore)}
               </a>
               <Button variant="primary" size="small" onClick={dismissGuide}>
-                {t(($) => $['newKnowledge.gotIt'])}
+                {t(($) => $.gotIt)}
               </Button>
             </div>
           </div>

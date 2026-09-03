@@ -49,7 +49,7 @@ export function DocumentMultimodalAsset({
 }: {
   item: KnowledgeFsDocumentMultimodalItemResponse
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set())
   const sources = [item.asset_url, item.thumbnail_url].filter((candidate): candidate is string =>
     Boolean(candidate && !failedSources.has(candidate)),
@@ -68,7 +68,7 @@ export function DocumentMultimodalAsset({
   const rawLabel =
     item.caption?.trim() || item.title?.trim() || item.text_preview?.trim() || item.ocr_text?.trim()
   const label = rawLabel && rawLabel.length > 500 ? `${rawLabel.slice(0, 497)}...` : rawLabel
-  const imageName = label || t(($) => $['newKnowledge.documentImageAlt'])
+  const imageName = label || t(($) => $.documentImageAlt)
 
   useEffect(() => {
     if (!resolvedBlob || !resolvedRawSource) return
@@ -112,7 +112,7 @@ export function DocumentMultimodalAsset({
         </div>
       ) : (
         <div
-          aria-label={`${imageName}: ${t(($) => $['newKnowledge.documentImageUnavailable'])}`}
+          aria-label={`${imageName}: ${t(($) => $.documentImageUnavailable)}`}
           className="flex size-8 items-center justify-center rounded-md border border-divider-subtle bg-background-section text-text-tertiary"
           role="img"
         >

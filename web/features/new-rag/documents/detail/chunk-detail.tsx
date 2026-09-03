@@ -89,7 +89,7 @@ function DocumentSectionHeading({ children, level }: { children: React.ReactNode
 }
 
 function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -104,7 +104,7 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
         onClick={() => setExpanded((current) => !current)}
       >
         <span aria-hidden className="i-ri-file-list-3-line size-4 shrink-0" />
-        <span className="min-w-0 flex-1">{t(($) => $['newKnowledge.documentSummary'])}</span>
+        <span className="min-w-0 flex-1">{t(($) => $.documentSummary)}</span>
         <span
           aria-hidden
           className={cn(
@@ -123,7 +123,7 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 }
 
 export function DocumentReadingPane() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const contentBlocks = useAtomValue(documentDetailContentBlocksAtom)
   const isLoadingMore = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
@@ -201,7 +201,7 @@ export function DocumentReadingPane() {
                       {block.heading && (
                         <DocumentSectionHeading level={block.heading.level}>
                           {block.heading.text ||
-                            t(($) => $['newKnowledge.chunkHeading'], {
+                            t(($) => $.chunkHeading, {
                               position: chunk.ordinal + 1,
                             })}
                         </DocumentSectionHeading>
@@ -241,7 +241,7 @@ export function DocumentReadingPane() {
                     )}
                     {!chunk.text && (
                       <p className="mt-3 text-[13px] leading-5.5 text-text-tertiary">
-                        {t(($) => $['newKnowledge.emptyChunk'])}
+                        {t(($) => $.emptyChunk)}
                       </p>
                     )}
                   </section>
@@ -250,7 +250,7 @@ export function DocumentReadingPane() {
               {multimodalPlacement.unplaced.length > 0 && (
                 <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
                   <h3 className="system-sm-semibold text-text-primary">
-                    {t(($) => $['newKnowledge.documentImages'])}
+                    {t(($) => $.documentImages)}
                   </h3>
                   <div className="flex flex-wrap gap-1 py-1">
                     {multimodalPlacement.unplaced.map((item) => (
@@ -267,7 +267,7 @@ export function DocumentReadingPane() {
         </ScrollArea>
       ) : (
         <div className="flex min-h-72 items-center justify-center px-6 text-center body-sm-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.selectChunk'])}
+          {t(($) => $.selectChunk)}
         </div>
       )}
     </article>
@@ -275,7 +275,7 @@ export function DocumentReadingPane() {
 }
 
 export function DocumentFactsSidebar() {
-  const { i18n, t } = useTranslation('dataset')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
   const document = useAtomValue(documentDetailDocumentAtom)
@@ -308,18 +308,18 @@ export function DocumentFactsSidebar() {
         <dl className="space-y-3">
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.sourceColumn'])}
+              {t(($) => $.sourceColumn)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular wrap-break-word text-text-primary">
               {sourceName ??
                 (document.sourceId
-                  ? t(($) => $['newKnowledge.sourceType.connector'])
-                  : t(($) => $['newKnowledge.manualUpload']))}
+                  ? t(($) => $['sourceType.connector'])
+                  : t(($) => $.manualUpload))}
             </dd>
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.fileSize'])}
+              {t(($) => $.fileSize)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {sizeBytes !== undefined ? formatBytes(sizeBytes, locale) : '—'}
@@ -335,7 +335,7 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.lastIndexed'])}
+              {t(($) => $.lastIndexed)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {formatDate(revision?.activatedAt ?? revision?.createdAt, locale)}
@@ -343,7 +343,7 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.documentRevision'])}
+              {t(($) => $.documentRevision)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {revision?.revision ?? document.activeRevision ?? '—'}
@@ -352,18 +352,16 @@ export function DocumentFactsSidebar() {
         </dl>
       </section>
       <section>
-        <h2 className="system-xs-medium text-text-tertiary">
-          {t(($) => $['newKnowledge.indexInformation'])}
-        </h2>
+        <h2 className="system-xs-medium text-text-tertiary">{t(($) => $.indexInformation)}</h2>
         <dl className="mt-3 space-y-3">
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.chunkCount'])}
+              {t(($) => $.chunkCount)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {chunksComplete
                 ? childChunkCount
-                  ? t(($) => $['newKnowledge.parentChildChunkCount'], {
+                  ? t(($) => $.parentChildChunkCount, {
                       childCount: new Intl.NumberFormat(locale).format(childChunkCount),
                       parentCount: new Intl.NumberFormat(locale).format(parentChunkCount),
                     })
@@ -373,11 +371,11 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.averageChunkLength'])}
+              {t(($) => $.averageChunkLength)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {chunksComplete
-                ? t(($) => $['newKnowledge.averageChunkLengthValue'], {
+                ? t(($) => $.averageChunkLengthValue, {
                     value: new Intl.NumberFormat(locale).format(averageChunkLength),
                   })
                 : '—'}
@@ -385,12 +383,12 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.retrievalCount'])}
+              {t(($) => $.retrievalCount)}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {retrievalCount === undefined
                 ? '—'
-                : t(($) => $['newKnowledge.retrievalCountValue'], {
+                : t(($) => $.retrievalCountValue, {
                     value: new Intl.NumberFormat(locale).format(retrievalCount),
                   })}
             </dd>

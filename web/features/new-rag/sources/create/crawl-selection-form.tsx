@@ -86,7 +86,7 @@ function ReadyCrawlSelectionForm({
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const router = useRouter()
   const queryClient = useQueryClient()
   const {
@@ -288,12 +288,12 @@ function ReadyCrawlSelectionForm({
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.addSourceFailed'])}
+          {t(($) => $.addSourceFailed)}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-3 border-t border-divider-subtle pt-5">
         <Button type="button" onClick={onCancel}>
-          {t(($) => $['newKnowledge.cancelAddSource'])}
+          {t(($) => $.cancelAddSource)}
         </Button>
         <Button
           type="submit"
@@ -302,11 +302,11 @@ function ReadyCrawlSelectionForm({
           loading={submitting}
           aria-describedby={!selectedPageIds.size ? 'add-source-selection-requirement' : undefined}
         >
-          {t(($) => $['newKnowledge.addSource'])}
+          {t(($) => $.addSource)}
         </Button>
         {!selectedPageIds.size && (
           <span id="add-source-selection-requirement" className="sr-only">
-            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+            {t(($) => $.addSourceRequiresSelection)}
           </span>
         )}
       </div>

@@ -19,7 +19,7 @@ import { DocumentTasksSurface } from './tasks-surface'
 import { DocumentWorkflowBoundary } from './workflow-boundary'
 
 function DocumentDetailWorkspaceContent() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const document = useAtomValue(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const documentMissing = useAtomValue(documentMissingAtom)
@@ -28,8 +28,8 @@ function DocumentDetailWorkspaceContent() {
   if (documentMissing)
     return (
       <DocumentErrorState
-        description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
-        title={t(($) => $['newKnowledge.documentNotFoundTitle'])}
+        description={t(($) => $.documentNotFoundDescription)}
+        title={t(($) => $.documentNotFoundTitle)}
       />
     )
 
@@ -50,7 +50,7 @@ function DocumentDetailWorkspaceContent() {
           id={DOCUMENT_REINDEX_RESTRICTION_ID}
           className="mt-2 system-xs-regular text-text-warning"
         >
-          {t(($) => $['newKnowledge.documentPermissionRestricted'])}
+          {t(($) => $.documentPermissionRestricted)}
         </p>
       )}
       <DocumentTasksSurface />

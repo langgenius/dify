@@ -11,20 +11,20 @@ const i18nLanguage = vi.hoisted(() => ({ current: 'en-US' }))
 vi.mock('react-i18next', () => {
   const mock = createReactI18nextMock({
     'common.operation.cancel': 'Cancel',
-    'dataset.newKnowledge.syncPolicy': 'Sync policy',
-    'dataset.newKnowledge.syncPolicyApply': 'Apply',
-    'dataset.newKnowledge.syncPolicyCustom': 'Custom interval',
-    'dataset.newKnowledge.syncPolicyCustomDescription':
+    'knowledgeSpace.syncPolicy': 'Sync policy',
+    'knowledgeSpace.syncPolicyApply': 'Apply',
+    'knowledgeSpace.syncPolicyCustom': 'Custom interval',
+    'knowledgeSpace.syncPolicyCustomDescription':
       'First sync runs right after creation, then {{interval}}.',
-    'dataset.newKnowledge.syncPolicyCustomHelp': 'From 1 hour to 30 days. Will sync {{interval}}.',
-    'dataset.newKnowledge.syncPolicyCustomValue': 'Custom · {{interval}}',
-    'dataset.newKnowledge.syncPolicyDaily': 'Every 24 hours',
-    'dataset.newKnowledge.syncPolicyEditCustom': 'Edit custom interval',
-    'dataset.newKnowledge.syncPolicyEvery': 'Every',
-    'dataset.newKnowledge.syncPolicyEveryValue': 'Every {{interval}}',
-    'dataset.newKnowledge.syncPolicyManual': 'Manual sync',
-    'dataset.newKnowledge.syncPolicyUnit.days': 'days',
-    'dataset.newKnowledge.syncPolicyUnit.hours': 'hours',
+    'knowledgeSpace.syncPolicyCustomHelp': 'From 1 hour to 30 days. Will sync {{interval}}.',
+    'knowledgeSpace.syncPolicyCustomValue': 'Custom · {{interval}}',
+    'knowledgeSpace.syncPolicyDaily': 'Every 24 hours',
+    'knowledgeSpace.syncPolicyEditCustom': 'Edit custom interval',
+    'knowledgeSpace.syncPolicyEvery': 'Every',
+    'knowledgeSpace.syncPolicyEveryValue': 'Every {{interval}}',
+    'knowledgeSpace.syncPolicyManual': 'Manual sync',
+    'knowledgeSpace.syncPolicyUnit.days': 'days',
+    'knowledgeSpace.syncPolicyUnit.hours': 'hours',
   })
   return {
     ...mock,

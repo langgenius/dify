@@ -74,7 +74,7 @@ function useDocumentInvalidation() {
 }
 
 export function useBulkReindexAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -109,25 +109,25 @@ export function useBulkReindexAction() {
       if (!queuedCount)
         toast.error(
           disabledIds.length
-            ? t(($) => $['newKnowledge.documentsReindexFailed'])
-            : t(($) => $['newKnowledge.documentsReindexPartial'], {
+            ? t(($) => $.documentsReindexFailed)
+            : t(($) => $.documentsReindexPartial, {
                 missing: missingIds.length,
                 queued: 0,
               }),
         )
-      else if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else if (disabledIds.length) toast.warning(t(($) => $.documentsReindexFailed))
       else if (missingIds.length)
         toast.warning(
-          t(($) => $['newKnowledge.documentsReindexPartial'], {
+          t(($) => $.documentsReindexPartial, {
             missing: missingIds.length,
             queued: queuedCount,
           }),
         )
-      else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+      else toast.success(t(($) => $.documentsReindexStarted))
       invalidateDocumentsAndTasks()
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else toast.error(t(($) => $.documentsReindexFailed))
     } finally {
       finish()
     }
@@ -174,7 +174,7 @@ export function useBulkDownloadAction() {
             : 'knowledge-documents.zip',
       })
     } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully']))
+      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
     } finally {
       finish()
     }
@@ -184,7 +184,7 @@ export function useBulkDownloadAction() {
 }
 
 export function useBulkAvailabilityAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -223,11 +223,11 @@ export function useBulkAvailabilityAction() {
         item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
       )
       replaceSelection(failedIds)
-      if (failedIds.length) toast.warning(t(($) => $['newKnowledge.documentsErrorDescription']))
+      if (failedIds.length) toast.warning(t(($) => $.documentsErrorDescription))
       invalidateDocuments()
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+      else toast.error(t(($) => $.documentsErrorDescription))
     } finally {
       finish()
     }
@@ -251,7 +251,7 @@ export function useBulkAvailabilityAction() {
 }
 
 export function useBulkRemoveAction() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -286,7 +286,7 @@ export function useBulkRemoveAction() {
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+      else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()

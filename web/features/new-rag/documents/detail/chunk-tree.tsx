@@ -65,7 +65,7 @@ function AutomaticChunkPageLoader({
 }
 
 export function DocumentChunkTreePanel() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const chunkCount = useAtomValue(documentDetailChunksAtom).length
   const error = Boolean(useAtomValue(documentChunksQueryErrorAtom))
@@ -233,14 +233,14 @@ export function DocumentChunkTreePanel() {
   return (
     <aside className="min-h-52 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
       <h2 className="px-2 pb-2 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.documentContents'])}
+        {t(($) => $.documentContents)}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
         <div
           className="flex items-center justify-between gap-2 border-b border-divider-subtle bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
         >
-          <span>{t(($) => $['newKnowledge.documentChunksLoadError'])}</span>
+          <span>{t(($) => $.documentChunksLoadError)}</span>
           <Button onClick={() => void retryChunks()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
@@ -252,7 +252,7 @@ export function DocumentChunkTreePanel() {
       ) : error && !isFetchNextPageError && !chunkCount ? (
         <div className="p-4 text-center">
           <p className="system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.documentChunksLoadError'])}
+            {t(($) => $.documentChunksLoadError)}
           </p>
           <Button className="mt-3" onClick={() => void retryChunks()}>
             {tCommon(($) => $['operation.retry'])}
@@ -260,7 +260,7 @@ export function DocumentChunkTreePanel() {
         </div>
       ) : !chunkCount ? (
         <p className="p-6 text-center system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.documentChunksEmpty'])}
+          {t(($) => $.documentChunksEmpty)}
         </p>
       ) : (
         <div
@@ -268,7 +268,7 @@ export function DocumentChunkTreePanel() {
           aria-activedescendant={
             currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
-          aria-label={t(($) => $['newKnowledge.documentContents'])}
+          aria-label={t(($) => $.documentContents)}
           className="max-h-[70vh] space-y-0.5 overflow-auto py-1 pr-5 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
           role="tree"
           tabIndex={0}
@@ -295,7 +295,7 @@ export function DocumentChunkTreePanel() {
       {isFetchNextPageError ? (
         <div className="border-t border-divider-subtle p-3 text-center">
           <p className="mb-2 system-xs-regular text-text-destructive" role="alert">
-            {t(($) => $['newKnowledge.documentChunksLoadMoreError'])}
+            {t(($) => $.documentChunksLoadMoreError)}
           </p>
           <Button
             disabled={isFetchingNextPage}

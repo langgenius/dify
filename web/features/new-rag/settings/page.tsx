@@ -16,7 +16,7 @@ import {
 } from './state/queries'
 
 function KnowledgeSettingsSkeleton() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
 
@@ -26,7 +26,7 @@ function KnowledgeSettingsSkeleton() {
         {tCommon(($) => $.loading)}
       </span>
       <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-        {t(($) => $['newKnowledge.settings.basicInfo'])}
+        {t(($) => $['settings.basicInfo'])}
       </h2>
       {[
         tSettings(($) => $['form.nameAndIcon']),
@@ -44,10 +44,10 @@ function KnowledgeSettingsSkeleton() {
       <div className="flex gap-1">
         <div className="w-45 shrink-0">
           <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-            {t(($) => $['newKnowledge.settings.retrievalTitle'])}
+            {t(($) => $['settings.retrievalTitle'])}
           </h2>
           <p className="body-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.settings.retrievalDescription'])}
+            {t(($) => $['settings.retrievalDescription'])}
           </p>
         </div>
         <SkeletonRectangle className="h-64 flex-1 rounded-lg" />
@@ -55,7 +55,7 @@ function KnowledgeSettingsSkeleton() {
       <div className="h-px bg-divider-subtle" />
       <div className="flex gap-1 pt-7">
         <h2 className="flex h-8 w-45 items-center system-sm-semibold text-text-destructive">
-          {t(($) => $['newKnowledge.settings.dangerZone'])}
+          {t(($) => $['settings.dangerZone'])}
         </h2>
         <SkeletonRectangle className="h-16 flex-1 rounded-xl" />
       </div>
@@ -64,7 +64,7 @@ function KnowledgeSettingsSkeleton() {
 }
 
 function KnowledgeSettingsContent() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
   const isPending = useAtomValue(knowledgeSettingsIsPendingAtom)
@@ -79,7 +79,7 @@ function KnowledgeSettingsContent() {
       <div className="flex flex-col gap-0.5">
         <h1 className="system-xl-semibold text-text-primary">{tSettings(($) => $.title)}</h1>
         <p className="system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.settings.pageDescription'])}
+          {t(($) => $['settings.pageDescription'])}
         </p>
       </div>
 

@@ -1815,11 +1815,17 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
         mock_key.created_at = None
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key]
-        # Two binding rows for the same key -> the masked list surfaces both dataset ids.
-        session.execute.return_value.all.return_value = [("key-1", "ds-1"), ("key-1", "ds-2")]
+        # Binding rows carry (token id, resource type, dataset id, control space id); the
+        # masked list surfaces legacy datasets and KnowledgeFS spaces in their own fields.
+        session.execute.return_value.all.return_value = [
+            ("key-1", "dataset", "ds-1", None),
+            ("key-1", "dataset", "ds-2", None),
+            ("key-1", "knowledge_fs_space", None, "space-1"),
+        ]
         with app.test_request_context("/"):
             response = method(api, session, "tenant-1")
         assert response["data"][0]["dataset_ids"] == ["ds-1", "ds-2"]
+        assert response["data"][0]["knowledge_space_ids"] == ["space-1"]
 
     def test_post_create_scoped_key_persists_bindings(self, app: Flask):
         api = DatasetApiKeyApi()
@@ -1832,21 +1838,30 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
         mock_api_token_cls.return_value = mock_token
         mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
         session = MagicMock()
-        # Dataset-ownership validation returns exactly the requested ids (all belong to tenant).
-        session.scalars.return_value.all.return_value = ["ds-1", "ds-2"]
+        # Ownership validation returns exactly the requested ids: first the legacy datasets,
+        # then the KnowledgeFS spaces (each kind is checked against its own table).
+        session.scalars.return_value.all.side_effect = [["ds-1", "ds-2"], ["space-1"]]
         session.scalar.return_value = 1
         with (
-            app.test_request_context("/", json={"dataset_ids": ["ds-1", "ds-2", "ds-1"]}),
+            app.test_request_context(
+                "/",
+                json={"dataset_ids": ["ds-1", "ds-2", "ds-1"], "knowledge_space_ids": ["space-1", "space-1"]},
+            ),
             patch("controllers.console.datasets.datasets.ApiToken", mock_api_token_cls),
         ):
             response, status = method(api, session, "tenant-1")
         assert status == 200
         # Duplicates are collapsed and returned in the reveal-once response.
         assert response["dataset_ids"] == ["ds-1", "ds-2"]
-        # One binding row is added per unique dataset id (plus the token itself).
+        assert response["knowledge_space_ids"] == ["space-1"]
+        # One binding row is added per unique resource id (plus the token itself), typed by kind.
         added = [call.args[0] for call in session.add.call_args_list]
-        binding_dataset_ids = [obj.dataset_id for obj in added if obj.__class__.__name__ == "DatasetApiTokenBinding"]
-        assert binding_dataset_ids == ["ds-1", "ds-2"]
+        bindings = [obj for obj in added if obj.__class__.__name__ == "DatasetApiTokenBinding"]
+        assert [(b.resource_type, b.dataset_id, b.control_space_id) for b in bindings] == [
+            ("dataset", "ds-1", None),
+            ("dataset", "ds-2", None),
+            ("knowledge_fs_space", None, "space-1"),
+        ]
 
     def test_post_rejects_dataset_ids_from_another_tenant(self, app: Flask):
         api = DatasetApiKeyApi()
@@ -1859,6 +1874,28 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
                 method(api, session, "tenant-1")
         assert exc_info.value.code == 400
         assert "Unknown knowledge base id(s)" in vars(exc_info.value)["data"]["message"]
+
+    def test_post_rejects_knowledge_space_ids_from_another_tenant(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        # None of the requested KnowledgeFS spaces belong to this tenant (or are bindable).
+        session.scalars.return_value.all.return_value = []
+        with app.test_request_context("/", json={"knowledge_space_ids": ["foreign-space"]}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert "Unknown knowledge space id(s)" in vars(exc_info.value)["data"]["message"]
+
+    def test_post_rejects_non_list_knowledge_space_ids(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        with app.test_request_context("/", json={"knowledge_space_ids": "not-a-list"}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert vars(exc_info.value)["data"]["message"] == "knowledge_space_ids must be a list of strings."
 
     def test_post_rejects_non_list_dataset_ids(self, app: Flask):
         api = DatasetApiKeyApi()

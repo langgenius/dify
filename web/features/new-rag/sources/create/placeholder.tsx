@@ -54,7 +54,7 @@ export function PendingWebsiteSetup({
   draft: NewKnowledgeWebsiteSourceDraft
   onDraftChange: (draft: NewKnowledgeWebsiteSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const updateDraft = (nextDraft: NewKnowledgeWebsiteSourceDraft) => {
@@ -63,30 +63,30 @@ export function PendingWebsiteSetup({
   }
 
   return (
-    <section className="space-y-4" aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
+    <section className="space-y-4" aria-label={t(($) => $.crawlAndPreview)}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field name="rootUrl" className="gap-1.5">
-          <FieldLabel>{t(($) => $['newKnowledge.rootUrl'])}</FieldLabel>
+          <FieldLabel>{t(($) => $.rootUrl)}</FieldLabel>
           <Input
             type="url"
             inputMode="url"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
             value={draft.rootUrl}
-            placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
+            placeholder={t(($) => $.rootUrlPlaceholder)}
             onValueChange={(value) => {
               updateDraft({ ...draft, rootUrl: value })
             }}
           />
         </Field>
         <Field name="sourceName" className="gap-1.5">
-          <FieldLabel>{t(($) => $['newKnowledge.sourceName'])}</FieldLabel>
+          <FieldLabel>{t(($) => $.sourceName)}</FieldLabel>
           <Input
             type="text"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
             value={draft.sourceName}
-            placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+            placeholder={t(($) => $.sourceNamePlaceholder)}
             onValueChange={(value) => {
               updateDraft({ ...draft, sourceName: value })
             }}
@@ -103,10 +103,10 @@ export function PendingWebsiteSetup({
             aria-hidden
             className="i-ri-arrow-right-s-line size-4 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
           />
-          {t(($) => $['newKnowledge.crawlOptions'])}
+          {t(($) => $.crawlOptions)}
           {!optionsExpanded && (
             <span className="ml-auto system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.usingDefaults'])}
+              {t(($) => $.usingDefaults)}
             </span>
           )}
         </CollapsibleTrigger>
@@ -117,12 +117,10 @@ export function PendingWebsiteSetup({
                 checked={draft.includeSubpages}
                 onCheckedChange={(checked) => updateDraft({ ...draft, includeSubpages: checked })}
               />
-              {t(($) => $['newKnowledge.includeSubpages'])}
+              {t(($) => $.includeSubpages)}
             </label>
             <div>
-              <span className="system-xs-medium text-text-secondary">
-                {t(($) => $['newKnowledge.maxPages'])}
-              </span>
+              <span className="system-xs-medium text-text-secondary">{t(($) => $.maxPages)}</span>
               <NumberField
                 min={1}
                 max={200}
@@ -130,7 +128,7 @@ export function PendingWebsiteSetup({
                 onValueChange={(value) => updateDraft({ ...draft, maxPages: value ?? 0 })}
               >
                 <NumberFieldGroup className="mt-1.5">
-                  <NumberFieldInput aria-label={t(($) => $['newKnowledge.maxPages'])} />
+                  <NumberFieldInput aria-label={t(($) => $.maxPages)} />
                   <NumberFieldControls>
                     <NumberFieldIncrement />
                     <NumberFieldDecrement />
@@ -148,17 +146,15 @@ export function PendingWebsiteSetup({
         disabled={!isValidWebsiteSourceDraft(draft)}
         onClick={() => setBackendBoundaryVisible(true)}
       >
-        {t(($) => $['newKnowledge.crawlAndPreview'])}
+        {t(($) => $.crawlAndPreview)}
       </Button>
       <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-6 text-center">
         <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
           <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
         </span>
-        <p className="mt-2 system-xs-semibold text-text-primary">
-          {t(($) => $['newKnowledge.pagesAppearTitle'])}
-        </p>
+        <p className="mt-2 system-xs-semibold text-text-primary">{t(($) => $.pagesAppearTitle)}</p>
         <p className="mt-2 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.pagesAppearDescription'])}
+          {t(($) => $.pagesAppearDescription)}
         </p>
       </div>
       {backendBoundaryVisible && (
@@ -166,7 +162,7 @@ export function PendingWebsiteSetup({
           role="alert"
           className="rounded-md bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
         >
-          {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+          {t(($) => $.sourceSetupBackendDependency)}
         </p>
       )}
     </section>
@@ -180,7 +176,7 @@ export function UnavailableConnectedSourceSetup({
   draft: NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCreation } = useTranslation('datasetCreation')
   const sourceType = draft.sourceType
   const providers = connectedProviders[sourceType]
@@ -224,14 +220,14 @@ export function UnavailableConnectedSourceSetup({
 
       {sourceType === 'onlineDrive' && (
         <section
-          aria-label={t(($) => $['newKnowledge.selectFilesAndFolders'])}
+          aria-label={t(($) => $.selectFilesAndFolders)}
           className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-6 text-center"
         >
           <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
             <span aria-hidden className="i-ri-folder-open-line size-5 text-text-tertiary" />
           </span>
           <p className="mt-2 system-xs-semibold text-text-primary">
-            {t(($) => $['newKnowledge.selectFilesAndFolders'])}
+            {t(($) => $.selectFilesAndFolders)}
           </p>
         </section>
       )}
@@ -239,7 +235,7 @@ export function UnavailableConnectedSourceSetup({
       <div>
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel>
-            {t(($) => $['newKnowledge.sourceName'])}
+            {t(($) => $.sourceName)}
             <span aria-hidden className="ml-0.5 text-text-destructive">
               *
             </span>
@@ -249,16 +245,14 @@ export function UnavailableConnectedSourceSetup({
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
             value={draft.sourceName}
-            placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+            placeholder={t(($) => $.sourceNamePlaceholder)}
             onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           />
         </Field>
       </div>
 
       <div role="status" className="rounded-lg bg-background-section px-3 py-2">
-        <p className="system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.providerUnavailable'])}
-        </p>
+        <p className="system-xs-regular text-text-tertiary">{t(($) => $.providerUnavailable)}</p>
       </div>
       <SourceSyncPolicyField draft={draft} size="large" onDraftChange={onDraftChange} />
     </div>

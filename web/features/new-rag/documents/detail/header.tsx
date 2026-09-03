@@ -13,7 +13,7 @@ export function DocumentDetailHeader({
   backPath: string
   title: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <>
@@ -23,7 +23,7 @@ export function DocumentDetailHeader({
           href={backPath}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4" />
-          {t(($) => $['newKnowledge.documents'])}
+          {t(($) => $.documents)}
         </Link>
       </div>
       <div className="mt-5 flex flex-wrap items-start justify-between gap-3">

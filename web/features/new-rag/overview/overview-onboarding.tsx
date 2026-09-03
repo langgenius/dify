@@ -37,7 +37,7 @@ export function OverviewOnboarding() {
 }
 
 function IndexingProgress() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const indexingTask = useAtomValue(overviewIndexingTaskAtom)
   const indexingSourceName = useAtomValue(overviewIndexingSourceNameAtom)
   if (!indexingTask) return null
@@ -47,16 +47,16 @@ function IndexingProgress() {
     <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
       <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
         {indexingSourceName
-          ? t(($) => $['newKnowledge.overview.indexingSource'], { source: indexingSourceName })
-          : t(($) => $['newKnowledge.overview.indexing'])}
+          ? t(($) => $['overview.indexingSource'], { source: indexingSourceName })
+          : t(($) => $['overview.indexing'])}
       </h2>
       <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
-        {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
+        {t(($) => $['overview.indexingConnectedDescription'])}
       </p>
       <div className="mt-3">
         <div
           role="progressbar"
-          aria-label={t(($) => $['newKnowledge.overview.indexing'])}
+          aria-label={t(($) => $['overview.indexing'])}
           aria-valuemin={0}
           aria-valuemax={progressKnown ? indexingTask.progress_total : undefined}
           aria-valuenow={progressKnown ? indexingTask.progress_completed : undefined}
@@ -68,7 +68,7 @@ function IndexingProgress() {
           />
         </div>
         <p className="mt-2.5 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.overview.indexedDocuments'], {
+          {t(($) => $['overview.indexedDocuments'], {
             indexed: indexingTask.progress_completed,
             total: indexingTask.progress_total,
           })}
@@ -79,7 +79,7 @@ function IndexingProgress() {
 }
 
 function EmptyKnowledgeOnboarding() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
@@ -91,11 +91,11 @@ function EmptyKnowledgeOnboarding() {
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload
-      ? t(($) => $['newKnowledge.overview.noSourcesDescription'])
-      : t(($) => $['newKnowledge.connectSourceDescription'])
+      ? t(($) => $['overview.noSourcesDescription'])
+      : t(($) => $.connectSourceDescription)
     : canUpload
-      ? t(($) => $['newKnowledge.uploadFilesDescription'])
-      : t(($) => $['newKnowledge.overview.readOnlyDescription'])
+      ? t(($) => $.uploadFilesDescription)
+      : t(($) => $['overview.readOnlyDescription'])
 
   const beginNavigation = (action: 'source' | 'upload', event: MouseEvent<HTMLAnchorElement>) => {
     if (
@@ -131,7 +131,7 @@ function EmptyKnowledgeOnboarding() {
       </div>
       <div className="mt-3 h-10.5">
         <h2 className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.overview.noSources'])}
+          {t(($) => $['overview.noSources'])}
         </h2>
         <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
       </div>
@@ -141,7 +141,7 @@ function EmptyKnowledgeOnboarding() {
         >
           {canConnectSource && (
             <Link
-              aria-label={t(($) => $['newKnowledge.overview.connectSource'])}
+              aria-label={t(($) => $['overview.connectSource'])}
               aria-busy={pendingAction === 'source' || undefined}
               aria-disabled={pendingAction !== undefined}
               className={cn(
@@ -162,16 +162,16 @@ function EmptyKnowledgeOnboarding() {
                 )}
               />
               <span className="mt-2 system-md-semibold text-text-primary">
-                {t(($) => $['newKnowledge.overview.connectSource'])}
+                {t(($) => $['overview.connectSource'])}
               </span>
               <span className="mt-0.5 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.connectSourceDescription'])}
+                {t(($) => $.connectSourceDescription)}
               </span>
             </Link>
           )}
           {canUpload && (
             <Link
-              aria-label={t(($) => $['newKnowledge.overview.uploadFiles'])}
+              aria-label={t(($) => $['overview.uploadFiles'])}
               aria-busy={pendingAction === 'upload' || undefined}
               aria-disabled={pendingAction !== undefined}
               className={cn(
@@ -192,10 +192,10 @@ function EmptyKnowledgeOnboarding() {
                 )}
               />
               <span className="mt-2 system-md-semibold text-text-primary">
-                {t(($) => $['newKnowledge.overview.uploadFiles'])}
+                {t(($) => $['overview.uploadFiles'])}
               </span>
               <span className="mt-0.5 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.uploadFilesDescription'])}
+                {t(($) => $.uploadFilesDescription)}
               </span>
             </Link>
           )}
@@ -217,7 +217,7 @@ function FirstSourceTaskFailureSession({
 }: {
   failedTask: KnowledgeFsBackgroundTaskResponse
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
   const refreshBackgroundTasks = useSetAtom(refreshOverviewBackgroundTasksAtom)
   const retryTaskMutation = useMutation(
@@ -225,8 +225,8 @@ function FirstSourceTaskFailureSession({
   )
   const description =
     failedTask.operation === 'document_upload' || failedTask.operation === 'document_processing'
-      ? t(($) => $['newKnowledge.documentUploadFailed'])
-      : t(($) => $['newKnowledge.addSourceFailed'])
+      ? t(($) => $.documentUploadFailed)
+      : t(($) => $.addSourceFailed)
   const retryFailedTask = async () => {
     if (!failedTask.can_retry || retryTaskMutation.isPending) return
     try {
@@ -250,9 +250,7 @@ function FirstSourceTaskFailureSession({
     >
       <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
       <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
-        {retryTaskMutation.isError
-          ? t(($) => $['newKnowledge.detailErrorDescription'])
-          : description}
+        {retryTaskMutation.isError ? t(($) => $.detailErrorDescription) : description}
       </p>
       {failedTask.can_retry && (
         <Button
@@ -261,7 +259,7 @@ function FirstSourceTaskFailureSession({
           loading={retryTaskMutation.isPending}
           onClick={() => void retryFailedTask()}
         >
-          {t(($) => $['newKnowledge.retryTask'])}
+          {t(($) => $.retryTask)}
         </Button>
       )}
     </div>

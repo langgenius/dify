@@ -175,7 +175,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const generatedId = useId()
   const descriptionId = field.description ? `${generatedId}-description` : undefined
   const label = humanizeFieldName(field.name)
@@ -198,9 +198,9 @@ function ProviderFieldControl({
           </SelectLabel>
           <SelectTrigger aria-describedby={descriptionId} size="large">
             {value === 'true'
-              ? t(($) => $['newKnowledge.booleanTrue'])
+              ? t(($) => $.booleanTrue)
               : value === 'false'
-                ? t(($) => $['newKnowledge.booleanFalse'])
+                ? t(($) => $.booleanFalse)
                 : '—'}
           </SelectTrigger>
           <SelectContent>
@@ -209,11 +209,11 @@ function ProviderFieldControl({
               <SelectItemIndicator />
             </SelectItem>
             <SelectItem value="true">
-              <SelectItemText>{t(($) => $['newKnowledge.booleanTrue'])}</SelectItemText>
+              <SelectItemText>{t(($) => $.booleanTrue)}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
             <SelectItem value="false">
-              <SelectItemText>{t(($) => $['newKnowledge.booleanFalse'])}</SelectItemText>
+              <SelectItemText>{t(($) => $.booleanFalse)}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
           </SelectContent>
@@ -267,7 +267,7 @@ function ConnectionForm({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const supportedAuthKinds = getSupportedAuthKinds(provider, credentialId)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
@@ -354,7 +354,7 @@ function ConnectionForm({
       {supportedAuthKinds.length > 1 && (
         <Fieldset className="mb-4">
           <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
-            {t(($) => $['newKnowledge.authenticationMethod'])}
+            {t(($) => $.authenticationMethod)}
           </FieldsetLegend>
           <RadioGroup<ConnectionAuthKind>
             name="auth-kind"
@@ -367,7 +367,7 @@ function ConnectionForm({
                 className="flex items-center gap-1.5 system-xs-regular text-text-secondary"
               >
                 <Radio<ConnectionAuthKind> value={kind} />
-                {t(($) => $[`newKnowledge.authKind.${kind}`])}
+                {t(($) => $[`authKind.${kind}`])}
               </label>
             ))}
           </RadioGroup>
@@ -385,13 +385,13 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'], { provider: providerName })}
+          {t(($) => $.connectionFailed, { provider: providerName })}
         </p>
       )}
       <Button type="submit" variant="primary" className="mt-4" loading={pending}>
         {pending
-          ? t(($) => $['newKnowledge.connectingProvider'])
-          : t(($) => $['newKnowledge.connectProvider'], {
+          ? t(($) => $.connectingProvider)
+          : t(($) => $.connectProvider, {
               provider: providerName,
             })}
       </Button>
@@ -416,7 +416,7 @@ function ManagedProviderConnection({
   provider: Provider
   providerName: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState(false)
@@ -486,7 +486,7 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionFailed'], { provider: providerName })}
+            {t(($) => $.connectionFailed, { provider: providerName })}
           </p>
           <Button
             className="mt-3"
@@ -503,7 +503,7 @@ function ManagedProviderConnection({
         <>
           <Loading />
           <p role="status" className="mt-3 system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.connectingProvider'])}
+            {t(($) => $.connectingProvider)}
           </p>
         </>
       )}
@@ -532,7 +532,7 @@ function UnconfiguredProvider({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [configuring, setConfiguring] = useState(false)
   const difyManaged = isDifyManagedProvider(provider)
 
@@ -573,12 +573,12 @@ function UnconfiguredProvider({
         />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.providerNotConfigured'], {
+        {t(($) => $.providerNotConfigured, {
           provider: providerName,
         })}
       </h3>
       <p className="system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
+        {t(($) => $.providerNotConfiguredDescription, {
           provider: providerName,
         })}
       </p>
@@ -587,7 +587,7 @@ function UnconfiguredProvider({
         variant="primary"
         onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
       >
-        {t(($) => $['newKnowledge.configureProvider'], {
+        {t(($) => $.configureProvider, {
           provider: providerName,
         })}
       </Button>
@@ -608,7 +608,7 @@ function ConnectionProblem({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
@@ -646,20 +646,18 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'], { provider: providerName })}
+        {t(($) => $.connectionNeedsAttention, { provider: providerName })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
+        {t(($) => $.connectionNeedsAttentionDescription)}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionRefreshFailed'])}
+          {t(($) => $.connectionRefreshFailed)}
         </p>
       )}
       <Button className="mt-4" onClick={() => void refresh()} disabled={pending}>
-        {pending
-          ? t(($) => $['newKnowledge.refreshingConnection'])
-          : tCommon(($) => $['operation.retry'])}
+        {pending ? t(($) => $.refreshingConnection) : tCommon(($) => $['operation.retry'])}
       </Button>
     </div>
   )
@@ -672,7 +670,7 @@ function ProvisioningConnection({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -693,15 +691,15 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'], { provider: providerName })}
+        {t(($) => $.connectionProvisioning, { provider: providerName })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionRefreshFailed'])}
+          {t(($) => $.connectionRefreshFailed)}
         </p>
       )}
       <Button className="mt-3" loading={pending} onClick={() => void refresh()} disabled={pending}>
-        {t(($) => $['newKnowledge.refreshConnectionStatus'])}
+        {t(($) => $.refreshConnectionStatus)}
       </Button>
     </div>
   )
@@ -741,7 +739,7 @@ function AddSourcePageContent({
   knowledgeSpaceId,
   sourceDraftKey,
 }: AddSourcePageProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const router = useRouter()
   const queryClient = useQueryClient()
   const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
@@ -1030,11 +1028,9 @@ function AddSourcePageContent({
     <>
       <main className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-6 sm:pb-8">
         <header>
-          <h2 className="system-xl-semibold text-text-primary">
-            {t(($) => $['newKnowledge.addSource'])}
-          </h2>
+          <h2 className="system-xl-semibold text-text-primary">{t(($) => $.addSource)}</h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.addSourceDescription'])}
+            {t(($) => $.addSourceDescription)}
           </p>
         </header>
         <div className="mt-4.5 flex w-full max-w-160 flex-col gap-4">
@@ -1067,7 +1063,7 @@ function AddSourcePageContent({
               {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
-                    {t(($) => $['newKnowledge.providerLoadFailed'])}
+                    {t(($) => $.providerLoadFailed)}
                   </p>
                   <Button
                     className="mt-3"
@@ -1080,18 +1076,18 @@ function AddSourcePageContent({
                       ])
                     }
                   >
-                    {t(($) => $['newKnowledge.retryProviderLoad'])}
+                    {t(($) => $.retryProviderLoad)}
                   </Button>
                 </div>
               ) : websiteProviderOptions.length === 0 ? null : !datasourceProvider || !provider ? (
                 <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.providerUnavailable'])}
+                  {t(($) => $.providerUnavailable)}
                 </div>
               ) : !provider.available || !supportsDirectConnection ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">{websiteProviderName}</p>
                   <p className="mt-1 system-xs-regular text-text-tertiary">
-                    {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
+                    {provider.unavailableReason ?? t(($) => $.providerUnavailable)}
                   </p>
                 </div>
               ) : activeConnection && websitePreviewReady ? (
@@ -1177,17 +1173,17 @@ function AddSourcePageContent({
           {sourceType === 'websiteCrawl' && !websiteReady && (
             <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
               <Button type="button" onClick={requestExit}>
-                {t(($) => $['newKnowledge.cancelAddSource'])}
+                {t(($) => $.cancelAddSource)}
               </Button>
               <span id="add-source-selection-requirement" className="sr-only">
-                {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+                {t(($) => $.addSourceRequiresSelection)}
               </span>
               <Button
                 variant="primary"
                 disabled
                 aria-describedby="add-source-selection-requirement"
               >
-                {t(($) => $['newKnowledge.addSource'])}
+                {t(($) => $.addSource)}
               </Button>
             </div>
           )}

@@ -33,7 +33,7 @@ function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => voi
 }
 
 function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [content, setContent] = useState<string>()
   const [readFailed, setReadFailed] = useState(false)
@@ -68,7 +68,7 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-divider-subtle px-6 py-4">
           <div className="min-w-0">
             <div className="system-2xs-semibold-uppercase text-text-accent">
-              {t(($) => $['newKnowledge.preview'])}
+              {t(($) => $.preview)}
             </div>
             <DialogTitle className="mt-1 truncate title-md-semi-bold text-text-primary">
               {file.name}

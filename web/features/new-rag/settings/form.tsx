@@ -9,7 +9,7 @@ import { RetrievalSettingsSection } from './retrieval-settings'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
 
 export function KnowledgeSettingsForm() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
 
   if (!space) return null
@@ -23,7 +23,7 @@ export function KnowledgeSettingsForm() {
           role="status"
         >
           <span aria-hidden className="i-ri-lock-2-line size-4 shrink-0" />
-          {t(($) => $['newKnowledge.settings.viewOnly'])}
+          {t(($) => $['settings.viewOnly'])}
         </div>
       )}
 

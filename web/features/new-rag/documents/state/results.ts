@@ -80,7 +80,7 @@ export const documentFailureMessageKeysAtom = atom((get) => {
         knowledgeFsTaskFailureMessageKey(
           task?.failure,
           task?.errorCode ?? (task?.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
-        ) ?? 'newKnowledge.taskFailure.internal'
+        ) ?? 'taskFailure.internal'
       return [[document.id, messageKey] as const]
     }),
   )

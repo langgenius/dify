@@ -64,13 +64,13 @@ export function EmptyInline({
 }
 
 export function OverviewErrorInline() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <EmptyInline
       icon="i-ri-error-warning-line"
-      title={t(($) => $['newKnowledge.detailErrorTitle'])}
-      description={t(($) => $['newKnowledge.detailErrorDescription'])}
+      title={t(($) => $.detailErrorTitle)}
+      description={t(($) => $.detailErrorDescription)}
     />
   )
 }

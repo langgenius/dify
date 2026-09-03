@@ -23,6 +23,7 @@ from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
+from services.dataset_api_key_service import ApiKeyBindings
 
 from . import console_ns
 from .wraps import (
@@ -41,9 +42,12 @@ class ApiKeyItem(ResponseModel):
     id: str
     type: str
     token: str
-    # Dataset keys only: the knowledge bases this key is bound to. Empty = the key can
-    # access every dataset in the tenant (default). App keys are always empty.
+    # Dataset keys only: the knowledge bases this key is bound to. Legacy datasets and
+    # KnowledgeFS spaces are listed separately because they live in different tables.
+    # Both empty = the key can access every knowledge base in the tenant (default).
+    # App keys are always empty.
     dataset_ids: list[str] = []
+    knowledge_space_ids: list[str] = []
     last_used_at: int | None = None
     created_at: int | None = None
 
@@ -74,11 +78,11 @@ def mask_api_token(token: str) -> str:
 
 def build_masked_api_key_list(
     api_tokens: Iterable[ApiToken],
-    bindings_by_token: Mapping[str, list[str]] | None = None,
+    bindings_by_token: Mapping[str, ApiKeyBindings] | None = None,
 ) -> ApiKeyList:
     """Build an ApiKeyList from ORM tokens with their secrets masked.
 
-    ``bindings_by_token`` maps an api_token id to the dataset ids it is bound to
+    ``bindings_by_token`` maps an api_token id to the knowledge bases it is bound to
     (from DatasetApiTokenBinding); tokens absent from the map are unbound (empty =
     access all). App-key lists omit it entirely.
     """
@@ -87,7 +91,9 @@ def build_masked_api_key_list(
     for api_token in api_tokens:
         item = ApiKeyItem.model_validate(api_token, from_attributes=True)
         item.token = mask_api_token(item.token)
-        item.dataset_ids = bindings_by_token.get(str(api_token.id), [])
+        bindings = bindings_by_token.get(str(api_token.id))
+        item.dataset_ids = list(bindings.dataset_ids) if bindings else []
+        item.knowledge_space_ids = list(bindings.knowledge_space_ids) if bindings else []
         items.append(item)
     return ApiKeyList(data=items)
 

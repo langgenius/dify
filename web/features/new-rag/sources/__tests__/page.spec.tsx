@@ -3,7 +3,7 @@ import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-mode
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import datasetTranslations from '@/i18n/en-US/dataset.json'
+import knowledgeSpaceTranslations from '@/i18n/en-US/knowledge-space.json'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { SourcesPage } from '../page'
 
@@ -706,8 +706,8 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(currentRefetchInterval()).toBe(2000)
-    expect(screen.getByText('dataset.newKnowledge.awaitingInitialSource')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.awaitingInitialSource')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.sourcesEmptyTitle')).not.toBeInTheDocument()
   })
 
   it('waits for the Initial Source created by the requested operation', () => {
@@ -731,7 +731,7 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(2000)
-    expect(screen.getByText('dataset.newKnowledge.awaitingInitialSource')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.awaitingInitialSource')).toBeInTheDocument()
   })
 
   it('clears the one-shot URL signal once the requested Initial Source appears', async () => {
@@ -772,7 +772,7 @@ describe('SourcesPage', () => {
 
       expect(currentRefetchInterval()).toBe(false)
 
-      act(() => screen.getByRole('button', { name: 'dataset.newKnowledge.refreshSources' }).click())
+      act(() => screen.getByRole('button', { name: 'knowledgeSpace.refreshSources' }).click())
       expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
 
       sourcesQuery.data = {
@@ -793,7 +793,7 @@ describe('SourcesPage', () => {
       view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
       expect(
-        screen.queryByRole('button', { name: 'dataset.newKnowledge.refreshSources' }),
+        screen.queryByRole('button', { name: 'knowledgeSpace.refreshSources' }),
       ).not.toBeInTheDocument()
       expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(false)
     } finally {
@@ -806,14 +806,12 @@ describe('SourcesPage', () => {
 
     const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.sourcesEmptyTitle')).toBeInTheDocument()
-    expect(datasetTranslations['newKnowledge.sourcesEmptyDescription']).toBe(
+    expect(screen.getByText('knowledgeSpace.sourcesEmptyTitle')).toBeInTheDocument()
+    expect(knowledgeSpaceTranslations.sourcesEmptyDescription).toBe(
       'Connect a website, workspace, or drive — Dify keeps it synced and fresh, so retrieval never breaks.',
     )
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.sources' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.addSource' })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: 'knowledgeSpace.sources' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.addSource' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources/new',
     )
@@ -826,9 +824,10 @@ describe('SourcesPage', () => {
     ] as const) {
       expect(screen.getByRole('link', { name })).toHaveAttribute('href', path)
     }
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.moreProviders' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1/sources/new')
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.moreProviders' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/sources/new',
+    )
     for (const [brand, iconClass] of [
       ['firecrawl', 'i-custom-public-common-firecrawl'],
       ['jina', 'i-custom-public-llm-jina'],
@@ -877,18 +876,16 @@ describe('SourcesPage', () => {
 
     const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.sourceStatus.active')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceStatus.syncing')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceStatus.error')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.sourceStatus.active')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.sourceStatus.syncing')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.sourceStatus.disabled')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.sourceStatus.error')).toBeInTheDocument()
 
     const sourceFilter = screen.getByRole('combobox', {
-      name: 'dataset.newKnowledge.sourceFilterLabel',
+      name: 'knowledgeSpace.sourceFilterLabel',
     })
     await user.click(sourceFilter)
-    await user.click(
-      screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.error' }),
-    )
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.sourceStatus.error' }))
     await waitFor(() => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('status')).toBe('error')
     })
@@ -896,18 +893,13 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
 
     await user.click(sourceFilter)
-    await user.click(
-      screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.syncing' }),
-    )
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.sourceStatus.syncing' }))
     expect(screen.getByText('API reference')).toBeInTheDocument()
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
 
     await user.click(sourceFilter)
-    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.allSources' }))
-    await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
-      'api',
-    )
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.allSources' }))
+    await user.type(screen.getByRole('searchbox', { name: 'knowledgeSpace.searchSources' }), 'api')
     expect(screen.getByText('API reference')).toBeInTheDocument()
     expect(screen.queryByText('Support site')).not.toBeInTheDocument()
   })
@@ -927,7 +919,7 @@ describe('SourcesPage', () => {
 
     const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.sourceColumn' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.sourceColumn' }))
     await waitFor(() => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort')).toBe('name-asc')
     })
@@ -935,7 +927,7 @@ describe('SourcesPage', () => {
     expect(within(rowsAscending[0]!).getByText('Alpha docs')).toBeInTheDocument()
     expect(within(rowsAscending[1]!).getByText('Zulu docs')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.sourceColumn' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.sourceColumn' }))
     const rowsDescending = screen.getAllByRole('row').slice(1)
     expect(within(rowsDescending[0]!).getByText('Zulu docs')).toBeInTheDocument()
     expect(within(rowsDescending[1]!).getByText('Alpha docs')).toBeInTheDocument()
@@ -1038,12 +1030,10 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('Incomplete Initial Source marker')).not.toBeInTheDocument()
     const initializingRow = screen.getByRole('row', { name: /Initial documents/ })
     expect(within(initializingRow).getByRole('status')).toHaveTextContent(
-      'Initial documents: dataset.newKnowledge.sourceStatus.initializing',
+      'Initial documents: knowledgeSpace.sourceStatus.initializing',
     )
     const failedRow = screen.getByRole('row', { name: /Initial website/ })
-    expect(
-      within(failedRow).getByText('dataset.newKnowledge.sourceStatus.error'),
-    ).toBeInTheDocument()
+    expect(within(failedRow).getByText('knowledgeSpace.sourceStatus.error')).toBeInTheDocument()
 
     expect(
       currentRefetchInterval(
@@ -1082,20 +1072,18 @@ describe('SourcesPage', () => {
 
     await user.click(
       within(initializingRow).getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Initial documents"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Initial documents"}',
       }),
     )
+    expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.openSource' })).toBeInTheDocument()
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.syncNow' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'common.operation.edit' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.removeSource' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1133,7 +1121,7 @@ describe('SourcesPage', () => {
 
     await waitFor(() => {
       expect(within(sourceRow).getByRole('status')).toHaveTextContent(
-        'dataset.newKnowledge.sourceStatus.syncing',
+        'knowledgeSpace.sourceStatus.syncing',
       )
     })
     expect(
@@ -1146,11 +1134,11 @@ describe('SourcesPage', () => {
 
     await user.click(
       within(sourceRow).getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Failed Initial Source"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Failed Initial Source"}',
       }),
     )
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.syncNow' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1187,11 +1175,11 @@ describe('SourcesPage', () => {
     const sourceRow = screen.getByRole('row', { name: /Failed connected source/ })
     await user.click(
       within(sourceRow).getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Failed connected source"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Failed connected source"}',
       }),
     )
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.syncNow' }),
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.retry' }))
 
@@ -1201,7 +1189,7 @@ describe('SourcesPage', () => {
     })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.sourceStatus.syncing',
+      'knowledgeSpace.sourceStatus.syncing',
     )
   })
 
@@ -1224,7 +1212,7 @@ describe('SourcesPage', () => {
 
     const sourceRow = screen.getByRole('row', { name: /Importing connected source/ })
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.sourceStatus.syncing',
+      'knowledgeSpace.sourceStatus.syncing',
     )
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
@@ -1274,17 +1262,13 @@ describe('SourcesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'dataset.newKnowledge.sourceStatus.syncing',
-      )
+      expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.sourceStatus.syncing')
     })
 
     sourcesQuery.data = { pages: [{ items: [staleFailedSource] }] }
     view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.sourceStatus.syncing',
-    )
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.sourceStatus.syncing')
     expect(currentRefetchInterval(staleFailedSource)).toBe(3000)
   })
 
@@ -1308,7 +1292,7 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.sourcesEmptyTitle')).not.toBeInTheDocument()
   })
 
   it('continues when the newest loaded page contributes only hidden preview drafts', () => {
@@ -1342,12 +1326,12 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
 
     const openSource = screen.getByRole('menuitem', {
-      name: 'dataset.newKnowledge.openSource',
+      name: 'knowledgeSpace.openSource',
     })
     expect(openSource).toHaveAttribute('href', 'https://docs.example.com')
     expect(openSource).toHaveAttribute('target', '_blank')
@@ -1375,12 +1359,10 @@ describe('SourcesPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
-    ).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.openSource' })).toHaveAttribute(
       'href',
       'https://s3.console.aws.amazon.com/s3/buckets/private-bucket?prefix=Product+documentation%2F%E6%96%87%E6%A1%A3',
     )
@@ -1395,19 +1377,17 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
 
-    expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+      screen.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+      screen.getByRole('menuitem', { name: 'knowledgeSpace.removeSource' }),
     ).toBeInTheDocument()
   })
 
@@ -1420,24 +1400,22 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
 
+    expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.openSource' })).toBeInTheDocument()
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.syncNow' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'common.operation.edit' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.disableSource' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.removeSource' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1477,18 +1455,18 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
     const nameInput = screen.getByRole('textbox', {
-      name: 'dataset.newKnowledge.sourceName',
+      name: 'knowledgeSpace.sourceName',
     })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
-    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
-    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
+    await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.syncPolicyDaily' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() =>
@@ -1504,7 +1482,7 @@ describe('SourcesPage', () => {
     expect(screen.getByRole('row', { name: /Renamed documentation/ })).toBeInTheDocument()
     expect(
       within(screen.getByRole('row', { name: /Renamed documentation/ })).getByText(
-        'dataset.newKnowledge.syncPolicyDaily',
+        'knowledgeSpace.syncPolicyDaily',
       ),
     ).toBeInTheDocument()
   })
@@ -1547,7 +1525,7 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
@@ -1556,7 +1534,7 @@ describe('SourcesPage', () => {
     expect(rootUrl).toHaveValue('https://docs.example.com/')
     await user.clear(rootUrl)
     await user.type(rootUrl, 'https://handbook.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
     expect(screen.getByRole('checkbox', { name: 'Follow links' })).toBeChecked()
     const maxPages = screen.getByRole('spinbutton', {
       name: 'Page cap',
@@ -1564,7 +1542,7 @@ describe('SourcesPage', () => {
     expect(maxPages).toHaveValue(100)
     await user.clear(maxPages)
     await user.type(maxPages, '50')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: /Getting started/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -1632,11 +1610,11 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Product plan' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -1713,11 +1691,11 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Project plan.pdf' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -1770,11 +1748,11 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
 
     const followLinks = screen.getByRole('checkbox', { name: 'Follow links' })
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
@@ -1786,7 +1764,7 @@ describe('SourcesPage', () => {
     await user.click(followLinks)
     expect(saveButton).toBeDisabled()
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: /Guide/ }))
     expect(saveButton).toBeEnabled()
   })
@@ -1823,7 +1801,7 @@ describe('SourcesPage', () => {
     const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
@@ -1850,11 +1828,11 @@ describe('SourcesPage', () => {
     rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
+    const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
-    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
-    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
+    await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
+    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.syncPolicyDaily' }))
     await user.click(saveButton)
 
     await waitFor(() =>
@@ -1903,15 +1881,15 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
     const includedPaths = screen.getByRole('textbox', { name: 'Included paths' })
     expect(includedPaths).toHaveValue('/private/**')
     await user.clear(includedPaths)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: /Guide/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -1952,17 +1930,17 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(
-      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
     ).not.toBeInTheDocument()
     const nameInput = screen.getByRole('textbox', {
-      name: 'dataset.newKnowledge.sourceName',
+      name: 'knowledgeSpace.sourceName',
     })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
@@ -1992,14 +1970,14 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.providerLoadFailed')
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.providerLoadFailed')
     expect(
-      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
     ).not.toBeInTheDocument()
   })
 
@@ -2023,7 +2001,7 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="control-space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
@@ -2049,11 +2027,11 @@ describe('SourcesPage', () => {
     const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
 
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     await waitFor(() =>
       expect(clientMock.syncSource).toHaveBeenCalledWith({
@@ -2063,12 +2041,12 @@ describe('SourcesPage', () => {
     )
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.syncing',
+        'knowledgeSpace.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceSyncProgress:{"completed":0,"total":1}',
+        'knowledgeSpace.sourceSyncProgress:{"completed":0,"total":1}',
       ),
     ).toBeInTheDocument()
     finishRefresh?.()
@@ -2079,7 +2057,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.active',
+          'knowledgeSpace.sourceStatus.active',
         ),
       ).toBeInTheDocument(),
     )
@@ -2114,7 +2092,7 @@ describe('SourcesPage', () => {
 
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.syncing',
+        'knowledgeSpace.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
 
@@ -2126,7 +2104,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.active',
+          'knowledgeSpace.sourceStatus.active',
         ),
       ).toBeInTheDocument(),
     )
@@ -2150,22 +2128,18 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
-    expect(within(row).getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
-    expect(
-      within(row).queryByText('dataset.newKnowledge.sourceStatus.syncing'),
-    ).not.toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.sourceStatus.disabled')).toBeInTheDocument()
+    expect(within(row).queryByText('knowledgeSpace.sourceStatus.syncing')).not.toBeInTheDocument()
 
     await user.click(
       within(row).getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
-    expect(within(row).getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
-    expect(
-      within(row).queryByText('dataset.newKnowledge.sourceStatus.syncing'),
-    ).not.toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.sourceStatus.disabled')).toBeInTheDocument()
+    expect(within(row).queryByText('knowledgeSpace.sourceStatus.syncing')).not.toBeInTheDocument()
 
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
@@ -2234,15 +2208,13 @@ describe('SourcesPage', () => {
     const row = screen.getByRole('row', { name: /Product documentation/ })
     await user.click(
       within(row).getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'dataset.enable' }))
 
     await waitFor(() =>
-      expect(
-        within(row).getByText('dataset.newKnowledge.sourceStatus.syncing'),
-      ).toBeInTheDocument(),
+      expect(within(row).getByText('knowledgeSpace.sourceStatus.syncing')).toBeInTheDocument(),
     )
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
@@ -2291,7 +2263,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(row).getByRole('button', {
-          name: 'dataset.newKnowledge.taskFailure.temporary',
+          name: 'knowledgeSpace.taskFailure.temporary',
         }),
       ).toBeInTheDocument(),
     )
@@ -2311,14 +2283,14 @@ describe('SourcesPage', () => {
     const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.syncing',
+        'knowledgeSpace.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
 
@@ -2348,7 +2320,7 @@ describe('SourcesPage', () => {
     })
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.active',
+        'knowledgeSpace.sourceStatus.active',
       ),
     ).toBeInTheDocument()
   })
@@ -2360,10 +2332,10 @@ describe('SourcesPage', () => {
     const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
@@ -2372,7 +2344,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.active',
+          'knowledgeSpace.sourceStatus.active',
         ),
       ).toBeInTheDocument(),
     )
@@ -2393,7 +2365,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.syncing',
+          'knowledgeSpace.sourceStatus.syncing',
         ),
       ).toBeInTheDocument(),
     )
@@ -2406,15 +2378,15 @@ describe('SourcesPage', () => {
     const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.syncing',
+          'knowledgeSpace.sourceStatus.syncing',
         ),
       ).toBeInTheDocument(),
     )
@@ -2440,7 +2412,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.active',
+          'knowledgeSpace.sourceStatus.active',
         ),
       ).toBeInTheDocument(),
     )
@@ -2486,10 +2458,10 @@ describe('SourcesPage', () => {
     const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     const retriedWorkflow = {
       ...sourceWorkflow('syncing'),
@@ -2505,7 +2477,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.syncing',
+          'knowledgeSpace.sourceStatus.syncing',
         ),
       ).toBeInTheDocument(),
     )
@@ -2543,15 +2515,15 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.sourceStatus.syncing',
+          'knowledgeSpace.sourceStatus.syncing',
         ),
       ).toBeInTheDocument(),
     )
@@ -2581,14 +2553,14 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.syncNow' }))
 
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', {
-      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
+      name: 'knowledgeSpace.overview.attention.modelReadiness.title',
     })
     await user.click(
       within(dialog).getByRole('button', {
@@ -2616,12 +2588,12 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     const activeSourceActions = within(
       screen.getByRole('row', { name: /Active source/ }),
-    ).getByRole('button', { name: /dataset.newKnowledge.sourceActions/ })
+    ).getByRole('button', { name: /knowledgeSpace.sourceActions/ })
     const disabledSourceActions = within(
       screen.getByRole('row', { name: /Disabled source/ }),
-    ).getByRole('button', { name: /dataset.newKnowledge.sourceActions/ })
+    ).getByRole('button', { name: /knowledgeSpace.sourceActions/ })
     await user.click(activeSourceActions)
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
         body: { expectedVersion: 3, status: 'disabled' },
@@ -2676,24 +2648,24 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.disabled',
+        'knowledgeSpace.sourceStatus.disabled',
       ),
     ).toBeInTheDocument()
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.syncPolicyDaily',
+        'knowledgeSpace.syncPolicyDaily',
       ),
     ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
     await user.click(screen.getByRole('menuitem', { name: 'dataset.enable' }))
@@ -2730,14 +2702,14 @@ describe('SourcesPage', () => {
     const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'dataset.newKnowledge.syncPolicyDaily',
+          'knowledgeSpace.syncPolicyDaily',
         ),
       ).toBeInTheDocument(),
     )
@@ -2765,8 +2737,8 @@ describe('SourcesPage', () => {
     view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
-    expect(within(row).getByText('dataset.newKnowledge.syncPolicyManual')).toBeInTheDocument()
-    expect(within(row).queryByText('dataset.newKnowledge.syncPolicyDaily')).not.toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.syncPolicyManual')).toBeInTheDocument()
+    expect(within(row).queryByText('knowledgeSpace.syncPolicyDaily')).not.toBeInTheDocument()
     expect(within(row).queryByText('—')).not.toBeInTheDocument()
   })
 
@@ -2777,13 +2749,13 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.removeSource' }))
 
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.removeSource' }))
     await waitFor(() =>
       expect(clientMock.deleteSource).toHaveBeenCalledWith({
         body: { expectedRevision: 3 },
@@ -2803,18 +2775,16 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+    await user.click(screen.getByRole('menuitem', { name: 'knowledgeSpace.removeSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.removeSource' }))
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('dataset.newKnowledge.sourcesErrorDescription'),
+      expect(toastErrorMock).toHaveBeenCalledWith('knowledgeSpace.sourcesErrorDescription'),
     )
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.removeSource' })).toBeInTheDocument()
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
 
@@ -2835,7 +2805,7 @@ describe('SourcesPage', () => {
     await waitFor(() => expect(clientMock.syncSource).toHaveBeenCalledOnce())
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-        'dataset.newKnowledge.sourceStatus.syncing',
+        'knowledgeSpace.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
     finishRefresh?.()
@@ -2878,7 +2848,7 @@ describe('SourcesPage', () => {
     sourcesQuery.hasNextPage = true
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
@@ -2890,8 +2860,8 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(screen.queryByText('knowledgeSpace.sourcesEmptyTitle')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -2902,12 +2872,12 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchSources' }),
       'later page',
     )
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.noMatchingSources')).not.toBeInTheDocument()
   })
 
   it('stops automatic filtered pagination at the page cap and offers manual loading', async () => {
@@ -2922,12 +2892,12 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchSources' }),
       'later page',
     )
 
     expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -2939,14 +2909,14 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
-      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      screen.getByRole('searchbox', { name: 'knowledgeSpace.searchSources' }),
       'later page',
     )
 
     expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.noMatchingSources')).not.toBeInTheDocument()
   })
 
   it('shows provider and source type as separate row details', () => {
@@ -2957,7 +2927,7 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('Firecrawl')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.sourceType.web')).toBeInTheDocument()
   })
 
   it('restores legacy website provider metadata and shows policy and last sync details', () => {
@@ -2994,7 +2964,7 @@ describe('SourcesPage', () => {
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     expect(within(row).getByText('Firecrawl')).toBeInTheDocument()
-    expect(within(row).getByText('dataset.newKnowledge.syncPolicyDaily')).toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.syncPolicyDaily')).toBeInTheDocument()
     expect(within(row).queryByText('—')).not.toBeInTheDocument()
   })
 
@@ -3017,7 +2987,7 @@ describe('SourcesPage', () => {
 
     const row = screen.getByRole('row', { name: /Notion support SOP/ })
     expect(within(row).getByText('Notion')).toBeInTheDocument()
-    expect(within(row).getByText('dataset.newKnowledge.onlineDocuments')).toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.onlineDocuments')).toBeInTheDocument()
     expect(within(row).queryByText('notion_datasource')).not.toBeInTheDocument()
   })
 
@@ -3068,7 +3038,7 @@ describe('SourcesPage', () => {
 
     const row = screen.getByRole('row', { name: /Escalation archive/ })
     expect(within(row).getByText('Google Drive')).toBeInTheDocument()
-    expect(within(row).getByText('dataset.newKnowledge.onlineDrive')).toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.onlineDrive')).toBeInTheDocument()
   })
 
   it('restores the OneDrive name, type, and brand icon', () => {
@@ -3090,7 +3060,7 @@ describe('SourcesPage', () => {
 
     const row = screen.getByRole('row', { name: /Sales enablement/ })
     expect(within(row).getByText('OneDrive')).toBeInTheDocument()
-    expect(within(row).getByText('dataset.newKnowledge.onlineDrive')).toBeInTheDocument()
+    expect(within(row).getByText('knowledgeSpace.onlineDrive')).toBeInTheDocument()
     expect(row.querySelector('.i-logos-microsoft-onedrive')).toBeInTheDocument()
   })
 
@@ -3124,26 +3094,22 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(
-      screen.queryByRole('link', { name: 'dataset.newKnowledge.addSource' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'knowledgeSpace.addSource' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
       }),
     )
+    expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.openSource' })).toBeInTheDocument()
     expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.syncNow' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.disableSource' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeSpace.removeSource' }),
     ).not.toBeInTheDocument()
   })
 })

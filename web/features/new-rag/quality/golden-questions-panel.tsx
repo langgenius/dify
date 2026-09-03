@@ -55,7 +55,7 @@ type GoldenQuestionDialogState =
     }
 
 function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   return (
     <span
       className={cn(
@@ -65,7 +65,7 @@ function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
         status === 'stale' && 'bg-state-destructive-hover text-text-destructive',
       )}
     >
-      {t(($) => $[`newKnowledge.qualityPage.goldenStatus.${status}`])}
+      {t(($) => $[`qualityPage.goldenStatus.${status}`])}
     </span>
   )
 }
@@ -101,7 +101,7 @@ function GoldenQuestionEditorDialog({
   onOpenChange: (session: GoldenQuestionDialogState | undefined) => void
   session?: GoldenQuestionDialogState
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -128,13 +128,13 @@ function GoldenQuestionEditorDialog({
           body: goldenQuestionPayload(draft),
           params: { control_space_id: knowledgeSpaceId, question_id: session.id },
         })
-        toast.success(t(($) => $['newKnowledge.qualityPage.updatedToast']))
+        toast.success(t(($) => $['qualityPage.updatedToast']))
       } else {
         await createMutation.mutateAsync({
           body: goldenQuestionPayload(draft),
           params: { control_space_id: knowledgeSpaceId },
         })
-        toast.success(t(($) => $['newKnowledge.qualityPage.createdToast']))
+        toast.success(t(($) => $['qualityPage.createdToast']))
       }
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
@@ -144,7 +144,7 @@ function GoldenQuestionEditorDialog({
       })
       close()
     } catch {
-      setError(t(($) => $.unknownError))
+      setError(t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }
@@ -169,7 +169,7 @@ function GoldenQuestionEditorDialog({
 }
 
 export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
@@ -259,24 +259,20 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       await invalidate().catch(() => undefined)
       if (failedIds.size > 0) {
         setDeleteIds(failedIds)
-        toast.error(t(($) => $.unknownError))
+        toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return false
       }
       toast.success(
         t(
           ($) =>
-            $[
-              ids.size === 1
-                ? 'newKnowledge.qualityPage.deletedToast_one'
-                : 'newKnowledge.qualityPage.deletedToast_other'
-            ],
+            $[ids.size === 1 ? 'qualityPage.deletedToast_one' : 'qualityPage.deletedToast_other'],
           { count: ids.size },
         ),
       )
       setDeleteIds(undefined)
       return true
     } catch {
-      toast.error(t(($) => $.unknownError))
+      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
       return false
     } finally {
       setDeleteSubmitting(false)
@@ -292,11 +288,11 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           <>
             <Button className="gap-1" onClick={() => setImportOpen(true)}>
               <span aria-hidden className="i-ri-download-line size-4" />
-              {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+              {t(($) => $['qualityPage.importCsv'])}
             </Button>
             <Button variant="primary" className="gap-1" onClick={openCreate}>
               <span aria-hidden className="i-ri-add-line size-4" />
-              {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+              {t(($) => $['qualityPage.addGolden'])}
             </Button>
           </>,
           actionSlot,
@@ -310,25 +306,27 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
           <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
           <p role="alert" className="system-sm-medium text-text-primary">
-            {t(($) => $.unknownError)}
+            {t(($) => $.unknownError, { ns: 'dataset' })}
           </p>
-          <Button onClick={() => void query.refetch()}>{t(($) => $.retry)}</Button>
+          <Button onClick={() => void query.refetch()}>
+            {t(($) => $.retry, { ns: 'dataset' })}
+          </Button>
         </div>
       ) : items.length ? (
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
           <div className="grid min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 py-2.5 text-[11px] leading-4 font-medium text-text-tertiary">
             <Checkbox
-              aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
+              aria-label={t(($) => $['qualityPage.selectAll'])}
               checked={allSelected}
               disabled={!canEdit}
               indeterminate={partiallySelected}
               onCheckedChange={toggleAll}
             />
-            <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
-            <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
-            <span>{t(($) => $['newKnowledge.qualityPage.tags'])}</span>
-            <span>{t(($) => $['newKnowledge.qualityPage.annotation'])}</span>
-            <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
+            <span>{t(($) => $['qualityPage.question'])}</span>
+            <span>{t(($) => $['qualityPage.statusLabel'])}</span>
+            <span>{t(($) => $['qualityPage.tags'])}</span>
+            <span>{t(($) => $['qualityPage.annotation'])}</span>
+            <span>{t(($) => $['qualityPage.updated'])}</span>
             <span />
           </div>
           {items.map((item) => (
@@ -337,7 +335,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
               className="grid h-12 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
             >
               <Checkbox
-                aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
+                aria-label={t(($) => $['qualityPage.selectQuestion'], {
                   question: item.question,
                 })}
                 checked={selected.has(item.id)}
@@ -367,14 +365,14 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
               {canEdit ? (
                 <DropdownMenu modal={false}>
                   <QualityRowMenuTrigger
-                    label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
+                    label={t(($) => $['qualityPage.questionActions'], {
                       question: item.question,
                     })}
                   />
                   <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
                     <DropdownMenuItem className="gap-2 px-3" onClick={() => void openEdit(item)}>
                       <span aria-hidden className="i-ri-edit-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.edit'])}
+                      {t(($) => $['qualityPage.edit'])}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -383,7 +381,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                       onClick={() => setDeleteIds(new Set([item.id]))}
                     >
                       <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.delete'])}
+                      {t(($) => $['qualityPage.delete'])}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -399,7 +397,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                 disabled={query.isFetchingNextPage}
                 onClick={() => void query.fetchNextPage()}
               >
-                {t(($) => $['newKnowledge.loadMore'])}
+                {t(($) => $.loadMore)}
               </Button>
             </div>
           )}
@@ -408,20 +406,20 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
           <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
           <h2 className="mt-3 system-md-semibold text-text-primary">
-            {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
+            {t(($) => $['qualityPage.goldenEmptyTitle'])}
           </h2>
           <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
+            {t(($) => $['qualityPage.goldenEmptyDescription'])}
           </p>
           {canEdit && (
             <div className="mt-4 flex gap-2">
               <Button className="gap-1" onClick={() => setImportOpen(true)}>
                 <span aria-hidden className="i-ri-download-line size-4" />
-                {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+                {t(($) => $['qualityPage.importCsv'])}
               </Button>
               <Button variant="primary" className="gap-1" onClick={openCreate}>
                 <span aria-hidden className="i-ri-add-line size-4" />
-                {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+                {t(($) => $['qualityPage.addGolden'])}
               </Button>
             </div>
           )}
@@ -435,8 +433,8 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
               ($) =>
                 $[
                   selected.size === 1
-                    ? 'newKnowledge.qualityPage.selectedCount_one'
-                    : 'newKnowledge.qualityPage.selectedCount_other'
+                    ? 'qualityPage.selectedCount_one'
+                    : 'qualityPage.selectedCount_other'
                 ],
               { count: selected.size },
             )}
@@ -447,11 +445,11 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
             tone="destructive"
             onClick={() => setDeleteIds(new Set(selected))}
           >
-            {t(($) => $['newKnowledge.qualityPage.deleteEllipsis'])}
+            {t(($) => $['qualityPage.deleteEllipsis'])}
           </Button>
           <button
             type="button"
-            aria-label={t(($) => $['newKnowledge.qualityPage.clearSelection'])}
+            aria-label={t(($) => $['qualityPage.clearSelection'])}
             className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={() => setSelected(new Set())}
           >

@@ -1392,8 +1392,6 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
     ("resource_module", "class_name"),
     [
         (console_resources, "KnowledgeFSSpaceQueriesApi"),
-        (service_resources, "KnowledgeFSServiceDocumentsApi"),
-        (service_resources, "KnowledgeFSServiceQueriesApi"),
     ],
 )
 def test_deprecated_buffered_routes_fail_closed(resource_module: object, class_name: str) -> None:

@@ -18,6 +18,7 @@ import type deployments from '../i18n/en-US/deployments.json'
 import type deviceFlow from '../i18n/en-US/device-flow.json'
 import type education from '../i18n/en-US/education.json'
 import type explore from '../i18n/en-US/explore.json'
+import type knowledgeSpace from '../i18n/en-US/knowledge-space.json'
 import type layout from '../i18n/en-US/layout.json'
 import type login from '../i18n/en-US/login.json'
 import type oauth from '../i18n/en-US/oauth.json'
@@ -60,6 +61,7 @@ type RawResources = {
   explore: typeof explore
   layout: typeof layout
   login: typeof login
+  knowledgeSpace: typeof knowledgeSpace
   oauth: typeof oauth
   permission: typeof permission
   permissionKeys: typeof permissionKeys
@@ -166,6 +168,7 @@ export const namespaces = [
   'explore',
   'layout',
   'login',
+  'knowledgeSpace',
   'oauth',
   'permission',
   'permissionKeys',

@@ -329,19 +329,15 @@ describe('List', () => {
 
       renderWithNuqs(<List />)
 
-      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.legacy' })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.legacy' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
     })
 
     it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
-      expect(
-        screen.queryByRole('radio', { name: 'dataset.newKnowledge.new' }),
-      ).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('region', { name: 'dataset.newKnowledge.new' }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: 'knowledgeSpace.new' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'knowledgeSpace.new' })).not.toBeInTheDocument()
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
       expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
       expect(useInfiniteQueryMock).not.toHaveBeenCalled()
@@ -355,11 +351,9 @@ describe('List', () => {
       mockConsoleState.knowledgeFsEnabled = true
       const { onUrlUpdate } = renderWithNuqs(<List />)
 
-      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.new' }))
 
-      expect(
-        await screen.findByRole('region', { name: 'dataset.newKnowledge.new' }),
-      ).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
@@ -373,13 +367,13 @@ describe('List', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.new' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.legacy' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.legacy' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
@@ -388,8 +382,8 @@ describe('List', () => {
 
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
-      expect(screen.getByRole('region', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
+      expect(screen.getByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.new' })).toHaveAttribute(
         'aria-checked',
         'true',
       )
@@ -401,20 +395,20 @@ describe('List', () => {
       const firstRender = renderWithNuqs(<List />)
 
       const guide = await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.guideTitle',
+        name: 'knowledgeSpace.guideTitle',
       })
-      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      await user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
       firstRender.unmount()
 
       renderWithNuqs(<List />)
 
       expect(
-        screen.queryByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+        screen.queryByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
       ).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' }))
       expect(
-        await screen.findByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+        await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
       ).toBeInTheDocument()
     })
 
@@ -423,9 +417,9 @@ describe('List', () => {
       mockConsoleState.knowledgeFsEnabled = true
       const firstRender = renderWithNuqs(<List />)
       const guide = await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.guideTitle',
+        name: 'knowledgeSpace.guideTitle',
       })
-      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      await user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
       firstRender.unmount()
 
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
@@ -461,9 +455,10 @@ describe('List', () => {
           ).toHaveTextContent('true')
         })
         await waitFor(() => {
-          expect(
-            screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }),
-          ).toHaveAttribute('aria-expanded', 'false')
+          expect(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' })).toHaveAttribute(
+            'aria-expanded',
+            'false',
+          )
         })
       } finally {
         act(() => root.unmount())

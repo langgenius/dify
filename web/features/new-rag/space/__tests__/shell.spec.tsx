@@ -120,12 +120,12 @@ describe('KnowledgeSpaceShell', () => {
   })
 
   it.each([
-    ['/datasets/new/space-1', 'dataset.newKnowledge.overviewTitle'],
-    ['/datasets/new/space-1/sources', 'dataset.newKnowledge.sources'],
-    ['/datasets/new/space-1/sources/new', 'dataset.newKnowledge.addSource'],
-    ['/datasets/new/space-1/documents', 'dataset.newKnowledge.documents'],
-    ['/datasets/new/space-1/retrieval', 'dataset.newKnowledge.retrievalTest.title'],
-    ['/datasets/new/space-1/quality', 'dataset.newKnowledge.quality'],
+    ['/datasets/new/space-1', 'knowledgeSpace.overviewTitle'],
+    ['/datasets/new/space-1/sources', 'knowledgeSpace.sources'],
+    ['/datasets/new/space-1/sources/new', 'knowledgeSpace.addSource'],
+    ['/datasets/new/space-1/documents', 'knowledgeSpace.documents'],
+    ['/datasets/new/space-1/retrieval', 'knowledgeSpace.retrievalTest.title'],
+    ['/datasets/new/space-1/quality', 'knowledgeSpace.quality'],
     ['/datasets/new/space-1/settings', 'common.datasetMenus.settings'],
   ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
     pathnameMock.value = pathname
@@ -195,37 +195,37 @@ describe('KnowledgeSpaceShell', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
-    expect(
-      screen.queryByText('dataset.newKnowledge.settings.retrievalMode.fast'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.settings.retrievalMode.fast')).not.toBeInTheDocument()
     expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
       'href',
       '/datasets?view=new',
     )
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.overviewTitle' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1')
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.overviewTitle' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1',
+    )
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.sourceColumn' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources',
     )
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.sourceColumn' })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1/documents')
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.documentColumn' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/documents',
+    )
     expect(screen.getByRole('link', { name: 'common.datasetMenus.settings' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/settings',
     )
     expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.title' }),
+      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.title' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/retrieval')
-    expect(screen.getByText('dataset.newKnowledge.apiAccessActive')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.apiAccessActive')).toBeInTheDocument()
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 
@@ -240,7 +240,7 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByText('dataset.unavailable')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.apiAccessInactive')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.apiAccessInactive')).not.toBeInTheDocument()
     expect(useQueryOptionsMock).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false, queryKey: ['external-access'] }),
     )
@@ -275,7 +275,7 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
-    expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.apiAccessInactive')).toBeInTheDocument()
   })
 
   it('shows API access as active independently from Agent access', () => {
@@ -289,7 +289,7 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
-    expect(screen.getByText('dataset.newKnowledge.apiAccessActive')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.apiAccessActive')).toBeInTheDocument()
   })
 
   it('opens the KnowledgeFS API access dialog', async () => {
@@ -302,7 +302,7 @@ describe('KnowledgeSpaceShell', () => {
     }
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.apiAgentAccess' }))
 
     expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
       'active',
@@ -336,7 +336,7 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">retrieval content</KnowledgeSpaceShell>)
 
     expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.title' }),
+      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.title' }),
     ).toHaveAttribute('aria-current', 'page')
   })
 
@@ -387,7 +387,7 @@ describe('KnowledgeSpaceShell', () => {
       <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
     )
 
-    expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.notFoundTitle')).toBeInTheDocument()
     expect(screen.queryByText('source content')).not.toBeInTheDocument()
   })
 
@@ -398,7 +398,7 @@ describe('KnowledgeSpaceShell', () => {
       <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
     )
 
-    expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.notFoundTitle')).toBeInTheDocument()
   })
 
   it('treats forbidden detail responses as a terminal non-disclosing state', () => {
@@ -408,7 +408,7 @@ describe('KnowledgeSpaceShell', () => {
       <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
     )
 
-    expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.notFoundTitle')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 
@@ -441,12 +441,13 @@ describe('KnowledgeSpaceShell', () => {
       <KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>,
     )
 
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' }),
-    ).not.toHaveAttribute('aria-current')
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
-    ).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.sourceColumn' })).not.toHaveAttribute(
+      'aria-current',
+    )
+    expect(screen.getByRole('link', { name: 'knowledgeSpace.documentColumn' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('offers a real retry for recoverable loading errors', async () => {

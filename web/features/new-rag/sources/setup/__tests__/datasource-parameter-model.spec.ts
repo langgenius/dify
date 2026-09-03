@@ -105,9 +105,9 @@ describe('datasource parameter model', () => {
     expect(schemas[0]).toEqual(
       expect.objectContaining({
         label: {},
-        labelTranslationKey: 'newKnowledge.rootUrl',
+        labelTranslationKey: 'rootUrl',
         placeholder: {},
-        placeholderTranslationKey: 'newKnowledge.rootUrlPlaceholder',
+        placeholderTranslationKey: 'rootUrlPlaceholder',
       }),
     )
   })

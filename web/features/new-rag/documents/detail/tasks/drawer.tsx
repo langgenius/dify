@@ -51,7 +51,7 @@ export function DocumentDetailTasksDrawer({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const currentDocument = useAtomValue(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
@@ -94,9 +94,7 @@ export function DocumentDetailTasksDrawer({
   const documentsPending = Boolean(documentsQuery.isPending || documentsQuery.hasNextPage)
   const hasNextDocumentPage = Boolean(documentsQuery.hasNextPage)
   const isFetchingNextDocumentPage = documentsQuery.isFetchingNextPage
-  const readOnlyReason = canEdit
-    ? undefined
-    : t(($) => $['newKnowledge.documentPermissionRestricted'])
+  const readOnlyReason = canEdit ? undefined : t(($) => $.documentPermissionRestricted)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
@@ -175,7 +173,7 @@ export function DocumentDetailTasksDrawer({
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
                 <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.backgroundTasks'])}
+                  {t(($) => $.backgroundTasks)}
                 </DrawerTitle>
                 <DrawerCloseButton
                   ref={drawerCloseButtonRef}
@@ -184,7 +182,7 @@ export function DocumentDetailTasksDrawer({
                   className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] size-6.5 rounded-md"
                 />
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.backgroundTasksDescription'])}
+                  {t(($) => $.backgroundTasksDescription)}
                 </DrawerDescription>
                 {readOnlyReason && (
                   <p
@@ -200,11 +198,11 @@ export function DocumentDetailTasksDrawer({
                 {taskQueryError && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
-                      {t(($) => $['newKnowledge.tasksErrorDescription'])}
+                      {t(($) => $.tasksErrorDescription)}
                     </p>
                     <Button
                       ref={taskQueryRetryButtonRef}
-                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
+                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.tasksErrorDescription)}`}
                       aria-busy={taskQueryFetching}
                       className="mt-3"
                       loading={taskQueryFetching}
@@ -224,11 +222,11 @@ export function DocumentDetailTasksDrawer({
                 {documentQueryError && hasUnresolvedTaskDocuments && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
-                      {t(($) => $['newKnowledge.documentsErrorDescription'])}
+                      {t(($) => $.documentsErrorDescription)}
                     </p>
                     <Button
                       ref={documentQueryRetryButtonRef}
-                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
                       aria-busy={documentQueryFetching}
                       className="mt-3"
                       loading={documentQueryFetching}
@@ -267,7 +265,7 @@ export function DocumentDetailTasksDrawer({
                   </ul>
                 ) : !taskQueryError && !hasMoreTasks ? (
                   <p className="py-16 text-center system-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.noBackgroundTasks'])}
+                    {t(($) => $.noBackgroundTasks)}
                   </p>
                 ) : null}
                 {hasMoreTasks && (
@@ -289,7 +287,7 @@ export function DocumentDetailTasksDrawer({
                         setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
                       }}
                     >
-                      {t(($) => $['newKnowledge.loadMore'])}
+                      {t(($) => $.loadMore)}
                     </Button>
                   </div>
                 )}

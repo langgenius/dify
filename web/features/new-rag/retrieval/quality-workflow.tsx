@@ -44,7 +44,7 @@ function goldenQuestionEvidenceOptions(
 }
 
 export function RetrievalQualityWorkflow() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
   const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
@@ -86,7 +86,7 @@ export function RetrievalQualityWorkflow() {
     setQualityPendingKey(resultKey)
     try {
       if (!selectedTraceId) {
-        toast.error(t(($) => $.unknownError))
+        toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return
       }
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
@@ -106,7 +106,7 @@ export function RetrievalQualityWorkflow() {
         void refetchTraces()
         return
       }
-      toast.error(t(($) => $.unknownError))
+      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setQualityPendingKey(undefined)
     }
@@ -137,7 +137,7 @@ export function RetrievalQualityWorkflow() {
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)
     } catch {
-      setGoldenPromotionError(t(($) => $.unknownError))
+      setGoldenPromotionError(t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setQualityPendingKey(undefined)
     }

@@ -55,7 +55,7 @@ export function DocumentTaskRow({
   retryActionCount: number
   task: BackgroundTask
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
@@ -107,18 +107,17 @@ export function DocumentTaskRow({
   const resolvedDocumentTitle =
     task.documentTitle ??
     (task.documentId
-      ? (documentTitle ??
-        (documentsPending ? t(($) => $['newKnowledge.documentColumn']) : task.documentId))
+      ? (documentTitle ?? (documentsPending ? t(($) => $.documentColumn) : task.documentId))
       : undefined)
-  const operationTitle = t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
+  const operationTitle = t(($) => $[`overview.operation.${task.operation}`])
   const progress = taskProgress(task)
   const title =
     task.operation === 'document_processing' && resolvedDocumentTitle
-      ? `${t(($) => $['newKnowledge.addDocument'])} · ${resolvedDocumentTitle}`
+      ? `${t(($) => $.addDocument)} · ${resolvedDocumentTitle}`
       : task.operation === 'document_upload'
-        ? `${t(($) => $['newKnowledge.addDocument'])}${progress ? ` · ${progress.total}` : ''}`
+        ? `${t(($) => $.addDocument)}${progress ? ` · ${progress.total}` : ''}`
         : task.operation === 'document_reindex'
-          ? `${t(($) => $['newKnowledge.reindexDocuments'])}${resolvedDocumentTitle ? ` · ${resolvedDocumentTitle}` : progress && progress.total > 1 ? ` · ${progress.total}` : ''}`
+          ? `${t(($) => $.reindexDocuments)}${resolvedDocumentTitle ? ` · ${resolvedDocumentTitle}` : progress && progress.total > 1 ? ` · ${progress.total}` : ''}`
           : task.operation === 'document_delete' && resolvedDocumentTitle
             ? `${operationTitle} · ${resolvedDocumentTitle}`
             : progress
@@ -131,7 +130,7 @@ export function DocumentTaskRow({
       ? `${progress.completed}/${progress.total}`
       : `${task.progressPercent}%`
     : undefined
-  const stateLabel = t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+  const stateLabel = t(($) => $[`processingTaskState.${task.state}`], {
     progress: task.progressPercent,
   })
   const status =
@@ -157,9 +156,9 @@ export function DocumentTaskRow({
     task.failure?.action === 'configure_model'
       ? tCommon(($) => $['datasetMenus.settings'])
       : task.failure?.action === 'configure_source'
-        ? t(($) => $['newKnowledge.openSource'])
+        ? t(($) => $.openSource)
         : task.failure?.action === 'reupload'
-          ? t(($) => $['newKnowledge.addDocument'])
+          ? t(($) => $.addDocument)
           : undefined
   const actionTarget = `${title} · ${task.id}`
 
@@ -219,7 +218,7 @@ export function DocumentTaskRow({
         )}
         {failedLifecycle === currentLifecycle && (
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
-            {t(($) => $['newKnowledge.taskActionFailed'])}
+            {t(($) => $.taskActionFailed)}
           </p>
         )}
       </div>
@@ -227,9 +226,7 @@ export function DocumentTaskRow({
         <Button
           ref={actionButtonRef}
           aria-label={
-            cancelActionCount > 1
-              ? `${t(($) => $['newKnowledge.interruptTask'])} · ${actionTarget}`
-              : undefined
+            cancelActionCount > 1 ? `${t(($) => $.interruptTask)} · ${actionTarget}` : undefined
           }
           size="small"
           aria-busy={pending}
@@ -237,15 +234,13 @@ export function DocumentTaskRow({
           loading={pending}
           onClick={() => void performAction('cancel')}
         >
-          {t(($) => $['newKnowledge.interruptTask'])}
+          {t(($) => $.interruptTask)}
         </Button>
       ) : canEdit && taskCanRetry(task) ? (
         <Button
           ref={actionButtonRef}
           aria-label={
-            retryActionCount > 1
-              ? `${t(($) => $['newKnowledge.retryTask'])} · ${actionTarget}`
-              : undefined
+            retryActionCount > 1 ? `${t(($) => $.retryTask)} · ${actionTarget}` : undefined
           }
           size="small"
           aria-busy={pending}
@@ -253,7 +248,7 @@ export function DocumentTaskRow({
           loading={pending}
           onClick={() => void performAction('retry')}
         >
-          {t(($) => $['newKnowledge.retryTask'])}
+          {t(($) => $.retryTask)}
         </Button>
       ) : canEdit && recoveryPath && recoveryLabel ? (
         <Link

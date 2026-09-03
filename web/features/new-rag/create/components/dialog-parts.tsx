@@ -26,7 +26,7 @@ export function StartMode({
   title: string
   value: NewKnowledgeStartMode
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const titleId = useId()
   const descriptionId = useId()
   const unavailableId = useId()
@@ -68,7 +68,7 @@ export function StartMode({
         {endAdornment}
         {disabled && (
           <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
-            {t(($) => $['cornerLabel.unavailable'])}
+            {t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
           </span>
         )}
       </RadioItem>

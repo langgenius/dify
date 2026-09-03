@@ -328,14 +328,16 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
         #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
-        #   N rows   -> the key is limited to exactly those datasets
-        # A bound key may only call endpoints carrying one of its dataset ids; endpoints
-        # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
-        # per request (not cached) so scope changes take effect immediately.
+        #   N rows   -> the key is limited to exactly those resources
+        # Only legacy-dataset bindings count here: a key bound solely to KnowledgeFS spaces
+        # is restricted but has no reachable legacy dataset, so it is rejected. A bound key
+        # may only call endpoints carrying one of its dataset ids; endpoints without a
+        # dataset id (e.g. list/create datasets) are rejected. The scope is queried per
+        # request (not cached) so changes take effect immediately.
         # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
         # typed helper accepts it (runtime proxies every Session method through unchanged).
-        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
-        if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
+        scope = dataset_api_key_service.get_key_scope(cast(Session, db.session), api_token.id)
+        if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:

@@ -7,14 +7,14 @@ import { useTranslation } from 'react-i18next'
 
 function readinessTitle(
   readiness: KnowledgeFsSettingsResponse | undefined,
-  t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
   tCommon: ReturnType<typeof useTranslation<'common'>>['t'],
 ) {
   if (readiness?.configuration_state === 'pending-validation')
-    return t(($) => $['newKnowledge.overview.attention.modelReadiness.pendingTitle'])
+    return t(($) => $['overview.attention.modelReadiness.pendingTitle'])
   if (readiness?.configuration_state === 'validation-failed')
     return tCommon(($) => $['api.actionFailed'])
-  return t(($) => $['newKnowledge.overview.attention.modelReadiness.title'])
+  return t(($) => $['overview.attention.modelReadiness.title'])
 }
 
 export function KnowledgeModelSetupDialog({
@@ -28,7 +28,7 @@ export function KnowledgeModelSetupDialog({
   open: boolean
   readiness?: KnowledgeFsSettingsResponse
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
 
@@ -36,14 +36,14 @@ export function KnowledgeModelSetupDialog({
     if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])
     if (field === 'reasoning') return tCommon(($) => $['modelProvider.systemReasoningModel.key'])
     if (field === 'rerank') return tCommon(($) => $['modelProvider.rerankModel.key'])
-    return t(($) => $['newKnowledge.overview.attention.modelReadiness.bindingMissing'])
+    return t(($) => $['overview.attention.modelReadiness.bindingMissing'])
   }
   const pendingValidation = readiness?.configuration_state === 'pending-validation'
   const description = pendingValidation
-    ? t(($) => $['newKnowledge.overview.attention.modelReadiness.pendingDescription'])
+    ? t(($) => $['overview.attention.modelReadiness.pendingDescription'])
     : readiness?.active_profile_available
-      ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
-      : t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing'])
+      ? t(($) => $['overview.attention.modelReadiness.description'])
+      : t(($) => $['overview.attention.modelReadiness.profilesMissing'])
   const issues = readiness
     ? readiness.issues
     : ([{ field: 'reasoning' }, { field: 'embedding' }, { field: 'rerank' }] as const)

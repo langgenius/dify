@@ -42,7 +42,7 @@ export function GoldenQuestionImportDialog({
 }
 
 function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -113,12 +113,12 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
     <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-180 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
       <div className="flex items-center justify-between">
         <DialogTitle className="system-md-semibold text-text-primary">
-          {t(($) => $['newKnowledge.qualityPage.importTitle'])}
+          {t(($) => $['qualityPage.importTitle'])}
         </DialogTitle>
         <DialogClose
           render={
             <IconButton
-              aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+              aria-label={t(($) => $['qualityPage.closeDialog'])}
               className="static size-5"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -131,10 +131,10 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
         <div className="mt-6">
           <div className="rounded-xl bg-background-section p-5">
             <p className="system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.qualityPage.importComplete'])}
+              {t(($) => $['qualityPage.importComplete'])}
             </p>
             <p className="mt-2 body-sm-regular text-text-secondary">
-              {t(($) => $['newKnowledge.qualityPage.importResult'], {
+              {t(($) => $['qualityPage.importResult'], {
                 active: mutation.data.active_count,
                 draft: mutation.data.draft_count,
               })}
@@ -142,18 +142,18 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </div>
           <div className="mt-6 flex justify-end">
             <Button variant="primary" onClick={() => onOpenChange(false)}>
-              {t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+              {t(($) => $['qualityPage.closeDialog'])}
             </Button>
           </div>
         </div>
       ) : (
         <>
           <p className="mt-2 body-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.qualityPage.importDescription'])}
+            {t(($) => $['qualityPage.importDescription'])}
           </p>
           <label
             htmlFor="golden-question-csv-file"
-            aria-label={t(($) => $['newKnowledge.qualityPage.chooseCsv'])}
+            aria-label={t(($) => $['qualityPage.chooseCsv'])}
             className="mt-5 flex h-24 cursor-pointer items-center justify-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-center outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid"
           >
             <input
@@ -169,13 +169,13 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
                 className="mx-auto i-ri-file-excel-2-line block size-6 text-text-tertiary"
               />
               <span className="mt-2 block system-sm-medium text-text-secondary">
-                {fileName || t(($) => $['newKnowledge.qualityPage.chooseCsv'])}
+                {fileName || t(($) => $['qualityPage.chooseCsv'])}
               </span>
             </span>
           </label>
           {csvError && (
             <p role="alert" className="mt-2 body-xs-regular text-text-destructive">
-              {t(($) => $[`newKnowledge.qualityPage.csvError.${csvError}`], {
+              {t(($) => $[`qualityPage.csvError.${csvError}`], {
                 count: maxGoldenQuestionCsvRows,
               })}
             </p>
@@ -183,13 +183,13 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           {rows.length > 0 && (
             <div className="mt-5">
               <p className="system-xs-medium text-text-secondary">
-                {t(($) => $['newKnowledge.qualityPage.previewRows'], { count: rows.length })}
+                {t(($) => $['qualityPage.previewRows'], { count: rows.length })}
               </p>
               <div className="mt-2 overflow-hidden rounded-lg border border-divider-subtle">
                 <div className="grid grid-cols-[1.2fr_1.5fr_1fr] gap-3 bg-background-section px-3 py-2 system-2xs-medium-uppercase text-text-tertiary">
-                  <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
-                  <span>{t(($) => $['newKnowledge.qualityPage.evidence'])}</span>
-                  <span>{t(($) => $['newKnowledge.qualityPage.tags'])}</span>
+                  <span>{t(($) => $['qualityPage.question'])}</span>
+                  <span>{t(($) => $['qualityPage.evidence'])}</span>
+                  <span>{t(($) => $['qualityPage.tags'])}</span>
                 </div>
                 {previewRows.map(({ key, row }) => (
                   <div
@@ -206,12 +206,12 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           )}
           {submitError && (
             <p role="alert" className="mt-3 body-xs-regular text-text-destructive">
-              {t(($) => $.unknownError)}
+              {t(($) => $.unknownError, { ns: 'dataset' })}
             </p>
           )}
           <div className="mt-6 flex justify-end gap-2">
             <Button type="button" disabled={mutation.isPending} onClick={() => onOpenChange(false)}>
-              {t(($) => $['newKnowledge.qualityPage.cancel'])}
+              {t(($) => $['qualityPage.cancel'])}
             </Button>
             <Button
               type="button"
@@ -220,7 +220,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               disabled={rows.length === 0 || mutation.isPending}
               onClick={() => void submit()}
             >
-              {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+              {t(($) => $['qualityPage.importCsv'])}
             </Button>
           </div>
         </>

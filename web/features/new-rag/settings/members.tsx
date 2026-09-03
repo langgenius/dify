@@ -28,7 +28,7 @@ export function KnowledgeSettingsMembers({
   onSelectedMemberIdsChange,
   onVisibilityChange,
 }: KnowledgeSettingsMembersProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <div className="min-w-0 flex-1">
@@ -54,7 +54,7 @@ export function KnowledgeSettingsMembers({
           className="mt-1 system-xs-regular text-text-destructive"
           role="alert"
         >
-          {t(($) => $['newKnowledge.settings.membersRequired'])}
+          {t(($) => $['settings.membersRequired'])}
         </p>
       )}
     </div>

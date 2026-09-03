@@ -32,7 +32,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
     consoleQuery.workspaces.current.members.get.queryOptions(),
   )
   const [keywords, setKeywords] = useState('')
-  const label = t(($) => $['newKnowledge.creators'])
+  const label = t(($) => $['creatorFilter.creators'])
   const triggerLabel = value.length > 0 ? `${label}: ${value.length}` : label
   const hasInitialError = isError && data === undefined
   const hasRefetchError = isError && data !== undefined
@@ -164,7 +164,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
             role="status"
             className="px-3 py-2 text-xs text-text-destructive"
           >
-            {t(($) => $['newKnowledge.maxCreators'])}: {CREATOR_FILTER_MAX_SELECTION}
+            {t(($) => $['creatorFilter.maxCreators'])}: {CREATOR_FILTER_MAX_SELECTION}
           </div>
         )}
         <div className="max-h-60 overflow-y-auto px-1 pb-1">

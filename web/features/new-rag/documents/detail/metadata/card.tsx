@@ -69,7 +69,7 @@ function metadataDisplayValue(value: unknown, locale: string) {
 }
 
 function DocumentMetadataCardContent() {
-  const { i18n, t } = useTranslation('dataset')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -162,7 +162,7 @@ function DocumentMetadataCardContent() {
     },
     onError: (_error, { name }) => {
       markCreateRetryable(name)
-      toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
+      toast.error(t(($) => $['settings.saveFailed']))
     },
     onSuccess: async (createdField) => {
       recordCreatedField(createdField)
@@ -187,7 +187,7 @@ function DocumentMetadataCardContent() {
         },
       }),
     onError: () => {
-      toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
+      toast.error(t(($) => $['settings.saveFailed']))
     },
     onSuccess: async () => {
       await invalidateMetadataQueries()
@@ -205,7 +205,7 @@ function DocumentMetadataCardContent() {
     const name = rawName.trim()
     const nameError = documentMetadataNameError(name, fields, retryableCreateName)
     if (nameError) {
-      toast.error(t(($) => $[`metadata.checkName.${nameError}`], { max: 255 }))
+      toast.error(t(($) => $[`metadata.checkName.${nameError}`], { max: 255, ns: 'dataset' }))
       throw new Error(`metadata name is ${nameError}`)
     }
     await createFieldMutation.mutateAsync({ name, type })
@@ -239,13 +239,13 @@ function DocumentMetadataCardContent() {
     return (
       <section className="rounded-xl bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4 pt-3">
         <h2 className="text-xs/5 font-semibold text-text-secondary">
-          {t(($) => $['metadata.metadata'])}
+          {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
         </h2>
         <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['metadata.documentMetadata.metadataToolTip'])}
+          {t(($) => $['metadata.documentMetadata.metadataToolTip'], { ns: 'dataset' })}
         </p>
         <Button className="mt-2" disabled={!canEdit} onClick={startEditing} variant="primary">
-          {t(($) => $['metadata.documentMetadata.startLabeling'])}
+          {t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}
           <span aria-hidden className="ml-1 i-ri-arrow-right-line size-4" />
         </Button>
       </section>
@@ -255,7 +255,7 @@ function DocumentMetadataCardContent() {
     <section>
       <div className="flex items-center justify-between gap-2">
         <h2 className="system-md-semibold text-text-secondary">
-          {t(($) => $['metadata.metadata'])}
+          {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
         </h2>
         {!editing && canEdit && (
           <Button onClick={startEditing} size="small" variant="ghost">

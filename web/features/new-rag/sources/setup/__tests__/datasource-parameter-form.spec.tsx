@@ -131,43 +131,43 @@ describe('DatasourceParameterForm', () => {
 
     const input = screen.getByRole('textbox', { name: 'Root URL' })
     expect(input).not.toHaveAttribute('aria-invalid', 'true')
-    expect(screen.queryByText('dataset.newKnowledge.invalidRootUrl')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.validation.invalidHttpUrl')).not.toBeInTheDocument()
 
     await user.type(input, 'ftp://example.com')
     await user.tab()
 
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(input).toHaveAccessibleDescription('dataset.newKnowledge.invalidRootUrl')
-    expect(screen.getByText('dataset.newKnowledge.invalidRootUrl')).toBeInTheDocument()
+    expect(input).toHaveAccessibleDescription('dataset.validation.invalidHttpUrl')
+    expect(screen.getByText('dataset.validation.invalidHttpUrl')).toBeInTheDocument()
   })
 
   it('groups website options and resets edits to provider defaults', async () => {
     const user = userEvent.setup()
     render(<GroupedWebsiteParameterForm />)
 
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.rootUrl' })).toBeVisible()
     const crawlOptions = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.crawlOptions',
+      name: 'knowledgeSpace.crawlOptions',
     })
     expect(crawlOptions).toHaveAttribute('aria-expanded', 'false')
-    expect(crawlOptions).toHaveTextContent('dataset.newKnowledge.usingDefaults')
+    expect(crawlOptions).toHaveTextContent('knowledgeSpace.usingDefaults')
     expect(
-      screen.queryByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+      screen.queryByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.resetToDefaults' }),
+      screen.queryByRole('button', { name: 'knowledgeSpace.resetToDefaults' }),
     ).not.toBeInTheDocument()
 
     await user.click(crawlOptions)
     const includeSubpages = screen.getByRole('checkbox', {
-      name: 'dataset.newKnowledge.includeSubpages',
+      name: 'knowledgeSpace.includeSubpages',
     })
     const resetButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.resetToDefaults',
+      name: 'knowledgeSpace.resetToDefaults',
     })
     expect(includeSubpages).toBeChecked()
     expect(resetButton).toBeEnabled()
-    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toBeVisible()
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toBeVisible()
 
     await user.click(includeSubpages)
     expect(includeSubpages).not.toBeChecked()
@@ -181,8 +181,8 @@ describe('DatasourceParameterForm', () => {
     render(<CustomizedGroupedWebsiteParameterForm />)
 
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }),
-    ).not.toHaveTextContent('dataset.newKnowledge.usingDefaults')
+      screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }),
+    ).not.toHaveTextContent('knowledgeSpace.usingDefaults')
   })
 
   it('allows decimal input using the declaration precision', async () => {
@@ -201,15 +201,11 @@ describe('DatasourceParameterForm', () => {
   it('resolves translation keys for legacy website parameter labels', () => {
     render(<LegacyWebsiteParameterForm />)
 
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toHaveAttribute(
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.rootUrl' })).toHaveAttribute(
       'placeholder',
-      'dataset.newKnowledge.rootUrlPlaceholder',
+      'knowledgeSpace.rootUrlPlaceholder',
     )
-    expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.includeSubpages' }),
-    ).toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
-      100,
-    )
+    expect(screen.getByRole('switch', { name: 'knowledgeSpace.includeSubpages' })).toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toHaveValue(100)
   })
 })

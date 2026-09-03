@@ -135,7 +135,7 @@ describe('KnowledgeModelReadinessBanner', () => {
     render(<KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.overview.attention.modelReadiness.profilesMissing',
+      'knowledgeSpace.overview.attention.modelReadiness.profilesMissing',
     )
   })
 
@@ -151,11 +151,11 @@ describe('KnowledgeModelReadinessBanner', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.overview.attention.modelReadiness.description',
+      'knowledgeSpace.overview.attention.modelReadiness.description',
     )
     expect(
       screen.getByRole('link', {
-        name: 'dataset.newKnowledge.overview.attention.action.configureModels',
+        name: 'knowledgeSpace.overview.attention.action.configureModels',
       }),
     ).toHaveAttribute(
       'href',
@@ -186,7 +186,7 @@ describe('KnowledgeModelReadinessBanner', () => {
     expect(queryState.refetch).toHaveBeenCalledOnce()
     expect(
       screen.queryByRole('link', {
-        name: 'dataset.newKnowledge.overview.attention.action.configureModels',
+        name: 'knowledgeSpace.overview.attention.action.configureModels',
       }),
     ).not.toBeInTheDocument()
   })

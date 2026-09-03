@@ -85,9 +85,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     })
 
     expect(
-      await screen.findByText(
-        'https://api.example.com/v1/knowledge-fs/spaces/space-1/queries/admission',
-      ),
+      await screen.findByText('https://api.example.com/v1/knowledge-fs/spaces/space-1'),
     ).toBeInTheDocument()
     expect(apiBaseInfoQueryOptionsMock).toHaveBeenCalledWith({ context: { silent: true } })
     expect(screen.getByText('common.appMenus.apiAccessTip')).toBeInTheDocument()
@@ -119,7 +117,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
       onOpenChange: vi.fn(),
     })
 
-    expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.apiAccessInactive')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.serviceApi.card.apiKey' }),
     ).not.toBeInTheDocument()
@@ -136,7 +134,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
       onOpenChange: vi.fn(),
     })
 
-    expect(screen.getByText('dataset.newKnowledge.settings.viewOnly')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.settings.viewOnly')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.serviceApi.card.apiKey' }),
     ).not.toBeInTheDocument()

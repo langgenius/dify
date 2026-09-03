@@ -86,7 +86,7 @@ function SourcesPageContent({
   onSearchChange: (value: string) => void
   onSortChange: (value: SourceSort) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
   const {
@@ -124,17 +124,15 @@ function SourcesPageContent({
       <SourcesRuntimeController />
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="title-xl-semi-bold leading-6 text-text-primary">
-            {t(($) => $['newKnowledge.sources'])}
-          </h2>
+          <h2 className="title-xl-semi-bold leading-6 text-text-primary">{t(($) => $.sources)}</h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.sourcesDescription'])}
+            {t(($) => $.sourcesDescription)}
           </p>
         </div>
         {pollingPhase === 'timed-out' && (
           <Button onClick={() => void refreshSources()}>
             <span aria-hidden className="i-ri-refresh-line size-4" />
-            {t(($) => $['newKnowledge.refreshSources'])}
+            {t(($) => $.refreshSources)}
           </Button>
         )}
       </header>
@@ -152,7 +150,7 @@ function SourcesPageContent({
             aria-hidden
             className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
           />
-          {t(($) => $['newKnowledge.awaitingInitialSource'])}
+          {t(($) => $.awaitingInitialSource)}
         </div>
       )}
       {sourcesQueryPending ? (
@@ -163,10 +161,10 @@ function SourcesPageContent({
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
           <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
           <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-            {t(($) => $['newKnowledge.sourcesErrorTitle'])}
+            {t(($) => $.sourcesErrorTitle)}
           </h2>
           <p className="mt-2 body-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.sourcesErrorDescription'])}
+            {t(($) => $.sourcesErrorDescription)}
           </p>
           <Button className="mt-4" onClick={() => void refreshSources()}>
             {tCommon(($) => $['operation.retry'])}
@@ -175,9 +173,7 @@ function SourcesPageContent({
       ) : waitingForInitialSource && !sources?.length ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <Loading />
-          <p className="body-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.awaitingInitialSource'])}
-          </p>
+          <p className="body-sm-regular text-text-tertiary">{t(($) => $.awaitingInitialSource)}</p>
         </div>
       ) : !sources?.length && !sourcesQueryHasNextPage ? (
         <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
@@ -190,25 +186,19 @@ function SourcesPageContent({
                 if (value) onFilterChange(value)
               }}
             >
-              <SelectLabel className="sr-only">
-                {t(($) => $['newKnowledge.sourceFilterLabel'])}
-              </SelectLabel>
+              <SelectLabel className="sr-only">{t(($) => $.sourceFilterLabel)}</SelectLabel>
               <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
-                {filter === 'all'
-                  ? t(($) => $['newKnowledge.allSources'])
-                  : t(($) => $[`newKnowledge.sourceStatus.${filter}`])}
+                {filter === 'all' ? t(($) => $.allSources) : t(($) => $[`sourceStatus.${filter}`])}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  <SelectItemText>{t(($) => $['newKnowledge.allSources'])}</SelectItemText>
+                  <SelectItemText>{t(($) => $.allSources)}</SelectItemText>
                   <SelectItemIndicator />
                 </SelectItem>
                 {(['active', 'initializing', 'syncing', 'disabled', 'error'] as const).map(
                   (status) => (
                     <SelectItem key={status} value={status}>
-                      <SelectItemText>
-                        {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
-                      </SelectItemText>
+                      <SelectItemText>{t(($) => $[`sourceStatus.${status}`])}</SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>
                   ),
@@ -216,11 +206,11 @@ function SourcesPageContent({
               </SelectContent>
             </Select>
             <SearchInput
-              aria-label={t(($) => $['newKnowledge.searchSources'])}
+              aria-label={t(($) => $.searchSources)}
               className="@min-[768px]/knowledge-content:w-60"
               value={search}
               onValueChange={onSearchChange}
-              placeholder={t(($) => $['newKnowledge.searchSources'])}
+              placeholder={t(($) => $.searchSources)}
             />
             {canManageSources && (
               <Link
@@ -231,7 +221,7 @@ function SourcesPageContent({
                 })}
               >
                 <span aria-hidden className="i-ri-add-line size-4" />
-                {t(($) => $['newKnowledge.addSource'])}
+                {t(($) => $.addSource)}
               </Link>
             )}
           </div>
@@ -247,7 +237,7 @@ function SourcesPageContent({
           {sourcesQueryFetchNextPageError ? (
             <div className="mt-5 flex items-center justify-center gap-3" role="alert">
               <span className="system-xs-regular text-text-destructive">
-                {t(($) => $['newKnowledge.sourcesErrorDescription'])}
+                {t(($) => $.sourcesErrorDescription)}
               </span>
               <Button onClick={() => void fetchNextSourcePage()}>
                 {tCommon(($) => $['operation.retry'])}
@@ -259,7 +249,7 @@ function SourcesPageContent({
                 loading={sourcesQueryFetchingNextPage}
                 onClick={() => void fetchNextSourcePage()}
               >
-                {t(($) => $['newKnowledge.loadMore'])}
+                {t(($) => $.loadMore)}
               </Button>
             </div>
           ) : null}
@@ -292,7 +282,7 @@ function SourcesTable({
   onSortChange: (value: SourceSort) => void
   sort: SourceSort
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const allFilteredSourcesSelected =
@@ -336,7 +326,7 @@ function SourcesTable({
                 onClick={() => onSortChange(sort === 'name-asc' ? 'name-desc' : 'name-asc')}
                 className="h-auto gap-1 rounded px-0 text-[11px] leading-4 font-medium tracking-[0.3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
-                {t(($) => $['newKnowledge.sourceColumn'])}
+                {t(($) => $.sourceColumn)}
                 {sort && (
                   <span
                     aria-hidden
@@ -349,20 +339,20 @@ function SourcesTable({
               </Button>
             </th>
             <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
-              {t(($) => $['metadata.createMetadata.type'])}
+              {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
             </th>
             <th className="min-w-0 @min-[768px]/knowledge-content:col-start-3 @min-[960px]/knowledge-content:col-start-auto">
-              {t(($) => $['newKnowledge.statusColumn'])}
+              {t(($) => $.statusColumn)}
             </th>
             <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
-              {t(($) => $['newKnowledge.syncPolicyColumn'])}
+              {t(($) => $.syncPolicyColumn)}
             </th>
             <th className="min-w-0 @min-[768px]/knowledge-content:col-start-4 @min-[960px]/knowledge-content:col-start-auto">
-              {t(($) => $['newKnowledge.lastSyncColumn'])}
+              {t(($) => $.lastSyncColumn)}
             </th>
             <th
               className="@min-[768px]/knowledge-content:col-start-5 @min-[960px]/knowledge-content:col-start-auto"
-              aria-label={t(($) => $['newKnowledge.actionsColumn'])}
+              aria-label={t(($) => $.actionsColumn)}
             />
           </tr>
         </thead>
@@ -390,7 +380,7 @@ function SourcesTable({
         !completingFilteredResults &&
         !isFetchNextPageError && (
           <p className="py-16 text-center body-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.noMatchingSources'])}
+            {t(($) => $.noMatchingSources)}
           </p>
         )}
       {!filteredSources.length && completingFilteredResults && (

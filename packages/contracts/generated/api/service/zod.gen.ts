@@ -1546,15 +1546,6 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
 })
 
 /**
- * KnowledgeFSDocumentCreatePayload
- */
-export const zKnowledgeFsDocumentCreatePayload = z.object({
-  idempotency_key: z.string().min(1).max(255),
-  name: z.string().min(1).max(255),
-  text: z.string().min(1).max(1000000),
-})
-
-/**
  * KnowledgeFSDocumentDeletePayload
  */
 export const zKnowledgeFsDocumentDeletePayload = z.object({
@@ -2068,16 +2059,6 @@ export const zKnowledgeFsAnswerTraceResponse = z.object({
   query: z.string(),
   query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
-})
-
-/**
- * KnowledgeFSQueryResponse
- */
-export const zKnowledgeFsQueryResponse = z.object({
-  answer: z.string().nullish(),
-  id: z.string(),
-  status: z.string(),
-  trace_id: z.string().nullish(),
 })
 
 /**
@@ -5552,17 +5533,6 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsQuery = z.object({
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   zKnowledgeFsDocumentListResponse
 
-export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsBody = zKnowledgeFsDocumentCreatePayload
-
-export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
-  control_space_id: z.string(),
-})
-
-/**
- * KnowledgeFS document created
- */
-export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse = zKnowledgeFsDocumentResponse
-
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload
 
@@ -5719,17 +5689,6 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath = z.obje
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
   zKnowledgeFsDocumentCompilationJobResponse
-
-export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesBody = zKnowledgeFsQueryCreatePayload
-
-export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesPath = z.object({
-  control_space_id: z.string(),
-})
-
-/**
- * KnowledgeFS query accepted
- */
-export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesResponse = zKnowledgeFsQueryResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionBody =
   zKnowledgeFsQueryCreatePayload

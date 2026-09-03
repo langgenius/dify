@@ -30,7 +30,7 @@ export function CrawlPreviewPageSelection({
   sourceLabel?: string
   selectedPageIds: Set<string>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, crawlPreviewPageSkipReason(page, rootUrl)])),
@@ -81,17 +81,17 @@ export function CrawlPreviewPageSelection({
           aria-live="polite"
           className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
         >
-          {t(($) => $['newKnowledge.pagesCrawled'], {
+          {t(($) => $.pagesCrawled, {
             count: pages.length,
             host: sourceLabel ?? (rootUrl ? new URL(rootUrl).host : ''),
           })}
         </h3>
         <span className="system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
+          {t(($) => $.pagesSelected, { count: selectedPageIds.size })}
         </span>
         {progressFailed > 0 && (
           <span className="system-xs-regular text-text-destructive">
-            {progressFailed} {t(($) => $['newKnowledge.skippedFailed'])}
+            {progressFailed} {t(($) => $.skippedFailed)}
           </span>
         )}
         {onRecrawl && (
@@ -104,7 +104,7 @@ export function CrawlPreviewPageSelection({
             className="px-0"
             onClick={onRecrawl}
           >
-            {t(($) => $['newKnowledge.reCrawl'])}
+            {t(($) => $.reCrawl)}
           </Button>
         )}
       </div>
@@ -116,7 +116,7 @@ export function CrawlPreviewPageSelection({
             onCheckedChange={toggleAll}
             disabled={!selectablePages.length || selectionLocked}
           />
-          {t(($) => $['newKnowledge.selectAll'])}
+          {t(($) => $.selectAll)}
         </label>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {pages.map((page, index) => {
@@ -154,10 +154,10 @@ export function CrawlPreviewPageSelection({
                   {(!selectable || selectionLimitReached) && (
                     <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
                       {selectionLimitReached
-                        ? `${t(($) => $['newKnowledge.maxPages'])}: ${MAX_SELECTED_PAGES}`
+                        ? `${t(($) => $.maxPages)}: ${MAX_SELECTED_PAGES}`
                         : skipReason === 'off-domain'
-                          ? t(($) => $['newKnowledge.skippedOffDomain'])
-                          : t(($) => $['newKnowledge.skippedFailed'])}
+                          ? t(($) => $.skippedOffDomain)
+                          : t(($) => $.skippedFailed)}
                     </span>
                   )}
                 </label>

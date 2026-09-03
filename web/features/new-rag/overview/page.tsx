@@ -70,7 +70,7 @@ function KnowledgeOverviewContent() {
 }
 
 function OverviewHeader() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const empty = useAtomValue(overviewEmptyAtom)
   const showIndexing = useAtomValue(overviewShowIndexingAtom)
   const window = useAtomValue(overviewWindowAtom)
@@ -78,12 +78,10 @@ function OverviewHeader() {
 
   return (
     <header className="relative -top-0.75 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="title-3xl-bold text-text-primary">
-        {t(($) => $['newKnowledge.overviewTitle'])}
-      </h1>
+      <h1 className="title-3xl-bold text-text-primary">{t(($) => $.overviewTitle)}</h1>
       {!empty && !showIndexing && (
         <SegmentedControl<(typeof OVERVIEW_WINDOWS)[number]>
-          aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
+          aria-label={t(($) => $['overview.timeRange'])}
           value={window}
           onValueChange={(value) => {
             void setWindow(value)
@@ -98,8 +96,8 @@ function OverviewHeader() {
               {value === '24h'
                 ? value
                 : value === '7d'
-                  ? t(($) => $['newKnowledge.overview.sevenDays'])
-                  : t(($) => $['newKnowledge.overview.thirtyDays'])}
+                  ? t(($) => $['overview.sevenDays'])
+                  : t(($) => $['overview.thirtyDays'])}
             </SegmentedControlItem>
           ))}
         </SegmentedControl>
@@ -120,7 +118,7 @@ function OverviewKnowledgeModelReadinessBanner() {
 }
 
 function OverviewRecoveryStatus() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const pageLoading = useAtomValue(overviewPageLoadingAtom)
   const firstLoadFailed = useAtomValue(overviewFirstLoadFailedAtom)
@@ -139,7 +137,7 @@ function OverviewRecoveryStatus() {
           className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-divider-regular bg-background-section p-4"
         >
           <p className="system-sm-regular text-text-destructive">
-            {t(($) => $['newKnowledge.detailErrorDescription'])}
+            {t(($) => $.detailErrorDescription)}
           </p>
           <Button size="small" variant="secondary" onClick={retry}>
             {tCommon(($) => $['operation.retry'])}

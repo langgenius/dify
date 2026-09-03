@@ -40,7 +40,7 @@ export function DocumentUploadForm({
   uploading,
   ref,
 }: DocumentUploadFormProps) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFilesAnnouncedRef = useRef(false)
@@ -124,7 +124,7 @@ export function DocumentUploadForm({
         multiple
         hidden
         accept={DOCUMENT_UPLOAD_ACCEPT}
-        aria-label={t(($) => $['newKnowledge.uploadDocuments'])}
+        aria-label={t(($) => $.uploadDocuments)}
         tabIndex={-1}
         type="file"
         onChange={(event) => {
@@ -150,17 +150,17 @@ export function DocumentUploadForm({
           <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
         </span>
         <span className="text-[14px] leading-4.25 font-medium text-text-primary">
-          {t(($) => $['newKnowledge.uploadDropZoneTitle'])}
+          {t(($) => $.uploadDropZoneTitle)}
         </span>
         <span className="text-[12px] leading-3.75 font-normal text-text-placeholder">
-          {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
+          {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
         </span>
       </button>
 
       {files.length > 0 && (
-        <section className="mt-4" aria-label={t(($) => $['newKnowledge.uploadDocuments'])}>
+        <section className="mt-4" aria-label={t(($) => $.uploadDocuments)}>
           <h3 className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.selectedFiles'], {
+            {t(($) => $.selectedFiles, {
               total: files.length,
               valid: validFiles.length,
             })}
@@ -193,14 +193,14 @@ export function DocumentUploadForm({
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button
-          aria-label={t(($) => $['newKnowledge.addDocument'])}
+          aria-label={t(($) => $.addDocument)}
           aria-busy={uploading}
           disabled={!validFiles.length || uploading}
           loading={uploading}
           type="submit"
           variant="primary"
         >
-          {t(($) => $['newKnowledge.addAndProcess'])}
+          {t(($) => $.addAndProcess)}
         </Button>
       </div>
     </form>

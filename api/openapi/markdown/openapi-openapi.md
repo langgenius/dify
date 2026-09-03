@@ -1084,7 +1084,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional KnowledgeFS read-consistency policy. | No |
 | include_semantic_summary | boolean | Whether to generate a bounded semantic change summary. This can consume model quota. | No |
-| mode | string | Comparison granularity. | No |
+| mode | string, <br>**Available values:** "line", "word" | Comparison granularity. | No |
 | new_path | string | Canonical path of the entry to compare. | Yes |
 | old_path | string | Canonical path of the baseline entry. | Yes |
 

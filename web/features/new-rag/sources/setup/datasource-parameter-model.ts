@@ -5,18 +5,18 @@ type Datasource = DataSourceItem['declaration']['datasources'][number]
 const LEGACY_WEBSITE_PARAMETER_SCHEMAS: DatasourceParameterSchema[] = [
   {
     label: {},
-    labelTranslationKey: 'newKnowledge.rootUrl',
+    labelTranslationKey: 'rootUrl',
     name: 'url',
     options: [],
     placeholder: {},
-    placeholderTranslationKey: 'newKnowledge.rootUrlPlaceholder',
+    placeholderTranslationKey: 'rootUrlPlaceholder',
     required: true,
     type: 'string',
   },
   {
     defaultValue: true,
     label: {},
-    labelTranslationKey: 'newKnowledge.includeSubpages',
+    labelTranslationKey: 'includeSubpages',
     name: 'crawl_subpages',
     options: [],
     required: false,
@@ -26,7 +26,7 @@ const LEGACY_WEBSITE_PARAMETER_SCHEMAS: DatasourceParameterSchema[] = [
     defaultValue: 100,
     integer: true,
     label: {},
-    labelTranslationKey: 'newKnowledge.maxPages',
+    labelTranslationKey: 'maxPages',
     max: 200,
     min: 1,
     name: 'limit',
@@ -49,16 +49,13 @@ export type DatasourceParameterSchema = {
   description?: Record<string, string | undefined>
   integer?: boolean
   label: Record<string, string | undefined>
-  labelTranslationKey?:
-    | 'newKnowledge.includeSubpages'
-    | 'newKnowledge.maxPages'
-    | 'newKnowledge.rootUrl'
+  labelTranslationKey?: 'includeSubpages' | 'maxPages' | 'rootUrl'
   max?: number
   min?: number
   name: string
   options: DatasourceParameterOption[]
   placeholder?: Record<string, string | undefined>
-  placeholderTranslationKey?: 'newKnowledge.rootUrlPlaceholder'
+  placeholderTranslationKey?: 'rootUrlPlaceholder'
   precision?: number
   required: boolean
   type: 'boolean' | 'number' | 'select' | 'string' | 'unsupported'

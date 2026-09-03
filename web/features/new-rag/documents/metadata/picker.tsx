@@ -47,7 +47,7 @@ export function DocumentMetadataPicker({
   onRetry: () => void
   onSelect: (field: DocumentMetadataField) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'create' | 'select'>('select')
@@ -70,11 +70,13 @@ export function DocumentMetadataPicker({
           <button
             type="button"
             aria-expanded={open}
-            aria-label={t(($) => $['metadata.addMetadata'])}
+            aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
             className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span aria-hidden className="mr-1 i-ri-add-line size-3.5" />
-            <span className="truncate system-xs-medium">{t(($) => $['metadata.addMetadata'])}</span>
+            <span className="truncate system-xs-medium">
+              {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
+            </span>
           </button>
         }
       />
@@ -107,9 +109,9 @@ export function DocumentMetadataPicker({
               <ComboboxInputGroup>
                 <span aria-hidden className="ml-2 i-ri-search-line size-4 text-text-tertiary" />
                 <ComboboxInput
-                  aria-label={t(($) => $['metadata.selectMetadata.search'])}
+                  aria-label={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
                   className="pl-2"
-                  placeholder={t(($) => $['metadata.selectMetadata.search'])}
+                  placeholder={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
                 />
                 {query && <ComboboxClear aria-label={tCommon(($) => $['operation.clear'])} />}
               </ComboboxInputGroup>
@@ -141,7 +143,7 @@ export function DocumentMetadataPicker({
             {error && !loading && (
               <div className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center">
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.documentLoadErrorDescription'])}
+                  {t(($) => $.documentLoadErrorDescription)}
                 </span>
                 <Button onClick={onRetry} size="small" variant="ghost">
                   {tCommon(($) => $['operation.retry'])}
@@ -162,7 +164,7 @@ export function DocumentMetadataPicker({
               >
                 <span aria-hidden className="i-ri-add-line size-4 text-text-tertiary" />
                 <span className="truncate system-sm-medium">
-                  {t(($) => $['metadata.selectMetadata.newAction'])}
+                  {t(($) => $['metadata.selectMetadata.newAction'], { ns: 'dataset' })}
                 </span>
               </button>
               <div className="flex h-8 shrink-0 items-center">
@@ -177,7 +179,7 @@ export function DocumentMetadataPicker({
                   }}
                 >
                   <span className="system-sm-medium">
-                    {t(($) => $['metadata.selectMetadata.manageAction'])}
+                    {t(($) => $['metadata.selectMetadata.manageAction'], { ns: 'dataset' })}
                   </span>
                   <span
                     aria-hidden

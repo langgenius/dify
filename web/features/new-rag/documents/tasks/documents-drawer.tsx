@@ -73,14 +73,14 @@ function responseStatus(error: unknown): number | undefined {
 }
 
 function DocumentsTaskDrawerHeader() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const canWrite = useAtomValue(documentCanWriteAtom)
 
   return (
     <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
       <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
-        {t(($) => $['newKnowledge.backgroundTasks'])}
+        {t(($) => $.backgroundTasks)}
       </DrawerTitle>
       <DrawerCloseButton
         data-documents-task-drawer-close
@@ -88,7 +88,7 @@ function DocumentsTaskDrawerHeader() {
         className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] size-6.5 rounded-md"
       />
       <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.backgroundTasksDescription'])}
+        {t(($) => $.backgroundTasksDescription)}
       </DrawerDescription>
       {!canWrite && (
         <p
@@ -96,7 +96,7 @@ function DocumentsTaskDrawerHeader() {
           role="status"
         >
           <span aria-hidden className="i-ri-lock-line size-3.5" />
-          {t(($) => $['newKnowledge.documentPermissionRestricted'])}
+          {t(($) => $.documentPermissionRestricted)}
         </p>
       )}
     </header>
@@ -104,7 +104,7 @@ function DocumentsTaskDrawerHeader() {
 }
 
 function DocumentsTaskQueryRecovery() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const open = useAtomValue(taskDrawerOpenAtom)
   const recovery = useAtomValue(taskDrawerQueryRecoveryFactsAtom)
@@ -134,11 +134,11 @@ function DocumentsTaskQueryRecovery() {
       {recovery.taskError && (
         <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
           <p className="system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.tasksErrorDescription'])}
+            {t(($) => $.tasksErrorDescription)}
           </p>
           <Button
             ref={taskRetryButtonRef}
-            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
+            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.tasksErrorDescription)}`}
             aria-busy={recovery.taskFetching}
             className="mt-3"
             loading={recovery.taskFetching}
@@ -159,11 +159,11 @@ function DocumentsTaskQueryRecovery() {
       {recovery.documentError && (
         <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
           <p className="system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.documentsErrorDescription'])}
+            {t(($) => $.documentsErrorDescription)}
           </p>
           <Button
             ref={documentRetryButtonRef}
-            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+            aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
             aria-busy={recovery.documentFetching}
             className="mt-3"
             loading={recovery.documentFetching}
@@ -186,7 +186,7 @@ function DocumentsTaskQueryRecovery() {
 }
 
 function useDocumentsTaskRowTitle(task: BackgroundTask) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const rowLabelsAtom = useMemo(() => createTaskDrawerRowLabelsAtom(task), [task])
   const {
     documentTitle: resolvedDocumentTitle,
@@ -197,18 +197,18 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
     resolvedDocumentTitle ??
     (task.documentId
       ? documentTitlePending
-        ? t(($) => $['newKnowledge.documentColumn'])
+        ? t(($) => $.documentColumn)
         : task.documentId
       : undefined)
-  const operationTitle = t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
+  const operationTitle = t(($) => $[`overview.operation.${task.operation}`])
   const progress = taskProgress(task)
 
   return task.operation === 'document_processing' && documentTitle
-    ? `${t(($) => $['newKnowledge.addDocument'])} · ${documentTitle}`
+    ? `${t(($) => $.addDocument)} · ${documentTitle}`
     : task.operation === 'document_upload'
-      ? `${t(($) => $['newKnowledge.addDocument'])}${progress ? ` · ${progress.total}` : ''}`
+      ? `${t(($) => $.addDocument)}${progress ? ` · ${progress.total}` : ''}`
       : task.operation === 'document_reindex'
-        ? `${t(($) => $['newKnowledge.reindexDocuments'])}${documentTitle ? ` · ${documentTitle}` : progress && progress.total > 1 ? ` · ${progress.total}` : ''}`
+        ? `${t(($) => $.reindexDocuments)}${documentTitle ? ` · ${documentTitle}` : progress && progress.total > 1 ? ` · ${progress.total}` : ''}`
         : task.operation === 'document_delete' && documentTitle
           ? `${operationTitle} · ${documentTitle}`
           : sourceTitle
@@ -221,7 +221,7 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
 }
 
 function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const title = useDocumentsTaskRowTitle(task)
   const progress = taskProgress(task)
@@ -232,7 +232,7 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
       ? `${progress.completed}/${progress.total}`
       : `${task.progressPercent}%`
     : undefined
-  const stateLabel = t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
+  const stateLabel = t(($) => $[`processingTaskState.${task.state}`], {
     progress: task.progressPercent,
   })
   const status =
@@ -295,7 +295,7 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
@@ -406,9 +406,9 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     task.failure?.action === 'configure_model'
       ? tCommon(($) => $['datasetMenus.settings'])
       : task.failure?.action === 'configure_source'
-        ? t(($) => $['newKnowledge.openSource'])
+        ? t(($) => $.openSource)
         : task.failure?.action === 'reupload'
-          ? t(($) => $['newKnowledge.addDocument'])
+          ? t(($) => $.addDocument)
           : undefined
   const actionTarget = `${title} · ${task.id}`
   const action = canWrite
@@ -422,13 +422,13 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const showRecovery = Boolean(canWrite && recoveryPath && recoveryLabel)
   if (!action && !showRecovery && !canDismiss) return null
 
-  const dismissLabel = t(($) => $['newKnowledge.dismissTask'])
+  const dismissLabel = t(($) => $.dismissTask)
 
   return (
     <div className="flex shrink-0 flex-col items-end">
       {failedLifecycle === taskLifecycle(task) && (
         <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
-          {t(($) => $['newKnowledge.taskActionFailed'])}
+          {t(($) => $.taskActionFailed)}
         </p>
       )}
       <div className="flex items-center gap-1">
@@ -438,10 +438,10 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             aria-label={
               action === 'cancel'
                 ? includeCancelTarget
-                  ? `${t(($) => $['newKnowledge.interruptTask'])} · ${actionTarget}`
+                  ? `${t(($) => $.interruptTask)} · ${actionTarget}`
                   : undefined
                 : includeRetryTarget
-                  ? `${t(($) => $['newKnowledge.retryTask'])} · ${actionTarget}`
+                  ? `${t(($) => $.retryTask)} · ${actionTarget}`
                   : undefined
             }
             size="small"
@@ -450,9 +450,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             loading={pending}
             onClick={() => void performAction(action)}
           >
-            {action === 'cancel'
-              ? t(($) => $['newKnowledge.interruptTask'])
-              : t(($) => $['newKnowledge.retryTask'])}
+            {action === 'cancel' ? t(($) => $.interruptTask) : t(($) => $.retryTask)}
           </Button>
         )}
         {!action && showRecovery && recoveryPath && recoveryLabel && (
@@ -472,10 +470,10 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             onClick={() => {
               dismissTask(task.id)
               toast.info(
-                t(($) => $['newKnowledge.taskDismissed']),
+                t(($) => $.taskDismissed),
                 {
                   actionProps: {
-                    children: t(($) => $['newKnowledge.undoTaskDismissal']),
+                    children: t(($) => $.undoTaskDismissal),
                     onClick: () => restoreTask(task.id),
                   },
                 },
@@ -515,7 +513,7 @@ function DocumentsTaskRow({ task: baseTask }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskRows() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const open = useAtomValue(taskDrawerOpenAtom)
   const orderedTasks = useAtomValue(taskDrawerOrderedBaseTasksAtom)
   const rowsState = useAtomValue(taskDrawerRowsStateAtom)
@@ -539,7 +537,7 @@ function DocumentsTaskRows() {
   if (!orderedTasks.length)
     return rowsState.showEmpty ? (
       <p className="py-16 text-center system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.noBackgroundTasks'])}
+        {t(($) => $.noBackgroundTasks)}
       </p>
     ) : null
 
@@ -567,7 +565,7 @@ function DocumentsTaskRows() {
 }
 
 function DocumentsTaskLoadMore() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
   const open = useAtomValue(taskDrawerOpenAtom)
   const pagination = useAtomValue(taskDrawerLoadMoreFactsAtom)
   const showMore = useSetAtom(showMoreTaskDrawerResultsAtom)
@@ -602,7 +600,7 @@ function DocumentsTaskLoadMore() {
           showMore()
         }}
       >
-        {t(($) => $['newKnowledge.loadMore'])}
+        {t(($) => $.loadMore)}
       </Button>
     </div>
   )

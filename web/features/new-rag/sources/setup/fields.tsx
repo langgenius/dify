@@ -34,7 +34,7 @@ export function SourceTypeSelector({
   value: NewKnowledgeSourceType
   onChange: (value: NewKnowledgeSourceType) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <Fieldset disabled={disabled}>
@@ -44,7 +44,7 @@ export function SourceTypeSelector({
           appearance === 'embedded' ? 'mb-1.25' : 'mb-1.5 leading-3.75',
         )}
       >
-        {t(($) => $['newKnowledge.sourceTypeLabel'])}
+        {t(($) => $.sourceTypeLabel)}
       </FieldsetLegend>
       <RadioGroup<NewKnowledgeSourceType>
         value={value}
@@ -70,7 +70,7 @@ export function SourceTypeSelector({
               aria-hidden
               className={`${option.icon} ${appearance === 'embedded' ? 'size-4' : option.iconSize}`}
             />
-            {t(($) => $[`newKnowledge.${option.value}`])}
+            {t(($) => $[`${option.value}`])}
           </RadioItem>
         ))}
       </RadioGroup>
@@ -143,7 +143,9 @@ export function SourceProviderEmptyState({ className }: { className?: string }) 
       <span className="flex size-8 items-center justify-center rounded-lg bg-background-default">
         <span aria-hidden className="i-ri-plug-line size-4 text-text-tertiary" />
       </span>
-      <span className="system-xs-regular text-text-tertiary">{t(($) => $['list.notFound'])}</span>
+      <span className="system-xs-regular text-text-tertiary">
+        {t(($) => $['list.notFound'], { ns: 'plugin' })}
+      </span>
     </div>
   )
 }
@@ -205,7 +207,7 @@ export function SourceProviderSelector({
   showEmptyState?: boolean
   onChange: (providerKey: string) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <Fieldset disabled={disabled}>
@@ -216,7 +218,7 @@ export function SourceProviderSelector({
         )}
       >
         <FieldsetLegend className="py-0 system-xs-medium">
-          {t(($) => $['newKnowledge.providerLabel'])}
+          {t(($) => $.providerLabel)}
         </FieldsetLegend>
         <Link
           aria-disabled={disabled || undefined}
@@ -231,7 +233,7 @@ export function SourceProviderSelector({
           target="_blank"
           onClick={disabled ? (event) => event.preventDefault() : undefined}
         >
-          {t(($) => $['newKnowledge.moreProviders'])}
+          {t(($) => $.moreProviders)}
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
         </Link>
       </div>
@@ -278,12 +280,12 @@ export function SourceNameField({
   preventSubmitOnEnter?: boolean
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <Field name={name} className={cn('gap-1.5', className)}>
       <FieldLabel className={labelClassName}>
-        {t(($) => $['newKnowledge.sourceName'])}
+        {t(($) => $.sourceName)}
         <span aria-hidden className="ml-0.5 text-text-destructive">
           *
         </span>
@@ -294,7 +296,7 @@ export function SourceNameField({
         disabled={disabled}
         maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
         value={draft.sourceName}
-        placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+        placeholder={t(($) => $.sourceNamePlaceholder)}
         onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
         onKeyDown={(event) => {
           if (preventSubmitOnEnter && event.key === 'Enter') event.preventDefault()
@@ -391,17 +393,17 @@ export function SourceProviderCredentialRequiredCard({
   provider: string
   onConnect: () => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('knowledgeSpace')
 
   return (
     <SourceConnectionRequiredCard
-      actionLabel={t(($) => $['newKnowledge.connectProvider'], { provider })}
-      description={t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
+      actionLabel={t(($) => $.connectProvider, { provider })}
+      description={t(($) => $.providerCredentialRequiredDescription, {
         provider,
       })}
       disabled={disabled}
       icon={icon}
-      title={t(($) => $['newKnowledge.providerNotConfigured'], { provider })}
+      title={t(($) => $.providerNotConfigured, { provider })}
       onConnect={onConnect}
     />
   )
