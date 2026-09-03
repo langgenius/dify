@@ -23,6 +23,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
 from services.account_adapters import (
@@ -53,6 +54,7 @@ from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
@@ -212,6 +214,22 @@ def test_build_application_services_reuses_file_service(
     assert isinstance(services.files, FileService)
     assert services.files._session_maker is sqlite_session_factory
     assert services.web_app_runtime._file_service is services.files
+
+
+def test_build_application_services_wires_message_file_previews(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.message_file_previews, MessageFilePreviewService)
+    assert isinstance(services.message_file_previews._files, MessageFilePreviewQueryRepository)
+    assert services.message_file_previews._files._session_factory is sqlite_session_factory
+    assert services.message_file_previews._storage is ext_application_services.storage
 
 
 def test_build_application_services_wires_workflow_run_archives(

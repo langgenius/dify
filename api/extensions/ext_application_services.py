@@ -19,6 +19,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.passport import PassportService
@@ -32,6 +33,7 @@ from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSour
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
@@ -125,6 +127,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.message_file_preview_service import MessageFilePreviewService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -221,6 +224,7 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     files: FileService
+    message_file_previews: MessageFilePreviewService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -503,6 +507,10 @@ def build_application_services(
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
         files=file_service,
+        message_file_previews=MessageFilePreviewService(
+            files=MessageFilePreviewQueryRepository(session_factory=database_client),
+            storage=storage,
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
