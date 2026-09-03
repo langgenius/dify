@@ -456,22 +456,30 @@ def test_publish_streaming_response_recovers_when_workflow_started_publish_fails
     assert "publishing fallback terminal event" in caplog.text
 
 
-def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_started_on_publish_error(
+def test_publish_streaming_response_drains_stream_before_reraising_publish_error(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ):
     caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
-    response_stream = iter(
-        [
-            {
-                "event": "workflow_started",
-                "task_id": "task-id",
-                "workflow_run_id": "workflow-run-id",
-                "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
-            },
-            {"event": "node_started", "task_id": "task-id"},
-        ]
-    )
+    message_finalized = False
+
+    def response_stream() -> Generator[Mapping[str, object], None, None]:
+        nonlocal message_finalized
+
+        yield {
+            "event": "workflow_started",
+            "task_id": "task-id",
+            "workflow_run_id": "workflow-run-id",
+            "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
+        }
+        yield {"event": "node_started", "task_id": "task-id"}
+        message_finalized = True
+        yield {
+            "event": "workflow_finished",
+            "task_id": "task-id",
+            "data": {"status": WorkflowExecutionStatus.SUCCEEDED},
+        }
+
     successful_payloads: list[dict[str, object] | str] = []
 
     def _publish(payload: bytes) -> None:
@@ -484,7 +492,7 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
 
     with pytest.raises(RuntimeError, match="broker write failed"):
         _publish_streaming_response(
-            response_stream,
+            response_stream(),
             "workflow-run-id",
             app_mode=AppMode.ADVANCED_CHAT,
             workflow_id="workflow-id",
@@ -492,12 +500,48 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
             started_reason=WorkflowStartReason.INITIAL,
         )
 
+    assert message_finalized is True
     assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
     assert successful_payloads[1]["task_id"] == "task-id"
     assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
     assert successful_payloads[1]["data"]["error"] == "broker write failed"
     assert "workflow-run-id" in caplog.text
     assert "publishing fallback terminal event" in caplog.text
+
+
+def test_publish_streaming_response_preserves_delivery_error_when_fallback_publish_fails(
+    mock_topic: MagicMock,
+):
+    delivery_error = RuntimeError("broker write failed")
+    fallback_error = RuntimeError("fallback publish failed")
+    message_finalized = False
+
+    def response_stream() -> Generator[Mapping[str, object], None, None]:
+        nonlocal message_finalized
+
+        yield {"event": "workflow_started", "task_id": "task-id"}
+        message_finalized = True
+        yield {
+            "event": "workflow_finished",
+            "task_id": "task-id",
+            "data": {"status": WorkflowExecutionStatus.SUCCEEDED},
+        }
+
+    mock_topic.publish.side_effect = [delivery_error, fallback_error]
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert exc_info.value is delivery_error
+    assert message_finalized is True
+    assert mock_topic.publish.call_count == 2
 
 
 def test_publish_streaming_response_recovers_when_workflow_finished_publish_fails_first(

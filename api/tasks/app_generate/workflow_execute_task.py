@@ -364,7 +364,8 @@ def _publish_streaming_response(
     `_AppRunner.run()` only handles failures before the generator is returned.
     Once we start iterating the runtime stream, this helper becomes the last
     place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event.
+    lifecycle event. Delivery failures must not stop generator iteration because
+    terminal handlers may still need to persist application state.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -419,6 +420,7 @@ def _publish_streaming_response(
     terminal_published = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
+    delivery_error: Exception | None = None
 
     try:
         for event in response_stream:
@@ -426,6 +428,12 @@ def _publish_streaming_response(
             task_id = _get_task_id(event)
             if task_id is not None:
                 last_task_id = task_id
+
+            if event_name == "error":
+                stream_error_message = _get_error_message(event) or stream_error_message
+
+            if delivery_error is not None:
+                continue
 
             try:
                 if isinstance(event, BaseModel):
@@ -436,14 +444,21 @@ def _publish_streaming_response(
                 logger.exception("error while encoding event")
                 continue
 
-            topic.publish(payload.encode())
+            try:
+                topic.publish(payload.encode())
+            except Exception as exc:
+                delivery_error = exc
+                logger.exception(
+                    "Failed to publish workflow stream event for run %s; draining response stream before retrying "
+                    "terminal delivery",
+                    normalized_workflow_run_id,
+                )
+                continue
 
             if event_name == "workflow_started":
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
-            elif event_name == "error":
-                stream_error_message = _get_error_message(event) or stream_error_message
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -456,6 +471,26 @@ def _publish_streaming_response(
                 publish_started=not started_published,
             )
         raise
+
+    if delivery_error is not None:
+        if not terminal_published:
+            logger.error(
+                "Workflow response delivery for run %s failed; publishing fallback terminal event after draining "
+                "the response stream",
+                normalized_workflow_run_id,
+            )
+            try:
+                _publish_failed_terminal_event(
+                    error_message=str(delivery_error) or delivery_error.__class__.__name__,
+                    task_id=last_task_id,
+                    publish_started=not started_published,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to publish fallback terminal event for workflow run %s",
+                    normalized_workflow_run_id,
+                )
+        raise delivery_error
 
     if not terminal_published:
         logger.warning(
