@@ -11,7 +11,7 @@ import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-tim
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
-import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS } from '@/config'
+import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -52,7 +52,7 @@ const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
-  if (typeof name !== 'string' || name.length === 0 || name.length > 128)
+  if (typeof name !== 'string' || name.length === 0 || name.length > MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH)
     return false
 
   const [firstChar, ...remainingChars] = Array.from(name)

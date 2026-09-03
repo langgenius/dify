@@ -90,6 +90,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: z.string().default(''),
   /**
+   * Maximum length of Markdown form field names.
+   */
+  NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH: coercedNumber.default(128),
+  /**
    * The API PREFIX for MARKETPLACE
    */
   NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.url().optional(),
@@ -189,6 +193,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: isServer
       ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
       : getRuntimeEnvFromBody('markdownFormFieldNameExtraChars'),
+    NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH: isServer
+      ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
+      : getRuntimeEnvFromBody('markdownFormFieldNameMaxLength'),
     NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX : getRuntimeEnvFromBody('marketplaceApiPrefix'),
     NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: isServer ? process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX : getRuntimeEnvFromBody('marketplaceUrlPrefix'),
     NEXT_PUBLIC_MAX_ITERATIONS_NUM: isServer ? process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM : getRuntimeEnvFromBody('maxIterationsNum'),
