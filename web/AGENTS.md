@@ -4,6 +4,14 @@
 - Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
 - Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
+## HTML and ARIA Semantics
+
+- Prefer native controls, lists, and tables before adding ARIA roles; follow the [WAI-ARIA structural roles guidance]. Preserve intentional `role="list"` on markerless lists for Safari/VoiceOver, with a narrow lint suppression explaining the compatibility need.
+- Keep clear, delete, and menu buttons outside another button or checkbox role. Use a neutral container for sibling actions, or a label for a single form control. Spread primitive trigger props and refs onto the actual interactive element, and let the primitive/native control own keyboard activation.
+- Give `region` landmarks accessible names, preferably from their visible headings via `aria-labelledby`. Use `toolbar` only when its composite keyboard behavior is implemented; use `group` for an ordinary related set of actions.
+- When changing markup or splitting a trigger from its actions, preserve selection, clear/confirm behavior, disabled state, popup dismissal, and focus restoration. Verify according to `docs/test.md`.
+- Check browser layout and hit areas after replacing grid/flex markup with native tables. Verify column widths and full-cell control height at representative widths; `h-full` needs a resolvable parent height, and `min-height` alone may leave inputs and selectors shorter than their cells.
+
 ## Package Contracts
 
 - User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
@@ -31,4 +39,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 [Dify UI package index]: ../packages/dify-ui/README.md
 [IconButton contract]: ../packages/dify-ui/src/icon-button/README.md
 [Input Group contract]: ../packages/dify-ui/src/input-group/README.md
+[WAI-ARIA structural roles guidance]: https://www.w3.org/WAI/ARIA/apg/practices/structural-roles
 [form contract]: ../packages/dify-ui/docs/forms.md
