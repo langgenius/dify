@@ -214,6 +214,8 @@ class TestWorkspaceQueryRepository:
         result = repository.list_for_account("account-1")
         membership_ids = repository.list_ids_for_account("account-1")
 
+        assert repository.has_active_for_account("account-1") is True
+        assert repository.has_active_for_account("missing-account") is False
         assert result == (
             WorkspaceRecord(
                 id=earlier.id,
