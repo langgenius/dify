@@ -64,7 +64,7 @@ def _persist_model_configuration(
 
 
 @pytest.fixture(autouse=True)
-def _legacy_model_billing_profile():
+def _legacy_model_billing_profile() -> Iterator[None]:
     with patch(
         "core.provider_manager.ModelBillingProfileService.resolve",
         return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),

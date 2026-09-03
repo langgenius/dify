@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
@@ -15,7 +16,7 @@ from services.workspace_service import WorkspaceService
 
 
 @pytest.fixture(autouse=True)
-def _legacy_model_billing_profile():
+def _legacy_model_billing_profile() -> Iterator[None]:
     with patch(
         "services.workspace_service.ModelBillingProfileService.resolve",
         return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),

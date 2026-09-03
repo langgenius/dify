@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -27,7 +27,7 @@ from models.tokener import TenantTokenerIntegrationStatus
 
 
 @pytest.fixture(autouse=True)
-def _legacy_model_billing_profile():
+def _legacy_model_billing_profile() -> Iterator[None]:
     with patch(
         "core.model_manager.ModelBillingProfileService.resolve",
         return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS),

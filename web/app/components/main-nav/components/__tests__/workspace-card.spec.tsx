@@ -133,14 +133,11 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   const { seedWorkspaces = true, systemFeaturesLicense, ...renderOptions } = options ?? {}
   const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
-    queryClient.setQueryData(
-      consoleQuery.workspaces.current.summary.get.queryKey(),
-      {
-        ...mockCurrentWorkspace,
-        model_billing_source: mockCurrentWorkspace.model_billing_source ?? 'legacy_message_credits',
-        tokener_bootstrap_status: mockCurrentWorkspace.tokener_bootstrap_status ?? null,
-      },
-    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
+      ...mockCurrentWorkspace,
+      model_billing_source: mockCurrentWorkspace.model_billing_source ?? 'legacy_message_credits',
+      tokener_bootstrap_status: mockCurrentWorkspace.tokener_bootstrap_status ?? null,
+    })
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
