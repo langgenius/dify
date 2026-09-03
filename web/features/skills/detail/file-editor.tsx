@@ -1075,7 +1075,7 @@ export function FileEditor({
             <button
               type="button"
               aria-label={t(($) => $['skillManagement.detail.builder.open'])}
-              className="flex h-8 w-[133px] cursor-pointer items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-xs-semibold-uppercase text-text-accent shadow-xs outline-hidden backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 w-33.25 cursor-pointer items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-xs-semibold-uppercase text-text-accent shadow-xs outline-hidden backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={onOpenBuilder}
             >
               <span aria-hidden className="i-ri-box-3-line size-4" />
@@ -1102,7 +1102,7 @@ export function FileEditor({
           <div className="relative h-full overflow-hidden bg-background-default">
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
             <div className="h-full scrollbar-none overflow-y-auto px-12 py-8">
-              <div className="mx-auto max-w-[768px]">
+              <div className="mx-auto max-w-3xl">
                 {showMarkdownMetadataPanel && (
                   <div className="mb-3 flex flex-col gap-3 p-2">
                     {(markdownContent.name || !readonly) && (
@@ -1262,7 +1262,7 @@ export function FileEditor({
                           }}
                         >
                           <span aria-hidden className="i-ri-add-line size-3.5" />
-                          <span className="px-[3px]">
+                          <span className="px-0.75">
                             {t(($) => $['skillManagement.detail.addMetadata'])}
                           </span>
                         </button>
@@ -1279,14 +1279,14 @@ export function FileEditor({
                   {readonly ? (
                     <MarkdownBodyReferencePreview
                       body={markdownContent.body}
-                      className="min-h-[360px]"
+                      className="min-h-90"
                       onOpenReference={onSelectFile}
                       placeholder={t(
                         ($) => $['skillManagement.detail.referenceFiles.livePlaceholder'],
                       )}
                     />
                   ) : (
-                    <div className="relative min-h-[360px]">
+                    <div className="relative min-h-90">
                       <MarkdownLiveBodyEditor
                         key={editorRenderKey}
                         body={markdownContent.body}
