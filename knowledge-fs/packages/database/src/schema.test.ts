@@ -697,12 +697,7 @@ describe("database schema catalog", () => {
     const outbox = findTable(schema, "deletion_outbox");
     const retryAudits = findTable(schema, "deletion_retry_audits");
 
-    expect(jobs.foreignKeys).toContainEqual({
-      columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
-      onDelete: "RESTRICT",
-      referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
-      referencedTable: "capability_grants",
-    });
+    expect(jobs.foreignKeys ?? []).toEqual([]);
     expect(tombstones.foreignKeys ?? []).toEqual([]);
     expect(items.foreignKeys).toEqual([
       {
@@ -713,15 +708,7 @@ describe("database schema catalog", () => {
       },
     ]);
     expect(outbox.foreignKeys).toEqual(items.foreignKeys);
-    expect(retryAudits.foreignKeys).toEqual([
-      ...(items.foreignKeys ?? []),
-      {
-        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
-        onDelete: "RESTRICT",
-        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
-        referencedTable: "capability_grants",
-      },
-    ]);
+    expect(retryAudits.foreignKeys).toEqual(items.foreignKeys);
     expect(jobs.columns.map((column) => column.name)).toEqual(
       expect.arrayContaining([
         "target_revision",

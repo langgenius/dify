@@ -2920,6 +2920,12 @@ describe("LLM semantic chunker", () => {
 
     expect(nodes).toHaveLength(1);
     expect(provider.calls).toHaveLength(2);
+    expect(provider.calls[0]?.messages[0]?.content).not.toContain(
+      "previous response failed JSON schema validation",
+    );
+    expect(provider.calls[1]?.messages[0]?.content).toContain(
+      "previous response failed JSON schema validation",
+    );
   });
 
   it("accepts JSON wrapped in provider prose but strictly caps joint extraction arrays", async () => {

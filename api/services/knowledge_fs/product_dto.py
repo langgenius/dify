@@ -239,6 +239,9 @@ class KnowledgeFSInitialWebsiteSourcePayload(KnowledgeFSInitialSyncPolicyPayload
 
     @model_validator(mode="after")
     def validate_selection(self) -> KnowledgeFSInitialWebsiteSourcePayload:
+        source_urls = [item.canonical_url for item in self.selection]
+        if len(set(source_urls)) != len(source_urls):
+            raise ValueError("initial website selection canonical URLs must be unique")
         if self.crawl_options.limit < len(self.selection):
             raise ValueError("initial website crawl limit must cover every selected URL")
         if (

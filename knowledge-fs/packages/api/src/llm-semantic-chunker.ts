@@ -497,6 +497,7 @@ export function createLlmSemanticChunker({
           maxChunkChars: effectiveConfig.maxChunkChars,
           maxEntitiesPerChunk,
           maxRelationsPerChunk,
+          retryCount,
           window,
         });
         const callStartedAt = Date.now();
@@ -2368,6 +2369,7 @@ function semanticChunkingMessages({
   maxChunkChars,
   maxEntitiesPerChunk,
   maxRelationsPerChunk,
+  retryCount,
   window,
 }: {
   readonly enableGraph: boolean;
@@ -2375,6 +2377,7 @@ function semanticChunkingMessages({
   readonly maxChunkChars: number;
   readonly maxEntitiesPerChunk: number;
   readonly maxRelationsPerChunk: number;
+  readonly retryCount: number;
   readonly window: SemanticWindow;
 }): readonly SemanticChunkingLlmMessage[] {
   const carriesParserProvenance = window.planningVersion !== "v1";
@@ -2389,6 +2392,11 @@ function semanticChunkingMessages({
           ? "PageIndex is enabled: assign a concise semantic sectionPath and sectionSummary to every chunk."
           : "PageIndex is disabled: preserve only the supplied sectionPath, omit sectionSummary, and do not invent child section levels.",
         "Return strict JSON only. Never return, rewrite, summarize, correct, or duplicate source text.",
+        ...(retryCount > 0
+          ? [
+              "Your previous response failed JSON schema validation. Correct the structure and return exactly one JSON object matching Output shape; do not include prose or Markdown fences.",
+            ]
+          : []),
         "The units field is the core: cover every core unit exactly once, in order, by contiguous inclusive ranges.",
         ...(usesFixedCoreBoundary(window.planningVersion)
           ? [

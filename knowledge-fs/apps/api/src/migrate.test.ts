@@ -147,6 +147,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
@@ -223,6 +225,10 @@ describe("runApiDatabaseMigrations", () => {
     );
     expect(migrationSql[47]).toContain(
       'CREATE INDEX IF NOT EXISTS "deletion_tombstones_active_scope_idx"',
+    );
+    expect(migrationSql[48]).toContain("-- Migration id: 0049_answer_trace_query_images\n");
+    expect(migrationSql[49]).toContain(
+      "-- Migration id: 0050_deletion_job_capability_provenance\n",
     );
     expect(closed).toBe(true);
   });
