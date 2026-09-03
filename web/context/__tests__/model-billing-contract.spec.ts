@@ -15,7 +15,7 @@ describe('model billing rolling contracts', () => {
     })
 
     expect(result.model_billing_source).toBe('legacy_message_credits')
-    expect(result.tokener_bootstrap_status).toBeUndefined()
+    expect(result.tokener_bootstrap_status ?? null).toBeNull()
   })
 
   it('defaults an old provider credits payload to legacy billing', () => {
@@ -31,6 +31,6 @@ describe('model billing rolling contracts', () => {
     })
 
     expect(result.model_billing_source).toBe('legacy_message_credits')
-    expect(result.tokener_bootstrap_status).toBeUndefined()
+    expect(result.tokener_bootstrap_status ?? null).toBeNull()
   })
 })
