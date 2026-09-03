@@ -3,6 +3,7 @@ import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
@@ -269,7 +270,8 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should include the suggestion in the suggested model accessible name', () => {
+  it('should expose the suggestion in the model name and on hover', async () => {
+    const user = userEvent.setup()
     renderPopupItem(
       <PopupItem
         {...previewCardProps()}
@@ -286,8 +288,24 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
+    const modelButton = screen.getByRole('button', {
+      name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/,
+    })
+    const suggestionText = screen.getByText('common.modelProvider.selector.suggestionTip')
+    const suggestionIndicator = suggestionText.parentElement
+
+    expect(modelButton).toBeInTheDocument()
+    expect(suggestionIndicator).not.toBeNull()
+
+    await user.hover(suggestionIndicator!)
+
     expect(
-      screen.getByRole('button', { name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/ }),
+      await screen.findByText(
+        (content, element) =>
+          content === 'common.modelProvider.selector.suggestionTip' &&
+          !!element &&
+          !modelButton.contains(element),
+      ),
     ).toBeInTheDocument()
   })
 
