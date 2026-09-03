@@ -1,3 +1,4 @@
+import type { PopoverProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -78,8 +79,21 @@ const DatePicker = ({
     // oxlint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
   }, [timezone])
 
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
+  const handleOpenChange = useCallback<NonNullable<PopoverProps['onOpenChange']>>(
+    (nextOpen, details) => {
+      const outsideTarget =
+        details.reason === 'focus-out' && details.event instanceof FocusEvent
+          ? details.event.relatedTarget
+          : details.event.target
+      if (
+        !nextOpen &&
+        (details.reason === 'outside-press' || details.reason === 'focus-out') &&
+        outsideTarget instanceof Node &&
+        triggerAreaRef.current?.contains(outsideTarget)
+      ) {
+        details.cancel()
+        return
+      }
       setIsOpen(nextOpen)
       setView(ViewType.date)
       if (nextOpen && normalizedValue) {
@@ -89,6 +103,10 @@ const DatePicker = ({
     },
     [normalizedValue],
   )
+
+  const handleClickTrigger = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -220,29 +238,11 @@ const DatePicker = ({
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open, details) => {
-        const outsideTarget =
-          details.reason === 'focus-out' && details.event instanceof FocusEvent
-            ? details.event.relatedTarget
-            : details.event.target
-        if (
-          !open &&
-          (details.reason === 'outside-press' || details.reason === 'focus-out') &&
-          outsideTarget instanceof Node &&
-          triggerAreaRef.current?.contains(outsideTarget)
-        ) {
-          details.cancel()
-          return
-        }
-        handleOpenChange(open)
-      }}
-    >
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <div ref={triggerAreaRef} className={cn('min-w-0', triggerWrapClassName)}>
         <PopoverTrigger
           disabled={disabled}
-          onClick={(event) => event.stopPropagation()}
+          onClick={handleClickTrigger}
           className={triggerWrapClassName}
           render={(props, state) => {
             if (renderTrigger) {
