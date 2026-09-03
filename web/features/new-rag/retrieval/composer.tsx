@@ -158,11 +158,7 @@ export function RetrievalComposer() {
               onClick={run}
             >
               <span aria-hidden className="i-ri-play-circle-line size-4" />
-              {t(($) =>
-                mode === 'research'
-                  ? $['newKnowledge.retrievalTest.startResearch']
-                  : $['newKnowledge.retrievalTest.run'],
-              )}
+              {t(($) => $['newKnowledge.retrievalTest.run'])}
             </Button>
           </div>
         </div>

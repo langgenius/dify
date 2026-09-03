@@ -483,9 +483,7 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
     await waitFor(() =>
       expect(apiMock.planResearch).toHaveBeenCalledWith({
@@ -564,12 +562,7 @@ describe('RetrievalTestPage', () => {
           }),
         )
       await user.click(
-        screen.getByRole('button', {
-          name:
-            mode === 'research'
-              ? 'dataset.newKnowledge.retrievalTest.startResearch'
-              : 'dataset.newKnowledge.retrievalTest.run',
-        }),
+        screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }),
       )
 
       expect(apiMock.queryAdmission).not.toHaveBeenCalled()
@@ -590,7 +583,7 @@ describe('RetrievalTestPage', () => {
     },
   )
 
-  it('admits only one research task while the first Start request is pending', async () => {
+  it('admits only one research task while the first Run request is pending', async () => {
     let resolvePlan: ((value: Awaited<ReturnType<typeof apiMock.planResearch>>) => void) | undefined
     const pendingPlan = new Promise<Awaited<ReturnType<typeof apiMock.planResearch>>>((resolve) => {
       resolvePlan = resolve
@@ -608,11 +601,11 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
-    const start = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.retrievalTest.startResearch',
+    const run = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.run',
     })
-    await user.click(start)
-    await user.click(start)
+    await user.click(run)
+    await user.click(run)
 
     expect(apiMock.planResearch).toHaveBeenCalledOnce()
     resolvePlan?.({
@@ -637,7 +630,7 @@ describe('RetrievalTestPage', () => {
       mode: 'deep',
     },
   ] as const)(
-    'admits only one $mode query while the first Start request is pending',
+    'admits only one $mode query while the first Run request is pending',
     async ({ label, mode }) => {
       let resolveAdmission: ((value: Record<string, never>) => void) | undefined
       apiMock.queryAdmission.mockReturnValueOnce(
@@ -653,12 +646,12 @@ describe('RetrievalTestPage', () => {
         `Run one ${mode} query`,
       )
       if (mode === 'deep') await user.click(screen.getByRole('radio', { name: label }))
-      const start = screen.getByRole('button', {
+      const run = screen.getByRole('button', {
         name: 'dataset.newKnowledge.retrievalTest.run',
       })
       act(() => {
-        start.click()
-        start.click()
+        run.click()
+        run.click()
       })
 
       await waitFor(() => expect(apiMock.queryAdmission).toHaveBeenCalledOnce())
@@ -777,9 +770,7 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
     const record = await screen.findByRole('button', { name: /Anything here\?/ })
     expect(record).toHaveAttribute('aria-pressed', 'true')
@@ -961,9 +952,7 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
     const processLog = await screen.findByRole('button', {
       name: 'dataset.newKnowledge.retrievalTest.processLog',
@@ -1965,9 +1954,7 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
     expect(await screen.findByText('Retrieved warranty evidence')).toBeInTheDocument()
     expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
@@ -1999,7 +1986,7 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
     const queryInput = screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder')
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }),
     ).toBeDisabled()
 
     await user.click(queryInput)
