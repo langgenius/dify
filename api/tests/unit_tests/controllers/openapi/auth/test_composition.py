@@ -156,7 +156,6 @@ def _selected_webapp_steps(*, scope, app_access_mode):
     )
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="x",
         scopes=frozenset({scope}) if scope is not None else frozenset(),
         app_access_mode=app_access_mode,
     )

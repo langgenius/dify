@@ -26,7 +26,6 @@ def _stub_execute(
     kwargs["auth_data"] = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.uuid4(),
-        token_hash="test",
         token_id=uuid.uuid4(),
         scopes=frozenset({Scope.FULL}),
         required_scope=scope,

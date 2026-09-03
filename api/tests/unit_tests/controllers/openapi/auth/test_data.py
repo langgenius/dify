@@ -39,7 +39,6 @@ def test_request_context_scope_optional():
 def test_auth_data_is_mutable():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset({Scope.FULL}),
     )
     data.token_type = TokenType.OAUTH_EXTERNAL_SSO
@@ -49,7 +48,6 @@ def test_auth_data_is_mutable():
 def test_auth_data_path_params_defaults_empty():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
     )
     assert data.path_params == {}
@@ -58,7 +56,6 @@ def test_auth_data_path_params_defaults_empty():
 def test_auth_data_account_id_optional():
     data = AuthData(
         token_type=TokenType.OAUTH_EXTERNAL_SSO,
-        token_hash="abc",
         scopes=frozenset({Scope.APPS_RUN}),
         external_identity=ExternalIdentity(email="u@sso.com"),
     )
@@ -69,25 +66,14 @@ def test_auth_data_external_identity_none_for_account():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.uuid4(),
-        token_hash="abc",
         scopes=frozenset({Scope.FULL}),
     )
     assert data.external_identity is None
 
 
-def test_auth_data_tenants_default_empty():
-    data = AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
-        scopes=frozenset(),
-    )
-    assert data.tenants == {}
-
-
 def test_auth_data_token_id_optional():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
     )
     assert data.token_id is None
@@ -119,7 +105,6 @@ def test_request_context_allowed_roles_set():
 def test_auth_data_allowed_roles_default_none():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
     )
     assert data.allowed_roles is None
@@ -131,7 +116,6 @@ def test_auth_data_allowed_roles_set():
     roles = frozenset({TenantAccountRole.ADMIN})
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
         allowed_roles=roles,
     )
@@ -141,7 +125,6 @@ def test_auth_data_allowed_roles_set():
 def test_auth_data_tenant_role_default_none():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
     )
     assert data.tenant_role is None
@@ -152,7 +135,6 @@ def test_auth_data_tenant_role_set():
 
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
         scopes=frozenset(),
         tenant_role=TenantAccountRole.ADMIN,
     )

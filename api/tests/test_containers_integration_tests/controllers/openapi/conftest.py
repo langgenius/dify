@@ -82,7 +82,6 @@ def auth_for(
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.UUID(str(account.id)),
-        token_hash="integration-test",
         token_id=token_id,
         scopes=frozenset({Scope.FULL}),
         caller=account,
@@ -115,7 +114,6 @@ def account_auth_context(
         token_id=token_id,
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
-        token_hash="integration-test",
     )
     reset_token = set_auth_ctx(ctx)
     try:
