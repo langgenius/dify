@@ -527,30 +527,6 @@ export type PluginCategoryListResponse = {
   plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
-export type AccessPolicyList = {
-  data?: Array<AccessPolicy>
-  pagination?: Pagination | null
-}
-
-export type AccessPolicy = {
-  category?: string
-  created_at?: number
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  policy_key?: string
-  resource_type: string
-  tenant_id?: string
-  updated_at?: number
-}
-
-export type AccessPolicyBindingState = {
-  binding_id: string
-  is_locked?: boolean
-}
-
 export type DeleteMemberBindingsRequest = {
   account_ids?: Array<string>
 }
@@ -616,23 +592,6 @@ export type MyPermissionsResponse = {
 
 export type PermissionCatalogResponse = {
   groups?: Array<PermissionCatalogGroup>
-}
-
-export type RbacRoleList = {
-  data?: Array<RbacRole>
-  pagination?: Pagination | null
-}
-
-export type RbacRole = {
-  category?: string
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  role_tag?: string
-  tenant_id?: string | null
-  type: string
 }
 
 export type MembersInRoleList = {
@@ -1690,13 +1649,6 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
-export type Pagination = {
-  current_page?: number
-  per_page?: number
-  total_count?: number
-  total_pages?: number
-}
-
 export type AccessPolicyMemberBinding = {
   access_policy_id: string
   account_id: string
@@ -1723,6 +1675,39 @@ export type ResourceUserAccessPolicies = {
   access_policies?: Array<AccessPolicy>
   account: RbacRoleAccount
   roles?: Array<RbacRole>
+}
+
+export type Pagination = {
+  current_page?: number
+  per_page?: number
+  total_count?: number
+  total_pages?: number
+}
+
+export type AccessPolicy = {
+  category?: string
+  created_at?: number
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  policy_key?: string
+  resource_type: string
+  tenant_id?: string
+  updated_at?: number
+}
+
+export type RbacRole = {
+  category?: string
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  role_tag?: string
+  tenant_id?: string | null
+  type: string
 }
 
 export type ResourcePermissionSnapshot = {
@@ -4372,7 +4357,9 @@ export type GetWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: AccessPolicyList
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4386,7 +4373,9 @@ export type PostWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
-  201: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4402,7 +4391,9 @@ export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4418,7 +4409,9 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4434,7 +4427,9 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4450,7 +4445,9 @@ export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
-  201: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse =
@@ -4466,7 +4463,9 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
-  200: AccessPolicyBindingState
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
@@ -4482,7 +4481,9 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = 
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
-  200: AccessPolicyBindingState
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
@@ -4901,7 +4902,9 @@ export type GetWorkspacesCurrentRbacRolesData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesResponses = {
-  200: RbacRoleList
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacRolesResponse =
@@ -4915,7 +4918,9 @@ export type PostWorkspacesCurrentRbacRolesData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesResponses = {
-  201: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacRolesResponse =
@@ -4931,7 +4936,9 @@ export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4947,7 +4954,9 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4963,7 +4972,9 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4979,7 +4990,9 @@ export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
-  201: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse =

@@ -374,31 +374,6 @@ export const zParserGithubUpload = z.object({
 })
 
 /**
- * AccessPolicy
- */
-export const zAccessPolicy = z.object({
-  category: z.string().optional().default(''),
-  created_at: z.int().optional().default(0),
-  description: z.string().optional().default(''),
-  id: z.string(),
-  is_builtin: z.boolean().optional().default(false),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  policy_key: z.string().optional().default(''),
-  resource_type: z.string(),
-  tenant_id: z.string().optional().default(''),
-  updated_at: z.int().optional().default(0),
-})
-
-/**
- * AccessPolicyBindingState
- */
-export const zAccessPolicyBindingState = z.object({
-  binding_id: z.string(),
-  is_locked: z.boolean().optional().default(false),
-})
-
-/**
  * _DeleteMemberBindingsRequest
  */
 export const zDeleteMemberBindingsRequest = z.object({
@@ -411,13 +386,6 @@ export const zDeleteMemberBindingsRequest = z.object({
 export const zReplaceUserAccessPolicies = z.object({
   access_policy_ids: z.array(z.string()).optional(),
   account_ids: z.array(z.string()).optional(),
-})
-
-/**
- * ReplaceUserAccessPoliciesResponse
- */
-export const zReplaceUserAccessPoliciesResponse = z.object({
-  access_policies: z.array(zAccessPolicy).optional(),
 })
 
 /**
@@ -446,29 +414,6 @@ export const zResourceWhitelistConfig = z.object({
  */
 export const zReplaceMemberRolesRequest = z.object({
   role_ids: z.array(z.string()).optional().default([]),
-})
-
-/**
- * RBACRole
- */
-export const zRbacRole = z.object({
-  category: z.string().optional().default(''),
-  description: z.string().optional().default(''),
-  id: z.string(),
-  is_builtin: z.boolean().optional().default(false),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  role_tag: z.string().optional().default(''),
-  tenant_id: z.string().nullish(),
-  type: z.string(),
-})
-
-/**
- * MemberRolesResponse
- */
-export const zMemberRolesResponse = z.object({
-  account_id: z.string(),
-  roles: z.array(zRbacRole).optional(),
 })
 
 /**
@@ -1257,32 +1202,6 @@ export const zPluginPermissionResponse = z.object({
 })
 
 /**
- * Pagination
- */
-export const zPagination = z.object({
-  current_page: z.int().optional().default(0),
-  per_page: z.int().optional().default(0),
-  total_count: z.int().optional().default(0),
-  total_pages: z.int().optional().default(0),
-})
-
-/**
- * _AccessPolicyList
- */
-export const zAccessPolicyList = z.object({
-  data: z.array(zAccessPolicy).optional(),
-  pagination: zPagination.nullish(),
-})
-
-/**
- * _RBACRoleList
- */
-export const zRbacRoleList = z.object({
-  data: z.array(zRbacRole).optional(),
-  pagination: zPagination.nullish(),
-})
-
-/**
  * AccessPolicyMemberBinding
  */
 export const zAccessPolicyMemberBinding = z.object({
@@ -1322,6 +1241,63 @@ export const zAccessPolicyRoleBinding = z.object({
  */
 export const zRoleBindingsResponse = z.object({
   data: z.array(zAccessPolicyRoleBinding).optional(),
+})
+
+/**
+ * Pagination
+ */
+export const zPagination = z.object({
+  current_page: z.int().optional().default(0),
+  per_page: z.int().optional().default(0),
+  total_count: z.int().optional().default(0),
+  total_pages: z.int().optional().default(0),
+})
+
+/**
+ * AccessPolicy
+ */
+export const zAccessPolicy = z.object({
+  category: z.string().optional().default(''),
+  created_at: z.int().optional().default(0),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  is_builtin: z.boolean().optional().default(false),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  policy_key: z.string().optional().default(''),
+  resource_type: z.string(),
+  tenant_id: z.string().optional().default(''),
+  updated_at: z.int().optional().default(0),
+})
+
+/**
+ * ReplaceUserAccessPoliciesResponse
+ */
+export const zReplaceUserAccessPoliciesResponse = z.object({
+  access_policies: z.array(zAccessPolicy).optional(),
+})
+
+/**
+ * RBACRole
+ */
+export const zRbacRole = z.object({
+  category: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  is_builtin: z.boolean().optional().default(false),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  role_tag: z.string().optional().default(''),
+  tenant_id: z.string().nullish(),
+  type: z.string(),
+})
+
+/**
+ * MemberRolesResponse
+ */
+export const zMemberRolesResponse = z.object({
+  account_id: z.string(),
+  roles: z.array(zRbacRole).optional(),
 })
 
 /**
@@ -4843,12 +4819,12 @@ export const zGetWorkspacesCurrentPluginByCategoryListResponse = zPluginCategory
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacAccessPoliciesResponse = zAccessPolicyList
+export const zGetWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
 
 /**
- * Policy created
+ * Success
  */
-export const zPostWorkspacesCurrentRbacAccessPoliciesResponse = zAccessPolicy
+export const zPostWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
 
 export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
   policy_id: z.uuid(),
@@ -4857,7 +4833,10 @@ export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = zAccessPolicy
+export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
   policy_id: z.uuid(),
@@ -4866,7 +4845,10 @@ export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = zAccessPolicy
+export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
   policy_id: z.uuid(),
@@ -4875,16 +4857,22 @@ export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = zAccessPolicy
+export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath = z.object({
   policy_id: z.uuid(),
 })
 
 /**
- * Policy copied
+ * Success
  */
-export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse = zAccessPolicy
+export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath = z.object({
   binding_id: z.uuid(),
@@ -4893,8 +4881,10 @@ export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath = 
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
-  zAccessPolicyBindingState
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath = z.object({
   binding_id: z.uuid(),
@@ -4903,8 +4893,10 @@ export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath 
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
-  zAccessPolicyBindingState
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody =
   zDeleteMemberBindingsRequest
@@ -5177,12 +5169,12 @@ export const zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacRolesResponse = zRbacRoleList
+export const zGetWorkspacesCurrentRbacRolesResponse = z.record(z.string(), z.unknown())
 
 /**
- * Role created
+ * Success
  */
-export const zPostWorkspacesCurrentRbacRolesResponse = zRbacRole
+export const zPostWorkspacesCurrentRbacRolesResponse = z.record(z.string(), z.unknown())
 
 export const zDeleteWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
   role_id: z.uuid(),
@@ -5191,7 +5183,7 @@ export const zDeleteWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse = zRbacRole
+export const zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
   role_id: z.uuid(),
@@ -5200,7 +5192,7 @@ export const zGetWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacRolesByRoleIdResponse = zRbacRole
+export const zGetWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
 
 export const zPutWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
   role_id: z.uuid(),
@@ -5209,16 +5201,16 @@ export const zPutWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacRolesByRoleIdResponse = zRbacRole
+export const zPutWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
 
 export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath = z.object({
   role_id: z.uuid(),
 })
 
 /**
- * Role copied
+ * Success
  */
-export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse = zRbacRole
+export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
   role_id: z.uuid(),

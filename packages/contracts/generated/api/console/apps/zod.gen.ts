@@ -482,28 +482,6 @@ export const zParserEnable = z.object({
 })
 
 /**
- * WorkflowTriggerResponse
- */
-export const zWorkflowTriggerResponse = z.object({
-  created_at: z.iso.datetime().nullish(),
-  icon: z.string(),
-  id: z.string(),
-  node_id: z.string(),
-  provider_name: z.string(),
-  status: z.string(),
-  title: z.string(),
-  trigger_type: z.string(),
-  updated_at: z.iso.datetime().nullish(),
-})
-
-/**
- * WorkflowTriggerListResponse
- */
-export const zWorkflowTriggerListResponse = z.object({
-  data: z.array(zWorkflowTriggerResponse),
-})
-
-/**
  * WorkflowAgentSandboxDownloadPayload
  */
 export const zWorkflowAgentSandboxDownloadPayload = z.object({
@@ -1478,6 +1456,28 @@ export const zTextToSpeechVoiceResponse = z.object({
  * Available voices
  */
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
+ * WorkflowTriggerResponse
+ */
+export const zWorkflowTriggerResponse = z.object({
+  created_at: z.iso.datetime().nullish(),
+  icon: z.string(),
+  id: z.string(),
+  node_id: z.string(),
+  provider_name: z.string(),
+  status: z.string(),
+  title: z.string(),
+  trigger_type: z.string(),
+  updated_at: z.iso.datetime().nullish(),
+})
+
+/**
+ * WorkflowTriggerListResponse
+ */
+export const zWorkflowTriggerListResponse = z.object({
+  data: z.array(zWorkflowTriggerResponse),
+})
 
 /**
  * SimpleAccountResponse
@@ -4723,9 +4723,9 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
 })
 
 /**
- * Annotations deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdAnnotationsResponse = z.void()
+export const zDeleteAppsByAppIdAnnotationsResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdAnnotationsPath = z.object({
   app_id: z.uuid(),
@@ -4797,9 +4797,9 @@ export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Annotation deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.void()
+export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdBody = zUpdateAnnotationPayload
 
@@ -5421,7 +5421,7 @@ export const zPostAppsByAppIdTriggerEnablePath = z.object({
 /**
  * Success
  */
-export const zPostAppsByAppIdTriggerEnableResponse = zWorkflowTriggerResponse
+export const zPostAppsByAppIdTriggerEnableResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdTriggersPath = z.object({
   app_id: z.uuid(),
@@ -6314,9 +6314,9 @@ export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 })
 
 /**
- * Workflow deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.void()
+export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.record(z.string(), z.unknown())
 
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

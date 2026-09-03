@@ -2277,7 +2277,6 @@ export const post44 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopy',
     path: '/workspaces/current/rbac/access-policies/{policy_id}/copy',
-    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath }))
@@ -2343,7 +2342,6 @@ export const post45 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacAccessPolicies',
     path: '/workspaces/current/rbac/access-policies',
-    successStatus: 201,
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
@@ -2893,7 +2891,6 @@ export const post46 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacRolesByRoleIdCopy',
     path: '/workspaces/current/rbac/roles/{role_id}/copy',
-    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
@@ -2975,7 +2972,6 @@ export const post47 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacRoles',
     path: '/workspaces/current/rbac/roles',
-    successStatus: 201,
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentRbacRolesResponse)
