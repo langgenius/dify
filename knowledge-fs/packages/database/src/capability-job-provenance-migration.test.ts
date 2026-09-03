@@ -59,7 +59,7 @@ describe("capability job provenance migration", () => {
             foreignKey.referencedTable === "capability_grants" &&
             foreignKey.columns.includes("capability_grant_id"),
         ),
-      ).toBe(true);
+      ).toBe(tableName !== "deletion_jobs");
       expect(
         schema.indexes.some(
           (index) => index.tableName === tableName && index.columns.includes("capability_grant_id"),
@@ -81,7 +81,7 @@ describe("capability job provenance migration", () => {
       deletionRetryAudits?.foreignKeys?.some(
         (foreignKey) => foreignKey.referencedTable === "capability_grants",
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       schema.indexes.some(
         (index) =>

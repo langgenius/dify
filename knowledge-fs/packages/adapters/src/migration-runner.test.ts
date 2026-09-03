@@ -57,6 +57,7 @@ const removeProviderSyncPolicyMigrationId = "0046_remove_provider_sync_policy";
 const parseArtifactCheckpointsMigrationId = "0047_parse_artifact_checkpoints";
 const deletionActiveScopeIndexesMigrationId = "0048_deletion_active_scope_indexes";
 const answerTraceQueryImagesMigrationId = "0049_answer_trace_query_images";
+const deletionJobCapabilityProvenanceMigrationId = "0050_deletion_job_capability_provenance";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -90,6 +91,7 @@ const migrationsAfterDurableDeletion = [
   parseArtifactCheckpointsMigrationId,
   deletionActiveScopeIndexesMigrationId,
   answerTraceQueryImagesMigrationId,
+  deletionJobCapabilityProvenanceMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

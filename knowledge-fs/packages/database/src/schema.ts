@@ -3639,14 +3639,10 @@ const tables = [
         name: "deletion_jobs_lease_ck",
       },
     ],
-    foreignKeys: [
-      {
-        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
-        onDelete: "RESTRICT",
-        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
-        referencedTable: "capability_grants",
-      },
-    ],
+    // capability_grant_id is immutable authorization provenance. It deliberately has no live FK:
+    // the referenced grant is owned by the space and is cascaded while this deletion job must
+    // survive long enough to commit its terminal state.
+    foreignKeys: [],
     columns: [
       idColumn(),
       varcharColumn("tenant_id", 255),
@@ -3945,12 +3941,6 @@ const tables = [
         onDelete: "CASCADE",
         referencedColumns: ["id"],
         referencedTable: "deletion_jobs",
-      },
-      {
-        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
-        onDelete: "RESTRICT",
-        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
-        referencedTable: "capability_grants",
       },
     ],
     columns: [
