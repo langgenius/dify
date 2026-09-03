@@ -48,7 +48,13 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
-from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    model_validate,
+    with_current_user,
+)
+from libs.login import login_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -822,6 +828,8 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
+    @login_required
+    @account_initialization_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -846,6 +854,8 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
+    @login_required
+    @account_initialization_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -864,6 +874,8 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @login_required
+    @account_initialization_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -880,6 +892,8 @@ class AppApi(Resource):
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @login_required
+    @account_initialization_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -900,6 +914,8 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @login_required
+    @account_initialization_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
