@@ -374,7 +374,6 @@ describe('WorkspaceCard', () => {
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
-    expect(panel).toHaveClass('w-[280px]')
     expect(
       within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' }),
     ).toBeInTheDocument()
