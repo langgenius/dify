@@ -83,9 +83,9 @@ Upstream behavior remains owned by the [Base UI documentation].
 Read [component authoring rules] before modifying the package, then open only the matching owner
 guide. This index intentionally does not duplicate those contracts.
 
+[Accessible names and descriptions]: ./docs/accessible-names-and-descriptions.md
 [Base UI documentation]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
-[Accessible names and descriptions]: ./docs/accessible-names-and-descriptions.md
 [Button]: ./src/button/README.md
 [Forms]: ./docs/forms.md
 [Icon Button]: ./src/icon-button/README.md
