@@ -1,5 +1,6 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +24,7 @@ vi.mock('../home/banners', async (importOriginal) => {
 
 vi.mock('../hydration-server', () => ({
   HydrateQueryClient: ({ children }: { children: ReactNode }) => children,
+  prefetchMarketplaceDehydratedState: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../view', () => ({
@@ -56,10 +58,38 @@ describe('Marketplace server entry', () => {
     const { default: Marketplace } = await import('../index')
     const element = await Marketplace({ variant: 'home' })
 
-    render(element)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        {element}
+      </QueryClientProvider>,
+    )
 
     expect(screen.getByText('Server banners: 1')).toBeInTheDocument()
     expect(mockGetLocaleOnServer).toHaveBeenCalledOnce()
     expect(mockFetchPluginBanners).toHaveBeenCalledWith('en-US')
+  })
+
+  it('starts catalog prefetch without waiting for banners to finish', async () => {
+    const { prefetchMarketplaceDehydratedState } = await import('../hydration-server')
+    let resolveBanners: (banners: PluginBanner[]) => void = () => {}
+    mockGetLocaleOnServer.mockResolvedValue('en-US')
+    mockFetchPluginBanners.mockImplementation(
+      () =>
+        new Promise<PluginBanner[]>((resolve) => {
+          resolveBanners = resolve
+        }),
+    )
+    vi.mocked(prefetchMarketplaceDehydratedState).mockResolvedValue(undefined)
+
+    const { default: Marketplace } = await import('../index')
+    const renderPromise = Marketplace({ variant: 'home', searchParams: Promise.resolve({}) })
+
+    await vi.waitFor(() => {
+      expect(prefetchMarketplaceDehydratedState).toHaveBeenCalled()
+    })
+    expect(mockFetchPluginBanners).toHaveBeenCalledWith('en-US')
+
+    resolveBanners([])
+    await renderPromise
   })
 })
