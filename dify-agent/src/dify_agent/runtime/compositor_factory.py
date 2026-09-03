@@ -177,7 +177,7 @@ def build_pydantic_ai_compositor(
             config,
             providers=providers,
             node_providers=node_providers,
-            **PYDANTIC_AI_TRANSFORMERS,  # pyright: ignore[reportArgumentType]
+            **PYDANTIC_AI_TRANSFORMERS,  # pyrefly: ignore[bad-argument-type]
         ),
     )
 

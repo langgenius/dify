@@ -132,10 +132,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     configure_server_observability(app)
 
     def get_store() -> RedisRunStore:
-        return state["store"]  # pyright: ignore[reportReturnType]
+        return state["store"]  # pyrefly: ignore[bad-return]
 
     def get_scheduler() -> RunScheduler:
-        return state["scheduler"]  # pyright: ignore[reportReturnType]
+        return state["scheduler"]  # pyrefly: ignore[bad-return]
 
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],

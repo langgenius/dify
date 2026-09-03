@@ -151,7 +151,7 @@ class DifyPluginToolConfig(LayerConfig):
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     runtime_parameters: dict[str, DifyPluginToolValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
-    parameters_json_schema: dict[str, JsonValue] = Field(
+    parameters_json_schema: dict[str, JsonValue] = Field(  # pyrefly: ignore[bad-assignment]
         default_factory=lambda: {"type": "object", "properties": {}, "required": []}
     )
 

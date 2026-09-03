@@ -168,7 +168,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
                 )
             )
 
-        return cls(
+        return cls(  # pyrefly: ignore[bad-return]
             nodes,
             prompt_transformer=prompt_transformer,
             user_prompt_transformer=user_prompt_transformer,

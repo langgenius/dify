@@ -58,7 +58,9 @@ class DifyAskHumanLayerConfig(LayerConfig):
     tool_description: str | None = None
     max_fields: int = Field(default=8, ge=0)
     max_actions: int = Field(default=4, ge=1)
-    allowed_field_types: list[AskHumanFieldType] = Field(default_factory=lambda: ["paragraph", "select"])
+    allowed_field_types: list[AskHumanFieldType] = Field(  # pyrefly: ignore[bad-assignment]
+        default_factory=lambda: ["paragraph", "select"]
+    )
     allow_file_fields: bool = False
     max_markdown_chars: int = Field(default=8_000, ge=0)
     max_question_chars: int = Field(default=1_000, ge=1)

@@ -29,8 +29,8 @@ SERVER_RUNTIME_DEPENDENCIES = {
 }
 
 DEV_DEPENDENCIES = {
-    "basedpyright>=1.39.3",
     "coverage[toml]>=7.10.7",
+    "pyrefly>=1.2.0",
     "pytest>=9.0.3",
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",

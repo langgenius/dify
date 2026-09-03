@@ -32,7 +32,7 @@ class DifyCoreToolConfig(LayerConfig):
     description: str | None = None
     runtime_parameters: dict[str, JsonValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
-    parameters_json_schema: dict[str, JsonValue] = Field(
+    parameters_json_schema: dict[str, JsonValue] = Field(  # pyrefly: ignore[bad-assignment]
         default_factory=lambda: {"type": "object", "properties": {}, "required": []}
     )
 
