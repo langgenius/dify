@@ -34,8 +34,10 @@ export function KnowledgeFsApiAccessDialog({
   const { data: apiBaseInfo } = useQuery(
     consoleQuery.datasets.apiBaseInfo.get.queryOptions({ context: { silent: true } }),
   )
+  // The shared prefix of every KnowledgeFS service API route for this space; the operation
+  // path (queries/admission, documents, sources, …) is appended by the caller.
   const endpoint = apiBaseInfo?.api_base_url
-    ? `${apiBaseInfo.api_base_url.replace(/\/$/, '')}/knowledge-fs/spaces/${encodeURIComponent(knowledgeSpaceId)}/queries/admission`
+    ? `${apiBaseInfo.api_base_url.replace(/\/$/, '')}/knowledge-fs/spaces/${encodeURIComponent(knowledgeSpaceId)}`
     : ''
 
   const openApiKeyModal = () => {

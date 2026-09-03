@@ -85,9 +85,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     })
 
     expect(
-      await screen.findByText(
-        'https://api.example.com/v1/knowledge-fs/spaces/space-1/queries/admission',
-      ),
+      await screen.findByText('https://api.example.com/v1/knowledge-fs/spaces/space-1'),
     ).toBeInTheDocument()
     expect(apiBaseInfoQueryOptionsMock).toHaveBeenCalledWith({ context: { silent: true } })
     expect(screen.getByText('common.appMenus.apiAccessTip')).toBeInTheDocument()
