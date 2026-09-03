@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
+from core.helper.encrypter import batch_decrypt_token, encrypt_token, is_obfuscated_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
     BaseTracingConfig,
@@ -400,14 +400,12 @@ class OpsTraceManager:
                 if not isinstance(value, str):
                     # Structured secrets (e.g. OTel headers dict) are serialized before encryption
                     value = json.dumps(value, default=str, ensure_ascii=False)
-                if "*" in value:
-                    # If the key contains '*', retain the original value from the current config
-                    if current_trace_config:
-                        new_config[key] = current_trace_config.get(key, value)
-                    else:
-                        new_config[key] = value
+                stored_value = current_trace_config.get(key) if current_trace_config else None
+                if is_obfuscated_token(value) and stored_value:
+                    # The console echoes unchanged secrets back masked; keep the stored ciphertext
+                    new_config[key] = stored_value
                 else:
-                    # Otherwise, encrypt the key
+                    # Never persist a secret in plaintext, even a masked placeholder without a stored value
                     new_config[key] = encrypt_token(tenant_id, value)
 
         for key in other_keys:

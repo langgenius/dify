@@ -313,6 +313,33 @@ def test_encrypt_decrypt_obfuscate_and_cache(
     assert encryption_functions[2].calls == ["dec-enc-value"]
 
 
+def test_encrypt_never_persists_secrets_in_plaintext(
+    trace_environment: None,
+    encryption_functions: tuple[EncryptTokenRecorder, BatchDecryptTokenRecorder, ObfuscatedTokenRecorder],
+) -> None:
+    masked = "abcdef************yz"
+
+    # Unchanged secrets come back from the console masked: keep the stored ciphertext
+    updated = OpsTraceManager.encrypt_tracing_config(
+        "tenant-1", "dummy", {"secret_value": masked}, current_trace_config={"secret_value": "keep"}
+    )
+    assert updated["secret_value"] == "keep"
+
+    # A masked placeholder without a stored value is still encrypted, never written raw
+    created = OpsTraceManager.encrypt_tracing_config("tenant-1", "dummy", {"secret_value": masked})
+    assert created["secret_value"] == f"enc-{masked}"
+
+    # A real secret that merely contains an asterisk is a new value, not a mask
+    partial = OpsTraceManager.encrypt_tracing_config(
+        "tenant-1", "dummy", {"secret_value": "Basic a*b"}, current_trace_config={"secret_value": "keep"}
+    )
+    assert partial["secret_value"] == "enc-Basic a*b"
+
+    # Structured secrets are serialized before encryption
+    structured = OpsTraceManager.encrypt_tracing_config("tenant-1", "dummy", {"secret_value": {"x-key": "v"}})
+    assert structured["secret_value"] == 'enc-{"x-key": "v"}'
+
+
 def test_decrypted_config_reads_real_trace_and_app_rows(
     trace_environment: None,
     encryption_functions,

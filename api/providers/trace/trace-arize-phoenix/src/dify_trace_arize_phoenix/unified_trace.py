@@ -6,11 +6,16 @@ from urllib.parse import urlparse
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 
-from core.ops.unified_trace.otlp_adapter import OTLPUnifiedAdapter, OTLPUnifiedTrace
+from core.ops.unified_trace.otlp_adapter import (
+    EXPORT_TIMEOUT_SECONDS,
+    OTLPUnifiedAdapter,
+    OTLPUnifiedTrace,
+    StatusRecordingOTLPSpanExporter,
+)
 from dify_trace_arize_phoenix.config import PhoenixConfig
 
 
-class UnifiedPhoenixAdapter(OTLPUnifiedAdapter):
+class UnifiedPhoenixAdapter(OTLPUnifiedAdapter[PhoenixConfig]):
     """Translate canonical spans to isolated OpenTelemetry/OpenInference spans."""
 
     provider_name = "phoenix"
@@ -38,13 +43,14 @@ class UnifiedPhoenixAdapter(OTLPUnifiedAdapter):
     def build_exporter(self, config: PhoenixConfig) -> OTLPSpanExporter:
         parsed = urlparse(config.endpoint)
         endpoint = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}/v1/traces"
-        return OTLPSpanExporter(endpoint=endpoint, headers=self.build_headers(config), timeout=30)
+        return StatusRecordingOTLPSpanExporter(
+            endpoint=endpoint,
+            headers=self.build_headers(config),
+            timeout=EXPORT_TIMEOUT_SECONDS,
+        )
 
 
 class UnifiedPhoenixTrace(OTLPUnifiedTrace):
     """Fully isolated unified Phoenix trace instance selected by the new registry."""
 
     adapter_class = UnifiedPhoenixAdapter
-
-    def __init__(self, config: PhoenixConfig) -> None:
-        super().__init__(config)

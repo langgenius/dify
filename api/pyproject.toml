@@ -34,6 +34,7 @@ dependencies = [
     "google-cloud-aiplatform>=1.164.0,<2.0.0",
     "httpx[socks]==0.28.1",
     "opentelemetry-distro==0.65b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.44.0,<2.0.0",
     "opentelemetry-instrumentation-celery==0.65b0",
     "opentelemetry-instrumentation-flask==0.65b0",
     "opentelemetry-instrumentation-httpx==0.65b0",

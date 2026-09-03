@@ -1,16 +1,22 @@
 """Reusable OTLP adapter base for unified-trace providers.
 
-Absorbs the generic parts of an OTLP/OTLP-HTTP provider: canonical-span mapping,
-W3C traceparent handling, synchronous per-span export, and export-before-publish
-ordering. Subclasses customize exporter construction, resource attributes,
-headers, and (optionally) the span-attribute mapping.
+Absorbs the generic parts of an OTLP/HTTP provider: canonical-span mapping,
+W3C traceparent handling, synchronous per-span export, export-before-publish
+ordering, and export failure classification. Subclasses customize exporter
+construction, resource attributes, headers, and (optionally) the span-attribute
+mapping.
+
+Span attributes use the OpenInference dialect that Phoenix and other LLM
+observability backends understand. The keys are literal strings so ``core``
+does not depend on the ``openinference-semantic-conventions`` package, which
+only the Phoenix provider plugin installs.
 """
 
 import json
+from collections.abc import Callable
 from datetime import datetime
-from typing import cast
+from typing import Any, NoReturn, cast, override
 
-from openinference.semconv.trace import OpenInferenceMimeTypeValues, OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY, Context, attach, detach, set_value
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
@@ -20,7 +26,8 @@ from opentelemetry.trace import Span, Status, StatusCode, get_current_span, set_
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
 
-from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
+from core.ops.entities.config_entity import BaseTracingConfig
+from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError, TraceDispatchRejectedError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.parent_context import (
     ParentContextCoordinator,
@@ -34,12 +41,24 @@ from core.ops.unified_trace.provider import ParentContextPublisher, UnifiedTrace
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
 from extensions.ext_redis import redis_client
 
-_KIND_MAP: dict[CanonicalSpanKind, OpenInferenceSpanKindValues] = {
-    CanonicalSpanKind.CHAIN: OpenInferenceSpanKindValues.CHAIN,
-    CanonicalSpanKind.LLM: OpenInferenceSpanKindValues.LLM,
-    CanonicalSpanKind.RETRIEVER: OpenInferenceSpanKindValues.RETRIEVER,
-    CanonicalSpanKind.TOOL: OpenInferenceSpanKindValues.TOOL,
-    CanonicalSpanKind.AGENT: OpenInferenceSpanKindValues.AGENT,
+# OpenInference span attribute keys (https://github.com/Arize-ai/openinference/tree/main/spec).
+OPENINFERENCE_SPAN_KIND = "openinference.span.kind"
+INPUT_VALUE = "input.value"
+INPUT_MIME_TYPE = "input.mime_type"
+OUTPUT_VALUE = "output.value"
+OUTPUT_MIME_TYPE = "output.mime_type"
+METADATA = "metadata"
+SESSION_ID = "session.id"
+JSON_MIME_TYPE = "application/json"
+
+EXPORT_TIMEOUT_SECONDS = 30
+
+_KIND_MAP: dict[CanonicalSpanKind, str] = {
+    CanonicalSpanKind.CHAIN: "CHAIN",
+    CanonicalSpanKind.LLM: "LLM",
+    CanonicalSpanKind.RETRIEVER: "RETRIEVER",
+    CanonicalSpanKind.TOOL: "TOOL",
+    CanonicalSpanKind.AGENT: "AGENT",
 }
 
 
@@ -51,36 +70,70 @@ def _json(value: object) -> str:
     return json.dumps(value, default=str, ensure_ascii=False)
 
 
-class OTLPUnifiedAdapter:
-    """Translate canonical spans to isolated OpenTelemetry spans and export them over OTLP."""
+def is_terminal_http_status(status_code: object) -> bool:
+    """Return True for HTTP statuses that a retry cannot fix.
+
+    Client errors mean a wrong endpoint, wrong credentials, or a rejected payload.
+    Request timeout (408) and rate limiting (429) are transient and stay retryable.
+    """
+    return isinstance(status_code, int) and 400 <= status_code < 500 and status_code not in (408, 429)
+
+
+class StatusRecordingOTLPSpanExporter(OTLPSpanExporter):
+    """OTLP/HTTP span exporter that remembers the HTTP status of the last request.
+
+    ``OTLPSpanExporter.export`` runs its own retry loop for transient failures and
+    then collapses every outcome into ``SpanExportResult.FAILURE``. Keeping the last
+    status lets the adapter tell a terminal rejection (wrong endpoint or credentials)
+    from a transport failure that is worth a Celery retry.
+    """
+
+    last_status_code: int | None = None
+
+    @override
+    def _export(self, serialized_data: bytes, timeout_sec: float | None = None):
+        self.last_status_code = None
+        response = super()._export(serialized_data, timeout_sec)
+        status_code = getattr(response, "status_code", None)
+        self.last_status_code = status_code if isinstance(status_code, int) else None
+        return response
+
+
+class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
+    """Translate canonical spans to isolated OpenTelemetry spans and export them over OTLP/HTTP."""
 
     provider_name: str = "otlp"
 
-    def __init__(self, config, *, endpoint: str | None = None, scope_key: str = "") -> None:
+    def __init__(self, config: ConfigT, *, endpoint: str, scope_key: str = "") -> None:
         self._config = config
+        self._endpoint = endpoint
         self._exporter = self.build_exporter(config)
         provider = trace_sdk.TracerProvider(resource=self.build_resource(config))
         self._tracer = cast(trace_sdk.Tracer, provider.get_tracer(f"unified_{self.provider_name}_{scope_key}"))
         self._propagator = TraceContextTextMapPropagator()
-        self._scope = destination_scope(
-            self.provider_name, endpoint if endpoint is not None else config.endpoint, scope_key
-        )
+        self._scope = destination_scope(self.provider_name, endpoint, scope_key)
 
     @property
     def scope(self) -> str:
         return self._scope
 
-    def build_headers(self, config) -> dict[str, str]:
+    @property
+    def last_export_status_code(self) -> int | None:
+        """HTTP status of the most recent export attempt, when the exporter records it."""
+        status_code = getattr(self._exporter, "last_status_code", None)
+        return status_code if isinstance(status_code, int) else None
+
+    def build_headers(self, config: ConfigT) -> dict[str, str]:
         return {}
 
-    def build_resource(self, config) -> Resource:
+    def build_resource(self, config: ConfigT) -> Resource:
         return Resource.create({})
 
-    def build_exporter(self, config) -> OTLPSpanExporter:
-        return OTLPSpanExporter(
-            endpoint=config.endpoint,
+    def build_exporter(self, config: ConfigT) -> OTLPSpanExporter:
+        return StatusRecordingOTLPSpanExporter(
+            endpoint=self._endpoint,
             headers=self.build_headers(config),
-            timeout=30,
+            timeout=EXPORT_TIMEOUT_SECONDS,
         )
 
     def _root_context(self, parent: ParentResolution | None) -> Context | None:
@@ -117,16 +170,38 @@ class OTLPUnifiedAdapter:
         if canonical_span.links:
             metadata["dify.span.links"] = list(canonical_span.links)
         return {
-            SpanAttributes.OPENINFERENCE_SPAN_KIND: _KIND_MAP[canonical_span.kind].value,
-            SpanAttributes.INPUT_VALUE: _json(canonical_span.inputs),
-            SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-            SpanAttributes.OUTPUT_VALUE: _json(canonical_span.outputs),
-            SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-            SpanAttributes.METADATA: _json(metadata),
-            SpanAttributes.SESSION_ID: trace.session_id,
+            OPENINFERENCE_SPAN_KIND: _KIND_MAP[canonical_span.kind],
+            INPUT_VALUE: _json(canonical_span.inputs),
+            INPUT_MIME_TYPE: JSON_MIME_TYPE,
+            OUTPUT_VALUE: _json(canonical_span.outputs),
+            OUTPUT_MIME_TYPE: JSON_MIME_TYPE,
+            METADATA: _json(metadata),
+            SESSION_ID: trace.session_id,
             "dify.span.id": canonical_span.id,
             "dify.span.synthetic": canonical_span.synthetic,
         }
+
+    def _export_span(self, span: Span) -> SpanExportResult:
+        """Export one ended span synchronously with instrumentation suppressed."""
+        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
+        try:
+            return self._exporter.export((cast(trace_sdk.ReadableSpan, span),))
+        finally:
+            detach(token)
+
+    def _raise_export_failure(self, canonical_span_id: str) -> NoReturn:
+        status_code = self.last_export_status_code
+        message = f"{self.provider_name} span export failed: canonical_span_id={canonical_span_id}"
+        if is_terminal_http_status(status_code):
+            raise TraceDispatchRejectedError(f"{message} (HTTP {status_code})")
+        raise RetryableTraceDispatchError(message)
+
+    def export_probe_span(self) -> SpanExportResult:
+        """Export one probe span so callers can verify the endpoint and credentials."""
+        span = self._tracer.start_span("api_check")
+        span.set_attribute("test", "true")
+        span.end()
+        return self._export_span(span)
 
     def emit(
         self,
@@ -167,18 +242,12 @@ class OTLPUnifiedAdapter:
                     span.set_status(Status(StatusCode.OK))
             finally:
                 span.end(end_time=_nanos(canonical_span.end_time))
-            token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
             try:
-                try:
-                    export_result = self._exporter.export((cast(trace_sdk.ReadableSpan, span),))
-                except Exception as error:
-                    raise RetryableTraceDispatchError(f"{self.provider_name} span export failed") from error
-            finally:
-                detach(token)
+                export_result = self._export_span(span)
+            except Exception as error:
+                raise RetryableTraceDispatchError(f"{self.provider_name} span export failed") from error
             if export_result is not SpanExportResult.SUCCESS:
-                raise RetryableTraceDispatchError(
-                    f"{self.provider_name} span export failed: canonical_span_id={canonical_span.id}"
-                )
+                self._raise_export_failure(canonical_span.id)
             if provider_parent_context is not None:
                 publish_parent_context(canonical_span.id, provider_parent_context)
 
@@ -186,9 +255,10 @@ class OTLPUnifiedAdapter:
 class OTLPUnifiedTrace(UnifiedTraceInstance):
     """Wire an OTLPUnifiedAdapter subclass into the unified runtime."""
 
-    adapter_class: type[OTLPUnifiedAdapter]
+    # Subclasses assign their adapter class; its constructor takes the provider config only.
+    adapter_class: Callable[[Any], OTLPUnifiedAdapter[Any]]
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: BaseTracingConfig) -> None:
         super().__init__(
             config,
             builder=CanonicalTraceBuilder(RepositoryWorkflowExecutionLoader(self.get_service_account_with_tenant)),
@@ -197,17 +267,14 @@ class OTLPUnifiedTrace(UnifiedTraceInstance):
         )
 
     def api_check(self) -> bool:
-        """Connectivity check expected by OpsTraceManager.check_trace_config_is_effective."""
+        """Connectivity check used by ``OpsTraceManager.check_trace_config_is_effective``."""
+        adapter = cast(OTLPUnifiedAdapter[Any], self._adapter)
         try:
-            adapter = cast(OTLPUnifiedAdapter, self._adapter)
-            span = adapter._tracer.start_span("api_check")
-            span.set_attribute("test", "true")
-            span.end()
-            result = adapter._exporter.export((cast(trace_sdk.ReadableSpan, span),))
-            if result is not SpanExportResult.SUCCESS:
-                raise ValueError("OTLP collector rejected the api_check span")
-            return True
-        except ValueError:
-            raise
+            result = adapter.export_probe_span()
         except Exception as e:
-            raise ValueError(f"[OTel] API check failed: {str(e)}") from e
+            raise ValueError(f"[{adapter.provider_name}] API check failed: {e}") from e
+        if result is not SpanExportResult.SUCCESS:
+            status_code = adapter.last_export_status_code
+            detail = f" (HTTP {status_code})" if status_code is not None else ""
+            raise ValueError(f"OTLP collector rejected the api_check span{detail}")
+        return True
