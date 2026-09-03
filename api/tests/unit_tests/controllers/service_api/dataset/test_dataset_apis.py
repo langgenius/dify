@@ -7,12 +7,13 @@ persisted through the shared SQLite session fixture.
 import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import services
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -269,7 +270,7 @@ class TestDatasetListApiPost:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
+        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.return_value = make_dataset(
             controller_session, tenant, account, name="New Dataset"
@@ -281,7 +282,10 @@ class TestDatasetListApiPost:
             json={"name": "New Dataset"},
         ):
             api = DatasetListApi()
-            response, status = unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
+            # `post` is wrapped in @model_validate, so the unwrapped view expects
+            # the validated model where the decorator would have injected it.
+            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
+            response, status = unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -297,7 +301,7 @@ class TestDatasetListApiPost:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
+        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
 
@@ -307,8 +311,29 @@ class TestDatasetListApiPost:
             json={"name": "Existing Dataset"},
         ):
             api = DatasetListApi()
+            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
             with pytest.raises(DatasetNameDuplicateError):
-                unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
+                unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
+
+    @pytest.mark.usefixtures("account")
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_invalid_body_is_rejected_before_the_handler_runs(
+        self,
+        mock_validate_token: MagicMock,
+        mock_feature_svc: MagicMock,
+        app: Flask,
+        tenant: Tenant,
+    ) -> None:
+        """The tests above unwrap the view, so this is what covers the decorator."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_validate_token.return_value = SimpleNamespace(tenant_id=tenant.id)
+        mock_feature_svc.get_knowledge_rate_limit.return_value = SimpleNamespace(enabled=False)
+
+        with app.test_request_context("/datasets", method="POST", json={}):
+            with pytest.raises(UnprocessableEntity):
+                DatasetListApi().post(tenant_id=tenant.id)
 
 
 # ---------------------------------------------------------------------------

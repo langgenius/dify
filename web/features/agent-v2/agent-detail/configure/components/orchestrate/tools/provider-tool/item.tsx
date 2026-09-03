@@ -328,12 +328,7 @@ export const AgentProviderToolItem = memo(
           </CollapsibleTrigger>
           {!readOnly && (
             <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
-                  name: tool.name,
-                })}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-              >
+              <DropdownMenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover">
                 <span className="sr-only">
                   {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 </span>

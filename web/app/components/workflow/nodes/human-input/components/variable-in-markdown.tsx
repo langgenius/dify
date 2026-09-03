@@ -165,7 +165,7 @@ const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, 
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList className="max-h-[140px] overflow-y-auto">
+              <SelectList className="max-h-35 overflow-y-auto">
                 {options.map((option) => (
                   <SelectItem key={option} value={option}>
                     <SelectItemText>{option}</SelectItemText>

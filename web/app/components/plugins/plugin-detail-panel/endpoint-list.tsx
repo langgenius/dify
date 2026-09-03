@@ -88,7 +88,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             />
             <PopoverContent
               placement="right"
-              className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
+              className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
