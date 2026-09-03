@@ -21,6 +21,12 @@ from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.account_oauth_repository import (
+    AccountServiceOAuthAccountRegistrationGateway,
+    AccountServiceOAuthSessionGateway,
+    AccountServiceOAuthWorkspaceGateway,
+    RegisterServiceOAuthInvitationGateway,
+)
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
@@ -43,6 +49,10 @@ from services.account_forgot_password_adapters import (
     RateLimiterForgotPasswordSendLimiter,
     RedisForgotPasswordSecurityGateway,
     RedisForgotPasswordTokenGateway,
+)
+from services.account_oauth_adapters import (
+    DeploymentOAuthPolicyGateway,
+    RedisOAuthAccountClaimLock,
 )
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
@@ -430,6 +440,18 @@ def test_build_application_services_wires_account_profile_repository(
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
+    oauth = services.accounts.oauth
+    assert oauth._accounts is accounts
+    assert oauth._integrations is integrations
+    assert oauth._memberships is services.workspace_queries._workspaces
+    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
+    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
+    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
+    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert oauth._sessions is not oauth._workspaces
+    assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
+    assert oauth._workspace_policy is oauth._registration_policy
     avatar_files = services.accounts.avatar._files
     assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
     assert avatar_files._session_factory is sqlite_session_factory
