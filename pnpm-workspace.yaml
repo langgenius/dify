@@ -148,7 +148,7 @@ catalog:
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cli-table3: 0.6.5
-  clsx: 2.1.1
+  cn: 0.2.4
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
@@ -245,7 +245,6 @@ catalog:
   storybook: 10.5.10
   streamdown: 2.6.0
   string-ts: 2.3.1
-  tailwind-merge: 3.6.0
   tailwindcss: 4.3.3
   tldts: 7.4.11
   tsx: 4.23.13

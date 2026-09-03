@@ -51,9 +51,9 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: AccessPointAvailability
-  canEdit: boolean
   canDeploy: boolean
   canManageAccess: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
   onAppStateChanged: () => Promise<void>
@@ -65,9 +65,9 @@ type WebAppAccessPointCardProps = {
 export function WebAppAccessPointCard({
   appInfo,
   availability,
-  canEdit,
   canDeploy,
   canManageAccess,
+  canManageAccessPoint,
   highlighted,
   onAppStateChanged,
   onRefreshApp,
@@ -121,7 +121,7 @@ export function WebAppAccessPointCard({
     Boolean(accessSubjects?.groups?.length || accessSubjects?.members?.length)
 
   const handleStatusChange = (enabled: boolean) => {
-    if (!canEdit) return
+    if (!canManageAccessPoint) return
 
     updateSiteStatus.mutate({
       params: { app_id: appInfo.id },
@@ -130,7 +130,7 @@ export function WebAppAccessPointCard({
   }
 
   const handleRegenerate = () => {
-    if (!canEdit || resetSiteAccessToken.isPending) return
+    if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
 
     resetSiteAccessToken.mutate({ params: { app_id: appInfo.id } })
   }
@@ -155,7 +155,7 @@ export function WebAppAccessPointCard({
         }
         status={status}
         highlighted={highlighted}
-        switchDisabled={!canEdit}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         switchLoading={updateSiteStatus.isPending}
         onEnabledChange={availability === 'available' ? handleStatusChange : undefined}
@@ -176,7 +176,7 @@ export function WebAppAccessPointCard({
               <Button
                 className="flex items-center gap-1 px-3"
                 variant="secondary"
-                disabled={!running}
+                disabled={!running || !canManageAccessPoint}
                 onClick={() => setShowEmbedded(true)}
               >
                 <span aria-hidden className="i-ri-window-line size-4" />
@@ -186,7 +186,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!running}
+              disabled={!running || !canManageAccessPoint}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -197,7 +197,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={availability !== 'available' || !canEdit}
+              disabled={availability !== 'available' || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -223,7 +223,7 @@ export function WebAppAccessPointCard({
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canEdit}
+          regenerateDisabled={!canManageAccessPoint}
           regenerating={resetSiteAccessToken.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />

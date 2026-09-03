@@ -69,9 +69,9 @@ const siteConfig = {
   use_icon_as_answer_icon: false,
 } satisfies ConfigParams
 
-function renderActions(appId = 'app-1', canEdit = true) {
+function renderActions(appId = 'app-1', canManageAccessPoint = true) {
   const queryClient = createTestQueryClient()
-  const rendered = renderHook(() => useAccessPointActions(appId, canEdit), {
+  const rendered = renderHook(() => useAccessPointActions(appId, canManageAccessPoint), {
     wrapper: createQueryClientWrapper(queryClient),
   })
 
@@ -135,7 +135,7 @@ describe('useAccessPointActions', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'recent'] })
   })
 
-  it('keeps site configuration behind app editing permission', async () => {
+  it('keeps site configuration behind Access Point management permission', async () => {
     const { result } = renderActions('app-1', false)
 
     await act(async () => {
