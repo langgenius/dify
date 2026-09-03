@@ -19,6 +19,7 @@ import type { ReactElement, ReactNode } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { DeepPartial } from '@/test/console/system-features'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -148,7 +149,7 @@ const seedPendingSystemFeatures = (queryClient: QueryClient) => {
       queryKey: consoleQuery.systemFeatures.get.queryKey(),
       queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
     })
-    .catch(() => undefined)
+    .catch(noop)
 }
 
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {

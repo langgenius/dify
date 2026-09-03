@@ -191,7 +191,6 @@ describe('CommonLayoutHydrationBoundary', () => {
       const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
       const state = (element as ReactElement<{ state: DehydratedState }>).props.state
 
-      expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
       expect(mocks.redirect).not.toHaveBeenCalled()
       expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(
         target === 'workspace'

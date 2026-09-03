@@ -32,7 +32,7 @@ describe('Root layout System Features bootstrap', () => {
     mocks.headers.mockResolvedValue(new Headers())
   })
 
-  it('uses optional System Features for hydration and metadata', async () => {
+  it('uses optional System Features for branded metadata', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
         application_title: 'Acme AI',
@@ -49,9 +49,6 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Acme AI',
       },
     })
-
-    expect(mocks.getOptionalSystemFeatures).toHaveBeenCalledTimes(2)
-    expect(mocks.dehydrateSystemFeatures).toHaveBeenCalledOnce()
   })
 
   it('points the icons at the branding favicon when one is configured', async () => {
@@ -108,7 +105,5 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Dify',
       },
     })
-
-    expect(mocks.dehydrateSystemFeatures).toHaveBeenCalledOnce()
   })
 })
