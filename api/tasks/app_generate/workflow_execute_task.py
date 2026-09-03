@@ -8,10 +8,12 @@ from typing import Annotated, Any
 from celery import shared_task
 from flask import current_app, json
 from pydantic import BaseModel, Discriminator, Field, Tag
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.base_app_queue_manager import is_broken_pipe_error
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -364,8 +366,8 @@ def _publish_streaming_response(
     `_AppRunner.run()` only handles failures before the generator is returned.
     Once we start iterating the runtime stream, this helper becomes the last
     place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event. Delivery failures must not stop generator iteration because
-    terminal handlers may still need to persist application state.
+    lifecycle event. Broken-pipe delivery failures must not stop generator
+    iteration because terminal handlers may still need to persist application state.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -420,7 +422,7 @@ def _publish_streaming_response(
     terminal_published = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
-    delivery_error: Exception | None = None
+    broken_pipe_error: BrokenPipeError | RedisConnectionError | None = None
 
     try:
         for event in response_stream:
@@ -432,7 +434,7 @@ def _publish_streaming_response(
             if event_name == "error":
                 stream_error_message = _get_error_message(event) or stream_error_message
 
-            if delivery_error is not None:
+            if broken_pipe_error is not None:
                 continue
 
             try:
@@ -446,11 +448,13 @@ def _publish_streaming_response(
 
             try:
                 topic.publish(payload.encode())
-            except Exception as exc:
-                delivery_error = exc
+            except (BrokenPipeError, RedisConnectionError) as exc:
+                if not is_broken_pipe_error(exc):
+                    raise
+                broken_pipe_error = exc
                 logger.exception(
-                    "Failed to publish workflow stream event for run %s; draining response stream before retrying "
-                    "terminal delivery",
+                    "Broken pipe while publishing workflow stream event for run %s; draining response stream before "
+                    "retrying terminal delivery",
                     normalized_workflow_run_id,
                 )
                 continue
@@ -472,7 +476,7 @@ def _publish_streaming_response(
             )
         raise
 
-    if delivery_error is not None:
+    if broken_pipe_error is not None:
         if not terminal_published:
             logger.error(
                 "Workflow response delivery for run %s failed; publishing fallback terminal event after draining "
@@ -481,16 +485,18 @@ def _publish_streaming_response(
             )
             try:
                 _publish_failed_terminal_event(
-                    error_message=str(delivery_error) or delivery_error.__class__.__name__,
+                    error_message=str(broken_pipe_error) or broken_pipe_error.__class__.__name__,
                     task_id=last_task_id,
                     publish_started=not started_published,
                 )
-            except Exception:
+            except (BrokenPipeError, RedisConnectionError) as exc:
+                if not is_broken_pipe_error(exc):
+                    raise
                 logger.exception(
                     "Failed to publish fallback terminal event for workflow run %s",
                     normalized_workflow_run_id,
                 )
-        raise delivery_error
+        raise broken_pipe_error
 
     if not terminal_published:
         logger.warning(

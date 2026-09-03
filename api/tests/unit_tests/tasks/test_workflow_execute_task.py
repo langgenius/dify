@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import uuid
@@ -12,6 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -75,6 +77,12 @@ def _decode_published_payload(payload: bytes) -> dict[str, object] | str:
 
 def _published_payloads(topic: MagicMock) -> list[dict[str, object] | str]:
     return [_decode_published_payload(call.args[0]) for call in topic.publish.call_args_list]
+
+
+def _redis_broken_pipe_error() -> RedisConnectionError:
+    error = RedisConnectionError("Error 32 while writing to socket. Broken pipe.")
+    error.__context__ = BrokenPipeError(errno.EPIPE, "Broken pipe")
+    return error
 
 
 def _make_account(*, account_id: str = "account-id") -> Account:
@@ -461,6 +469,7 @@ def test_publish_streaming_response_drains_stream_before_reraising_publish_error
     caplog: pytest.LogCaptureFixture,
 ):
     caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
+    publish_error = _redis_broken_pipe_error()
     message_finalized = False
 
     def response_stream() -> Generator[Mapping[str, object], None, None]:
@@ -485,12 +494,12 @@ def test_publish_streaming_response_drains_stream_before_reraising_publish_error
     def _publish(payload: bytes) -> None:
         decoded = _decode_published_payload(payload)
         if isinstance(decoded, dict) and decoded.get("event") == "node_started":
-            raise RuntimeError("broker write failed")
+            raise publish_error
         successful_payloads.append(decoded)
 
     mock_topic.publish.side_effect = _publish
 
-    with pytest.raises(RuntimeError, match="broker write failed"):
+    with pytest.raises(RedisConnectionError) as exc_info:
         _publish_streaming_response(
             response_stream(),
             "workflow-run-id",
@@ -500,20 +509,21 @@ def test_publish_streaming_response_drains_stream_before_reraising_publish_error
             started_reason=WorkflowStartReason.INITIAL,
         )
 
+    assert exc_info.value is publish_error
     assert message_finalized is True
     assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
     assert successful_payloads[1]["task_id"] == "task-id"
     assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert successful_payloads[1]["data"]["error"] == "broker write failed"
+    assert successful_payloads[1]["data"]["error"] == "Error 32 while writing to socket. Broken pipe."
     assert "workflow-run-id" in caplog.text
     assert "publishing fallback terminal event" in caplog.text
 
 
-def test_publish_streaming_response_preserves_delivery_error_when_fallback_publish_fails(
+def test_publish_streaming_response_preserves_delivery_error_when_fallback_hits_broken_pipe(
     mock_topic: MagicMock,
 ):
-    delivery_error = RuntimeError("broker write failed")
-    fallback_error = RuntimeError("fallback publish failed")
+    delivery_error = _redis_broken_pipe_error()
+    fallback_error = _redis_broken_pipe_error()
     message_finalized = False
 
     def response_stream() -> Generator[Mapping[str, object], None, None]:
@@ -529,7 +539,7 @@ def test_publish_streaming_response_preserves_delivery_error_when_fallback_publi
 
     mock_topic.publish.side_effect = [delivery_error, fallback_error]
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RedisConnectionError) as exc_info:
         _publish_streaming_response(
             response_stream(),
             "workflow-run-id",
@@ -542,6 +552,45 @@ def test_publish_streaming_response_preserves_delivery_error_when_fallback_publi
     assert exc_info.value is delivery_error
     assert message_finalized is True
     assert mock_topic.publish.call_count == 2
+
+
+def test_publish_streaming_response_does_not_drain_stream_after_other_redis_errors(
+    mock_topic: MagicMock,
+):
+    publish_error = RedisConnectionError("Connection refused")
+    message_finalized = False
+
+    def response_stream() -> Generator[Mapping[str, object], None, None]:
+        nonlocal message_finalized
+
+        yield {"event": "workflow_started", "task_id": "task-id"}
+        yield {"event": "node_started", "task_id": "task-id"}
+        message_finalized = True
+        yield {
+            "event": "workflow_finished",
+            "task_id": "task-id",
+            "data": {"status": WorkflowExecutionStatus.SUCCEEDED},
+        }
+
+    def publish(payload: bytes) -> None:
+        decoded = _decode_published_payload(payload)
+        if isinstance(decoded, dict) and decoded.get("event") == "node_started":
+            raise publish_error
+
+    mock_topic.publish.side_effect = publish
+
+    with pytest.raises(RedisConnectionError) as exc_info:
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert exc_info.value is publish_error
+    assert message_finalized is False
 
 
 def test_publish_streaming_response_recovers_when_workflow_finished_publish_fails_first(
