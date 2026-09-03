@@ -194,6 +194,27 @@ describe('WorkspaceCard', () => {
     expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
   })
 
+  it('keeps full workspace names on the final interactive title owner', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard()
+
+    const trigger = screen.getByRole('button', { name: workspaceMenuAccessibleName })
+    expect(trigger).toHaveAttribute('title', 'Solar Studio')
+    expect(within(trigger).getByText('Solar Studio')).not.toHaveAttribute('title')
+
+    await user.click(trigger)
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    const workspaceItem = within(panel).getByRole('button', {
+      name: 'Evan Workspace',
+    })
+    expect(workspaceItem).toHaveAttribute('title', 'Evan Workspace')
+    expect(within(workspaceItem).getByText('Evan Workspace')).not.toHaveAttribute('title')
+    expect(
+      within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' }),
+    ).toHaveAttribute('title', 'common.mainNav.workspace.settings')
+  })
+
   it('includes the visible workspace plan in the menu trigger accessible name', () => {
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
@@ -308,8 +329,12 @@ describe('WorkspaceCard', () => {
     expect(
       within(panel).getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }),
     ).toBeDisabled()
-    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(panel.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(within(panel).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()
   })
 
@@ -390,30 +415,77 @@ describe('WorkspaceCard', () => {
     ).toBeInTheDocument()
     const workspaceItem = within(panel).getByRole('button', { name: 'Evan Workspace' })
     expect(workspaceItem).toBeInTheDocument()
-    expect(workspaceItem.parentElement).toHaveClass('max-h-[240px]', 'overflow-y-auto')
+    const workspaceList = within(panel).getByRole('list', {
+      name: 'common.userProfile.workspace',
+    })
+    expect(within(workspaceList).getAllByRole('listitem')).toHaveLength(2)
+    expect(workspaceList.parentElement).toHaveClass('max-h-[240px]', 'overflow-y-auto')
   })
 
   it('filters workspace switcher options from the search action', async () => {
+    const user = userEvent.setup()
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    const searchTrigger = await screen.findByRole('button', { name: 'common.operation.search' })
+    expect(searchTrigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(searchTrigger)
 
     expect(screen.getByText('common.userProfile.workspace')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.search' })).toHaveClass(
-      'bg-state-base-hover',
-    )
+    expect(searchTrigger).toHaveAttribute('aria-expanded', 'true')
+    const controlledPanelId = searchTrigger.getAttribute('aria-controls')
+    expect(controlledPanelId).toBeTruthy()
 
-    fireEvent.change(screen.getByPlaceholderText('common.mainNav.workspace.searchPlaceholder'), {
-      target: { value: 'evan' },
-    })
+    const searchInput = screen.getByPlaceholderText('common.mainNav.workspace.searchPlaceholder')
+    expect(document.getElementById(controlledPanelId!)).toContainElement(searchInput)
+    expect(searchInput).toHaveFocus()
+    await user.type(searchInput, 'evan')
 
     const panel = screen.getByRole('dialog', { name: 'Solar Studio' })
     expect(within(panel).getByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'Solar Studio' })).not.toBeInTheDocument()
+  })
+
+  it('announces an empty workspace search result', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard()
+
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    await user.type(
+      screen.getByPlaceholderText('common.mainNav.workspace.searchPlaceholder'),
+      'missing',
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByRole('status')).toHaveTextContent(
+      'common.mainNav.workspace.noResults',
+    )
+    expect(
+      within(panel).queryByRole('list', { name: 'common.userProfile.workspace' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('exposes only the current workspace as current', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard()
+
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    const workspaceList = within(panel).getByRole('list', {
+      name: 'common.userProfile.workspace',
+    })
+    expect(
+      within(workspaceList).getByRole('button', { name: 'Solar Studio', current: true }),
+    ).toBeInTheDocument()
+    expect(
+      within(workspaceList).getByRole('button', { name: 'Evan Workspace' }),
+    ).not.toHaveAttribute('aria-current')
   })
 
   it('sorts workspaces by last opened and can sort by created time', async () => {
@@ -451,7 +523,10 @@ describe('WorkspaceCard', () => {
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
-    const defaultWorkspaceOptions = within(panel)
+    const workspaceList = within(panel).getByRole('list', {
+      name: 'common.userProfile.workspace',
+    })
+    const defaultWorkspaceOptions = within(workspaceList)
       .getAllByRole('button')
       .map((item) => item.getAttribute('title'))
       .filter(Boolean)
@@ -476,7 +551,7 @@ describe('WorkspaceCard', () => {
       screen.getByRole('menuitemradio', { name: 'common.mainNav.workspace.sort.createdTime' }),
     )
 
-    const createdTimeWorkspaceOptions = within(panel)
+    const createdTimeWorkspaceOptions = within(workspaceList)
       .getAllByRole('button')
       .map((item) => item.getAttribute('title'))
       .filter(Boolean)
@@ -486,6 +561,39 @@ describe('WorkspaceCard', () => {
       'Atlas Workspace',
       'Solar Studio',
     ])
+  })
+
+  it('closes the nested sort menu before the workspace popover on Escape', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard()
+
+    const workspaceTrigger = screen.getByRole('button', { name: workspaceMenuAccessibleName })
+    await user.click(workspaceTrigger)
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    const sortTrigger = within(panel).getByRole('button', {
+      name: 'common.mainNav.workspace.sort.openMenu',
+    })
+    await user.click(sortTrigger)
+    expect(
+      await screen.findByRole('menuitemradio', {
+        name: 'common.mainNav.workspace.sort.lastOpened',
+      }),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(
+      screen.queryByRole('menuitemradio', {
+        name: 'common.mainNav.workspace.sort.lastOpened',
+      }),
+    ).not.toBeInTheDocument()
+    expect(panel).toBeInTheDocument()
+    expect(sortTrigger).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(panel).not.toBeInTheDocument())
+    expect(workspaceTrigger).toHaveFocus()
   })
 
   it('opens account settings from workspace menu actions', async () => {
@@ -525,6 +633,20 @@ describe('WorkspaceCard', () => {
     await waitFor(() =>
       expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } }),
     )
+  })
+
+  it('closes the popover without switching when the current workspace is selected', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard()
+
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    await user.click(within(panel).getByRole('button', { name: 'Solar Studio', current: true }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument(),
+    )
+    expect(mockSwitchWorkspace).not.toHaveBeenCalled()
   })
 
   it('keeps workspace settings visible for dataset operators without member management permission', async () => {
