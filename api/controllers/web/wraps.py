@@ -19,6 +19,7 @@ from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
+from services.web_passport_gateways import resolve_web_app_auth_type
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -137,9 +138,7 @@ def _validate_user_accessibility(
         if not auth_type:
             raise WebAppAuthRequiredError("Missing auth_type in the token.")
 
-        expected_auth_type = WebAppAuthService.get_app_auth_type(
-            access_mode=webapp_settings.access_mode, session=db.session()
-        )
+        expected_auth_type = resolve_web_app_auth_type(webapp_settings.access_mode)
         if auth_type != expected_auth_type:
             raise WebAppAuthRequiredError()
 

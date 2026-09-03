@@ -29,6 +29,7 @@ function PublisherPanelHarness() {
           actions: {
             appDetail: null,
             appURL: '',
+            canViewAccessPoint: false,
             disabledFunctionButton: false,
             workflowToolIsLoading: false,
             onConfigureWorkflowTool: vi.fn(),
@@ -44,6 +45,7 @@ function PublisherPanelHarness() {
         }}
         environmentPublisher={{
           appId: 'app-1',
+          canViewAccessPoint: false,
           environmentId: 'staging',
           environmentName: 'Staging',
           environmentTabs: null,
