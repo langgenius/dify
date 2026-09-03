@@ -229,7 +229,7 @@ describe('QualityEvaluationPanel', () => {
   it('separates the report date and time with a middle dot', async () => {
     const user = userEvent.setup()
     const createdAt = new Date(completedRun.created_at)
-    const expected = `${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(createdAt)} · ${new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(createdAt)}`
+    const expected = `${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(createdAt)} · ${new Intl.DateTimeFormat('en-US', { timeStyle: 'short' }).format(createdAt)}`
     serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
 
     renderPanel()
@@ -354,7 +354,7 @@ describe('QualityEvaluationPanel', () => {
       ),
     )
     expect(await screen.findByText('Who can change workspace permissions?')).toBeVisible()
-    expect(screen.getByText('1 of 2')).toBeVisible()
+    expect(screen.getByText('1 / 2')).toBeVisible()
     expect(serviceMock.getReplay).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
@@ -454,7 +454,7 @@ describe('QualityEvaluationPanel', () => {
     expect(
       await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
-    expect(screen.getByText('1/1')).toBeVisible()
+    expect(screen.getByText('1 / 1')).toBeVisible()
   })
 
   it('keeps newer report progress when the evaluation list is stale', async () => {
@@ -496,7 +496,7 @@ describe('QualityEvaluationPanel', () => {
     expect(
       screen.getAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
-    expect(screen.getByText('1/1')).toBeVisible()
+    expect(screen.getByText('1 / 1')).toBeVisible()
   })
 
   it('opens evidence hit details and identifies matched and missing passages', async () => {
@@ -513,6 +513,7 @@ describe('QualityEvaluationPanel', () => {
       }),
     )
     await screen.findByText('Who can change workspace permissions?')
+    expect(screen.getByText('1 / 2')).toBeVisible()
     await user.click(
       screen.getByRole('button', {
         name: /^knowledgeSpace\.qualityPage\.evaluation\.openEvidenceDetails/,

@@ -17,10 +17,20 @@ export type DocumentUploadFileItem = {
   issue?: DocumentUploadIssue
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+function formatFileSize(bytes: number, locale: string) {
+  const [value, unit, maximumFractionDigits]: [number, Intl.NumberFormatOptions['unit'], number] =
+    bytes < 1024
+      ? [bytes, 'byte', 0]
+      : bytes < 1024 * 1024
+        ? [Math.ceil(bytes / 1024), 'kilobyte', 0]
+        : [bytes / (1024 * 1024), 'megabyte', 1]
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+    style: 'unit',
+    unit,
+    unitDisplay: 'short',
+  }).format(value)
 }
 
 function fileIconClass(extension: string) {
@@ -51,7 +61,7 @@ export function DocumentUploadFileList({
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   variant?: 'compact' | 'form'
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [previewFile, setPreviewFile] = useState<File>()
 
@@ -60,8 +70,8 @@ export function DocumentUploadFileList({
       <ul className={cn('space-y-1', className)} aria-label={ariaLabel}>
         {items.map((item) => {
           const issue = item.issue ?? documentUploadIssue(item.file, fileSizeLimitMb)
-          const extension =
-            documentUploadFileExtension(item.file.name).toLocaleUpperCase() || 'FILE'
+          const fileExtension = documentUploadFileExtension(item.file.name)
+          const extension = fileExtension ? fileExtension.toUpperCase() : t(($) => $.documentColumn)
           const fileUploading = uploadProgress.get(item.file) === 'pending'
           const status = fileUploading
             ? t(($) => $.uploadingFiles)
@@ -91,7 +101,7 @@ export function DocumentUploadFileList({
                   {item.file.name}
                 </span>
                 <span className="mt-0.5 flex min-h-3 items-center gap-1 system-2xs-medium text-text-tertiary">
-                  {extension} · {formatFileSize(item.file.size)}
+                  {extension} · {formatFileSize(item.file.size, i18n.language)}
                   {status && (
                     <>
                       <span aria-hidden className="text-text-quaternary">

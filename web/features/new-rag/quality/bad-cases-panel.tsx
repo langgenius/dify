@@ -216,7 +216,7 @@ function BadCaseRow({
   item: KnowledgeFsBadCaseResponse
   onPromote: (item: KnowledgeFsBadCaseResponse) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -283,7 +283,7 @@ function BadCaseRow({
         <BadCaseReason question={item.question} reason={item.reason} tags={item.tags} />
       </span>
       <span className="system-xs-regular text-text-secondary">
-        {formatQualityUpdatedAt(item.updated_at)}
+        {formatQualityUpdatedAt(item.updated_at, i18n.language)}
       </span>
       <DropdownMenu modal={false}>
         <QualityRowMenuTrigger

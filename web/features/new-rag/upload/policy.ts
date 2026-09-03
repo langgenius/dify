@@ -51,7 +51,7 @@ export function uniqueDocumentUploadFiles(current: File[], candidates: File[]) {
 }
 
 export function documentUploadFileExtension(name: string) {
-  const normalizedName = name.trim().toLocaleLowerCase()
+  const normalizedName = name.trim().toLowerCase()
   const dotIndex = normalizedName.lastIndexOf('.')
   return dotIndex >= 0 && dotIndex < normalizedName.length - 1
     ? normalizedName.slice(dotIndex + 1)

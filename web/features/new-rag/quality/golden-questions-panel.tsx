@@ -169,7 +169,7 @@ function GoldenQuestionEditorDialog({
 }
 
 export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
@@ -360,7 +360,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
               </div>
               <GoldenAnnotation annotation={item.annotation} />
               <span className="system-xs-regular text-text-secondary">
-                {formatQualityUpdatedAt(item.updated_at)}
+                {formatQualityUpdatedAt(item.updated_at, i18n.language)}
               </span>
               {canEdit ? (
                 <DropdownMenu modal={false}>
