@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   workspaceQueryOptions: vi.fn(),
   permissionQueryFn: vi.fn(),
   permissionQueryOptions: vi.fn(),
+  featuresQueryFn: vi.fn(),
+  featuresQueryOptions: vi.fn(),
   getServerConsoleClientContext: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
@@ -52,6 +54,11 @@ vi.mock('@/service/server', () => ({
   getServerConsoleClientContext: () => mocks.getServerConsoleClientContext(),
   resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
   serverConsoleQuery: {
+    features: {
+      get: {
+        queryOptions: (...args: unknown[]) => mocks.featuresQueryOptions(...args),
+      },
+    },
     workspaces: {
       current: {
         summary: {
@@ -128,6 +135,12 @@ describe('CommonLayoutHydrationBoundary', () => {
       queryFn: mocks.permissionQueryFn,
       retry: false,
     })
+    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: true })
+    mocks.featuresQueryOptions.mockReturnValue({
+      queryKey: ['console', 'features', 'get'],
+      queryFn: mocks.featuresQueryFn,
+      retry: false,
+    })
   })
 
   it('should prefetch common layout queries', async () => {
@@ -161,6 +174,14 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
+    expect(mocks.featuresQueryOptions).toHaveBeenCalledWith({
+      context: {
+        cookie: 'session=abc',
+        csrfToken: 'csrf-token',
+      },
+      retry: false,
+    })
+    expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
   })
 
   it('should dehydrate only Common-owned queries', async () => {
@@ -170,21 +191,41 @@ describe('CommonLayoutHydrationBoundary', () => {
     const state = (element as ReactElement<{ state: DehydratedState }>).props.state
     const queryKeys = state.queries.map((query) => query.queryKey)
 
-    expect(queryKeys).toHaveLength(3)
+    expect(queryKeys).toHaveLength(4)
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
         ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
+        ['console', 'features', 'get'],
       ]),
     )
   })
 
-  it.each(['workspace', 'permissions'] as const)(
-    'should keep the Common shell recoverable when the %s query fails',
-    async (target) => {
-      const failedQueryFn =
-        target === 'workspace' ? mocks.workspaceQueryFn : mocks.permissionQueryFn
+  it.each([
+    {
+      queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
+      target: 'workspace' as const,
+    },
+    {
+      queryKey: [
+        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+        { type: 'query' },
+      ],
+      target: 'permissions' as const,
+    },
+    {
+      queryKey: ['console', 'features', 'get'],
+      target: 'features' as const,
+    },
+  ])(
+    'should keep the Common shell recoverable when the $target query fails',
+    async ({ queryKey, target }) => {
+      const failedQueryFn = {
+        features: mocks.featuresQueryFn,
+        permissions: mocks.permissionQueryFn,
+        workspace: mocks.workspaceQueryFn,
+      }[target]
       failedQueryFn.mockRejectedValue(new Error(`${target} unavailable`))
       const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
@@ -192,14 +233,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       const state = (element as ReactElement<{ state: DehydratedState }>).props.state
 
       expect(mocks.redirect).not.toHaveBeenCalled()
-      expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(
-        target === 'workspace'
-          ? ['console', 'workspaces', 'current', 'summary', 'get']
-          : [
-              ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-              { type: 'query' },
-            ],
-      )
+      expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(queryKey)
     },
   )
 
@@ -260,5 +294,6 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.profileQueryFn).not.toHaveBeenCalled()
     expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
     expect(mocks.permissionQueryFn).not.toHaveBeenCalled()
+    expect(mocks.featuresQueryFn).not.toHaveBeenCalled()
   })
 })
