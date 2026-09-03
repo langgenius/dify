@@ -7,8 +7,24 @@ import { ApiSecretKeyButton } from '../shared/api-secret-key-button'
 
 const appApiKeys = {
   data: [
-    { id: 'key-1', token: 'app-a', type: 'app', created_at: 1, last_used_at: 1, dataset_ids: [] },
-    { id: 'key-2', token: 'app-b', type: 'app', created_at: 2, last_used_at: 2, dataset_ids: [] },
+    {
+      id: 'key-1',
+      token: 'app-a',
+      type: 'app',
+      created_at: 1,
+      last_used_at: 1,
+      dataset_ids: [],
+      knowledge_space_ids: [],
+    },
+    {
+      id: 'key-2',
+      token: 'app-b',
+      type: 'app',
+      created_at: 2,
+      last_used_at: 2,
+      dataset_ids: [],
+      knowledge_space_ids: [],
+    },
   ],
 }
 

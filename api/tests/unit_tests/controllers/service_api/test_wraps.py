@@ -28,7 +28,7 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
-from models.enums import ApiTokenType
+from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, IconType
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -748,6 +748,34 @@ class TestValidateDatasetToken:
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            with pytest.raises(Forbidden) as exc_info:
+                protected_view(dataset_id=str(uuid.uuid4()))
+            assert "not authorized to access this knowledge base" in str(exc_info.value)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_key_bound_only_to_knowledge_space_rejects_legacy_dataset(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        """KnowledgeFS space bindings restrict the key but never grant legacy dataset access."""
+        api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
+        mock_validate_token.return_value = api_token
+        sqlite_session.add(
+            DatasetApiTokenBinding(
+                api_token_id=api_token.id,
+                resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+                control_space_id=str(uuid.uuid4()),
+            )
+        )
         sqlite_session.commit()
 
         @validate_dataset_token

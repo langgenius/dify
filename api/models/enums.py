@@ -384,6 +384,13 @@ class ApiTokenType(StrEnum):
     DATASET = "dataset"
 
 
+class ApiTokenBindingResourceType(StrEnum):
+    """Kind of knowledge base a dataset API key binding row points at."""
+
+    DATASET = "dataset"
+    KNOWLEDGE_FS_SPACE = "knowledge_fs_space"
+
+
 class PermissionEnum(StrEnum):
     """Shared permission levels for resources (datasets, credentials, etc.)"""
 

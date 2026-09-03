@@ -98,6 +98,7 @@ from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_r
 from services.knowledge_fs.service_api_authorization import (
     KnowledgeFSServiceApiAuthorizationError,
     KnowledgeFSServiceApiProfile,
+    KnowledgeFSServiceApiScopeError,
 )
 
 _MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
@@ -172,6 +173,8 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return view(*args, **kwargs)
+        except KnowledgeFSServiceApiScopeError as exc:
+            raise KnowledgeFSServiceAccessDeniedHTTPError() from exc
         except KnowledgeFSServiceApiAuthorizationError as exc:
             raise KnowledgeFSInvalidCredentialHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:

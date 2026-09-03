@@ -33,6 +33,7 @@ from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import (
+    ApiTokenBindingResourceType,
     ApiTokenType,
     AppMCPServerStatus,
     AppStatus,
@@ -2447,28 +2448,52 @@ class ApiToken(Base):
 class DatasetApiTokenBinding(Base):
     """Binds a dataset service-API key to a single knowledge base.
 
-    A dataset ``ApiToken`` may have zero or more of these rows:
-    - no rows  → the key can access every dataset in its tenant (default / back-compat).
-    - N rows   → the key is restricted to exactly those N datasets.
+    A knowledge base is either a legacy ``Dataset`` row or a KnowledgeFS control space
+    (``knowledge_fs_control_spaces``); the two live in different tables, so every row
+    carries a ``resource_type`` that says which id column is populated:
+    - ``dataset``            → ``dataset_id`` is set, ``control_space_id`` is NULL.
+    - ``knowledge_fs_space`` → ``control_space_id`` is set, ``dataset_id`` is NULL.
 
-    Both foreign keys cascade on delete, so removing a key or a dataset automatically
-    drops the corresponding bindings (no dangling scope).
+    A dataset ``ApiToken`` may have zero or more of these rows:
+    - no rows  → the key can access every knowledge base in its tenant (default / back-compat).
+    - N rows   → the key is restricted to exactly those N knowledge bases. Each service-API
+                 surface only honours bindings of its own kind, so a key bound solely to
+                 KnowledgeFS spaces cannot reach legacy datasets and vice versa.
+
+    All foreign keys cascade on delete, so removing a key, a dataset, or a control space
+    automatically drops the corresponding bindings (no dangling scope).
     """
 
     __tablename__ = "dataset_api_token_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_api_token_binding_pkey"),
         sa.UniqueConstraint("api_token_id", "dataset_id", name="dataset_api_token_binding_unique"),
+        sa.UniqueConstraint("api_token_id", "control_space_id", name="dataset_api_token_binding_space_unique"),
+        sa.CheckConstraint(
+            "(resource_type = 'dataset' AND dataset_id IS NOT NULL AND control_space_id IS NULL)"
+            " OR (resource_type = 'knowledge_fs_space' AND control_space_id IS NOT NULL AND dataset_id IS NULL)",
+            name="dataset_api_token_binding_resource_ck",
+        ),
         sa.Index("dataset_api_token_binding_token_idx", "api_token_id"),
         sa.Index("dataset_api_token_binding_dataset_idx", "dataset_id"),
+        sa.Index("dataset_api_token_binding_space_idx", "control_space_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     api_token_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("api_tokens.id", ondelete="CASCADE"), nullable=False
     )
-    dataset_id: Mapped[str] = mapped_column(
-        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False
+    resource_type: Mapped[ApiTokenBindingResourceType] = mapped_column(
+        EnumText(ApiTokenBindingResourceType, length=32),
+        nullable=False,
+        default=ApiTokenBindingResourceType.DATASET,
+        server_default=ApiTokenBindingResourceType.DATASET.value,
+    )
+    dataset_id: Mapped[str | None] = mapped_column(
+        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=True
+    )
+    control_space_id: Mapped[str | None] = mapped_column(
+        StringUUID, sa.ForeignKey("knowledge_fs_control_spaces.id", ondelete="CASCADE"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 

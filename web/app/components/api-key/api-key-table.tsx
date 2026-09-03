@@ -23,12 +23,17 @@ export function ApiKeyTable({
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
 
-  // Only dataset keys expose dataset_ids; an empty/absent list means the key can access
-  // every knowledge base in the workspace.
+  // Only dataset keys expose bound knowledge bases (legacy dataset_ids plus KnowledgeFS
+  // knowledge_space_ids); both empty/absent means the key can access every knowledge base
+  // in the workspace.
   const scopeLabel = (apiKey: ApiKeyItem | EnvironmentApiKey) => {
-    const datasetIds = (apiKey as { dataset_ids?: string[] }).dataset_ids
-    if (!datasetIds?.length) return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
-    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count: datasetIds.length })
+    const { dataset_ids: datasetIds, knowledge_space_ids: knowledgeSpaceIds } = apiKey as {
+      dataset_ids?: string[]
+      knowledge_space_ids?: string[]
+    }
+    const count = (datasetIds?.length ?? 0) + (knowledgeSpaceIds?.length ?? 0)
+    if (!count) return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
+    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count })
   }
 
   return (

@@ -235,9 +235,12 @@ class IndexingEstimatePayload(BaseModel):
 
 
 class DatasetApiKeyCreatePayload(BaseModel):
-    # Knowledge bases to scope the key to. Absent/empty => the key can access every
-    # dataset in the tenant (default). Declared so the generated client can send it.
+    # Knowledge bases to scope the key to. Both lists absent/empty => the key can access
+    # every knowledge base in the tenant (default). Legacy datasets and KnowledgeFS spaces
+    # live in different tables, so they are listed separately. Declared so the generated
+    # client can send them.
     dataset_ids: list[str] = Field(default_factory=list)
+    knowledge_space_ids: list[str] = Field(default_factory=list)
 
 
 class ConsoleDatasetListQuery(BaseModel):
@@ -1395,18 +1398,24 @@ class DatasetApiKeyApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str):
-        # Optional list of knowledge bases to scope the key to. Absent/empty => the key
-        # can access every dataset in the tenant (default). Duplicates are de-duplicated.
+        # Optional lists of knowledge bases to scope the key to. Both absent/empty => the
+        # key can access every knowledge base in the tenant (default). Legacy datasets and
+        # KnowledgeFS spaces are validated against their own tables. Duplicates are
+        # de-duplicated.
         payload = request.get_json(silent=True) or {}
-        raw_dataset_ids = payload.get("dataset_ids") or []
-        if not isinstance(raw_dataset_ids, list) or any(not isinstance(item, str) for item in raw_dataset_ids):
-            console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        dataset_ids = list(dict.fromkeys(raw_dataset_ids))
+        dataset_ids = self._id_list(payload, "dataset_ids")
+        knowledge_space_ids = self._id_list(payload, "knowledge_space_ids")
 
         if dataset_ids:
             unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
             if unknown:
                 console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
+        if knowledge_space_ids:
+            unknown = dataset_api_key_service.find_unknown_knowledge_space_ids(
+                session, knowledge_space_ids, current_tenant_id
+            )
+            if unknown:
+                console_ns.abort(400, message=f"Unknown knowledge space id(s): {', '.join(unknown)}")
 
         current_key_count = (
             session.scalar(
@@ -1432,12 +1441,22 @@ class DatasetApiKeyApi(Resource):
         session.add(api_token)
         session.flush()
         dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
+        dataset_api_key_service.bind_knowledge_spaces(session, api_token.id, knowledge_space_ids)
         session.flush()
 
         # Reveal-once: the create response carries the full secret and its bound scope.
         item = ApiKeyItem.model_validate(api_token, from_attributes=True)
         item.dataset_ids = dataset_ids
+        item.knowledge_space_ids = knowledge_space_ids
         return dump_response(ApiKeyItem, item), 200
+
+    @staticmethod
+    def _id_list(payload: object, key: str) -> list[str]:
+        raw = payload.get(key) if isinstance(payload, dict) else None
+        raw = raw or []
+        if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+            console_ns.abort(400, message=f"{key} must be a list of strings.")
+        return list(dict.fromkeys(raw))
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

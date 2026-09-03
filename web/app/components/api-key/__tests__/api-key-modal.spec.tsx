@@ -14,7 +14,10 @@ const apiMocks = vi.hoisted(() => ({
   appKeys: [] as AppApiKeyList['data'],
   datasetKeys: [] as DatasetApiKeyList['data'],
   environmentKeys: [] as EnvironmentApiKey[],
+  knowledgeSpaces: [] as Array<{ control_space_id: string; technical_summary: { name: string } }>,
+  knowledgeFsEnabled: false,
   listApp: vi.fn(),
+  listKnowledgeSpaces: vi.fn(),
   createApp: vi.fn(),
   deleteApp: vi.fn(),
   listDataset: vi.fn(),
@@ -82,6 +85,34 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    knowledgeFs: {
+      spaces: {
+        get: {
+          infiniteOptions: ({
+            input,
+            getNextPageParam,
+            initialPageParam,
+          }: {
+            input: (pageParam: number) => unknown
+            getNextPageParam: unknown
+            initialPageParam: number
+          }) => ({
+            queryKey: ['knowledge-fs', 'spaces'],
+            queryFn: ({ pageParam }: { pageParam: number }) => {
+              apiMocks.listKnowledgeSpaces(input(pageParam))
+              return Promise.resolve({
+                data: apiMocks.knowledgeSpaces,
+                page: pageParam,
+                limit: 20,
+                has_more: false,
+              })
+            },
+            getNextPageParam,
+            initialPageParam,
+          }),
+        },
+      },
+    },
     enterprise: {
       appDeploy: {
         accessService: {
@@ -125,6 +156,20 @@ vi.mock('@/context/workspace-state', async () => {
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceEditor: true,
   }))
+})
+
+// The scope picker lists legacy datasets through this hook; keep it off the network.
+vi.mock('@/service/knowledge/use-dataset', () => ({
+  useInfiniteDatasets: () => ({ data: { pages: [{ data: [] }] } }),
+}))
+
+// KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
+vi.mock('@/features/system-features/state', async () => {
+  const actual = await vi.importActual<typeof import('@/features/system-features/state')>(
+    '@/features/system-features/state',
+  )
+  const { atom } = await import('jotai')
+  return { ...actual, knowledgeFsEnabledAtom: atom(() => apiMocks.knowledgeFsEnabled) }
 })
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -181,6 +226,8 @@ describe('ApiKeyModal', () => {
     apiMocks.appKeys = []
     apiMocks.datasetKeys = []
     apiMocks.environmentKeys = []
+    apiMocks.knowledgeSpaces = []
+    apiMocks.knowledgeFsEnabled = false
     apiMocks.createApp.mockResolvedValue({ token: 'new-app-token-123' })
     apiMocks.deleteApp.mockResolvedValue(undefined)
     apiMocks.createDataset.mockResolvedValue({ token: 'new-dataset-token-123' })
@@ -225,6 +272,13 @@ describe('ApiKeyModal', () => {
         type: 'dataset',
         created_at: 1,
       },
+      {
+        id: 'dataset-key-2',
+        token: 'dataset-scoped-token-987654321',
+        type: 'dataset',
+        created_at: 1,
+        knowledge_space_ids: ['space-1'],
+      },
     ]
 
     await renderModal(datasetScope)
@@ -237,6 +291,8 @@ describe('ApiKeyModal', () => {
       screen.getByRole('columnheader', { name: 'appApi.apiKeyModal.scope' }),
     ).toBeInTheDocument()
     expect(screen.getByText('appApi.apiKeyModal.scopeAllDatasets')).toBeInTheDocument()
+    // A key bound to a KnowledgeFS space counts toward the scoped label like a dataset.
+    expect(screen.getByText('appApi.apiKeyModal.scopeCount:{"count":1}')).toBeInTheDocument()
   })
 
   it('creates an app API key through the generated mutation input', async () => {
@@ -262,15 +318,41 @@ describe('ApiKeyModal', () => {
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
 
     // Dataset creation first opens the scope dialog; the default "all" scope creates a
-    // key with an empty dataset_ids list.
+    // key with empty binding lists for both knowledge base kinds.
     await user.click(await screen.findByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
-      expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
+      expect(apiMocks.createDataset).toHaveBeenCalledWith({
+        body: { dataset_ids: [], knowledge_space_ids: [] },
+      })
     })
     expect(
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
     ).toHaveValue('new-dataset-token-123')
+  })
+
+  it('scopes a workspace dataset API key to a KnowledgeFS space', async () => {
+    apiMocks.knowledgeFsEnabled = true
+    apiMocks.knowledgeSpaces = [
+      { control_space_id: 'space-1', technical_summary: { name: 'Space One' } },
+    ]
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderModal(datasetScope)
+
+    await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
+    await user.click(await screen.findByText('appApi.apiKeyModal.scopeSpecificDatasets'))
+    await user.click(screen.getByText('appApi.apiKeyModal.addKnowledgeBase'))
+    // KnowledgeFS spaces are listed under their own heading and picked like any dataset.
+    expect(await screen.findByText('appApi.apiKeyModal.pickerKnowledgeSpaces')).toBeInTheDocument()
+    await user.click(await screen.findByText('Space One'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    // The space id travels in knowledge_space_ids, never in the legacy dataset_ids list.
+    await waitFor(() => {
+      expect(apiMocks.createDataset).toHaveBeenCalledWith({
+        body: { dataset_ids: [], knowledge_space_ids: ['space-1'] },
+      })
+    })
   })
 
   it('deletes an app API key through the generated mutation input', async () => {

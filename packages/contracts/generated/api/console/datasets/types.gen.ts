@@ -72,12 +72,14 @@ export type ApiKeyList = {
 
 export type DatasetApiKeyCreatePayload = {
   dataset_ids?: Array<string>
+  knowledge_space_ids?: Array<string>
 }
 
 export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string

@@ -1,5 +1,6 @@
 'use client'
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetApiKeyScopeSelection } from './dataset-scope-dialog'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -144,10 +145,14 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
     }
   }
 
-  const handleCreateDatasetKey = (datasetIds: string[]) => {
+  const handleCreateDatasetKey = ({
+    datasetIds,
+    knowledgeSpaceIds,
+  }: DatasetApiKeyScopeSelection) => {
     if (createDatasetApiKey.isPending) return
+    // Legacy datasets and KnowledgeFS spaces are bound separately; both empty = all access.
     createDatasetApiKey.mutate(
-      { body: { dataset_ids: datasetIds } },
+      { body: { dataset_ids: datasetIds, knowledge_space_ids: knowledgeSpaceIds } },
       {
         onSuccess: (apiKey) => {
           setCreatedApiKey(apiKey)

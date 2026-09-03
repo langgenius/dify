@@ -15,10 +15,19 @@ from models.knowledge_fs import (
     KnowledgeFSExternalAccessPolicy,
 )
 from models.model import ApiToken
+from services import dataset_api_key_service
 
 
 class KnowledgeFSServiceApiAuthorizationError(RuntimeError):
     """A Dataset API key cannot access the requested KnowledgeFS control space."""
+
+
+class KnowledgeFSServiceApiScopeError(KnowledgeFSServiceApiAuthorizationError):
+    """A valid Dataset API key is bound to other knowledge bases than the requested space.
+
+    Distinct from the base error so the Service API can answer 403 (the credential is
+    real but out of scope) instead of 401 (unknown credential).
+    """
 
 
 class KnowledgeFSServiceApiProfile(NamedTuple):
@@ -78,8 +87,15 @@ class KnowledgeFSServiceApiAuthorizationService:
                     KnowledgeFSControlSpace.id == control_space_id,
                 )
             ).one_or_none()
-        if row is None:
-            raise KnowledgeFSServiceApiAuthorizationError("Invalid Dataset API key or KnowledgeFS space")
+            if row is None:
+                raise KnowledgeFSServiceApiAuthorizationError("Invalid Dataset API key or KnowledgeFS space")
+            # Per-knowledge-base scoping (DatasetApiTokenBinding): an unbound key reaches every
+            # space in its tenant; a bound key only the KnowledgeFS spaces it is bound to.
+            # Legacy dataset bindings never grant access here because the two knowledge base
+            # kinds live in different tables.
+            scope = dataset_api_key_service.get_key_scope(session, api_token_id)
+            if not scope.allows_knowledge_space(control_space_id):
+                raise KnowledgeFSServiceApiScopeError("Dataset API key is not authorized for this KnowledgeFS space")
         api_token, control_space, policy, revision = row._t
         if (
             control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
@@ -106,4 +122,5 @@ __all__ = [
     "KnowledgeFSServiceApiAuthorizationError",
     "KnowledgeFSServiceApiAuthorizationService",
     "KnowledgeFSServiceApiProfile",
+    "KnowledgeFSServiceApiScopeError",
 ]
