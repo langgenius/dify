@@ -58,7 +58,19 @@ class FileService:
         source: Literal["datasets"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
+        session: Session | None = None,
     ) -> UploadFile:
+        """Persist an uploaded file and record it in the ``upload_files`` table.
+
+        Args:
+            session: when provided, the record is inserted (and flushed) inside the
+                caller's transaction instead of a dedicated session + immediate commit.
+                The row then stays visible to every later statement in that transaction
+                regardless of the database isolation level, and is committed (or rolled
+                back) together with the rest of the caller's unit of work. Callers that
+                need the row committed before yielding control (e.g. before enqueuing an
+                async job) should omit this argument.
+        """
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
@@ -115,14 +127,27 @@ class FileService:
             source_url=source_url,
         )
 
-        with self._session_maker(expire_on_commit=False) as session:
-            session.add(upload_file)
-            session.commit()
+        self._persist_upload_file_record(upload_file, session)
 
         if not upload_file.source_url:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
+
+    def _persist_upload_file_record(self, upload_file: UploadFile, session: Session | None) -> None:
+        """Insert an ``upload_files`` row, optionally inside the caller's transaction.
+
+        With ``session`` the row is flushed (not committed) so later statements on the
+        same session observe it under any isolation level, and the caller owns the
+        commit/rollback. Without it, a dedicated session commits immediately.
+        """
+        if session is not None:
+            session.add(upload_file)
+            session.flush()
+        else:
+            with self._session_maker(expire_on_commit=False) as dedicated_session:
+                dedicated_session.add(upload_file)
+                dedicated_session.commit()
 
     @staticmethod
     def is_file_size_within_limit(
@@ -187,7 +212,22 @@ class FileService:
             return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
-    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
+    def upload_text(
+        self,
+        text: str,
+        text_name: str,
+        user_id: str,
+        tenant_id: str,
+        *,
+        session: Session | None = None,
+    ) -> UploadFile:
+        """Persist ``text`` as a ``.txt`` file and record it in the ``upload_files`` table.
+
+        Args:
+            session: when provided, the record is inserted (and flushed) inside the
+                caller's transaction instead of a dedicated session + immediate commit;
+                see :meth:`upload_file` for the visibility/ownership contract.
+        """
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name
@@ -215,9 +255,7 @@ class FileService:
             used_at=naive_utc_now(),
         )
 
-        with self._session_maker(expire_on_commit=False) as session:
-            session.add(upload_file)
-            session.commit()
+        self._persist_upload_file_record(upload_file, session)
 
         return upload_file
 

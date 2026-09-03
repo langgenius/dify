@@ -1415,6 +1415,7 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         )
         assert "data_source_info_dict" not in response["document"]
         assert mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["session"] is self.session
+        assert mock_file_svc.upload_text.call_args.kwargs["session"] is self.session
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1586,6 +1587,7 @@ class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-1"},
             200,
         )
+        assert mock_file_svc_cls.return_value.upload_text.call_args.kwargs["session"] is self.session
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1675,6 +1677,7 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-file"},
             200,
         )
+        assert mock_file_svc_cls.return_value.upload_file.call_args.kwargs["session"] is self.session
 
     @patch(
         "controllers.service_api.dataset.document.FeatureService.get_knowledge_file_size_limit",
@@ -2021,3 +2024,4 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-1"},
             200,
         )
+        assert mock_file_svc_cls.return_value.upload_file.call_args.kwargs["session"] is self.session

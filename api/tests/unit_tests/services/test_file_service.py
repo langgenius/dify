@@ -365,6 +365,47 @@ class TestFileService:
             assert len(result.name) == 200
             assert db_session.get(UploadFile, result.id) is not None
 
+    def test_upload_text_persists_in_provided_session(self, file_service: FileService, db_session: Session):
+        """With an explicit session the record is flushed into it, not committed separately."""
+        with (
+            patch("services.file_service.storage"),
+            patch.object(file_service, "_session_maker") as mock_session_maker,
+        ):
+            result = file_service.upload_text(
+                text="sample text",
+                text_name="test.txt",
+                user_id="user_id",
+                tenant_id="tenant_id",
+                session=db_session,
+            )
+
+        mock_session_maker.assert_not_called()
+        assert db_session.get(UploadFile, result.id) is not None
+        db_session.commit()
+        assert db_session.get(UploadFile, result.id) is not None
+
+    def test_upload_file_persists_in_provided_session(self, file_service: FileService, db_session: Session):
+        """With an explicit session the record is flushed into it, not committed separately."""
+        with (
+            patch("services.file_service.storage"),
+            patch("services.file_service.file_helpers.get_signed_file_url") as mock_get_url,
+            patch.object(file_service, "_session_maker") as mock_session_maker,
+        ):
+            mock_get_url.return_value = "http://signed-url"
+            result = file_service.upload_file(
+                filename="test.txt",
+                content=b"test",
+                mimetype="text/plain",
+                user=_account(),
+                session=db_session,
+            )
+
+        mock_session_maker.assert_not_called()
+        assert result.source_url == "http://signed-url"
+        assert db_session.get(UploadFile, result.id) is not None
+        db_session.commit()
+        assert db_session.get(UploadFile, result.id) is not None
+
     def test_get_file_preview_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, extension="pdf", mime_type="application/pdf")
 
