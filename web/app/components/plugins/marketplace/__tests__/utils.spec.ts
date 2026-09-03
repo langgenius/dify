@@ -267,12 +267,13 @@ describe('getMarketplacePluginsByCollectionId', () => {
     )
   })
 
-  it('should send an empty body when query is omitted', async () => {
+  it('should send the warmed preview limit when query is omitted', async () => {
     mockCollectionPlugins.mockResolvedValueOnce({
       data: { plugins: [] },
     })
 
-    const { getMarketplacePluginsByCollectionId } = await import('../utils')
+    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplacePluginsByCollectionId } =
+      await import('../utils')
     await getMarketplacePluginsByCollectionId('test-collection')
 
     expect(mockCollectionPlugins).toHaveBeenCalledWith(
@@ -280,7 +281,7 @@ describe('getMarketplacePluginsByCollectionId', () => {
         params: {
           collectionId: 'test-collection',
         },
-        body: {},
+        body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT },
       },
       expect.objectContaining({
         signal: undefined,
@@ -318,7 +319,8 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     mockCollections.mockResolvedValueOnce({ data: { collections: mockCollectionData } })
     mockCollectionPlugins.mockResolvedValue({ data: { plugins: mockPluginData } })
 
-    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplaceCollectionsAndPlugins } =
+      await import('../utils')
     const result = await getMarketplaceCollectionsAndPlugins({
       condition: 'category=tool',
       type: 'plugin',
@@ -326,6 +328,40 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 
     expect(result.marketplaceCollections).toBeDefined()
     expect(result.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(mockCollectionPlugins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { collectionId: 'collection1' },
+        body: {
+          condition: 'category=tool',
+          type: 'plugin',
+          limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
+        },
+      }),
+      expect.any(Object),
+    )
+  })
+
+  it('posts the warmed preview limit when the catalog has no extra filters', async () => {
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          { name: 'featured', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        ],
+      },
+    })
+    mockCollectionPlugins.mockResolvedValue({ data: { plugins: [] } })
+
+    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplaceCollectionsAndPlugins } =
+      await import('../utils')
+    await getMarketplaceCollectionsAndPlugins()
+
+    expect(mockCollectionPlugins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { collectionId: 'featured' },
+        body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT },
+      }),
+      expect.any(Object),
+    )
   })
 
   it('should propagate a failing collections request', async () => {
@@ -403,19 +439,71 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 })
 
 describe('getCollectionsParams', () => {
-  it('should return empty object for all category', async () => {
-    const { getCollectionsParams } = await import('../utils')
-    expect(getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.all)).toEqual({})
+  it('should return the warmed preview limit for all category', async () => {
+    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getCollectionsParams } = await import('../utils')
+    expect(getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.all)).toEqual({
+      limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
+    })
+    expect(COLLECTION_PREVIEW_PLUGIN_LIMIT).toBe(20)
   })
 
-  it('should return category, condition, and type for tool category', async () => {
-    const { getCollectionsParams } = await import('../utils')
+  it('should return category, condition, type, and preview limit for tool category', async () => {
+    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getCollectionsParams } = await import('../utils')
     const result = getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.tool)
     expect(result).toEqual({
       category: PluginCategoryEnum.tool,
       condition: 'category=tool',
       type: 'plugin',
+      limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
     })
+  })
+})
+
+describe('toListPlugin', () => {
+  it('keeps card fields and drops list-unused payload', async () => {
+    const { toListPlugin } = await import('../utils')
+    const plugin = {
+      ...createMockPlugin({
+        introduction: 'A very long readme that must not enter the catalog RSC payload',
+      }),
+      resource: { memory: 256 },
+      plugins: { tools: ['x'] },
+      tool: { identity: { name: 'search' } },
+      model: { provider: 'openai' },
+      agent_strategy: { features: ['a'] },
+      data_sources: { items: [] },
+      triggers: { events: [] },
+      privacy_policy: 'https://example.com/privacy',
+      privacy_options: 'all',
+      readme_meta: { available_languages: ['en_US'] },
+      endpoint: { settings: [{ name: 'api_key' }] },
+    } as Plugin
+
+    const listed = toListPlugin(plugin)
+
+    expect(listed.org).toBe('test-org')
+    expect(listed.name).toBe('test-plugin')
+    expect(listed.plugin_id).toBe('plugin-1')
+    expect(listed.label).toEqual({ 'en-US': 'Test Plugin' })
+    expect(listed.brief).toEqual({ 'en-US': 'Test plugin brief' })
+    expect(listed.badges).toEqual([])
+    expect(listed.verification).toEqual({ authorized_category: 'community' })
+    expect(listed.install_count).toBe(1000)
+    expect(listed.category).toBe(PluginCategoryEnum.tool)
+    expect(listed.tags).toEqual([{ name: 'search' }])
+    expect(listed.type).toBe('plugin')
+    expect(listed.introduction).toBe('')
+    expect(listed.endpoint).toEqual({ settings: [] })
+    expect(listed).not.toHaveProperty('resource')
+    expect(listed).not.toHaveProperty('plugins')
+    expect(listed).not.toHaveProperty('tool')
+    expect(listed).not.toHaveProperty('model')
+    expect(listed).not.toHaveProperty('agent_strategy')
+    expect(listed).not.toHaveProperty('data_sources')
+    expect(listed).not.toHaveProperty('triggers')
+    expect(listed).not.toHaveProperty('privacy_policy')
+    expect(listed).not.toHaveProperty('privacy_options')
+    expect(listed).not.toHaveProperty('readme_meta')
   })
 })
 
