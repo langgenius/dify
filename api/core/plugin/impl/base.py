@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 from urllib.parse import unquote
 
 import httpx
@@ -399,7 +399,7 @@ class BasePluginClient:
                 raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
             yield rep.data
 
-    def _raise_for_plugin_daemon_http_error(self, error: httpx.HTTPStatusError) -> None:
+    def _raise_for_plugin_daemon_http_error(self, error: httpx.HTTPStatusError) -> NoReturn:
         """Classify a plugin-daemon HTTP error from its JSON body, not status alone.
 
         Dispatch can return HTTP 404 with ``PluginDaemonInternalServerError``

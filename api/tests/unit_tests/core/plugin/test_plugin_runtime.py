@@ -184,10 +184,9 @@ class TestPluginRuntimeExecution:
         # Arrange
         with patch("httpx.request", side_effect=httpx.RequestError("Connection failed"), autospec=True):
             # Act & Assert
-            with pytest.raises(PluginDaemonInnerError) as exc_info:
+            with pytest.raises(PluginDaemonUnavailableError) as exc_info:
                 plugin_client._request("GET", "plugin/test-tenant/test")
-            assert exc_info.value.code == -500
-            assert "Request to Plugin Daemon Service failed" in exc_info.value.message
+            assert "Request to Plugin Daemon Service failed" in exc_info.value.description
 
 
 class TestPluginRuntimeSandboxIsolation:
@@ -729,9 +728,9 @@ class TestPluginRuntimeCommunication:
         # Arrange
         with patch("httpx.stream", side_effect=httpx.RequestError("Stream connection failed"), autospec=True):
             # Act & Assert
-            with pytest.raises(PluginDaemonInnerError) as exc_info:
+            with pytest.raises(PluginDaemonUnavailableError) as exc_info:
                 list(plugin_client._stream_request("POST", "plugin/test-tenant/stream"))
-            assert exc_info.value.code == -500
+            assert "Request to Plugin Daemon Service failed" in exc_info.value.description
 
     def test_request_with_model_parsing(self, plugin_client, mock_config):
         """Test request with direct model parsing (without daemon response wrapper)."""
@@ -1298,10 +1297,10 @@ class TestPluginRuntimeAdvancedScenarios:
 
         with patch("httpx.request", side_effect=side_effect, autospec=True):
             # Act & Assert - First two calls should fail
-            with pytest.raises(PluginDaemonInnerError):
+            with pytest.raises(PluginDaemonUnavailableError):
                 plugin_client._request("GET", "plugin/test-tenant/test")
 
-            with pytest.raises(PluginDaemonInnerError):
+            with pytest.raises(PluginDaemonUnavailableError):
                 plugin_client._request("GET", "plugin/test-tenant/test")
 
             # Third call should succeed
@@ -1573,9 +1572,9 @@ class TestPluginRuntimePerformanceScenarios:
         # Arrange
         with patch("httpx.request", side_effect=httpx.TimeoutException("Request timed out after 30s"), autospec=True):
             # Act & Assert
-            with pytest.raises(PluginDaemonInnerError) as exc_info:
+            with pytest.raises(PluginDaemonUnavailableError) as exc_info:
                 plugin_client._request("GET", "plugin/test-tenant/slow-endpoint")
-            assert exc_info.value.code == -500
+            assert "Request to Plugin Daemon Service failed" in exc_info.value.description
 
     def test_concurrent_request_simulation(self, plugin_client, mock_config):
         """Test simulation of concurrent requests (sequential execution in test)."""
