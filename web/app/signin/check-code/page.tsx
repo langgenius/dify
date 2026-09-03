@@ -24,6 +24,10 @@ import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
+type CheckCodeFormValues = {
+  code: string
+}
+
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
   const router = useRouter()
@@ -34,7 +38,6 @@ export default function CheckCode() {
   const token = decodeURIComponent(searchParams.get('token') as string)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const language = i18n.language
-  const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [verifyTurnstileToken, setVerifyTurnstileToken] = useState('')
@@ -50,7 +53,7 @@ export default function CheckCode() {
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const verify = async () => {
+  const verify = async (code: string) => {
     if (loading || isResending || showResendTurnstile) return
 
     let shouldResetTurnstile = false
@@ -154,17 +157,16 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <Form onFormSubmit={() => void verify()}>
+      <Form<CheckCodeFormValues> onFormSubmit={({ code }) => void verify(code)}>
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
             ref={codeInputRef}
             inputMode="numeric"
             autoComplete="one-time-code"
+            spellCheck={false}
             required
             pattern="[0-9]{6}"
-            value={code}
-            onValueChange={setCode}
             maxLength={6}
             placeholder={
               t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string

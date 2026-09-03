@@ -13,13 +13,16 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
+type CheckCodeFormValues = {
+  code: string
+}
+
 export default function CheckCode() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const [token, setToken] = useState(() => decodeURIComponent(searchParams.get('token') as string))
-  const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const { mutateAsync: submitMail } = useSendMail()
@@ -27,7 +30,7 @@ export default function CheckCode() {
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const verify = async () => {
+  const verify = async (code: string) => {
     if (loading) return
     try {
       setLoading(true)
@@ -81,23 +84,18 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <Form
-        onFormSubmit={() => {
-          void verify()
+      <Form<CheckCodeFormValues>
+        onFormSubmit={({ code }) => {
+          void verify(code)
         }}
       >
         <Field name="code">
-          <FieldLabel htmlFor="code">
-            {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
-          </FieldLabel>
+          <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
-            id="code"
-            name="code"
-            value={code}
-            onValueChange={setCode}
             maxLength={6}
             inputMode="numeric"
             autoComplete="one-time-code"
+            spellCheck={false}
             required
             pattern="[0-9]{6}"
             placeholder={

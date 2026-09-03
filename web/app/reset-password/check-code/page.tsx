@@ -12,19 +12,22 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
 
+type CheckCodeFormValues = {
+  code: string
+}
+
 export default function CheckCode() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const verify = async () => {
+  const verify = async (code: string) => {
     if (loading) return
     try {
       setLoading(true)
@@ -71,9 +74,9 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <Form
-        onFormSubmit={() => {
-          void verify()
+      <Form<CheckCodeFormValues>
+        onFormSubmit={({ code }) => {
+          void verify(code)
         }}
       >
         <Field name="code">
@@ -84,8 +87,6 @@ export default function CheckCode() {
             spellCheck={false}
             required
             pattern="[0-9]{6}"
-            value={code}
-            onValueChange={setCode}
             maxLength={6}
             placeholder={
               t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string

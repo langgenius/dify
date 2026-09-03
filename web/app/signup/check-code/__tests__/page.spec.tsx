@@ -75,7 +75,6 @@ describe('Signup Check Code Page', () => {
     const codeInput = screen.getByRole('textbox', {
       name: 'login.checkCode.verificationCode',
     })
-    expect(codeInput).toHaveAttribute('id', 'code')
     expect(codeInput).toHaveAttribute('name', 'code')
     expect(codeInput).toHaveAttribute('inputmode', 'numeric')
     expect(codeInput).toHaveAttribute('autocomplete', 'one-time-code')
