@@ -3870,26 +3870,30 @@ class SegmentService:
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
 
-        # enabled segment need to delete index
-        if segment.enabled:
-            # send delete segment index task
-            redis_client.setex(indexing_cache_key, 600, 1)
+        # Always dispatch the cleanup task. Even when the segment is
+        # disabled, the parent document is disabled/archived, or the
+        # indexer hasn't completed, the task must still remove the
+        # segment's durable attachment records (SegmentAttachmentBinding
+        # rows and the corresponding UploadFile metadata). The task
+        # gates the index-side cleanup on the document's state. See
+        # #41457.
+        redis_client.setex(indexing_cache_key, 600, 1)
 
-            # Get child chunk IDs before parent segment is deleted
-            child_node_ids = []
-            if segment.index_node_id:
-                child_node_ids = list(
-                    session.scalars(
-                        select(ChildChunk.index_node_id).where(
-                            ChildChunk.segment_id == segment.id,
-                            ChildChunk.dataset_id == dataset.id,
-                        )
-                    ).all()
-                )
-
-            delete_segment_from_index_task.delay(
-                [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
+        # Get child chunk IDs before parent segment is deleted
+        child_node_ids = []
+        if segment.index_node_id:
+            child_node_ids = list(
+                session.scalars(
+                    select(ChildChunk.index_node_id).where(
+                        ChildChunk.segment_id == segment.id,
+                        ChildChunk.dataset_id == dataset.id,
+                    )
+                ).all()
             )
+
+        delete_segment_from_index_task.delay(
+            [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
+        )
 
         session.delete(segment)
         # update document word count
