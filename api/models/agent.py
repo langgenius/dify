@@ -155,7 +155,7 @@ class AgentDefaultFieldsDCMixin(DefaultFieldsDCMixin, kw_only=True):
         default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
     )
-    updated_at: Mapped[datetime | None] = mapped_column(  # type: ignore[override]
+    updated_at: Mapped[datetime] = mapped_column(  # type: ignore[override]
         DateTime,
         nullable=False,
         insert_default=naive_utc_now,
