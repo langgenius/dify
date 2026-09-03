@@ -188,14 +188,11 @@ class Agent(DefaultFieldsMixin, Base):
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    active_config_has_model: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
-    )
+    active_config_has_model: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     active_config_is_published: Mapped[bool] = mapped_column(
         sa.Boolean,
         nullable=False,
         default=False,
-        server_default=sa.text("false"),
         comment=(
             "Whether the normal shared Agent draft has been published into the active config snapshot. "
             "User-scoped debug drafts do not affect this flag."
@@ -239,7 +236,6 @@ class AgentHomeSnapshot(Base):
         EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
         default=AgentWorkingResourceStatus.ACTIVE,
-        server_default=AgentWorkingResourceStatus.ACTIVE.value,
     )
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -275,7 +271,6 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
         EnumText(AgentConfigDraftType, length=32),
         nullable=False,
         default=AgentConfigDraftType.DEBUG_BUILD,
-        server_default=sa.text("'debug_build'"),
     )
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
@@ -400,7 +395,6 @@ class AgentConfigRevision(Base):
         DateTime,
         nullable=False,
         default=naive_utc_now,
-        server_default=func.current_timestamp(),
     )
 
 
@@ -493,9 +487,8 @@ class AgentWorkspace(DefaultFieldsMixin, Base):
         EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
         default=AgentWorkingResourceStatus.ACTIVE,
-        server_default=AgentWorkingResourceStatus.ACTIVE.value,
     )
-    active_guard: Mapped[int | None] = mapped_column(sa.SmallInteger, nullable=True, default=1, server_default="1")
+    active_guard: Mapped[int | None] = mapped_column(sa.SmallInteger, nullable=True, default=1)
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -531,7 +524,6 @@ class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
         EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
         default=AgentWorkingResourceStatus.ACTIVE,
-        server_default=AgentWorkingResourceStatus.ACTIVE.value,
     )
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)

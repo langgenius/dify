@@ -45,9 +45,7 @@ class CredentialPermission(TypeBase):
     credential_type: Mapped[str] = mapped_column(String(40), nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    has_permission: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("true"), default=True
-    )
+    has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
