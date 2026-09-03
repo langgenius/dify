@@ -10,6 +10,7 @@ interface DatasourceInvocationBase {
 export type ApiDatasourceInvocationInput =
   | (DatasourceInvocationBase & {
       readonly operation: "get_website_crawl";
+      readonly selectedUrl?: string | undefined;
     })
   | (DatasourceInvocationBase & {
       readonly cursor?: string | undefined;

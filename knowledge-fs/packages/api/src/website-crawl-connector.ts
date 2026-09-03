@@ -16,6 +16,8 @@ export interface WebsiteCrawlResult {
 }
 
 export interface WebsiteCrawlInput {
+  /** Overrides the persisted crawl root for one exact, single-page fetch. */
+  readonly selectedUrl?: string | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly source: Source;
   readonly tenantId: string;

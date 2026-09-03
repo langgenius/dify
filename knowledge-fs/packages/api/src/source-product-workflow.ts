@@ -753,7 +753,7 @@ export function createSourceProductWorkflowService(input: {
           "Source is not a website source",
         );
       }
-      const sourceUrls = [...new Set(request.sourceUrls.map((url) => url.trim()))];
+      const sourceUrls = request.sourceUrls.map((url) => url.trim());
       if (
         sourceUrls.length < 1 ||
         sourceUrls.length > maxImportItems ||

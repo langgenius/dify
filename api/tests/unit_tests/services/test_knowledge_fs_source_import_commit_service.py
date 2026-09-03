@@ -73,7 +73,7 @@ def test_commit_website_url_selection_uses_same_async_reconciliation() -> None:
     payload = KnowledgeFSAsyncSourceImportPayload.model_validate(
         {
             "kind": "website-crawl-import",
-            "sourceUrls": ["https://example.com/a"],
+            "sourceUrls": ["https://example.com/a", "https://example.com/a"],
             "syncPolicy": {"enabled": True, "mode": "interval"},
         }
     ).root
@@ -90,7 +90,7 @@ def test_commit_website_url_selection_uses_same_async_reconciliation() -> None:
         )
 
     crawl_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
-    assert crawl_payload.source_urls == ["https://example.com/a"]
+    assert crawl_payload.source_urls == ["https://example.com/a", "https://example.com/a"]
     pending = facade.update_source.call_args.kwargs["payload"].metadata["pendingImport"]
     assert pending["kind"] == "website-crawl-import"
 

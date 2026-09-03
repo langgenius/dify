@@ -286,7 +286,7 @@ def _start_workflow(
             control_space_id=control_space_id,
             source_id=source_id,
             payload=KnowledgeFSCrawlImportPayload(
-                sourceUrls=[selection.canonical_url or selection.source_url for selection in payload.selection],
+                sourceUrls=[selection.source_url for selection in payload.selection],
             ),
             idempotency_key=f"{request_id}:crawl-import",
         )

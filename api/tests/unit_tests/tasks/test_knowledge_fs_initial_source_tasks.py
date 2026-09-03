@@ -246,6 +246,32 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     assert sync_payload.expected_source_version == 4
 
 
+def test_initial_website_source_import_preserves_distinct_urls_with_the_same_canonical_identity() -> None:
+    facade = _facade()
+    payload = KnowledgeFSInitialWebsiteSourcePayload.model_validate(
+        {
+            "kind": "website_crawl",
+            "name": "Dify docs",
+            "provider": "firecrawl",
+            "parameters": {"limit": 2, "url": "https://docs.dify.ai"},
+            "root_url": "https://docs.dify.ai",
+            "crawl_options": {"include_subpages": True, "limit": 2},
+            "selection": [
+                {"source_url": "https://docs.dify.ai/a/"},
+                {"source_url": "https://DOCS.dify.ai:443/a#section"},
+            ],
+        }
+    )
+
+    assert _start(facade, payload) == "workflow-1"
+
+    import_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
+    assert import_payload.source_urls == [
+        "https://docs.dify.ai/a/",
+        "https://DOCS.dify.ai:443/a#section",
+    ]
+
+
 def test_initial_website_source_import_preserves_legacy_crawl_option_projection() -> None:
     facade = _facade()
 

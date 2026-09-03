@@ -18,7 +18,13 @@ export function createApiWebsiteCrawlConnector(input: {
   readonly client: ApiDatasourceInvocationClient;
 }): WebsiteCrawlConnector {
   return {
-    crawl: async ({ signal, source, tenantId, userId }): Promise<WebsiteCrawlResult> => {
+    crawl: async ({
+      selectedUrl,
+      signal,
+      source,
+      tenantId,
+      userId,
+    }): Promise<WebsiteCrawlResult> => {
       const pages = new Map<string, CrawledPage>();
       const pageLimit = crawlPageLimit(source.metadata.crawlOptions);
       let status: string | undefined;
@@ -27,6 +33,7 @@ export function createApiWebsiteCrawlConnector(input: {
 
       for await (const raw of input.client.dispatch({
         operation: "get_website_crawl",
+        ...(selectedUrl ? { selectedUrl } : {}),
         source,
         tenantId,
         ...(userId ? { userId } : {}),
