@@ -252,7 +252,7 @@ def test_completed_preview_keeps_content_private_and_selectable() -> None:
             configuration_fingerprint="a" * 64,
         )
 
-    assert pages == [
+    assert [page.model_dump(mode="json", by_alias=True) for page in pages] == [
         {
             "content": "# Preview body",
             "description": None,
@@ -260,3 +260,83 @@ def test_completed_preview_keeps_content_private_and_selectable() -> None:
             "title": "Page",
         }
     ]
+
+
+def test_cleanup_content_deletes_objects_and_manifest() -> None:
+    manifest_key = "knowledge_fs:initial_source_preview:tenant-1:account-1:job-1:content"
+    manifest = json.dumps(
+        {
+            "https://docs.dify.ai/page": {
+                "objectKey": "knowledge_fs/initial_source_previews/tenant-1/account-1/job-1/page.md"
+            }
+        }
+    )
+
+    with (
+        patch(
+            "services.knowledge_fs.initial_source_preview_job.redis_client.get",
+            return_value=manifest,
+        ),
+        patch("services.knowledge_fs.initial_source_preview_job.redis_client.delete") as delete_manifest,
+        patch("services.knowledge_fs.initial_source_preview_job.storage.delete") as delete_object,
+    ):
+        KnowledgeFSInitialSourcePreviewJobService.cleanup_content(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1"
+        )
+
+    delete_object.assert_called_once_with("knowledge_fs/initial_source_previews/tenant-1/account-1/job-1/page.md")
+    delete_manifest.assert_called_once_with(manifest_key)
+
+
+def test_cleanup_content_is_idempotent_after_manifest_expiry() -> None:
+    with (
+        patch("services.knowledge_fs.initial_source_preview_job.redis_client.get", return_value=None),
+        patch("services.knowledge_fs.initial_source_preview_job.storage.delete") as delete_object,
+    ):
+        KnowledgeFSInitialSourcePreviewJobService.cleanup_content(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1"
+        )
+
+    delete_object.assert_not_called()
+
+
+def test_cleanup_content_keeps_manifest_when_object_delete_fails() -> None:
+    manifest = json.dumps({"page": {"objectKey": "preview/page.md"}})
+
+    with (
+        patch("services.knowledge_fs.initial_source_preview_job.redis_client.get", return_value=manifest),
+        patch("services.knowledge_fs.initial_source_preview_job.redis_client.delete") as delete_manifest,
+        patch(
+            "services.knowledge_fs.initial_source_preview_job.storage.delete",
+            side_effect=RuntimeError("storage unavailable"),
+        ),
+        patch("services.knowledge_fs.initial_source_preview_job.logger.exception") as log_exception,
+    ):
+        KnowledgeFSInitialSourcePreviewJobService.cleanup_content(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1"
+        )
+
+    delete_manifest.assert_not_called()
+    log_exception.assert_called_once()
+
+
+def test_store_content_removes_saved_objects_when_manifest_write_fails() -> None:
+    result = KnowledgeFSInitialSourcePreviewResponse(
+        kind="website_crawl",
+        pages=[KnowledgeFSInitialSourcePreviewPageResponse(content="body", source_url="https://docs.dify.ai/page")],
+    )
+
+    with (
+        patch("services.knowledge_fs.initial_source_preview_job.storage.save"),
+        patch("services.knowledge_fs.initial_source_preview_job.storage.delete") as delete_object,
+        patch(
+            "services.knowledge_fs.initial_source_preview_job.redis_client.setex",
+            side_effect=RuntimeError("redis unavailable"),
+        ),
+        pytest.raises(RuntimeError, match="redis unavailable"),
+    ):
+        KnowledgeFSInitialSourcePreviewJobService.store_content(
+            tenant_id="tenant-1", account_id="account-1", job_id="job-1", result=result
+        )
+
+    delete_object.assert_called_once()

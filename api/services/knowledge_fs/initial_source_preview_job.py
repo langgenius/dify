@@ -15,6 +15,7 @@ from extensions.ext_storage import storage
 from models.account import Account
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSCrawlImportPagePayload,
     KnowledgeFSInitialSourcePreviewJobCreateResponse,
     KnowledgeFSInitialSourcePreviewJobResponse,
     KnowledgeFSInitialSourcePreviewResponse,
@@ -155,7 +156,7 @@ class KnowledgeFSInitialSourcePreviewJobService:
         job_id: str,
         source_urls: list[str],
         configuration_fingerprint: str,
-    ) -> list[dict[str, object]]:
+    ) -> list[KnowledgeFSCrawlImportPagePayload]:
         job = cls.get(tenant_id=tenant_id, account_id=account_id, job_id=job_id)
         if (
             job.status != "completed"
@@ -170,12 +171,12 @@ class KnowledgeFSInitialSourcePreviewJobService:
         try:
             selected = [pages[source_url] for source_url in source_urls]
             return [
-                {
-                    "content": storage.load_once(page["objectKey"]).decode(),
-                    "description": page["description"],
-                    "sourceUrl": page["sourceUrl"],
-                    "title": page["title"],
-                }
+                KnowledgeFSCrawlImportPagePayload(
+                    content=storage.load_once(page["objectKey"]).decode(),
+                    description=page["description"],
+                    sourceUrl=page["sourceUrl"],
+                    title=page["title"],
+                )
                 for page in selected
             ]
         except (KeyError, TypeError, UnicodeDecodeError) as exc:
