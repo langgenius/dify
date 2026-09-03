@@ -90,6 +90,44 @@ class TestPluginTriggerClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.events[0].identity.provider == "org/plugin/remote"
 
+    def test_fetch_trigger_providers_skips_event_without_identity(self, mocker: MockerFixture):
+        client = PluginTriggerClient()
+        sibling = _trigger_provider("good")
+
+        def fake_request(*args, **kwargs):
+            transformer = kwargs["transformer"]
+            payload = {
+                "data": [
+                    {
+                        "plugin_id": "org/plugin",
+                        "provider": "good",
+                        "declaration": {"events": [{"identity": {"provider": "old"}}]},
+                    },
+                    {
+                        "plugin_id": None,
+                        "provider": "broken",
+                        "declaration": {"events": [{"identity": {"provider": "old"}}]},
+                    },
+                    {
+                        "plugin_id": "org/plugin",
+                        "provider": "ok",
+                        "declaration": {"events": [{"name": "missing-identity"}]},
+                    },
+                ]
+            }
+            transformed = transformer(payload)
+            assert transformed["data"][0]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/good"
+            assert transformed["data"][1]["declaration"]["events"][0]["identity"]["provider"] is None
+            assert transformed["data"][2]["declaration"]["events"] == []
+            return [sibling]
+
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
+
+        result = client.fetch_trigger_providers("tenant-1")
+
+        assert request_mock.call_count == 1
+        assert result[0].declaration.identity.name == "org/plugin/good"
+
     def test_fetch_trigger_provider(self, mocker: MockerFixture):
         client = PluginTriggerClient()
         provider = _trigger_provider("provider")

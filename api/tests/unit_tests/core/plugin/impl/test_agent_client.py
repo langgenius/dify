@@ -45,6 +45,40 @@ class TestPluginAgentClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.strategies[0].identity.provider == "org/plugin/remote"
 
+    def test_fetch_agent_strategy_providers_skips_strategy_without_identity(self, mocker: MockerFixture):
+        client = PluginAgentClient()
+        sibling = _agent_provider("good")
+
+        def fake_request(method, path, type_, **kwargs):
+            transformer = kwargs["transformer"]
+            payload = {
+                "data": [
+                    {
+                        "declaration": {
+                            "identity": {"name": "good"},
+                            "strategies": [{"identity": {"provider": "old"}}],
+                        }
+                    },
+                    {
+                        "declaration": {
+                            "identity": {"name": "broken"},
+                            "strategies": [{"name": "missing-identity"}],
+                        }
+                    },
+                ]
+            }
+            transformed = transformer(payload)
+            assert transformed["data"][0]["declaration"]["strategies"][0]["identity"]["provider"] == "good"
+            assert transformed["data"][1]["declaration"]["strategies"] == []
+            return [sibling]
+
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
+
+        result = client.fetch_agent_strategy_providers("tenant-1")
+
+        assert request_mock.call_count == 1
+        assert result[0].declaration.identity.name == "org/plugin/good"
+
     def test_fetch_agent_strategy_provider(self, mocker: MockerFixture):
         client = PluginAgentClient()
         provider = _agent_provider("provider")

@@ -6,7 +6,11 @@ from core.plugin.entities.plugin_daemon import (
     PluginAgentProviderEntity,
 )
 from core.plugin.entities.request import PluginInvokeContext
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import (
+    BasePluginClient,
+    keep_declaration_items_with_identity,
+    plugin_daemon_item_identity_hint,
+)
 from core.plugin.utils.chunk_merger import merge_blob_chunks
 from models.provider_ids import GenericProviderID
 
@@ -18,11 +22,23 @@ class PluginAgentClient(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]):
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
-                for strategy in declaration.get("strategies", []):
-                    strategy["identity"]["provider"] = provider_name
+            providers = json_response.get("data")
+            if not isinstance(providers, list):
+                return json_response
+            for provider in providers:
+                if not isinstance(provider, dict):
+                    continue
+                declaration = provider.get("declaration")
+                if not isinstance(declaration, dict):
+                    continue
+                identity = declaration.get("identity")
+                provider_name = identity.get("name") if isinstance(identity, dict) else None
+                declaration["strategies"] = keep_declaration_items_with_identity(
+                    declaration.get("strategies"),
+                    provider_name,
+                    item_kind="strategy",
+                    provider_hint=plugin_daemon_item_identity_hint(provider),
+                )
 
             return json_response
 
