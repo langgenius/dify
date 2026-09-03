@@ -268,7 +268,7 @@
   "tracing.otel.invalidJson": "Headers and Resource Attributes must be valid JSON objects.",
   "tracing.otel.resourceAttributes": "Resource Attributes (JSON)",
   "tracing.otel.serviceName": "Service Name",
-  "tracing.otel.title": "OTel",
+  "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.",
   "tracing.phoenix.title": "Phoenix",
   "tracing.tencent.description": "Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.",

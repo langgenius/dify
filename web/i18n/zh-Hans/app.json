@@ -268,7 +268,7 @@
   "tracing.otel.invalidJson": "请求头和 Resource 属性必须是合法的 JSON 对象。",
   "tracing.otel.resourceAttributes": "Resource 属性（JSON）",
   "tracing.otel.serviceName": "服务名",
-  "tracing.otel.title": "OTel",
+  "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "开源且基于OpenTelemetry的可观测性、评估、提示工程和实验平台，适用于您的LLM工作流程和代理。",
   "tracing.phoenix.title": "Phoenix",
   "tracing.tencent.description": "腾讯云应用性能监控，提供 LLM 应用全链路追踪和多维分析",

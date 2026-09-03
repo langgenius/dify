@@ -148,6 +148,18 @@ const otelConfigTemplate = {
   resource_attributes: '{}',
 }
 
+// Secrets the backend echoes back unchanged are masked with a run of asterisks
+const isMaskedSecret = (value: string) => /^\*+$|\*{12}/.test(value)
+
+const isJsonObject = (value: string) => {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+  } catch {
+    return false
+  }
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -338,21 +350,15 @@ const ProviderConfigModal: FC<Props> = ({
       const postData = config as OTelConfig
       if (!postData.endpoint)
         errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
-      // Unchanged secrets are returned masked; preserve them and let the backend retain the old ciphertext.
-      if (!errorMessage && !postData.headers.includes('*')) {
-        try {
-          JSON.parse(postData.headers || '{}')
-        } catch {
-          errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
-        }
-      }
-      if (!errorMessage) {
-        try {
-          JSON.parse(postData.resource_attributes || '{}')
-        } catch {
-          errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
-        }
-      }
+      // Unchanged secrets come back masked; the backend keeps the stored ciphertext for them.
+      if (
+        !errorMessage &&
+        !isMaskedSecret(postData.headers) &&
+        !isJsonObject(postData.headers || '{}')
+      )
+        errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
+      if (!errorMessage && !isJsonObject(postData.resource_attributes || '{}'))
+        errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
     }
 
     return errorMessage
