@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, assert_never
 
 from pydantic_ai.messages import BinaryContent, ImageUrl, UserContent
 from typing_extensions import Self, override
@@ -36,6 +36,14 @@ class DifyUserPromptLayer(PydanticAILayer[NoLayerDeps, object, DifyUserPromptLay
 
 
 def _to_user_content(file: DifyUserPromptFileConfig) -> ImageUrl | BinaryContent:
+    match file.type:
+        case "image":
+            return _to_image_content(file)
+        case unexpected:
+            assert_never(unexpected)
+
+
+def _to_image_content(file: DifyUserPromptFileConfig) -> ImageUrl | BinaryContent:
     vendor_metadata: dict[str, str] = {"filename": file.filename}
     if file.detail is not None:
         vendor_metadata["detail"] = file.detail

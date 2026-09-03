@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypedDict, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -64,6 +64,22 @@ class AgentAppRuntimeRequestBuildError(ValueError):
     def __init__(self, error_code: str, message: str) -> None:
         self.error_code = error_code
         super().__init__(message)
+
+
+class _RemoteFileLocator(TypedDict):
+    transfer_method: Literal["remote_url"]
+    url: str
+
+
+type _ReferenceFileTransferMethod = Literal["local_file", "tool_file", "datasource_file"]
+
+
+class _ReferenceFileLocator(TypedDict):
+    transfer_method: _ReferenceFileTransferMethod
+    reference: str
+
+
+type _FileLocator = _RemoteFileLocator | _ReferenceFileLocator
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,11 +341,11 @@ def _append_file_locators(text: str, files: list[File]) -> str:
     )
 
 
-def _file_locator(file: File) -> dict[str, str]:
+def _file_locator(file: File) -> _FileLocator:
     if file.transfer_method == FileTransferMethod.REMOTE_URL:
         if file.remote_url is None:
             raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")
-        return {"transfer_method": FileTransferMethod.REMOTE_URL.value, "url": file.remote_url}
+        return {"transfer_method": "remote_url", "url": file.remote_url}
     if file.reference is None:
         raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
     reference = file.reference
@@ -337,7 +353,20 @@ def _file_locator(file: File) -> dict[str, str]:
         reference = build_file_reference(record_id=reference)
     elif not is_canonical_file_reference(reference):
         raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file reference is invalid.")
-    return {"transfer_method": file.transfer_method.value, "reference": reference}
+    transfer_method: _ReferenceFileTransferMethod
+    match file.transfer_method:
+        case FileTransferMethod.LOCAL_FILE:
+            transfer_method = "local_file"
+        case FileTransferMethod.TOOL_FILE:
+            transfer_method = "tool_file"
+        case FileTransferMethod.DATASOURCE_FILE:
+            transfer_method = "datasource_file"
+        case _:
+            raise AgentAppRuntimeRequestBuildError(
+                "agent_user_file_invalid",
+                f"User file transfer method '{file.transfer_method.value}' is unsupported.",
+            )
+    return {"transfer_method": transfer_method, "reference": reference}
 
 
 __all__ = [
