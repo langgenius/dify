@@ -419,7 +419,9 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "agent.manage",
+    "agent.create",
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -451,7 +453,9 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "agent.manage",
+    "agent.create",
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -470,7 +474,9 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
-    "agent.manage",
+    "agent.create",
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -479,7 +485,8 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
-    "agent.manage",
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -487,7 +494,8 @@ _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
     "plugin.install",
     "dataset.create_and_management",
     "dataset.external.connect",
-    "agent.manage",
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_APP_OWNER_KEYS: list[str] = [

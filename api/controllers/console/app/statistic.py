@@ -5,12 +5,12 @@ from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     model_validate,
     rbac_permission_required,
@@ -156,7 +156,7 @@ class DailyMessageStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -216,7 +216,7 @@ class DailyConversationStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -275,7 +275,7 @@ class DailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -335,7 +335,7 @@ class DailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -398,7 +398,7 @@ class AverageSessionInteractionStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -477,7 +477,7 @@ class UserSatisfactionRateStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -546,7 +546,7 @@ class AverageResponseTimeStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
@@ -606,7 +606,7 @@ class TokensPerSecondStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_MONITOR, PlainApp()))
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
     def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):

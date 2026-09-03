@@ -1126,9 +1126,8 @@ class TestListOption:
         }
 
 
-class TestLegacyAgentManageKey:
-    def test_legacy_agent_manage_key_membership(self):
-        # Preserve Agent access for every legacy role while external RBAC is disabled.
+class TestLegacyAgentKeys:
+    def test_legacy_workspace_keys_no_longer_carry_agent_manage(self):
         for keys in (
             svc._LEGACY_WORKSPACE_OWNER_KEYS,
             svc._LEGACY_WORKSPACE_ADMIN_KEYS,
@@ -1136,7 +1135,8 @@ class TestLegacyAgentManageKey:
             svc._LEGACY_WORKSPACE_NORMAL_KEYS,
             svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
         ):
-            assert "agent.manage" in keys
+            assert "agent.manage" not in keys
+            assert {"agent.acl.preview", "agent.acl.access_point_view"} <= set(keys)
 
 
 class TestMigrations:

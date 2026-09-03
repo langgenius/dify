@@ -653,7 +653,7 @@ class TestWorkspaceRbacGuards:
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(_account(), "tenant-1"),
             ),
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
         ):
             with pytest.raises(Forbidden):
@@ -672,7 +672,7 @@ class TestWorkspaceRbacGuards:
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(_account(), "tenant-1"),
             ),
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
         ):
             with pytest.raises(Forbidden):

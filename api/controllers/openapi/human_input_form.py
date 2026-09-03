@@ -15,14 +15,14 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.schema import register_schema_models
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     is_recipient_type_allowed_for_surface,
@@ -65,7 +65,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
     @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model, _caller, _caller_kind = auth_data.require_app_context()
@@ -84,7 +84,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     @returns(200, FormSubmitResponse, description="Form submitted")
     @accepts(body=HumanInputFormSubmitPayload)

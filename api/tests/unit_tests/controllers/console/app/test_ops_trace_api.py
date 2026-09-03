@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.common import wraps as common_wraps
+from controllers.common.rbac import checks as rbac_checks_module
+from controllers.common.rbac import locators as rbac_locators_module
 from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.app import ops_trace as ops_trace_module
@@ -184,8 +186,8 @@ def test_trace_config_mutations_require_rbac_permission(
     owned_app.use_icon_as_answer_icon = False
     sqlite_session.add(owned_app)
     sqlite_session.commit()
-    monkeypatch.setattr(common_wraps.db, "session", sqlite_session)
-    monkeypatch.setattr(common_wraps.RBACService.CheckAccess, "check", MagicMock(return_value=False))
+    monkeypatch.setattr(rbac_locators_module.db, "session", sqlite_session)
+    monkeypatch.setattr(rbac_checks_module.RBACService.CheckAccess, "check", MagicMock(return_value=False))
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
 

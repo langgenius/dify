@@ -6,7 +6,8 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_access,
@@ -18,7 +19,7 @@ from controllers.openapi.auth.verify import (
     check_workspace_mismatch,
     check_workspace_role,
 )
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantAccountRole
 from models.model import App
@@ -85,25 +86,25 @@ def test_check_app_access_raises_when_not_member():
 
 # --- check_rbac_permission ---
 
-_RBAC_REQ = RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
+_RBAC_REQ = RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())
 
 
 def test_check_rbac_noop_when_no_requirement():
-    with patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce:
+    with patch("controllers.openapi.auth.verify.enforce_rbac_checks") as mock_enforce:
         check_rbac_permission(_data(rbac=None, caller_kind="account"))
     mock_enforce.assert_not_called()
 
 
 def test_check_rbac_noop_when_rbac_disabled(config_overrides: Callable[..., None]):
     config_overrides(RBAC_ENABLED=False)
-    with patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce:
+    with patch("controllers.openapi.auth.verify.enforce_rbac_checks") as mock_enforce:
         check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account"))
     mock_enforce.assert_not_called()
 
 
 def test_check_rbac_skips_end_user_caller():
     with (
-        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
+        patch("controllers.openapi.auth.verify.enforce_rbac_checks") as mock_enforce,
     ):
         check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="end_user"))
     mock_enforce.assert_not_called()
@@ -126,17 +127,18 @@ def test_check_rbac_enforces_for_account_caller():
         path_params={"app_id": "app-1"},
     )
     with (
-        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
+        patch("controllers.openapi.auth.verify.enforce_rbac_checks") as mock_enforce,
     ):
         check_rbac_permission(data)
-    mock_enforce.assert_called_once_with(
-        tenant_id="t1",
-        account_id=str(account_id),
-        resource_type=RBACResourceScope.APP,
-        scene=RBACPermission.APP_VIEW_LAYOUT,
-        resource_required=True,
-        path_args={"app_id": "app-1"},
-    )
+    mock_enforce.assert_called_once()
+    call_kwargs = mock_enforce.call_args.kwargs
+    assert call_kwargs["tenant_id"] == "t1"
+    assert call_kwargs["account_id"] == str(account_id)
+    assert call_kwargs["path_args"] == {"app_id": "app-1"}
+    (check,) = call_kwargs["checks"]
+    assert isinstance(check, RBACCheck)
+    assert check.scene is RBACPermission.APP_VIEW_LAYOUT
+    assert isinstance(check.locator, PlainApp)
 
 
 def test_check_acl_raises_when_app_or_mode_missing():

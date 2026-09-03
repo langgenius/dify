@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inspect import getclosurevars, unwrap
+from inspect import unwrap
 from types import FunctionType, SimpleNamespace
 
 import pytest
@@ -11,6 +11,7 @@ from controllers.console import agent_app_sandbox as module
 from models.account import Account
 from models.model import App, AppMode, IconType
 from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 class _AgentAppService:
@@ -155,12 +156,10 @@ def _account() -> Account:
     ],
 )
 def test_sandbox_resources_require_app_view_layout(method: FunctionType) -> None:
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    config = getclosurevars(rbac_wrapper).nonlocals
+    [check] = rbac_checks(method)
 
-    assert config["resource_type"] == module.RBACResourceScope.APP
-    assert config["scene"] == module.RBACPermission.APP_VIEW_LAYOUT
-    assert config["resource_required"] is True
+    assert isinstance(check.locator, module.PlainApp)
+    assert check.scene == module.RBACPermission.APP_VIEW_LAYOUT
 
 
 def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
