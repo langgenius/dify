@@ -840,6 +840,37 @@ class TestSegmentServiceMutations:
             with pytest.raises(ValueError, match="Segment is deleting"):
                 SegmentService.delete_segment(segment, document, dataset, MagicMock())
 
+    def test_delete_segment_dispatches_task_for_disabled_segment(self):
+        """Regression for #41457: disabled-segment deletion must still dispatch
+        the cleanup task so the segment's attachment records are removed.
+        Pre-fix the dispatch was gated on ``segment.enabled``, which left
+        SegmentAttachmentBinding / UploadFile rows orphaned when the user
+        disabled a segment before deleting it.
+        """
+        session = MagicMock()
+        segment = _make_segment(enabled=False, index_node_id="parent-node")
+        document = _make_document(word_count=10)
+        dataset = _make_dataset()
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            mock_redis.get.return_value = None
+            session.scalars.return_value.all.return_value = []
+
+            SegmentService.delete_segment(segment, document, dataset, session)
+
+        mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_delete_indexing", 600, 1)
+        delete_task.delay.assert_called_once_with(
+            ["parent-node"],
+            dataset.id,
+            document.id,
+            [segment.id],
+            [],
+        )
+        session.delete.assert_called_once_with(segment)
+
     def test_delete_segments_removes_records_and_clamps_document_word_count(self):
         session = MagicMock()
         dataset = _make_dataset()
