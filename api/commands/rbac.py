@@ -11,8 +11,14 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
-from models import App, Dataset, DatasetPermission, DatasetPermissionEnum, TenantAccountJoin, TenantAccountRole
-from services.enterprise.rbac_service import ListOption, RBACService, ReplaceMemberBindings, ReplaceUserAccessPolicies
+from models import App, Dataset, DatasetPermission, DatasetPermissionEnum, Tenant, TenantAccountJoin, TenantAccountRole
+from services.enterprise.rbac_service import (
+    LegacyAgentRoleMigration,
+    ListOption,
+    RBACService,
+    ReplaceMemberBindings,
+    ReplaceUserAccessPolicies,
+)
 
 _RBAC_DEFAULT_ACCESS_POLICY_ID = "default"
 _RBAC_RESOURCE_ACCESS_POLICY_BATCH_SIZE = 500
@@ -65,6 +71,49 @@ def _resolve_builtin_role_id(tenant_id: str, operator_account_id: str, legacy_ro
         raise ValueError(f"Unsupported legacy workspace role: {legacy_role}")
 
     return _resolve_builtin_role_ids(tenant_id, operator_account_id)[legacy_role]
+
+
+def _iter_tenant_ids(tenant_id: str | None, *, batch_size: int) -> Iterator[str]:
+    if tenant_id:
+        yield tenant_id
+        return
+    last_id: str | None = None
+    while True:
+        with session_factory.create_session() as session:
+            stmt = select(Tenant.id).order_by(Tenant.id.asc()).limit(batch_size)
+            if last_id is not None:
+                stmt = stmt.where(Tenant.id > last_id)
+            rows = session.execute(stmt).scalars().all()
+        if not rows:
+            return
+        for row in rows:
+            yield str(row)
+        last_id = str(rows[-1])
+
+
+def _emit_agent_migration_event(payload: dict[str, object]) -> None:
+    click.echo(json.dumps(payload, sort_keys=True))
+
+
+def _agent_manage_role_event(tenant_id: str, entry: LegacyAgentRoleMigration, *, apply: bool) -> dict[str, object]:
+    base: dict[str, object] = {
+        "dry_run": not apply,
+        "tenant_id": tenant_id,
+        "role_id": entry.role_id,
+        "role_name": entry.role_name,
+    }
+    if entry.skipped:
+        return {**base, "event": "agent_manage_role_migration_skipped", "reason": entry.skipped}
+    event = "agent_manage_role_migration_applied" if apply else "agent_manage_role_migration_proposed_change"
+    return {
+        **base,
+        "event": event,
+        "after": {
+            "added_keys": entry.added_keys,
+            "removed_keys": entry.removed_keys,
+            "bound_policies": entry.bound_policies,
+        },
+    }
 
 
 def _iter_tenant_member_batches(
@@ -1005,3 +1054,40 @@ def migrate_dataset_permissions_to_rbac(
                 fg="green",
             )
         )
+
+
+@click.command(
+    "migrate-agent-permissions-to-rbac",
+    help=(
+        "Upgrade step for agent RBAC. Asks the RBAC service to replace agent.manage on every "
+        "custom role with agent.create plus the agent.full_access binding. Dry run by default."
+    ),
+)
+@click.option("--tenant-id", help="Only migrate a single workspace.")
+@click.option(
+    "--batch-size",
+    default=500,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Tenants fetched per database batch.",
+)
+@click.option("--apply", is_flag=True, default=False, help="Write changes. Without it nothing is written.")
+def migrate_agent_permissions_to_rbac(tenant_id: str | None, batch_size: int, apply: bool) -> None:
+    click.echo(click.style("Starting agent RBAC migration: custom roles holding agent.manage.", fg="green"))
+    tenant_count = 0
+    role_count = 0
+    skipped_count = 0
+    for workspace_id in _iter_tenant_ids(tenant_id, batch_size=batch_size):
+        tenant_count += 1
+        try:
+            report = RBACService.Migrations.migrate_agent_manage_roles(workspace_id, apply=apply)
+        except Exception as exc:
+            raise click.ClickException(f"tenant {workspace_id}: {exc}") from exc
+        for entry in report:
+            role_count += 1
+            if entry.skipped:
+                skipped_count += 1
+            _emit_agent_migration_event(_agent_manage_role_event(workspace_id, entry, apply=apply))
+    click.echo(f"{tenant_count} tenant(s), {role_count} role(s) reported, {skipped_count} skipped")
+    if not apply:
+        click.echo(click.style("Dry run: nothing written. Re-run with --apply.", fg="yellow"))
