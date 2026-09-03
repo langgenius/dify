@@ -2,6 +2,7 @@ import type {
   I18nObject,
   ProviderModelWithStatusEntity,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ConfigurationMethodEnum } from '../declarations'
 
 export type ModelSelectorValue = {
   provider: string
@@ -19,6 +20,7 @@ export type ModelSelectorModel = Pick<
   | 'model_properties'
 > & {
   features?: readonly string[] | null
+  fetch_from: ConfigurationMethodEnum
   model_type: string
   status: string
 }
