@@ -345,7 +345,14 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     mockCollections.mockResolvedValueOnce({
       data: {
         collections: [
-          { name: 'featured', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+          {
+            name: 'featured',
+            label: {},
+            description: {},
+            rule: '',
+            created_at: '',
+            updated_at: '',
+          },
         ],
       },
     })
@@ -477,7 +484,7 @@ describe('toListPlugin', () => {
       privacy_options: 'all',
       readme_meta: { available_languages: ['en_US'] },
       endpoint: { settings: [{ name: 'api_key' }] },
-    } as Plugin
+    } as unknown as Plugin
 
     const listed = toListPlugin(plugin)
 
