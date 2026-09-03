@@ -7,10 +7,13 @@ import {
   difyBuilderCanvasLockedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
+  difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
+  difyBuilderResetAtom,
   difyBuilderRuntimeAtom,
+  difyBuilderSendDraftAtom,
   difyBuilderStartPromptAtom,
   difyBuilderSubmitActionAtom,
 } from '../store'
@@ -137,6 +140,46 @@ describe('Dify Builder store', () => {
     expect(await store.set(difyBuilderStartPromptAtom, 'Make the change smaller')).toBe(true)
     expect(runtime.onSyncDraft).toHaveBeenCalledOnce()
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
+  })
+
+  it('preserves a newer draft while the submitted draft is still sending', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishSending!: (sent: boolean) => void
+    runtime.session.sendMessage = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishSending = resolve
+        }),
+    )
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
+    )
+    store.set(difyBuilderDraftAtom, 'First draft')
+
+    const sending = store.set(difyBuilderSendDraftAtom)
+    await vi.waitFor(() => {
+      expect(runtime.session.sendMessage).toHaveBeenCalledWith('First draft')
+    })
+    store.set(difyBuilderDraftAtom, 'Newer draft')
+    finishSending(true)
+
+    expect(await sending).toBe(true)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Newer draft')
+  })
+
+  it('clears the composer draft when resetting the session', () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderDraftAtom, 'Discard this draft')
+
+    store.set(difyBuilderResetAtom)
+
+    expect(runtime.session.reset).toHaveBeenCalledOnce()
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
   })
 
   it('does not prepare a new session while the canvas is refreshing', async () => {
