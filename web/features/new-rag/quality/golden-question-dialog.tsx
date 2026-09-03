@@ -103,7 +103,7 @@ function GoldenQuestionDialogSession({
   onSubmit,
   pending = false,
 }: Omit<GoldenQuestionDialogProps, 'open' | 'sessionKey'>) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
@@ -352,7 +352,10 @@ function GoldenQuestionDialogSession({
                           {candidate.score !== undefined && candidate.score !== null && (
                             <>
                               {' · '}
-                              {Math.round(candidate.score * 100)}%
+                              {new Intl.NumberFormat(i18n.language, {
+                                maximumFractionDigits: 0,
+                                style: 'percent',
+                              }).format(candidate.score)}
                             </>
                           )}
                         </span>

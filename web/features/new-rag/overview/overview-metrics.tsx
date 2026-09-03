@@ -1,12 +1,13 @@
 'use client'
 
+import type { MetricChange } from './overview-format'
 import { cn } from '@langgenius/dify-ui/cn'
 import ReactECharts from 'echarts-for-react'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { changeLabel, compactNumber, formatDuration } from './overview-format'
+import { compactNumber, formatDuration, formatMetricChange } from './overview-format'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
 import { buildQueryOutcomesChartOptions } from './query-outcomes-chart-options'
 import {
@@ -26,7 +27,7 @@ export function MetricCard({
   title,
   value,
 }: {
-  change?: string
+  change?: MetricChange
   empty: boolean
   help?: string
   loading: boolean
@@ -67,23 +68,25 @@ export function MetricCard({
             <span
               className={cn(
                 'mb-0.5 flex shrink-0 items-center gap-0.5 system-xs-medium',
-                change.startsWith('+')
+                change.direction === 'increase'
                   ? 'text-text-success'
-                  : change.startsWith('-')
+                  : change.direction === 'decrease'
                     ? 'text-text-warning'
                     : 'text-text-quaternary',
               )}
             >
-              {change !== '—' && (
+              {change.direction !== 'neutral' && (
                 <span
                   aria-hidden
                   className={cn(
                     'size-3',
-                    change.startsWith('+') ? 'i-ri-arrow-up-s-fill' : 'i-ri-arrow-down-s-fill',
+                    change.direction === 'increase'
+                      ? 'i-ri-arrow-up-s-fill'
+                      : 'i-ri-arrow-down-s-fill',
                   )}
                 />
               )}
-              {change}
+              {change.label}
             </span>
           )}
         </div>
@@ -96,7 +99,11 @@ export function OverviewMetrics() {
   const empty = useAtomValue(overviewShowEmptyModulesAtom)
   const loading = useAtomValue(overviewStatsPendingAtom)
   const stats = useAtomValue(overviewStatsDataAtom)
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
+  const percentFormat = new Intl.NumberFormat(i18n.language, {
+    maximumFractionDigits: 0,
+    style: 'percent',
+  })
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -105,11 +112,12 @@ export function OverviewMetrics() {
         loading={loading}
         title={t(($) => $['overview.queries'])}
         help={t(($) => $['overview.queriesHelp'])}
-        value={stats ? compactNumber(stats.queries.value) : '—'}
+        value={stats ? compactNumber(stats.queries.value, i18n.language) : '—'}
         change={
           stats
-            ? changeLabel(
+            ? formatMetricChange(
                 stats.queries.change_rate === null ? null : stats.queries.change_rate * 100,
+                i18n.language,
               )
             : undefined
         }
@@ -119,27 +127,31 @@ export function OverviewMetrics() {
         loading={loading}
         title={t(($) => $['overview.answerRate'])}
         help={t(($) => $['overview.answerRateHelp'])}
-        value={stats ? `${Math.round(stats.answer_rate.value * 100)}%` : '—'}
-        change={stats ? changeLabel(stats.answer_rate.change_percentage_points, 'pp') : undefined}
+        value={stats ? percentFormat.format(stats.answer_rate.value) : '—'}
+        change={
+          stats
+            ? formatMetricChange(stats.answer_rate.change_percentage_points, i18n.language, 'pp')
+            : undefined
+        }
       />
       <MetricCard
         empty={empty}
         loading={loading}
         title={t(($) => $['overview.documents'])}
-        value={stats ? compactNumber(stats.documents) : '—'}
+        value={stats ? compactNumber(stats.documents, i18n.language) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
         title={t(($) => $['overview.linkedApps'])}
-        value={stats ? compactNumber(stats.linked_apps) : '—'}
+        value={stats ? compactNumber(stats.linked_apps, i18n.language) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
         title={t(($) => $['overview.freshness'])}
         help={t(($) => $['overview.freshnessHelp'])}
-        value={formatDuration(stats?.freshness_seconds)}
+        value={formatDuration(stats?.freshness_seconds, i18n.language)}
       />
     </div>
   )

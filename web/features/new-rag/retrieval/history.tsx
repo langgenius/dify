@@ -21,8 +21,8 @@ import {
 const researchStageOrder = ['planning', 'retrieving', 'analyzing', 'generating'] as const
 type ResearchStage = (typeof researchStageOrder)[number]
 
-function formatRecordTime(value: number) {
-  return new Intl.DateTimeFormat(undefined, {
+function formatRecordTime(value: number, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -31,7 +31,7 @@ function formatRecordTime(value: number) {
 }
 
 export function RecordTime({ value }: { value: number }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const [showJustNow, setShowJustNow] = useState(() => {
     const age = Date.now() - value
     return age >= 0 && age < 60_000
@@ -46,7 +46,7 @@ export function RecordTime({ value }: { value: number }) {
     return () => globalThis.clearTimeout(timeout)
   }, [showJustNow, value])
 
-  return showJustNow ? t(($) => $['retrievalTest.justNow']) : formatRecordTime(value)
+  return showJustNow ? t(($) => $['retrievalTest.justNow']) : formatRecordTime(value, i18n.language)
 }
 
 type ResearchPayloadLabels = {

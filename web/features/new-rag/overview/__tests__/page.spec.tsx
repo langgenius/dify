@@ -1,8 +1,10 @@
 import type { Getter } from 'jotai'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { renderWithNuqs } from '@/test/nuqs-testing'
+import { formatMetricChange } from '../overview-format'
+import { MetricCard } from '../overview-metrics'
 import { KnowledgeOverviewPage } from '../page'
 
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
@@ -478,7 +480,18 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(screen.getByText('84%')).toBeInTheDocument()
     expect(screen.getByText('+100%')).toBeInTheDocument()
-    expect(screen.getByText('+4pp')).toBeInTheDocument()
+    expect(screen.getByText('+4 pp')).toBeInTheDocument()
+  })
+
+  it('keeps the increase direction when a localized label starts with a bidi mark', () => {
+    const change = formatMetricChange(25, 'ar-TN')
+
+    render(<MetricCard change={change} empty={false} loading={false} title="Queries" value="100" />)
+
+    const changeIndicator = screen.getByText(change.label)
+    expect(change.label.startsWith('+')).toBe(false)
+    expect(changeIndicator).toHaveClass('text-text-success')
+    expect(changeIndicator.querySelector('[aria-hidden]')).toHaveClass('i-ri-arrow-up-s-fill')
   })
 
   it('omits zero-value source segments from the inventory bar', () => {

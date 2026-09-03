@@ -28,9 +28,15 @@ export type QualityDecision = 'bad-case' | 'golden'
 export type BadCaseReason = 'low-score' | 'retrieval-miss'
 
 function ScorePill({ score }: { score: number }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const normalized = Math.max(0, Math.min(1, score))
-  const displayedScore = normalized > 0 && normalized < 0.01 ? '<0.01' : normalized.toFixed(2)
+  const numberFormat = new Intl.NumberFormat(i18n.language, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })
+  const displayedScore = `${normalized > 0 && normalized < 0.01 ? '<' : ''}${numberFormat.format(
+    normalized > 0 && normalized < 0.01 ? 0.01 : normalized,
+  )}`
   return (
     <span className="relative inline-flex h-5 min-w-5 shrink-0 items-center justify-center gap-0.75 overflow-hidden rounded-md border border-components-progress-bar-border bg-util-colors-blue-brand-blue-brand-50 px-1.25 text-util-colors-blue-brand-blue-brand-700">
       <span

@@ -41,14 +41,21 @@ function evaluationStateClassName(state: ReplayState) {
   return 'border-state-accent-solid text-text-accent'
 }
 
-function percent(value: number) {
-  return `${Math.round(value * 100)}%`
+function percent(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 0,
+    style: 'percent',
+  }).format(value)
 }
 
-function formatDuration(milliseconds?: number | null) {
+function formatDuration(milliseconds: number | null | undefined, locale: string) {
   if (milliseconds === undefined || milliseconds === null) return '—'
-  if (milliseconds < 1000) return `${Math.round(milliseconds)} ms`
-  return `${(milliseconds / 1000).toFixed(milliseconds < 10_000 ? 1 : 0)} s`
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: milliseconds < 10_000 ? 1 : 0,
+    style: 'unit',
+    unit: milliseconds < 1000 ? 'millisecond' : 'second',
+    unitDisplay: 'narrow',
+  }).format(milliseconds < 1000 ? Math.round(milliseconds) : milliseconds / 1000)
 }
 
 function keepLatestReplay(
@@ -81,7 +88,7 @@ export function EvaluationReport({
   onRunStarted: (runId: string) => void
   runId: string
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tWorkflow } = useTranslation('workflow')
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
@@ -147,7 +154,7 @@ export function EvaluationReport({
             <EvaluationState state={run.state} />
           </div>
           <p className="mt-1 system-xs-regular text-text-primary">
-            {formatQualityReportCreatedAt(run.created_at)}
+            {formatQualityReportCreatedAt(run.created_at, i18n.language)}
           </p>
         </div>
         <Button onClick={() => setRunDialogOpen(true)}>
@@ -165,19 +172,19 @@ export function EvaluationReport({
         {[
           {
             label: t(($) => $['qualityPage.evaluation.hitRate']),
-            value: percent(run.summary.hit_rate),
+            value: percent(run.summary.hit_rate, i18n.language),
           },
           {
             label: t(($) => $['qualityPage.evaluation.passed']),
-            value: String(run.summary.passed),
+            value: new Intl.NumberFormat(i18n.language).format(run.summary.passed),
           },
           {
             label: t(($) => $['qualityPage.evaluation.missed']),
-            value: String(run.summary.failed),
+            value: new Intl.NumberFormat(i18n.language).format(run.summary.failed),
           },
           {
             label: t(($) => $['qualityPage.evaluation.progress']),
-            value: `${run.summary.completed}/${run.summary.total}`,
+            value: `${new Intl.NumberFormat(i18n.language).format(run.summary.completed)} / ${new Intl.NumberFormat(i18n.language).format(run.summary.total)}`,
           },
         ].map((metric) => (
           <div key={metric.label} className="rounded-lg bg-background-section-burn px-4 py-3">
@@ -229,14 +236,15 @@ export function EvaluationReport({
                   })}
                   onClick={() => setSelectedEvidenceItemId(item.id)}
                 >
-                  {diff.matched_count} of {diff.expected_count}
+                  {new Intl.NumberFormat(i18n.language).format(diff.matched_count)} /{' '}
+                  {new Intl.NumberFormat(i18n.language).format(diff.expected_count)}
                   <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
                 </Button>
               ) : (
                 <span className="system-xs-medium text-text-secondary">—</span>
               )}
               <span className="system-xs-regular text-text-secondary">
-                {formatDuration(item.result?.metrics.total_ms)}
+                {formatDuration(item.result?.metrics.total_ms, i18n.language)}
               </span>
             </div>
           )
@@ -570,7 +578,7 @@ export function QualityEvaluationPanel({
   actionSlot?: HTMLElement | null
   onOpenReport: (runId: string) => void
 }) {
-  const { t } = useTranslation('knowledgeSpace')
+  const { i18n, t } = useTranslation('knowledgeSpace')
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -666,6 +674,7 @@ export function QualityEvaluationPanel({
                   {formatQualityEvaluationCreatedAt(
                     run.created_at,
                     t(($) => $['retrievalTest.justNow']),
+                    i18n.language,
                   )}
                 </span>
                 <EvaluationState state={run.state} />
@@ -673,10 +682,11 @@ export function QualityEvaluationPanel({
                   {t(($) => $[`qualityPage.evaluation.mode.${run.mode}`])}
                 </span>
                 <span className="system-sm-medium text-text-primary">
-                  {run.summary.completed > 0 ? percent(run.summary.hit_rate) : '—'}
+                  {run.summary.completed > 0 ? percent(run.summary.hit_rate, i18n.language) : '—'}
                 </span>
                 <span className="system-xs-regular text-text-secondary">
-                  {run.summary.completed}/{run.summary.total}
+                  {new Intl.NumberFormat(i18n.language).format(run.summary.completed)} /{' '}
+                  {new Intl.NumberFormat(i18n.language).format(run.summary.total)}
                 </span>
                 <Button
                   variant="secondary"
