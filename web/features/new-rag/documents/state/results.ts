@@ -291,7 +291,7 @@ export const hasTaskErrorAtom = atom((get) =>
 )
 export const showTasksAtom = atom((get) => {
   return Boolean(
-    get(effectiveTasksAtom).length ||
+    get(drawerTasksAtom).length ||
     get(tasksQueryIsFetchNextPageErrorAtom) ||
     get(tasksQueryHasNextPageAtom),
   )

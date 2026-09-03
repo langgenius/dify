@@ -3,6 +3,7 @@ import { taskIsActive } from '../model'
 import { backgroundTasksAtom, baseTasksAtom } from '../state/queries'
 import { taskRuntimeStateAtom } from '../state/scoped'
 import { effectiveDocumentTasks } from './snapshot'
+import { dismissedBackgroundTaskIdsAtom } from './storage'
 
 export const effectiveTasksAtom = atom((get) => {
   const runtimeState = get(taskRuntimeStateAtom)
@@ -19,6 +20,9 @@ export const activeTasksAtom = atom((get) => get(effectiveTasksAtom).filter(task
 
 export const drawerTasksAtom = atom((get) => {
   const effectiveTaskById = new Map(get(effectiveTasksAtom).map((task) => [task.id, task]))
+  const dismissedTaskIds = get(dismissedBackgroundTaskIdsAtom)
 
-  return get(backgroundTasksAtom).map((task) => effectiveTaskById.get(task.id) ?? task)
+  return get(backgroundTasksAtom)
+    .map((task) => effectiveTaskById.get(task.id) ?? task)
+    .filter((task) => taskIsActive(task) || !dismissedTaskIds.has(task.id))
 })

@@ -13,6 +13,8 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
@@ -48,6 +50,7 @@ import {
   taskDrawerRowsStateAtom,
 } from './drawer-state'
 import { queryKeyMatchesKnowledgeSpace } from './recovery'
+import { dismissBackgroundTaskAtom, restoreBackgroundTaskAtom } from './storage'
 
 const TASK_DRAWER_CLOSE_SELECTOR = '[data-documents-task-drawer-close]'
 
@@ -293,6 +296,8 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     useAtomValue(taskDrawerActionFactsAtom)
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
+  const dismissTask = useSetAtom(dismissBackgroundTaskAtom)
+  const restoreTask = useSetAtom(restoreBackgroundTaskAtom)
   const [pending, setPending] = useState(false)
   const [failedLifecycle, setFailedLifecycle] = useState<string>()
   const mountedRef = useRef(true)
@@ -399,50 +404,82 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
           ? t(($) => $['newKnowledge.addDocument'])
           : undefined
   const actionTarget = `${title} · ${task.id}`
-  if (!canWrite) return null
+  const action = canWrite
+    ? taskCanCancel(task)
+      ? 'cancel'
+      : taskCanRetry(task)
+        ? 'retry'
+        : undefined
+    : undefined
+  const canDismiss = !taskIsActive(task)
+  const showRecovery = Boolean(canWrite && recoveryPath && recoveryLabel)
+  if (!action && !showRecovery && !canDismiss) return null
 
-  const action = taskCanCancel(task) ? 'cancel' : taskCanRetry(task) ? 'retry' : undefined
-  if (action)
-    return (
-      <div className="flex shrink-0 flex-col items-end">
-        {failedLifecycle === taskLifecycle(task) && (
-          <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
-            {t(($) => $['newKnowledge.taskActionFailed'])}
-          </p>
-        )}
-        <Button
-          data-documents-task-action
-          aria-label={
-            action === 'cancel'
-              ? includeCancelTarget
-                ? `${t(($) => $['newKnowledge.interruptTask'])} · ${actionTarget}`
-                : undefined
-              : includeRetryTarget
-                ? `${t(($) => $['newKnowledge.retryTask'])} · ${actionTarget}`
-                : undefined
-          }
-          size="small"
-          aria-busy={pending}
-          disabled={pending}
-          loading={pending}
-          onClick={() => void performAction(action)}
-        >
-          {action === 'cancel'
-            ? t(($) => $['newKnowledge.interruptTask'])
-            : t(($) => $['newKnowledge.retryTask'])}
-        </Button>
-      </div>
-    )
+  const dismissLabel = t(($) => $['newKnowledge.dismissTask'])
 
-  if (!recoveryPath || !recoveryLabel) return null
   return (
-    <Link
-      aria-label={`${recoveryLabel} · ${actionTarget}`}
-      className={buttonVariants({ size: 'small' })}
-      href={recoveryPath}
-    >
-      {recoveryLabel}
-    </Link>
+    <div className="flex shrink-0 flex-col items-end">
+      {failedLifecycle === taskLifecycle(task) && (
+        <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
+          {t(($) => $['newKnowledge.taskActionFailed'])}
+        </p>
+      )}
+      <div className="flex items-center gap-1">
+        {action && (
+          <Button
+            data-documents-task-action
+            aria-label={
+              action === 'cancel'
+                ? includeCancelTarget
+                  ? `${t(($) => $['newKnowledge.interruptTask'])} · ${actionTarget}`
+                  : undefined
+                : includeRetryTarget
+                  ? `${t(($) => $['newKnowledge.retryTask'])} · ${actionTarget}`
+                  : undefined
+            }
+            size="small"
+            aria-busy={pending}
+            disabled={pending}
+            loading={pending}
+            onClick={() => void performAction(action)}
+          >
+            {action === 'cancel'
+              ? t(($) => $['newKnowledge.interruptTask'])
+              : t(($) => $['newKnowledge.retryTask'])}
+          </Button>
+        )}
+        {!action && showRecovery && recoveryPath && recoveryLabel && (
+          <Link
+            aria-label={`${recoveryLabel} · ${actionTarget}`}
+            className={buttonVariants({ size: 'small' })}
+            href={recoveryPath}
+          >
+            {recoveryLabel}
+          </Link>
+        )}
+        {canDismiss && (
+          <IconButton
+            data-documents-task-action
+            aria-label={`${dismissLabel} · ${actionTarget}`}
+            size="md"
+            onClick={() => {
+              dismissTask(task.id)
+              toast.info(
+                t(($) => $['newKnowledge.taskDismissed']),
+                {
+                  actionProps: {
+                    children: t(($) => $['newKnowledge.undoTaskDismissal']),
+                    onClick: () => restoreTask(task.id),
+                  },
+                },
+              )
+            }}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        )}
+      </div>
+    </div>
   )
 }
 
