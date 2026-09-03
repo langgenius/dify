@@ -211,6 +211,7 @@ source_modules =
     services.account_deletion_feedback_service
     services.account_education_service
     services.account_errors
+    services.account_forgot_password_service
     services.account_initialization_service
     services.account_integration_service
     services.account_login_service

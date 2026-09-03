@@ -7,9 +7,7 @@ from hashlib import sha256
 from typing import override
 
 from pydantic import TypeAdapter, ValidationError
-from redis import RedisError
 
-from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter, TokenManager
 from libs.workspace_permission import check_workspace_member_invite_permission
@@ -37,6 +35,7 @@ from services.account_ports import (
     AccountDeletionVerificationGateway,
     AccountDeletionVerificationNotifier,
 )
+from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
 from services.enterprise.account_deletion_sync import sync_account_deletion_memberships
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
@@ -69,7 +68,6 @@ _change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(Cha
 
 _CHANGE_EMAIL_RATE_LIMIT_ATTEMPTS = 1
 _CHANGE_EMAIL_RATE_LIMIT_SECONDS = 60
-_CHANGE_EMAIL_VERIFICATION_FAILURE_LIMIT = 5
 _ACCOUNT_DELETION_RATE_LIMIT_ATTEMPTS = 1
 _ACCOUNT_DELETION_RATE_LIMIT_SECONDS = 60
 
@@ -303,80 +301,22 @@ class RateLimiterChangeEmailSendLimiter(ChangeEmailSendLimiter):
         return int(self._rate_limiter.time_window / 60)
 
 
-class RedisChangeEmailSecurityGateway(ChangeEmailSecurityGateway):
+class RedisChangeEmailSecurityGateway(RedisAccountEmailSecurityGateway, ChangeEmailSecurityGateway):
     def __init__(
         self,
         *,
         redis: RedisClientWrapper,
-        email_send_ip_limit_per_minute: int | None = None,
-        verification_failure_limit: int = _CHANGE_EMAIL_VERIFICATION_FAILURE_LIMIT,
-        verification_lockout_duration: int | None = None,
+        email_send_ip_limit_per_minute: int,
+        verification_failure_limit: int,
+        verification_lockout_duration: int,
     ) -> None:
-        self._redis = redis
-        self._email_send_ip_limit_per_minute = (
-            email_send_ip_limit_per_minute
-            if email_send_ip_limit_per_minute is not None
-            else dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE
+        super().__init__(
+            redis=redis,
+            email_send_ip_limit_per_minute=email_send_ip_limit_per_minute,
+            verification_failure_limit=verification_failure_limit,
+            verification_lockout_duration=verification_lockout_duration,
+            verification_key_prefix="change_email_error_rate_limit",
         )
-        self._verification_failure_limit = verification_failure_limit
-        self._verification_lockout_duration = (
-            verification_lockout_duration
-            if verification_lockout_duration is not None
-            else dify_config.CHANGE_EMAIL_LOCKOUT_DURATION
-        )
-
-    @override
-    def is_ip_limited(self, ip_address: str) -> bool:
-        minute_key = f"email_send_ip_limit_minute:{ip_address}"
-        freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
-        hour_limit_key = f"email_send_ip_limit_hour:{ip_address}"
-        try:
-            if self._redis.get(freeze_key):
-                return True
-
-            current_minute_count = int(self._redis.get(minute_key) or 0)
-            if current_minute_count > self._email_send_ip_limit_per_minute:
-                hour_limit_count = int(self._redis.get(hour_limit_key) or 0)
-                if hour_limit_count >= 1:
-                    self._redis.setex(freeze_key, 60 * 60, 1)
-                    return True
-                if not self._redis.set(hour_limit_key, 1, ex=60 * 10, nx=True):
-                    self._redis.setex(freeze_key, 60 * 60, 1)
-                return True
-
-            self._redis.setex(minute_key, 60, current_minute_count + 1)
-            self._redis.expire(minute_key, 60)
-            return False
-        except RedisError:
-            return False
-
-    @override
-    def is_verification_limited(self, email: str) -> bool:
-        try:
-            count = self._redis.get(self._verification_key(email))
-            return count is not None and int(count) > self._verification_failure_limit
-        except RedisError:
-            return False
-
-    @override
-    def record_verification_failure(self, email: str) -> None:
-        try:
-            key = self._verification_key(email)
-            count = int(self._redis.get(key) or 0) + 1
-            self._redis.setex(key, self._verification_lockout_duration, count)
-        except RedisError:
-            return None
-
-    @override
-    def reset_verification_failures(self, email: str) -> None:
-        try:
-            self._redis.delete(self._verification_key(email))
-        except RedisError:
-            return None
-
-    @staticmethod
-    def _verification_key(email: str) -> str:
-        return f"change_email_error_rate_limit:{email}"
 
 
 class BillingAccountEmailPolicyGateway(AccountEmailPolicyGateway):

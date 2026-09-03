@@ -156,7 +156,7 @@ describe('ServiceApiAccessPointCard', () => {
     )
   })
 
-  it('disables API management without release permission', () => {
+  it('disables API management without Access Point management permission', () => {
     renderWithQueryClient(
       <ServiceApiAccessPointCard
         appInfo={createAppInfo(AppModeEnum.WORKFLOW)}

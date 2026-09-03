@@ -1,9 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -82,7 +82,7 @@ export default function MailAndCodeAuth() {
             spellCheck={false}
             value={email}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-            onChange={(e) => setEmail(e.target.value)}
+            onValueChange={setEmail}
           />
         </div>
         <div className="mt-3">

@@ -171,8 +171,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "clsx": "catalog:",
-    "tailwind-merge": "catalog:"
+    "cn": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { defaultPlan } from '@/app/components/billing/config'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import {
@@ -68,7 +68,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
-      setZendeskConversationFields(
+      zendeskRuntime.setConversationFields(
         [
           {
             id: ZENDESK_FIELD_IDS.PLAN,

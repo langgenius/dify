@@ -256,7 +256,7 @@ class TestAccountUpdateApis:
             request_id="request-1",
             trace_id=None,
             account_id=user.id,
-            active_workspace_id=None,
+            active_workspace_id="workspace-1",
         )
         profile = MagicMock()
         profile.update.return_value = user
