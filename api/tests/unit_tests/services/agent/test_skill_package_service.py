@@ -13,7 +13,7 @@ from services.agent import skill_package_service as skill_package_service_module
 from services.agent.skill_package_service import NormalizedSkillPackage, SkillPackageError, SkillPackageService
 
 _SKILL_MD = """---
-name: PDF Toolkit
+name: pdf-toolkit
 description: Tools for working with PDF files.
 ---
 
@@ -43,7 +43,7 @@ def _archive_members(content: bytes) -> list[str]:
 def test_valid_skill_normalizes_manifest():
     manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}).manifest
 
-    assert manifest.name == "PDF Toolkit"
+    assert manifest.name == "pdf-toolkit"
     assert manifest.description == "Tools for working with PDF files."
     assert manifest.entry_path == "SKILL.md"
     assert set(manifest.files) == {"SKILL.md", "scripts/run.py"}
@@ -51,10 +51,10 @@ def test_valid_skill_normalizes_manifest():
     assert len(manifest.hash) == 64
 
 
-def test_name_falls_back_to_heading_without_frontmatter():
-    manifest = _normalize({"SKILL.md": b"# Heading Name\n\nbody"}).manifest
-    assert manifest.name == "Heading Name"
-    assert manifest.description == ""
+def test_name_and_description_are_required_in_frontmatter():
+    with pytest.raises(SkillPackageError) as exc_info:
+        _normalize({"SKILL.md": b"# heading-name\n\nbody"})
+    assert exc_info.value.code == "missing_skill_name"
 
 
 def test_shallowest_skill_md_preferred_during_normalization():
@@ -155,7 +155,18 @@ def test_validate_and_normalize_strips_deeper_selected_skill_root():
         ({"README.md": b"x"}, "skill.zip", "missing_skill_md"),
         ({"SKILL.md": _SKILL_MD.encode()}, "skill.tar", "unsupported_extension"),
         ({"SKILL.md": b""}, "skill.zip", "empty_skill_md"),
-        ({"SKILL.md": b"no name here"}, "skill.zip", "missing_skill_name"),
+        ({"SKILL.md": b"---\ndescription: valid\n---\n# no name here"}, "skill.zip", "missing_skill_name"),
+        ({"SKILL.md": b"---\nname: pdf-toolkit\n---\n# no description"}, "skill.zip", "missing_skill_description"),
+        (
+            {"SKILL.md": b"---\nname: PDF Toolkit\ndescription: valid\n---\n# invalid name"},
+            "skill.zip",
+            "invalid_skill_name",
+        ),
+        (
+            {"SKILL.md": f"---\nname: pdf-toolkit\ndescription: {'x' * 1025}\n---\n# long".encode()},
+            "skill.zip",
+            "invalid_skill_description",
+        ),
         ({"SKILL.md": b"\xff\xfenot utf8"}, "skill.zip", "skill_md_not_utf8"),
     ],
 )
@@ -210,10 +221,12 @@ def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypat
 
 
 def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module, "_MAX_ARCHIVE_BYTES", 8)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
-        SkillPackageService().validate_and_normalize(content=b"x" * 9, filename="skill.zip")
+        SkillPackageService().validate_and_normalize(content=b"x" * (1024 * 1024 + 1), filename="skill.zip")
     assert exc_info.value.code == "archive_too_large"
 
 
@@ -224,10 +237,10 @@ def test_bad_frontmatter_yaml_rejected():
     assert exc_info.value.code == "invalid_frontmatter"
 
 
-def test_unterminated_frontmatter_falls_back_to_heading():
-    # leading '---' with no closing fence -> no frontmatter, use the heading
-    manifest = _normalize({"SKILL.md": b"---\n# Heading Wins\nbody"}).manifest
-    assert manifest.name == "Heading Wins"
+def test_unterminated_frontmatter_rejected():
+    with pytest.raises(SkillPackageError) as exc_info:
+        _normalize({"SKILL.md": b"---\n# heading-wins\nbody"})
+    assert exc_info.value.code == "missing_skill_name"
 
 
 def test_validate_and_normalize_rejects_files_outside_selected_skill_root():

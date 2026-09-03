@@ -1,8 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-
 import { usePipelineStartRunByCanEdit } from '../use-pipeline-start-run'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -15,17 +14,20 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
 }))
 
 const mockDoSyncWorkflowDraft = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: vi.fn(),
   }),

@@ -1,36 +1,20 @@
 import { memo } from 'react'
-import { IS_CE_EDITION, IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
+import { IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
+import { prefetchSystemFeatures } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
-import Script from '@/next/script'
+import { ZendeskScript } from './script'
 
 const Zendesk = async () => {
-  if (IS_CE_EDITION || !ZENDESK_WIDGET_KEY)
-    return null
+  if (!ZENDESK_WIDGET_KEY) return null
 
-  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? '' : ''
+  const systemFeatures = await prefetchSystemFeatures()
+  if (!systemFeatures || systemFeatures.deployment_edition !== 'CLOUD') return null
+
+  const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? '') : ''
   /* v8 ignore next -- `nonce` is always a string (`''` or header value), so nullish fallback is unreachable in runtime. @preserve */
   const scriptNonce = nonce ?? undefined
 
-  return (
-    <>
-      <Script
-        nonce={scriptNonce}
-        id="ze-snippet"
-        src={`https://static.zdassets.com/ekr/snippet.js?key=${ZENDESK_WIDGET_KEY}`}
-        data-testid="ze-snippet"
-      />
-      <Script nonce={scriptNonce} id="ze-init" data-testid="ze-init">
-        {`
-        (function () {
-          window.addEventListener('load', function () {
-            if (window.zE)
-              window.zE('messenger', 'hide')
-          })
-        })()
-      `}
-      </Script>
-    </>
-  )
+  return <ZendeskScript nonce={scriptNonce} widgetKey={ZENDESK_WIDGET_KEY} />
 }
 
 export default memo(Zendesk)

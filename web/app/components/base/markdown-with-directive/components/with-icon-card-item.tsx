@@ -9,7 +9,12 @@ type WithIconItemProps = WithIconCardItemProps & {
 
 function WithIconCardItem({ icon, children, className, iconAlt }: WithIconItemProps) {
   return (
-    <div className={cn('flex h-11 items-center space-x-3 rounded-lg bg-background-section px-2', className)}>
+    <div
+      className={cn(
+        'flex h-11 items-center space-x-3 rounded-lg bg-background-section px-2',
+        className,
+      )}
+    >
       <img
         src={icon}
         className="border-none! object-contain"

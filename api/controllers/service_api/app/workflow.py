@@ -1,19 +1,26 @@
 import logging
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Literal, override
+from typing import Annotated, Literal
 
 from dateutil.parser import isoparse
 from flask import request
-from flask_restx import Resource, fields
-from pydantic import BaseModel, Field, field_validator
+from flask_restx import Resource
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.fields import SimpleResultResponse, WorkflowBlockingResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     CompletionRequestError,
@@ -21,8 +28,11 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    WORKFLOW_TASK_STOP_USER_DESCRIPTION,
     expect_user_json,
     expect_with_user,
     json_or_event_stream_response,
@@ -37,25 +47,37 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
-from fields.member_fields import SimpleAccount
+from fields.member_fields import SimpleAccountResponse
 from graphon.enums import WorkflowExecutionStatus
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.billing_service import BillingService
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
+
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
@@ -97,60 +119,65 @@ class WorkflowLogQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
-register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(service_api_ns, WorkflowBlockingResponse, SimpleResultResponse)
 
 
 def _enum_value(value):
     return getattr(value, "value", value)
 
 
-class WorkflowRunStatusField(fields.Raw):
-    @override
-    def output(self, key, obj: WorkflowRun, **kwargs):
-        return _enum_value(obj.status)
-
-
-class WorkflowRunOutputsField(fields.Raw):
-    @override
-    def output(self, key, obj: WorkflowRun, **kwargs):
-        status = _enum_value(obj.status)
-        if status == WorkflowExecutionStatus.PAUSED.value:
-            return {}
-
-        outputs = obj.outputs_dict
-        return outputs or {}
-
-
 class WorkflowRunResponse(ResponseModel):
-    id: str
-    workflow_id: str
+    id: UUIDString
+    workflow_id: UUIDString
     status: str
     inputs: dict | list | str | int | float | bool | None = Field(default=None)
-    outputs: dict = Field(default_factory=dict)
+    outputs: dict = Field(default_factory=dict, validation_alias="outputs_dict")
     error: str | None = None
     total_steps: int | None = None
     total_tokens: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    elapsed_time: float | int | None = None
+    created_at: Int64 | None = None
+    finished_at: Int64 | None = None
+    elapsed_time: FloatNumber | int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_enum(cls, value):
+        return _enum_value(value)
+
+    @field_validator("outputs", mode="before")
+    @classmethod
+    def _normalize_outputs(cls, value):
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, Mapping):
+            return dict(value)
+        return {}
 
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @model_validator(mode="after")
+    def _clear_paused_outputs(self):
+        if self.status == WorkflowExecutionStatus.PAUSED.value:
+            self.outputs = {}
+        return self
+
 
 class WorkflowRunForLogResponse(ResponseModel):
-    id: str
+    id: UUIDString
     version: str | None = None
     status: str | None = None
     triggered_from: str | None = None
     error: str | None = None
-    elapsed_time: float | int | None = None
+    elapsed_time: FloatNumber | int | None = None
     total_tokens: int | None = None
     total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
+    created_at: Int64 | None = None
+    finished_at: Int64 | None = None
     exceptions_count: int | None = None
 
     @field_validator("status", "triggered_from", mode="before")
@@ -165,14 +192,14 @@ class WorkflowRunForLogResponse(ResponseModel):
 
 
 class WorkflowAppLogPartialResponse(ResponseModel):
-    id: str
+    id: UUIDString
     workflow_run: WorkflowRunForLogResponse | None = None
     details: dict | list | str | int | float | bool | None = Field(default=None)
     created_from: str | None = None
     created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
+    created_by_account: SimpleAccountResponse | None = None
     created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_from", "created_by_role", mode="before")
     @classmethod
@@ -200,39 +227,6 @@ register_response_schema_models(
     WorkflowAppLogPartialResponse,
     WorkflowAppLogPaginationResponse,
 )
-
-
-def _serialize_workflow_run(workflow_run: WorkflowRun) -> dict:
-    status = _enum_value(workflow_run.status)
-    raw_outputs = workflow_run.outputs_dict
-    match raw_outputs:
-        case _ if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
-            outputs: dict = {}
-        case dict():
-            outputs = raw_outputs
-        case _ if isinstance(raw_outputs, Mapping):
-            outputs = dict(raw_outputs)
-        case _:
-            outputs = {}
-    return WorkflowRunResponse.model_validate(
-        {
-            "id": workflow_run.id,
-            "workflow_id": workflow_run.workflow_id,
-            "status": status,
-            "inputs": workflow_run.inputs,
-            "outputs": outputs,
-            "error": workflow_run.error,
-            "total_steps": workflow_run.total_steps,
-            "total_tokens": workflow_run.total_tokens,
-            "created_at": workflow_run.created_at,
-            "finished_at": workflow_run.finished_at,
-            "elapsed_time": workflow_run.elapsed_time,
-        }
-    ).model_dump(mode="json")
-
-
-def _serialize_workflow_log_pagination(pagination) -> dict:
-    return WorkflowAppLogPaginationResponse.model_validate(pagination, from_attributes=True).model_dump(mode="json")
 
 
 @service_api_ns.route("/workflows/run/<string:workflow_run_id>")
@@ -287,7 +281,7 @@ class WorkflowRunDetailApi(Resource):
         )
         if not workflow_run:
             raise NotFound("Workflow run not found.")
-        return _serialize_workflow_run(workflow_run)
+        return dump_response(WorkflowRunResponse, workflow_run)
 
 
 @service_api_ns.route("/workflows/run")
@@ -314,6 +308,11 @@ class WorkflowRunApi(Resource):
                 "- `completion_request_error` : Workflow execution request failed.\n"
                 "- `invalid_param` : Invalid parameter value."
             ),
+            403: (
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
+                "- `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through "
+                "Web App, Service API, OpenAPI, or MCP."
+            ),
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
                 "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
@@ -338,10 +337,11 @@ class WorkflowRunApi(Resource):
     @service_api_ns.response(
         200,
         "Workflow executed successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
+        service_api_ns.models[WorkflowBlockingResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Execute a workflow.
 
         Runs a workflow with the provided inputs and returns the results.
@@ -363,10 +363,18 @@ class WorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -412,6 +420,13 @@ class WorkflowRunByIdApi(Resource):
                 "- `completion_request_error` : Workflow execution request failed.\n"
                 "- `invalid_param` : Required parameter missing or invalid."
             ),
+            403: (
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
+                "- `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan.\n"
+                "- `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry "
+                "and cannot be invoked through Web App, Service API, OpenAPI, or MCP."
+            ),
             404: "`not_found` : Workflow not found.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
@@ -437,6 +452,7 @@ class WorkflowRunByIdApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
+            403: "Forbidden - upgrade to a paid plan to execute a specific workflow version",
             404: "Workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
@@ -445,10 +461,11 @@ class WorkflowRunByIdApi(Resource):
     @service_api_ns.response(
         200,
         "Workflow executed successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
+        service_api_ns.models[WorkflowBlockingResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser, workflow_id: str):
         """Run specific workflow by ID.
 
         Executes a specific workflow version identified by its ID.
@@ -456,6 +473,11 @@ class WorkflowRunByIdApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
+
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
+            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                raise WorkflowVersionExecutionNotAllowedError()
 
         payload = WorkflowRunPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
         args = payload.model_dump(exclude_none=True)
@@ -473,10 +495,18 @@ class WorkflowRunByIdApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:
@@ -513,7 +543,11 @@ class WorkflowTaskStopApi(Resource):
             ),
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="WorkflowTaskStopPayload",
+        user_description=WORKFLOW_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(
@@ -523,7 +557,6 @@ class WorkflowTaskStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -541,7 +574,7 @@ class WorkflowTaskStopApi(Resource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump()
 
 
 @service_api_ns.route("/workflows/logs")
@@ -560,6 +593,7 @@ class WorkflowAppLogApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Logs retrieved successfully",
+            400: "Bad request - invalid query parameters",
             401: "Unauthorized - invalid API token",
         }
     )
@@ -574,7 +608,7 @@ class WorkflowAppLogApi(Resource):
 
         Returns paginated workflow execution logs with filtering options.
         """
-        args = WorkflowLogQuery.model_validate(request.args.to_dict())
+        args = query_params_from_request(WorkflowLogQuery)
 
         status = WorkflowExecutionStatus(args.status) if args.status else None
         created_at_before = isoparse(args.created_at__before) if args.created_at__before else None
@@ -596,4 +630,4 @@ class WorkflowAppLogApi(Resource):
                 created_by_account=args.created_by_account,
             )
 
-            return _serialize_workflow_log_pagination(workflow_app_log_pagination)
+            return dump_response(WorkflowAppLogPaginationResponse, workflow_app_log_pagination)

@@ -1,5 +1,5 @@
 import type { VersionReport } from './probe'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderVersionText } from './render'
 
 function baseClient(overrides: Partial<VersionReport['client']> = {}): VersionReport['client'] {
@@ -31,7 +31,12 @@ describe('renderVersionText', () => {
   it('renders all three blocks for a reachable, compatible server', () => {
     const report: VersionReport = {
       client: baseClient(),
-      server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '1.6.4', edition: 'CLOUD' },
+      server: {
+        endpoint: 'https://cloud.dify.ai',
+        reachable: true,
+        version: '1.6.4',
+        edition: 'CLOUD',
+      },
       compat: compatible(),
     }
     const text = renderVersionText(report)
@@ -61,18 +66,6 @@ describe('renderVersionText', () => {
     const text = renderVersionText(report)
 
     expect(text).toContain('WARNING: This build is a(n) rc release')
-    expect(text).toContain('install or wait for the stable channel')
-  })
-
-  it('appends warning when channel is alpha', () => {
-    const report: VersionReport = {
-      client: baseClient({ channel: 'alpha' }),
-      server: { endpoint: '', reachable: false },
-      compat: { ...compatible(), status: 'unknown', detail: 'server probe skipped' },
-    }
-    const text = renderVersionText(report)
-
-    expect(text).toContain('WARNING: This build is a(n) alpha release')
     expect(text).toContain('install or wait for the stable channel')
   })
 
@@ -127,11 +120,16 @@ describe('renderVersionText', () => {
   it('color=false produces no ANSI escape sequences regardless of TTY state', () => {
     const report: VersionReport = {
       client: baseClient({ channel: 'rc' }),
-      server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },
+      server: {
+        endpoint: 'https://cloud.dify.ai',
+        reachable: true,
+        version: '99.0.0',
+        edition: 'COMMUNITY',
+      },
       compat: {
         minDify: '1.6.0',
         maxDify: '1.7.0',
-        status: 'unsupported',
+        status: 'too_new',
         detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
       },
     }
@@ -171,11 +169,16 @@ describe('renderVersionText', () => {
       const { renderVersionText: render } = await import('./render')
       const report: VersionReport = {
         client: baseClient({ channel: 'rc' }),
-        server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },
+        server: {
+          endpoint: 'https://cloud.dify.ai',
+          reachable: true,
+          version: '99.0.0',
+          edition: 'COMMUNITY',
+        },
         compat: {
           minDify: '1.6.0',
           maxDify: '1.7.0',
-          status: 'unsupported',
+          status: 'too_new',
           detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
         },
       }

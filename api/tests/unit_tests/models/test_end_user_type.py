@@ -2,6 +2,9 @@ import ast
 import inspect
 from pathlib import Path
 
+import pytest
+from sqlalchemy.engine.default import DefaultDialect
+
 from models.enums import EndUserType
 from models.model import EndUser
 from models.types import EnumText
@@ -22,6 +25,24 @@ def test_end_user_type_covers_persisted_creation_values():
 
 def test_end_user_type_is_plain_persisted_value_enum():
     assert not hasattr(EndUserType, "from_invoke_from")
+
+
+def test_end_user_type_accepts_legacy_service_api_value():
+    # Legacy rows stored the service-api type with an underscore before it was
+    # normalized to the hyphenated value; loading them must not raise. See #38201.
+    assert EndUserType("service_api") is EndUserType.SERVICE_API
+    assert EndUserType("service-api") is EndUserType.SERVICE_API
+
+
+def test_end_user_type_still_rejects_unknown_values():
+    with pytest.raises(ValueError):
+        EndUserType("not-a-real-end-user-type")
+
+
+def test_enum_text_deserializes_legacy_service_api_value():
+    # Exercises the actual column load path that raised for unmigrated rows.
+    column_type = EnumText(EndUserType)
+    assert column_type.process_result_value("service_api", DefaultDialect()) is EndUserType.SERVICE_API
 
 
 def test_end_user_service_creation_methods_accept_end_user_type():

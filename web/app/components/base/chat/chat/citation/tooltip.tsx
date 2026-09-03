@@ -1,9 +1,5 @@
 import type { FC } from 'react'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 
 type CitationTooltipProps = {
@@ -12,11 +8,7 @@ type CitationTooltipProps = {
   icon: React.ReactNode
 }
 
-const CitationTooltip: FC<CitationTooltipProps> = ({
-  data,
-  text,
-  icon,
-}) => {
+const CitationTooltip: FC<CitationTooltipProps> = ({ data, text, icon }) => {
   return (
     <Tooltip>
       <TooltipTrigger
@@ -31,9 +23,7 @@ const CitationTooltip: FC<CitationTooltipProps> = ({
         placement="top-start"
         className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
       >
-        {text}
-        {' '}
-        {data}
+        {text} {data}
       </TooltipContent>
     </Tooltip>
   )

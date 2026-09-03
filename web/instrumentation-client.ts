@@ -32,8 +32,7 @@ async function main() {
     try {
       localStorage = globalThis.localStorage
       sessionStorage = globalThis.sessionStorage
-    }
-    catch {
+    } catch {
       localStorage = new StorageMock()
       sessionStorage = new StorageMock()
     }
@@ -53,10 +52,7 @@ async function main() {
     const Sentry = await import('@sentry/react')
     Sentry.init({
       dsn: SENTRY_DSN,
-      integrations: [
-        Sentry.browserTracingIntegration(),
-        Sentry.replayIntegration(),
-      ],
+      integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
       tracesSampleRate: 0.1,
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,

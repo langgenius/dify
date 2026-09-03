@@ -6,8 +6,8 @@ import Group from '../group'
 
 const mockUseToolIcon = vi.fn(() => '')
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
+vi.mock('../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-tool-icon')>()
   return {
     ...actual,
     useToolIcon: () => mockUseToolIcon(),
@@ -121,7 +121,9 @@ describe('VariableInspect Group', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.view' }))
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.clearNode' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.clearNode' }),
+    )
 
     expect(handleView).toHaveBeenCalledTimes(1)
     expect(handleClear).toHaveBeenCalledTimes(1)

@@ -26,33 +26,33 @@ export type AgentEntry = {
 export const AGENTS: readonly AgentEntry[] = [
   {
     name: 'claude-code',
-    probeDir: home => join(home, '.claude'),
-    skillDir: home => join(home, '.claude', 'skills', 'difyctl'),
+    probeDir: (home) => join(home, '.claude'),
+    skillDir: (home) => join(home, '.claude', 'skills', 'difyctl'),
   },
   {
     name: 'codex',
-    probeDir: home => join(home, '.codex'),
-    skillDir: home => join(home, '.agents', 'skills', 'difyctl'),
+    probeDir: (home) => join(home, '.codex'),
+    skillDir: (home) => join(home, '.agents', 'skills', 'difyctl'),
   },
   {
     name: 'opencode',
-    probeDir: home => join(home, '.config', 'opencode'),
-    skillDir: home => join(home, '.config', 'opencode', 'skills', 'difyctl'),
+    probeDir: (home) => join(home, '.config', 'opencode'),
+    skillDir: (home) => join(home, '.config', 'opencode', 'skills', 'difyctl'),
   },
   {
     name: 'cursor',
-    probeDir: home => join(home, '.cursor'),
-    skillDir: home => join(home, '.cursor', 'skills', 'difyctl'),
+    probeDir: (home) => join(home, '.cursor'),
+    skillDir: (home) => join(home, '.cursor', 'skills', 'difyctl'),
   },
   {
     name: 'pi',
-    probeDir: home => join(home, '.pi'),
-    skillDir: home => join(home, '.pi', 'agent', 'skills', 'difyctl'),
+    probeDir: (home) => join(home, '.pi'),
+    skillDir: (home) => join(home, '.pi', 'agent', 'skills', 'difyctl'),
   },
 ]
 
 // Agents whose config dir exists under `home`. `home` is injectable so tests can
 // point at a temp dir instead of the real home.
 export function detectAgents(home: string = homedir()): readonly AgentEntry[] {
-  return AGENTS.filter(agent => existsSync(agent.probeDir(home)))
+  return AGENTS.filter((agent) => existsSync(agent.probeDir(home)))
 }

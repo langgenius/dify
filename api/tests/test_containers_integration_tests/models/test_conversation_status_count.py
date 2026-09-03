@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import ConversationFromSource, InvokeFrom
+from models.enums import ConversationFromSource, CustomizeTokenStrategy, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
@@ -273,7 +273,7 @@ class TestSiteGenerateCode:
 
     def test_generate_code_returns_string_of_correct_length(self, db_session_with_containers: Session) -> None:
         """Site.generate_code returns a code string of the requested length."""
-        code = Site.generate_code(8)
+        code = Site.generate_code(8, session=db_session_with_containers)
 
         assert isinstance(code, str)
         assert len(code) == 8
@@ -300,14 +300,14 @@ class TestSiteGenerateCode:
             app_id=app.id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="not_allow",
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         )
         # Set an explicit code so generate_code must avoid it
         site.code = "AAAAAAAA"
         db_session_with_containers.add(site)
         db_session_with_containers.flush()
 
-        code = Site.generate_code(8)
+        code = Site.generate_code(8, session=db_session_with_containers)
 
         assert isinstance(code, str)
         assert len(code) == 8

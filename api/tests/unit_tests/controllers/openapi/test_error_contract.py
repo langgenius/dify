@@ -35,6 +35,7 @@ from controllers.openapi._errors import (
     RecipientSurfaceMismatch,
 )
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -306,6 +307,7 @@ ERROR_MATRIX = [
     (InternalServerError(), 500, "internal_server_error"),
     (BadGateway("x"), 502, "bad_gateway"),
     (AppUnavailableError(), 400, "app_unavailable"),
+    (AgentNotPublishedError(), 400, "agent_not_published"),
     (ConversationCompletedError(), 400, "conversation_completed"),
     (ProviderNotInitializeError(), 400, "provider_not_initialize"),
     (ProviderQuotaExceededError(), 400, "provider_quota_exceeded"),

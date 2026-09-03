@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse,
@@ -989,7 +988,7 @@ export const get20 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraft',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft',
-    summary: 'Get draft rag pipeline\'s workflow',
+    summary: "Get draft rag pipeline's workflow",
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath }))

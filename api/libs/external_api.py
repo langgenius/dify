@@ -3,12 +3,15 @@ from collections.abc import Mapping
 from typing import Any, Protocol, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
+from flask.typing import ResponseReturnValue
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
+from core.plugin.impl.exc import PluginRuntimeError
+from extensions.ext_logging import get_request_id
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
 
@@ -100,6 +103,20 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return _finalize(e, data, status_code), status_code
 
+    def handle_plugin_runtime_error(e: PluginRuntimeError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 502
+        details = {"request_id": get_request_id()}
+        if e.lambda_request_id:
+            details["lambda_request_id"] = e.lambda_request_id
+        data = {
+            "code": "plugin_runtime_error",
+            "message": e.description,
+            "details": details,
+            "status": status_code,
+        }
+        return _finalize(e, data, status_code), status_code
+
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
@@ -121,6 +138,7 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
     api.errorhandler(HTTPException)(handle_http_exception)
     api.errorhandler(ValueError)(handle_value_error)
     api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
+    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
     api.errorhandler(Exception)(handle_general_exception)
 
 
@@ -139,9 +157,11 @@ class ExternalApi(Api):
         app: Blueprint | Flask,
         *args,
         error_body_formatter: ErrorBodyFormatter | None = None,
+        register_default_root: bool = True,
         **kwargs,
     ):
         self._error_body_formatter = error_body_formatter
+        self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
@@ -159,6 +179,20 @@ class ExternalApi(Api):
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
+
+    @override
+    def _register_doc(self, app_or_blueprint: Blueprint | Flask) -> None:
+        if self._add_specs and self._doc:
+            app_or_blueprint.add_url_rule(self._doc, "doc", self.render_doc)
+        # Api.base_path resolves the ``root`` endpoint. A caller that disables
+        # Flask-RESTX's 404 root must register its own resource with that endpoint.
+        if self._register_default_root:
+
+            def render_default_root() -> ResponseReturnValue:
+                self.render_root()
+                return "", 404
+
+            app_or_blueprint.add_url_rule(self.prefix or "/", "root", render_default_root)
 
     @override
     def _should_use_fr_error_handler(self):

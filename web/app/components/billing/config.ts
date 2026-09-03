@@ -1,14 +1,19 @@
-import type { BasicPlan, PlanInfo } from '@/app/components/billing/type'
-import { Plan, Priority } from '@/app/components/billing/type'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { PlanInfo } from '@/app/components/billing/type'
 
 const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate'
 
 export const NUM_INFINITE = -1
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
-export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
-export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
+export const SELF_HOSTED_PLAN_URLS = {
+  community: 'https://github.com/langgenius/dify',
+  premium: 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6',
+  enterprise: contactSalesUrl,
+} as const
 
-export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
+export type SelfHostedPlan = keyof typeof SELF_HOSTED_PLAN_URLS
+
+export const ALL_PLANS: Record<CloudPlan, PlanInfo> = {
   sandbox: {
     level: 1,
     price: 0,
@@ -21,7 +26,7 @@ export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
     documentsUploadQuota: 0,
     documentsRequestQuota: 10,
     apiRateLimit: 5000,
-    documentProcessingPriority: Priority.standard,
+    documentProcessingPriority: 'standard',
     messageRequest: 200,
     triggerEvents: 3000,
     annotatedResponse: 10,
@@ -39,7 +44,7 @@ export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
     documentsUploadQuota: 0,
     documentsRequestQuota: 100,
     apiRateLimit: NUM_INFINITE,
-    documentProcessingPriority: Priority.priority,
+    documentProcessingPriority: 'priority',
     messageRequest: 5000,
     triggerEvents: 20000,
     annotatedResponse: 2000,
@@ -57,7 +62,7 @@ export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
     documentsUploadQuota: 0,
     documentsRequestQuota: 1000,
     apiRateLimit: NUM_INFINITE,
-    documentProcessingPriority: Priority.topPriority,
+    documentProcessingPriority: 'top-priority',
     messageRequest: 10000,
     triggerEvents: NUM_INFINITE,
     annotatedResponse: 5000,
@@ -66,7 +71,7 @@ export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
 }
 
 export const defaultPlan = {
-  type: Plan.sandbox as BasicPlan,
+  type: 'sandbox' as const,
   usage: {
     documents: 50,
     vectorSpace: 1,

@@ -1,15 +1,13 @@
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuPositionerProps } from '@langgenius/dify-ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import PluginTaskList from './components/plugin-task-list'
@@ -19,7 +17,7 @@ import { usePluginTaskStatus } from './hooks'
 type PluginTasksProps = {
   animatedSlot?: boolean
   dropdownAnchor?: () => Element | null
-  dropdownPlacement?: Placement
+  dropdownPlacement?: DropdownMenuPositionerProps['placement']
 }
 
 const PluginTasks = ({
@@ -46,21 +44,33 @@ const PluginTasks = ({
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
   const hasPluginTasks = totalPluginsLength > 0
-  const canOpenMenu = isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
+  const canOpenMenu =
+    isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
 
   // Generate tooltip text based on status
   const tip = useMemo(() => {
     if (isInstallingWithError)
-      return t('task.installingWithError', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
+      return t(($) => $['task.installingWithError'], {
+        ns: 'plugin',
+        installingLength: runningPluginsLength,
+        successLength: successPluginsLength,
+        errorLength: errorPluginsLength,
+      })
     if (isInstallingWithSuccess)
-      return t('task.installingWithSuccess', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength })
-    if (isInstalling)
-      return t('task.installing', { ns: 'plugin' })
+      return t(($) => $['task.installingWithSuccess'], {
+        ns: 'plugin',
+        installingLength: runningPluginsLength,
+        successLength: successPluginsLength,
+      })
+    if (isInstalling) return t(($) => $['task.installing'], { ns: 'plugin' })
     if (isFailed)
-      return t('task.installedError', { ns: 'plugin', errorLength: errorPluginsLength })
+      return t(($) => $['task.installedError'], { ns: 'plugin', errorLength: errorPluginsLength })
     if (isSuccess)
-      return t('task.installSuccess', { ns: 'plugin', successLength: successPluginsLength })
-    return t('task.installed', { ns: 'plugin' })
+      return t(($) => $['task.installSuccess'], {
+        ns: 'plugin',
+        successLength: successPluginsLength,
+      })
+    return t(($) => $['task.installed'], { ns: 'plugin' })
   }, [
     errorPluginsLength,
     isFailed,
@@ -74,14 +84,14 @@ const PluginTasks = ({
   ])
 
   // Generic clear function that handles clearing and modal closing
-  const clearPluginsAndClose = useCallback(async (
-    plugins: Array<{ taskId: string, plugin_unique_identifier: string }>,
-  ) => {
-    for (const plugin of plugins)
-      await handleClearErrorPlugin(plugin.taskId, plugin.plugin_unique_identifier)
-    if (runningPluginsLength === 0)
-      setOpen(false)
-  }, [handleClearErrorPlugin, runningPluginsLength])
+  const clearPluginsAndClose = useCallback(
+    async (plugins: Array<{ taskId: string; plugin_unique_identifier: string }>) => {
+      for (const plugin of plugins)
+        await handleClearErrorPlugin(plugin.taskId, plugin.plugin_unique_identifier)
+      if (runningPluginsLength === 0) setOpen(false)
+    },
+    [handleClearErrorPlugin, runningPluginsLength],
+  )
 
   // Clear handlers using the generic function
   const handleClearAll = useCallback(
@@ -95,7 +105,8 @@ const PluginTasks = ({
   )
 
   const handleClearSingle = useCallback(
-    (taskId: string, pluginId: string) => clearPluginsAndClose([{ taskId, plugin_unique_identifier: pluginId }]),
+    (taskId: string, pluginId: string) =>
+      clearPluginsAndClose([{ taskId, plugin_unique_identifier: pluginId }]),
     [clearPluginsAndClose],
   )
 
@@ -107,52 +118,49 @@ const PluginTasks = ({
     : 'flex items-center'
 
   if (!hasPluginTasks) {
-    if (animatedSlot)
-      return <div aria-hidden className={rootClassName} />
+    if (animatedSlot) return <div aria-hidden className={rootClassName} />
     return null
   }
 
   return (
     <div className={rootClassName}>
-      <DropdownMenu
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          nativeButton={false}
-          render={<div className={canOpenMenu ? 'cursor-pointer' : 'cursor-default'} />}
+          render={
+            <TaskStatusIndicator
+              id="plugin-task-trigger"
+              tip={tip}
+              isInstalling={isInstalling}
+              isInstallingWithSuccess={isInstallingWithSuccess}
+              isInstallingWithError={isInstallingWithError}
+              isSuccess={isSuccess}
+              isFailed={isFailed}
+              successPluginsLength={successPluginsLength}
+              runningPluginsLength={runningPluginsLength}
+              data-menu-open={open ? '' : undefined}
+            />
+          }
           disabled={!canOpenMenu}
-        >
-          <TaskStatusIndicator
-            tip={tip}
-            isInstalling={isInstalling}
-            isInstallingWithSuccess={isInstallingWithSuccess}
-            isInstallingWithError={isInstallingWithError}
-            isSuccess={isSuccess}
-            isFailed={isFailed}
-            isOpen={open}
-            successPluginsLength={successPluginsLength}
-            runningPluginsLength={runningPluginsLength}
-            totalPluginsLength={totalPluginsLength}
-            onClick={() => {}}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement={dropdownPlacement}
-          sideOffset={4}
-          positionerProps={dropdownAnchor ? { anchor: dropdownAnchor } : undefined}
-          popupClassName="overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-        >
-          <PluginTaskList
-            runningPlugins={runningPlugins}
-            successPlugins={successPlugins}
-            errorPlugins={errorPlugins}
-            getIconUrl={getIconUrl}
-            onClearAll={handleClearAll}
-            onClearErrors={handleClearErrors}
-            onClearSingle={handleClearSingle}
-          />
-        </DropdownMenuContent>
+        />
+        <DropdownMenuPortal>
+          <DropdownMenuPositioner
+            placement={dropdownPlacement}
+            sideOffset={4}
+            anchor={dropdownAnchor}
+          >
+            <DropdownMenuPopup>
+              <PluginTaskList
+                runningPlugins={runningPlugins}
+                successPlugins={successPlugins}
+                errorPlugins={errorPlugins}
+                getIconUrl={getIconUrl}
+                onClearAll={handleClearAll}
+                onClearErrors={handleClearErrors}
+                onClearSingle={handleClearSingle}
+              />
+            </DropdownMenuPopup>
+          </DropdownMenuPositioner>
+        </DropdownMenuPortal>
       </DropdownMenu>
     </div>
   )

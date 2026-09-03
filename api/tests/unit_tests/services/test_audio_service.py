@@ -32,8 +32,8 @@ Tests available voice retrieval:
 
 ## Testing Approach
 
-- **Mocking Strategy**: All external dependencies (ModelManager, db, FileStorage) are mocked
-  for fast, isolated unit tests
+- **Isolation Strategy**: External dependencies (ModelManager and FileStorage) are mocked,
+  while database paths use isolated in-memory SQLite sessions
 - **Factory Pattern**: AudioServiceTestDataFactory provides consistent test data
 - **Fixtures**: Mock objects are configured per test method
 - **Assertions**: Each test verifies return values, side effects, and error conditions
@@ -53,23 +53,62 @@ Tests available voice retrieval:
 - text_to_speech: Enables TTS functionality
 """
 
+import json
+from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock, Mock, create_autospec, patch
+from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from models.enums import MessageStatus
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.plugin.entities.plugin_daemon import TTSAudioChunk
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+APP_ID = "11111111-1111-1111-1111-111111111111"
+TENANT_ID = "22222222-2222-2222-2222-222222222222"
+MESSAGE_ID = "33333333-3333-3333-3333-333333333333"
+CONVERSATION_ID = "44444444-4444-4444-4444-444444444444"
+END_USER_ID = "55555555-5555-5555-5555-555555555555"
+ACCOUNT_ID = "66666666-6666-6666-6666-666666666666"
+OTHER_ID = "77777777-7777-7777-7777-777777777777"
+
+
+def _message(*, answer: str = "Message answer") -> Message:
+    message = Message(
+        id=MESSAGE_ID,
+        app_id=APP_ID,
+        conversation_id=CONVERSATION_ID,
+        query="Question",
+        message={"role": "user", "content": "Question"},
+        answer=answer,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        status=MessageStatus.NORMAL,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=END_USER_ID,
+        from_account_id=ACCOUNT_ID,
+    )
+    message._inputs = {}
+    return message
 
 
 class AudioServiceTestDataFactory:
@@ -80,15 +119,18 @@ class AudioServiceTestDataFactory:
     audio-related operations.
     """
 
-    @staticmethod
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
     def create_app_mock(
-        app_id: str = "app-123",
+        self,
+        app_id: str = APP_ID,
         mode: AppMode = AppMode.CHAT,
-        tenant_id: str = "tenant-123",
+        tenant_id: str = TENANT_ID,
         **kwargs,
-    ) -> Mock:
+    ) -> App:
         """
-        Create a mock App object.
+        Create and persist an App model.
 
         Args:
             app_id: Unique identifier for the app
@@ -97,44 +139,65 @@ class AudioServiceTestDataFactory:
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock App object with specified attributes
+            Persisted App model with specified attributes
         """
-        app = create_autospec(App, instance=True)
-        app.id = app_id
-        app.mode = mode
-        app.tenant_id = tenant_id
-        app.workflow = kwargs.get("workflow")
-        app.app_model_config = kwargs.get("app_model_config")
+        workflow = kwargs.pop("workflow", None)
+        app_model_config = kwargs.pop("app_model_config", None)
+        app = App(
+            id=app_id,
+            tenant_id=tenant_id,
+            name="Audio test app",
+            description="",
+            mode=mode,
+            icon_type=None,
+            icon=None,
+            icon_background=None,
+            enable_site=False,
+            enable_api=False,
+            workflow_id=workflow.id if workflow else None,
+            app_model_config_id=app_model_config.id if app_model_config else None,
+        )
         for key, value in kwargs.items():
             setattr(app, key, value)
+        self.session.add(app)
+        self.session.commit()
         return app
 
-    @staticmethod
-    def create_workflow_mock(features_dict: dict[str, Any] | None = None, **kwargs) -> Mock:
+    def create_workflow_mock(self, features_dict: dict[str, Any] | None = None, **kwargs) -> Workflow:
         """
-        Create a mock Workflow object.
+        Create and persist a Workflow model.
 
         Args:
             features_dict: Dictionary of workflow features
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock Workflow object with specified attributes
+            Persisted Workflow model with specified attributes
         """
-        workflow = create_autospec(Workflow, instance=True)
-        workflow.features_dict = features_dict or {}
+        workflow = Workflow(
+            id=kwargs.pop("id", str(uuid4())),
+            tenant_id=kwargs.pop("tenant_id", TENANT_ID),
+            app_id=kwargs.pop("app_id", APP_ID),
+            type=kwargs.pop("type", WorkflowType.CHAT),
+            version=kwargs.pop("version", Workflow.VERSION_DRAFT),
+            graph=kwargs.pop("graph", "{}"),
+            _features=json.dumps(features_dict or {}),
+            created_by=kwargs.pop("created_by", ACCOUNT_ID),
+        )
         for key, value in kwargs.items():
             setattr(workflow, key, value)
+        self.session.add(workflow)
+        self.session.commit()
         return workflow
 
-    @staticmethod
     def create_app_model_config_mock(
+        self,
         speech_to_text_dict: dict[str, Any] | None = None,
         text_to_speech_dict: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Mock:
+    ) -> AppModelConfig:
         """
-        Create a mock AppModelConfig object.
+        Create and persist an AppModelConfig model.
 
         Args:
             speech_to_text_dict: Speech-to-text configuration
@@ -142,13 +205,17 @@ class AudioServiceTestDataFactory:
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock AppModelConfig object with specified attributes
+            Persisted AppModelConfig model with specified attributes
         """
-        config = create_autospec(AppModelConfig, instance=True)
-        config.speech_to_text_dict = speech_to_text_dict or {"enabled": False}
-        config.text_to_speech_dict = text_to_speech_dict or {"enabled": False}
+        config = AppModelConfig(
+            app_id=kwargs.pop("app_id", APP_ID),
+            speech_to_text=json.dumps(speech_to_text_dict or {"enabled": False}),
+            text_to_speech=json.dumps(text_to_speech_dict or {"enabled": False}),
+        )
         for key, value in kwargs.items():
             setattr(config, key, value)
+        self.session.add(config)
+        self.session.commit()
         return config
 
     @staticmethod
@@ -179,42 +246,19 @@ class AudioServiceTestDataFactory:
             setattr(file, key, value)
         return file
 
-    @staticmethod
-    def create_message_mock(
-        message_id: str = "msg-123",
-        answer: str = "Test answer",
-        status: MessageStatus = MessageStatus.NORMAL,
-        **kwargs,
-    ) -> Mock:
-        """
-        Create a mock Message object.
-
-        Args:
-            message_id: Unique identifier for the message
-            answer: Message answer text
-            status: Message status
-            **kwargs: Additional attributes to set on the mock
-
-        Returns:
-            Mock Message object with specified attributes
-        """
-        message = create_autospec(Message, instance=True)
-        message.id = message_id
-        message.answer = answer
-        message.status = status
-        for key, value in kwargs.items():
-            setattr(message, key, value)
-        return message
-
 
 @pytest.fixture
-def factory():
+def factory(sqlite_session: Session) -> AudioServiceTestDataFactory:
     """Provide the test data factory to all tests."""
-    return AudioServiceTestDataFactory
+    return AudioServiceTestDataFactory(sqlite_session)
 
 
 class TestAudioServiceASR:
     """Test speech-to-text (ASR) operations."""
+
+    @pytest.fixture(autouse=True)
+    def _bind_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_chat_mode(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
@@ -234,12 +278,39 @@ class TestAudioServiceASR:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
-        result = AudioService.transcript_asr(app_model=app, file=file, end_user="user-123")
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session, end_user="user-123")
 
         # Assert
         assert result == {"text": "Transcribed text"}
         mock_model_instance.invoke_speech2text.assert_called_once()
-        mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
+        mock_model_manager_class.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            user_id="user-123",
+            request_metadata={
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
+        )
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_accepts_x_m4a_mimetype(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        """Test that the x-m4a MIME alias follows the normal m4a transcription flow."""
+        # Arrange
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock(filename="audio.m4a", mimetype="audio/x-m4a")
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "M4A transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        # Act
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
+
+        # Assert
+        assert result == {"text": "M4A transcript"}
+        mock_model_instance.invoke_speech2text.assert_called_once()
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(
@@ -261,10 +332,128 @@ class TestAudioServiceASR:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
-        result = AudioService.transcript_asr(app_model=app, file=file)
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
         # Assert
         assert result == {"text": "Workflow transcribed text"}
+
+    @patch("services.audio_service.AgentRosterService", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_success_published_agent_mode(
+        self,
+        mock_model_manager_class,
+        mock_roster_service_class,
+        factory: AudioServiceTestDataFactory,
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.return_value = agent_soul
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Published Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session, end_user="end-user-1")
+
+        assert result == {"text": "Published Agent transcript"}
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+        )
+
+    @patch("services.audio_service.AgentRosterService", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_legacy_agent_falls_back_to_app_model_config(
+        self,
+        mock_model_manager_class,
+        mock_roster_service_class,
+        factory: AudioServiceTestDataFactory,
+    ):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.return_value = None
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Legacy Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
+
+        assert result == {"text": "Legacy Agent transcript"}
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_agent_asr_uses_agent_soul_feature(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_agent_asr(
+            app_model=app,
+            agent_soul=agent_soul,
+            file=file,
+            session=self.session,
+            end_user="account-1",
+        )
+
+        assert result == {"text": "Agent transcript"}
+        mock_model_manager_class.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            user_id="account-1",
+            request_metadata={
+                "app_type": CreditUsageAppType.AGENT_V2,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
+        )
+
+    @pytest.mark.parametrize(
+        "agent_soul",
+        [
+            AgentSoulConfig(),
+            AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}}),
+        ],
+    )
+    def test_transcript_agent_asr_rejects_disabled_feature(
+        self, factory: AudioServiceTestDataFactory, agent_soul: AgentSoulConfig
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=self.session)
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_agent_asr_preserves_legacy_feature_fallback(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Legacy feature transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_agent_asr(
+            app_model=app,
+            agent_soul=AgentSoulConfig(),
+            file=file,
+            session=self.session,
+        )
+
+        assert result == {"text": "Legacy feature transcript"}
+
+    def test_transcript_agent_asr_soul_disabled_overrides_legacy_feature(self, factory: AudioServiceTestDataFactory):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}})
+
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_feature_disabled_chat_mode(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when speech-to-text is disabled in CHAT mode."""
@@ -277,8 +466,8 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
-            AudioService.transcript_asr(app_model=app, file=file)
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(
         self, factory: AudioServiceTestDataFactory
@@ -293,8 +482,8 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
-            AudioService.transcript_asr(app_model=app, file=file)
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_workflow_missing(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when workflow is missing in WORKFLOW mode."""
@@ -306,8 +495,8 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
-            AudioService.transcript_asr(app_model=app, file=file)
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_no_file_uploaded(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when no file is uploaded."""
@@ -320,7 +509,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(NoAudioUploadedServiceError):
-            AudioService.transcript_asr(app_model=app, file=None)
+            AudioService.transcript_asr(app_model=app, file=None, session=self.session)
 
     def test_transcript_asr_raises_error_for_unsupported_audio_type(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error for unsupported audio file types."""
@@ -334,7 +523,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(UnsupportedAudioTypeServiceError):
-            AudioService.transcript_asr(app_model=app, file=file)
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_for_large_file(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when file exceeds size limit (30MB)."""
@@ -350,7 +539,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(AudioTooLargeServiceError, match="Audio size larger than 30 mb"):
-            AudioService.transcript_asr(app_model=app, file=file)
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_raises_error_when_no_model_instance(
@@ -371,14 +560,19 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(ProviderNotSupportSpeechToTextServiceError):
-            AudioService.transcript_asr(app_model=app, file=file)
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
 
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_with_text_success(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_with_text_success(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test successful TTS with text input."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -398,22 +592,35 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Hello world",
             voice="en-US-Neural",
             end_user="user-123",
         )
 
         # Assert
-        assert result == b"audio data"
-        mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
+        mock_model_manager_class.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            user_id="user-123",
+            request_metadata={
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
+        )
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello world",
             voice="en-US-Neural",
         )
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_with_default_voice(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_with_default_voice(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test TTS uses default voice when none specified."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -433,19 +640,23 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Test",
         )
 
         # Assert
-        assert result == b"audio data"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
         # Verify default voice was used
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "default-voice"
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_gets_first_available_voice_when_none_configured(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS gets first available voice when none is configured."""
         # Arrange
@@ -467,19 +678,24 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Test",
         )
 
         # Assert
-        assert result == b"audio data"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "auto-voice"
 
     @patch("services.audio_service.WorkflowService", autospec=True)
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
-        self, mock_model_manager_class, mock_workflow_service_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        mock_workflow_service_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS in WORKFLOW mode with draft workflow."""
         # Arrange
@@ -499,31 +715,37 @@ class TestAudioServiceTTS:
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"draft audio"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
-        session = MagicMock()
-
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=session,
+            session=sqlite_session,
             text="Draft test",
             is_draft=True,
         )
 
         # Assert
-        assert result == b"draft audio"
-        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=session)
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"draft audio"
+        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=sqlite_session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_message_id_uses_provided_session(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS message lookup uses the injected session."""
         # Arrange
-        app = factory.create_app_mock(mode=AppMode.CHAT)
-        message_id = "00000000-0000-0000-0000-000000000001"
-        message = factory.create_message_mock(message_id=message_id, answer="Message answer")
-        session = MagicMock()
-        session.get.return_value = message
+        app = factory.create_app_mock(app_id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
+        message_ref = MessageRef(
+            app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
+            message_id=MESSAGE_ID,
+            end_user_id=END_USER_ID,
+            account_id=ACCOUNT_ID,
+        )
+        sqlite_session.add(_message())
+        sqlite_session.commit()
 
         mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
@@ -531,33 +753,126 @@ class TestAudioServiceTTS:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
+        for wrong_ref in (
+            MessageRef(
+                app=AppRef(tenant_id=TENANT_ID, app_id=OTHER_ID),
+                message_id=MESSAGE_ID,
+                end_user_id=END_USER_ID,
+                account_id=ACCOUNT_ID,
+            ),
+            MessageRef(
+                app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
+                message_id=MESSAGE_ID,
+                end_user_id=OTHER_ID,
+                account_id=ACCOUNT_ID,
+            ),
+            MessageRef(
+                app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
+                message_id=MESSAGE_ID,
+                end_user_id=END_USER_ID,
+                account_id=OTHER_ID,
+            ),
+        ):
+            assert (
+                AudioService.transcript_tts(
+                    app_model=app,
+                    session=sqlite_session,
+                    message_ref=wrong_ref,
+                    voice="message-voice",
+                )
+                is None
+            )
+
         result = AudioService.transcript_tts(
             app_model=app,
-            session=session,
-            message_id=message_id,
+            session=sqlite_session,
+            message_ref=message_ref,
             voice="message-voice",
         )
 
         # Assert
-        assert result == b"message audio"
-        session.get.assert_called_once_with(Message, message_id)
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"message audio"
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Message answer",
             voice="message-voice",
         )
 
-    def test_transcript_tts_raises_error_when_text_missing(self, factory: AudioServiceTestDataFactory):
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_tts_uses_detected_wav_mime_type_for_streams(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+        app: Flask,
+    ):
+        app_model_config = factory.create_app_model_config_mock(
+            text_to_speech_dict={"enabled": True, "voice": "en-US-Neural"}
+        )
+        app_model = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_tts.return_value = iter(
+            [b"RIFF\x24\x00\x00\x00WAVEfmt ", b"\x10\x00\x00\x00audio-data"]
+        )
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = AudioService.transcript_tts(
+                app_model=app_model,
+                session=sqlite_session,
+                text="Hello world",
+                voice="en-US-Neural",
+            )
+
+        assert result.content_type == "audio/wav"
+        assert result.get_data() == b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_tts_returns_provider_output_error_for_mime_magic_mismatch(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+        app: Flask,
+    ):
+        app_model_config = factory.create_app_model_config_mock(
+            text_to_speech_dict={"enabled": True, "voice": "en-US-Neural"}
+        )
+        app_model = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_tts.return_value = iter(
+            [TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", "audio/mpeg")]
+        )
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        with app.test_request_context("/text-to-audio", method="POST"):
+            with pytest.raises(InvokeBadRequestError, match="output MIME does not match"):
+                AudioService.transcript_tts(
+                    app_model=app_model,
+                    session=sqlite_session,
+                    text="Hello world",
+                    voice="en-US-Neural",
+                )
+
+    def test_transcript_tts_raises_error_when_text_missing(
+        self,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test that TTS raises error when text is missing."""
         # Arrange
         app = factory.create_app_mock()
 
         # Act & Assert
         with pytest.raises(ValueError, match="Text is required"):
-            AudioService.transcript_tts(app_model=app, session=MagicMock(), text=None)
+            AudioService.transcript_tts(app_model=app, session=sqlite_session, text=None)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test that TTS raises error when no voices are available."""
         # Arrange
@@ -577,7 +892,7 @@ class TestAudioServiceTTS:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Sorry, no voice available"):
-            AudioService.transcript_tts(app_model=app, session=MagicMock(), text="Test")
+            AudioService.transcript_tts(app_model=app, session=sqlite_session, text="Test")
 
 
 class TestAudioServiceTTSVoices:

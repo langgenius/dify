@@ -14,11 +14,16 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_adapter import DeliveryMethodType
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import WorkflowExecution
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -29,10 +34,10 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
-from models.model import App, AppMode, CustomizeTokenStrategy, Site
+from models.model import App, AppMode, CustomizeTokenStrategy, IconType, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
@@ -63,7 +68,7 @@ def _create_app_with_site(session: Session) -> tuple[App, Account]:
         name="Test App",
         description="",
         mode=AppMode.WORKFLOW,
-        icon_type="emoji",
+        icon_type=IconType.EMOJI,
         icon="app",
         icon_background="#ffffff",
         enable_site=True,
@@ -77,7 +82,7 @@ def _create_app_with_site(session: Session) -> tuple[App, Account]:
     site = Site(
         app_id=app.id,
         title="Test Site",
-        icon_type="emoji",
+        icon_type=IconType.EMOJI,
         icon="robot",
         icon_background="#ffffff",
         description="desc",
@@ -226,7 +231,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
         return features
 
     monkeypatch.setattr(
-        "controllers.web.site.FeatureService.get_features",
+        "controllers.web.human_input_form.FeatureService.get_features",
         mock_get_features,
     )
 

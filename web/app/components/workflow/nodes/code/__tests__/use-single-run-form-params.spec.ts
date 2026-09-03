@@ -18,11 +18,13 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   type: BlockEnum.Code,
   code_language: CodeLanguage.javascript,
   code: 'function main({ amount }) { return { result: amount } }',
-  variables: [{
-    variable: 'amount',
-    value_selector: ['start', 'amount'],
-    value_type: VarType.number,
-  }],
+  variables: [
+    {
+      variable: 'amount',
+      value_selector: ['start', 'amount'],
+      value_type: VarType.number,
+    },
+  ],
   outputs: {
     result: {
       type: VarType.number,
@@ -44,31 +46,38 @@ describe('code/use-single-run-form-params', () => {
   it('builds a single form, updates run input values, and exposes dependent vars', () => {
     const setRunInputData = vi.fn()
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'code-node',
-      payload: createData(),
-      runInputData: { amount: 1 },
-      runInputDataRef: { current: { amount: 1 } },
-      getInputVars: () => [],
-      setRunInputData,
-      toVarInputs: variables => variables.map(variable => ({
-        type: InputVarType.number,
-        label: variable.variable,
-        variable: variable.variable,
-        required: false,
-      })),
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'code-node',
+        payload: createData(),
+        runInputData: { amount: 1 },
+        runInputDataRef: { current: { amount: 1 } },
+        getInputVars: () => [],
+        setRunInputData,
+        toVarInputs: (variables) =>
+          variables.map((variable) => ({
+            type: InputVarType.number,
+            label: variable.variable,
+            variable: variable.variable,
+            required: false,
+          })),
+      }),
+    )
 
-    expect(result.current.forms).toEqual([{
-      inputs: [{
-        type: InputVarType.number,
-        label: 'amount',
-        variable: 'amount',
-        required: false,
-      }],
-      values: { amount: 1 },
-      onChange: expect.any(Function),
-    }])
+    expect(result.current.forms).toEqual([
+      {
+        inputs: [
+          {
+            type: InputVarType.number,
+            label: 'amount',
+            variable: 'amount',
+            required: false,
+          },
+        ],
+        values: { amount: 1 },
+        onChange: expect.any(Function),
+      },
+    ])
 
     result.current.forms[0]?.onChange({ amount: 3 })
 

@@ -14,11 +14,12 @@ init({ data })
 
 const subscribeHydrationState = () => () => {}
 
-const useIsHydrated = () => useSyncExternalStore(
-  subscribeHydrationState,
-  () => true,
-  () => false,
-)
+const useIsHydrated = () =>
+  useSyncExternalStore(
+    subscribeHydrationState,
+    () => true,
+    () => false,
+  )
 
 type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
@@ -27,6 +28,7 @@ type AppIconProps = {
   icon?: string
   background?: string | null
   imageUrl?: string | null
+  decorative?: boolean
   className?: string
   innerIcon?: React.ReactNode
   coverElement?: React.ReactNode
@@ -79,25 +81,22 @@ const EditIconWrapperVariants = cva(
     },
   },
 )
-const EditIconVariants = cva(
-  'text-text-primary-on-surface',
-  {
-    variants: {
-      size: {
-        xs: 'size-3',
-        tiny: 'size-3.5',
-        small: 'size-5',
-        medium: 'size-[22px]',
-        large: 'size-6',
-        xl: 'size-7',
-        xxl: 'size-8',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
+const EditIconVariants = cva('text-text-primary-on-surface', {
+  variants: {
+    size: {
+      xs: 'size-3',
+      tiny: 'size-3.5',
+      small: 'size-5',
+      medium: 'size-5.5',
+      large: 'size-6',
+      xl: 'size-7',
+      xxl: 'size-8',
     },
   },
-)
+  defaultVariants: {
+    size: 'medium',
+  },
+})
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
@@ -105,6 +104,7 @@ const AppIcon: FC<AppIconProps> = ({
   icon,
   background,
   imageUrl,
+  decorative = false,
   className,
   innerIcon,
   coverElement,
@@ -112,17 +112,16 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const emojiIcon = (icon && icon !== '') ? icon : '🤖'
+  const isDecorative = decorative && !onClick
+  const emojiIcon = icon && icon !== '' ? icon : '🤖'
   const isHydrated = useIsHydrated()
   const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
   const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
-    if (!onClick)
-      return
+    if (!onClick) return
 
-    if (event.key !== 'Enter' && event.key !== ' ')
-      return
+    if (event.key !== 'Enter' && event.key !== ' ') return
 
     event.preventDefault()
     onClick()
@@ -132,24 +131,23 @@ const AppIcon: FC<AppIconProps> = ({
     <span
       ref={wrapperRef}
       className={cn(appIconVariants({ size, rounded }), className)}
-      style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+      style={{ background: isValidImageIcon ? undefined : background || '#FFEAD5' }}
       onClick={onClick}
       onKeyDown={onClick ? handleKeyDown : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      aria-hidden={isDecorative || undefined}
     >
-      {
-        isValidImageIcon
-          ? <img src={imageUrl} className="size-full" alt="app icon" />
-          : (innerIcon || Icon)
-      }
-      {
-        showEditIcon && isHovering && (
-          <div className={EditIconWrapperVariants({ size, rounded })}>
-            <RiEditLine className={EditIconVariants({ size })} />
-          </div>
-        )
-      }
+      {isValidImageIcon ? (
+        <img src={imageUrl} className="size-full" alt={isDecorative ? '' : 'app icon'} />
+      ) : (
+        innerIcon || Icon
+      )}
+      {showEditIcon && isHovering && (
+        <div className={EditIconWrapperVariants({ size, rounded })}>
+          <RiEditLine className={EditIconVariants({ size })} />
+        </div>
+      )}
       {coverElement}
     </span>
   )

@@ -13,6 +13,8 @@ Bearer format: API_KEY
 Service operations
 
 ### [GET] /
+**Return public Service API metadata without requiring an API key**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -22,6 +24,8 @@ Service operations
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_text~~
 
 ***DEPRECATED***
+
+**Create document by text through the deprecated underscore alias**
 
 Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
 
@@ -45,80 +49,14 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
-
-### [DELETE] /datasets/{dataset_id}/documents/{document_id}
-**Delete Document**
-
-Permanently delete a document and all its chunks from the knowledge base.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
-| document_id | path | Document ID. | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 400 | `document_indexing` : Cannot delete document during indexing. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `archived_document_immutable` : The archived document is not editable. |
-| 404 | `not_found` : Document Not Exists. |
-
-### [GET] /datasets/{dataset_id}/documents/{document_id}
-**Get Document**
-
-Retrieve detailed information about a specific document, including its indexing status, metadata, and processing statistics.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
-| document_id | path | Document ID. | Yes | string (uuid) |
-| metadata | query | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`. | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Document details. The response shape varies based on the `metadata` query parameter. When `metadata` is `only`, only `id`, `doc_type`, and `doc_metadata` are returned. When `metadata` is `without`, `doc_type` and `doc_metadata` are omitted. | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | `invalid_metadata` : Invalid metadata value for the specified key. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : No permission. |  |
-| 404 | `not_found` : Document not found. |  |
-
-### [PATCH] /datasets/{dataset_id}/documents/{document_id}
-Update an existing document by uploading a file
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
-| document_id | path | Document ID. | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  No | **multipart/form-data**: { **"data"**: string, **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
+| 404 | `not_found` : Knowledge base not found. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
 
 ***DEPRECATED***
+
+**Update document by text through the deprecated underscore alias**
 
 Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
 
@@ -143,6 +81,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -189,6 +128,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
+| 400 | Bad request - invalid feedback payload |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |
@@ -237,7 +177,7 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 400 | `invalid_param` : The specified job does not exist. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -335,7 +275,7 @@ Updates the question and answer of an existing annotation.
 ### [POST] /audio-to-text
 **Convert Audio to Text**
 
-Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
+Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
 
 #### Request Body
 
@@ -348,7 +288,7 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully converted audio to text. | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | `audio_too_large` : Audio file size exceeded the limit. |  |
@@ -368,13 +308,13 @@ Convert text to speech.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly. |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ---
 ## default
@@ -394,10 +334,10 @@ Send a request to the chat application.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
@@ -417,7 +357,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -427,7 +367,6 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -452,7 +391,7 @@ Get next questions suggestions for the current message.
 | 404 | `not_found` : Message does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
-### [GET] /workflow/{task_id}/events
+### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
 
 Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
@@ -461,7 +400,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| workflow_run_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
@@ -470,7 +409,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -499,6 +438,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
+| 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
@@ -541,10 +481,10 @@ Send a request to the chat application.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
@@ -564,7 +504,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -574,7 +514,6 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -617,7 +556,7 @@ Send a request to the text generation application.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [CompletionBlockingResponse](#completionblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -640,7 +579,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -650,7 +589,6 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ---
 ## default
@@ -679,7 +617,7 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
 
-### [DELETE] /conversations/{c_id}
+### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
 
 Delete a conversation.
@@ -688,7 +626,7 @@ Delete a conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -706,7 +644,7 @@ Delete a conversation.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |
 | 404 | `not_found` : Conversation does not exist. |
 
-### [POST] /conversations/{c_id}/name
+### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
 
 Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.
@@ -715,7 +653,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -733,7 +671,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 
-### [GET] /conversations/{c_id}/variables
+### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
 
 Retrieve variables from a specific conversation.
@@ -742,7 +680,7 @@ Retrieve variables from a specific conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 | last_id | query | The ID of the last record on the current page. Used to fetch the next page. | No | string |
 | limit | query | Number of records to return. | No | integer, <br>**Default:** 20 |
 | user | query | User identifier, used for end-user context. | No | string |
@@ -758,7 +696,7 @@ Retrieve variables from a specific conversation.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 
-### [PUT] /conversations/{c_id}/variables/{variable_id}
+### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
 
 Update the value of a specific conversation variable. The value must match the expected type.
@@ -767,7 +705,7 @@ Update the value of a specific conversation variable. The value must match the e
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 | variable_id | path | Variable ID. | Yes | string (uuid) |
 
 #### Request Body
@@ -920,11 +858,15 @@ Update the name, description, permissions, or retrieval settings of an existing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base updated successfully. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
+| 400 | Bad request - invalid embedding or reranking model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
 | 404 | `not_found` : Dataset not found. |  |
 
-### [POST] /datasets/{dataset_id}/hit-testing
+### ~~[POST] /datasets/{dataset_id}/hit-testing~~
+
+***DEPRECATED***
+
 **Retrieve Chunks from a Knowledge Base / Test Retrieval**
 
 Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
@@ -1022,6 +964,7 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of datasource nodes configured in the pipeline. | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
+| 400 | Bad request - pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | `not_found` : Dataset not found. |  |
@@ -1048,7 +991,8 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Streaming response with node execution events. | **text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Streaming response with node execution events. | **text/event-stream**: string<br> |
+| 400 | Bad request - invalid payload or pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | `not_found` : Dataset not found. |  |
@@ -1056,7 +1000,7 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
 
-Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
+Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
 
 #### Parameters
 
@@ -1074,7 +1018,8 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode. | **application/json**: [PipelineRunJsonResponse](#pipelinerunjsonresponse)<br>**text/event-stream**: string<br> |
+| 400 | Bad request - invalid payload or pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Forbidden. |  |
 | 404 | `not_found` : Dataset not found. |  |
@@ -1101,6 +1046,7 @@ Permanently delete a knowledge base tag. Does not delete the knowledge bases tha
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Tag not found |
 
 ### [GET] /datasets/tags
 **List Knowledge Tags**
@@ -1131,8 +1077,10 @@ Rename an existing knowledge base tag.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag updated successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
+| 400 | Bad request - tag name already exists |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - insufficient permissions |  |
+| 404 | Tag not found |  |
 
 ### [POST] /datasets/tags
 **Create Knowledge Tag**
@@ -1150,6 +1098,7 @@ Create a new tag for organizing knowledge bases.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag created successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
+| 400 | Bad request - tag name already exists |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - insufficient permissions |  |
 
@@ -1171,6 +1120,7 @@ Bind one or more tags to a knowledge base. A knowledge base can have multiple ta
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Dataset not found |
 
 ### [POST] /datasets/tags/unbinding
 **Delete Tag Binding**
@@ -1190,6 +1140,7 @@ Remove one or more tags from a knowledge base.
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Dataset not found |
 
 ### [GET] /datasets/{dataset_id}/tags
 **Get Knowledge Base Tags**
@@ -1209,6 +1160,7 @@ Returns the list of tags bound to a specific knowledge base.
 | 200 | Tags bound to the knowledge base. | **application/json**: [DatasetBoundTagListResponse](#datasetboundtaglistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 
 ---
 ## default
@@ -1235,9 +1187,12 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1264,6 +1219,8 @@ Create a document from raw text content. The document is processed asynchronousl
 | 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
 
@@ -1290,9 +1247,12 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1337,12 +1297,12 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | ZIP archive containing the requested documents. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Insufficient permissions. |
-| 404 | `not_found` : Document or dataset not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | ZIP archive containing the requested documents. | **application/zip**: binary<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `forbidden` : Insufficient permissions. |  |
+| 404 | `not_found` : Document or dataset not found. |  |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
@@ -1439,7 +1399,9 @@ Retrieve detailed information about a specific document, including its indexing 
 | 404 | `not_found` : Document not found. |  |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}
-Update an existing document by uploading a file
+**Update Document by File**
+
+Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
 
 #### Parameters
 
@@ -1458,10 +1420,14 @@ Update an existing document by uploading a file
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1510,10 +1476,13 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1542,6 +1511,7 @@ Update an existing document's text content, name, or processing configuration. R
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
 
@@ -1569,10 +1539,13 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -1599,9 +1572,10 @@ Update metadata values for multiple documents at once. Each document in the requ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
+| 400 | Bad request - invalid or conflicting document metadata operation |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 404 | Dataset, document, or metadata not found |  |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**
@@ -1645,6 +1619,7 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Metadata field created successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| 400 | Bad request - invalid or duplicate metadata name |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
@@ -1667,6 +1642,7 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 | 200 | Built-in metadata fields. | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Update Built-in Metadata Field**
@@ -1733,6 +1709,7 @@ Rename a custom metadata field.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata field updated successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| 400 | Bad request - invalid or duplicate metadata name |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or metadata not found |  |
@@ -1761,6 +1738,7 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of chunks. | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
+| 400 | Bad request - embedding model is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or document not found |  |
@@ -1792,6 +1770,7 @@ Create one or more chunks within a document. Each chunk can include optional key
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | `not_found` : Document is not completed or is disabled. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Delete Chunk**
@@ -1811,6 +1790,7 @@ Permanently delete a chunk from the document.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Success. |
+| 400 | Bad request - invalid dataset model state or concurrent deletion |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset, document, or segment not found |
@@ -1833,6 +1813,7 @@ Retrieve detailed information about a specific chunk, including its content, key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk details. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| 400 | Bad request - invalid dataset model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
@@ -1861,9 +1842,11 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk updated successfully. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| 400 | Bad request - invalid segment or embedding model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **List Child Chunks**
@@ -1918,6 +1901,7 @@ Create a child chunk under the specified segment.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Delete Child Chunk**
@@ -1972,6 +1956,7 @@ Update the content of an existing child chunk.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, segment, or child chunk not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -2036,12 +2021,12 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `file_access_denied` : Access to the requested file is denied. |
-| 404 | `file_not_found` : The requested file was not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. | `*/*`: binary<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `file_access_denied` : Access to the requested file is denied. |  |
+| 404 | `file_not_found` : The requested file was not found. |  |
 
 ---
 ## default
@@ -2157,7 +2142,7 @@ Retrieve the WebApp settings of this application, including site configuration, 
 ---
 ## default
 
-### [GET] /workflow/{task_id}/events
+### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
 
 Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
@@ -2166,7 +2151,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| workflow_run_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
@@ -2175,7 +2160,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -2204,6 +2189,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
+| 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
@@ -2222,10 +2208,10 @@ Execute a workflow. Cannot be executed without a published workflow.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
 | 404 | Workflow not found |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
@@ -2266,7 +2252,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [WorkflowTaskStopPayload](#workflowtaskstoppayload)<br> |
 
 #### Responses
 
@@ -2276,7 +2262,6 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -2299,10 +2284,10 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
 | 404 | `not_found` : Workflow not found. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
@@ -2335,6 +2320,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
@@ -2345,16 +2331,16 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
 
 #### Annotation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
+| answer | string |  | No |
 | created_at | integer |  | No |
 | hit_count | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | question | string |  | No |
 
 #### AnnotationCreatePayload
@@ -2364,12 +2350,19 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | answer | string | Annotation answer. | Yes |
 | question | string | Annotation question. | Yes |
 
-#### AnnotationJobStatusResponse
+#### AnnotationJobStatusDetailResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
-| job_id | string |  | Yes |
+| job_id | string (uuid) |  | Yes |
+| job_status | string |  | Yes |
+
+#### AnnotationJobStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string (uuid) |  | Yes |
 | job_status | string |  | Yes |
 
 #### AnnotationList
@@ -2408,15 +2401,15 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
+| app_id | string (uuid) |  | Yes |
 | content | string |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | string |  | Yes |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
-| id | string |  | Yes |
-| message_id | string |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
 | rating | string |  | Yes |
 | updated_at | string |  | Yes |
 
@@ -2454,6 +2447,52 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | BinaryFileResponse | string |  |  |
 
+#### BlockingMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| retriever_resources | [ [BlockingRetrieverResourceResponse](#blockingretrieverresourceresponse) ] |  | No |
+| usage | [BlockingUsageResponse](#blockingusageresponse) |  | No |
+
+#### BlockingRetrieverResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | integer |  | No |
+| data_source_type | string |  | No |
+| dataset_id | string |  | No |
+| dataset_name | string |  | No |
+| document_id | string |  | No |
+| document_name | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | No |
+| index_node_hash | string |  | No |
+| message_id | string |  | No |
+| position | integer |  | Yes |
+| score | number |  | No |
+| segment_id | string |  | No |
+| segment_position | integer |  | No |
+| summary | string |  | No |
+| word_count | integer |  | No |
+
+#### BlockingUsageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_price | string |  | No |
+| completion_price_unit | string |  | No |
+| completion_tokens | integer |  | No |
+| completion_unit_price | string |  | No |
+| currency | string |  | No |
+| latency | number |  | No |
+| prompt_price | string |  | No |
+| prompt_price_unit | string |  | No |
+| prompt_tokens | integer |  | No |
+| prompt_unit_price | string |  | No |
+| total_price | string |  | No |
+| total_tokens | integer |  | No |
+
 #### ButtonStyle
 
 Button styles for user actions.
@@ -2462,16 +2501,93 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
 
+#### ChatBlockingResponse
+
+Blocking chat response for a completed message or paused Chatflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ChatBlockingResponse | [ChatMessageBlockingResponse](#chatmessageblockingresponse)<br>[ChatPausedBlockingResponse](#chatpausedblockingresponse) | Blocking chat response for a completed message or paused Chatflow. |  |
+
+#### ChatMessageBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| event | string |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
+| mode | string |  | Yes |
+| task_id | string |  | Yes |
+
+#### ChatPauseReasonResponse
+
+Public pause reason emitted by a blocking Chatflow execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TYPE | string |  | Yes |
+| actions | [ [JSONObject](#jsonobject) ] |  | No |
+| approval_channels | [ string ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
+| form_content | string |  | No |
+| form_id | string |  | No |
+| form_token | string |  | No |
+| inputs | [ [JSONObject](#jsonobject) ] |  | No |
+| message | string |  | No |
+| node_id | string |  | No |
+| node_title | string |  | No |
+| resolved_default_values | object |  | No |
+
+#### ChatPausedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
+| mode | string |  | Yes |
+| paused_nodes | [ string ] |  | Yes |
+| reasons | [ [ChatPauseReasonResponse](#chatpausereasonresponse) ] |  | Yes |
+| status | string |  | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_run_id | string (uuid) |  | Yes |
+
+#### ChatPausedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| data | [ChatPausedBlockingDataResponse](#chatpausedblockingdataresponse) |  | Yes |
+| event | string |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
+| mode | string |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
+
 #### ChatRequestPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
 | conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
-| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
 | workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChatRequestPayloadWithUser
@@ -2480,10 +2596,10 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
 | conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
-| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 | workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
@@ -2536,23 +2652,36 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | content | string | Child chunk text content. | Yes |
 
+#### CompletionBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| created_at | long |  | Yes |
+| event | string |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
+| mode | string |  | Yes |
+| task_id | string (uuid) |  | Yes |
+
 #### CompletionRequestPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
 
 #### CompletionRequestPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### Condition
@@ -2610,7 +2739,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | description | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | name | string |  | Yes |
 | updated_at | integer |  | No |
 | value | string |  | No |
@@ -2668,11 +2797,11 @@ Enum class for custom configuration status.
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | Yes |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
 | provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | summary_index_setting | object | Summary index configuration. | No |
 
 #### DatasetDetailResponse
@@ -2694,9 +2823,9 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2707,9 +2836,9 @@ Enum class for custom configuration status.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2736,9 +2865,9 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2750,9 +2879,9 @@ Enum class for custom configuration status.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2824,7 +2953,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### DatasetMetadataBuiltInFieldResponse
 
@@ -2876,7 +3005,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | Yes |
 | reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | No |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) | Reranking model configuration. | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | string |  | Yes |
@@ -2910,11 +3039,11 @@ Enum class for custom configuration status.
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | No |
 | partial_member_list | [ object ] | List of team members with access when `permission` is `partial_members`. | No |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
 #### DatasetVectorSettingResponse
 
@@ -2928,8 +3057,8 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
-| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) | Keyword search weight settings. | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) | Semantic search weight settings. | No |
 | weight_type | string |  | No |
 
 #### DatasourceCredentialInfoResponse
@@ -2960,7 +3089,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | Yes |
+| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | No |
 | datasource_type | string |  | No |
 | node_id | string |  | No |
 | plugin_id | string |  | No |
@@ -2994,7 +3123,7 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | archived | boolean |  | No |
-| average_segment_length | number |  | No |
+| average_segment_length | integer<br>number |  | No |
 | completed_at | integer |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -3008,7 +3137,7 @@ Request payload for bulk downloading documents as a zip archive.
 | display_status | string |  | No |
 | doc_form | string |  | No |
 | doc_language | string |  | No |
-| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ]<br>object |  | No |
 | doc_type | string |  | No |
 | document_process_rule | object |  | No |
 | enabled | boolean |  | No |
@@ -3038,7 +3167,7 @@ Request payload for bulk downloading documents as a zip archive.
 | keyword | string | Search keyword to filter by document name. | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
 | page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
-| status | string | Filter by display status. | No |
+| status | string, <br>**Available values:** "archived", "available", "disabled", "error", "indexing", "paused", "queuing" | Filter by display status. | No |
 
 #### DocumentListResponse
 
@@ -3054,7 +3183,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string | Document ID whose metadata should be updated. | Yes |
+| document_id | string (uuid) | Document ID whose metadata should be updated. | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
 | partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
@@ -3075,8 +3204,8 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict |  |  | No |
-| data_source_info |  |  | No |
+| data_source_detail_dict | object |  | Yes |
+| data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
@@ -3116,6 +3245,8 @@ Request payload for bulk downloading documents as a zip archive.
 | completed_at | integer |  | Yes |
 | completed_segments | integer |  | No |
 | error | string |  | Yes |
+| error_code | string |  | No |
+| estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
 | indexing_status | string |  | Yes |
 | parsing_completed_at | integer |  | Yes |
@@ -3124,6 +3255,7 @@ Request payload for bulk downloading documents as a zip archive.
 | splitting_completed_at | integer |  | Yes |
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
+| vector_space_limit_mb | integer |  | No |
 
 #### DocumentTextCreatePayload
 
@@ -3133,11 +3265,11 @@ Request payload for bulk downloading documents as a zip archive.
 | doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
 | embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
 | name | string | Document name. | Yes |
 | original_document_id | string | Original document ID for replacement. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | Yes |
 
 #### DocumentTextUpdate
@@ -3148,7 +3280,7 @@ Request payload for bulk downloading documents as a zip archive.
 | doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
 | name | string | Document name. Required when `text` is provided. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | No |
 
 #### EndUserDetail
@@ -3164,11 +3296,11 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | app_id | string |  | No |
 | created_at | dateTime |  | Yes |
 | external_user_id | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | is_anonymous | boolean |  | Yes |
 | name | string |  | No |
 | session_id | string |  | Yes |
-| tenant_id | string |  | Yes |
+| tenant_id | string (uuid) |  | Yes |
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 
@@ -3235,7 +3367,7 @@ Enum class for fetch from.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -3263,12 +3395,6 @@ Enum class for fetch from.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
-
-#### GeneratedAppResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| GeneratedAppResponse |  |  |  |
 
 #### HitTestingChildChunk
 
@@ -3307,7 +3433,7 @@ Enum class for fetch from.
 | attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
 #### HitTestingQuery
 
@@ -3322,7 +3448,7 @@ Enum class for fetch from.
 | child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
 | files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
 | score | number |  | Yes |
-| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) | Matched chunk from the knowledge base. | Yes |
 | summary | string |  | Yes |
 | tsne_position |  |  | Yes |
 
@@ -3330,7 +3456,7 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| query | [HitTestingQuery](#hittestingquery) | The original query object. | Yes |
 | records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
 
 #### HitTestingSegment
@@ -3344,7 +3470,7 @@ Enum class for fetch from.
 | created_by | string |  | Yes |
 | disabled_at | integer |  | Yes |
 | disabled_by | string |  | Yes |
-| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) | Parent document information for the matched chunk. | Yes |
 | document_id | string |  | Yes |
 | enabled | boolean |  | Yes |
 | error | string |  | Yes |
@@ -3392,9 +3518,9 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | Yes |
 | resolved_default_values | object |  | Yes |
-| user_actions | [ object ] |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
 #### HumanInputFormSubmissionData
 
@@ -3454,7 +3580,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+| JSONValue |  |  |  |
 
 #### JSONValueType
 
@@ -3488,14 +3614,14 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFeedbackPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### MessageFile
@@ -3504,7 +3630,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | belongs_to | string |  | No |
 | filename | string |  | Yes |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
 | transfer_method | string |  | Yes |
@@ -3526,18 +3652,24 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
-| conversation_id | string |  | Yes |
+| answer_tokens | integer |  | No |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
+| currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | No |
 | parent_message_id | string |  | No |
+| provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
+| total_price | string |  | No |
+| total_tokens | integer |  | Yes |
 
 #### MessageListQuery
 
@@ -3558,7 +3690,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string | Metadata field ID. | Yes |
+| id | string (uuid) | Metadata field ID. | Yes |
 | name | string | Metadata field name. | Yes |
 | value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
@@ -3569,7 +3701,7 @@ Metadata Filtering Condition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
-| logical_operator | string | How to combine multiple conditions. | No |
+| logical_operator | string, <br>**Available values:** "and", "or" | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -3629,7 +3761,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -3637,18 +3769,18 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
-| file_upload | [JSONObject](#jsonobject) |  | Yes |
-| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement |  |  | No |
-| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
-| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
-| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
-| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
-| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### PermissionEnum
 
@@ -3658,16 +3790,46 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
+#### PipelineDataset
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunk_structure | string |  | Yes |
+| description | string | knowledge dataset description | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### PipelineDocument
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data_source_info | object |  | No |
+| data_source_type | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| indexing_status | string |  | Yes |
+| name | string |  | Yes |
+| position | integer |  | Yes |
+
 #### PipelineRunApiEntity
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [  ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
+| datasource_info_list | [ object<br>object<br>object<br>object ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
 | datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
 | inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
 | is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |
-| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `streaming` for SSE or `blocking` for JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode for draft runs. Use `streaming` for SSE or `blocking` for JSON. Published runs are queued and always return batch metadata as JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 | start_node_id | string | ID of the datasource node where the run starts. | Yes |
+
+#### PipelineRunJsonResponse
+
+JSON result for published runs and draft runs using `response_mode: blocking`.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | JSON result for published runs and draft runs using `response_mode: blocking`. |  |
 
 #### PipelineUploadFileResponse
 
@@ -3692,7 +3854,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| mode | [ProcessRuleMode](#processrulemode) | `automatic` uses built-in rules, `custom` allows manual configuration, `hierarchical` enables parent-child chunk structure (use with `doc_form: hierarchical_model`). | Yes |
 | rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
@@ -3711,14 +3873,14 @@ Model class for model response.
 | ---- | ---- | ----------- | -------- |
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
-| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
-| model_type | [ModelType](#modeltype) |  | Yes |
-| status | [ModelStatus](#modelstatus) |  | Yes |
+| model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
+| status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
 #### ProviderWithModelsListResponse
 
@@ -3734,17 +3896,19 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | icon_small | [I18nObject](#i18nobject) |  | No |
 | icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
-| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
 | tenant_id | string |  | Yes |
 
-#### RequiredServiceApiUserPayload
+#### PublishedPipelineRunResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| batch | string |  | Yes |
+| dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
+| documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
 
 #### RerankingModel
 
@@ -3771,7 +3935,7 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
 | reranking_enable | boolean | Whether reranking is enabled. | Yes |
-| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_mode | string, <br>**Available values:** "reranking_model", "weighted_score" | Reranking mode. Required when `reranking_enable` is `true`. | No |
 | reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
 | score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
 | score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
@@ -3791,9 +3955,9 @@ Model class for provider with models response.
 | document_id | string |  | No |
 | document_name | string |  | No |
 | hit_count | integer |  | No |
-| id | string |  | No |
+| id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
-| message_id | string |  | No |
+| message_id | string (uuid) |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
 | segment_id | string |  | No |
@@ -3805,10 +3969,16 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string | Parent-child segmentation mode. | No |
+| parent_mode | string, <br>**Available values:** "full-doc", "paragraph" | Parent-child segmentation mode. | No |
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
 | segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
 | subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
+
+#### ScopedTaskStopPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original generation request. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
 
 #### SegmentAttachmentResponse
 
@@ -3918,7 +4088,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segment | [SegmentUpdateArgs](#segmentupdateargs) | Chunk update payload. | Yes |
+| segment | [SegmentUpdateArgs](#segmentupdateargs) | Chunk data to update. | Yes |
 
 #### Segmentation
 
@@ -3933,11 +4103,11 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
-#### SimpleAccount
+#### SimpleAccountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -3950,7 +4120,7 @@ Model class for provider with models response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | introduction | string |  | No |
 | name | string |  | Yes |
@@ -3976,7 +4146,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### SimpleResultStringListResponse
 
@@ -4009,9 +4179,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [ValueSourceType](#valuesourcetype) |  | Yes |
-| value | [ string ] |  | No |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
 
 #### StringSource
 
@@ -4086,6 +4256,13 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### ToolIcon
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
+
 #### UrlResponse
 
 | Name | Type | Description | Required |
@@ -4105,11 +4282,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### WeightKeywordSetting
 
@@ -4123,7 +4300,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
 | vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
-| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
@@ -4148,13 +4325,21 @@ in form definiton, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
 | details | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
+
+#### WorkflowBlockingResponse
+
+Blocking workflow response for a finished or paused execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowBlockingResponse | [WorkflowFinishedBlockingResponse](#workflowfinishedblockingresponse)<br>[WorkflowPausedBlockingResponse](#workflowpausedblockingresponse) | Blocking workflow response for a finished or paused execution. |  |
 
 #### WorkflowEventsQuery
 
@@ -4163,6 +4348,29 @@ in form definiton, or a variable while the workflow is running.
 | continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No |
 | include_state_snapshot | boolean | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No |
 | user | string | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes |
+
+#### WorkflowFinishedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| error | string |  | Yes |
+| finished_at | integer |  | Yes |
+| id | string (uuid) |  | Yes |
+| outputs | object |  | Yes |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "stopped", "succeeded" | *Enum:* `"failed"`, `"partial-succeeded"`, `"stopped"`, `"succeeded"` | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowFinishedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowFinishedBlockingDataResponse](#workflowfinishedblockingdataresponse) |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
 
 #### WorkflowLogQuery
 
@@ -4175,7 +4383,52 @@ in form definiton, or a variable while the workflow is running.
 | keyword | string | Keyword to search in logs. | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page. | No |
 | page | integer, <br>**Default:** 1 | Page number for pagination. | No |
-| status | string | Filter by execution status. | No |
+| status | string, <br>**Available values:** "failed", "stopped", "succeeded" | Filter by execution status. | No |
+
+#### WorkflowPauseReasonResponse
+
+Public pause reason emitted by a blocking Workflow execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TYPE | string |  | Yes |
+| actions | [ [JSONObject](#jsonobject) ] |  | No |
+| approval_channels | [ string ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
+| form_content | string |  | No |
+| form_id | string |  | No |
+| form_token | string |  | No |
+| inputs | [ [JSONObject](#jsonobject) ] |  | No |
+| message | string |  | No |
+| node_id | string |  | No |
+| node_title | string |  | No |
+| resolved_default_values | object |  | No |
+
+#### WorkflowPausedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| error | string |  | Yes |
+| finished_at | integer |  | Yes |
+| id | string (uuid) |  | Yes |
+| outputs | object |  | Yes |
+| paused_nodes | [ string ] |  | Yes |
+| reasons | [ [WorkflowPauseReasonResponse](#workflowpausereasonresponse) ] |  | Yes |
+| status | string |  | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowPausedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowPausedBlockingDataResponse](#workflowpausedblockingdataresponse) |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
 
 #### WorkflowRunForLogResponse
 
@@ -4186,7 +4439,7 @@ in form definiton, or a variable while the workflow is running.
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
@@ -4197,17 +4450,17 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 
 #### WorkflowRunPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### WorkflowRunResponse
@@ -4218,10 +4471,16 @@ in form definiton, or a variable while the workflow is running.
 | elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
-| workflow_id | string |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowTaskStopPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End-user identifier, defined by your app and unique within it. It does not need to match the `user` that started the run; the stop applies to the task regardless of `user`. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |

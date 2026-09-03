@@ -25,6 +25,14 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from core.workflow.nodes.human_input.pause_reason import (
+    HumanInputRequired,
+)
+from core.workflow.nodes.human_input.pause_reason import (
+    PauseReason as DifyPauseReason,
+)
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -32,7 +40,8 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -202,6 +211,13 @@ class Workflow(Base):  # bug
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_pkey"),
         sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
+        sa.Index(
+            "workflow_app_version_number_idx",
+            "app_id",
+            "version_number",
+            unique=True,
+            postgresql_where=sa.text("version_number IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -215,6 +231,9 @@ class Workflow(Base):  # bug
         server_default=sa.text("'standard'"),
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
+    # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
+    # NULL for draft workflows and for versions published before numbering was introduced.
+    version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
     graph: Mapped[str] = mapped_column(LongText)
@@ -256,6 +275,7 @@ class Workflow(Base):  # bug
         marked_name: str = "",
         marked_comment: str = "",
         kind: str | None = WorkflowKind.STANDARD.value,
+        version_number: int | None = None,
     ) -> "Workflow":
         workflow = Workflow()
         workflow.id = str(uuid4())
@@ -264,6 +284,7 @@ class Workflow(Base):  # bug
         workflow.type = WorkflowType(type)
         workflow.kind = resolve_workflow_kind(kind)
         workflow.version = version
+        workflow.version_number = version_number
         workflow.graph = graph
         workflow.features = features
         workflow.created_by = created_by
@@ -276,13 +297,17 @@ class Workflow(Base):  # bug
         workflow.updated_at = workflow.created_at
         return workflow
 
-    @property
-    def created_by_account(self):
-        return db.session.get(Account, self.created_by)
+    def created_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_created_by_account(session=session)
 
-    @property
-    def updated_by_account(self):
-        return db.session.get(Account, self.updated_by) if self.updated_by else None
+    def get_created_by_account(self, session: orm.Session) -> Account | None:
+        return session.get(Account, self.created_by)
+
+    def updated_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_updated_by_account(session=session)
+
+    def get_updated_by_account(self, session: orm.Session) -> Account | None:
+        return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
     def kind_or_standard(self) -> str:
@@ -537,15 +562,17 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
-    @property
     @deprecated(
-        "This property is not accurate for determining if a workflow is published as a tool."
+        "This method is not accurate for determining if a workflow is published as a tool."
         "It only checks if there's a WorkflowToolProvider for the app, "
         "not if this specific workflow version is the one being used by the tool."
     )
-    def tool_published(self) -> bool:
+    def tool_published(self, session: orm.Session) -> bool:
+        return self.get_tool_published(session=session)
+
+    def get_tool_published(self, session: orm.Session) -> bool:
         """
-        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        DEPRECATED: This method is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
         is the one being used by the tool.
 
@@ -559,12 +586,12 @@ class Workflow(Base):  # bug
                 WorkflowToolProvider.app_id == self.app_id,
             )
         )
-        return db.session.execute(stmt).scalar_one()
+        return session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(
         self,
-    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
+    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable]:
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
 
@@ -579,21 +606,21 @@ class Workflow(Base):  # bug
         # decrypt secret variables value
         def decrypt_func(
             var: VariableBase,
-        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
+        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable:
             match var:
                 case SecretVariable():
                     return var.model_copy(
                         update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
                     )
-                case StringVariable() | IntegerVariable() | FloatVariable():
+                case StringVariable() | IntegerVariable() | FloatVariable() | LLMEnvironmentVariable():
                     return var
                 case _:
                     # Other variable types are not supported for environment variables
                     raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
-        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
-            decrypt_func(var) for var in results
-        ]
+        decrypted_results: list[
+            SecretVariable | StringVariable | IntegerVariable | FloatVariable | LLMEnvironmentVariable
+        ] = [decrypt_func(var) for var in results]
         return decrypted_results
 
     @environment_variables.setter
@@ -614,11 +641,13 @@ class Workflow(Base):  # bug
             raise ValueError("environment variable require a unique id")
 
         # Compare inputs and origin variables,
-        # if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
+        # if the value is HIDDEN_VALUE, use the origin variable value.
         origin_variables_dictionary = {var.id: var for var in self.environment_variables}
         for i, variable in enumerate(value):
             if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:
-                value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
+                value[i] = origin_variables_dictionary[variable.id].model_copy(
+                    update={"name": variable.name, "description": variable.description}
+                )
 
         # encrypt secret variables value
         def encrypt_func(var: VariableBase) -> VariableBase:
@@ -629,7 +658,7 @@ class Workflow(Base):  # bug
 
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
-            {var.name: var.model_dump() for var in encrypted_vars},
+            {var.name: dump_environment_variable(var) for var in encrypted_vars},
             ensure_ascii=False,
         )
         self._environment_variables = environment_variables_json
@@ -669,7 +698,7 @@ class Workflow(Base):  # bug
         result: WorkflowContentDict = {
             "graph": self.graph_dict,
             "features": self.features_dict,
-            "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
+            "environment_variables": [dump_environment_variable(var, mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
             "rag_pipeline_variables": self.rag_pipeline_variables,
         }
@@ -715,6 +744,24 @@ class Workflow(Base):  # bug
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
         return str(d)
+
+
+class WorkflowVersionCounter(Base):
+    """Monotonic per-app allocator for `Workflow.version_number`.
+
+    One row per app, holding the highest number handed out so far. Numbers are never
+    reused, so deleting a published version does not free its number.
+
+    `app_id` mirrors `Workflow.app_id`, which is polymorphic: it holds an app id, a
+    pipeline id or a snippet id depending on the workflow kind. UUID uniqueness across
+    those tables is why no owner-type column is needed here.
+    """
+
+    __tablename__ = "workflow_version_counters"
+    __table_args__ = (sa.PrimaryKeyConstraint("app_id", name="workflow_version_counter_pkey"),)
+
+    app_id: Mapped[str] = mapped_column(StringUUID)
+    last_version_number: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
 
 class WorkflowRunDict(TypedDict):
@@ -1014,6 +1061,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     inputs: Mapped[str | None] = mapped_column(LongText)
     process_data: Mapped[str | None] = mapped_column(LongText)
     outputs: Mapped[str | None] = mapped_column(LongText)
@@ -1342,17 +1390,15 @@ class WorkflowAppLog(TypeBase):
 
         return None
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> WorkflowAppLogDict:
         result: WorkflowAppLogDict = {
@@ -1436,6 +1482,42 @@ class WorkflowArchiveLog(TypeBase):
             "elapsed_time": self.run_elapsed_time,
             "total_tokens": self.run_total_tokens,
         }
+
+
+class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
+    """
+    Query index for one immutable V2 workflow-run archive bundle.
+
+    R2 manifest objects remain the recoverable archive source of truth. This table stores the small subset needed to
+    list tenant/month archives and locate bundles without listing object storage online. Missing rows can be rebuilt
+    from existing manifests by a backfill/reconciliation command.
+    """
+
+    __tablename__ = "workflow_run_archive_bundles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_run_archive_bundle_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "year",
+            "month",
+            "shard",
+            "bundle_id",
+            name="workflow_run_archive_bundle_identity_uq",
+        ),
+        sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+        sa.Index("workflow_run_archive_bundle_month_id_idx", "year", "month", "id"),
+        sa.Index("workflow_run_archive_bundle_month_shard_id_idx", "year", "month", "shard", "id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    year: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    month: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    shard: Mapped[str] = mapped_column(String(32), nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_run_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class ConversationVariable(TypeBase):
@@ -2106,7 +2188,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
 
-    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    # form_id is not empty if and only if type_ is one of the Human Input pause variants.
     #
     form_id: Mapped[str] = mapped_column(
         String(36),
@@ -2144,12 +2226,24 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     )
 
     @classmethod
-    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(
+        cls,
+        *,
+        pause_id: str,
+        pause_reason: GraphonPauseReason | DifyPauseReason,
+    ) -> "WorkflowPauseReason":
         match pause_reason:
+            case HitlRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    node_id=pause_reason.node_id,
+                )
             case HumanInputRequired():
                 return cls(
                     pause_id=pause_id,
-                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                    type_=PauseReasonType.HITL_REQUIRED,
                     form_id=pause_reason.form_id,
                     node_id=pause_reason.node_id,
                 )
@@ -2158,11 +2252,17 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             case _:
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> PauseReason:
-        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+    def to_entity(self) -> DifyPauseReason | GraphonPauseReason:
+        if self.type_ == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
+        elif self.type_ == PauseReasonType.HITL_REQUIRED:
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

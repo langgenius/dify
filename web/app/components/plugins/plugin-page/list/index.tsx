@@ -6,6 +6,7 @@ type IPluginListProps = {
   canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   children?: ReactNode
+  firstPluginTarget?: string
   pluginList: PluginDetail[]
 }
 
@@ -13,18 +14,23 @@ const PluginList: FC<IPluginListProps> = ({
   canDeletePlugin = true,
   canUpdatePlugin = true,
   children,
+  firstPluginTarget,
   pluginList,
 }) => {
   return (
     <div className="pb-3">
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {pluginList.map(plugin => (
-          <PluginItem
+      <div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-2">
+        {pluginList.map((plugin, index) => (
+          <div
             key={plugin.plugin_id}
-            plugin={plugin}
-            canDeletePlugin={canDeletePlugin}
-            canUpdatePlugin={canUpdatePlugin}
-          />
+            data-step-by-step-tour-target={index === 0 ? firstPluginTarget : undefined}
+          >
+            <PluginItem
+              plugin={plugin}
+              canDeletePlugin={canDeletePlugin}
+              canUpdatePlugin={canUpdatePlugin}
+            />
+          </div>
         ))}
         {children}
       </div>

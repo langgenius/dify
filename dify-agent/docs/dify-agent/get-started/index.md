@@ -73,10 +73,40 @@ The minimum settings are:
 
 See `.example.env` for the full server settings template.
 
-If you plan to run `dify.shell`, also configure `DIFY_AGENT_SHELLCTL_ENTRYPOINT`
-and, when shell jobs need to call back with the `dify-agent` command, set
-`DIFY_AGENT_STUB_API_BASE_URL` plus a 32-byte base64url
-`DIFY_AGENT_SERVER_SECRET_KEY` as documented in `.example.env`.
+If you plan to run `dify.shell`, select a coherent Home Snapshot and Execution
+Binding backend. A standalone Local server normally uses:
+
+```env
+DIFY_AGENT_RUNTIME_BACKEND=local
+DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
+DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=
+# Optional when shellctl runs directly on a host without /home/dify:
+# DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+# DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+# DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
+```
+
+E2B requires `DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
+`difys-default-team/dify-agent-local-sandbox` template. The E2B active timeout
+pauses the physical resource behind a Binding; it is not a retention TTL.
+Enterprise supports Bindings created from its deployment-default Home.
+Immutable Home Snapshot creation and materialization remain unsupported there.
+
+A shell-enabled request includes Execution Context, `dify.runtime`, and
+`dify.shell`. Dify API creates or resolves the specific persistent Binding for
+the request's product context;
+`DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
+opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
+call back with the `dify-agent` command, also set
+`DIFY_AGENT_STUB_API_BASE_URL` and the Sandbox-reachable Dify API base
+`DIFY_AGENT_SANDBOX_FILES_BASE_URL`. The supplied default configs include a
+development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
+override it with a unique 32-byte base64url value as documented in
+`.example.env`.
+
+See [Runtime resources](../concepts/runtime-resources/index.md) for the layer
+graph and state ownership, and the [Operations Guide](../guide/index.md) for
+backend-specific configuration and validation commands.
 
 ## Start the Dify Agent server
 
@@ -114,7 +144,7 @@ uv run --extra server uvicorn dify_agent.server.app:app \
 
 In another shell, keep working from the `dify-agent` directory. Create
 `run_dify_agent_client.py` with the example below, then replace the placeholder
-tenant id and provider credential values.
+tenant, user, app, provider, and model values.
 
 ```python {test="skip" lint="skip"}
 import asyncio
@@ -135,14 +165,12 @@ API_BASE_URL = "http://127.0.0.1:8000"
 
 TENANT_ID = "replace-with-tenant-id"
 PLUGIN_ID = "langgenius/openai"
-USER_ID: str | None = None
+USER_ID = "replace-with-user-id"
+APP_ID = "replace-with-app-id"
 
 # Keep these aligned with DIFY_AGENT_PROVIDER and DIFY_AGENT_MODEL_NAME in dify-agent/.env.
 MODEL_PROVIDER = "replace-with-provider-from-dify-agent-env"
 MODEL_NAME = "replace-with-model-from-dify-agent-env"
-MODEL_CREDENTIALS: dict[str, str | int | float | bool | None] = {
-    "api_key": "replace-with-provider-key",
-}
 
 SYSTEM_PROMPT = "You are a concise assistant."
 USER_PROMPT = "用一句话介绍 Dify Agent。"
@@ -163,7 +191,10 @@ def build_request() -> CreateRunRequest:
                     config=DifyExecutionContextLayerConfig(
                         tenant_id=TENANT_ID,
                         user_id=USER_ID,
-                        invoke_from="workflow_run",
+                        user_from="account",
+                        app_id=APP_ID,
+                        agent_mode="single_step",
+                        invoke_from="debugger",
                     ),
                 ),
                 RunLayerSpec(
@@ -174,7 +205,6 @@ def build_request() -> CreateRunRequest:
                         plugin_id=PLUGIN_ID,
                         model_provider=MODEL_PROVIDER,
                         model=MODEL_NAME,
-                        credentials=MODEL_CREDENTIALS,
                     ),
                 ),
             ],
@@ -208,19 +238,15 @@ if __name__ == "__main__":
 
 ## Run the client example
 
-The server-side `.env` controls how Dify Agent reaches the plugin daemon. The
-client example controls which tenant/plugin/provider/model and provider
-credentials the run uses.
+The server-side `.env` controls how Dify Agent reaches Dify API and the plugin
+daemon. The client example selects the tenant/user/app/plugin/provider/model;
+Dify API resolves model credentials at invocation time.
 
 Run the example from the `dify-agent` directory:
 
 ```bash
 uv run python ./run_dify_agent_client.py
 ```
-
-The shape of `MODEL_CREDENTIALS` depends on the selected plugin provider's
-credential schema. The `{"api_key":"..."}` value above is only an OpenAI-style
-example.
 
 Set `MODEL_PROVIDER` and `MODEL_NAME` to the same values as
 `DIFY_AGENT_PROVIDER` and `DIFY_AGENT_MODEL_NAME` in `dify-agent/.env`.
@@ -231,9 +257,7 @@ If the run fails, check these items first:
 
 1. Redis is running and reachable from the Dify Agent server.
 2. The Dify Agent server is listening on `127.0.0.1:8000`.
-3. `DIFY_AGENT_PLUGIN_DAEMON_URL` points to the correct plugin daemon.
-4. `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` matches the plugin daemon server key.
+3. `DIFY_AGENT_INNER_API_URL` points to the Dify API used by this environment.
+4. `DIFY_AGENT_INNER_API_KEY` matches Dify API's configured inner API key.
 5. `PLUGIN_ID`, `MODEL_PROVIDER`, and `MODEL_NAME` in the client example match
-   the corresponding values configured in `dify-agent/.env` and a provider
-   available through the plugin daemon.
-6. `MODEL_CREDENTIALS` matches that provider's credential schema.
+   a model provider configured for the selected tenant in Dify API.

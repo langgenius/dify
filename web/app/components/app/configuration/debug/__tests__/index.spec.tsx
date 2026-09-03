@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
@@ -32,7 +33,11 @@ const mockState = vi.hoisted(() => ({
     moreLikeThis: { enabled: false },
     moderation: { enabled: false },
     text2speech: { enabled: false },
-    file: { enabled: false, allowed_file_upload_methods: [] as string[], fileUploadConfig: undefined as { image_file_size_limit?: number } | undefined },
+    file: {
+      enabled: false,
+      allowed_file_upload_methods: [] as string[],
+      fileUploadConfig: undefined as { image_file_size_limit?: number } | undefined,
+    },
   },
   mockProviderContext: {
     textGenerationModelList: [] as Array<{
@@ -46,16 +51,20 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
-      mockState.mockToastCall({ type: 'success', message, ...options })),
+      mockState.mockToastCall({ type: 'success', message, ...options }),
+    ),
     error: vi.fn((message: string, options?: Record<string, unknown>) =>
-      mockState.mockToastCall({ type: 'error', message, ...options })),
+      mockState.mockToastCall({ type: 'error', message, ...options }),
+    ),
     warning: vi.fn((message: string, options?: Record<string, unknown>) =>
-      mockState.mockToastCall({ type: 'warning', message, ...options })),
+      mockState.mockToastCall({ type: 'warning', message, ...options }),
+    ),
     info: vi.fn((message: string, options?: Record<string, unknown>) =>
-      mockState.mockToastCall({ type: 'info', message, ...options })),
+      mockState.mockToastCall({ type: 'info', message, ...options }),
+    ),
     dismiss: mockState.mockToastDismiss,
     update: mockState.mockToastUpdate,
     promise: mockState.mockToastPromise,
@@ -67,12 +76,17 @@ vi.mock('@/app/components/app/configuration/debug/chat-user-input', () => ({
 }))
 
 vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({
-  default: ({ onSend, onVisionFilesChange }: {
+  default: ({
+    onSend,
+    onVisionFilesChange,
+  }: {
     onSend: () => void
     onVisionFilesChange: (files: Array<Record<string, unknown>>) => void
   }) => (
     <div data-testid="prompt-value-panel">
-      <button type="button" data-testid="panel-send" onClick={onSend}>Send</button>
+      <button type="button" data-testid="panel-send" onClick={onSend}>
+        Send
+      </button>
       <button
         type="button"
         data-testid="panel-set-pending-file"
@@ -83,14 +97,22 @@ vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({
       <button
         type="button"
         data-testid="panel-set-uploaded-file"
-        onClick={() => onVisionFilesChange([{ transfer_method: TransferMethod.local_file, upload_file_id: 'file-id' }])}
+        onClick={() =>
+          onVisionFilesChange([
+            { transfer_method: TransferMethod.local_file, upload_file_id: 'file-id' },
+          ])
+        }
       >
         Uploaded File
       </button>
       <button
         type="button"
         data-testid="panel-set-remote-file"
-        onClick={() => onVisionFilesChange([{ transfer_method: TransferMethod.remote_url, url: 'https://example.com/file.png' }])}
+        onClick={() =>
+          onVisionFilesChange([
+            { transfer_method: TransferMethod.remote_url, url: 'https://example.com/file.png' },
+          ])
+        }
       >
         Remote File
       </button>
@@ -99,18 +121,25 @@ vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: {
-    currentLogItem: unknown
-    setCurrentLogItem: () => void
-    showPromptLogModal: boolean
-    setShowPromptLogModal: () => void
-    showAgentLogModal: boolean
-    setShowAgentLogModal: () => void
-  }) => unknown) => selector(mockState.mockStoreState),
+  useStore: (
+    selector: (state: {
+      currentLogItem: unknown
+      setCurrentLogItem: () => void
+      showPromptLogModal: boolean
+      setShowPromptLogModal: () => void
+      showAgentLogModal: boolean
+      setShowAgentLogModal: () => void
+    }) => unknown,
+  ) => selector(mockState.mockStoreState),
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
-  default: ({ content, isLoading, isShowTextToSpeech, messageId }: {
+  default: ({
+    content,
+    isLoading,
+    isShowTextToSpeech,
+    messageId,
+  }: {
     content: string
     isLoading: boolean
     isShowTextToSpeech: boolean
@@ -127,32 +156,31 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick, state }: { children: React.ReactNode, onClick?: () => void, state?: string }) => (
-    <button type="button" data-testid="action-button" data-state={state} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  ActionButtonState: {
-    Active: 'active',
-  },
-}))
-
 vi.mock('@/app/components/base/agent-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="agent-log-modal">
-      <button type="button" data-testid="agent-log-cancel" onClick={onCancel}>Cancel</button>
+      <button type="button" data-testid="agent-log-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: {
-    moreLikeThis: { enabled: boolean }
-    moderation: { enabled: boolean }
-    text2speech: { enabled: boolean }
-    file: { enabled: boolean, allowed_file_upload_methods: string[], fileUploadConfig?: { image_file_size_limit?: number } }
-  } }) => unknown) => selector({ features: mockState.mockFeaturesState }),
+  useFeatures: (
+    selector: (state: {
+      features: {
+        moreLikeThis: { enabled: boolean }
+        moderation: { enabled: boolean }
+        text2speech: { enabled: boolean }
+        file: {
+          enabled: boolean
+          allowed_file_upload_methods: string[]
+          fileUploadConfig?: { image_file_size_limit?: number }
+        }
+      }
+    }) => unknown,
+  ) => selector({ features: mockState.mockFeaturesState }),
   useFeaturesStore: () => ({
     getState: () => ({
       features: mockState.mockFeaturesState,
@@ -164,7 +192,9 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 vi.mock('@/app/components/base/prompt-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="prompt-log-modal">
-      <button type="button" data-testid="prompt-log-cancel" onClick={onCancel}>Cancel</button>
+      <button type="button" data-testid="prompt-log-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -194,16 +224,22 @@ vi.mock('../../base/group-name', () => ({
 vi.mock('../../base/warning-mask/cannot-query-dataset', () => ({
   default: ({ onConfirm }: { onConfirm: () => void }) => (
     <div data-testid="cannot-query-dataset">
-      <button type="button" data-testid="cannot-query-confirm" onClick={onConfirm}>Confirm</button>
+      <button type="button" data-testid="cannot-query-confirm" onClick={onConfirm}>
+        Confirm
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../base/warning-mask/formatting-changed', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
     <div data-testid="formatting-changed">
-      <button type="button" data-testid="formatting-confirm" onClick={onConfirm}>Confirm</button>
-      <button type="button" data-testid="formatting-cancel" onClick={onCancel}>Cancel</button>
+      <button type="button" data-testid="formatting-confirm" onClick={onConfirm}>
+        Confirm
+      </button>
+      <button type="button" data-testid="formatting-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -214,19 +250,28 @@ vi.mock('../debug-with-multiple-model', () => ({
     onDebugWithMultipleModelChange,
   }: {
     checkCanSend: () => boolean
-    onDebugWithMultipleModelChange: (item: { id: string, model: string, provider: string, parameters: Record<string, unknown> }) => void
+    onDebugWithMultipleModelChange: (item: {
+      id: string
+      model: string
+      provider: string
+      parameters: Record<string, unknown>
+    }) => void
   }) => (
     <div data-testid="debug-with-multiple-model">
-      <button type="button" data-testid="multiple-check-can-send" onClick={() => checkCanSend()}>Check</button>
+      <button type="button" data-testid="multiple-check-can-send" onClick={() => checkCanSend()}>
+        Check
+      </button>
       <button
         type="button"
         data-testid="multiple-switch-to-single"
-        onClick={() => onDebugWithMultipleModelChange({
-          id: 'model-1',
-          model: 'vision-model',
-          provider: 'openai',
-          parameters: { temperature: 0.2 },
-        })}
+        onClick={() =>
+          onDebugWithMultipleModelChange({
+            id: 'model-1',
+            model: 'vision-model',
+            provider: 'openai',
+            parameters: { temperature: 0.2 },
+          })
+        }
       >
         Switch
       </button>
@@ -248,7 +293,9 @@ vi.mock('../debug-with-single-model', () => {
 
     return (
       <div data-testid="debug-with-single-model">
-        <button type="button" data-testid="single-check-can-send" onClick={() => checkCanSend()}>Check</button>
+        <button type="button" data-testid="single-check-can-send" onClick={() => checkCanSend()}>
+          Check
+        </button>
       </div>
     )
   }
@@ -399,10 +446,12 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
   ...overrides,
 })
 
-const renderDebug = (options: {
-  contextValue?: Partial<DebugContextValue>
-  props?: Partial<DebugProps>
-} = {}) => {
+const renderDebug = (
+  options: {
+    contextValue?: Partial<DebugContextValue>
+    props?: Partial<DebugProps>
+  } = {},
+) => {
   const onSetting = vi.fn()
   const props: ComponentProps<typeof Debug> = {
     isAPIKeySet: true,
@@ -419,13 +468,10 @@ const renderDebug = (options: {
   }
 
   render(
-    React.createElement(
-      ConfigContext.Provider,
-      {
-        value: createContextValue(options.contextValue),
-        children: <Debug {...props} />,
-      },
-    ),
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
+    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
+      <Debug {...props} />
+    </ConfigContext.Provider>,
   )
 
   return { onSetting, notify: mockState.mockToastCall, props }
@@ -454,14 +500,18 @@ describe('Debug', () => {
       file: { enabled: false, allowed_file_upload_methods: [], fileUploadConfig: undefined },
     }
     mockState.mockProviderContext = {
-      textGenerationModelList: [{
-        provider: 'openai',
-        models: [{
-          model: 'vision-model',
-          features: [ModelFeatureEnum.vision],
-          model_properties: { mode: 'chat' },
-        }],
-      }],
+      textGenerationModelList: [
+        {
+          provider: 'openai',
+          models: [
+            {
+              model: 'vision-model',
+              features: [ModelFeatureEnum.vision],
+              model_properties: { mode: 'chat' },
+            },
+          ],
+        },
+      ],
     }
   })
 
@@ -513,7 +563,7 @@ describe('Debug', () => {
 
       expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -525,19 +575,28 @@ describe('Debug', () => {
             ...createContextValue().modelConfig,
             configs: {
               prompt_template: '',
-              prompt_variables: [{
-                key: 'question',
-                name: 'Question',
-                type: 'string',
-                required: true,
-              }] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
+              prompt_variables: [
+                {
+                  key: 'question',
+                  name: 'Question',
+                  type: 'string',
+                  required: true,
+                },
+              ] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
             },
           },
         },
       })
 
       expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
-      fireEvent.click(screen.getAllByTestId('action-button')[1]!)
+      const inputPanelButton = screen.getByRole('button', {
+        name: 'workflow.panel.userInputField',
+      })
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'true')
+
+      fireEvent.click(inputPanelButton)
+
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
@@ -549,7 +608,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -561,7 +620,9 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.queryByTestId('action-button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.refresh' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show formatting confirmation and handle cancel', () => {
@@ -650,12 +711,14 @@ describe('Debug', () => {
             ...createContextValue().modelConfig,
             configs: {
               prompt_template: '',
-              prompt_variables: [{
-                key: 'question',
-                name: 'Question',
-                type: 'string',
-                required: true,
-              }] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
+              prompt_variables: [
+                {
+                  key: 'question',
+                  name: 'Question',
+                  type: 'string',
+                  required: true,
+                },
+              ] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
             },
           },
         },
@@ -728,16 +791,22 @@ describe('Debug', () => {
         },
       }
 
-      mockState.mockSendCompletionMessage.mockImplementation((_appId, _data, handlers: {
-        onData: (chunk: string, isFirst: boolean, payload: { messageId: string }) => void
-        onMessageReplace: (payload: { answer: string }) => void
-        onCompleted: () => void
-        onError: () => void
-      }) => {
-        handlers.onData('hello', true, { messageId: 'msg-1' })
-        handlers.onMessageReplace({ answer: 'final answer' })
-        handlers.onCompleted()
-      })
+      mockState.mockSendCompletionMessage.mockImplementation(
+        (
+          _appId,
+          _data,
+          handlers: {
+            onData: (chunk: string, isFirst: boolean, payload: { messageId: string }) => void
+            onMessageReplace: (payload: { answer: string }) => void
+            onCompleted: () => void
+            onError: () => void
+          },
+        ) => {
+          handlers.onData('hello', true, { messageId: 'msg-1' })
+          handlers.onMessageReplace({ answer: 'final answer' })
+          handlers.onCompleted()
+        },
+      )
 
       renderDebug({
         contextValue: {
@@ -748,13 +817,15 @@ describe('Debug', () => {
             ...createContextValue().modelConfig,
             configs: {
               prompt_template: 'Prompt',
-              prompt_variables: [{
-                key: 'question',
-                name: 'Question',
-                type: 'string',
-                required: true,
-                is_context_var: true,
-              }] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
+              prompt_variables: [
+                {
+                  key: 'question',
+                  name: 'Question',
+                  type: 'string',
+                  required: true,
+                  is_context_var: true,
+                },
+              ] as DebugContextValue['modelConfig']['configs']['prompt_variables'],
             },
           },
         },
@@ -766,7 +837,8 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [unknown, any]
+      const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
+        []) as [unknown, unknown, { onNotifyError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -780,6 +852,12 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+
+      handlers.onNotifyError('Base model not found')
+      expect(mockState.mockToastCall).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Base model not found',
+      })
     })
 
     it('should notify when sending again while a response is in progress', async () => {
@@ -817,15 +895,23 @@ describe('Debug', () => {
         },
       }
 
-      mockState.mockSendCompletionMessage.mockImplementation((_appId, data, handlers: {
-        onError: () => void
-      }) => {
-        expect(data.files).toEqual([{
-          transfer_method: TransferMethod.remote_url,
-          url: 'https://example.com/file.png',
-        }])
-        handlers.onError()
-      })
+      mockState.mockSendCompletionMessage.mockImplementation(
+        (
+          _appId,
+          data,
+          handlers: {
+            onError: () => void
+          },
+        ) => {
+          expect(data.files).toEqual([
+            {
+              transfer_method: TransferMethod.remote_url,
+              url: 'https://example.com/file.png',
+            },
+          ])
+          handlers.onError()
+        },
+      )
 
       renderDebug({
         contextValue: {
@@ -893,7 +979,9 @@ describe('Debug', () => {
       renderDebug({
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
           onMultipleModelConfigsChange,
         },
       })
@@ -918,7 +1006,9 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' }))!.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' }),
+      )!.toBeDisabled()
     })
 
     it('should disable add-model button when test/run permission is missing', () => {
@@ -930,12 +1020,16 @@ describe('Debug', () => {
         },
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
           onMultipleModelConfigsChange,
         },
       })
 
-      const addModelButton = screen.getByRole('button', { name: 'common.modelProvider.addModel(1/4)' })
+      const addModelButton = screen.getByRole('button', {
+        name: 'common.modelProvider.addModel(1/4)',
+      })
       expect(addModelButton).toBeDisabled()
       fireEvent.click(addModelButton)
       expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
@@ -955,7 +1049,9 @@ describe('Debug', () => {
         },
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: '1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
         },
       })
 
@@ -971,15 +1067,19 @@ describe('Debug', () => {
       })
     })
 
-    it('should emit restart event when refresh is clicked in multiple-model mode', () => {
+    it('should emit restart event when refresh is clicked in multiple-model mode', async () => {
+      const user = userEvent.setup()
+
       renderDebug({
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: '1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockEventEmitterEmit).toHaveBeenCalledWith({
         type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       })
@@ -993,7 +1093,14 @@ describe('Debug', () => {
       renderDebug({
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: 'model-1', model: 'vision-model', provider: 'openai', parameters: { temperature: 0.2 } }],
+          multipleModelConfigs: [
+            {
+              id: 'model-1',
+              model: 'vision-model',
+              provider: 'openai',
+              parameters: { temperature: 0.2 },
+            },
+          ],
           onMultipleModelConfigsChange,
           modelParameterParams: {
             setModel,
@@ -1021,15 +1128,19 @@ describe('Debug', () => {
         },
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: '1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
         },
       })
 
-      expect(mockState.mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
-        file: expect.objectContaining({
-          enabled: true,
+      expect(mockState.mockSetFeatures).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: expect.objectContaining({
+            enabled: true,
+          }),
         }),
-      }))
+      )
     })
 
     it('should render prompt and agent log modals in multiple-model mode', () => {
@@ -1042,7 +1153,9 @@ describe('Debug', () => {
       renderDebug({
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: '1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
         },
       })
 
@@ -1068,7 +1181,9 @@ describe('Debug', () => {
       renderDebug({
         props: {
           debugWithMultipleModel: true,
-          multipleModelConfigs: [{ id: '1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          multipleModelConfigs: [
+            { id: '1', model: 'vision-model', provider: 'openai', parameters: {} },
+          ],
         },
       })
 

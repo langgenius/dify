@@ -1,5 +1,6 @@
 import type { Credential, CustomModel, ModelProvider } from '../../../declarations'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '../../../declarations'
 import Authorized from '../index'
 
@@ -13,11 +14,12 @@ let mockDeleteCredentialId: string | null = null
 let mockDoingAction = false
 let mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
 
 vi.mock('../../hooks', () => ({
   useAuth: () => ({
@@ -32,7 +34,16 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../authorized-item', () => ({
-  default: ({ credentials, model, disabled, disableEdit, disableDelete, onEdit, onDelete, onItemClick }: {
+  default: ({
+    credentials,
+    model,
+    disabled,
+    disableEdit,
+    disableDelete,
+    onEdit,
+    onDelete,
+    onItemClick,
+  }: {
     credentials: Credential[]
     model?: CustomModel
     disabled?: boolean
@@ -46,16 +57,20 @@ vi.mock('../authorized-item', () => ({
       {credentials.map((cred: Credential) => (
         <div key={cred.credential_id}>
           <span>{cred.credential_name}</span>
-          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>Edit</button>
-          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>Delete</button>
-          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>Select</button>
+          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>
+            Edit
+          </button>
+          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>
+            Delete
+          </button>
+          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>
+            Select
+          </button>
         </div>
       ))}
     </div>
   ),
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 describe('Authorized', () => {
   const mockProvider: ModelProvider = {
@@ -85,6 +100,8 @@ describe('Authorized', () => {
     </button>
   )
 
+  const getTrigger = () => screen.getAllByRole('button', { name: /trigger\s*(open|closed)/i })[0]!
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteCredentialId = null
@@ -102,7 +119,13 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    const trigger = getTrigger()
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(trigger).toHaveTextContent(/trigger\s*open/i)
     expect(screen.getByTestId('authorized-item'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /addApiKey/i }))!.toBeInTheDocument()
   })
@@ -118,9 +141,8 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     expect(mockHandleOpenModal).toHaveBeenCalled()
-    expect(screen.queryByTestId('authorized-item')).not.toBeInTheDocument()
   })
 
   it('should call onItemClick when credential is selected', () => {
@@ -135,7 +157,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -151,7 +173,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -172,7 +194,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getByText(/addModelCredential/))
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, {
@@ -192,7 +214,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
@@ -208,7 +230,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
@@ -231,7 +253,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
@@ -255,11 +277,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -316,6 +338,8 @@ describe('Authorized', () => {
     )
 
     const dialog = screen.getByRole('alertdialog')
-    expect(within(dialog).getByRole('button', { name: /common.operation.confirm/i }))!.toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: /common.operation.confirm/i }),
+    )!.toBeDisabled()
   })
 })

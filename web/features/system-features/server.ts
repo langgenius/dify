@@ -1,36 +1,31 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import { queryOptions } from '@tanstack/react-query'
-import { IS_CLOUD_EDITION } from '@/config'
-import {
-  getServerConsoleClientContext,
-  serverConsoleClient,
-  serverConsoleQuery,
-} from '@/service/server'
-import { cloudSystemFeatures, defaultSystemFeatures } from './config'
+import { cache } from 'react'
+import { getQueryClient } from '@/app/get-query-client'
+import { connection } from '@/next/server'
+import { serverConsoleQuery } from '@/service/server'
+import 'server-only'
 
-export const serverSystemFeaturesQueryOptions = () => {
-  const queryKey = serverConsoleQuery.systemFeatures.get.queryKey()
+export const getSystemFeaturesQueryClient = cache(getQueryClient)
 
-  if (IS_CLOUD_EDITION) {
-    return queryOptions<GetSystemFeaturesResponse>({
-      queryKey,
-      queryFn: async () => cloudSystemFeatures,
-      staleTime: 'static',
-    })
-  }
+const systemFeaturesServerQueryOptions = () => serverConsoleQuery.systemFeatures.get.queryOptions()
 
-  return queryOptions<GetSystemFeaturesResponse>({
-    queryKey,
-    queryFn: async () => {
-      try {
-        return await serverConsoleClient.systemFeatures.get(undefined, {
-          context: await getServerConsoleClientContext(),
-        })
-      }
-      catch (err) {
-        console.error('[systemFeatures] server fetch failed', err)
-        return defaultSystemFeatures
-      }
-    },
-  })
+export const getCachedSystemFeatures = () => {
+  const queryClient = getSystemFeaturesQueryClient()
+  const queryOptions = systemFeaturesServerQueryOptions()
+  return queryClient.getQueryData(queryOptions.queryKey)
+}
+
+export const prefetchSystemFeatures = async () => {
+  await connection()
+  const queryClient = getSystemFeaturesQueryClient()
+  const queryOptions = systemFeaturesServerQueryOptions()
+  const queryState = queryClient.getQueryState(queryOptions.queryKey)
+
+  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
+
+  return queryClient.getQueryData(queryOptions.queryKey)
+}
+
+export const ensureSystemFeatures = async () => {
+  await connection()
+  return getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions())
 }

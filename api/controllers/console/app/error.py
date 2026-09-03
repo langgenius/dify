@@ -1,3 +1,7 @@
+from core.app.apps.agent_app.errors import (
+    AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE,
+    AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE,
+)
 from libs.exception import BaseHTTPException
 
 
@@ -49,6 +53,12 @@ class CompletionRequestError(BaseHTTPException):
     code = 400
 
 
+class AgentSessionConfigurationChangedError(BaseHTTPException):
+    error_code = AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE
+    description = AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE
+    code = 409
+
+
 class AppMoreLikeThisDisabledError(BaseHTTPException):
     error_code = "app_more_like_this_disabled"
     description = "The 'More like this' feature is disabled. Please refresh your page."
@@ -76,6 +86,12 @@ class UnsupportedAudioTypeError(BaseHTTPException):
 class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     error_code = "provider_not_support_speech_to_text"
     description = "Provider not support speech to text."
+    code = 400
+
+
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
 
 

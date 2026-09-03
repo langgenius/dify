@@ -10,16 +10,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -56,20 +51,23 @@ const DatasetItem: FC<Props> = ({
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
-  const [isShowSettingsModal, {
-    setTrue: showSettingsModal,
-    setFalse: hideSettingsModal,
-  }] = useBoolean(false)
+  const [isShowSettingsModal, setIsShowSettingsModal] = useState(false)
 
-  const handleSave = useCallback((newDataset: DataSet) => {
-    onChange(newDataset)
-    hideSettingsModal()
-  }, [hideSettingsModal, onChange])
+  const handleSave = useCallback(
+    (newDataset: DataSet) => {
+      onChange(newDataset)
+      setIsShowSettingsModal(false)
+    },
+    [onChange],
+  )
 
-  const handleRemove = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    onRemove()
-  }, [onRemove])
+  const handleRemove = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onRemove()
+    },
+    [onRemove],
+  )
 
   const iconInfo = payload.icon_info || {
     icon: '📙',
@@ -79,12 +77,12 @@ const DatasetItem: FC<Props> = ({
   }
 
   return (
-    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg
-      border-[0.5px] border-components-panel-border-subtle px-2
-      ${isDeleteHovered
-      ? 'border-state-destructive-border bg-state-destructive-hover'
-      : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
-    }`}
+    <div
+      className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle px-2 ${
+        isDeleteHovered
+          ? 'border-state-destructive-border bg-state-destructive-hover'
+          : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
+      }`}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
         <AppIcon
@@ -98,28 +96,26 @@ const DatasetItem: FC<Props> = ({
       </div>
       {!readonly && (
         <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
-          {
-            editable && (
-              <ActionButton
-                aria-label={t('operation.edit', { ns: 'common' })}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  showSettingsModal()
-                }}
-              >
-                <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-              </ActionButton>
-            )
-          }
-          <ActionButton
-            aria-label={t('operation.remove', { ns: 'common' })}
+          {editable && (
+            <IconButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsShowSettingsModal(true)
+              }}
+            >
+              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+            </IconButton>
+          )}
+          <IconButton
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
-            state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
+            tone="destructive"
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
-          </ActionButton>
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          </IconButton>
         </div>
       )}
       {payload.is_multimodal && (
@@ -127,22 +123,21 @@ const DatasetItem: FC<Props> = ({
           <FeatureIcon feature={ModelFeatureEnum.vision} />
         </div>
       )}
-      {
-        !!payload.indexing_technique && (
-          <Badge
-            className="shrink-0 group-hover/dataset-item:hidden"
-            text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}
-          />
-        )
-      }
-      {
-        payload.provider === 'external' && (
-          <Badge
-            className="shrink-0 group-hover/dataset-item:hidden"
-            text={t('externalTag', { ns: 'dataset' })}
-          />
-        )
-      }
+      {!!payload.indexing_technique && (
+        <Badge
+          className="shrink-0 group-hover/dataset-item:hidden"
+          text={formatIndexingTechniqueAndMethod(
+            payload.indexing_technique,
+            payload.retrieval_model_dict?.search_method,
+          )}
+        />
+      )}
+      {payload.provider === 'external' && (
+        <Badge
+          className="shrink-0 group-hover/dataset-item:hidden"
+          text={t(($) => $.externalTag, { ns: 'dataset' })}
+        />
+      )}
 
       {isShowSettingsModal && (
         <Drawer
@@ -150,8 +145,7 @@ const DatasetItem: FC<Props> = ({
           modal
           swipeDirection="right"
           onOpenChange={(open) => {
-            if (!open)
-              hideSettingsModal()
+            if (!open) setIsShowSettingsModal(false)
           }}
         >
           <DrawerPortal>
@@ -163,16 +157,18 @@ const DatasetItem: FC<Props> = ({
               )}
             />
             <DrawerViewport>
-              <DrawerPopup className={cn(
-                'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl',
-                settingsDrawerPopupClassName ?? 'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
-              )}
+              <DrawerPopup
+                className={cn(
+                  'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl',
+                  settingsDrawerPopupClassName ??
+                    'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
+                )}
               >
                 <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
                   <SettingsModal
                     currentDataset={payload}
                     height={settingsModalHeight}
-                    onCancel={hideSettingsModal}
+                    onCancel={() => setIsShowSettingsModal(false)}
                     onSave={handleSave}
                   />
                 </DrawerContent>

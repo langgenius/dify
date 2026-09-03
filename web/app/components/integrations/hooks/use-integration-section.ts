@@ -13,5 +13,9 @@ export function useIntegrationSection(routeSection?: IntegrationSection) {
   const [sectionParam] = useQueryState('section', parseAsIntegrationSection)
   const [categoryParam] = useQueryState('category', parseAsToolCategory)
 
-  return routeSection ?? sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
+  return (
+    routeSection ??
+    sectionParam ??
+    (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
+  )
 }

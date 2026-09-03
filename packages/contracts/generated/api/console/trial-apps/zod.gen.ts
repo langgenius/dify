@@ -33,10 +33,52 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * FileResponse
+ */
+export const zFileResponse = z.object({
+  conversation_id: z.uuid().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.uuid().nullish(),
+  extension: z.string().nullish(),
+  file_key: z.string().nullish(),
+  id: z.uuid(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  original_url: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
+  size: z.int(),
+  source_url: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
+})
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
+})
+
+/**
+ * RemoteFileUploadPayload
+ */
+export const zRemoteFileUploadPayload = z.object({
+  url: z.string(),
+})
+
+/**
+ * FileWithSignedUrl
+ */
+export const zFileWithSignedUrl = z.object({
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  url: z.string().nullable(),
 })
 
 /**
@@ -73,7 +115,9 @@ export const zTextToSpeechRequest = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * WorkflowRunRequest
@@ -90,216 +134,101 @@ export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
 
-export const zTrialDeletedTool = z.object({
-  provider_id: z.string().optional(),
-  tool_name: z.string().optional(),
-  type: z.string().optional(),
+/**
+ * TrialDeletedToolResponse
+ */
+export const zTrialDeletedToolResponse = z.object({
+  provider_id: z.string(),
+  tool_name: z.string(),
+  type: z.string(),
 })
 
-export const zTrialAppModelConfig = z.object({
-  agent_mode: z.record(z.string(), z.unknown()).optional(),
-  annotation_reply: z.record(z.string(), z.unknown()).optional(),
-  chat_prompt_config: z.record(z.string(), z.unknown()).optional(),
-  completion_prompt_config: z.record(z.string(), z.unknown()).optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  dataset_configs: z.record(z.string(), z.unknown()).optional(),
-  dataset_query_variable: z.string().optional(),
-  external_data_tools: z.array(z.record(z.string(), z.unknown())).optional(),
-  file_upload: z.record(z.string(), z.unknown()).optional(),
-  model: z.record(z.string(), z.unknown()).optional(),
-  more_like_this: z.record(z.string(), z.unknown()).optional(),
-  opening_statement: z.string().optional(),
-  pre_prompt: z.string().optional(),
-  prompt_type: z.string().optional(),
-  retriever_resource: z.record(z.string(), z.unknown()).optional(),
-  sensitive_word_avoidance: z.record(z.string(), z.unknown()).optional(),
-  speech_to_text: z.record(z.string(), z.unknown()).optional(),
-  suggested_questions: z.array(z.string()).optional(),
-  suggested_questions_after_answer: z.record(z.string(), z.unknown()).optional(),
-  text_to_speech: z.record(z.string(), z.unknown()).optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  user_input_form: z.array(z.record(z.string(), z.unknown())).optional(),
-})
+export const zTrialIconType = z.enum(['emoji', 'image', 'link'])
 
-export const zTrialSite = z.object({
-  access_token: z.string().optional(),
-  app_base_url: z.string().optional(),
-  chat_color_theme: z.string().optional(),
-  chat_color_theme_inverted: z.boolean().optional(),
-  code: z.string().optional(),
-  copyright: z.string().optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  custom_disclaimer: z.string().optional(),
-  customize_domain: z.string().optional(),
-  customize_token_strategy: z.string().optional(),
-  default_language: z.string().optional(),
-  description: z.string().optional(),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  icon_type: z.string().optional(),
-  icon_url: z.string().optional(),
-  privacy_policy: z.string().optional(),
-  prompt_public: z.boolean().optional(),
-  show_workflow_steps: z.boolean().optional(),
-  title: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  use_icon_as_answer_icon: z.boolean().optional(),
-})
-
-export const zTrialTag = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  type: z.string().optional(),
-})
-
-export const zTrialWorkflowPartial = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  id: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-})
-
-export const zTrialAppDetailWithSite = z.object({
-  access_mode: z.string().optional(),
-  api_base_url: z.string().optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  deleted_tools: z.array(zTrialDeletedTool).optional(),
-  description: z.string().optional(),
-  enable_api: z.boolean().optional(),
-  enable_site: z.boolean().optional(),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  icon_type: z.string().optional(),
-  icon_url: z.string().optional(),
-  id: z.string().optional(),
-  max_active_requests: z.int().optional(),
-  mode: z.string().optional(),
-  model_config: zTrialAppModelConfig.optional(),
-  name: z.string().optional(),
-  permission_keys: z.array(z.string()).optional(),
-  site: zTrialSite.optional(),
-  tags: z.array(zTrialTag).optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  use_icon_as_answer_icon: z.boolean().optional(),
-  workflow: zTrialWorkflowPartial.optional(),
-})
-
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zTrialAppMode = z.enum([
+  'advanced-chat',
+  'agent-chat',
+  'chat',
+  'completion',
+  'workflow',
+])
 
 /**
- * GeneratedAppResponse
+ * TrialSiteResponse
  */
-export const zGeneratedAppResponse = zJsonValue
+export const zTrialSiteResponse = z.object({
+  access_token: z.string().nullish(),
+  app_base_url: z.string().nullish(),
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean().nullish(),
+  code: z.string().nullish(),
+  copyright: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  customize_domain: z.string().nullish(),
+  customize_token_strategy: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
 
-export const zTrialDataset = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  data_source_type: z.string().optional(),
-  description: z.string().optional(),
-  id: z.string().optional(),
-  indexing_technique: z.string().optional(),
-  name: z.string().optional(),
-  permission: z.string().optional(),
+/**
+ * TrialTagResponse
+ */
+export const zTrialTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * TrialWorkflowPartialResponse
+ */
+export const zTrialWorkflowPartialResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * TrialDatasetResponse
+ */
+export const zTrialDatasetResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  data_source_type: z.string().nullish(),
+  description: z.string().nullish(),
+  id: z.string(),
+  indexing_technique: z.string().nullish(),
+  name: z.string(),
+  permission: z.string().nullish(),
   permission_keys: z.array(z.string()).optional(),
 })
 
-export const zTrialDatasetList = z.object({
-  data: z.array(zTrialDataset).optional(),
-  has_more: z.boolean().optional(),
-  limit: z.int().optional(),
-  page: z.int().optional(),
-  total: z.int().optional(),
+/**
+ * TrialDatasetListResponse
+ */
+export const zTrialDatasetListResponse = z.object({
+  data: z.array(zTrialDatasetResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
-
-export const zJsonObject = z.record(z.string(), z.unknown())
 
 /**
  * SystemParameters
@@ -316,107 +245,465 @@ export const zSystemParameters = z.object({
  * Parameters
  */
 export const zParameters = z.object({
-  annotation_reply: zJsonObject,
-  file_upload: zJsonObject,
-  more_like_this: zJsonObject,
+  annotation_reply: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  file_upload: z.object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z
+      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
+      .optional(),
+    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
+    enabled: z.boolean().optional(),
+    image: z
+      .object({
+        detail: z.string().optional(),
+        enabled: z.boolean().optional(),
+        number_limits: z.int().optional(),
+        transfer_methods: z.array(z.string()).optional(),
+      })
+      .optional(),
+    number_limits: z.int().optional(),
+  }),
+  more_like_this: z.object({
+    enabled: z.boolean().optional(),
+  }),
   opening_statement: z.string().nullish(),
-  retriever_resource: zJsonObject,
-  sensitive_word_avoidance: zJsonObject,
-  speech_to_text: zJsonObject,
+  retriever_resource: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  sensitive_word_avoidance: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  speech_to_text: z.object({
+    enabled: z.boolean().optional(),
+  }),
   suggested_questions: z.array(z.string()),
-  suggested_questions_after_answer: zJsonObject,
+  suggested_questions_after_answer: z.object({
+    enabled: z.boolean().optional(),
+  }),
   system_parameters: zSystemParameters,
-  text_to_speech: zJsonObject,
-  user_input_form: z.array(zJsonObject),
-})
-
-export const zTrialConversationVariable = z.object({
-  description: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.record(z.string(), z.unknown()),
-      z.array(z.unknown()),
-    ])
-    .nullish(),
-  value_type: z.string().optional(),
-})
-
-export const zTrialSimpleAccount = z.object({
-  email: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
-})
-
-export const zTrialPipelineVariable = z.object({
-  allow_file_extension: z.array(z.string()).optional(),
-  allow_file_upload_methods: z.array(z.string()).optional(),
-  allowed_file_types: z.array(z.string()).optional(),
-  belong_to_node_id: z.string().optional(),
-  default_value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.record(z.string(), z.unknown()),
-      z.array(z.unknown()),
-    ])
-    .nullish(),
-  label: z.string().optional(),
-  max_length: z.int().optional(),
-  options: z.array(z.string()).optional(),
-  placeholder: z.string().optional(),
-  required: z.boolean().optional(),
-  tooltips: z.string().optional(),
-  type: z.string().optional(),
-  unit: z.string().optional(),
-  variable: z.string().optional(),
-})
-
-export const zTrialWorkflow = z.object({
-  conversation_variables: z.array(zTrialConversationVariable).optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: zTrialSimpleAccount.optional(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  features: z.record(z.string(), z.unknown()).optional(),
-  graph: z.record(z.string(), z.unknown()).optional(),
-  hash: z.string().optional(),
-  id: z.string().optional(),
-  marked_comment: z.string().optional(),
-  marked_name: z.string().optional(),
-  rag_pipeline_variables: z.array(zTrialPipelineVariable).optional(),
-  tool_published: z.boolean().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: zTrialSimpleAccount.optional(),
-  version: z.string().optional(),
+  text_to_speech: z.object({
+    autoPlay: z.string().optional(),
+    enabled: z.boolean().optional(),
+    language: z.string().optional(),
+    voice: z.string().optional(),
+  }),
+  user_input_form: z.array(
+    z.union([
+      z
+        .object({
+          'text-input': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          select: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          paragraph: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          number: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          external_data_tool: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          file: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          'file-list': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          checkbox: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          json_object: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+    ]),
+  ),
 })
 
 /**
- * GeneratedAppResponse
+ * WorkflowConversationVariableResponse
  */
-export const zGeneratedAppResponseWritable = zJsonValue
+export const zWorkflowConversationVariableResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+})
+
+/**
+ * TrialSimpleAccount
+ */
+export const zTrialSimpleAccount = z.object({
+  email: z.string().nullish(),
+  id: z.string(),
+  name: z.string().nullish(),
+})
+
+export const zJsonObject = z.record(z.string(), z.unknown())
+
+/**
+ * TrialWorkflowResponse
+ */
+export const zTrialWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse).optional(),
+  created_at: z.int().nullish(),
+  created_by: zTrialSimpleAccount.nullish(),
+  environment_variables: z.array(zJsonObject).optional(),
+  features: zJsonObject.optional(),
+  graph: zJsonObject,
+  hash: z.string().nullish(),
+  id: z.string(),
+  marked_comment: z.string().nullish(),
+  marked_name: z.string().nullish(),
+  rag_pipeline_variables: z.array(zJsonObject).optional(),
+  tool_published: z.boolean().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: zTrialSimpleAccount.nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * TrialAppAgentMode
+ */
+export const zTrialAppAgentMode = z.object({
+  enabled: z.boolean().nullish(),
+  strategy: z.string().nullish(),
+  tools: z.array(zJsonObject).optional(),
+})
+
+/**
+ * TrialAppModel
+ */
+export const zTrialAppModel = z.object({
+  completion_params: zJsonObject.optional(),
+  mode: z.string().nullish(),
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * TrialAppModelConfigResponse
+ */
+export const zTrialAppModelConfigResponse = z.object({
+  agent_mode: zTrialAppAgentMode.nullish(),
+  annotation_reply: zJsonObject.nullish(),
+  chat_prompt_config: zJsonObject.nullish(),
+  completion_prompt_config: zJsonObject.nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  dataset_configs: zJsonObject.nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: z.array(zJsonObject).optional(),
+  file_upload: zJsonObject.nullish(),
+  model: zTrialAppModel.nullish(),
+  more_like_this: zJsonObject.nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: zJsonObject.nullish(),
+  sensitive_word_avoidance: zJsonObject.nullish(),
+  speech_to_text: zJsonObject.nullish(),
+  suggested_questions: z.array(z.string()).optional(),
+  suggested_questions_after_answer: zJsonObject.nullish(),
+  text_to_speech: zJsonObject.nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  user_input_form: z.array(zJsonObject).optional(),
+})
+
+/**
+ * TrialAppDetailResponse
+ */
+export const zTrialAppDetailResponse = z.object({
+  access_mode: z.string().nullish(),
+  api_base_url: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  deleted_tools: z.array(zTrialDeletedToolResponse).optional(),
+  description: z.string().nullish(),
+  enable_api: z.boolean(),
+  enable_site: z.boolean(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
+  id: z.string(),
+  max_active_requests: z.int().nullish(),
+  mode: zTrialAppMode,
+  model_config: zTrialAppModelConfigResponse.nullish(),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  site: zTrialSiteResponse,
+  tags: z.array(zTrialTagResponse).optional(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zTrialWorkflowPartialResponse.nullish(),
+})
 
 /**
  * Site
@@ -445,7 +732,7 @@ export const zGetTrialAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdResponse = zTrialAppDetailWithSite
+export const zGetTrialAppsByAppIdResponse = zTrialAppDetailResponse
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),
@@ -465,7 +752,7 @@ export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
@@ -476,7 +763,7 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
   app_id: z.uuid(),
@@ -491,7 +778,21 @@ export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetList
+export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetListResponse
+
+export const zPostTrialAppsByAppIdFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  source: z.enum(['datasets']).optional(),
+})
+
+export const zPostTrialAppsByAppIdFilesUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostTrialAppsByAppIdFilesUploadResponse = zFileResponse
 
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   app_id: z.uuid(),
@@ -501,8 +802,8 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),
@@ -512,6 +813,17 @@ export const zGetTrialAppsByAppIdParametersPath = z.object({
  * Success
  */
 export const zGetTrialAppsByAppIdParametersResponse = zParameters
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadBody = zRemoteFileUploadPayload
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostTrialAppsByAppIdRemoteFilesUploadResponse = zFileWithSignedUrl
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
   app_id: z.uuid(),
@@ -540,7 +852,7 @@ export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflow
+export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflowResponse
 
 export const zPostTrialAppsByAppIdWorkflowsRunBody = zWorkflowRunRequest
 
@@ -551,7 +863,7 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   app_id: z.uuid(),

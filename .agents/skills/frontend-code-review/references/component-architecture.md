@@ -46,14 +46,13 @@ When existing components already own interaction logic, prefer reusing or extend
 
 Flag:
 
-- `React.FC` / `FC`.
-- Default exports outside framework-required files.
+- Declaration or export rewrites made only for stylistic uniformity, without changing an owned behavior or contract.
 - Named `Props` types for trivial one-off props where inline typing is clearer.
 - Props named by UI implementation instead of domain/API role.
 - API data converted too early or under a generic name that breaks traceability.
 - Callers duplicating fallback checks that the lowest rendering component already handles.
 
-Prefer top-level `function` declarations for components and module helpers. Use arrow functions for callbacks and local lambdas.
+Do not flag `FC`, `React.FC`, function declarations, arrow functions, named exports, or default exports by syntax alone. Report them only when the chosen form causes a concrete type, lifecycle, export, framework, or enforced package-contract defect.
 
 ## Effects
 
@@ -62,7 +61,7 @@ Flag effects that:
 - Transform props/state for rendering.
 - Copy one state value into another representing the same concept.
 - Handle user actions that belong in event handlers.
-- Reset state from props when a keyed reset, stable ID, or render-time derivation would work.
+- Reset local state from props or visibility when derivation, a stable semantic identity, or the intended mounted owner already expresses the lifecycle.
 - Fetch data that belongs in framework APIs or TanStack Query.
 
 If an effect remains, it must synchronize with a named external system: browser API, subscription, timer, analytics-on-visibility, non-React widget, or imperative DOM integration.
@@ -72,11 +71,24 @@ If an effect remains, it must synchronize with a named external system: browser 
 Flag:
 
 - Storing derived booleans, disabled flags, default tabs, or loading labels that can be calculated from current query/feature state.
+- Per-session state held by a longer-lived visibility coordinator and cleared through an open-state Effect or a generated key when the primitive's mounted-content lifecycle already matches the intended state lifetime.
+- A DOM field mirrored into competing prop, default, and React state sources when editing does not require those sources to synchronize.
 - Local state used to fake server data or generated contract fields.
 - UI state persisted to localStorage when it is live app state.
 - Feature-local mock shells wired to unrelated existing APIs before the real API is confirmed.
 
-Prefer render-time derivation. Keep true local state for user choices, transient input, controlled popups, and feature UI state that has no server source.
+Review state lifetime before its storage mechanism. For a hidden surface, distinguish the
+visibility coordinator from mounted content. State private to one mounted session belongs in that
+content owner; promote it only when the draft must survive that content owner's unmount or another
+owner coordinates it. A stable semantic identity key may create a new snapshot when the represented
+identity changes; a generated key is not a routine reset command.
+
+Prefer render-time derivation. Keep true local state for user choices, transient input, controlled
+popups, and feature UI state that has no server source. Submit-only DOM fields may remain
+uncontrolled; use local controlled state when React must own the current value to drive rendering
+or coordination. Observing change events or tracking a derived fact such as dirty state does not
+require mirroring the field value. Do not flag controlled state by itself without a concrete
+competing-source, stale-state, or ownership defect.
 
 ## Navigation
 

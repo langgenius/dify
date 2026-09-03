@@ -13,9 +13,16 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
-    noChatInput: { control: 'boolean', description: 'If set to true, some buttons that are supposed to be shown on hover will not be displayed.' },
+    noChatInput: {
+      control: 'boolean',
+      description:
+        'If set to true, some buttons that are supposed to be shown on hover will not be displayed.',
+    },
     responding: { control: 'boolean', description: 'Indicates if the answer is being generated.' },
-    showPromptLog: { control: 'boolean', description: 'If set to true, the prompt log button will be shown on hover.' },
+    showPromptLog: {
+      control: 'boolean',
+      description: 'If set to true, the prompt log button will be shown on hover.',
+    },
   },
   args: {
     noChatInput: false,

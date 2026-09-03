@@ -2,6 +2,7 @@ import logging
 from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -18,7 +19,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import resolve_account_fallback
 from models.account import Account
@@ -34,7 +34,10 @@ class HitTestingPayload(BaseModel):
     query: str = Field(description="Search query text.", max_length=250)
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     external_retrieval_model: ExternalRetrievalModel = Field(
         default=None,
@@ -82,15 +85,18 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def get_and_validate_dataset(
-        dataset_id: str, current_user: Account | None = None, current_tenant_id: str | None = None
+        session: Session,
+        dataset_id: str,
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
     ) -> Dataset:
         current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
-        dataset = DatasetService.get_dataset(dataset_id, db.session)
+        dataset = DatasetService.get_dataset(dataset_id, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user, db.session)
+            DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -108,6 +114,7 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def perform_hit_testing(
+        session: Session,
         dataset: Dataset,
         args: dict[str, Any],
         current_user: Account | None = None,
@@ -116,7 +123,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
-                session=db.session,
+                session=session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

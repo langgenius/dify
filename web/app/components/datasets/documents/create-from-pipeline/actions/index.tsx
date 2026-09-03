@@ -1,5 +1,6 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -30,18 +31,14 @@ const Actions = ({
   const { datasetId } = useParams()
 
   const indeterminate = useMemo(() => {
-    if (!showSelect)
-      return false
-    if (selectedOptions === undefined || totalOptions === undefined)
-      return false
+    if (!showSelect) return false
+    if (selectedOptions === undefined || totalOptions === undefined) return false
     return selectedOptions > 0 && selectedOptions < totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 
   const checked = useMemo(() => {
-    if (!showSelect)
-      return false
-    if (selectedOptions === undefined || totalOptions === undefined)
-      return false
+    if (!showSelect) return false
+    if (selectedOptions === undefined || totalOptions === undefined) return false
     return selectedOptions > 0 && selectedOptions === totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 
@@ -49,14 +46,14 @@ const Actions = ({
     <div className="flex items-center gap-x-2 overflow-hidden">
       {showSelect && (
         <>
-          <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-[3px] pr-2 pl-4">
+          <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-0.75 pr-2 pl-4">
             <Checkbox
-              onCheckedChange={checked => onSelectAll?.(checked)}
+              onCheckedChange={(checked) => onSelectAll?.(checked)}
               indeterminate={indeterminate}
               checked={checked}
             />
             <span className="system-sm-medium text-text-accent">
-              {t('operation.selectAll', { ns: 'common' })}
+              {t(($) => $['operation.selectAll'], { ns: 'common' })}
             </span>
           </label>
           {tip && (
@@ -70,21 +67,12 @@ const Actions = ({
         <Link
           href={`/datasets/${datasetId}/documents`}
           replace
+          className={cn(buttonVariants({ variant: 'ghost' }), 'px-3 py-2')}
         >
-          <Button
-            variant="ghost"
-            className="px-3 py-2"
-          >
-            {t('operation.cancel', { ns: 'common' })}
-          </Button>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Link>
-        <Button
-          disabled={disabled}
-          variant="primary"
-          onClick={handleNextStep}
-          className="gap-x-0.5"
-        >
-          <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+        <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
+          <span>{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4" />
         </Button>
       </div>

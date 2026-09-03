@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Bucket from '../bucket'
-
-vi.mock('@/app/components/base/icons/src/public/knowledge/online-drive', () => ({
-  BucketsGray: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="buckets-gray" {...props} />,
-}))
 
 describe('Bucket', () => {
   const defaultProps = {
@@ -22,14 +18,11 @@ describe('Bucket', () => {
     expect(screen.getByText('my-bucket'))!.toBeInTheDocument()
   })
 
-  it('should render bucket icon', () => {
-    render(<Bucket {...defaultProps} />)
-    expect(screen.getByTestId('buckets-gray'))!.toBeInTheDocument()
-  })
-
   it('should call handleBackToBucketList on icon button click', () => {
     render(<Bucket {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.onlineDrive.breadcrumbs.allBuckets' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'datasetPipeline.onlineDrive.breadcrumbs.allBuckets' }),
+    )
     expect(defaultProps.handleBackToBucketList).toHaveBeenCalledOnce()
   })
 

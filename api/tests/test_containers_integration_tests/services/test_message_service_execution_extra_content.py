@@ -20,6 +20,7 @@ def test_pagination_returns_extra_contents(db_session_with_containers: Session):
         conversation_id=fixture.conversation.id,
         first_id=None,
         limit=10,
+        session=db_session_with_containers,
     )
 
     assert pagination.data
@@ -59,6 +60,7 @@ def test_pagination_returns_waiting_human_input_extra_contents(db_session_with_c
         conversation_id=fixture.conversation.id,
         first_id=None,
         limit=10,
+        session=db_session_with_containers,
     )
 
     assert pagination.data

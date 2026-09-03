@@ -1,11 +1,9 @@
 """Unit tests for services.enterprise.rbac_service.
 
-The enterprise RBAC client is almost pure glue: each method turns a single
-``EnterpriseRequest.send_inner_rbac_request`` call into a pydantic response
-model. Rather than spinning up an HTTP server we monkeypatch that helper and
-assert on the arguments it received; that catches both routing regressions
-(wrong method / wrong path / wrong params) and model-shape regressions in
-one place.
+Most enterprise RBAC methods turn a single ``EnterpriseRequest.send_inner_rbac_request``
+call into a pydantic response model. Rather than spinning up an HTTP server, these tests
+monkeypatch that helper and assert on the request arguments and response shape. The legacy
+fallbacks use SQLite to verify their database reads and committed role updates.
 """
 
 from __future__ import annotations
@@ -15,7 +13,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from models import TenantAccountJoin
 from services.enterprise import rbac_service as svc
 
 MODULE = "services.enterprise.rbac_service"
@@ -46,7 +47,7 @@ class TestCatalog:
         assert call.tenant_id == "tenant-1"
         assert call.account_id == "acct-1"
         assert call.json is None
-        assert call.params == {"billing_enabled": svc.dify_config.BILLING_ENABLED}
+        assert call.params is None
         assert len(out.groups) == 1
         assert out.groups[0].group_key == "workspace"
 
@@ -132,7 +133,7 @@ class TestRoles:
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/roles/item"
-        assert call.params == {"id": "role-1"}
+        assert call.params == {"billing_enabled": True, "id": "role-1"}
 
     def test_members_forwards_role_id_and_pagination(self, mock_send: MagicMock):
         mock_send.return_value = {
@@ -274,6 +275,52 @@ class TestAccessPolicies:
 
 
 class TestResourceAccess:
+    def test_resource_whitelist_configs_batch_get(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "data": [
+                {
+                    "resource_type": "app",
+                    "resource_id": "app-1",
+                    "scope": "all",
+                    "automatic_include_workspace_members": True,
+                    "account_ids": ["acct-1"],
+                },
+                {
+                    "resource_type": "dataset",
+                    "resource_id": "dataset-1",
+                    "scope": "specific",
+                    "automatic_include_workspace_members": False,
+                    "account_ids": None,
+                },
+            ]
+        }
+
+        out = svc.RBACService.ResourceWhitelistConfigs.batch_get(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.ResourceWhitelistConfigResource(resource_type=svc.RBACResourceType.APP, resource_id="app-1"),
+                svc.ResourceWhitelistConfigResource(
+                    resource_type=svc.RBACResourceType.DATASET,
+                    resource_id="dataset-1",
+                ),
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/whitelist/configs"
+        assert call.json == {
+            "resources": [
+                {"resource_type": "app", "resource_id": "app-1"},
+                {"resource_type": "dataset", "resource_id": "dataset-1"},
+            ]
+        }
+        assert [item.resource_id for item in out.data] == ["app-1", "dataset-1"]
+        assert out.data[0].automatic_include_workspace_members is True
+        assert out.data[0].rbac_whitelist_scope == "all"
+        assert out.data[1].account_ids == []
+
     def test_app_whitelist_resources(self, mock_send: MagicMock):
         mock_send.return_value = {"unrestricted": True, "resource_ids": ["app-1", "app-2"]}
 
@@ -299,7 +346,8 @@ class TestResourceAccess:
 
     def test_app_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
-            "scope": "app",
+            "scope": "specific",
+            "pagination": {"total_count": 1, "per_page": 10, "current_page": 2, "total_pages": 3},
             "data": [
                 {
                     "account": {"account_id": "acct-1", "account_name": "Alice"},
@@ -322,15 +370,54 @@ class TestResourceAccess:
             ],
         }
 
-        out = svc.RBACService.AppAccess.user_access_policies("tenant-1", "acct-1", "app-1")
+        out = svc.RBACService.AppAccess.user_access_policies(
+            "tenant-1",
+            "acct-1",
+            "app-1",
+            options=svc.ListOption(page_number=2, results_per_page=10, reverse=False),
+        )
 
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/apps/user-access-policies"
-        assert call.params == {"app_id": "app-1"}
+        assert call.params == {
+            "page_number": 2,
+            "results_per_page": 10,
+            "reverse": "false",
+            "app_id": "app-1",
+        }
         assert out.data[0].account.account_name == "Alice"
         assert out.data[0].roles[0].id == "role-1"
         assert out.data[0].access_policies[0].id == "policy-1"
+        assert out.pagination
+        assert out.pagination.current_page == 2
+        assert "scope" not in out.model_dump(mode="json")
+
+    def test_dataset_user_access_policies_forwards_pagination(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "scope": "specific",
+            "data": [],
+            "pagination": {"total_count": 0, "per_page": 20, "current_page": 1, "total_pages": 0},
+        }
+
+        out = svc.RBACService.DatasetAccess.user_access_policies(
+            "tenant-1",
+            "acct-1",
+            "dataset-1",
+            options=svc.ListOption(page_number=1, results_per_page=20, reverse=True),
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/user-access-policies"
+        assert call.params == {
+            "page_number": 1,
+            "results_per_page": 20,
+            "reverse": "true",
+            "dataset_id": "dataset-1",
+        }
+        assert out.pagination
+        assert out.pagination.per_page == 20
 
     def test_dataset_replace_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
@@ -349,8 +436,52 @@ class TestResourceAccess:
         assert call.json == {"access_policy_ids": ["policy-1"]}
         assert out.access_policies[0].id == "policy-1"
 
+    def test_app_append_whitelist_members_batch(self, mock_send: MagicMock):
+        mock_send.return_value = None
+
+        svc.RBACService.AppAccess.append_whitelist_members_batch(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.AppendAppWhitelistMembersBatchItem(
+                    app_id="app-1",
+                    account_ids=["acct-1", "acct-2"],
+                    policy_id="policy-1",
+                )
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/apps/whitelist/members/batch"
+        assert call.json == {
+            "data": [{"app_id": "app-1", "account_ids": ["acct-1", "acct-2"], "policy_id": "policy-1"}]
+        }
+
+    def test_dataset_append_whitelist_members_batch(self, mock_send: MagicMock):
+        mock_send.return_value = None
+
+        svc.RBACService.DatasetAccess.append_whitelist_members_batch(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.AppendDatasetWhitelistMembersBatchItem(
+                    dataset_id="dataset-1",
+                    account_ids=["acct-1", "acct-2"],
+                    policy_id="policy-1",
+                )
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/datasets/whitelist/members/batch"
+        assert call.json == {
+            "data": [{"dataset_id": "dataset-1", "account_ids": ["acct-1", "acct-2"], "policy_id": "policy-1"}]
+        }
+
     def test_dataset_whitelist(self, mock_send: MagicMock):
-        mock_send.return_value = {"account_ids": ["acct-2"]}
+        mock_send.return_value = {"account_ids": ["acct-2"], "automatic_include_workspace_members": False}
 
         out = svc.RBACService.DatasetAccess.whitelist("tenant-1", "acct-1", "dataset-1")
 
@@ -359,6 +490,51 @@ class TestResourceAccess:
         assert call.endpoint == "/rbac/datasets/whitelist"
         assert call.params == {"dataset_id": "dataset-1"}
         assert out.account_ids == ["acct-2"]
+
+    def test_app_whitelist_config(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": True,
+        }
+
+        out = svc.RBACService.AppAccess.whitelist_config("tenant-1", "acct-1", "app-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/apps/whitelist"
+        assert call.params == {"app_id": "app-1"}
+        assert out.model_dump(mode="json") == {"automatic_include_workspace_members": True}
+
+    def test_dataset_whitelist_config(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": False,
+            "scope": "specific",
+        }
+
+        out = svc.RBACService.DatasetAccess.whitelist_config("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.model_dump(mode="json") == {"automatic_include_workspace_members": False}
+
+    def test_dataset_legacy_whitelist_config_reads_old_scope_without_public_dump(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": False,
+            "scope": "specific",
+        }
+
+        out = svc.RBACService.DatasetAccess.legacy_whitelist_config("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.account_ids == ["acct-1"]
+        assert out.rbac_whitelist_scope == "specific"
 
     def test_app_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"resource_id": "app-1", "items": []}
@@ -533,8 +709,13 @@ class TestWorkspaceAccess:
         assert call.params == {"language": "en"}
 
 
+@pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
 class TestMyPermissions:
-    def test_resource_snapshot_maps_defaults_and_overrides(self):
+    @pytest.fixture(autouse=True)
+    def _rbac_enabled(self, config_overrides) -> None:
+        config_overrides(RBAC_ENABLED=True)
+
+    def test_resource_snapshot_maps_defaults_and_overrides(self, sqlite_session: Session):
         snapshot = svc.ResourcePermissionSnapshot(
             default_permission_keys=["app.acl.view_layout"],
             overrides=[
@@ -550,15 +731,14 @@ class TestMyPermissions:
             "app-2": ["app.acl.view_layout", "app.acl.edit"],
         }
 
-    def test_get_without_payload_uses_get(self, mock_send: MagicMock):
+    def test_get_without_payload_uses_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "workspace": {"permission_keys": ["workspace.member.manage"]},
             "app": {"default_permission_keys": ["app.acl.view_layout", "app.acl.test_and_run"], "overrides": []},
             "dataset": {"default_permission_keys": [], "overrides": []},
         }
 
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
 
         call = _call_args(mock_send)
         assert call.method == "GET"
@@ -597,7 +777,7 @@ class TestMyPermissions:
             (
                 "dataset_operator",
                 svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
-                [],
+                svc._LEGACY_APP_DATASET_OPERATOR_KEYS,
                 svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
             ),
         ],
@@ -609,15 +789,15 @@ class TestMyPermissions:
         workspace_keys: list[str],
         app_keys: list[str],
         dataset_keys: list[str],
+        sqlite_session: Session,
+        config_overrides,
     ):
-        mock_session = MagicMock()
-        mock_session.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = role
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
-        ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+        config_overrides(RBAC_ENABLED=False)
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole(role))
+        )
+        sqlite_session.commit()
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == workspace_keys
@@ -627,14 +807,15 @@ class TestMyPermissions:
         assert out.app.overrides == []
         assert out.dataset.overrides == []
         if role == "owner":
-            assert "billing.view" in out.workspace.permission_keys
             assert "snippets.management" in out.workspace.permission_keys
             assert "app.acl.preview" in out.workspace.permission_keys
             assert "dataset.acl.preview" in out.workspace.permission_keys
             assert "app.acl.preview" in out.app.default_permission_keys
             assert "dataset.acl.preview" in out.dataset.default_permission_keys
+        assert not any(key.startswith("billing.") for key in out.workspace.permission_keys)
         if role == "editor":
             assert "app.acl.log_and_annotation" in out.app.default_permission_keys
+        assert "app.acl.deploy" not in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),
@@ -651,15 +832,15 @@ class TestMyPermissions:
         mock_send: MagicMock,
         role: str,
         expected_snippet_keys: set[str],
+        sqlite_session: Session,
+        config_overrides,
     ):
-        mock_session = MagicMock()
-        mock_session.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = role
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
-        ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+        config_overrides(RBAC_ENABLED=False)
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole(role))
+        )
+        sqlite_session.commit()
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
 
         actual_snippet_keys = {
             permission_key for permission_key in out.workspace.permission_keys if permission_key.startswith("snippets.")
@@ -668,22 +849,18 @@ class TestMyPermissions:
         mock_send.assert_not_called()
         assert actual_snippet_keys == expected_snippet_keys
 
-    def test_get_returns_empty_when_role_missing_and_rbac_disabled(self, mock_send: MagicMock):
-        mock_session = MagicMock()
-        mock_session.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = None
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
-        ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+    def test_get_returns_empty_when_role_missing_and_rbac_disabled(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == []
         assert out.app.default_permission_keys == []
         assert out.dataset.default_permission_keys == []
 
-    def test_get_with_single_resource_filters(self, mock_send: MagicMock):
+    def test_get_with_single_resource_filters(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "workspace": {"permission_keys": []},
             "app": {
@@ -693,8 +870,7 @@ class TestMyPermissions:
             "dataset": {"default_permission_keys": [], "overrides": []},
         }
 
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", app_id="app-1")
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", app_id="app-1", session=sqlite_session)
 
         call = _call_args(mock_send)
         assert call.method == "GET"
@@ -703,8 +879,13 @@ class TestMyPermissions:
         assert out.app.overrides[0].resource_id == "app-1"
 
 
+@pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
 class TestMemberRoles:
-    def test_get(self, mock_send: MagicMock):
+    @pytest.fixture(autouse=True)
+    def _rbac_enabled(self, config_overrides) -> None:
+        config_overrides(RBAC_ENABLED=True)
+
+    def test_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "account_id": "acct-2",
             "roles": [
@@ -715,8 +896,7 @@ class TestMemberRoles:
                 }
             ],
         }
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+        out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=sqlite_session)
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/members/rbac-roles"
@@ -724,16 +904,16 @@ class TestMemberRoles:
         assert out.account_id == "acct-2"
         assert out.roles[0].name == "Member"
 
-    def test_get_legacy_role_includes_permission_keys(self, mock_send: MagicMock):
-        session = MagicMock()
-        session.scalar.return_value = svc.TenantAccountRole.EDITOR
+    def test_get_legacy_role_includes_permission_keys(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.EDITOR)
+        )
+        sqlite_session.commit()
 
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session") as create_session,
-        ):
-            create_session.return_value.__enter__.return_value = session
-            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+        out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=sqlite_session)
 
         mock_send.assert_not_called()
         assert out.account_id == "acct-2"
@@ -750,58 +930,78 @@ class TestMemberRoles:
         assert "snippets.create_and_modify" in out.roles[0].permission_keys
         assert "app.acl.preview" in out.roles[0].permission_keys
         assert "dataset.acl.preview" in out.roles[0].permission_keys
+        assert "app.acl.deploy" not in out.roles[0].permission_keys
 
-    def test_replace(self, mock_send: MagicMock):
+    def test_replace(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            svc.RBACService.MemberRoles.replace(
-                "tenant-1", "acct-1", "acct-2", role_ids=["workspace.owner", "workspace.editor"]
-            )
+        svc.RBACService.MemberRoles.replace(
+            "tenant-1",
+            "acct-1",
+            "acct-2",
+            role_ids=["workspace.owner", "workspace.editor"],
+            session=sqlite_session,
+        )
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/members/rbac-roles"
         assert call.params == {"account_id": "acct-2"}
         assert call.json == {"role_ids": ["workspace.owner", "workspace.editor"]}
 
-    def test_replace_updates_legacy_join_role_when_rbac_disabled(self, mock_send: MagicMock):
-        session = MagicMock()
-        session.__enter__.return_value = session
-        target_join = SimpleNamespace(role=svc.TenantAccountRole.NORMAL, account_id="acct-2")
-        session.scalar.return_value = target_join
+    def test_replace_commits_legacy_join_role_when_rbac_disabled(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        target_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.NORMAL)
+        sqlite_session.add(target_join)
+        sqlite_session.commit()
+        target_join_id = target_join.id
+        engine = sqlite_session.get_bind()
 
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=session),
-        ):
-            out = svc.RBACService.MemberRoles.replace("tenant-1", "acct-1", "acct-2", role_ids=["editor"])
+        out = svc.RBACService.MemberRoles.replace(
+            "tenant-1", "acct-1", "acct-2", role_ids=["editor"], session=sqlite_session
+        )
 
         mock_send.assert_not_called()
-        session.commit.assert_called_once()
-        assert target_join.role == svc.TenantAccountRole.EDITOR
+        # Closing the writer rolls back any uncommitted update and prevents its identity map
+        # from satisfying the verification query.
+        sqlite_session.close()
+        with Session(engine) as verification_session:
+            persisted_join = verification_session.scalar(
+                select(TenantAccountJoin).where(TenantAccountJoin.id == target_join_id)
+            )
+            assert persisted_join is not None
+            assert persisted_join.role == svc.TenantAccountRole.EDITOR
         assert out.account_id == "acct-2"
         assert out.roles[0].id == "editor"
         assert "app.acl.preview" in out.roles[0].permission_keys
 
-    def test_replace_legacy_owner_demotes_current_owner_when_rbac_disabled(self, mock_send: MagicMock):
-        session = MagicMock()
-        session.__enter__.return_value = session
-        target_join = SimpleNamespace(role=svc.TenantAccountRole.NORMAL, account_id="acct-2")
-        owner_join = SimpleNamespace(role=svc.TenantAccountRole.OWNER, account_id="acct-owner")
-        session.scalar.side_effect = [target_join, owner_join]
+    def test_replace_legacy_owner_demotes_current_owner_when_rbac_disabled(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        target_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.NORMAL)
+        owner_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-owner", role=svc.TenantAccountRole.OWNER)
+        sqlite_session.add_all([target_join, owner_join])
+        sqlite_session.commit()
 
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=session),
-        ):
-            out = svc.RBACService.MemberRoles.replace("tenant-1", "acct-1", "acct-2", role_ids=["owner"])
+        out = svc.RBACService.MemberRoles.replace(
+            "tenant-1", "acct-1", "acct-2", role_ids=["owner"], session=sqlite_session
+        )
 
         mock_send.assert_not_called()
-        session.commit.assert_called_once()
-        assert target_join.role == svc.TenantAccountRole.OWNER
-        assert owner_join.role == svc.TenantAccountRole.ADMIN
+        persisted_joins = {
+            join.account_id: join.role
+            for join in sqlite_session.scalars(
+                select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == "tenant-1")
+            )
+        }
+        assert persisted_joins == {
+            "acct-2": svc.TenantAccountRole.OWNER,
+            "acct-owner": svc.TenantAccountRole.NORMAL,
+        }
         assert out.roles[0].id == "owner"
 
-    def test_batch_get(self, mock_send: MagicMock):
+    def test_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "acct-2": [
                 {"id": "role-1", "name": "Admin", "type": "workspace"},
@@ -822,44 +1022,52 @@ class TestMemberRoles:
         assert out[1].roles == []
 
 
+@pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
 class TestResourcePermissions:
-    def test_app_permissions_batch_get(self, mock_send: MagicMock):
+    @pytest.fixture(autouse=True)
+    def _rbac_enabled(self, config_overrides) -> None:
+        config_overrides(RBAC_ENABLED=True)
+
+    def test_app_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "data": [
-                {"resource_id": "app-1", "permission_keys": ["app.acl.view_layout", "app.acl.edit"]},
+                {
+                    "resource_id": "app-1",
+                    "permission_keys": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
+                },
                 {"resource_id": "app-2", "permission_keys": []},
             ]
         }
 
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+        out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"], session=sqlite_session)
 
         call = _call_args(mock_send)
         assert call.method == "POST"
         assert call.endpoint == "/rbac/apps/permission-keys/batch"
         assert call.json == {"app_ids": ["app-1", "app-2"]}
         assert out == {
-            "app-1": ["app.acl.view_layout", "app.acl.edit"],
+            "app-1": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
             "app-2": [],
         }
 
-    def test_app_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(self, mock_send: MagicMock):
-        mock_session = MagicMock()
-        mock_session.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = "editor"
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
-        ):
-            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+    def test_app_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole.EDITOR)
+        )
+        sqlite_session.commit()
+        out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"], session=sqlite_session)
 
         mock_send.assert_not_called()
         assert out == {
             "app-1": svc._LEGACY_APP_EDITOR_KEYS,
             "app-2": svc._LEGACY_APP_EDITOR_KEYS,
         }
+        assert all("app.acl.deploy" not in permission_keys for permission_keys in out.values())
 
-    def test_dataset_permissions_batch_get(self, mock_send: MagicMock):
+    def test_dataset_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "data": [
                 {"resource_id": "ds-1", "permission_keys": ["dataset.acl.readonly"]},
@@ -867,8 +1075,9 @@ class TestResourcePermissions:
             ]
         }
 
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+        out = svc.RBACService.DatasetPermissions.batch_get(
+            "tenant-1", "acct-1", ["ds-1", "ds-2"], session=sqlite_session
+        )
 
         call = _call_args(mock_send)
         assert call.method == "POST"
@@ -879,15 +1088,21 @@ class TestResourcePermissions:
             "ds-2": ["dataset.acl.edit"],
         }
 
-    def test_dataset_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(self, mock_send: MagicMock):
-        mock_session = MagicMock()
-        mock_session.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = "dataset_operator"
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
-        ):
-            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+    def test_dataset_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
+        self, mock_send: MagicMock, sqlite_session: Session, config_overrides
+    ):
+        config_overrides(RBAC_ENABLED=False)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="acct-1",
+                role=svc.TenantAccountRole.DATASET_OPERATOR,
+            )
+        )
+        sqlite_session.commit()
+        out = svc.RBACService.DatasetPermissions.batch_get(
+            "tenant-1", "acct-1", ["ds-1", "ds-2"], session=sqlite_session
+        )
 
         mock_send.assert_not_called()
         assert out == {
@@ -909,3 +1124,16 @@ class TestListOption:
             "page_number": 1,
             "resource_type": "app",
         }
+
+
+class TestLegacyAgentManageKey:
+    def test_legacy_agent_manage_key_membership(self):
+        # Preserve Agent access for every legacy role while external RBAC is disabled.
+        for keys in (
+            svc._LEGACY_WORKSPACE_OWNER_KEYS,
+            svc._LEGACY_WORKSPACE_ADMIN_KEYS,
+            svc._LEGACY_WORKSPACE_EDITOR_KEYS,
+            svc._LEGACY_WORKSPACE_NORMAL_KEYS,
+            svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        ):
+            assert "agent.manage" in keys

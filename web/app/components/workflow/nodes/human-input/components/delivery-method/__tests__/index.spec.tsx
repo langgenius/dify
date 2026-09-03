@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'
 
@@ -9,20 +11,27 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-}))
+vi.mock('../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-nodes-sync-draft')>()
+
+  return {
+    ...actual,
+    useNodesSyncDraft: () => mockUseNodesSyncDraft(),
+  }
+})
 
 vi.mock('../method-selector', () => ({
   __esModule: true,
   default: (props: {
-    onAdd: (method: { id: string, type: DeliveryMethodType, enabled: boolean }) => void
+    onAdd: (method: { id: string; type: DeliveryMethodType; enabled: boolean }) => void
     onShowUpgradeTip: () => void
   }) => (
     <div>
       <button
         type="button"
-        onClick={() => props.onAdd({ id: 'email-1', type: DeliveryMethodType.Email, enabled: false })}
+        onClick={() =>
+          props.onAdd({ id: 'email-1', type: DeliveryMethodType.Email, enabled: false })
+        }
       >
         add-method
       </button>
@@ -36,8 +45,8 @@ vi.mock('../method-selector', () => ({
 vi.mock('../method-item', () => ({
   __esModule: true,
   default: (props: {
-    method: { type: DeliveryMethodType, enabled: boolean }
-    onChange: (method: { type: DeliveryMethodType, enabled: boolean }) => void
+    method: { type: DeliveryMethodType; enabled: boolean }
+    onChange: (method: { type: DeliveryMethodType; enabled: boolean }) => void
     onDelete: (type: DeliveryMethodType) => void
   }) => (
     <div data-testid={`method-${props.method.type}`}>
@@ -47,10 +56,7 @@ vi.mock('../method-item', () => ({
       >
         change-method
       </button>
-      <button
-        type="button"
-        onClick={() => props.onDelete(props.method.type)}
-      >
+      <button type="button" onClick={() => props.onDelete(props.method.type)}>
         delete-method
       </button>
     </div>
@@ -64,7 +70,7 @@ describe('DeliveryMethodForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesSyncDraft.mockReturnValue({
       handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
@@ -72,13 +78,7 @@ describe('DeliveryMethodForm', () => {
   })
 
   it('should render the empty state and add methods through the selector', () => {
-    render(
-      <DeliveryMethodForm
-        nodeId="node-1"
-        value={[]}
-        onChange={onChange}
-      />,
-    )
+    render(<DeliveryMethodForm nodeId="node-1" value={[]} onChange={onChange} />)
 
     expect(screen.getByText('nodes.humanInput.deliveryMethod.emptyTip')).toBeInTheDocument()
     fireEvent.click(screen.getByText('add-method'))
@@ -97,11 +97,13 @@ describe('DeliveryMethodForm', () => {
     render(
       <DeliveryMethodForm
         nodeId="node-1"
-        value={[{
-          id: 'email-1',
-          type: DeliveryMethodType.Email,
-          enabled: false,
-        }]}
+        value={[
+          {
+            id: 'email-1',
+            type: DeliveryMethodType.Email,
+            enabled: false,
+          },
+        ]}
         onChange={onChange}
       />,
     )
@@ -109,28 +111,26 @@ describe('DeliveryMethodForm', () => {
     fireEvent.click(screen.getByText('change-method'))
     fireEvent.click(screen.getByText('delete-method'))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, [{
-      id: 'email-1',
-      type: DeliveryMethodType.Email,
-      enabled: true,
-    }])
+    expect(onChange).toHaveBeenNthCalledWith(1, [
+      {
+        id: 'email-1',
+        type: DeliveryMethodType.Email,
+        enabled: true,
+      },
+    ])
     expect(onChange).toHaveBeenNthCalledWith(2, [])
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 
   it('should open and close the upgrade modal', async () => {
-    render(
-      <DeliveryMethodForm
-        nodeId="node-1"
-        value={[]}
-        onChange={onChange}
-      />,
-    )
+    render(<DeliveryMethodForm nodeId="node-1" value={[]} onChange={onChange} />)
 
     fireEvent.click(screen.getByText('show-upgrade'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'nodes.humanInput.deliveryMethod.upgradeTipHide' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'nodes.humanInput.deliveryMethod.upgradeTipHide' }),
+    )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

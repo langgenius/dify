@@ -1,0 +1,103 @@
+'use client'
+
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { DeleteAgentDialog } from '@/features/agent-v2/roster/components/delete-agent-dialog'
+import { DuplicateAgentDialog } from '@/features/agent-v2/roster/components/duplicate-agent-dialog'
+import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agent-dialog'
+import { useRouter } from '@/next/navigation'
+
+type AgentDetailSidebarActionAgent = AgentFormSource & Pick<AgentAppPartial, 'app_id'>
+
+export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
+  const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation('app')
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const router = useRouter()
+  const handleEditOpen = () => {
+    setIsEditOpen(true)
+  }
+
+  const handleDuplicateOpen = () => {
+    setIsDuplicateOpen(true)
+  }
+
+  const handleExport = () => {
+    if (!agent.app_id) {
+      toast.error(tApp(($) => $.exportFailed))
+      return
+    }
+
+    return exportAppDsl({
+      appId: agent.app_id,
+      appName: agent.name,
+    })
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+        >
+          <span aria-hidden className="i-ri-more-fill size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+          <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
+            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+            <span>{t(($) => $['roster.editInfo'])}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
+            <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
+            <span>{tCommon(($) => $['operation.duplicate'])}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tApp(($) => $.export)}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            className="gap-2"
+            onClick={() => setIsDeleteOpen(true)}
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+            <span>{tCommon(($) => $['operation.delete'])}</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
+      <DuplicateAgentDialog
+        agent={agent}
+        open={isDuplicateOpen}
+        onOpenChange={setIsDuplicateOpen}
+      />
+      <DeleteAgentDialog
+        agentId={agent.id}
+        agentName={agent.name}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        onDeleted={() => router.replace('/agents')}
+      />
+    </>
+  )
+}

@@ -1,41 +1,34 @@
-"""Provider-agnostic shell provisioning/execution adapter for the Dify agent.
+"""Provider-agnostic shell adapter exports for the Dify agent.
 
-The boundary protocols live in ``protocols``; the default shellctl backend in
-``shellctl``; and env-var-driven provider selection in ``config``/``factory``.
-``create_shell_provisioner`` is the recommended entry point for callers.
+Keep this package root light so importing shell protocols does not eagerly
+require ``pydantic_settings`` or shellctl runtime dependencies.
 """
 
-from dify_agent.adapters.shell.config import DEFAULT_SHELL_PROVIDER, ShellAdapterSettings
-from dify_agent.adapters.shell.factory import create_shell_provisioner
 from dify_agent.adapters.shell.protocols import (
-    ShellEnvironmentDescriptor,
-    ShellExecutionResult,
-    ShellExecutorProtocol,
-    ShellFileTransferProtocol,
-    ShellHandle,
-    ShellProvisionProtocol,
-)
-from dify_agent.adapters.shell.shellctl import (
-    ShellctlEnvironmentDescriptor,
-    ShellctlProvisioner,
-    ShellFileTransferError,
-    ShellProvisionError,
-    create_default_shellctl_client_factory,
+    CompleteShellCommandResult,
+    ShellCommandProtocol,
+    ShellCommandResult,
+    ShellCommandStatus,
+    ShellExecutionMode,
+    ShellPromptObservation,
+    ShellProviderError,
 )
 
+
+def __getattr__(name: str) -> object:
+    if name == "shellctl":
+        from importlib import import_module
+
+        return import_module("dify_agent.adapters.shell.shellctl")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
-    "DEFAULT_SHELL_PROVIDER",
-    "ShellAdapterSettings",
-    "ShellEnvironmentDescriptor",
-    "ShellExecutionResult",
-    "ShellExecutorProtocol",
-    "ShellFileTransferError",
-    "ShellFileTransferProtocol",
-    "ShellHandle",
-    "ShellProvisionError",
-    "ShellProvisionProtocol",
-    "ShellctlEnvironmentDescriptor",
-    "ShellctlProvisioner",
-    "create_default_shellctl_client_factory",
-    "create_shell_provisioner",
+    "CompleteShellCommandResult",
+    "ShellCommandProtocol",
+    "ShellCommandResult",
+    "ShellCommandStatus",
+    "ShellExecutionMode",
+    "ShellPromptObservation",
+    "ShellProviderError",
 ]

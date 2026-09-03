@@ -1,10 +1,9 @@
 import contextlib
 import json
-import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, overload
+from typing import Any, Concatenate, Protocol, cast, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -19,7 +18,8 @@ from controllers.common.wraps import (
 )
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
@@ -28,8 +28,11 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.feature_service import FeatureService, LicenseStatus
+from services.billing_service import BillingService
+from services.entities.feature_entities import LicenseStatus
+from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
+from services.system_feature_service import SystemFeatureService
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
@@ -44,6 +47,60 @@ FIELD_NAME_CODE = "code"
 # Error messages for decryption failures
 ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
+
+
+class OnceTrueCallable[**P](Protocol):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> bool: ...
+
+    def mark_success(self) -> None: ...
+
+    def reset_success(self) -> None: ...
+
+
+def once_true[**P](func: Callable[P, bool]) -> OnceTrueCallable[P]:
+    """Wrap a predicate so only a strict True result is memoized."""
+    has_success = False
+
+    def mark_success() -> None:
+        nonlocal has_success
+
+        has_success = True
+
+    def reset_success() -> None:
+        nonlocal has_success
+
+        has_success = False
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> bool:
+        nonlocal has_success
+
+        if has_success:
+            return True
+
+        result = func(*args, **kwargs)
+        if result is True:
+            has_success = True
+
+        return result
+
+    wrapper.mark_success = mark_success  # type: ignore[attr-defined]
+    wrapper.reset_success = reset_success  # type: ignore[attr-defined]
+    return cast(OnceTrueCallable[P], wrapper)
+
+
+def mark_setup_completed() -> None:
+    """Remember in this process that one-time self-hosted setup has completed."""
+    _is_setup_completed.mark_success()
+
+
+@once_true
+def _is_setup_completed() -> bool:
+    """Check whether setup exists, caching only successful observations.
+
+    Use `once_true` instead of `@cache` because a pre-setup False result must not be memoized.
+    """
+    return db.session.scalar(select(DifySetup).limit(1)) is not None
 
 
 @overload
@@ -74,7 +131,7 @@ def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., 
 def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if dify_config.EDITION != "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             abort(404)
 
         return view(*args, **kwargs)
@@ -85,7 +142,7 @@ def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             abort(404)
 
         return view(*args, **kwargs)
@@ -96,7 +153,7 @@ def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if dify_config.EDITION != "SELF_HOSTED":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             abort(404)
 
         return view(*args, **kwargs)
@@ -104,11 +161,16 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.BILLING_ENABLED:
-            abort(403, "Billing feature is not enabled.")
+        _, current_tenant_id = current_account_with_tenant()
+        billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
+        if not billing_info["enabled"] or billing_info["subscription"]["plan"] not in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        ):
+            abort(403, "This feature requires a paid plan.")
         return view(*args, **kwargs)
 
     return decorated
@@ -120,10 +182,10 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
             if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
+                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
-                vector_space = FeatureService.get_vector_space(current_tenant_id)
+                vector_space = application_services().feature_queries.get_workspace_vector_space(current_tenant_id)
                 if 0 < vector_space.limit <= vector_space.size:
                     abort(
                         403,
@@ -144,7 +206,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
-                    source = request.args.get("source")
+                    source = request.args.get("source") or request.form.get("source")
                     if source == "datasets":
                         abort(403, "The number of documents has reached the limit of your subscription.")
                     else:
@@ -188,35 +250,35 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
+def check_knowledge_rate_limit() -> None:
+    _, current_tenant_id = current_account_with_tenant()
+    knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
+    if not knowledge_rate_limit.enabled:
+        return
+
+    current_time = int(time.time() * 1000)
+    key = f"rate_limit_{current_tenant_id}"
+    redis_client.zadd(key, {current_time: current_time})
+    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+    if redis_client.zcard(key) > knowledge_rate_limit.limit:
+        db.session.add(  # guard-ignore: no-new-controller-sqlalchemy -- existing decorator audit write
+            RateLimitLog(
+                tenant_id=current_tenant_id,
+                subscription_plan=knowledge_rate_limit.subscription_plan,
+                operation="knowledge",
+            )
+        )
+        db.session.commit()
+        abort(403, "Sorry, you have reached the knowledge base request rate limit of your subscription.")
+
+
 def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
-                _, current_tenant_id = current_account_with_tenant()
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{current_tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        # add ratelimit record
-                        rate_limit_log = RateLimitLog(
-                            tenant_id=current_tenant_id,
-                            subscription_plan=knowledge_rate_limit.subscription_plan,
-                            operation="knowledge",
-                        )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
-                        abort(
-                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
+                check_knowledge_rate_limit()
             return view(*args, **kwargs)
 
         return decorated
@@ -229,7 +291,7 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
             utm_info = request.cookies.get("utm_info")
-            if dify_config.BILLING_ENABLED and utm_info:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and utm_info:
                 _, current_tenant_id = current_account_with_tenant()
                 utm_info_dict: UtmInfo = json.loads(utm_info)
                 OperationService.record_utm(current_tenant_id, utm_info_dict)
@@ -246,7 +308,9 @@ def setup_required[T, **P, R](
 
 
 @overload
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Require self-hosted bootstrap setup before serving protected routes."""
+    ...
 
 
 def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
@@ -255,8 +319,8 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
         # The overloads keep Resource methods method-aware for pyrefly while
         # preserving support for plain functions used in tests and utilities.
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
-            if os.environ.get("INIT_PASSWORD"):
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and not _is_setup_completed():
+            if dify_config.INIT_PASSWORD:
                 raise NotInitValidateError()
             raise NotSetupError()
 
@@ -268,8 +332,11 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
 def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        settings = FeatureService.get_system_features()
-        if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
+        if SystemFeatureService.get_license_status() in [
+            LicenseStatus.INACTIVE,
+            LicenseStatus.EXPIRED,
+            LicenseStatus.LOST,
+        ]:
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
@@ -280,21 +347,7 @@ def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.enable_email_password_login:
-            return view(*args, **kwargs)
-
-        # otherwise, return 403
-        abort(403)
-
-    return decorated
-
-
-def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.is_allow_register:
+        if SystemFeatureService.is_email_password_login_enabled():
             return view(*args, **kwargs)
 
         # otherwise, return 403
@@ -306,8 +359,7 @@ def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.enable_change_email:
+        if SystemFeatureService.is_change_email_enabled():
             return view(*args, **kwargs)
 
         # otherwise, return 403
@@ -323,7 +375,11 @@ def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
         _, current_tenant_id = current_account_with_tenant()
         # Check both billing/plan level and workspace policy level permissions
-        check_workspace_owner_transfer_permission(current_tenant_id)
+        features = application_services().feature_queries.get_workspace_features(current_tenant_id)
+        check_workspace_owner_transfer_permission(
+            current_tenant_id,
+            owner_transfer_allowed=features.is_allow_transfer_workspace,
+        )
         return view(*args, **kwargs)
 
     return decorated
@@ -590,6 +646,23 @@ def with_current_user_id[T, **P, R](
     return decorated
 
 
+def validate_request[M: BaseModel](model: type[M]) -> M:
+    """Parse and validate the current request without exposing submitted values."""
+
+    if request.method == "GET":
+        raw = request.args.to_dict(flat=True)
+    elif request.method == "DELETE":
+        raw = request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
+    else:
+        raw = request.get_json(silent=True) or {}
+
+    try:
+        return model.model_validate(raw)
+    except ValidationError as exc:
+        errors = exc.errors(include_url=False, include_input=False, include_context=False)
+        raise UnprocessableEntity(json.dumps(errors)) from None
+
+
 def model_validate[T, M: BaseModel, **P, R](
     model: type[M],
 ) -> Callable[
@@ -599,7 +672,8 @@ def model_validate[T, M: BaseModel, **P, R](
     """Validate request data and inject the model instance as the first arg after self.
 
     Source is determined by HTTP method:
-      GET/DELETE -> request.args
+      GET -> request.args
+      DELETE -> request.args, falling back to JSON body when the query string is empty
       POST/PUT/PATCH -> JSON body
     """
 
@@ -608,17 +682,7 @@ def model_validate[T, M: BaseModel, **P, R](
     ) -> Callable[Concatenate[T, P], R]:
         @wraps(view)
         def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
-            if request.method in ("GET", "DELETE"):
-                raw = request.args.to_dict(flat=True)
-            else:
-                raw = request.get_json(silent=True) or {}
-
-            try:
-                validated = model.model_validate(raw)
-            except ValidationError as exc:
-                raise UnprocessableEntity(exc.json())
-
-            return view(self, validated, *args, **kwargs)
+            return view(self, validate_request(model), *args, **kwargs)
 
         return wrapper
 

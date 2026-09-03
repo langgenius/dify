@@ -1,6 +1,8 @@
 import type { PermissionKey } from '@/models/access-control'
 
 export const AppACLPermission = {
+  AccessPointManage: 'app.acl.access_point_manage',
+  AccessPointView: 'app.acl.access_point_view',
   Preview: 'app.acl.preview',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
@@ -8,6 +10,7 @@ export const AppACLPermission = {
   ImportExportDSL: 'app.acl.import_export_dsl',
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
+  Deploy: 'app.acl.deploy',
   Monitor: 'app.acl.monitor',
   TracingConfig: 'app.acl.tracing_config',
   LogAndAnnotation: 'app.acl.log_and_annotation',
@@ -29,12 +32,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-export const BillingPermission = {
-  View: 'billing.view',
-  Manage: 'billing.manage',
-  SubscriptionManage: 'billing.subscription.manage',
-} as const
-
 export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
@@ -43,15 +40,17 @@ export type ResourceMaintainerPermissionOptions = {
 }
 
 type AppACLCapabilities = {
+  canManageAccessPoint: boolean
+  canViewAccessPoint: boolean
   canViewLayout: boolean
   canTestAndRun: boolean
   canEdit: boolean
   canAccessLayout: boolean
-  canComment: boolean
   canPreviewApp: boolean
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
+  canDeploy: boolean
   canMonitor: boolean
   canConfigureTracing: boolean
   canAccessLogAndAnnotation: boolean
@@ -72,22 +71,28 @@ type DatasetACLCapabilities = {
   canAccessConfig: boolean
 }
 
-export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | undefined, permissionKeySet: PermissionKey | PermissionKey[]) => {
-  if (!permissionKeys)
-    return false
+export const hasPermission = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+  permissionKeySet: PermissionKey | PermissionKey[],
+) => {
+  if (!permissionKeys) return false
 
   if (Array.isArray(permissionKeySet)) {
-    return permissionKeySet.some(key => permissionKeys.includes(key))
+    return permissionKeySet.some((key) => permissionKeys.includes(key))
   }
   const singlePermissionKey = permissionKeySet
   return permissionKeys.includes(singlePermissionKey)
 }
 
-export const hasOnlyAppPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+export const hasOnlyAppPreviewPermission = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+) => {
   return permissionKeys?.length === 1 && permissionKeys[0] === AppACLPermission.Preview
 }
 
-export const hasOnlyDatasetPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+export const hasOnlyDatasetPreviewPermission = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+) => {
   return permissionKeys?.length === 1 && permissionKeys[0] === DatasetACLPermission.Preview
 }
 
@@ -95,11 +100,12 @@ const shouldGrantMaintainerPermissions = (
   options: ResourceMaintainerPermissionOptions | undefined,
   createPermissionKey: PermissionKey,
 ) => {
-  if (!options?.currentUserId || !options?.resourceMaintainer)
-    return false
+  if (!options?.currentUserId || !options?.resourceMaintainer) return false
 
-  return options.currentUserId === options.resourceMaintainer
-    && hasPermission(options.workspacePermissionKeys, createPermissionKey)
+  return (
+    options.currentUserId === options.resourceMaintainer &&
+    hasPermission(options.workspacePermissionKeys, createPermissionKey)
+  )
 }
 
 const hasResourcePermission = (
@@ -112,25 +118,83 @@ export const getAppACLCapabilities = (
   permissionKeys: readonly PermissionKey[] | null | undefined,
   options?: ResourceMaintainerPermissionOptions,
 ): AppACLCapabilities => {
-  const hasMaintainerPermissions = shouldGrantMaintainerPermissions(options, 'app.create_and_management')
-  const canViewLayout = hasResourcePermission(permissionKeys, AppACLPermission.ViewLayout, hasMaintainerPermissions)
-  const canTestAndRun = hasResourcePermission(permissionKeys, AppACLPermission.TestAndRun, hasMaintainerPermissions)
-  const canEdit = hasResourcePermission(permissionKeys, AppACLPermission.Edit, hasMaintainerPermissions)
+  const hasMaintainerPermissions = shouldGrantMaintainerPermissions(
+    options,
+    'app.create_and_management',
+  )
+  const canViewLayout = hasResourcePermission(
+    permissionKeys,
+    AppACLPermission.ViewLayout,
+    hasMaintainerPermissions,
+  )
+  const canTestAndRun = hasResourcePermission(
+    permissionKeys,
+    AppACLPermission.TestAndRun,
+    hasMaintainerPermissions,
+  )
+  const canEdit = hasResourcePermission(
+    permissionKeys,
+    AppACLPermission.Edit,
+    hasMaintainerPermissions,
+  )
+  const canManageAccessPoint = hasResourcePermission(
+    permissionKeys,
+    AppACLPermission.AccessPointManage,
+    hasMaintainerPermissions,
+  )
 
   return {
+    canManageAccessPoint,
+    canViewAccessPoint:
+      canManageAccessPoint ||
+      hasResourcePermission(
+        permissionKeys,
+        AppACLPermission.AccessPointView,
+        hasMaintainerPermissions,
+      ),
     canViewLayout,
     canTestAndRun,
     canEdit,
     canAccessLayout: canViewLayout || canTestAndRun || canEdit,
-    canComment: canViewLayout || canEdit,
     canPreviewApp: canViewLayout || canTestAndRun,
-    canImportExportDSL: hasResourcePermission(permissionKeys, AppACLPermission.ImportExportDSL, hasMaintainerPermissions),
-    canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasMaintainerPermissions),
-    canReleaseAndVersion: hasResourcePermission(permissionKeys, AppACLPermission.ReleaseAndVersion, hasMaintainerPermissions),
-    canMonitor: hasResourcePermission(permissionKeys, AppACLPermission.Monitor, hasMaintainerPermissions),
-    canConfigureTracing: hasResourcePermission(permissionKeys, AppACLPermission.TracingConfig, hasMaintainerPermissions),
-    canAccessLogAndAnnotation: hasResourcePermission(permissionKeys, AppACLPermission.LogAndAnnotation, hasMaintainerPermissions),
-    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
+    canImportExportDSL: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.ImportExportDSL,
+      hasMaintainerPermissions,
+    ),
+    canDelete: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.Delete,
+      hasMaintainerPermissions,
+    ),
+    canReleaseAndVersion: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.ReleaseAndVersion,
+      hasMaintainerPermissions,
+    ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
+    canMonitor: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.Monitor,
+      hasMaintainerPermissions,
+    ),
+    canConfigureTracing: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.TracingConfig,
+      hasMaintainerPermissions,
+    ),
+    canAccessLogAndAnnotation: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.LogAndAnnotation,
+      hasMaintainerPermissions,
+    ),
+    canAccessConfig:
+      Boolean(options?.isRbacEnabled) &&
+      hasResourcePermission(
+        permissionKeys,
+        AppACLPermission.AccessConfig,
+        hasMaintainerPermissions,
+      ),
   }
 }
 
@@ -138,19 +202,68 @@ export const getDatasetACLCapabilities = (
   permissionKeys: readonly PermissionKey[] | null | undefined,
   options?: ResourceMaintainerPermissionOptions,
 ): DatasetACLCapabilities => {
-  const hasMaintainerPermissions = shouldGrantMaintainerPermissions(options, 'dataset.create_and_management')
+  const hasMaintainerPermissions = shouldGrantMaintainerPermissions(
+    options,
+    'dataset.create_and_management',
+  )
 
   return {
-    canReadonly: hasResourcePermission(permissionKeys, DatasetACLPermission.Readonly, hasMaintainerPermissions),
-    canEdit: hasResourcePermission(permissionKeys, DatasetACLPermission.Edit, hasMaintainerPermissions),
-    canImportExportDSL: hasResourcePermission(permissionKeys, DatasetACLPermission.ImportExportDSL, hasMaintainerPermissions),
-    canPipelineTest: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineTest, hasMaintainerPermissions),
-    canDocumentDownload: hasResourcePermission(permissionKeys, DatasetACLPermission.DocumentDownload, hasMaintainerPermissions),
-    canRetrievalRecall: hasResourcePermission(permissionKeys, DatasetACLPermission.RetrievalRecall, hasMaintainerPermissions),
-    canUse: hasResourcePermission(permissionKeys, DatasetACLPermission.Use, hasMaintainerPermissions),
-    canDeleteFile: hasResourcePermission(permissionKeys, DatasetACLPermission.DeleteFile, hasMaintainerPermissions),
-    canPipelineRelease: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineRelease, hasMaintainerPermissions),
-    canDelete: hasResourcePermission(permissionKeys, DatasetACLPermission.Delete, hasMaintainerPermissions),
-    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasMaintainerPermissions),
+    canReadonly: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.Readonly,
+      hasMaintainerPermissions,
+    ),
+    canEdit: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.Edit,
+      hasMaintainerPermissions,
+    ),
+    canImportExportDSL: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.ImportExportDSL,
+      hasMaintainerPermissions,
+    ),
+    canPipelineTest: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.PipelineTest,
+      hasMaintainerPermissions,
+    ),
+    canDocumentDownload: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.DocumentDownload,
+      hasMaintainerPermissions,
+    ),
+    canRetrievalRecall: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.RetrievalRecall,
+      hasMaintainerPermissions,
+    ),
+    canUse: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.Use,
+      hasMaintainerPermissions,
+    ),
+    canDeleteFile: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.DeleteFile,
+      hasMaintainerPermissions,
+    ),
+    canPipelineRelease: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.PipelineRelease,
+      hasMaintainerPermissions,
+    ),
+    canDelete: hasResourcePermission(
+      permissionKeys,
+      DatasetACLPermission.Delete,
+      hasMaintainerPermissions,
+    ),
+    canAccessConfig:
+      Boolean(options?.isRbacEnabled) &&
+      hasResourcePermission(
+        permissionKeys,
+        DatasetACLPermission.AccessConfig,
+        hasMaintainerPermissions,
+      ),
   }
 }

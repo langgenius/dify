@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/in
 
 Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
 
-Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh`).
+Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh` / `install.ps1`), which resolves releases via the GitHub API. That API caps unauthenticated requests at 60/hour per IP; behind a shared NAT or in CI, set `GITHUB_TOKEN` (or `GH_TOKEN`) to raise it to 5000/hour — the installer sends it as a bearer token.
 
 ## Quickstart
 
@@ -48,11 +48,13 @@ Background docs: `difyctl help account`, `difyctl help external`, `difyctl help 
 Run `difyctl --help` for the full list of commands.
 Run `difyctl <cmd> --help` for per-command reference.
 
-For agents (and scripting), start with `difyctl help agent` — the cross-command operating guide (output, discovery, auth, exit codes, errors, HITL, retry). Every help surface is also machine-readable: `difyctl help -o json` dumps the whole command tree plus the global contract (exit codes, output formats, error envelope, HITL protocol), and `difyctl <cmd> --help -o json` returns one command's descriptor.
+Use `difyctl help -o json --compact` to read the complete command map, then inspect the selected command with `difyctl help <path> -o json` before running it — that per-command descriptor is the only surface that carries args and flags.
+
+For agents (and scripting), start with `difyctl help agent` — the cross-command operating guide (output, discovery, auth, exit codes, errors, HITL, retry). Every help surface is also machine-readable: `difyctl help -o json` dumps the whole command tree plus the global contract (exit codes, output formats, error envelope, HITL protocol), and `difyctl help <path> -o json` returns one command's descriptor.
 
 ## Agent skill
 
-`difyctl skills install` installs a single, pure-delegation `SKILL.md` into your local agents so they auto-load it. The skill does not freeze the command set — it points the agent at `difyctl help -o json` for the live surface, so it never drifts from your binary. It is embedded in the binary (version-stamped) rather than checked in.
+`difyctl skills install` installs a single, pure-delegation `SKILL.md` into your local agents so they auto-load it. The skill does not freeze the command set — it directs the agent through the live compact sitemap and per-command help, so it never drifts from your binary. It is embedded in the binary (version-stamped) rather than checked in.
 
 - `difyctl skills install` — dry-run: detect installed agents (Claude Code, Codex, opencode, Cursor, pi) and print where the skill would land. Writes nothing.
 - `difyctl skills install --yes` — write to every detected agent, printing each path. `--agent claude-code[,cursor]` restricts to a subset; `<dir>` forces one explicit directory (handy when your agent isn't detected).

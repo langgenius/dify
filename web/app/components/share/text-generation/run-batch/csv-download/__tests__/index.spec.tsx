@@ -7,9 +7,16 @@ let capturedProps: Record<string, unknown> | undefined
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => {
-    const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
+    const CSVDownloader = ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) => {
       capturedProps = props
-      return <div data-testid="csv-downloader" className={props.className as string}>{children}</div>
+      return (
+        <div data-testid="csv-downloader" className={props.className as string}>
+          {children}
+        </div>
+      )
     }
     return {
       CSVDownloader,
@@ -41,9 +48,7 @@ describe('CSVDownload', () => {
     expect(capturedProps?.filename).toBe('template')
     expect(capturedProps?.type).toBe(mockType.Link)
     expect(capturedProps?.bom).toBe(true)
-    expect(capturedProps?.data).toEqual([
-      { prompt: '', context: '' },
-    ])
+    expect(capturedProps?.data).toEqual([{ prompt: '', context: '' }])
     expect(screen.getByText('share.generation.downloadTemplate'))!.toBeInTheDocument()
   })
 })

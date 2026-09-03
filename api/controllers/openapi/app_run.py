@@ -1,4 +1,4 @@
-"""POST /openapi/v1/apps/<app_id>/run — mode-agnostic runner."""
+"""POST /openapi/v1/apps/<app_id>:run — mode-agnostic runner."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadRequest,
     HTTPException,
@@ -20,6 +21,7 @@ from werkzeug.exceptions import (
 import services
 from controllers.common.fields import EventStreamResponse
 from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.console.app.wraps import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
@@ -33,6 +35,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -55,6 +58,9 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -68,6 +74,8 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise NotFound(str(ex))
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
         raise BadRequest(str(ex))
+    except TriggerWorkflowServiceModeUnavailableServiceError:
+        raise TriggerWorkflowServiceModeUnavailableError()
     except services.errors.conversation.ConversationNotExistsError:
         raise NotFound("Conversation Not Exists.")
     except services.errors.conversation.ConversationCompletedError:
@@ -92,8 +100,9 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise CompletionRequestError(e.description)
 
 
-def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
+def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool, session: Session):
     return AppGenerateService.generate(
+        session=session,
         app_model=app,
         user=caller,
         args=args,
@@ -102,31 +111,31 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
     )
 
 
-def _run_chat(app: App, caller: Any, payload: AppRunRequest):
+def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
     args = payload.model_dump(exclude_none=True)
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-def _run_completion(app: App, caller: Any, payload: AppRunRequest):
+def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
     args = payload.model_dump(exclude_none=True)
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-def _run_workflow(app: App, caller: Any, payload: AppRunRequest):
+def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
     args = payload.model_dump(exclude={"query", "conversation_id", "auto_generate_name"}, exclude_none=True)
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
+_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
     AppMode.CHAT: _run_chat,
     AppMode.AGENT_CHAT: _run_chat,
     AppMode.ADVANCED_CHAT: _run_chat,
@@ -135,7 +144,7 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 }
 
 
-@openapi_ns.route("/apps/<string:app_id>/run")
+@openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
@@ -143,7 +152,8 @@ class AppRunApi(Resource):
     )
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
-    def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
+    @with_session
+    def post(self, session: Session, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
         app_model, caller, caller_kind = auth_data.require_app_context()
 
         handler = _DISPATCH.get(app_model.mode)
@@ -151,7 +161,7 @@ class AppRunApi(Resource):
             raise UnprocessableEntity("mode_not_runnable")
 
         try:
-            stream_obj = handler(app_model, caller, body)
+            stream_obj = handler(app_model, caller, body, session)
         except HTTPException:
             raise
         except Exception:
@@ -170,7 +180,7 @@ class AppRunApi(Resource):
         return helper.compact_generate_response(stream_obj)
 
 
-@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
+@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,

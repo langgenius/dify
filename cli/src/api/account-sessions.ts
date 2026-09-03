@@ -10,7 +10,7 @@ export class AccountSessionsClient {
     this.orpc = createOpenApiClient(http)
   }
 
-  async list(q?: { page?: number, limit?: number }): Promise<SessionListResponse> {
+  async list(q?: { page?: number; limit?: number }): Promise<SessionListResponse> {
     return this.orpc.account.sessions.get({ query: { page: q?.page, limit: q?.limit } })
   }
 

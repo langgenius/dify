@@ -15,12 +15,18 @@ from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
@@ -28,7 +34,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
@@ -36,8 +42,9 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -50,7 +57,6 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
 
@@ -64,7 +70,7 @@ class RagPipelineImportInfo(BaseModel):
     dataset_id: str | None = None
 
 
-class RagPipelinePendingData(BaseModel):
+class RagPipelinePendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     pipeline_id: str | None
@@ -83,7 +89,7 @@ class RagPipelineDslService:
     when generated IDs are needed mid-operation; they never commit or rollback.
     """
 
-    def __init__(self, session: Session | scoped_session):
+    def __init__(self, session: Session):
         self._session = session
 
     def import_rag_pipeline(
@@ -127,15 +133,16 @@ class RagPipelineDslService:
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return RagPipelineImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
 
+                content = raw_content.decode("utf-8")
                 if not content:
                     return RagPipelineImportInfo(
                         id=import_id,
@@ -156,6 +163,12 @@ class RagPipelineDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
+            if dsl_content_size(content) > DSL_MAX_SIZE:
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
 
         # Process YAML content
         try:
@@ -209,6 +222,8 @@ class RagPipelineDslService:
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 pending_data = RagPipelinePendingData(
+                    tenant_id=account.current_tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     pipeline_id=pipeline_id,
@@ -371,6 +386,15 @@ class RagPipelineDslService:
                     error="Invalid import information",
                 )
             pending_data = RagPipelinePendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             pipeline = None
@@ -700,6 +724,34 @@ class RagPipelineDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = self._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 

@@ -17,7 +17,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
 from models.account import (
     Account,
     AccountStatus,

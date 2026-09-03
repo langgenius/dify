@@ -13,9 +13,7 @@ type UseSnippetPublishOptions = {
   snippetId: string
 }
 
-export const useSnippetPublish = ({
-  snippetId,
-}: UseSnippetPublishOptions) => {
+export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { t } = useTranslation('snippet')
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
@@ -26,30 +24,37 @@ export const useSnippetPublish = ({
   const handlePublish = useCallback(async () => {
     try {
       const canPublish = await handleCheckBeforePublish()
-      if (!canPublish)
-        return
+      if (!canPublish) return
 
       const publishedWorkflow = await publishSnippetMutation.mutateAsync({
         params: { snippetId },
       })
       queryClient.setQueryData<SnippetContract | undefined>(
-        consoleQuery.snippets.detail.queryKey({
+        consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
+          type: 'query',
           input: {
-            params: { snippetId },
+            params: { snippet_id: snippetId },
           },
         }),
-        old => old ? { ...old, is_published: true } : old,
+        (old) => (old ? { ...old, is_published: true } : old),
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
       resetWorkflowVersionHistory()
-      toast.success(t('publishSuccess'))
+      toast.success(t(($) => $.publishSuccess))
       return true
-    }
-    catch (error) {
-      toast.error(error instanceof Error ? error.message : t('publishFailed'))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t(($) => $.publishFailed))
       return false
     }
-  }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, resetWorkflowVersionHistory, snippetId, t, workflowStore])
+  }, [
+    handleCheckBeforePublish,
+    publishSnippetMutation,
+    queryClient,
+    resetWorkflowVersionHistory,
+    snippetId,
+    t,
+    workflowStore,
+  ])
 
   return {
     handlePublish,

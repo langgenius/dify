@@ -8,7 +8,7 @@ import { useVisualEditorStore } from './store'
 
 const AddField = () => {
   const { t } = useTranslation()
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
   const { emit } = useMittContext()
 
   const handleAddField = useCallback(() => {
@@ -24,11 +24,11 @@ const AddField = () => {
       <Button
         size="small"
         variant="secondary-accent"
-        className="flex items-center gap-x-px"
+        className="flex items-center"
         onClick={handleAddField}
       >
         <RiAddCircleFill className="size-3.5" />
-        <span className="px-[3px]">{t('nodes.llm.jsonSchema.addField', { ns: 'workflow' })}</span>
+        <span>{t(($) => $['nodes.llm.jsonSchema.addField'], { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

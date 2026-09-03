@@ -1,41 +1,36 @@
-import type { AgentIconSelection } from './agent-form'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import type { Ref } from 'react'
+import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
 type AgentFormFieldsProps = {
-  description: string
+  defaultValues: AgentFormValues
   icon: AgentIconSelection
   iconAriaLabel: string
-  name: string
-  onDescriptionChange: (description: string) => void
   onIconClick: () => void
-  onNameChange: (name: string) => void
-  onRoleChange: (role: string) => void
-  role: string
+  ref: Ref<HTMLInputElement>
 }
 
 export function AgentFormFields({
-  description,
+  defaultValues,
   icon,
   iconAriaLabel,
-  name,
-  onDescriptionChange,
   onIconClick,
-  onNameChange,
-  onRoleChange,
-  role,
+  ref,
 }: AgentFormFieldsProps) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
 
   return (
-    <div className="space-y-5 px-6 py-3">
-      <div className="flex items-end gap-4 pb-2">
+    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
+      <div className="flex items-start gap-4">
         <button
           type="button"
           aria-label={iconAriaLabel}
-          className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={onIconClick}
         >
           <AppIcon
@@ -48,75 +43,62 @@ export function AgentFormFields({
             imageUrl={icon.type === 'emoji' ? undefined : icon.url}
           />
         </button>
-        <div className="flex min-w-0 flex-1 gap-3 pb-1">
-          <FieldRoot
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-3 pb-1 sm:flex-row">
+          <Field
             name="name"
-            className="relative min-w-0 flex-1"
+            className="min-w-0 flex-1"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && !value.trim())
-                return t('roster.createForm.nameRequired')
+                return t(($) => $['roster.createForm.nameRequired'])
 
               return null
             }}
           >
-            <FieldLabel>
-              {t('roster.createForm.nameLabel')}
-            </FieldLabel>
-            <FieldControl
+            <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
+            <Input
+              ref={ref}
               autoComplete="off"
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- Agent roster dialogs open from explicit commands, and the name field is the primary editable control.
-              autoFocus
+              defaultValue={defaultValues.name}
               maxLength={255}
-              onValueChange={onNameChange}
-              placeholder={t('roster.createForm.namePlaceholder')}
+              placeholder={t(($) => $['roster.createForm.namePlaceholder'])}
               required
-              value={name}
             />
-            <div className="absolute top-full left-0 mt-1">
-              <FieldError match="valueMissing">{t('roster.createForm.nameRequired')}</FieldError>
-              <FieldError match="customError" />
-            </div>
-          </FieldRoot>
-          <FieldRoot
-            name="role"
-            className="relative min-w-0 flex-1"
-            validate={(value) => {
-              if (typeof value === 'string' && value.length > 0 && !value.trim())
-                return t('roster.createForm.roleRequired')
-
-              return null
-            }}
-          >
+            <FieldError match="valueMissing">
+              {t(($) => $['roster.createForm.nameRequired'])}
+            </FieldError>
+            <FieldError match="customError" />
+          </Field>
+          <Field name="role" className="min-w-0 flex-1">
             <FieldLabel>
-              {t('roster.createForm.roleLabel')}
+              {t(($) => $['roster.createForm.roleLabel'])}
+              <span className="ml-1 system-xs-regular text-text-tertiary">
+                {tCommon(($) => $['label.optional'])}
+              </span>
             </FieldLabel>
-            <FieldControl
+            <Input
               autoComplete="off"
+              defaultValue={defaultValues.role}
               maxLength={255}
-              onValueChange={onRoleChange}
-              placeholder={t('roster.createForm.rolePlaceholder')}
-              required
-              value={role}
+              placeholder={t(($) => $['roster.createForm.rolePlaceholder'])}
             />
-            <div className="absolute top-full left-0 mt-1">
-              <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
-              <FieldError match="customError" />
-            </div>
-          </FieldRoot>
+          </Field>
         </div>
       </div>
-      <FieldRoot name="description">
+      <Field name="description">
         <FieldLabel>
-          {t('roster.createForm.descriptionLabel')}
+          {t(($) => $['roster.createForm.descriptionLabel'])}
+          <span className="ml-1 system-xs-regular text-text-tertiary">
+            {tCommon(($) => $['label.optional'])}
+          </span>
         </FieldLabel>
         <Textarea
           autoComplete="off"
           className="h-20 resize-none"
-          onValueChange={onDescriptionChange}
-          placeholder={t('roster.createForm.descriptionPlaceholder')}
-          value={description}
+          defaultValue={defaultValues.description}
+          maxLength={400}
+          placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'])}
         />
-      </FieldRoot>
+      </Field>
     </div>
   )
 }

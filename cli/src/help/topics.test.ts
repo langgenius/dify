@@ -1,17 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { ENV_REGISTRY } from '@/env/registry'
 import { findTopic, TOPICS } from './topics'
 
 function render(name: string): string {
   const topic = findTopic(name)
-  if (!topic)
-    throw new Error(`topic not found: ${name}`)
+  if (!topic) throw new Error(`topic not found: ${name}`)
   return topic.render()
 }
 
 describe('topic registry', () => {
   it('registers account, agent, environment and external', () => {
-    expect(TOPICS.map(t => t.name)).toEqual(['account', 'agent', 'environment', 'external'])
+    expect(TOPICS.map((t) => t.name)).toEqual(['account', 'agent', 'environment', 'external'])
   })
 
   it('findTopic returns undefined for unknown names', () => {
@@ -41,10 +40,12 @@ describe('account topic', () => {
 describe('agent topic', () => {
   it('covers output, exit codes, auth, errors and HITL', () => {
     const out = render('agent')
-    expect(out).toContain('-o json')
     expect(out).toContain('EXIT CODES')
     expect(out).toContain('DIFY_TOKEN')
-    expect(out).toContain('difyctl help -o json')
+    expect(out).toContain('difyctl help <path> -o json')
+    expect(out).toContain('difyctl help -o json --compact')
+    expect(out).toMatch(/difyctl help -o json\s+full command tree/)
+    expect(out).toContain('difyctl get app -o json')
     expect(out).toContain('HUMAN-IN-THE-LOOP')
   })
 })
@@ -78,7 +79,7 @@ describe('environment topic', () => {
   it('marks sensitive vars with a never-echoed notice', () => {
     const out = render('environment')
     expect(out).toContain('(treat as secret; never echoed)')
-    const sensitiveCount = ENV_REGISTRY.filter(v => v.sensitive).length
+    const sensitiveCount = ENV_REGISTRY.filter((v) => v.sensitive).length
     const noticeCount = (out.match(/treat as secret/g) ?? []).length
     expect(noticeCount).toBe(sensitiveCount)
   })

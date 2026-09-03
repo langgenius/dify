@@ -6,6 +6,7 @@ import json
 import os
 import threading
 import time
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,9 +16,12 @@ import pytest
 import sqlalchemy as sa
 from click.testing import CliRunner
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from graphon.model_runtime.entities.model_entities import ModelType
+from models import Dataset, DatasetPermission, DatasetPermissionEnum, TenantAccountJoin, TenantAccountRole
 from models.account import Tenant
+from models.base import TypeBase
 from models.enums import CredentialSourceType
 from models.provider import ProviderModel
 from tests.helpers.legacy_model_type_migration import (
@@ -30,15 +34,6 @@ from tests.helpers.legacy_model_type_migration import (
     seed_legacy_model_type_dirty_data,
     snapshot_legacy_model_type_state,
 )
-
-
-@pytest.fixture
-def sqlite_engine(tmp_path: Path) -> sa.Engine:
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'legacy_model_type_migration.sqlite'}")
-    try:
-        yield engine
-    finally:
-        engine.dispose()
 
 
 @pytest.fixture
@@ -66,6 +61,42 @@ def command_module():
             "commands.data_migrate is missing. "
             "Implement the `flask data-migrate legacy-model-types` command group before running these tests."
         )
+
+
+@pytest.fixture
+def rbac_session(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind RBAC command reads to persisted SQLite dataset rows."""
+
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[Dataset.__table__, DatasetPermission.__table__, TenantAccountJoin.__table__],
+    )
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr("commands.rbac.session_factory.create_session", factory)
+    with factory() as session:
+        yield session
+
+
+def _persist_dataset(
+    session: Session,
+    *,
+    dataset_id: str = "dataset-1",
+    tenant_id: str = "tenant-1",
+    permission: DatasetPermissionEnum = DatasetPermissionEnum.ONLY_ME,
+    created_by: str = "creator-account-1",
+    maintainer: str | None = None,
+) -> Dataset:
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name=f"Dataset {dataset_id}",
+        permission=permission,
+        created_by=created_by,
+        maintainer=maintainer,
+    )
+    session.add(dataset)
+    session.commit()
+    return dataset
 
 
 def _parse_json_lines(output: io.StringIO) -> list[dict[str, object]]:
@@ -343,6 +374,12 @@ def test_data_migrate_group_registers_dataset_permission_rbac_migration(command_
     assert "operator_account_id" not in {param.name for param in command.params}
 
 
+def test_data_migrate_group_registers_resource_whitelist_scope_migration(command_module) -> None:
+    command = command_module.data_migrate.commands["rbac-migrate-resource-whitelist-scopes"]
+
+    assert command is command_module.migrate_only_me_resource_whitelist_scopes_to_automatic_include
+
+
 def test_dataset_permission_rbac_migration_help_mentions_binding_clear_side_effect(command_module) -> None:
     result = CliRunner().invoke(
         command_module.data_migrate,
@@ -372,100 +409,57 @@ def test_dataset_permission_rbac_migration_maps_legacy_permissions_to_enum_scope
 
 def test_dataset_permission_rbac_migration_uses_dataset_creator_as_operator(
     command_module,
+    rbac_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rbac_module = importlib.import_module("commands.rbac")
-    dataset_row = SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        permission="only_me",
-        created_by="creator-account-1",
-    )
-    execute_results = [[dataset_row], [], []]
+    _persist_dataset(rbac_session)
     calls: list[dict[str, object]] = []
-    session_closed = False
-
-    class FakeExecuteResult:
-        def __init__(self, rows: list[object]) -> None:
-            self._rows = rows
-
-        def all(self) -> list[object]:
-            return self._rows
-
-    class FakeSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, traceback) -> None:
-            nonlocal session_closed
-            session_closed = True
-            pass
-
-        def execute(self, stmt):
-            return FakeExecuteResult(execute_results.pop(0))
-
-    class FakeSessionFactory:
-        @staticmethod
-        def create_session() -> FakeSession:
-            return FakeSession()
+    read_transaction_ended = False
 
     def fake_replace_whitelist(**kwargs):
-        assert session_closed is True
+        assert read_transaction_ended is True
         calls.append(kwargs)
 
-    monkeypatch.setattr(rbac_module, "session_factory", FakeSessionFactory)
-    monkeypatch.setattr(rbac_module.RBACService.DatasetAccess, "replace_whitelist", fake_replace_whitelist)
+    def _record_transaction_end(session: Session, transaction: object) -> None:
+        nonlocal read_transaction_ended
+        del transaction
+        if session.get_bind() is rbac_session.get_bind():
+            read_transaction_ended = True
 
-    command_module.migrate_dataset_permissions_to_rbac.callback(
-        tenant_id=None,
-        dataset_id=None,
-        batch_size=500,
-        dry_run=False,
-    )
+    sa.event.listen(Session, "after_transaction_end", _record_transaction_end)
+    monkeypatch.setattr(rbac_module.RBACService.DatasetAccess, "replace_whitelist", fake_replace_whitelist)
+    try:
+        command_module.migrate_dataset_permissions_to_rbac.callback(
+            tenant_id=None,
+            dataset_id=None,
+            batch_size=500,
+            dry_run=False,
+        )
+    finally:
+        sa.event.remove(Session, "after_transaction_end", _record_transaction_end)
 
     assert calls[0]["tenant_id"] == "tenant-1"
     assert calls[0]["account_id"] == "creator-account-1"
     assert calls[0]["dataset_id"] == "dataset-1"
-    assert calls[0]["payload"].scope is rbac_module.RBACResourceWhitelistScope.SPECIFIC
+    assert calls[0]["payload"].automatic_include_workspace_members is False
 
 
 def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_changes(
     command_module,
+    rbac_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rbac_module = importlib.import_module("commands.rbac")
-    dataset_row = SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        permission="partial_members",
-        created_by="creator-account-1",
+    dataset = _persist_dataset(rbac_session, permission=DatasetPermissionEnum.PARTIAL_TEAM)
+    rbac_session.add(
+        DatasetPermission(
+            dataset_id=dataset.id,
+            account_id="member-account-1",
+            tenant_id=dataset.tenant_id,
+        )
     )
-    permission_row = SimpleNamespace(dataset_id="dataset-1", account_id="member-account-1")
-    execute_results = [[dataset_row], [permission_row], []]
-
-    class FakeExecuteResult:
-        def __init__(self, rows: list[object]) -> None:
-            self._rows = rows
-
-        def all(self) -> list[object]:
-            return self._rows
-
-    class FakeSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, traceback) -> None:
-            pass
-
-        def execute(self, stmt):
-            return FakeExecuteResult(execute_results.pop(0))
-
-    class FakeSessionFactory:
-        @staticmethod
-        def create_session() -> FakeSession:
-            return FakeSession()
-
-    monkeypatch.setattr(rbac_module, "session_factory", FakeSessionFactory)
+    rbac_session.commit()
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
         "replace_whitelist",
@@ -496,12 +490,165 @@ def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_c
             "tenant_id": "tenant-1",
             "account_id": "creator-account-1",
             "dataset_id": "dataset-1",
-            "payload": {"scope": "specific"},
+            "payload": {"automatic_include_workspace_members": False},
         },
     }
     assert events[1]["target_account_id"] == "member-account-1"
     assert events[1]["after"] == {"rbac_user_access_policy_ids": ["default"]}
     assert events[1]["call"]["kwargs"]["payload"] == {"access_policy_ids": ["default"]}
+
+
+def test_resource_whitelist_scope_migration_specific_preserves_existing_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(
+            rbac_whitelist_scope="specific",
+            account_ids=["member-account-2", "member-account-1", "member-account-1"],
+        ),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is False
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert replace_policy_calls[0]["payload"].account_ids == ["member-account-1", "member-account-2"]
+
+
+def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    rbac_session.add_all(
+        [
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="maintainer-account-1",
+                role=TenantAccountRole.OWNER,
+            ),
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="member-account-1",
+                role=TenantAccountRole.NORMAL,
+            ),
+        ]
+    )
+    rbac_session.commit()
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="all", account_ids=[]),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
+
+
+def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    rbac_session.add_all(
+        [
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="maintainer-account-1",
+                role=TenantAccountRole.OWNER,
+            ),
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="member-account-1",
+                role=TenantAccountRole.NORMAL,
+            ),
+        ]
+    )
+    rbac_session.commit()
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="only_me", account_ids=[]),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_only_me_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
 
 
 def test_data_migrate_command_defaults_output_to_stdout_stream(
@@ -1315,50 +1462,36 @@ def test_provider_models_processing_uses_same_plan_locking_and_transaction_entry
     begin_calls: list[str] = []
     configure_calls: list[str] = []
 
-    class _FakeBeginContext:
-        def __init__(self, phase: str) -> None:
-            self._phase = phase
+    def _record_begin(session: Session, transaction: SessionTransaction) -> None:
+        if session.get_bind() is sqlite_engine and transaction.parent is None:
+            begin_calls.append(current_phase["name"])
 
-        def __enter__(self) -> None:
-            begin_calls.append(self._phase)
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-    class _FakeSession:
-        def __init__(self, phase: str) -> None:
-            self._phase = phase
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-        def begin(self) -> _FakeBeginContext:
-            return _FakeBeginContext(self._phase)
-
-    def _fake_session_factory(engine: sa.Engine) -> _FakeSession:
-        return _FakeSession(current_phase["name"])
-
-    def _fake_build_plan(self, session, candidate, *, lock_rows: bool):
+    def _fake_build_plan(self, session: Session, candidate, *, lock_rows: bool):
+        assert session.get_bind() is sqlite_engine
         lock_rows_seen.append((current_phase["name"], lock_rows))
-        return SimpleNamespace(group_row_ids=[str(candidate.row.id)], winner=None, loser_rows=[])
+        return migration_module._ProviderModelGroupPlan(
+            group_row_ids=[str(candidate.row.id)],
+            winner=None,
+            loser_rows=[],
+        )
 
     def _fake_emit_plan(self, plan, *, session, tx_id: str, business_key: dict[str, object]) -> None:
         return None
 
-    def _fake_configure(self, session) -> None:
+    def _fake_configure(self, session: Session) -> None:
+        assert session.get_bind() is sqlite_engine
         configure_calls.append(current_phase["name"])
 
-    monkeypatch.setattr(migration_module, "_session_factory", _fake_session_factory)
     monkeypatch.setattr(migration_module.Migration, "_build_provider_model_group_plan", _fake_build_plan)
     monkeypatch.setattr(migration_module.Migration, "_emit_provider_model_group_plan", _fake_emit_plan)
     monkeypatch.setattr(migration_module.Migration, "_configure_lock_timeout", _fake_configure)
-
-    dry_migration._process_provider_model_group(candidate, business_key)
-    current_phase["name"] = "apply"
-    apply_migration._process_provider_model_group(candidate, business_key)
+    sa.event.listen(Session, "after_transaction_create", _record_begin)
+    try:
+        dry_migration._process_provider_model_group(candidate, business_key)
+        current_phase["name"] = "apply"
+        apply_migration._process_provider_model_group(candidate, business_key)
+    finally:
+        sa.event.remove(Session, "after_transaction_create", _record_begin)
 
     assert [phase for phase, _ in lock_rows_seen] == ["dry", "apply"]
     assert lock_rows_seen[0][1] == lock_rows_seen[1][1]
@@ -1401,6 +1534,22 @@ def test_process_load_balancing_model_config_row_logs_stacktrace_for_lock_timeou
     sqlite_engine: sa.Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    create_minimal_legacy_model_type_schema(sqlite_engine)
+    created_at = datetime(2025, 1, 1, 12, 0, 0)
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id="40000000-0000-0000-0000-000000000001",
+        tenant_id="tenant-1",
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        name="credential",
+        encrypted_config="{}",
+        credential_id="50000000-0000-0000-0000-000000000001",
+        enabled=True,
+        created_at=created_at,
+        updated_at=created_at,
+    )
     output = io.StringIO()
     migration = migration_module.Migration(
         tenant_id="tenant-1",
@@ -1410,37 +1559,18 @@ def test_process_load_balancing_model_config_row_logs_stacktrace_for_lock_timeou
         model_types=(ModelType.LLM,),
         orm_models=(migration_module.LoadBalancingModelConfig,),
     )
-    candidate = migration_module._RowWithRawModelType(
-        row=SimpleNamespace(id="lb-row-1"),
-        raw_model_type="text-generation",
-        canonical_model_type=ModelType.LLM,
-    )
+    candidate = migration._load_load_balancing_model_config_candidates(None)[0]
     lock_timeout_exc = OperationalError("SELECT 1", {}, SimpleNamespace(pgcode="55P03"))
+    transaction_begins = 0
 
-    class _FakeBeginContext:
-        def __enter__(self) -> None:
-            return None
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-    class _FakeSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-        def begin(self) -> _FakeBeginContext:
-            return _FakeBeginContext()
-
-    def _fake_session_factory(engine: sa.Engine) -> _FakeSession:
-        return _FakeSession()
+    def _record_begin(session: Session, transaction: SessionTransaction) -> None:
+        nonlocal transaction_begins
+        if session.get_bind() is sqlite_engine and transaction.parent is None:
+            transaction_begins += 1
 
     def _fake_reload(self, session, original_candidate, *, lock_rows: bool):
         raise lock_timeout_exc
 
-    monkeypatch.setattr(migration_module, "_session_factory", _fake_session_factory)
     monkeypatch.setattr(migration_module.Migration, "_configure_lock_timeout", lambda self, session: None)
     monkeypatch.setattr(
         migration_module.Migration,
@@ -1448,17 +1578,22 @@ def test_process_load_balancing_model_config_row_logs_stacktrace_for_lock_timeou
         _fake_reload,
     )
 
-    migration._process_load_balancing_model_config_row(candidate)
+    sa.event.listen(Session, "after_transaction_create", _record_begin)
+    try:
+        migration._process_load_balancing_model_config_row(candidate)
+    finally:
+        sa.event.remove(Session, "after_transaction_create", _record_begin)
 
     lines = _parse_json_lines(output)
     assert len(lines) == 1
     assert lines[0]["event"] == "lock_timeout_skipped"
     attrs = cast(dict[str, object], lines[0]["attrs"])
     assert attrs["table_name"] == "load_balancing_model_configs"
-    assert attrs["id"] == "lb-row-1"
+    assert attrs["id"] == str(candidate.row.id)
     assert attrs["error"] == str(lock_timeout_exc)
     assert isinstance(attrs["stacktrace"], str)
     assert "OperationalError" in attrs["stacktrace"]
+    assert transaction_begins == 1
 
 
 def test_process_load_balancing_model_config_row_logs_update_after_sql_execution(
@@ -1466,6 +1601,23 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
     sqlite_engine: sa.Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    create_minimal_legacy_model_type_schema(sqlite_engine)
+    created_at = datetime(2025, 1, 1, 12, 0, 0)
+    row_id = "40000000-0000-0000-0000-000000000002"
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id=row_id,
+        tenant_id="tenant-1",
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        name="credential",
+        encrypted_config="{}",
+        credential_id="50000000-0000-0000-0000-000000000002",
+        enabled=True,
+        created_at=created_at,
+        updated_at=created_at,
+    )
     migration = migration_module.Migration(
         tenant_id="tenant-1",
         engine=sqlite_engine,
@@ -1474,42 +1626,33 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
         model_types=(ModelType.LLM,),
         orm_models=(migration_module.LoadBalancingModelConfig,),
     )
-    candidate = migration_module._RowWithRawModelType(
-        row=SimpleNamespace(id="lb-row-1"),
-        raw_model_type="text-generation",
-        canonical_model_type=ModelType.LLM,
-    )
+    candidate = migration._load_load_balancing_model_config_candidates(None)[0]
     action_log: list[str] = []
 
-    class _FakeBeginContext:
-        def __enter__(self) -> None:
+    def _record_begin(session: Session, transaction: SessionTransaction) -> None:
+        if session.get_bind() is sqlite_engine and transaction.parent is None:
             action_log.append("begin")
 
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-    class _FakeSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-        def begin(self) -> _FakeBeginContext:
-            return _FakeBeginContext()
-
-        def execute(self, stmt) -> None:
+    def _record_sql(
+        connection: sa.Connection,
+        cursor: object,
+        statement: str,
+        parameters: object,
+        context: object,
+        executemany: bool,
+    ) -> None:
+        del connection, cursor, parameters, context, executemany
+        if statement.lstrip().upper().startswith("UPDATE"):
             action_log.append("sql_execute")
-
-    def _fake_session_factory(engine: sa.Engine) -> _FakeSession:
-        return _FakeSession()
 
     def _fake_configure(self, session) -> None:
         action_log.append("configure_lock_timeout")
 
-    def _fake_reload(self, session, original_candidate, *, lock_rows: bool):
+    original_reload = migration_module.Migration._reload_load_balancing_model_config_candidate
+
+    def _record_reload(self, session: Session, original_candidate, *, lock_rows: bool):
         action_log.append(f"reload_candidate:{lock_rows}")
-        return candidate
+        return original_reload(self, session, original_candidate, lock_rows=lock_rows)
 
     def _fake_log_row_updated(self, *args, **kwargs) -> None:
         action_log.append("log_row_updated")
@@ -1517,12 +1660,11 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
     def _fake_cache_cleanup(self, *, row_id: str, tx_id: str) -> None:
         action_log.append("cache_cleanup")
 
-    monkeypatch.setattr(migration_module, "_session_factory", _fake_session_factory)
     monkeypatch.setattr(migration_module.Migration, "_configure_lock_timeout", _fake_configure)
     monkeypatch.setattr(
         migration_module.Migration,
         "_reload_load_balancing_model_config_candidate",
-        _fake_reload,
+        _record_reload,
     )
     monkeypatch.setattr(migration_module.Migration, "_log_row_updated", _fake_log_row_updated)
     monkeypatch.setattr(
@@ -1531,7 +1673,13 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
         _fake_cache_cleanup,
     )
 
-    migration._process_load_balancing_model_config_row(candidate)
+    sa.event.listen(Session, "after_transaction_create", _record_begin)
+    sa.event.listen(sqlite_engine, "before_cursor_execute", _record_sql)
+    try:
+        migration._process_load_balancing_model_config_row(candidate)
+    finally:
+        sa.event.remove(sqlite_engine, "before_cursor_execute", _record_sql)
+        sa.event.remove(Session, "after_transaction_create", _record_begin)
 
     assert action_log == [
         "begin",
@@ -1541,6 +1689,10 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
         "log_row_updated",
         "cache_cleanup",
     ]
+    with Session(sqlite_engine) as session:
+        persisted = session.get(migration_module.LoadBalancingModelConfig, row_id)
+        assert persisted is not None
+        assert persisted.model_type == ModelType.LLM
 
 
 def test_load_balancing_model_config_cache_delete_failure_logs_stacktrace(

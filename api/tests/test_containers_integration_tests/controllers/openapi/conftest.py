@@ -38,8 +38,8 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
 
     def _make(*, with_owner_tenant: bool = True) -> Account:
         fake = Faker()
-        with patch("services.account_service.FeatureService") as mock_feature_service:
-            mock_feature_service.get_system_features.return_value.is_allow_register = True
+        with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+            mock_feature_service.is_registration_allowed.return_value = True
             account = AccountService.create_account(
                 email=fake.email(),
                 name=fake.name(),
@@ -60,8 +60,8 @@ def add_tenant_for_account(
     account: Account, *, session: Session, role: str = "normal", name: str = "Second WS"
 ) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
-    with patch("services.account_service.FeatureService") as mock_feature_service:
-        mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
+    with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+        mock_feature_service.is_workspace_creation_allowed.return_value = True
         tenant = TenantService.create_tenant(name=name, session=session)
     TenantService.create_tenant_member(tenant, account, session, role=role)
     return tenant

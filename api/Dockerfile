@@ -33,7 +33,6 @@ RUN uv sync --frozen --no-dev --no-editable
 FROM base AS production
 
 ENV FLASK_APP=app.py
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL=http://127.0.0.1:3000
@@ -54,15 +53,14 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_MAJOR=22
-ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.20.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
 
-RUN \
-    apt-get update \
+RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -99,9 +97,9 @@ ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
-    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
+    && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
+    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('taggers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache

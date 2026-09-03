@@ -6,6 +6,8 @@ import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast, override
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -23,6 +25,7 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -104,6 +108,8 @@ class MCPTool(Tool):
         if self.entity.output_schema and result.structuredContent:
             for k, v in result.structuredContent.items():
                 yield self.create_variable_message(k, v)
+        elif result.structuredContent:
+            yield self.create_json_message(result.structuredContent)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""
@@ -267,7 +273,7 @@ class MCPTool(Tool):
         the deployment actually has the enterprise side that can mint tokens.
         Non-enterprise installs treat the DB value as a no-op — a stale row
         won't trigger a 5xx against a missing inner-API endpoint."""
-        return self.identity_mode != IdentityMode.OFF and dify_config.ENTERPRISE_ENABLED
+        return self.identity_mode != IdentityMode.OFF and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
     def invoke_remote_mcp_tool(
         self,

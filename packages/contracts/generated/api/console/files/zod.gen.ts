@@ -13,14 +13,16 @@ export const zAllowedExtensionsResponse = z.object({
  * UploadConfig
  */
 export const zUploadConfig = z.object({
-  attachment_image_file_size_limit: z.int().nullish(),
+  attachment_image_file_size_limit: z.int(),
   audio_file_size_limit: z.int(),
   batch_count_limit: z.int(),
   file_size_limit: z.int(),
-  file_upload_limit: z.int().nullish(),
+  file_upload_limit: z.int(),
   image_file_batch_limit: z.int(),
   image_file_size_limit: z.int(),
+  knowledge_file_size_limit: z.int(),
   single_chunk_attachment_limit: z.int(),
+  skill_file_size_limit: z.int(),
   video_file_size_limit: z.int(),
   workflow_file_upload_limit: z.int(),
 })
@@ -29,12 +31,12 @@ export const zUploadConfig = z.object({
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -42,8 +44,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -62,6 +64,11 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
  * Success
  */
 export const zGetFilesUploadResponse = zUploadConfig
+
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  source: z.enum(['datasets']).optional(),
+})
 
 /**
  * File uploaded successfully

@@ -1,0 +1,165 @@
+"""Framework-neutral errors shared by account application services."""
+
+
+class AccountApplicationError(Exception):
+    """Base class for failures owned by account application services."""
+
+
+class AccountNotFoundError(AccountApplicationError):
+    """The admitted account no longer exists."""
+
+
+class CurrentAccountPasswordIncorrectError(AccountApplicationError):
+    """The supplied current password does not match the account credential."""
+
+
+class InvalidAccountPasswordError(AccountApplicationError):
+    """The requested password does not satisfy the account password policy."""
+
+
+class ForgotPasswordSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the email-send policy."""
+
+
+class ForgotPasswordSendRateLimitError(AccountApplicationError):
+    """Too many password-reset messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class ForgotPasswordVerificationLimitError(AccountApplicationError):
+    """Too many invalid password-reset codes were submitted."""
+
+
+class InvalidForgotPasswordTokenError(AccountApplicationError):
+    """The password-reset token is absent, malformed, or in the wrong phase."""
+
+
+class InvalidForgotPasswordEmailError(AccountApplicationError):
+    """The request address does not match the password-reset token."""
+
+
+class InvalidForgotPasswordCodeError(AccountApplicationError):
+    """The verification code does not match the password-reset token."""
+
+
+class ForgotPasswordMismatchError(AccountApplicationError):
+    """The password and its confirmation do not match."""
+
+
+class AvatarFileNotFoundError(AccountApplicationError):
+    """The requested avatar file does not exist or is not owned by the account."""
+
+
+class AccountAlreadyInitializedError(AccountApplicationError):
+    """The account is already active and cannot be initialized again."""
+
+
+class MissingInvitationCodeError(AccountApplicationError):
+    """Cloud account initialization requires an invitation code."""
+
+
+class InvalidInvitationCodeError(AccountApplicationError):
+    """The invitation code is missing, used, or otherwise invalid."""
+
+
+class InvalidAccountDeletionVerificationError(AccountApplicationError):
+    """The account deletion token or verification code is invalid."""
+
+
+class AccountDeletionRateLimitError(AccountApplicationError):
+    """Too many account deletion verification emails were requested."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class ChangeEmailSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the email-send policy."""
+
+
+class ChangeEmailSendRateLimitError(AccountApplicationError):
+    """Too many change-email messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class InvalidChangeEmailTokenError(AccountApplicationError):
+    """The token is absent, malformed, in the wrong phase, or bound elsewhere."""
+
+
+class InvalidChangeEmailAddressError(AccountApplicationError):
+    """The request address does not match the account or token state."""
+
+
+class ChangeEmailVerificationLimitError(AccountApplicationError):
+    """Too many invalid verification-code attempts were made."""
+
+
+class InvalidChangeEmailCodeError(AccountApplicationError):
+    """The verification code does not match the current token."""
+
+
+class AccountEmailFrozenError(AccountApplicationError):
+    """The target email is temporarily frozen by account policy."""
+
+
+class AccountEmailDomainSuspendedError(AccountEmailFrozenError):
+    """The target email belongs to a suspended domain."""
+
+
+class AccountEmailAlreadyInUseError(AccountApplicationError):
+    """The target email already belongs to an account."""
+
+
+class AccountNormalizedEmailAlreadyInUseError(AccountEmailAlreadyInUseError):
+    """A normalized equivalent of the target email already belongs to an account."""
+
+
+class EmailRegistrationSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the registration-email send policy."""
+
+
+class EmailRegistrationSendRateLimitError(AccountApplicationError):
+    """Too many registration messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class EmailRegistrationVerificationLimitError(AccountApplicationError):
+    """Too many invalid registration-code attempts were made."""
+
+
+class InvalidEmailRegistrationTokenError(AccountApplicationError):
+    """The registration token is absent, malformed, or in the wrong phase."""
+
+
+class InvalidEmailRegistrationAddressError(AccountApplicationError):
+    """The request address does not match the registration token."""
+
+
+class InvalidEmailRegistrationCodeError(AccountApplicationError):
+    """The verification code does not match the registration token."""
+
+
+class EmailRegistrationPasswordMismatchError(AccountApplicationError):
+    """The registration password confirmation does not match."""
+
+
+class EmailRegistrationSeatsLimitError(AccountApplicationError):
+    """The deployment has no licensed seat available for another account."""
+
+
+class EducationDiscountPausedError(AccountApplicationError):
+    """Education discount activation is temporarily paused."""
+
+
+class EducationRateLimitExceededError(AccountApplicationError):
+    """Too many education verification or activation requests were made."""

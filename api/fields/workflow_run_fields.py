@@ -37,19 +37,6 @@ def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
 
 
-workflow_run_for_archived_log_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "triggered_from": fields.String,
-    "elapsed_time": fields.Float,
-    "total_tokens": fields.Integer,
-}
-
-
-def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
-    return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
-
-
 class WorkflowRunForLogResponse(ResponseModel):
     id: str
     version: str | None = None
@@ -74,21 +61,6 @@ class WorkflowRunForLogResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
-
-
-class WorkflowRunForArchivedLogResponse(ResponseModel):
-    id: str
-    status: str | None = None
-    triggered_from: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-
-    @field_validator("status", mode="before")
-    @classmethod
-    def _normalize_status(cls, value: Any) -> str | None:
-        if value is None or isinstance(value, str):
-            return value
-        return str(getattr(value, "value", value))
 
 
 class WorkflowRunForListResponse(ResponseModel):
@@ -200,6 +172,7 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     inputs_truncated: bool | None = None
     outputs_truncated: bool | None = None
     process_data_truncated: bool | None = None
+    retry_index: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("status", mode="before")
     @classmethod

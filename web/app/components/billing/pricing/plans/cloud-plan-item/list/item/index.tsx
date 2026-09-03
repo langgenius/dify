@@ -1,25 +1,10 @@
-import * as React from 'react'
-import Tooltip from './tooltip'
+import { PlanFeatureInfotip } from './infotip'
 
-type ItemProps = {
-  label: string
-  tooltip?: string
-}
-
-const Item = ({
-  label,
-  tooltip,
-}: ItemProps) => {
+export function CloudPlanFeature({ label, description }: { label: string; description?: string }) {
   return (
     <div className="flex items-center">
       <span className="grow system-sm-regular text-text-secondary">{label}</span>
-      {tooltip && (
-        <Tooltip
-          content={tooltip}
-        />
-      )}
+      {description && <PlanFeatureInfotip label={label} content={description} />}
     </div>
   )
 }
-
-export default React.memo(Item)

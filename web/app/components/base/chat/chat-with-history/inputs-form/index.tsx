@@ -12,43 +12,51 @@ type Props = Readonly<{
   setCollapsed: (collapsed: boolean) => void
 }>
 
-const InputsFormNode = ({
-  collapsed,
-  setCollapsed,
-}: Props) => {
+const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
   const { t } = useTranslation()
-  const {
-    isMobile,
-    currentConversationId,
-    handleStartChat,
-    allInputsHidden,
-    themeBuilder,
-    inputsForms,
-  } = useChatWithHistoryContext()
+  const { isMobile, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
+    useChatWithHistoryContext()
 
-  if (allInputsHidden || inputsForms.length === 0)
-    return null
+  if (allInputsHidden || inputsForms.length === 0) return null
 
   return (
     <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
-      <div className={cn(
-        'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
-        collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
-      )}
-      >
-        <div className={cn(
-          'flex items-center gap-3 rounded-t-2xl px-6 py-4',
-          !collapsed && 'border-b border-divider-subtle',
-          isMobile && 'px-4 py-3',
+      <div
+        className={cn(
+          'w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
+          collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
         )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-t-2xl px-6 py-4',
+            !collapsed && 'border-b border-divider-subtle',
+            isMobile && 'px-4 py-3',
+          )}
         >
           <Message3Fill className="size-6 shrink-0" />
-          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow system-xl-semibold text-text-secondary">
+            {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+          </div>
           {collapsed && (
-            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
+            <Button
+              className="text-text-tertiary uppercase"
+              size="small"
+              variant="ghost"
+              onClick={() => setCollapsed(false)}
+            >
+              {t(($) => $['operation.edit'], { ns: 'common' })}
+            </Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
+            <Button
+              className="text-text-tertiary uppercase"
+              size="small"
+              variant="ghost"
+              onClick={() => setCollapsed(true)}
+            >
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </Button>
           )}
         </div>
         {!collapsed && (
@@ -63,20 +71,20 @@ const InputsFormNode = ({
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
               style={
-                themeBuilder?.theme
+                theme
                   ? {
-                      backgroundColor: themeBuilder?.theme.primaryColor,
+                      backgroundColor: theme.primaryColor,
                     }
                   : {}
               }
             >
-              {t('chat.startChat', { ns: 'share' })}
+              {t(($) => $['chat.startChat'], { ns: 'share' })}
             </Button>
           </div>
         )}
       </div>
       {collapsed && (
-        <div className="flex w-full max-w-[720px] items-center py-4">
+        <div className="flex w-full max-w-180 items-center py-4">
           <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
           <Divider bgStyle="gradient" className="h-px basis-1/2" />
         </div>

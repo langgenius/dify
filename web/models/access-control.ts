@@ -5,7 +5,7 @@ export const SubjectType = {
   ACCOUNT: 'account',
 } as const
 
-export type SubjectType = typeof SubjectType[keyof typeof SubjectType]
+export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType]
 
 export const AccessMode = {
   PUBLIC: 'public',
@@ -14,7 +14,13 @@ export const AccessMode = {
   EXTERNAL_MEMBERS: 'sso_verified',
 } as const
 
-export type AccessMode = typeof AccessMode[keyof typeof AccessMode]
+export type AccessMode = (typeof AccessMode)[keyof typeof AccessMode]
+
+const accessModes = new Set<string>(Object.values(AccessMode))
+
+export function isAccessMode(accessMode: string | null | undefined): accessMode is AccessMode {
+  return !!accessMode && accessModes.has(accessMode)
+}
 
 export type AccessControlGroup = {
   id: string
@@ -30,8 +36,16 @@ export type AccessControlAccount = {
   avatarUrl: string
 }
 
-export type SubjectGroup = { subjectId: string, subjectType: SubjectType, groupData: AccessControlGroup }
-export type SubjectAccount = { subjectId: string, subjectType: SubjectType, accountData: AccessControlAccount }
+export type SubjectGroup = {
+  subjectId: string
+  subjectType: SubjectType
+  groupData: AccessControlGroup
+}
+export type SubjectAccount = {
+  subjectId: string
+  subjectType: SubjectType
+  accountData: AccessControlAccount
+}
 
 export type Subject = SubjectGroup | SubjectAccount
 
@@ -45,10 +59,6 @@ export type PermissionGroup = {
   group_name: string
   description: string
   permissions: Permission[]
-}
-
-export type PermissionGroups = {
-  groups: PermissionGroup[]
 }
 
 export type PermissionKey = string
@@ -196,24 +206,6 @@ export type UpdateRolesOfMemberRequest = {
   roleIds: string[]
 }
 
-type WorkspacePermissionKeys = {
-  permission_keys: string[]
-}
-
-type ResourcePermissionKeys = {
-  default_permission_keys: string[]
-  overrides: Array<{
-    resource_id: string
-    permission_keys: string[]
-  }>
-}
-
-export type PermissionKeysResponse = {
-  workspace: WorkspacePermissionKeys
-  app: ResourcePermissionKeys
-  dataset: ResourcePermissionKeys
-}
-
 export type GetMembersOfRoleRequest = {
   roleId: string
 } & PaginationParameters
@@ -227,13 +219,13 @@ type Account = {
 
 export type ResourceUserAccessSetting = {
   account: Account
-  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  roles: Omit<Role, 'tenant_id' | 'description'>[]
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  scope: ResourceOpenScope
+  pagination: Pagination
 }
 
 export type GetMembersOfRoleResponse = {
@@ -259,12 +251,8 @@ type RemoveResourceAccessPolicyMemberBindingsRequest = {
   accountIds: string[]
 }
 
-export type RemoveAppAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
+export type RemoveAppAccessPolicyMemberBindingsRequest =
+  RemoveResourceAccessPolicyMemberBindingsRequest
 
-export type RemoveDatasetAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type GetAccessPolicyDetailResponse = {
-  access_policies: Pick<AccessPolicy, 'id' | 'name' | 'resource_type' | 'policy_key' | 'permission_keys'>[]
-}
-
-export type ResourceOpenScope = 'all' | 'specific'
+export type RemoveDatasetAccessPolicyMemberBindingsRequest =
+  RemoveResourceAccessPolicyMemberBindingsRequest

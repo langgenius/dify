@@ -1,39 +1,42 @@
 [project]
 name = "dify-agent"
-version = "0.1.0"
+version = "1.17.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "httpx==0.28.1",
+    "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
-    "pydantic-ai-slim>=1.85.1,<2.0.0",
-    "typer>=0.16.1,<0.17",
+    "pydantic-ai-harness>=0.20.0,<0.21.0",
+    "pydantic-ai-slim>=2.30.0,<3.0.0",
     "typing-extensions>=4.12.2,<5.0.0",
 ]
 
 [project.scripts]
-dify-agent = "dify_agent.agent_stub.cli.main:main"
 dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
+
 [project.optional-dependencies]
-grpc = ["grpclib[protobuf]>=0.4.9,<0.5.0", "protobuf>=6.33.5,<7.0.0"]
 server = [
+    "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
-    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
+    "pydantic-ai-slim[anthropic,google,openai]>=2.30.0,<3.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
-    "shell-session-manager==2.2.1",
     "uvicorn[standard]==0.46.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["agenton*", "agenton_collections*", "dify_agent*"]
+include = ["agenton*", "agenton_collections*", "dify_agent*", "shellctl*"]
+
+[tool.setuptools.package-data]
+"dify_agent.layers" = ["_agent_cli_help.json"]
 
 [tool.pyright]
 include = ["src", "examples", "tests"]
@@ -43,8 +46,13 @@ pythonVersion = "3.12"
 extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 
 [tool.pytest.ini_options]
+# Several test modules share a basename across directories (test_layer.py,
+# test_client.py, ...). The default prepend import mode derives module names
+# from the basename, so collecting them together is an import file mismatch.
+addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+markers = ["integration: requires a real external service or exercises multiple concrete adapters"]
 
 [tool.ruff]
 line-length = 120
@@ -55,7 +63,6 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 dev = [
     "basedpyright>=1.39.3",
     "coverage[toml]>=7.10.7",
-    "grpcio-tools>=1.81.0,<2.0.0",
     "pytest>=9.0.3",
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",
@@ -69,5 +76,5 @@ docs = [
 ]
 
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"

@@ -12,9 +12,12 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 
 
@@ -157,7 +160,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         # Create a mock node execution record
-        from models.enums import CreatorUserRole
         from models.workflow import WorkflowNodeExecutionModel
 
         node_execution = WorkflowNodeExecutionModel()
@@ -226,7 +228,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -246,7 +248,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -268,7 +270,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -292,7 +294,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -319,7 +321,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, workflow.id)
+        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -348,7 +350,7 @@ class TestWorkflowService:
         from services.errors.app import IsDraftWorkflowError
 
         with pytest.raises(IsDraftWorkflowError):
-            workflow_service.get_published_workflow_by_id(app, workflow.id)
+            workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
     def test_get_published_workflow_by_id_not_found(self, db_session_with_containers: Session):
         """
@@ -365,7 +367,9 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id)
+        result = workflow_service.get_published_workflow_by_id(
+            app, non_existent_workflow_id, session=db_session_with_containers
+        )
 
         # Assert
         assert result is None
@@ -392,7 +396,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -415,7 +419,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -713,6 +717,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -777,6 +782,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -837,6 +843,7 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                session=db_session_with_containers,
             )
 
     def test_publish_workflow_success(self, db_session_with_containers: Session):
@@ -978,9 +985,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         restored_workflow = workflow_service.restore_published_workflow_to_draft(
-            app_model=app,
-            workflow_id=published_workflow.id,
-            account=account,
+            app_model=app, workflow_id=published_workflow.id, account=account, session=db_session_with_containers
         )
 
         db_session_with_containers.expire_all()
@@ -1129,7 +1134,9 @@ class TestWorkflowService:
         }
 
         # Act
-        result = workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+        result = workflow_service.convert_to_workflow(
+            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+        )
 
         # Assert
         assert result is not None
@@ -1189,7 +1196,9 @@ class TestWorkflowService:
         }
 
         # Act
-        result = workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+        result = workflow_service.convert_to_workflow(
+            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+        )
 
         # Assert
         assert result is not None
@@ -1221,7 +1230,9 @@ class TestWorkflowService:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Current App mode: workflow is not supported convert to workflow"):
-            workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+            workflow_service.convert_to_workflow(
+                app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+            )
 
     def test_validate_features_structure_advanced_chat(self, db_session_with_containers: Session):
         """
@@ -1319,10 +1330,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1350,10 +1360,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=non_existent_workflow_id,
-            tenant_id=app.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=app.tenant_id, owner_id=app.id, workflow_id=non_existent_workflow_id),
         )
 
         # Assert
@@ -1385,10 +1394,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1421,11 +1429,12 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.delete_workflow(
-            session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+            session=db_session_with_containers,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
-        assert result is True
+        assert result == []
 
         # Verify workflow is actually deleted
         deleted_workflow = db_session_with_containers.query(Workflow).filter_by(id=workflow.id).first()
@@ -1456,7 +1465,8 @@ class TestWorkflowService:
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_in_use_error(self, db_session_with_containers: Session):
@@ -1487,7 +1497,8 @@ class TestWorkflowService:
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_not_found_error(self, db_session_with_containers: Session):
@@ -1507,7 +1518,12 @@ class TestWorkflowService:
         # Act & Assert
         with pytest.raises(ValueError, match=f"Workflow with ID {non_existent_workflow_id} not found"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=non_existent_workflow_id, tenant_id=app.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(
+                    tenant_id=app.tenant_id,
+                    owner_id=app.id,
+                    workflow_id=non_existent_workflow_id,
+                ),
             )
 
     def test_run_free_workflow_node_success(self, db_session_with_containers: Session):
@@ -1621,7 +1637,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1666,12 +1681,10 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1696,7 +1709,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1741,7 +1753,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1765,7 +1776,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1811,7 +1821,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

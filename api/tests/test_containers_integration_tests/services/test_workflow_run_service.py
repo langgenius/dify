@@ -25,18 +25,18 @@ class TestWorkflowRunService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for model configuration
             mock_model_instance = mock_model_manager.return_value
@@ -64,9 +64,7 @@ class TestWorkflowRunService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(
@@ -92,7 +90,7 @@ class TestWorkflowRunService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
@@ -544,7 +542,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create workflow run without node executions
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
@@ -596,7 +594,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Use invalid workflow run ID
         invalid_workflow_run_id = str(uuid.uuid4())
@@ -648,7 +646,7 @@ class TestWorkflowRunService:
             icon="🚀",
             icon_background="#4ECDC4",
         )
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create workflow run
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")

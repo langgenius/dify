@@ -45,10 +45,12 @@ class OpenApiErrorCode(StrEnum):
     TOO_MANY_REQUESTS = "too_many_requests"
     INTERNAL_ERROR = "internal_server_error"
     BAD_GATEWAY = "bad_gateway"
+    UPGRADE_REQUIRED = "upgrade_required"
     UNKNOWN = "unknown"
     # domain codes (must match the error_code attribute of the exception
     # classes raised on the openapi surface)
     APP_UNAVAILABLE = "app_unavailable"
+    AGENT_NOT_PUBLISHED = "agent_not_published"
     CONVERSATION_COMPLETED = "conversation_completed"
     PROVIDER_NOT_INITIALIZE = "provider_not_initialize"
     PROVIDER_QUOTA_EXCEEDED = "provider_quota_exceeded"
@@ -65,6 +67,7 @@ class OpenApiErrorCode(StrEnum):
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
     HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
 
 
 class ErrorDetail(BaseModel):

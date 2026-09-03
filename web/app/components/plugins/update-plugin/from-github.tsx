@@ -6,21 +6,11 @@ import InstallFromGitHub from '../install-plugin/install-from-github'
 
 type Props = Readonly<{
   payload: UpdateFromGitHubPayload
-  onSave: () => void
+  onSave: () => void | Promise<void>
   onCancel: () => void
 }>
 
-const FromGitHub: FC<Props> = ({
-  payload,
-  onSave,
-  onCancel,
-}) => {
-  return (
-    <InstallFromGitHub
-      updatePayload={payload}
-      onClose={onCancel}
-      onSuccess={onSave}
-    />
-  )
+const FromGitHub: FC<Props> = ({ payload, onSave, onCancel }) => {
+  return <InstallFromGitHub updatePayload={payload} onClose={onCancel} onSuccess={onSave} />
 }
 export default React.memo(FromGitHub)

@@ -2,17 +2,15 @@ import type { Node } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import { useEdges } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
-import {
-  useNodeMetaData,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useNodeMetaData } from '../hooks/use-nodes-meta-data'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 type UseNodeActionsMenuModelParams = {
   id: string
@@ -28,15 +26,11 @@ export function useNodeActionsMenuModel({
   showHelpLink = true,
 }: UseNodeActionsMenuModelParams) {
   const edges = useEdges()
-  const {
-    handleNodeDelete,
-    handleNodesDuplicate,
-    handleNodeSelect,
-    handleNodesCopy,
-  } = useNodesInteractions()
+  const { handleNodeDelete, handleNodesDuplicate, handleNodeSelect, handleNodesCopy } =
+    useNodesInteractions()
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
-  const canRunWorkflow = useHooksStore(s => s.accessControl.canRun)
+  const canRunWorkflow = useHooksStore((s) => s.accessControl.canRun)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
   const { data: workflowTools } = useAllWorkflowTools()
 
@@ -45,17 +39,16 @@ export function useNodeActionsMenuModel({
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
-    return edges.find(edge => edge.target === id)?.sourceHandle || 'source'
+    return edges.find((edge) => edge.target === id)?.sourceHandle || 'source'
   }, [edges, id])
 
   const workflowAppHref = useMemo(() => {
-    const isWorkflowTool = data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
-    if (!isWorkflowTool || !workflowTools || !data.provider_id)
-      return undefined
+    const isWorkflowTool =
+      data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
+    if (!isWorkflowTool || !workflowTools || !data.provider_id) return undefined
 
-    const workflowTool = workflowTools.find(item => canFindTool(item.id, data.provider_id))
-    if (!workflowTool?.workflow_app_id)
-      return undefined
+    const workflowTool = workflowTools.find((item) => canFindTool(item.id, data.provider_id))
+    if (!workflowTool?.workflow_app_id) return undefined
 
     return `/app/${workflowTool.workflow_app_id}/workflow`
   }, [data.provider_id, data.provider_type, data.type, workflowTools])

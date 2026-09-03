@@ -8,25 +8,33 @@ type IndexingMethod = I18nKeysByPrefix<'dataset', 'indexingMethod.'>
 export const useKnowledge = () => {
   const { t } = useTranslation()
 
-  const formatIndexingTechnique = useCallback((indexingTechnique: IndexingTechnique) => {
-    return t(`indexingTechnique.${indexingTechnique}`, { ns: 'dataset' }) as string
-  }, [t])
+  const formatIndexingTechnique = useCallback(
+    (indexingTechnique: IndexingTechnique) => {
+      return t(($) => $[`indexingTechnique.${indexingTechnique}`], { ns: 'dataset' }) as string
+    },
+    [t],
+  )
 
-  const formatIndexingMethod = useCallback((indexingMethod: IndexingMethod, isEco?: boolean) => {
-    if (isEco)
-      return t('indexingMethod.invertedIndex', { ns: 'dataset' })
+  const formatIndexingMethod = useCallback(
+    (indexingMethod: IndexingMethod, isEco?: boolean) => {
+      if (isEco) return t(($) => $['indexingMethod.invertedIndex'], { ns: 'dataset' })
 
-    return t(`indexingMethod.${indexingMethod}`, { ns: 'dataset' }) as string
-  }, [t])
+      return t(($) => $[`indexingMethod.${indexingMethod}`], { ns: 'dataset' }) as string
+    },
+    [t],
+  )
 
-  const formatIndexingTechniqueAndMethod = useCallback((indexingTechnique: IndexingTechnique, indexingMethod: IndexingMethod) => {
-    let result = formatIndexingTechnique(indexingTechnique)
+  const formatIndexingTechniqueAndMethod = useCallback(
+    (indexingTechnique: IndexingTechnique, indexingMethod: IndexingMethod) => {
+      let result = formatIndexingTechnique(indexingTechnique)
 
-    if (indexingMethod)
-      result += ` · ${formatIndexingMethod(indexingMethod, indexingTechnique === 'economy')}`
+      if (indexingMethod)
+        result += ` · ${formatIndexingMethod(indexingMethod, indexingTechnique === 'economy')}`
 
-    return result
-  }, [formatIndexingTechnique, formatIndexingMethod])
+      return result
+    },
+    [formatIndexingTechnique, formatIndexingMethod],
+  )
 
   return {
     formatIndexingTechnique,

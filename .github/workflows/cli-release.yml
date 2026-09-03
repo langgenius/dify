@@ -7,12 +7,22 @@ on:
         description: Dify release tag to attach difyctl assets to (blank = latest stable)
         required: false
         type: string
+      dry_run:
+        description: Build and checksum only — skip asset upload and stale-asset prune
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_tag:
         description: Dify release tag to attach difyctl assets to (blank = latest stable)
         required: false
         type: string
+      dry_run:
+        description: Build and checksum only — skip asset upload and stale-asset prune
+        required: false
+        type: boolean
+        default: false
   release:
     types: [released]
 
@@ -35,15 +45,12 @@ jobs:
       dify_tag: ${{ steps.resolve.outputs.dify_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Export manifest to env
-        run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
-
       - name: Validate manifest
-        run: scripts/release-validate-manifest.sh
+        run: node scripts/release-naming.mjs validate
 
       - name: Resolve target Dify release
         id: resolve
@@ -75,15 +82,6 @@ jobs:
           DIFY_TAG: ${{ steps.resolve.outputs.dify_tag }}
         run: node scripts/release-naming.mjs compat-check "$DIFY_TAG"
 
-      - name: Reject duplicate difyctl version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${difyctlTag}" >/dev/null 2>&1; then
-              echo "::error::difyctl ${version} already released (tag ${difyctlTag} exists); bump cli/package.json version"
-              exit 1
-          fi
-
   release:
     name: build + attach standalone binaries (all targets)
     needs: validate
@@ -98,7 +96,7 @@ jobs:
       DIFY_TAG: ${{ needs.validate.outputs.dify_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 1
@@ -114,12 +112,13 @@ jobs:
         run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: cli/.bun-version
 
       - name: Compile standalone binaries (all targets)
         run: |
+          CLI_VERSION="$version" \
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
             pnpm build:bin
@@ -128,6 +127,7 @@ jobs:
         run: scripts/release-write-checksums.sh
 
       - name: Attach difyctl assets to Dify release
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -135,6 +135,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Prune stale difyctl assets
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -149,18 +150,3 @@ jobs:
                         --repo "$GITHUB_REPOSITORY" --yes
                 fi
               done
-
-      - name: Create provenance tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ref="refs/tags/${difyctlTag}"
-          sha="$(git rev-parse HEAD)"
-          status="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-                -f ref="$ref" -f sha="$sha" --silent --include 2>/dev/null \
-                | awk 'NR==1 {print $2; exit}' || true)"
-          case "$status" in
-              201) echo "::notice::created ${ref}" ;;
-              422) echo "::notice::tag ${ref} already exists; skipping (immutable)" ;;
-              *)   echo "::error::provenance tag ${ref} not created (HTTP ${status:-unknown})"; exit 1 ;;
-          esac

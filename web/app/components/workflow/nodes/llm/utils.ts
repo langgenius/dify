@@ -1,5 +1,11 @@
 import type { ValidationError } from 'jsonschema'
 import type { ArrayItems, Field } from './types'
+import type {
+  EnvironmentVariable,
+  LLMEnvironmentVariableValue,
+  ModelConfig,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import * as z from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
@@ -10,6 +16,49 @@ export enum LLMModelIssueCode {
   providerPluginUnavailable = 'provider-plugin-unavailable',
 }
 
+const isLLMEnvironmentVariableValue = (value: unknown): value is LLMEnvironmentVariableValue => {
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LLMEnvironmentVariableValue>
+  return !!candidate.provider && !!candidate.name && !!candidate.mode
+}
+
+export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>
+  modelSelector !== undefined && (modelSelector.length === 0 || modelSelector[0] === 'env')
+
+export const getLLMEnvironmentModel = (
+  modelSelector: ValueSelector | undefined,
+  environmentVariables: readonly EnvironmentVariable[],
+): LLMEnvironmentVariableValue | undefined => {
+  if (!modelSelector || modelSelector.length !== 2 || modelSelector[0] !== 'env') return undefined
+
+  const environmentVariable = environmentVariables.find(
+    (variable) => variable.name === modelSelector[1] && variable.value_type === 'llm',
+  )
+  if (!environmentVariable || !isLLMEnvironmentVariableValue(environmentVariable.value))
+    return undefined
+
+  return environmentVariable.value
+}
+
+export const resolveLLMNodeModel = (
+  model: ModelConfig,
+  modelSelector: ValueSelector | undefined,
+  environmentVariables: readonly EnvironmentVariable[],
+): ModelConfig | undefined => {
+  if (!isEnvironmentModelSource(modelSelector)) return model
+
+  const environmentModel = getLLMEnvironmentModel(modelSelector, environmentVariables)
+  if (!environmentModel || environmentModel.mode !== model.mode) return undefined
+
+  return {
+    ...model,
+    provider: environmentModel.provider,
+    name: environmentModel.name,
+    completion_params: environmentModel.completion_params ?? model.completion_params,
+  }
+}
+
 export const getLLMModelIssue = ({
   modelProvider,
   isModelProviderInstalled = true,
@@ -17,71 +66,62 @@ export const getLLMModelIssue = ({
   modelProvider?: string
   isModelProviderInstalled?: boolean
 }) => {
-  if (!modelProvider)
-    return LLMModelIssueCode.providerRequired
+  if (!modelProvider) return LLMModelIssueCode.providerRequired
 
-  if (!isModelProviderInstalled)
-    return LLMModelIssueCode.providerPluginUnavailable
+  if (!isModelProviderInstalled) return LLMModelIssueCode.providerPluginUnavailable
 
   return null
 }
 
-export const isLLMModelProviderInstalled = (modelProvider: string | undefined, installedPluginIds: ReadonlySet<string>) => {
-  if (!modelProvider)
-    return true
+export const isLLMModelProviderInstalled = (
+  modelProvider: string | undefined,
+  installedPluginIds: ReadonlySet<string>,
+) => {
+  if (!modelProvider) return true
 
   return installedPluginIds.has(extractPluginId(modelProvider))
 }
 
 export const getFieldType = (field: Field) => {
   const { type, items, enum: enums } = field
-  if (field.schemaType === 'file')
-    return Type.file
-  if (enums && enums.length > 0)
-    return Type.enumType
-  if (type !== Type.array || !items)
-    return type
+  if (field.schemaType === 'file') return Type.file
+  if (enums && enums.length > 0) return Type.enumType
+  if (type !== Type.array || !items) return type
 
   return ArrayType[items.type as keyof typeof ArrayType]
 }
 
 export const getHasChildren = (schema: Field) => {
   const complexTypes = [Type.object, Type.array]
-  if (!complexTypes.includes(schema.type))
-    return false
+  if (!complexTypes.includes(schema.type)) return false
   if (schema.type === Type.object)
     return schema.properties && Object.keys(schema.properties).length > 0
   if (schema.type === Type.array)
-    return schema.items && schema.items.type === Type.object && schema.items.properties && Object.keys(schema.items.properties).length > 0
+    return (
+      schema.items &&
+      schema.items.type === Type.object &&
+      schema.items.properties &&
+      Object.keys(schema.items.properties).length > 0
+    )
 }
 
 const getTypeOf = (target: any) => {
-  if (target === null)
-    return 'null'
+  if (target === null) return 'null'
   if (typeof target !== 'object') {
     return typeof target
-  }
-  else {
-    return Object.prototype.toString
-      .call(target)
-      .slice(8, -1)
-      .toLocaleLowerCase()
+  } else {
+    return Object.prototype.toString.call(target).slice(8, -1).toLocaleLowerCase()
   }
 }
 
 const inferType = (value: any): Type => {
   const type = getTypeOf(value)
-  if (type === 'array')
-    return Type.array
+  if (type === 'array') return Type.array
   // type boolean will be treated as string
-  if (type === 'boolean')
-    return Type.string
-  if (type === 'number')
-    return Type.number
-  if (type === 'string')
-    return Type.string
-  if (type === 'object')
-    return Type.object
+  if (type === 'boolean') return Type.string
+  if (type === 'number') return Type.number
+  if (type === 'string') return Type.string
+  if (type === 'object') return Type.object
   return Type.string
 }
 
@@ -99,8 +139,7 @@ export const jsonToSchema = (json: any): Field => {
       schema.properties![key] = jsonToSchema(value)
       schema.required!.push(key)
     })
-  }
-  else if (schema.type === Type.array) {
+  } else if (schema.type === Type.array) {
     schema.items = jsonToSchema(json[0]) as ArrayItems
   }
 
@@ -108,17 +147,14 @@ export const jsonToSchema = (json: any): Field => {
 }
 
 export const checkJsonDepth = (json: any) => {
-  if (!json || getTypeOf(json) !== 'object')
-    return 0
+  if (!json || getTypeOf(json) !== 'object') return 0
 
   let maxDepth = 0
 
   if (getTypeOf(json) === 'array') {
-    if (json[0] && getTypeOf(json[0]) === 'object')
-      maxDepth = checkJsonDepth(json[0])
-  }
-  else if (getTypeOf(json) === 'object') {
-    const propertyDepths = Object.values(json).map(value => checkJsonDepth(value))
+    if (json[0] && getTypeOf(json[0]) === 'object') maxDepth = checkJsonDepth(json[0])
+  } else if (getTypeOf(json) === 'object') {
+    const propertyDepths = Object.values(json).map((value) => checkJsonDepth(value))
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
   }
 
@@ -126,16 +162,16 @@ export const checkJsonDepth = (json: any) => {
 }
 
 export const checkJsonSchemaDepth = (schema: Field) => {
-  if (!schema || getTypeOf(schema) !== 'object')
-    return 0
+  if (!schema || getTypeOf(schema) !== 'object') return 0
 
   let maxDepth = 0
 
   if (schema.type === Type.object && schema.properties) {
-    const propertyDepths = Object.values(schema.properties).map(value => checkJsonSchemaDepth(value))
+    const propertyDepths = Object.values(schema.properties).map((value) =>
+      checkJsonSchemaDepth(value),
+    )
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
-  }
-  else if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
+  } else if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
     maxDepth = checkJsonSchemaDepth(schema.items) + 1
   }
 
@@ -144,8 +180,7 @@ export const checkJsonSchemaDepth = (schema: Field) => {
 
 export const findPropertyWithPath = (target: any, path: string[]) => {
   let current = target
-  for (const key of path)
-    current = current[key]
+  for (const key of path) current = current[key]
   return current
 }
 
@@ -159,12 +194,12 @@ export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
 }
 
 export const getValidationErrorMessage = (errors: Array<ValidationError | string>) => {
-  const message = errors.map((error) => {
-    if (typeof error === 'string')
-      return error
-    else
-      return `Error: ${error.stack}\n`
-  }).join('')
+  const message = errors
+    .map((error) => {
+      if (typeof error === 'string') return error
+      else return `Error: ${error.stack}\n`
+    })
+    .join('')
   return message
 }
 

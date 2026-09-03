@@ -30,9 +30,11 @@ describe('useSnippetInputFieldActions', () => {
   describe('Field sync', () => {
     it('should update fields and sync the draft', () => {
       useSnippetDraftStore.getState().setInputFields([createField()])
-      const { result } = renderHook(() => useSnippetInputFieldActions({
-        snippetId: 'snippet-1',
-      }))
+      const { result } = renderHook(() =>
+        useSnippetInputFieldActions({
+          snippetId: 'snippet-1',
+        }),
+      )
       const nextFields = [
         createField(),
         createField({

@@ -113,8 +113,6 @@ def test_plugin_install_response_without_task_is_non_blocking():
 def test_import_response_with_warnings_and_app_id_is_success():
     import_workflow_app = _load_setup_module("import_workflow_app")
 
-    assert import_workflow_app.is_successful_import_response(
-        {"status": "completed-with-warnings", "app_id": "app-id"}
-    )
+    assert import_workflow_app.is_successful_import_response({"status": "completed-with-warnings", "app_id": "app-id"})
     assert not import_workflow_app.is_successful_import_response({"status": "failed", "app_id": "app-id"})
     assert not import_workflow_app.is_successful_import_response({"status": "completed"})

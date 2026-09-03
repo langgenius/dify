@@ -1,11 +1,10 @@
-import type { Mock } from 'vitest' // Or 'jest' if using Jest
+import type { Mock } from 'vite-plus/test'
 import type { IChatItem } from '../../type'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useChatContext } from '../../context'
 import SuggestedQuestions from '../suggested-questions'
 
-// Mock the chat context
 vi.mock('../../context', () => ({
   useChatContext: vi.fn(),
 }))
@@ -14,9 +13,8 @@ describe('SuggestedQuestions', () => {
   const mockOnSend = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    // Use 'as Mock' instead of 'as any'
-    (useChatContext as Mock).mockReturnValue({
+    vi.clearAllMocks()
+    ;(useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: false,
     })
@@ -33,51 +31,63 @@ describe('SuggestedQuestions', () => {
   it('should render suggested questions and filter out empty ones', () => {
     render(<SuggestedQuestions item={mockItem} />)
 
-    const questions = screen.getAllByTestId('suggested-question')
+    const questions = screen.getAllByRole('button')
     expect(questions).toHaveLength(2)
-    expect(questions[0])!.toHaveTextContent('What is Dify?')
-    expect(questions[1])!.toHaveTextContent('How to use it?')
+    expect(questions[0]).toHaveAccessibleName('What is Dify?')
+    expect(questions[1]).toHaveAccessibleName('How to use it?')
   })
 
   it('should call onSend when a question is clicked', async () => {
     const user = userEvent.setup()
     render(<SuggestedQuestions item={mockItem} />)
 
-    const questions = screen.getAllByTestId('suggested-question')
-    await user.click(questions[0]!)
+    await user.click(screen.getByRole('button', { name: 'What is Dify?' }))
+
+    expect(mockOnSend).toHaveBeenCalledWith('What is Dify?')
+  })
+
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Space', ' '],
+  ])('should send a question with the %s key', async (_, key) => {
+    const user = userEvent.setup()
+    render(<SuggestedQuestions item={mockItem} />)
+
+    const question = screen.getByRole('button', { name: 'What is Dify?' })
+    question.focus()
+    await user.keyboard(key)
 
     expect(mockOnSend).toHaveBeenCalledWith('What is Dify?')
   })
 
   it('should not render if isOpeningStatement is false', () => {
     render(<SuggestedQuestions item={{ ...mockItem, isOpeningStatement: false }} />)
-    expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should not render if suggestedQuestions is missing or empty', () => {
     render(<SuggestedQuestions item={{ ...mockItem, suggestedQuestions: [] }} />)
-    expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
 
-    // Use 'as IChatItem' instead of 'as any'
-    render(<SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />)
-    expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
+    render(
+      <SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />,
+    )
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should be disabled and not call onSend when readonly is true', async () => {
-    const user = userEvent.setup();
-    // Use 'as Mock' instead of 'as any'
-    (useChatContext as Mock).mockReturnValue({
+    const user = userEvent.setup()
+    ;(useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: true,
     })
 
     render(<SuggestedQuestions item={mockItem} />)
 
-    const questions = screen.getAllByTestId('suggested-question')
-    expect(questions[0])!.toHaveClass('pointer-events-none')
-    expect(questions[0])!.toHaveClass('opacity-50')
+    const question = screen.getByRole('button', { name: 'What is Dify?' })
+    expect(question).toBeDisabled()
 
-    await user.click(questions[0]!)
+    await user.click(question)
     expect(mockOnSend).not.toHaveBeenCalled()
   })
 })

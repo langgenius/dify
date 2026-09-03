@@ -56,11 +56,11 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       },
     },
   }
-  return createStore<FeatureStoreState>()(set => ({
+  return createStore<FeatureStoreState>()((set) => ({
     ...DEFAULT_PROPS,
     ...initProps,
-    setFeatures: features => set(() => ({ features })),
+    setFeatures: (features) => set(() => ({ features })),
     showFeaturesModal: false,
-    setShowFeaturesModal: showFeaturesModal => set(() => ({ showFeaturesModal })),
+    setShowFeaturesModal: (showFeaturesModal) => set(() => ({ showFeaturesModal })),
   }))
 }

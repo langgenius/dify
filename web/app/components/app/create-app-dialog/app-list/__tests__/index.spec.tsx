@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
 const mockUseExploreAppList = vi.fn()
-const mockImportDSL = vi.fn()
+const mockImportDSL = vi.hoisted(() => vi.fn())
 const mockFetchAppDetail = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
@@ -13,27 +13,17 @@ const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockTrackCreateApp = vi.fn()
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
-let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-let mockIsCurrentWorkspaceEditor = true
+const mockUserProfile = { id: 'user-1' }
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    latestDebounceFn = fn
-    return {
-      run: () => setTimeout(() => latestDebounceFn(), 0),
-      cancel: vi.fn(),
-      flush: () => latestDebounceFn(),
-    }
-  },
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: mockUserProfile,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
 vi.mock('nuqs', () => ({
   useQueryState: () => ['Recommended', vi.fn()],
 }))
@@ -41,18 +31,48 @@ vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => mockUseExploreAppList(),
 }))
 vi.mock('@/app/components/app/type-selector', () => ({
-  default: ({ value, onChange }: { value: AppModeEnum[], onChange: (value: AppModeEnum[]) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: AppModeEnum[]
+    onChange: (value: AppModeEnum[]) => void
+  }) => (
     <div>
-      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>{value.join(',')}</button>
-      <button data-testid="type-selector-advanced" onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}>advanced</button>
-      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>agent</button>
-      <button data-testid="type-selector-completion" onClick={() => onChange([AppModeEnum.COMPLETION])}>completion</button>
-      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>workflow</button>
+      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>
+        {value.join(',')}
+      </button>
+      <button
+        data-testid="type-selector-advanced"
+        onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}
+      >
+        advanced
+      </button>
+      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>
+        agent
+      </button>
+      <button
+        data-testid="type-selector-completion"
+        onClick={() => onChange([AppModeEnum.COMPLETION])}
+      >
+        completion
+      </button>
+      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>
+        workflow
+      </button>
     </div>
   ),
 }))
 vi.mock('../../app-card', () => ({
-  default: ({ app, canCreate, onCreate }: { app: { app: { name: string } }, canCreate: boolean, onCreate: () => void }) => (
+  default: ({
+    app,
+    canCreate,
+    onCreate,
+  }: {
+    app: { app: { name: string } }
+    canCreate: boolean
+    onCreate: () => void
+  }) => (
     <button
       type="button"
       data-testid="app-card"
@@ -65,7 +85,11 @@ vi.mock('../../app-card', () => ({
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({ onConfirm, onHide, show }: {
+  default: ({
+    onConfirm,
+    onHide,
+    show,
+  }: {
     onConfirm: (payload: {
       name: string
       icon_type: string
@@ -75,25 +99,28 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
     }) => Promise<void>
     onHide: () => void
     show: boolean
-  }) => show
-    ? (
-        <div data-testid="create-from-template-modal">
-          <button
-            data-testid="confirm-create"
-            onClick={() => onConfirm({
+  }) =>
+    show ? (
+      <div data-testid="create-from-template-modal">
+        <button
+          data-testid="confirm-create"
+          onClick={() =>
+            onConfirm({
               name: 'Created App',
               icon_type: 'emoji',
               icon: '🙂',
               icon_background: '#fff',
               description: 'created from template',
-            })}
-          >
-            confirm-create
-          </button>
-          <button data-testid="hide-create-modal" onClick={onHide}>hide-create-modal</button>
-        </div>
-      )
-    : null,
+            })
+          }
+        >
+          confirm-create
+        </button>
+        <button data-testid="hide-create-modal" onClick={onHide}>
+          hide-create-modal
+        </button>
+      </div>
+    ) : null,
 }))
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -104,18 +131,42 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
-vi.mock('@/service/apps', () => ({
-  importDSL: (...args: unknown[]) => mockImportDSL(...args),
-}))
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        imports: {
+          ...actual.consoleQuery.apps.imports,
+          post: {
+            mutationOptions: () => ({
+              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+            }),
+          },
+        },
+      },
+    },
+  }
+})
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
-    handleCheckPluginDependencies: (...args: unknown[]) => mockHandleCheckPluginDependencies(...args),
+    handleCheckPluginDependencies: (...args: unknown[]) =>
+      mockHandleCheckPluginDependencies(...args),
   }),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -179,9 +230,7 @@ describe('Apps', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockIsCurrentWorkspaceEditor = true
     mockUseExploreAppList.mockReturnValue({
       data: defaultData,
       isLoading: false,
@@ -213,7 +262,6 @@ describe('Apps', () => {
   })
 
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
-    mockIsCurrentWorkspaceEditor = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
     render(<Apps />)
@@ -222,7 +270,6 @@ describe('Apps', () => {
   })
 
   it('does not allow template creation when app.create_and_management permission is missing', () => {
-    mockIsCurrentWorkspaceEditor = true
     mockWorkspacePermissionKeys = []
 
     render(<Apps />)
@@ -276,10 +323,12 @@ describe('Apps', () => {
 
     await waitFor(() => {
       expect(mockFetchAppDetail).toHaveBeenCalledWith('Alpha')
-      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
-        yaml_content: 'dsl',
-        name: 'Created App',
-      }))
+      expect(mockImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml_content: 'dsl',
+          name: 'Created App',
+        }),
+      )
     })
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -290,13 +339,49 @@ describe('Apps', () => {
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
-    expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
-    expect(mockGetRedirection).toHaveBeenCalledWith({
-      id: 'created-app-id',
-      mode: AppModeEnum.CHAT,
-      permission_keys: ['app.acl.view_layout'],
-    }, mockPush, { isRbacEnabled: false })
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      {
+        id: 'created-app-id',
+        mode: AppModeEnum.CHAT,
+        permission_keys: ['app.acl.view_layout'],
+      },
+      mockPush,
+      {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      },
+    )
+  })
+
+  it('passes creator context when template import response has no permission keys', async () => {
+    mockImportDSL.mockResolvedValueOnce({
+      app_id: 'created-without-permissions',
+      app_mode: AppModeEnum.WORKFLOW,
+    })
+
+    render(<Apps />)
+
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
+    fireEvent.click(screen.getByTestId('confirm-create'))
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith(
+        {
+          id: 'created-without-permissions',
+          mode: AppModeEnum.WORKFLOW,
+          permission_keys: undefined,
+        },
+        mockPush,
+        {
+          currentUserId: 'user-1',
+          resourceMaintainer: 'user-1',
+          workspacePermissionKeys: ['app.create_and_management'],
+          isRbacEnabled: false,
+        },
+      )
+    })
   })
 
   it('shows an error toast when importing the template fails', async () => {
@@ -421,5 +506,25 @@ describe('Apps', () => {
     fireEvent.click(screen.getByTestId('hide-create-modal'))
 
     expect(screen.queryByTestId('create-from-template-modal')).not.toBeInTheDocument()
+  })
+
+  it('clears an active search immediately and returns focus to the searchbox', async () => {
+    const user = userEvent.setup()
+    render(<Apps />)
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'app.newAppFromTemplate.searchAllTemplate',
+    })
+
+    await user.type(searchInput, 'Alpha')
+    await waitFor(() => {
+      expect(screen.queryByText('Bravo')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
+    expect(screen.getByText('Cat A')).toBeInTheDocument()
+    expect(screen.getAllByTestId('app-card')).toHaveLength(6)
   })
 })

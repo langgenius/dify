@@ -1,16 +1,27 @@
+import type {
+  AgentAppCreatePayload,
+  AgentAppPartial,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 
+type AgentFormField = 'description' | 'name' | 'role'
+
 export type AgentFormValues = {
-  description?: string
-  name?: string
-  role?: string
+  [Field in AgentFormField]-?: NonNullable<AgentAppCreatePayload[Field]>
 }
 
-export type AgentIconSelection = AppIconSelection | {
-  type: 'link'
-  icon: string
-  url: string
-}
+export type AgentFormSource = Pick<
+  AgentAppPartial,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name' | 'role'
+>
+
+export type AgentIconSelection =
+  | AppIconSelection
+  | {
+      type: 'link'
+      icon: string
+      url: string
+    }
 
 export const defaultAgentIcon = {
   type: 'emoji',
@@ -22,6 +33,7 @@ type AgentIconSource = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  icon_url?: string | null
 }
 
 export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelection => {
@@ -29,7 +41,7 @@ export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelec
     return {
       type: 'image',
       fileId: agent.icon,
-      url: agent.icon,
+      url: agent.icon_url ?? agent.icon,
     }
   }
 
@@ -49,11 +61,9 @@ export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelec
 }
 
 export const getAgentIconKey = (icon: AgentIconSelection) => {
-  if (icon.type === 'emoji')
-    return `${icon.type}:${icon.icon}:${icon.background}`
+  if (icon.type === 'emoji') return `${icon.type}:${icon.icon}:${icon.background}`
 
-  if (icon.type === 'image')
-    return `${icon.type}:${icon.fileId}`
+  if (icon.type === 'image') return `${icon.type}:${icon.fileId}`
 
   return `${icon.type}:${icon.icon}`
 }

@@ -1,0 +1,933 @@
+"""Unit coverage for console app controller contracts and response mapping."""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import Iterator
+from inspect import unwrap
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pytest
+from flask import Flask
+from pydantic import ValidationError
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import BadRequest, NotFound
+
+from controllers.console import console_ns
+from controllers.console.app import (
+    annotation as annotation_module,
+)
+from controllers.console.app import (
+    app as app_module,
+)
+from controllers.console.app import (
+    completion as completion_module,
+)
+from controllers.console.app import (
+    message as message_module,
+)
+from controllers.console.app import (
+    ops_trace as ops_trace_module,
+)
+from controllers.console.app import (
+    site as site_module,
+)
+from controllers.console.app import (
+    statistic as statistic_module,
+)
+from controllers.console.app import (
+    workflow_app_log as workflow_app_log_module,
+)
+from controllers.console.app import (
+    workflow_draft_variable as workflow_draft_variable_module,
+)
+from controllers.console.app import (
+    workflow_statistic as workflow_statistic_module,
+)
+from controllers.console.app import (
+    workflow_trigger as workflow_trigger_module,
+)
+from controllers.console.app import (
+    wraps as wraps_module,
+)
+from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
+from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.site import AppSiteUpdatePayload
+from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
+from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
+from controllers.console.app.workflow_draft_variable import (
+    EnvironmentVariableUpdatePayload,
+    WorkflowDraftVariableListQuery,
+    WorkflowDraftVariableUpdatePayload,
+)
+from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
+from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from machinery.context import RequestContext
+from models import App, Site
+from models.account import Account, AccountStatus
+from models.engine import db
+from models.trigger import WorkflowWebhookTrigger
+from services.app_site_service import (
+    AppSiteAppNotFoundError,
+    AppSiteChanges,
+    AppSiteCommandResult,
+    AppSiteNotFoundError,
+)
+from tests.unit_tests.config_override import apply_config_overrides
+
+APP_ID = "11111111-1111-1111-1111-111111111111"
+TENANT_ID = "22222222-2222-2222-2222-222222222222"
+USER_ID = "33333333-3333-3333-3333-333333333333"
+
+
+def _make_account() -> Account:
+    account = Account(
+        name="tester",
+        email="tester@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = USER_ID
+    return account
+
+
+def _make_app(
+    app_id: str = APP_ID,
+    *,
+    tenant_id: str = TENANT_ID,
+    icon_type: app_module.IconType | None = None,
+) -> App:
+    app = App()
+    app.id = app_id
+    app.tenant_id = tenant_id
+    app.icon_type = icon_type
+    return app
+
+
+def _make_request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id=USER_ID,
+        active_workspace_id=TENANT_ID,
+    )
+
+
+@pytest.fixture
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Site.__table__.create(db.engine)
+        WorkflowWebhookTrigger.__table__.create(db.engine)
+        yield app
+
+
+class TestCompletionEndpoints:
+    def test_completion_create_payload(self):
+        payload = CompletionMessagePayload(inputs={"prompt": "test"}, model_config={})
+        assert payload.inputs == {"prompt": "test"}
+
+    def test_chat_message_payload_uuid_validation(self):
+        payload = ChatMessagePayload(
+            inputs={},
+            model_config={},
+            query="hi",
+            conversation_id=str(uuid.uuid4()),
+            parent_message_id=str(uuid.uuid4()),
+        )
+        assert payload.query == "hi"
+
+    def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+        api = completion_module.CompletionMessageApi()
+        method = unwrap(api.post)
+
+        monkeypatch.setattr(
+            completion_module.AppGenerateService,
+            "generate",
+            lambda **_kwargs: {"text": "ok"},
+        )
+        monkeypatch.setattr(
+            completion_module.helper,
+            "compact_generate_response",
+            lambda response: {"result": response},
+        )
+
+        with (
+            Session(sqlite_engine) as session,
+            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
+        ):
+            resp = method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+        assert resp == {"result": {"text": "ok"}}
+
+    def test_completion_api_conversation_not_exists(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
+        api = completion_module.CompletionMessageApi()
+        method = unwrap(api.post)
+
+        monkeypatch.setattr(
+            completion_module.AppGenerateService,
+            "generate",
+            lambda **_kwargs: (_ for _ in ()).throw(
+                completion_module.services.errors.conversation.ConversationNotExistsError()
+            ),
+        )
+
+        with (
+            Session(sqlite_engine) as session,
+            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
+            pytest.raises(NotFound),
+        ):
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+    def test_completion_api_provider_not_initialized(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
+        api = completion_module.CompletionMessageApi()
+        method = unwrap(api.post)
+
+        monkeypatch.setattr(
+            completion_module.AppGenerateService,
+            "generate",
+            lambda **_kwargs: (_ for _ in ()).throw(completion_module.ProviderTokenNotInitError("x")),
+        )
+
+        with (
+            Session(sqlite_engine) as session,
+            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
+            pytest.raises(completion_module.ProviderNotInitializeError),
+        ):
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+    def test_completion_api_quota_exceeded(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
+        api = completion_module.CompletionMessageApi()
+        method = unwrap(api.post)
+
+        monkeypatch.setattr(
+            completion_module.AppGenerateService,
+            "generate",
+            lambda **_kwargs: (_ for _ in ()).throw(completion_module.QuotaExceededError()),
+        )
+
+        with (
+            Session(sqlite_engine) as session,
+            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
+            pytest.raises(completion_module.ProviderQuotaExceededError),
+        ):
+            method(
+                api,
+                CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
+                session,
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+
+class TestAppEndpoints:
+    def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        api = app_module.AppPublishToCreatorsPlatformApi()
+        method = unwrap(api.post)
+        oauth_server = MagicMock()
+        oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
+        services = MagicMock(oauth_server=oauth_server)
+
+        apply_config_overrides(
+            monkeypatch,
+            CREATORS_PLATFORM_FEATURES_ENABLED=True,
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-1",
+        )
+        monkeypatch.setattr(app_module, "application_services", lambda: services)
+        monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
+
+        with (
+            database_app.test_request_context(),
+            patch("core.helper.creators.upload_dsl", return_value="claim-1"),
+            patch("core.helper.creators.get_redirect_url", return_value="https://creators.example.com") as redirect,
+        ):
+            response = method(api, USER_ID, _make_app())
+
+        assert response == {"redirect_url": "https://creators.example.com"}
+        oauth_server.issue_authorization_code.assert_called_once_with(
+            client_id="client-1",
+            account_id=USER_ID,
+        )
+        redirect.assert_called_once_with("claim-1", oauth_code="oauth-code-1")
+
+    def test_app_put_should_preserve_icon_type_when_payload_omits_it(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
+        api = app_module.AppApi()
+        method = unwrap(api.put)
+        payload = {
+            "name": "Updated App",
+            "description": "Updated description",
+            "icon": "🤖",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app.return_value = _make_app()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
+
+        with (
+            app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+        ):
+            response = method(
+                api,
+                app_module.UpdateAppPayload(
+                    name="Updated App",
+                    description="Updated description",
+                    icon="🤖",
+                    icon_background="#FFFFFF",
+                ),
+                unbound_session,
+                app_model=_make_app(icon_type=app_module.IconType.EMOJI),
+            )
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app.call_args.args[1]["icon_type"] is None
+
+    def test_update_app_payload_should_reject_empty_icon_type(self):
+        with pytest.raises(ValidationError):
+            app_module.UpdateAppPayload.model_validate(
+                {
+                    "name": "Updated App",
+                    "description": "Updated description",
+                    "icon_type": "",
+                    "icon": "🤖",
+                    "icon_background": "#FFFFFF",
+                }
+            )
+
+    def test_app_icon_post_should_forward_icon_type(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
+        api = app_module.AppIconApi()
+        method = unwrap(api.post)
+        payload = {
+            "icon": "https://example.com/icon.png",
+            "icon_type": "image",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app_icon.return_value = _make_app()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
+
+        with (
+            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+        ):
+            response = method(
+                api,
+                app_module.AppIconPayload(
+                    icon="https://example.com/icon.png",
+                    icon_type=app_module.IconType.IMAGE,
+                    icon_background="#FFFFFF",
+                ),
+                unbound_session,
+                app_model=_make_app(),
+            )
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app_icon.call_args.args[1:] == (
+            payload["icon"],
+            payload["icon_background"],
+            app_module.IconType.IMAGE,
+        )
+
+
+class TestOpsTraceEndpoints:
+    def test_ops_trace_query_basic(self):
+        query = TraceProviderQuery(tracing_provider="langfuse")
+        assert query.tracing_provider == "langfuse"
+
+    def test_ops_trace_config_payload(self):
+        payload = TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"})
+        assert payload.tracing_config["api_key"] == "k"
+
+    def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        api = ops_trace_module.TraceAppConfigApi()
+        method = unwrap(api.get)
+
+        monkeypatch.setattr(
+            ops_trace_module.OpsService,
+            "get_tracing_app_config",
+            lambda **_kwargs: None,
+        )
+
+        with app.test_request_context("/?tracing_provider=langfuse"):
+            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+
+        assert result == {"has_not_configured": True}
+
+    def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        api = ops_trace_module.TraceAppConfigApi()
+        method = unwrap(api.post)
+
+        monkeypatch.setattr(
+            ops_trace_module.OpsService,
+            "create_tracing_app_config",
+            lambda **_kwargs: {"error": True},
+        )
+
+        with app.test_request_context(
+            "/",
+            json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
+        ):
+            with pytest.raises(BadRequest):
+                method(
+                    api,
+                    TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
+                    _make_app(),
+                )
+
+    def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        api = ops_trace_module.TraceAppConfigApi()
+        method = unwrap(api.delete)
+
+        monkeypatch.setattr(
+            ops_trace_module.OpsService,
+            "delete_tracing_app_config",
+            lambda **_kwargs: False,
+        )
+
+        with app.test_request_context("/?tracing_provider=langfuse"):
+            with pytest.raises(BadRequest):
+                method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+
+
+class TestSiteEndpoints:
+    @staticmethod
+    def _command_result(*, code: str = "test-code") -> AppSiteCommandResult:
+        return AppSiteCommandResult(
+            app_id=APP_ID,
+            title="My Site",
+            description="Test site",
+            default_language="en-US",
+            input_placeholder="Ask me anything",
+            code=code,
+            icon=None,
+            icon_background=None,
+            customize_domain=None,
+            copyright=None,
+            privacy_policy=None,
+            custom_disclaimer="",
+            customize_token_strategy="not_allow",
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
+        )
+
+    def test_site_payload_maps_to_application_changes(self):
+        payload = AppSiteUpdatePayload(
+            title="My Site",
+            description="Test site",
+            input_placeholder="Ask me anything",
+        )
+        assert payload.to_changes() == AppSiteChanges(
+            title="My Site",
+            description="Test site",
+            input_placeholder="Ask me anything",
+        )
+
+    def test_site_default_language_validation(self):
+        payload = AppSiteUpdatePayload(default_language="en-US")
+        assert payload.default_language == "en-US"
+
+    def test_app_site_update_post(
+        self,
+    ) -> None:
+        api = site_module.AppSite()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.update.return_value = self._command_result()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with patch.object(site_module, "application_services", return_value=services):
+            result = method(
+                api,
+                AppSiteUpdatePayload(title="My Site", input_placeholder="Ask me anything"),
+                context,
+                app_id=uuid.UUID(APP_ID),
+            )
+
+        assert isinstance(result, dict)
+        assert result["title"] == "My Site"
+        assert result["input_placeholder"] == "Ask me anything"
+        assert result["access_token"] == "test-code"
+        assert result["code"] == "test-code"
+        services.app_sites.update.assert_called_once_with(
+            context,
+            APP_ID,
+            AppSiteChanges(title="My Site", input_placeholder="Ask me anything"),
+        )
+
+    def test_app_site_access_token_reset(
+        self,
+    ) -> None:
+        api = site_module.AppSiteAccessTokenReset()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.reset_access_token.return_value = self._command_result(code="new-code")
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with patch.object(site_module, "application_services", return_value=services):
+            result = method(api, context, app_id=uuid.UUID(APP_ID))
+
+        assert isinstance(result, dict)
+        assert result["access_token"] == "new-code"
+        assert result["code"] == "new-code"
+        services.app_sites.reset_access_token.assert_called_once_with(context, APP_ID)
+
+    def test_app_site_update_maps_missing_app(self) -> None:
+        api = site_module.AppSite()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.update.side_effect = AppSiteAppNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(AppNotFoundError),
+        ):
+            method(api, AppSiteUpdatePayload(), context, app_id=uuid.UUID(APP_ID))
+
+    def test_app_site_reset_maps_missing_site(self) -> None:
+        api = site_module.AppSiteAccessTokenReset()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.reset_access_token.side_effect = AppSiteNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(NotFound),
+        ):
+            method(api, context, app_id=uuid.UUID(APP_ID))
+
+
+class TestWorkflowEndpoints:
+    def test_workflow_copy_payload(self):
+        payload = SyncDraftWorkflowPayload(graph={}, features={})
+        assert payload.graph == {}
+        assert payload.model_dump()["is_collaborative"] is False
+
+    def test_workflow_sync_payload_accepts_collaboration_marker(self):
+        payload = SyncDraftWorkflowPayload.model_validate({"graph": {}, "features": {}, "_is_collaborative": True})
+        assert payload.is_collaborative is True
+        assert payload.model_dump()["is_collaborative"] is True
+
+    def test_workflow_mode_query(self):
+        payload = AdvancedChatWorkflowRunPayload(inputs={}, query="hi")
+        assert payload.query == "hi"
+
+
+class TestWorkflowAppLogEndpoints:
+    def test_workflow_app_log_query(self):
+        query = WorkflowAppLogQuery(keyword="test", page=1, limit=20)
+        assert query.keyword == "test"
+
+    def test_workflow_app_log_query_detail_bool(self):
+        query = WorkflowAppLogQuery(detail="true")
+        assert query.detail is True
+
+    def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = workflow_app_log_module.WorkflowAppLogApi()
+        method = unwrap(api.get)
+
+        def fake_get_paginate(self, *, session: Session, **_kwargs):
+            assert session.get_bind() is db.engine
+            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+
+        monkeypatch.setattr(
+            workflow_app_log_module.WorkflowAppService,
+            "get_paginate_workflow_app_logs",
+            fake_get_paginate,
+        )
+
+        with database_app.test_request_context("/?page=1&limit=20"):
+            result = method(api, WorkflowAppLogQuery(page=1, limit=20), app_model=_make_app("app-1"))
+
+        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+
+
+class TestWorkflowDraftVariableEndpoints:
+    def test_workflow_variable_creation(self):
+        payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
+        assert payload.name == "var1"
+
+    def test_workflow_variable_collection_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
+        method = unwrap(api.get)
+
+        class DummyDraftService:
+            def __init__(self, session: Session):
+                self.session = session
+
+            def list_variables_without_values(self, **_kwargs):
+                assert self.session.get_bind() is db.engine
+                return {"items": [], "total": 0}
+
+        class DummyWorkflowService:
+            def is_workflow_exist(self, *args, **kwargs):
+                return True
+
+        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowDraftVariableService", DummyDraftService)
+        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
+
+        with database_app.test_request_context("/?page=1&limit=20"):
+            result = method(
+                api,
+                WorkflowDraftVariableListQuery(page=1, limit=20),
+                _make_account(),
+                app_model=_make_app("app-1"),
+            )
+
+        assert result == {"items": [], "total": 0}
+
+    def test_environment_variable_update_payload_preserves_full_replace_default(self) -> None:
+        payload = EnvironmentVariableUpdatePayload(environment_variables=[])
+
+        assert payload.patch is False
+        assert payload.deleted_environment_variable_ids == []
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"environment_variables": [], "deleted_environment_variable_ids": ["env-a"]},
+            {
+                "environment_variables": [{"name": "a", "value_type": "string", "value": "a"}],
+                "patch": True,
+            },
+            {
+                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "a"}],
+                "patch": True,
+                "deleted_environment_variable_ids": ["env-a"],
+            },
+        ],
+    )
+    def test_environment_variable_patch_payload_rejects_ambiguous_mutations(self, payload: dict) -> None:
+        with pytest.raises(ValidationError):
+            EnvironmentVariableUpdatePayload.model_validate(payload)
+
+    def test_environment_variable_collection_post_routes_patch_to_service(
+        self, database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        api = workflow_draft_variable_module.EnvironmentVariableCollectionApi()
+        method = unwrap(api.post)
+        captured: dict = {}
+
+        class DummyWorkflowService:
+            def patch_draft_workflow_environment_variables(self, **kwargs) -> None:
+                captured.update(kwargs)
+
+            def update_draft_workflow_environment_variables(self, **_kwargs) -> None:
+                raise AssertionError("patch request must not use full replacement")
+
+        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
+
+        with database_app.test_request_context(
+            "/",
+            json={
+                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+                "patch": True,
+                "deleted_environment_variable_ids": ["env-b"],
+            },
+        ):
+            result = method(
+                api,
+                EnvironmentVariableUpdatePayload(
+                    environment_variables=[{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+                    patch=True,
+                    deleted_environment_variable_ids=["env-b"],
+                ),
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+        assert result == {"result": "success"}
+        assert [(variable.id, variable.value) for variable in captured["environment_variables"]] == [("env-a", "new-a")]
+        assert captured["deleted_environment_variable_ids"] == ["env-b"]
+        assert captured["app_model"].id == APP_ID
+        assert captured["account"].id == USER_ID
+        assert captured["session"].get_bind() is db.engine
+
+
+class TestWorkflowStatisticEndpoints:
+    def test_workflow_statistic_time_range(self):
+        query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
+        assert query.start == "2024-01-01"
+
+    def test_workflow_statistic_blank_to_none(self):
+        query = WorkflowStatisticQuery(start="", end="")
+        assert query.start is None
+        assert query.end is None
+
+    def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        service = MagicMock()
+        service.get_daily_runs.return_value = [{"date": "2024-01-01", "runs": 2}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowDailyRunsStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-01", "runs": 2}]}
+        service.get_daily_runs.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        service = MagicMock()
+        service.get_daily_terminals.return_value = [{"date": "2024-01-02", "terminal_count": 3}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-02", "terminal_count": 3}]}
+        service.get_daily_terminals.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_daily_token_cost_statistic(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = MagicMock()
+        service.get_daily_token_costs.return_value = [{"date": "2024-01-03", "token_count": 4}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowDailyTokenCostStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-03", "token_count": 4}]}
+        service.get_daily_token_costs.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_average_app_interaction_statistic(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = MagicMock()
+        service.get_average_app_interactions.return_value = [{"date": "2024-01-04", "interactions": 2.5}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowAverageAppInteractionStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-04", "interactions": 2.5}]}
+        service.get_average_app_interactions.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_statistic_invalid_time_range(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        account = _make_account()
+        account.timezone = "UTC"
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: SimpleNamespace(account=account),
+        )
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "parse_time_range",
+            MagicMock(side_effect=ValueError("invalid range")),
+        )
+
+        with pytest.raises(BadRequest, match="invalid range"):
+            workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
+
+    @staticmethod
+    def _patch_statistic_time_range(monkeypatch: pytest.MonkeyPatch) -> None:
+        account = _make_account()
+        account.timezone = "UTC"
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: SimpleNamespace(account=account),
+        )
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "parse_time_range",
+            lambda *_args, **_kwargs: (None, None),
+        )
+
+
+class TestWorkflowTriggerEndpoints:
+    def test_webhook_trigger_payload(self):
+        payload = Parser(node_id="node-1")
+        assert payload.node_id == "node-1"
+
+        enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
+        assert enable_payload.enable_trigger is True
+
+    def test_webhook_trigger_api_get(
+        self,
+        database_app: Flask,
+    ) -> None:
+        api = workflow_trigger_module.WebhookTriggerApi()
+        method = unwrap(api.get)
+        trigger = WorkflowWebhookTrigger(
+            app_id=APP_ID,
+            node_id="node-1",
+            tenant_id=TENANT_ID,
+            webhook_id="webhook-1",
+            created_by=USER_ID,
+        )
+        db.session.add(trigger)
+        db.session.commit()
+
+        with database_app.test_request_context("/?node_id=node-1"):
+            result = method(api, Parser(node_id="node-1"), app_model=_make_app())
+
+        assert isinstance(result, dict)
+        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
+        assert result["webhook_id"] == "webhook-1"
+
+
+class TestWrapsEndpoints:
+    def test_get_app_model_context(self):
+        assert hasattr(wraps_module, "get_app_model")
+
+
+class TestMCPServerEndpoints:
+    def test_mcp_server_connection(self):
+        payload = MCPServerCreatePayload(parameters={"url": "http://localhost:3000"})
+        assert payload.parameters["url"] == "http://localhost:3000"
+
+    def test_mcp_server_update_payload(self):
+        payload = MCPServerUpdatePayload(id="server-1", parameters={"timeout": 30}, status="active")
+        assert payload.status == "active"
+
+
+class TestErrorHandling:
+    def test_annotation_list_query_validation(self):
+        with pytest.raises(ValueError):
+            annotation_module.AnnotationListQuery(page=0)
+
+
+class TestPayloadIntegration:
+    def test_multiple_payload_types(self):
+        payloads = [
+            annotation_module.AnnotationReplyPayload(
+                score_threshold=0.5, embedding_provider_name="openai", embedding_model_name="text-embedding-3-small"
+            ),
+            message_module.MessageFeedbackPayload(message_id=str(uuid.uuid4()), rating="like"),
+            statistic_module.StatisticTimeRangeQuery(start="2024-01-01"),
+        ]
+        assert len(payloads) == 3
+        assert all(p is not None for p in payloads)

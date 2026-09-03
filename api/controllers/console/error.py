@@ -58,6 +58,12 @@ class WorkspacesLimitExceeded(BaseHTTPException):
     code = 400
 
 
+class SeatsLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create account because the licensed seats limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."
@@ -86,9 +92,15 @@ class AccountInFreezeError(BaseHTTPException):
     error_code = "account_in_freeze"
     code = 400
     description = (
-        "This email account has been deleted within the past 30 days"
+        "This email account has been deleted within the past 30 days "
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EmailDomainSuspendedError(BaseHTTPException):
+    error_code = "email_domain_suspended"
+    code = 400
+    description = "This email domain has been suspended."
 
 
 class EducationVerifyLimitError(BaseHTTPException):
@@ -100,10 +112,4 @@ class EducationVerifyLimitError(BaseHTTPException):
 class EducationActivateLimitError(BaseHTTPException):
     error_code = "education_activate_limit"
     description = "Rate limit exceeded"
-    code = 429
-
-
-class ComplianceRateLimitError(BaseHTTPException):
-    error_code = "compliance_rate_limit"
-    description = "Rate limit exceeded for downloading compliance report."
     code = 429

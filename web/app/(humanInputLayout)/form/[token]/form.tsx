@@ -29,32 +29,43 @@ const FormContent = () => {
   const { t } = useTranslation()
 
   const { token } = useParams<{ token: string }>()
-  useDocumentTitle('')
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
   const { isSubmitting, submit, success } = useFormSubmit(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
-  const replaceWebappLogo = typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
-    ? formData.site.custom_config.replace_webapp_logo
-    : null
+  const replaceWebappLogo =
+    typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
+      ? formData.site.custom_config.replace_webapp_logo
+      : null
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-  const rateLimitExceeded = (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const rateLimitExceeded =
+    (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const documentTitle = isLoading
+    ? t(($) => $.loading, { ns: 'common' })
+    : success
+      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
+      : expired
+        ? t(($) => $['humanInput.expired'], { ns: 'share' })
+        : submitted
+          ? t(($) => $['humanInput.completed'], { ns: 'share' })
+          : rateLimitExceeded
+            ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
+            : formData?.site.site.title || t(($) => $['humanInput.formNotFound'], { ns: 'share' })
+  useDocumentTitle(documentTitle)
 
   if (isLoading) {
-    return (
-      <Loading type="app" />
-    )
+    return <Loading type="app" />
   }
 
   if (success) {
     return (
       <FormStatusCard
         iconClassName="i-ri-checkbox-circle-fill text-text-success"
-        title={t('humanInput.thanks', { ns: 'share' })}
-        subtitle={t('humanInput.recorded', { ns: 'share' })}
+        title={t(($) => $['humanInput.thanks'], { ns: 'share' })}
+        subtitle={t(($) => $['humanInput.recorded'], { ns: 'share' })}
         submissionID={token}
         removeWebappBrand={removeWebappBrand}
         replaceWebappLogo={replaceWebappLogo}
@@ -66,8 +77,8 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-information-2-fill text-text-accent"
-        title={t('humanInput.sorry', { ns: 'share' })}
-        subtitle={t('humanInput.expired', { ns: 'share' })}
+        title={t(($) => $['humanInput.sorry'], { ns: 'share' })}
+        subtitle={t(($) => $['humanInput.expired'], { ns: 'share' })}
         submissionID={token}
       />
     )
@@ -77,8 +88,8 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-information-2-fill text-text-accent"
-        title={t('humanInput.sorry', { ns: 'share' })}
-        subtitle={t('humanInput.completed', { ns: 'share' })}
+        title={t(($) => $['humanInput.sorry'], { ns: 'share' })}
+        subtitle={t(($) => $['humanInput.completed'], { ns: 'share' })}
         submissionID={token}
       />
     )
@@ -88,7 +99,7 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-error-warning-fill text-text-destructive"
-        title={t('humanInput.rateLimitExceeded', { ns: 'share' })}
+        title={t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })}
       />
     )
   }
@@ -97,7 +108,7 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-error-warning-fill text-text-destructive"
-        title={t('humanInput.formNotFound', { ns: 'share' })}
+        title={t(($) => $['humanInput.formNotFound'], { ns: 'share' })}
       />
     )
   }

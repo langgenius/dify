@@ -9,7 +9,10 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
   return {
     ...actual,
-    generateNewNode: (args: { data: Record<string, unknown>, position: Record<string, unknown> }) => {
+    generateNewNode: (args: {
+      data: Record<string, unknown>
+      position: Record<string, unknown>
+    }) => {
       generateNewNodeCalls.push(args)
       return {
         newNode: {
@@ -84,17 +87,23 @@ describe('useWorkflowDraftGraphForCanvas', () => {
   })
 
   it('should reuse the provided local start placeholder template when available', () => {
-    const localStartPlaceholder = { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }
+    const localStartPlaceholder = {
+      id: 'start-placeholder',
+      data: { type: BlockEnum.StartPlaceholder },
+    }
     const draftNode = { id: 'llm', data: { type: BlockEnum.LLM } }
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
 
-    const graph = result.current.getWorkflowDraftGraphForCanvas({
-      nodes: [draftNode] as never,
-      edges: [],
-      viewport: { x: 1, y: 2, zoom: 0.5 },
-    }, {
-      localStartPlaceholderNodes: [localStartPlaceholder] as never,
-    })
+    const graph = result.current.getWorkflowDraftGraphForCanvas(
+      {
+        nodes: [draftNode] as never,
+        edges: [],
+        viewport: { x: 1, y: 2, zoom: 0.5 },
+      },
+      {
+        localStartPlaceholderNodes: [localStartPlaceholder] as never,
+      },
+    )
 
     expect(graph.nodes).toEqual([localStartPlaceholder, draftNode])
     expect(graph.viewport).toEqual({ x: 1, y: 2, zoom: 0.5 })

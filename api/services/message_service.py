@@ -3,12 +3,14 @@ from collections.abc import Sequence
 from typing import cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
+from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -17,15 +19,18 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppMode,
     AppModelConfig,
+    Conversation,
     EndUser,
     Message,
     MessageFeedback,
     SuggestedQuestionsAfterAnswerConfig,
+    load_annotation_reply_config,
 )
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
@@ -62,6 +67,38 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
 class MessageService:
     @classmethod
+    def _get_agent_suggested_questions_config(
+        cls,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        conversation: Conversation,
+        invoke_from: InvokeFrom,
+        session: Session,
+    ) -> SuggestedQuestionsAfterAnswerConfig:
+        from services.agent.runtime_config_service import AgentRuntimeConfigService
+
+        agent_soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
+            app_model=app_model,
+            conversation=conversation,
+            account_id=user.id if isinstance(user, Account) else None,
+            use_debug_draft=invoke_from == InvokeFrom.DEBUGGER,
+        )
+        app_model_config = (
+            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+        )
+        annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
+        features = merge_agent_app_features(
+            agent_soul=agent_soul or AgentSoulConfig(),
+            app_model_config=app_model_config,
+            annotation_reply=annotation_reply,
+        )
+        suggested_questions = features.get("suggested_questions_after_answer")
+        if not isinstance(suggested_questions, dict) or not suggested_questions.get("enabled", False):
+            raise SuggestedQuestionsAfterAnswerDisabledError()
+        return cast(SuggestedQuestionsAfterAnswerConfig, suggested_questions)
+
+    @classmethod
     def pagination_by_first_id(
         cls,
         app_model: App,
@@ -70,6 +107,8 @@ class MessageService:
         first_id: str | None,
         limit: int,
         order: str = "asc",
+        *,
+        session: Session,
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
@@ -78,20 +117,20 @@ class MessageService:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
         conversation = ConversationService.get_conversation(
-            app_model=app_model, user=user, conversation_id=conversation_id
+            app_model=app_model, user=user, conversation_id=conversation_id, session=session
         )
 
         fetch_limit = limit + 1
 
         if first_id:
-            first_message = db.session.scalar(
+            first_message = session.scalar(
                 select(Message).where(Message.conversation_id == conversation.id, Message.id == first_id).limit(1)
             )
 
             if not first_message:
                 raise FirstMessageNotExistsError()
 
-            history_messages = db.session.scalars(
+            history_messages = session.scalars(
                 select(Message)
                 .where(
                     Message.conversation_id == conversation.id,
@@ -102,7 +141,7 @@ class MessageService:
                 .limit(fetch_limit)
             ).all()
         else:
-            history_messages = db.session.scalars(
+            history_messages = session.scalars(
                 select(Message)
                 .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
@@ -130,6 +169,8 @@ class MessageService:
         limit: int,
         conversation_id: str | None = None,
         include_ids: list | None = None,
+        *,
+        session: Session,
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
@@ -140,7 +181,7 @@ class MessageService:
 
         if conversation_id is not None:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, user=user, conversation_id=conversation_id
+                app_model=app_model, user=user, conversation_id=conversation_id, session=session
             )
 
             stmt = stmt.where(Message.conversation_id == conversation.id)
@@ -152,18 +193,18 @@ class MessageService:
             stmt = stmt.where(Message.id.in_(include_ids))
 
         if last_id:
-            last_message = db.session.scalar(stmt.where(Message.id == last_id).limit(1))
+            last_message = session.scalar(stmt.where(Message.id == last_id).limit(1))
 
             if not last_message:
                 raise LastMessageNotExistsError()
 
-            history_messages = db.session.scalars(
+            history_messages = session.scalars(
                 stmt.where(Message.created_at < last_message.created_at, Message.id != last_message.id)
                 .order_by(Message.created_at.desc())
                 .limit(fetch_limit)
             ).all()
         else:
-            history_messages = db.session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all()
+            history_messages = session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all()
 
         has_more = False
         if len(history_messages) > limit:
@@ -181,16 +222,21 @@ class MessageService:
         user: Account | EndUser | None,
         rating: FeedbackRating | None,
         content: str | None,
+        session: Session,
     ):
         if not user:
             raise ValueError("user cannot be None")
 
-        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
 
-        feedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
+        feedback = (
+            message.user_feedback_with_session(session=session)
+            if isinstance(user, EndUser)
+            else message.admin_feedback_with_session(session=session)
+        )
 
         if not rating and feedback:
-            db.session.delete(feedback)
+            session.delete(feedback)
         elif rating and feedback:
             feedback.rating = rating
             feedback.content = content
@@ -208,17 +254,59 @@ class MessageService:
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
             )
-            db.session.add(feedback)
+            session.add(feedback)
 
-        db.session.commit()
+        session.commit()
+        if rating:
+            cls._emit_feedback_telemetry(
+                app_model=app_model, message=message, user=user, rating=rating, content=content
+            )
 
         return feedback
 
     @classmethod
-    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
+    def _emit_feedback_telemetry(
+        cls,
+        *,
+        app_model: App,
+        message: Message,
+        user: Account | EndUser,
+        rating: FeedbackRating | None,
+        content: str | None,
+    ) -> None:
+        try:
+            from core.telemetry import FeedbackCreatedEvent, TelemetryContext, emit
+
+            if message.id is None:
+                return
+
+            emit(
+                FeedbackCreatedEvent(
+                    context=TelemetryContext(tenant_id=app_model.tenant_id),
+                    payload={
+                        "message_id": str(message.id),
+                        "app_id": str(app_model.id) if app_model.id is not None else None,
+                        "conversation_id": (
+                            str(message.conversation_id) if message.conversation_id is not None else None
+                        ),
+                        "from_end_user_id": str(user.id) if isinstance(user, EndUser) and user.id is not None else None,
+                        "from_account_id": str(user.id) if isinstance(user, Account) and user.id is not None else None,
+                        "rating": rating.value if rating else None,
+                        "from_source": (
+                            FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN
+                        ).value,
+                        "content": content,
+                    },
+                )
+            )
+        except Exception:
+            logger.warning("Failed to emit feedback_created telemetry", exc_info=True)
+
+    @classmethod
+    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int, *, session: Session):
         """Get all feedbacks of an app"""
         offset = (page - 1) * limit
-        feedbacks = db.session.scalars(
+        feedbacks = session.scalars(
             select(MessageFeedback)
             .where(MessageFeedback.app_id == app_model.id)
             .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
@@ -229,8 +317,8 @@ class MessageService:
         return [record.to_dict() for record in feedbacks]
 
     @classmethod
-    def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str):
-        message = db.session.scalar(
+    def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session):
+        message = session.scalar(
             select(Message)
             .where(
                 Message.id == message_id,
@@ -249,15 +337,21 @@ class MessageService:
 
     @classmethod
     def get_suggested_questions_after_answer(
-        cls, app_model: App, user: Account | EndUser | None, message_id: str, invoke_from: InvokeFrom
+        cls,
+        app_model: App,
+        user: Account | EndUser | None,
+        message_id: str,
+        invoke_from: InvokeFrom,
+        *,
+        session: Session,
     ) -> list[str]:
         if not user:
             raise ValueError("user cannot be None")
 
-        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
 
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=message.conversation_id, user=user
+            app_model=app_model, conversation_id=message.conversation_id, user=user, session=session
         )
 
         model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
@@ -266,9 +360,9 @@ class MessageService:
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
             if invoke_from == InvokeFrom.DEBUGGER:
-                workflow = workflow_service.get_draft_workflow(app_model=app_model)
+                workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
             else:
-                workflow = workflow_service.get_published_workflow(app_model=app_model)
+                workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
 
             if workflow is None:
                 return []
@@ -286,9 +380,17 @@ class MessageService:
                 suggested_questions_after_answer_config = cast(
                     SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
                 )
+        elif app_model.mode == AppMode.AGENT:
+            suggested_questions_after_answer_config = cls._get_agent_suggested_questions_config(
+                app_model=app_model,
+                user=user,
+                conversation=conversation,
+                invoke_from=invoke_from,
+                session=session,
+            )
         else:
             if not conversation.override_model_configs:
-                app_model_config = db.session.scalar(
+                app_model_config = session.scalar(
                     select(AppModelConfig)
                     .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
                     .limit(1)
@@ -299,7 +401,9 @@ class MessageService:
                 )
                 # Reuse Conversation.model_config so suggested-questions reads the same
                 # compatibility-normalized config as the rest of the message flow.
-                app_model_config = app_model_config.from_model_config_dict(conversation.model_config)
+                app_model_config = app_model_config.from_model_config_dict(
+                    conversation.model_config_with_session(session=session)
+                )
             if not app_model_config:
                 raise ValueError("did not find app model config")
 
@@ -325,7 +429,10 @@ class MessageService:
             instruction_prompt = None
 
         configured_model = suggested_questions_after_answer_config.get("model")
-        with measure_time() as timer:
+        with (
+            measure_time() as timer,
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
+        ):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,
                 histories=histories,

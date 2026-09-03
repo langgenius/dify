@@ -8,9 +8,7 @@ type ExpirationTimeProps = {
   expirationTime: number
 }
 
-const ExpirationTime = ({
-  expirationTime,
-}: ExpirationTimeProps) => {
+const ExpirationTime = ({ expirationTime }: ExpirationTimeProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const relativeTime = getRelativeTime(expirationTime, locale)
@@ -24,21 +22,19 @@ const ExpirationTime = ({
         !isSameOrAfter && 'text-text-warning',
       )}
     >
-      {
-        isSameOrAfter
-          ? (
-              <>
-                <div className="i-ri-time-line size-3.5" />
-                <span>{t('humanInput.expirationTimeNowOrFuture', { relativeTime, ns: 'share' })}</span>
-              </>
-            )
-          : (
-              <>
-                <div className="i-ri-alert-fill size-3.5" />
-                <span>{t('humanInput.expiredTip', { ns: 'share' })}</span>
-              </>
-            )
-      }
+      {isSameOrAfter ? (
+        <>
+          <div className="i-ri-time-line size-3.5" />
+          <span>
+            {t(($) => $['humanInput.expirationTimeNowOrFuture'], { relativeTime, ns: 'share' })}
+          </span>
+        </>
+      ) : (
+        <>
+          <div className="i-ri-alert-fill size-3.5" />
+          <span>{t(($) => $['humanInput.expiredTip'], { ns: 'share' })}</span>
+        </>
+      )}
     </div>
   )
 }

@@ -76,6 +76,10 @@ def _schema_markdown_type(schema: object) -> str:
         item_type = _schema_markdown_type(schema.get("items"))
         return f"[ {item_type or 'object'} ]"
     if isinstance(schema_type, str):
+        enum_values = schema.get("enum")
+        if isinstance(enum_values, list) and enum_values:
+            rendered_values = ", ".join(json.dumps(value, ensure_ascii=False) for value in enum_values)
+            return f"{schema_type}, <br>**Available values:** {rendered_values}"
         return schema_type
 
     return ""
@@ -109,11 +113,15 @@ def _replace_schema_table_type(markdown: str, definition_name: str, row_name: st
 
 
 def _has_union_schema(schema: object) -> bool:
-    return isinstance(schema, dict) and (isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list))
+    if not isinstance(schema, dict):
+        return False
+    if isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list):
+        return True
+    return _has_union_schema(schema.get("items"))
 
 
 def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
-    """Fill Markdown table cells that `swagger-markdown` leaves blank for union schemas."""
+    """Fill Markdown table cells that `swagger-markdown` leaves blank for unions, including array items."""
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     components = spec.get("components")
@@ -173,9 +181,31 @@ def _strip_trailing_line_whitespace(markdown: str) -> str:
     return "\n".join(line.rstrip(" \t") for line in markdown.split("\n"))
 
 
+def _patch_wildcard_media_type_markdown(markdown: str) -> str:
+    """Keep swagger-markdown from interpreting the wildcard media type as emphasis."""
+
+    return markdown.replace("***/***", "`*/*`")
+
+
+def _drop_null_values_for_markdown(value: object) -> object:
+    """Remove null object members only from the converter's temporary input."""
+
+    if isinstance(value, dict):
+        return {key: _drop_null_values_for_markdown(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_drop_null_values_for_markdown(item) for item in value]
+    return value
+
+
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-") as temp_dir:
+        converter_spec_path = Path(temp_dir) / spec_path.name
+        converter_payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        converter_spec_path.write_text(
+            json.dumps(_drop_null_values_for_markdown(converter_payload)),
+            encoding="utf-8",
+        )
         temp_markdown_path = Path(temp_dir) / markdown_path.name
         result = subprocess.run(
             [
@@ -183,7 +213,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
                 "--yes",
                 SWAGGER_MARKDOWN_PACKAGE,
                 "-i",
-                str(spec_path.resolve()),
+                str(converter_spec_path.resolve()),
                 "-o",
                 str(temp_markdown_path.resolve()),
             ],
@@ -207,6 +237,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             temp_markdown_path.read_text(encoding="utf-8"),
             spec_path,
         )
+        converted_markdown = _patch_wildcard_media_type_markdown(converted_markdown)
         converted_markdown = _strip_trailing_line_whitespace(converted_markdown)
         if not converted_markdown.strip():
             raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")
