@@ -829,6 +829,32 @@ class TestSegmentServiceMutations:
         session.add.assert_called_once_with(document)
         session.commit.assert_called()
 
+    def test_delete_disabled_segment_still_schedules_durable_cleanup(self):
+        session = MagicMock()
+        segment = _make_segment(enabled=False, word_count=4, index_node_id="parent-node")
+        document = _make_document(word_count=10)
+        dataset = _make_dataset()
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            mock_redis.get.return_value = None
+            session.scalars.return_value.all.return_value = ["child-1"]
+
+            SegmentService.delete_segment(segment, document, dataset, session)
+
+        mock_redis.setex.assert_not_called()
+        delete_task.delay.assert_called_once_with(
+            ["parent-node"],
+            dataset.id,
+            document.id,
+            [segment.id],
+            ["child-1"],
+        )
+        session.delete.assert_called_once_with(segment)
+        session.commit.assert_called_once()
+
     def test_delete_segment_rejects_when_delete_is_already_in_progress(self):
         segment = _make_segment()
         document = _make_document()
