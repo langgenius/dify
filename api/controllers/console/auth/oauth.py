@@ -5,6 +5,7 @@ import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 
@@ -247,6 +248,7 @@ class OAuthCallback(Resource):
                 timezone=timezone,
                 language=language,
                 ip_address=extract_remote_ip(request),
+                session=db.session(),
             )
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
@@ -287,11 +289,11 @@ class OAuthCallback(Resource):
         return _redirect_with_console_session(account, target_url)
 
 
-def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
-    account: Account | None = Account.get_by_openid(provider, user_info.id)
+def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo, *, session: Session) -> Account | None:
+    account: Account | None = Account.get_by_openid(provider, user_info.id, session=session)
 
     if not account:
-        account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=db.session())
+        account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=session)
 
     return account
 
@@ -302,18 +304,20 @@ def _generate_account(
     timezone: str | None = None,
     language: str | None = None,
     ip_address: str | None = None,
+    *,
+    session: Session,
 ) -> tuple[Account, bool]:
     # Get account by openid or email.
-    account = _get_account_by_openid_or_email(provider, user_info)
+    account = _get_account_by_openid_or_email(provider, user_info, session=session)
     oauth_new_user = False
 
     if account:
-        tenants = TenantService.get_join_tenants(account, session=db.session())
+        tenants = TenantService.get_join_tenants(account, session=session)
         if not tenants:
             if not SystemFeatureService.is_workspace_creation_allowed():
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                TenantService.create_owner_tenant(account, session=db.session())
+                TenantService.create_owner_tenant(account, session=session)
 
     if not account:
         normalized_email = user_info.email.lower()
@@ -337,10 +341,10 @@ def _generate_account(
             language=interface_language,
             timezone=timezone,
             ip_address=ip_address,
-            session=db.session(),
+            session=session,
         )
 
     # Link account
-    AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
+    AccountService.link_account_integrate(provider, user_info.id, account, session=session)
 
     return account, oauth_new_user
