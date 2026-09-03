@@ -993,6 +993,7 @@ class KnowledgeFSSpacesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self):
         actor_id, tenant_id = _actor()
@@ -1033,6 +1034,7 @@ class KnowledgeFSSpaceTagsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def put(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1078,6 +1080,7 @@ class KnowledgeFSSpaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1093,6 +1096,7 @@ class KnowledgeFSSpaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1136,6 +1140,7 @@ class KnowledgeFSSpaceMembersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def put(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1178,6 +1183,7 @@ class KnowledgeFSSpaceExternalAccessApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def put(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1219,6 +1225,7 @@ class KnowledgeFSSpaceAppBindingsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def put(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1237,6 +1244,7 @@ class KnowledgeFSSpaceAppBindingApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, caller_kind: str, app_id: str):
         actor_id, tenant_id = _actor()
@@ -1283,6 +1291,7 @@ class KnowledgeFSSpaceSettingsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1511,6 +1520,7 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1535,6 +1545,7 @@ class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1565,6 +1576,7 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
         RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
         resource_required=False,
     )
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1611,6 +1623,7 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
         RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
         resource_required=False,
     )
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def get(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()
@@ -1663,6 +1676,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()
@@ -1685,6 +1699,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()
@@ -1793,6 +1808,7 @@ class KnowledgeFSSpaceMetadataApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1816,6 +1832,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, field_id: str):
         actor_id, tenant_id = _actor()
@@ -1837,6 +1854,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, field_id: str):
         actor_id, tenant_id = _actor()
@@ -1863,6 +1881,7 @@ class KnowledgeFSSpaceBulkDocumentsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1887,6 +1906,7 @@ class KnowledgeFSSpaceDocumentReindexApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1929,6 +1949,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()
@@ -1951,6 +1972,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()
@@ -2200,6 +2222,7 @@ class KnowledgeFSSpaceCompilationJobApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, job_id: str):
         actor_id, tenant_id = _actor()
@@ -2219,6 +2242,7 @@ class KnowledgeFSSpaceCompilationJobRetryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, job_id: str):
         actor_id, tenant_id = _actor()
@@ -2284,6 +2308,7 @@ class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, task_kind: str, task_id: str):
         actor_id, tenant_id = _actor()
@@ -2309,6 +2334,7 @@ class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, task_kind: str, task_id: str):
         actor_id, tenant_id = _actor()
@@ -2376,6 +2402,7 @@ class KnowledgeFSSourceConnectionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -2399,6 +2426,7 @@ class KnowledgeFSSourceConnectionRefreshApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, connection_id: str):
         actor_id, tenant_id = _actor()
@@ -2445,6 +2473,7 @@ class KnowledgeFSSpaceSourcesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -2478,6 +2507,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2599,6 +2629,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2625,6 +2656,7 @@ class KnowledgeFSSpaceSourceTestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2645,6 +2677,7 @@ class KnowledgeFSSpaceSourceSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2669,6 +2702,7 @@ class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2694,6 +2728,7 @@ class KnowledgeFSSpaceSourceCrawlImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2720,6 +2755,7 @@ class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2764,6 +2800,7 @@ class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def put(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2810,6 +2847,7 @@ class KnowledgeFSSourceWorkflowCancelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
@@ -2833,6 +2871,7 @@ class KnowledgeFSSourceWorkflowRetryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
@@ -2884,6 +2923,7 @@ class KnowledgeFSSourceWorkflowSelectionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
@@ -2910,6 +2950,7 @@ class KnowledgeFSSourceAsyncImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -2959,6 +3000,7 @@ class KnowledgeFSSpaceSourcePageImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -3004,6 +3046,7 @@ class KnowledgeFSSpaceSourceFileImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
@@ -3135,6 +3178,7 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3165,6 +3209,7 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3210,6 +3255,7 @@ class KnowledgeFSSpaceResearchTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, task_id: str):
         actor_id, tenant_id = _actor()
@@ -3302,6 +3348,7 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3325,6 +3372,7 @@ class KnowledgeFSSpaceGoldenQuestionEvidenceMatchesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3348,6 +3396,7 @@ class KnowledgeFSSpaceGoldenQuestionBulkImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3371,6 +3420,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, question_id: str):
         actor_id, tenant_id = _actor()
@@ -3387,6 +3437,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def delete(self, control_space_id: str, question_id: str):
         actor_id, tenant_id = _actor()
@@ -3432,6 +3483,7 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3480,6 +3532,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -3572,6 +3625,7 @@ class KnowledgeFSSpaceBadCaseApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, bad_case_id: str):
         actor_id, tenant_id = _actor()
@@ -3848,6 +3902,7 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, task_id: str):
         actor_id, tenant_id = _actor()

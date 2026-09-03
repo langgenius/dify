@@ -16,6 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable
 
 from controllers.common import wraps as common_wraps
 from controllers.console import console_ns
+from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSRequestTooLargeHTTPError,
@@ -185,6 +186,8 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
     monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    # The download routes carry the knowledge rate limit too; it needs a logged-in account.
+    monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(
         console_resources,
         "_console_services",
@@ -226,6 +229,8 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
     monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    # The download routes carry the knowledge rate limit too; it needs a logged-in account.
+    monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
@@ -274,6 +279,8 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
     monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    # The download routes carry the knowledge rate limit too; it needs a logged-in account.
+    monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", download_service_factory)
@@ -320,6 +327,8 @@ def test_single_document_download_maps_storage_unavailable_after_permission_allo
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
     monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    # The download routes carry the knowledge rate limit too; it needs a logged-in account.
+    monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
@@ -360,6 +369,8 @@ def test_batch_document_download_maps_storage_unavailable_after_permission_allow
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
     monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    # The download routes carry the knowledge rate limit too; it needs a logged-in account.
+    monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
@@ -939,41 +950,60 @@ def test_small_file_console_bff_maps_oversize_to_413() -> None:
         reject()
 
 
-def test_console_knowledge_rate_limit_is_scoped_to_upload_and_query_entrypoints() -> None:
+def test_console_knowledge_rate_limit_covers_every_write_download_and_retrieval_entrypoint() -> None:
+    """Mirror the legacy dataset console: every mutating, download, or retrieval route is rate limited.
+
+    Pure reads stay unlimited. The exemptions are workspace-level source previews (like legacy
+    data source browsing), a staged-upload discard, the deprecated buffered query route that
+    fails closed anyway, and the internal capability-token stream transport.
+    """
+    space = "/knowledge-fs/spaces/<string:control_space_id>"
+    exempt_writes = {
+        ("post", "/knowledge-fs/source-provider-preview"),
+        ("post", "/knowledge-fs/source-provider-preview/jobs"),
+        ("delete", "/knowledge-fs/source-provider-preview/jobs/<string:job_id>"),
+        ("delete", "/knowledge-fs/uploads/<string:upload_id>"),
+        ("post", f"{space}/queries"),
+        ("post", "_QUERY_STREAM_PROXY_PATH"),
+    }
+    rate_limited_reads = {("get", f"{space}/logical-documents/<string:document_id>/download")}
     tree = ast.parse(
         Path(console_resources.__file__).read_text(encoding="utf-8"),
         filename=console_resources.__file__,
     )
-    decorated_methods: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str]] = set()
 
     for class_node in (node for node in tree.body if isinstance(node, ast.ClassDef)):
+        routes = [
+            ast.unparse(decorator.args[0]).strip("'\"")
+            for decorator in class_node.decorator_list
+            if isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "route"
+        ]
+        if not routes:
+            continue
         for method_node in (
             node
             for node in class_node.body
             if isinstance(node, ast.FunctionDef) and node.name in {"delete", "get", "patch", "post", "put"}
         ):
-            for decorator in method_node.decorator_list:
-                if (
-                    isinstance(decorator, ast.Call)
-                    and isinstance(decorator.func, ast.Name)
-                    and decorator.func.id == "cloud_edition_billing_rate_limit_check"
-                    and len(decorator.args) == 1
-                    and isinstance(decorator.args[0], ast.Constant)
-                    and decorator.args[0].value == "knowledge"
-                ):
-                    decorated_methods.add((class_node.name, method_node.name))
+            key = (method_node.name, routes[0])
+            seen.add(key)
+            rate_limited = any(
+                isinstance(decorator, ast.Call)
+                and isinstance(decorator.func, ast.Name)
+                and decorator.func.id == "cloud_edition_billing_rate_limit_check"
+                and len(decorator.args) == 1
+                and isinstance(decorator.args[0], ast.Constant)
+                and decorator.args[0].value == "knowledge"
+                for decorator in method_node.decorator_list
+            )
+            expected = key in rate_limited_reads if method_node.name == "get" else key not in exempt_writes
+            assert rate_limited == expected, f"{key} rate limited={rate_limited}, expected {expected}"
 
-    assert decorated_methods == {
-        ("KnowledgeFSSpaceDocumentsApi", "post"),
-        ("KnowledgeFSSpaceQueryAdmissionApi", "post"),
-        ("KnowledgeFSSpaceQueryStreamCapabilityApi", "post"),
-        ("KnowledgeFSSpaceSmallFileUploadApi", "post"),
-        ("KnowledgeFSSpaceUploadSessionAbortApi", "post"),
-        ("KnowledgeFSSpaceUploadSessionCompleteApi", "post"),
-        ("KnowledgeFSSpaceUploadSessionPartPresignApi", "post"),
-        ("KnowledgeFSSpaceUploadSessionsApi", "post"),
-        ("KnowledgeFSStagedUploadsApi", "post"),
-    }
+    assert exempt_writes <= seen
+    assert rate_limited_reads <= seen
 
 
 def test_space_update_and_delete_publish_their_actual_http_status_contracts() -> None:
@@ -1154,6 +1184,28 @@ def test_service_profile_authorizes_the_dataset_key_for_the_route_space(monkeypa
         tenant_id="tenant-1",
         control_space_id="control-2",
     )
+
+
+def test_service_profile_applies_the_knowledge_rate_limit_before_authorizing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every KnowledgeFS service route shares the legacy dataset service API rate limit."""
+    authorization = MagicMock()
+    runtime = SimpleNamespace(service_api_authorization=authorization)
+    api_token = SimpleNamespace(id="token-1", tenant_id="tenant-1")
+    monkeypatch.setattr(service_resources, "validate_and_get_api_token", MagicMock(return_value=api_token))
+    rate_limit = MagicMock(side_effect=Forbidden("rate limited"))
+    monkeypatch.setattr(service_resources, "check_knowledge_rate_limit", rate_limit)
+
+    with pytest.raises(Forbidden, match="rate limited"):
+        service_resources._profile(
+            runtime,  # type: ignore[arg-type]
+            operation_id="listDocuments",
+            control_space_id="control-2",
+        )
+
+    rate_limit.assert_called_once_with(api_token)
+    authorization.authorize.assert_not_called()
 
 
 def test_service_profile_rejects_a_dataset_key_without_a_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
