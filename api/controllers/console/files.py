@@ -17,27 +17,31 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.common.fields import AllowedExtensionsResponse, TextContentResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models
+from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
-    with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account, UploadFile
 from models.enums import UploadFilePurpose
 from services.feature_service import FeatureService
-from services.file_service import FileService
 
-from . import console_ns
-
-register_schema_models(console_ns, UploadConfig, FileResponse)
-register_response_schema_models(console_ns, AllowedExtensionsResponse, TextContentResponse)
+register_response_schema_models(
+    console_ns,
+    UploadConfig,
+    FileResponse,
+    AllowedExtensionsResponse,
+    TextContentResponse,
+)
 
 PREVIEW_WORDS_LIMIT = 3000
 ICON_FILE_EXTENSIONS = frozenset({"gif", "jpeg", "jpg", "png", "webp"})
@@ -79,7 +83,7 @@ def upload_file_from_request(
     file = request.files["file"]
 
     if not file.filename:
-        raise FilenameNotExistsError
+        raise FilenameNotExistsError()
     if allowed_extensions is not None:
         _, separator, extension = file.filename.rpartition(".")
         if not separator or extension.lower() not in allowed_extensions:
@@ -97,7 +101,7 @@ def upload_file_from_request(
     )
 
     try:
-        return FileService(db.engine).upload_file(
+        return application_services().files.upload_file(
             filename=file.filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
@@ -108,24 +112,21 @@ def upload_file_from_request(
             default_file_size_limit=default_file_size_limit,
         )
     except services.errors.file.FileTooLargeError as file_too_large_error:
-        raise FileTooLargeError(file_too_large_error.description)
-    except services.errors.file.UnsupportedFileTypeError:
-        raise UnsupportedFileTypeError()
+        raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+    except services.errors.file.UnsupportedFileTypeError as unsupported_file_type_error:
+        raise UnsupportedFileTypeError() from unsupported_file_type_error
     except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
-        raise BlockedFileExtensionError(blocked_extension_error.description)
+        raise BlockedFileExtensionError(blocked_extension_error.description) from blocked_extension_error
 
 
 @console_ns.route("/files/upload")
 class FileApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[UploadConfig.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    @console_account_admission()
+    def get(self, request_context: RequestContext) -> JsonResponseWithStatus:
         config = UploadConfig(
             file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
-            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(current_tenant_id),
+            knowledge_file_size_limit=FeatureService.get_knowledge_file_size_limit(request_context.active_workspace_id),
             batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
             file_upload_limit=dify_config.BATCH_UPLOAD_LIMIT,
             image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
@@ -137,7 +138,7 @@ class FileApi(Resource):
             single_chunk_attachment_limit=dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT,
             attachment_image_file_size_limit=dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT,
         )
-        return config.model_dump(mode="json"), 200
+        return dump_response(UploadConfig, config), 200
 
     @setup_required
     @login_required
@@ -146,7 +147,7 @@ class FileApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account):
+    def post(self, current_user: Account) -> JsonResponseWithStatus:
         upload_file = upload_file_from_request(current_user=current_user)
 
         return dump_response(FileResponse, upload_file), 201
@@ -173,22 +174,21 @@ class IconFileApi(Resource):
 
 @console_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, file_id: UUID):
+    @console_account_admission()
+    def get(self, request_context: RequestContext, file_id: UUID) -> dict[str, object]:
+        current_tenant_id = request_context.active_workspace_id
         file_id_str = str(file_id)
-        text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
-        return TextContentResponse(content=text).model_dump(mode="json")
+        text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
+        return dump_response(TextContentResponse, {"content": text})
 
 
 @console_ns.route("/files/support-type")
 class FileSupportTypeApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
-    def get(self):
-        return AllowedExtensionsResponse(allowed_extensions=list(DOCUMENT_EXTENSIONS)).model_dump(mode="json")
+    @console_account_admission()
+    def get(self, _request_context: RequestContext) -> dict[str, object]:
+        return dump_response(
+            AllowedExtensionsResponse,
+            {"allowed_extensions": list(DOCUMENT_EXTENSIONS)},
+        )

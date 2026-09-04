@@ -54,3 +54,11 @@ class BaseTracingConfig(BaseModel):
 
 OPS_FILE_PATH = "ops_trace/"
 OPS_TRACE_FAILED_KEY = "FAILED_OPS_TRACE"
+
+
+def ops_trace_payload_path(app_id: str, file_id: str) -> str:
+    return f"{OPS_FILE_PATH}{app_id}/{file_id}.json"
+
+
+def workflow_final_trace_file_id(workflow_run_id: str) -> str:
+    return f"workflow-final-{workflow_run_id}"

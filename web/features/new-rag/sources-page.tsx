@@ -123,7 +123,7 @@ function SourceActions({
             )}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
           {canSync && (
             <DropdownMenuItem onClick={() => void onSync()} className="gap-2 px-3">
               <span aria-hidden className="i-ri-refresh-line size-4" />

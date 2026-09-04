@@ -1,11 +1,13 @@
 """Persistence ports used by account application services."""
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
 from services.entities.account_entities import (
     AccountCredentials,
     AccountDeletionChallenge,
+    AccountEmailResetResult,
     AccountInitialization,
     AccountInitializationResult,
     AccountIntegrationSnapshot,
@@ -17,6 +19,10 @@ from services.entities.account_entities import (
 
 class AccountRepository(Protocol):
     def get(self, account_id: str) -> AccountSnapshot | None: ...
+
+    def find_by_email(self, email: str) -> AccountSnapshot | None: ...
+
+    def activate_pending(self, account_id: str, *, initialized_at: datetime) -> None: ...
 
     def get_credentials(self, account_id: str) -> AccountCredentials | None: ...
 
@@ -33,13 +39,23 @@ class AccountRepository(Protocol):
         workspace_id: str | None,
     ) -> AccountInitializationResult: ...
 
+    def email_exists(self, email: str) -> bool: ...
+
+    def reset_email(self, account_id: str, *, expected_old_email: str, new_email: str) -> AccountEmailResetResult: ...
+
 
 class AccountIntegrationRepository(Protocol):
+    def find_account_id(self, *, provider: str, open_id: str) -> str | None: ...
+
     def list_for_account(self, account_id: str) -> list[AccountIntegrationSnapshot]: ...
+
+    def link(self, account_id: str, *, provider: str, open_id: str) -> None: ...
 
 
 class AccountWorkspaceMembershipQuery(Protocol):
     def list_ids_for_account(self, account_id: str) -> Sequence[str]: ...
+
+    def has_active_membership(self, account_id: str) -> bool: ...
 
 
 class AccountAvatarFileGateway(Protocol):

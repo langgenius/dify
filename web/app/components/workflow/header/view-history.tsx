@@ -43,7 +43,6 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
           render={
             <button
               type="button"
-              aria-label={t(($) => $['common.showRunHistory'], { ns: 'workflow' })}
               className={cn(
                 'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
                 'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
@@ -82,7 +81,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
         placement={withText ? 'bottom-start' : 'bottom-end'}
         sideOffset={4}
         alignOffset={withText ? -8 : 10}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           className="ml-2 flex w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"

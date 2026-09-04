@@ -452,6 +452,7 @@ class AgentWorkspaceService:
         return create_agent_backend_client(
             base_url=base_url,
             api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
         )
 
 

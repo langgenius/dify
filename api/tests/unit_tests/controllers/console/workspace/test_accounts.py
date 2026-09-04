@@ -16,30 +16,44 @@ from controllers.console.auth.error import (
     EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
 )
-from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    InvalidAccountPasswordRequestError,
+)
 from controllers.console.workspace.account import (
     AccountAvatarApi,
+    AccountAvatarPayload,
     AccountAvatarQuery,
     AccountDeleteApi,
+    AccountDeletePayload,
     AccountDeleteVerifyApi,
     AccountInitApi,
+    AccountInitPayload,
     AccountIntegrateApi,
     AccountInterfaceLanguageApi,
+    AccountInterfaceLanguagePayload,
     AccountInterfaceThemeApi,
+    AccountInterfaceThemePayload,
     AccountNameApi,
+    AccountNamePayload,
     AccountPasswordApi,
+    AccountPasswordPayload,
     AccountProfileApi,
     AccountProfilePatchPayload,
     AccountTimezoneApi,
+    AccountTimezonePayload,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
+    ChangeEmailResetPayload,
+    ChangeEmailValidityPayload,
     CheckEmailUnique,
+    CheckEmailUniquePayload,
 )
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountPasswordRequestError,
     MissingInvitationCodeRequestError,
 )
 from machinery.context import RequestContext
@@ -48,13 +62,18 @@ from models.account import AccountStatus, TenantAccountRole
 from services.account_errors import (
     AccountAlreadyInitializedError,
     AccountDeletionRateLimitError,
+    AccountEmailAlreadyInUseError,
+    AccountEmailDomainSuspendedError,
+    AccountEmailFrozenError,
     AvatarFileNotFoundError,
     CurrentAccountPasswordIncorrectError,
     InvalidAccountDeletionVerificationError,
     InvalidAccountPasswordError,
+    InvalidChangeEmailCodeError,
     MissingInvitationCodeError,
 )
 from services.entities.account_entities import AccountIntegrationStatus, AccountProfileChanges
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def make_account(account_id: str = "u1", *, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
@@ -115,7 +134,7 @@ class TestAccountInitApi:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
             ),
         ):
-            resp = method(api, request_context)
+            resp = method(api, AccountInitPayload.model_validate(payload), request_context)
 
         assert resp["result"] == "success"
         initialization.initialize.assert_called_once_with(
@@ -147,7 +166,7 @@ class TestAccountInitApi:
             ),
         ):
             with pytest.raises(AccountAlreadyInitedError):
-                method(api, request_context)
+                method(api, AccountInitPayload.model_validate(payload), request_context)
 
     def test_init_missing_invitation_code_is_mapped(self, app: Flask):
         api = AccountInitApi()
@@ -170,7 +189,7 @@ class TestAccountInitApi:
             ),
         ):
             with pytest.raises(MissingInvitationCodeRequestError) as exc_info:
-                method(api, request_context)
+                method(api, AccountInitPayload.model_validate(payload), request_context)
 
         assert exc_info.value.data == {
             "code": "missing_invitation_code",
@@ -208,25 +227,27 @@ class TestAccountProfileApi:
 
 class TestAccountUpdateApis:
     @pytest.mark.parametrize(
-        ("api_cls", "payload", "expected_changes"),
+        ("api_cls", "payload_model", "payload", "expected_changes"),
         [
-            (AccountNameApi, {"name": "test"}, AccountProfileChanges(name="test")),
-            (AccountAvatarApi, {"avatar": "img.png"}, AccountProfileChanges(avatar="img.png")),
+            (AccountNameApi, AccountNamePayload, {"name": "test"}, AccountProfileChanges(name="test")),
+            (AccountAvatarApi, AccountAvatarPayload, {"avatar": "img.png"}, AccountProfileChanges(avatar="img.png")),
             (
                 AccountInterfaceLanguageApi,
+                AccountInterfaceLanguagePayload,
                 {"interface_language": "en-US"},
                 AccountProfileChanges(interface_language="en-US"),
             ),
             (
                 AccountInterfaceThemeApi,
+                AccountInterfaceThemePayload,
                 {"interface_theme": "dark"},
                 AccountProfileChanges(interface_theme="dark"),
             ),
-            (AccountTimezoneApi, {"timezone": "UTC"}, AccountProfileChanges(timezone="UTC")),
+            (AccountTimezoneApi, AccountTimezonePayload, {"timezone": "UTC"}, AccountProfileChanges(timezone="UTC")),
         ],
     )
     def test_deprecated_update_routes_delegate_to_profile_service(
-        self, app: Flask, api_cls, payload, expected_changes: AccountProfileChanges
+        self, app: Flask, api_cls, payload_model, payload, expected_changes: AccountProfileChanges
     ):
         api = api_cls()
         method = inspect.unwrap(api.post)
@@ -235,7 +256,7 @@ class TestAccountUpdateApis:
             request_id="request-1",
             trace_id=None,
             account_id=user.id,
-            active_workspace_id=None,
+            active_workspace_id="workspace-1",
         )
         profile = MagicMock()
         profile.update.return_value = user
@@ -247,7 +268,7 @@ class TestAccountUpdateApis:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
             ),
         ):
-            result = method(api, request_context)
+            result = method(api, payload_model.model_validate(payload), request_context)
 
         assert result["id"] == user.id
         profile.update.assert_called_once_with(request_context, expected_changes)
@@ -405,7 +426,7 @@ class TestAccountAvatarApiGet:
         with (
             app.test_request_context("/account/avatar"),
             patch("controllers.console.wraps._is_setup_completed", return_value=True),
-            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            config_overrides_context(LOGIN_DISABLED=True),
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(account, "workspace-1"),
@@ -417,6 +438,30 @@ class TestAccountAvatarApiGet:
         ):
             with pytest.raises(UnprocessableEntity) as exc_info:
                 AccountAvatarApi().get()
+
+        assert exc_info.value.code == 422
+
+
+class TestConvertedPostDecorator:
+    def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask):
+        """The decorator validates the JSON body before the view runs, for the POST handlers too."""
+        account = make_account()
+
+        with (
+            app.test_request_context("/account/name", method="POST", json={}),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            config_overrides_context(LOGIN_DISABLED=True),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(account, "workspace-1"),
+            ),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=SimpleNamespace(account=account, tenant_id="workspace-1"),
+            ),
+        ):
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                AccountNameApi().post()
 
         assert exc_info.value.code == 422
 
@@ -449,7 +494,7 @@ class TestAccountPasswordApi:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(password=password)),
             ),
         ):
-            result = method(api, request_context)
+            result = method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
         assert result["id"] == user.id
         password.change.assert_called_once_with(
@@ -485,7 +530,7 @@ class TestAccountPasswordApi:
             ),
         ):
             with pytest.raises(CurrentPasswordIncorrectError):
-                method(api, request_context)
+                method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
     def test_password_policy_error_is_mapped(self, app: Flask):
         api = AccountPasswordApi()
@@ -514,7 +559,7 @@ class TestAccountPasswordApi:
             ),
         ):
             with pytest.raises(InvalidAccountPasswordRequestError) as exc_info:
-                method(api, request_context)
+                method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
         assert exc_info.value.data == {
             "code": "invalid_account_password",
@@ -605,7 +650,7 @@ class TestAccountDeleteApi:
             ),
         ):
             with pytest.raises(InvalidAccountDeletionCodeError):
-                method(api, request_context)
+                method(api, AccountDeletePayload.model_validate(payload), request_context)
 
     def test_delete_verify_maps_rate_limit(self, app: Flask):
         api = AccountDeleteVerifyApi()
@@ -648,7 +693,7 @@ class TestAccountDeleteApi:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
             ),
         ):
-            result = method(api, request_context)
+            result = method(api, AccountDeletePayload.model_validate(payload), request_context)
 
         assert result["result"] == "success"
         deletion.request_deletion.assert_called_once_with(request_context, token="token", code="123456")
@@ -661,6 +706,14 @@ class TestChangeEmailApis:
 
         payload = {"email": "a@test.com", "code": "x", "token": "t"}
         user = make_account("acc-1")
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id=user.id,
+            active_workspace_id="workspace-1",
+        )
+        change_email = MagicMock()
+        change_email.verify_code.side_effect = InvalidChangeEmailCodeError
 
         with (
             app.test_request_context("/", json=payload),
@@ -671,20 +724,12 @@ class TestChangeEmailApis:
                 return_value=payload,
             ),
             patch(
-                "controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit",
-                return_value=False,
-            ),
-            patch(
-                "controllers.console.workspace.account.AccountService.get_change_email_data",
-                return_value=MagicMock(
-                    email="a@test.com",
-                    code="y",
-                    is_bound_to_account=MagicMock(return_value=True),
-                ),
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
         ):
             with pytest.raises(EmailCodeError):
-                method(api, user)
+                method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
 
     def test_reset_email_already_used(self, app: Flask):
         api = ChangeEmailResetApi()
@@ -692,6 +737,14 @@ class TestChangeEmailApis:
 
         payload = {"new_email": "x@test.com", "token": "t"}
         user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id=user.id,
+            active_workspace_id="workspace-1",
+        )
+        change_email = MagicMock()
+        change_email.reset.side_effect = AccountEmailAlreadyInUseError
 
         with (
             app.test_request_context("/", json=payload),
@@ -701,11 +754,13 @@ class TestChangeEmailApis:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
-            patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=False),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
         ):
             with pytest.raises(EmailAlreadyInUseError):
-                method(api, user)
+                method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
 
 
 class TestCheckEmailUniqueApi:
@@ -714,6 +769,7 @@ class TestCheckEmailUniqueApi:
         method = inspect.unwrap(api.post)
 
         payload = {"email": "ok@test.com"}
+        change_email = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -723,10 +779,12 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
-            patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=True),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
         ):
-            result = method(api)
+            result = method(api, CheckEmailUniquePayload.model_validate(payload))
 
         assert result["result"] == "success"
 
@@ -735,6 +793,8 @@ class TestCheckEmailUniqueApi:
         method = inspect.unwrap(api.post)
 
         payload = {"email": "x@test.com"}
+        change_email = MagicMock()
+        change_email.ensure_available.side_effect = AccountEmailFrozenError
 
         with (
             app.test_request_context("/", json=payload),
@@ -745,18 +805,20 @@ class TestCheckEmailUniqueApi:
                 return_value=payload,
             ),
             patch(
-                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
-                return_value="freeze",
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
         ):
             with pytest.raises(AccountInFreezeError):
-                method(api)
+                method(api, CheckEmailUniquePayload.model_validate(payload))
 
     def test_email_domain_is_suspended(self, app: Flask):
         api = CheckEmailUnique()
         method = inspect.unwrap(api.post)
 
         payload = {"email": "user@suspended.example"}
+        change_email = MagicMock()
+        change_email.ensure_available.side_effect = AccountEmailDomainSuspendedError
 
         with (
             app.test_request_context("/", json=payload),
@@ -767,9 +829,9 @@ class TestCheckEmailUniqueApi:
                 return_value=payload,
             ),
             patch(
-                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
-                return_value="email_domain_suspended",
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
             ),
         ):
             with pytest.raises(EmailDomainSuspendedError):
-                method(api)
+                method(api, CheckEmailUniquePayload.model_validate(payload))

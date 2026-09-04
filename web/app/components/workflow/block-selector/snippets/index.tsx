@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {

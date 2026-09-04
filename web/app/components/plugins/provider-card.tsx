@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
@@ -79,16 +79,15 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
             {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
         )}
-        <Button className="grow" variant="secondary">
-          <a
-            href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
-            target="_blank"
-            className="flex items-center gap-0.5"
-          >
-            {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line size-4" />
-          </a>
-        </Button>
+        <a
+          href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'grow gap-0.5')}
+        >
+          {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
+          <span className="i-ri-arrow-right-up-line size-4" />
+        </a>
       </div>
       {isShowInstallFromMarketplace && (
         <InstallFromMarketplace

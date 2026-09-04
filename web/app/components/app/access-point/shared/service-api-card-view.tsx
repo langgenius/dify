@@ -1,15 +1,17 @@
 'use client'
 
 import type { ComponentProps } from 'react'
-import type { AccessPointStatus } from './access-point-status'
+import type { AccessPointStatus } from '@/app/components/base/access-point/status'
 import type { AppModeEnum } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import { AccessPointCard } from './access-point-card'
-import { AccessPointUrl } from './access-point-url'
 import { ApiSecretKeyButton } from './api-secret-key-button'
+import { useAccessPointStatusLabel } from './use-access-point-status-label'
 import { getAppApiReferencePath } from './utils'
 
 type ServiceApiCardViewProps = {
@@ -19,9 +21,9 @@ type ServiceApiCardViewProps = {
   available: boolean
   status: AccessPointStatus
   switchDisabled: boolean
-  busy?: boolean
   highlighted?: boolean
   onEnabledChange?: (enabled: boolean) => void
+  switchLoading?: boolean
 }
 
 export function ServiceApiCardView({
@@ -29,16 +31,17 @@ export function ServiceApiCardView({
   apiUrl,
   appMode,
   available,
-  busy = false,
   highlighted,
   onEnabledChange,
   status,
   switchDisabled,
+  switchLoading = false,
 }: ServiceApiCardViewProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const apiReferencePath = appMode ? getAppApiReferencePath(appMode) : undefined
   const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
+  const statusLabel = useAccessPointStatusLabel(status)
 
   return (
     <AccessPointCard
@@ -48,31 +51,33 @@ export function ServiceApiCardView({
       })}
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
+      statusLabel={statusLabel}
       highlighted={highlighted}
       switchDisabled={switchDisabled}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
       onEnabledChange={onEnabledChange}
-      busy={busy}
+      switchLoading={switchLoading}
       actions={
         <>
           <ApiSecretKeyButton {...apiKeyButtonProps} />
-          <Button
-            variant="secondary"
-            disabled={!available || !apiReferenceUrl}
-            nativeButton={false}
-            render={
-              apiReferenceUrl ? (
-                <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer" />
-              ) : (
-                <span />
-              )
-            }
-            className="flex items-center gap-1"
-          >
-            <span aria-hidden className="i-ri-book-open-line size-4" />
-            {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-          </Button>
+          {available && apiReferenceUrl ? (
+            <Link
+              href={apiReferenceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: 'secondary' }), 'flex items-center gap-1')}
+            >
+              <span aria-hidden className="i-ri-book-open-line size-4" />
+              {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
+              <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+            </Link>
+          ) : (
+            <Button variant="secondary" disabled className="flex items-center gap-1">
+              <span aria-hidden className="i-ri-book-open-line size-4" />
+              {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
+              <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+            </Button>
+          )}
         </>
       }
     >

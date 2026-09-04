@@ -32,6 +32,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
+from models.workflow import WorkflowRun
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -39,6 +40,7 @@ from services.human_input_service import (
     HumanInputService,
     InvalidFormDataError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_app(mode: AppMode) -> App:
@@ -53,6 +55,10 @@ def _make_app(mode: AppMode) -> App:
         enable_api=True,
         max_active_requests=0,
     )
+
+
+def _workflow_run() -> WorkflowRun:
+    return WorkflowRun(id="workflow-run-id", app_id="app-id")
 
 
 @pytest.fixture
@@ -93,8 +99,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -126,7 +131,7 @@ def test_ensure_form_active_respects_global_timeout(
         created_at=naive_utc_now() - timedelta(hours=2),
         expiration_time=naive_utc_now() + timedelta(hours=2),
     )
-    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
 
     with pytest.raises(FormExpiredError):
         service.ensure_form_active(Form(expired_record))
@@ -138,8 +143,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -166,8 +170,7 @@ def test_enqueue_resume_skips_unsupported_app_mode(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -671,8 +674,7 @@ def test_enqueue_resume_app_not_found(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -700,7 +702,7 @@ def test_is_globally_expired_zero_timeout(
 ) -> None:
     service = HumanInputService(unbound_session_factory)
 
-    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
     assert service._is_globally_expired(Form(sample_form_record)) is False
 
 

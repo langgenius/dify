@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -143,10 +143,11 @@ def test_resolve_file_url_requires_extension_for_tool_files() -> None:
 
 def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
     sign_tool_file_uri = MagicMock(return_value="/files/signed")
     monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
-    monkeypatch.setattr(file_runtime.dify_config, "FILES_URL", "https://files.example.com")
+    config_overrides(FILES_URL="https://files.example.com")
     runtime = _build_runtime()
 
     tool_file = _build_file(
@@ -178,9 +179,11 @@ def test_resolve_file_uri_keeps_dify_owned_file_origin_free(monkeypatch: pytest.
     assert runtime.resolve_file_uri(file=file) == "/files/tools/tool-file-id.png?sign=1"
 
 
-def test_resolve_file_url_returns_relative_uri_when_files_url_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_file_url_returns_relative_uri_when_files_url_is_empty(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     monkeypatch.setattr(file_runtime, "sign_tool_file_uri", lambda **_: "/files/tools/tool-file-id.png?sign=1")
-    monkeypatch.setattr(file_runtime.dify_config, "FILES_URL", "")
+    config_overrides(FILES_URL="")
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -193,15 +196,15 @@ def test_resolve_file_url_returns_relative_uri_when_files_url_is_empty(monkeypat
 
 def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(
+        SECRET_KEY="unit-secret",
+        FILES_URL="https://files.example.com",
+        INTERNAL_FILES_URL="https://internal.example.com",
+    )
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr(
-        "core.app.workflow.file_runtime.dify_config.INTERNAL_FILES_URL",
-        "https://internal.example.com",
-    )
 
     runtime = _build_runtime()
     url = runtime.resolve_upload_file_url(
@@ -254,10 +257,11 @@ def test_resolve_upload_file_url_keeps_attachment_on_proxy(
     assert parse_qs(parsed.query)["as_attachment"] == ["true"]
 
 
-def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_preview_signature_validates_signature_and_expiration(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(SECRET_KEY="unit-secret", FILES_ACCESS_TIMEOUT=60)
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_ACCESS_TIMEOUT", 60)
     runtime = _build_runtime()
     payload = "file-preview|upload-file-id|1700000000|nonce"
     sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
@@ -411,8 +415,10 @@ def test_resolve_storage_key_raises_when_records_are_missing(
         runtime._resolve_storage_key(file=file)
 
 
-def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.MULTIMODAL_SEND_FORMAT", "url")
+def test_runtime_helper_wrappers_delegate_to_config_and_io(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MULTIMODAL_SEND_FORMAT="url")
     runtime = _build_runtime()
 
     assert runtime.multimodal_send_format == "url"

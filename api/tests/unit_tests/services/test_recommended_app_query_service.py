@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from constants.languages import languages
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
     RecommendedAppDetailRecord,
@@ -83,17 +82,14 @@ def test_is_previewable_falls_back_to_catalog(expected: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    ("requested_language", "interface_language", "expected"),
+    ("language", "expected"),
     [
-        ("en-US", "fr-FR", "en-US"),
-        ("invalid", "fr-FR", "fr-FR"),
-        (None, "custom-language", "custom-language"),
-        (None, None, languages[0]),
+        ("fr-FR", "fr-FR"),
+        ("invalid", "en-US"),
     ],
 )
 def test_list_recommended_resolves_language(
-    requested_language: str | None,
-    interface_language: str | None,
+    language: str,
     expected: str,
 ) -> None:
     catalog = MagicMock()
@@ -101,8 +97,7 @@ def test_list_recommended_resolves_language(
     service, _ = _service(catalog=catalog)
 
     service.list_recommended(
-        requested_language=requested_language,
-        interface_language=interface_language,
+        language=language,
     )
 
     catalog.list_recommended.assert_called_once_with(expected)
@@ -113,7 +108,7 @@ def test_list_recommended_disables_upstream_trial_without_querying_trial_apps() 
     catalog.list_recommended.return_value = _page("app-1")
     service, trial_apps = _service(catalog=catalog)
 
-    result = service.list_recommended(requested_language="en-US", interface_language=None)
+    result = service.list_recommended(language="en-US")
 
     assert result.recommended_apps[0].can_trial is False
     trial_apps.existing_ids.assert_not_called()
@@ -130,7 +125,7 @@ def test_list_recommended_enriches_trial_status_in_one_bulk_query() -> None:
         trial_enabled=True,
     )
 
-    result = service.list_recommended(requested_language="en-US", interface_language=None)
+    result = service.list_recommended(language="en-US")
 
     assert [app.can_trial for app in result.recommended_apps] == [True, False]
     trial_apps.existing_ids.assert_called_once_with(["app-1", "app-2"])
@@ -141,9 +136,9 @@ def test_list_learn_dify_does_not_return_categories() -> None:
     catalog.list_learn_dify.return_value = _page(categories=("ignored",))
     service, _ = _service(catalog=catalog)
 
-    result = service.list_learn_dify(requested_language="invalid", interface_language="fr-FR")
+    result = service.list_learn_dify(language="invalid")
 
-    catalog.list_learn_dify.assert_called_once_with("fr-FR")
+    catalog.list_learn_dify.assert_called_once_with("en-US")
     assert result.recommended_apps == ()
     assert not hasattr(result, "categories")
 

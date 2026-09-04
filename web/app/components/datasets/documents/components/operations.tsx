@@ -344,7 +344,7 @@ const Operations = ({
               </div>
             }
           />
-          <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+          <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
             {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
           </PopoverContent>
         </Popover>
@@ -361,12 +361,8 @@ const Operations = ({
   }
 
   return (
-    <div
-      className="flex items-center"
-      role="presentation"
-      onClick={stopPropagation}
-      onKeyDown={stopPropagation}
-    >
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation.
+    <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
       {isListScene && !embeddingAvailable && (
         <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
       )}
@@ -403,7 +399,7 @@ const Operations = ({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName={cn('w-50 py-0', className)}
+              className={cn('w-50 py-0', className)}
             >
               <div className="w-full py-1">
                 {canShowPrimarySection && (

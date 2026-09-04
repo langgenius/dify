@@ -11,6 +11,7 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.extra.public_storage_config import parse_public_storage_policy_settings
+from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 
@@ -30,6 +31,34 @@ def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
+
+
+def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
+    with pytest.raises(ValidationError, match="must cover the retry window"):
+        OpsTraceConfig(
+            OPS_TRACE_UNIFIED_ENABLED=True,
+            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+        )
+
+
+def test_ops_trace_config_skips_parent_context_validation_when_unified_tracing_is_disabled() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=False,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+    )
+
+
+def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=True,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
+    )
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -90,6 +119,10 @@ def test_dify_config():
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
     assert config.GRAPH_ENGINE_SCALE_UP_THRESHOLD == 0
+    assert config.APP_MAX_EXECUTION_TIME == 3600
+    assert config.WORKFLOW_MAX_EXECUTION_TIME == 3600
+    assert config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES == 780
+    assert config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS == 3900
 
     # annotated field with custom configured value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 300

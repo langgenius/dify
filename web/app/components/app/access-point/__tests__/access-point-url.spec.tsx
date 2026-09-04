@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { render } from '@/test/console/render'
-import { AccessPointUrl } from '../shared/access-point-url'
 
 const endpointProps = {
   label: 'Access URL',
@@ -32,6 +33,22 @@ describe('AccessPointUrl', () => {
     expect(openLink).toHaveAttribute('href', endpointProps.value)
     expect(openLink).toHaveAttribute('target', '_blank')
     expect(openLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('explains why the open action is disabled', async () => {
+    const user = userEvent.setup()
+    render(
+      <AccessPointUrl
+        {...endpointProps}
+        enabled={false}
+        showOpen
+        openLabel="Open"
+        openDisabledReason="Publish first"
+      />,
+    )
+
+    await user.hover(screen.getByRole('button', { name: 'Open' }))
+    expect(await screen.findByText('Publish first')).toBeVisible()
   })
 
   it('shows an unavailable endpoint without replacing it with a loading skeleton', () => {

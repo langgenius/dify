@@ -9,7 +9,13 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.app.wraps import enforce_agent_manage_or_app_scene
+from controllers.console.wraps import (
+    account_initialization_required,
+    enable_change_email,
+    enterprise_license_required,
+    setup_required,
+)
 from core.logging.context import get_request_id, get_trace_id
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
@@ -17,17 +23,37 @@ from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from machinery.errors import AdmissionConfigurationError
 from models.account import TenantAccountRole
+from services.system_feature_service import SystemFeatureService
+
+
+def console_email_registration_admission[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Apply the complete admission policy for anonymous email registration."""
+
+    @wraps(view)
+    def check_registration_features(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if (
+            not SystemFeatureService.is_email_password_login_enabled()
+            or not SystemFeatureService.is_registration_allowed()
+        ):
+            abort(403)
+        return view(self, *args, **kwargs)
+
+    return setup_required(check_registration_features)
 
 
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
+    require_change_email_enabled: bool = False,
     require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_resource_scope: RBACResourceScope | None = None,
     rbac_permission: RBACPermission | None = None,
     rbac_resource_required: bool = True,
+    agent_manage_fallback: bool = False,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
@@ -42,6 +68,10 @@ def console_account_admission[T, **P, R](
 
     if (rbac_resource_scope is None) != (rbac_permission is None):
         raise AdmissionConfigurationError("RBAC resource scope and permission must be configured together")
+    if agent_manage_fallback and rbac_resource_scope != RBACResourceScope.APP:
+        raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_scope=RBACResourceScope.APP")
+    if agent_manage_fallback and not rbac_resource_required:
+        raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_required=True")
 
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
@@ -54,14 +84,22 @@ def console_account_admission[T, **P, R](
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
             if rbac_resource_scope is not None and rbac_permission is not None:
-                enforce_rbac_access(
-                    tenant_id=tenant_id,
-                    account_id=account.id,
-                    resource_type=rbac_resource_scope,
-                    scene=rbac_permission,
-                    resource_required=rbac_resource_required,
-                    path_args=kwargs,
-                )
+                if agent_manage_fallback:
+                    enforce_agent_manage_or_app_scene(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        scene=rbac_permission,
+                        path_args=kwargs,
+                    )
+                else:
+                    enforce_rbac_access(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        resource_type=rbac_resource_scope,
+                        scene=rbac_permission,
+                        resource_required=rbac_resource_required,
+                        path_args=kwargs,
+                    )
             request_context = RequestContext(
                 account_id=account.id,
                 active_workspace_id=tenant_id,
@@ -71,6 +109,8 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
+        if require_change_email_enabled:
+            admitted = enable_change_email(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
         if require_initialized:

@@ -1,7 +1,8 @@
 import logging
 import time as time_module
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel
 from sqlalchemy import update
@@ -13,11 +14,14 @@ from core.app.entities.app_invoke_entities import (
     AgentAppGenerateEntity,
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
 )
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
@@ -83,6 +87,11 @@ class _ProviderUpdateOperation(BaseModel):
     description: str = "unknown"
 
 
+class _CreditDeductionContext(TypedDict, total=False):
+    request_id: str | None
+    metadata: Mapping[str, object]
+
+
 @message_was_created.connect
 def handle(sender: Message, **kwargs):
     """
@@ -124,7 +133,18 @@ def handle(sender: Message, **kwargs):
     model_config = application_generate_entity.model_conf
     provider_model_bundle = model_config.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
-
+    app_mode = application_generate_entity.app_config.app_mode
+    credit_deduction_metadata: dict[str, object] = {
+        "provider": provider_name,
+        "model": model_config.model,
+        "model_type": ModelType.LLM.value,
+        "app_type": get_credit_usage_app_type(app_mode),
+        "created_by": get_credit_usage_created_by(app_mode),
+    }
+    credit_deduction_context: _CreditDeductionContext = {
+        "request_id": str(message.id) if message.id else None,
+        "metadata": credit_deduction_metadata,
+    }
     agent_gateway_metered = (
         isinstance(application_generate_entity, AgentAppGenerateEntity)
         and application_generate_entity.agent_llm_gateway_enabled
@@ -150,12 +170,14 @@ def handle(sender: Message, **kwargs):
                         tenant_id=tenant_id,
                         credits_required=used_quota,
                         pool_type="trial",
+                        **credit_deduction_context,
                     )
                 case ProviderQuotaType.PAID:
                     _deduct_credit_pool_quota_capped(
                         tenant_id=tenant_id,
                         credits_required=used_quota,
                         pool_type="paid",
+                        **credit_deduction_context,
                     )
                 case ProviderQuotaType.FREE:
                     quota_update = _ProviderUpdateOperation(
@@ -205,16 +227,33 @@ def handle(sender: Message, **kwargs):
         raise
 
 
-def _deduct_credit_pool_quota_capped(*, tenant_id: str, credits_required: int, pool_type: str) -> None:
+def _deduct_credit_pool_quota_capped(
+    *,
+    tenant_id: str,
+    credits_required: int,
+    pool_type: str,
+    request_id: str | None = None,
+    metadata: Mapping[str, object] | None = None,
+) -> None:
     """Apply post-generation credit accounting without failing message persistence on quota exhaustion."""
     from services.credit_pool_service import CreditPoolService
 
-    deducted_credits = CreditPoolService.deduct_credits_capped(
-        tenant_id=tenant_id,
-        credits_required=credits_required,
-        pool_type=pool_type,
-        session=db.session(),
-    )
+    if request_id is None and metadata is None:
+        deducted_credits = CreditPoolService.deduct_credits_capped(
+            tenant_id=tenant_id,
+            credits_required=credits_required,
+            pool_type=pool_type,
+            session=db.session(),
+        )
+    else:
+        deducted_credits = CreditPoolService.deduct_credits_capped(
+            tenant_id=tenant_id,
+            credits_required=credits_required,
+            pool_type=pool_type,
+            request_id=request_id,
+            metadata=metadata,
+            session=db.session(),
+        )
     if deducted_credits < credits_required:
         logger.warning(
             "Credit pool exhausted during message-created accounting, "

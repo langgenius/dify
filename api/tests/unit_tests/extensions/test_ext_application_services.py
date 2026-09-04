@@ -2,7 +2,8 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from typing import cast
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import httpx
@@ -15,24 +16,60 @@ from sqlalchemy.orm import Session, sessionmaker
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
+from machinery.context import RequestContext
+from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.account_oauth_repository import (
+    AccountServiceOAuthAccountRegistrationGateway,
+    AccountServiceOAuthSessionGateway,
+    AccountServiceOAuthWorkspaceGateway,
+    RegisterServiceOAuthInvitationGateway,
+)
 from repositories.account_repository import SQLAlchemyAccountRepository
-from services import recommended_app_catalog_gateway
-from services.account_activation_adapters import (
+from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
+from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
-    RegisterServiceInvitationTokenStore,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_email_registration_adapters import (
+    AccountServiceRegistrationGateway,
+    BillingAccountRegistrationPolicyGateway,
+    RedisEmailRegistrationSecurityGateway,
+    TokenManagerEmailRegistrationTokenGateway,
+)
+from services.account_forgot_password_adapters import (
+    RateLimiterForgotPasswordSendLimiter,
+    RedisForgotPasswordSecurityGateway,
+    RedisForgotPasswordTokenGateway,
+)
+from services.account_oauth_adapters import (
+    DeploymentOAuthPolicyGateway,
+    RedisOAuthAccountClaimLock,
+)
+from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.billing_portal_service import BillingPortalService
+from services.billing_service import BillingService
+from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(
@@ -90,12 +127,11 @@ def test_init_app_registers_services_for_the_current_app(
 ) -> None:
     app = Flask(__name__)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
-    monkeypatch.setattr(
-        ext_application_services.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        INIT_PASSWORD="expected",
     )
-    monkeypatch.setattr(ext_application_services.dify_config, "INIT_PASSWORD", "expected")
 
     ext_application_services.init_app(app)
 
@@ -103,6 +139,7 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
 @pytest.mark.parametrize(
@@ -126,6 +163,7 @@ def test_build_application_services_configures_setup_policy(
     )
 
     assert services.setup.get_status().completed is setup_completed
+    assert services.oauth_server is not None
 
 
 def test_build_application_services_wires_builtin_schema_definitions(
@@ -171,6 +209,185 @@ def test_build_application_services_wires_tag_boundary(
     assert isinstance(services.tags, TagApplicationService)
 
 
+def test_build_application_services_reuses_file_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.files, FileService)
+    assert services.files._session_maker is sqlite_session_factory
+    assert services.web_app_runtime._file_service is services.files
+
+
+def test_build_application_services_wires_workflow_run_archives(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    workflow_run_archives = services.workflow_run_archives
+    assert isinstance(workflow_run_archives, WorkflowRunArchiveService)
+    assert isinstance(workflow_run_archives._bundles, WorkflowRunArchiveBundleQueryRepository)
+    assert workflow_run_archives._bundles._session_factory is sqlite_session_factory
+    assert isinstance(workflow_run_archives._tasks, WorkflowRunArchiveDownloadTaskCache)
+    assert workflow_run_archives._tasks._redis is redis
+    assert workflow_run_archives._dispatcher is ext_application_services.dispatch_workflow_run_archive_download_task
+    assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
+
+
+def test_build_application_services_wires_app_site_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_sites, AppSiteService)
+    assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
+    assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_billing_service(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = Account(name="Billing Owner", email="owner@example.com")
+    account.id = "account-1"
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    with (
+        patch.object(
+            BillingService,
+            "get_subscription",
+            return_value={"url": "https://billing.example.com/checkout"},
+        ) as get_subscription,
+        patch.object(
+            BillingService,
+            "get_invoices",
+            return_value={"url": "https://billing.example.com/portal"},
+        ) as get_invoices,
+        patch.object(
+            BillingService,
+            "sync_partner_tenants_bindings",
+            return_value={"result": "success"},
+        ) as sync_partner_tenants_bindings,
+    ):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    request_context = RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
+    assert isinstance(services.billing_portal, BillingPortalService)
+    assert services.billing_portal.get_subscription(
+        request_context,
+        plan="professional",
+        interval="month",
+    ) == {"url": "https://billing.example.com/checkout"}
+    assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
+    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
+    assert services.partner_tenant_bindings.sync(
+        account_id="account-1",
+        partner_key="partner-key",
+        click_id="click-1",
+    ) == {"result": "success"}
+    get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
+    get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
+    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
+def test_build_application_services_wires_compliance_downloads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+    with (
+        patch.object(
+            BillingService,
+            "get_compliance_download_link",
+            return_value={"url": "https://billing.example.com/compliance"},
+        ) as fetch_link,
+        patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type,
+    ):
+        rate_limiter = rate_limiter_type.return_value
+        rate_limiter.is_rate_limited.return_value = False
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    assert isinstance(services.compliance_downloads, ComplianceDownloadService)
+    assert services.compliance_downloads.get_link(
+        request_context=RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        ),
+        document_name="SOC2_Type_II",
+        ip_address="127.0.0.1",
+        device_info="test-agent",
+    ) == {"url": "https://billing.example.com/compliance"}
+    rate_limiter_type.assert_any_call(
+        prefix="compliance_download_rate_limiter",
+        max_attempts=4,
+        time_window=60,
+        redis_client=redis,
+    )
+    rate_limiter.is_rate_limited.assert_called_once_with("account-1:workspace-1")
+    rate_limiter.increment_rate_limit.assert_called_once_with("account-1:workspace-1")
+    fetch_link.assert_called_once_with("SOC2_Type_II", "account-1", "workspace-1", "127.0.0.1", "test-agent")
+
+
+def test_build_application_services_wires_education_rate_limiters(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+    with patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    rate_limiter_type.assert_any_call(
+        prefix="edu_verification_rate_limit",
+        max_attempts=10,
+        time_window=60,
+        redis_client=redis,
+    )
+    rate_limiter_type.assert_any_call(
+        prefix="edu_activation_rate_limit",
+        max_attempts=10,
+        time_window=60,
+        redis_client=redis,
+    )
+
+
 def test_build_application_services_wires_account_profile_repository(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -185,13 +402,55 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
     assert services.accounts.password._accounts is accounts
+    assert services.accounts.authentication._passwords is services.accounts.password._passwords
+    forgot_password = services.accounts.forgot_password
+    assert forgot_password._accounts is accounts
+    assert forgot_password._passwords is services.accounts.password._passwords
+    tokens = cast(RedisForgotPasswordTokenGateway, forgot_password._tokens)
+    send_limiter = cast(RateLimiterForgotPasswordSendLimiter, forgot_password._send_limits)
+    security = cast(RedisForgotPasswordSecurityGateway, forgot_password._security)
+    assert tokens._redis is send_limiter._rate_limiter._redis_client
+    assert send_limiter._rate_limiter.prefix == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX
+    assert (
+        send_limiter._rate_limiter.max_attempts
+        == account_forgot_password_service.FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS
+    )
+    assert (
+        security._verification_failure_limit
+        == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT
+    )
+    assert security._verification_key_prefix == account_forgot_password_service.FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
+    assert services.accounts.change_email._accounts is accounts
+    email_registration = services.accounts.email_registration
+    assert email_registration._accounts is accounts
+    assert isinstance(email_registration._tokens, TokenManagerEmailRegistrationTokenGateway)
+    assert isinstance(email_registration._security, RedisEmailRegistrationSecurityGateway)
+    assert isinstance(email_registration._account_policy, BillingAccountRegistrationPolicyGateway)
+    assert isinstance(email_registration._registration, AccountServiceRegistrationGateway)
+    assert email_registration._registration._session_factory is sqlite_session_factory
+    assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.authentication._accounts is accounts
+    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
+    assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
+    oauth = services.accounts.oauth
+    assert oauth._accounts is accounts
+    assert oauth._integrations is integrations
+    assert oauth._memberships is services.workspace_queries._workspaces
+    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
+    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
+    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
+    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert oauth._sessions is not oauth._workspaces
+    assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
+    assert oauth._workspace_policy is oauth._registration_policy
     avatar_files = services.accounts.avatar._files
     assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
     assert avatar_files._session_factory is sqlite_session_factory
@@ -231,7 +490,7 @@ def test_build_application_services_wires_account_activation(
     )
 
     activation = services.account_activation
-    assert isinstance(activation._tokens, RegisterServiceInvitationTokenStore)
+    assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory
     assert isinstance(activation._workspace_policy, DeploymentWorkspaceInvitePolicy)
@@ -239,6 +498,7 @@ def test_build_application_services_wires_account_activation(
     assert activation._eligibility._enabled is billing_enabled
     assert isinstance(activation._membership_cache, BillingWorkspaceMembershipCache)
     assert activation._membership_cache._enabled is billing_enabled
+    assert isinstance(activation._member_access_sync, RBACWorkspaceMemberAccessSync)
 
 
 def test_build_application_services_wires_data_source_api_key_auth(
@@ -283,7 +543,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="private_all"),
@@ -320,7 +580,7 @@ def test_build_application_services_maps_known_enterprise_errors(
     enterprise_error: Exception,
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=enterprise_error,
@@ -343,7 +603,7 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="invalid"),
@@ -367,7 +627,7 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
 ) -> None:
     failure = TypeError("adapter bug")
     with (
-        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=failure,
@@ -391,7 +651,7 @@ def test_build_application_services_wires_webapp_permission(
 ) -> None:
     with (
         patch(
-            "extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True
+            "extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True
         ) as enabled,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
@@ -413,7 +673,12 @@ def test_build_application_services_wires_webapp_permission(
 
     assert requires_permission is True
     assert allowed is False
-    enabled.assert_called_once_with()
+    enabled.assert_has_calls(
+        [
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+            call(deployment_edition=DeploymentEdition.COMMUNITY),
+        ]
+    )
     get_access_mode.assert_called_once_with("app-1")
     is_user_allowed.assert_called_once_with("user-1", "app-1")
 
@@ -436,7 +701,7 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "builtin")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -456,14 +721,12 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     )
     with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=builtin_payload):
         result = services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )
     assert result.recommended_apps
 
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "invalid")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
     with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )

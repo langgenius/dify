@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 
 import controllers.web.human_input_file_upload as upload_module
 from controllers.common.errors import NoFileUploadedError
@@ -17,6 +18,12 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
+from extensions.storage.storage_type import StorageType
+from models import Account
+from models.account import AccountStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
+from services.human_input_file_upload_service import HumanInputUploadContext
 
 
 @pytest.fixture
@@ -26,26 +33,40 @@ def app() -> Flask:
     return app
 
 
-def _upload_context() -> SimpleNamespace:
-    return SimpleNamespace(
+def _account() -> Account:
+    account = Account(name="Form Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
+    account.id = "owner-1"
+    return account
+
+
+def _upload_context() -> HumanInputUploadContext:
+    return HumanInputUploadContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
         form_id="form-1",
+        recipient_id="recipient-1",
         upload_token_id="token-row-1",
-        owner=SimpleNamespace(id="owner-1", current_tenant_id="tenant-1"),
+        owner=_account(),
     )
 
 
-def _upload_file() -> SimpleNamespace:
-    return SimpleNamespace(
-        id="file-1",
+def _upload_file() -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="upload/sample.txt",
         name="sample.txt",
         size=7,
         extension="txt",
         mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="end-user-1",
         created_at=datetime(2024, 1, 1),
-        tenant_id="tenant-1",
+        used=False,
         source_url="signed-source-url",
     )
+    upload_file.id = "file-1"
+    return upload_file
 
 
 def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> tuple[MagicMock, dict[str, object]]:
@@ -90,7 +111,9 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
             HumanInputFileUploadApi().post()
 
 
-def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_local_upload_ignores_source_and_records_form_file_link(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
+) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
     repo_factory, captured = _patch_upload_service(monkeypatch, service)
@@ -99,7 +122,7 @@ def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pyt
     file_service.upload_file.return_value = _upload_file()
     file_service_cls = MagicMock(return_value=file_service)
     monkeypatch.setattr(upload_module, "FileService", file_service_cls)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     data = {
         "file": (BytesIO(b"content"), "sample.txt"),
@@ -127,11 +150,13 @@ def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pyt
     )
 
 
-def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_local_upload_missing_file_raises_after_valid_token(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
+) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     with app.test_request_context(
         "/api/human-input-forms/files",
@@ -145,11 +170,13 @@ def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.
     service.validate_upload_token.assert_called_once_with("hitl_upload_token-1")
 
 
-def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_remote_upload_validates_token_before_fetching_remote_url(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
+) -> None:
     service = MagicMock()
     service.validate_upload_token.side_effect = InvalidUploadTokenForbiddenError()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
     ssrf_proxy = MagicMock()
     monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
 
@@ -167,11 +194,13 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
     ssrf_proxy.get.assert_not_called()
 
 
-def test_remote_upload_records_form_file_link(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_remote_upload_records_form_file_link(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
+) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     response = MagicMock()
     response.status_code = 200
@@ -181,7 +210,7 @@ def test_remote_upload_records_form_file_link(monkeypatch: pytest.MonkeyPatch, a
     ssrf_proxy.head.return_value = response
     monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
     monkeypatch.setattr(
-        upload_module.helpers,
+        upload_module,
         "guess_file_info_from_response",
         lambda _response: SimpleNamespace(filename="sample.txt", extension="txt", mimetype="text/plain", size=6),
     )

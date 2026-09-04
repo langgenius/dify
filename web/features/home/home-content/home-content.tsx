@@ -11,6 +11,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
   trackStepByStepTourEvent,
@@ -28,7 +29,6 @@ import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/task
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
@@ -36,10 +36,10 @@ import { consoleQuery } from '@/service/client'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { HomeBanner } from '../banner/home-banner'
+import { HomeIntro } from '../home-intro'
 import { HomeShell } from '../home-shell'
 import { TemplateCard } from '../template-card'
 import { HomeRecommendations } from './recommendations'
-import s from './style.module.css'
 import { HomeTemplatesHeader } from './templates-header'
 
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
@@ -55,7 +55,6 @@ const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['mainNav.home'], { ns: 'common' }))
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -344,11 +343,12 @@ export function HomeContent() {
       const appId = currApp?.app_id
       if (!appId) return
 
-      const appDetail = await queryClient.ensureQueryData(
-        consoleQuery.explore.apps.byAppId.get.queryOptions({
+      const appDetail = await queryClient.query({
+        ...consoleQuery.explore.apps.byAppId.get.queryOptions({
           input: { params: { app_id: appId } },
         }),
-      )
+        staleTime: 'static',
+      })
 
       const { export_data, mode } = appDetail
       currentCreateAppModeRef.current = mode
@@ -410,6 +410,7 @@ export function HomeContent() {
   return (
     <HomeShell>
       <div className="flex flex-1 flex-col overflow-y-auto">
+        <HomeIntro />
         {systemFeatures.enable_explore_banner && <HomeBanner />}
         <HomeRecommendations
           canCreate={canCreateApp}
@@ -429,9 +430,9 @@ export function HomeContent() {
         />
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-          <nav
+          <section
             aria-labelledby="home-templates-title"
-            className={cn(s.templateGrid, 'grid shrink-0 content-start gap-3 px-8')}
+            className={cn('shrink-0 content-start gap-2.5 px-8', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
           >
             {searchFilteredList.map((app) => (
               <TemplateCard
@@ -442,7 +443,7 @@ export function HomeContent() {
                 onTry={handleTryApp}
               />
             ))}
-          </nav>
+          </section>
         </div>
       </div>
       {isShowCreateModal && (

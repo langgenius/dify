@@ -4,7 +4,6 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
 
-import pytz
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -23,6 +22,7 @@ from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailChangeLimitError,
+    EmailChangeRateLimitExceededError,
     EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
     InvalidEmailError,
@@ -31,45 +31,30 @@ from controllers.console.auth.error import (
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EducationActivateLimitError,
+    EducationVerifyLimitError,
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
+    InvalidAccountPasswordRequestError,
 )
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountPasswordRequestError,
     InvalidInvitationCodeError,
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import (
-    account_initialization_required,
-    enable_change_email,
-    model_validate,
-    only_edition_cloud,
-    setup_required,
-    with_current_user,
-)
+from controllers.console.wraps import model_validate, setup_required
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from libs.login import login_required
 from machinery.context import RequestContext
-from models import Account
 from services import account_errors
-from services.account_service import AccountService
-from services.billing_service import BillingService
 from services.entities.account_entities import AccountProfileChanges
-from services.entities.auth_entities import (
-    ChangeEmailNewEmailToken,
-    ChangeEmailNewEmailVerifiedToken,
-    ChangeEmailOldEmailToken,
-    ChangeEmailOldEmailVerifiedToken,
-)
 
 
 class AccountInitPayload(BaseModel):
@@ -256,6 +241,10 @@ class EducationVerifyResponse(ResponseModel):
     token: str | None = None
 
 
+class EducationActivateResponse(ResponseModel):
+    message: str
+
+
 class EducationStatusResponse(ResponseModel):
     result: bool | None = None
     is_student: bool | None = None
@@ -280,6 +269,7 @@ register_response_schema_models(
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
+    EducationActivateResponse,
     EducationVerifyResponse,
     EducationStatusResponse,
     EducationAutocompleteResponse,
@@ -302,10 +292,8 @@ class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_initialized=False)
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInitPayload.model_validate(payload)
-
+    @model_validate(AccountInitPayload)
+    def post(self, args: AccountInitPayload, request_context: RequestContext):
         try:
             application_services().accounts.initialization.initialize(
                 request_context,
@@ -354,9 +342,8 @@ class AccountNameApi(Resource):
     @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountNamePayload.model_validate(payload)
+    @model_validate(AccountNamePayload)
+    def post(self, args: AccountNamePayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(name=args.name))
 
 
@@ -381,9 +368,8 @@ class AccountAvatarApi(Resource):
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountAvatarPayload.model_validate(payload)
+    @model_validate(AccountAvatarPayload)
+    def post(self, args: AccountAvatarPayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(avatar=args.avatar))
 
 
@@ -397,9 +383,8 @@ class AccountInterfaceLanguageApi(Resource):
     @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInterfaceLanguagePayload.model_validate(payload)
+    @model_validate(AccountInterfaceLanguagePayload)
+    def post(self, args: AccountInterfaceLanguagePayload, request_context: RequestContext):
         return _update_account_profile(
             request_context,
             AccountProfileChanges(interface_language=args.interface_language),
@@ -416,9 +401,8 @@ class AccountInterfaceThemeApi(Resource):
     @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInterfaceThemePayload.model_validate(payload)
+    @model_validate(AccountInterfaceThemePayload)
+    def post(self, args: AccountInterfaceThemePayload, request_context: RequestContext):
         return _update_account_profile(
             request_context,
             AccountProfileChanges(interface_theme=args.interface_theme),
@@ -435,9 +419,8 @@ class AccountTimezoneApi(Resource):
     @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountTimezonePayload.model_validate(payload)
+    @model_validate(AccountTimezonePayload)
+    def post(self, args: AccountTimezonePayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(timezone=args.timezone))
 
 
@@ -446,10 +429,8 @@ class AccountPasswordApi(Resource):
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountPasswordPayload.model_validate(payload)
-
+    @model_validate(AccountPasswordPayload)
+    def post(self, args: AccountPasswordPayload, request_context: RequestContext):
         try:
             assert args.password is not None
             account = application_services().accounts.password.change(
@@ -508,10 +489,8 @@ class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountDeletePayload.model_validate(payload)
-
+    @model_validate(AccountDeletePayload)
+    def post(self, args: AccountDeletePayload, request_context: RequestContext):
         try:
             application_services().accounts.deletion.request_deletion(
                 request_context,
@@ -529,75 +508,68 @@ class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
-    def post(self):
-        payload = console_ns.payload or {}
-        args = AccountDeletionFeedbackPayload.model_validate(payload)
-
-        BillingService.update_account_deletion_feedback(args.email, args.feedback)
+    @model_validate(AccountDeletionFeedbackPayload)
+    def post(self, args: AccountDeletionFeedbackPayload):
+        application_services().accounts.deletion_feedback.submit(email=args.email, feedback=args.feedback)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        return dump_response(
-            EducationVerifyResponse, BillingService.EducationIdentity.verify(account.id, account.email) or {}
-        )
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext):
+        try:
+            verification = application_services().accounts.education.verify(request_context)
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationVerifyLimitError() from error
+        return dump_response(EducationVerifyResponse, verification)
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
-    # response-contract:ignore billing-service activation payload; TODO: model education activation result.
-    @console_ns.response(HTTPStatus.OK, "Success")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @with_current_user
-    def post(self, account: Account):
-        payload = console_ns.payload or {}
-        args = EducationActivatePayload.model_validate(payload)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @model_validate(EducationActivatePayload)
+    def post(self, args: EducationActivatePayload, request_context: RequestContext):
+        try:
+            activation = application_services().accounts.education.activate(
+                request_context,
+                token=args.token,
+                institution=args.institution,
+                role=args.role,
+            )
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationActivateLimitError() from error
+        return dump_response(EducationActivateResponse, activation)
 
-        result = BillingService.EducationIdentity.activate(account, args.token, args.institution, args.role)
-        return result
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        res = BillingService.EducationIdentity.status(account.id) or {}
-        # convert expire_at to UTC timestamp from isoformat
-        if res and "expire_at" in res:
-            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return dump_response(EducationStatusResponse, res)
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext):
+        return dump_response(EducationStatusResponse, application_services().accounts.education.status(request_context))
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
-    def get(self):
-        payload = request.args.to_dict(flat=True)
-        args = EducationAutocompleteQuery.model_validate(payload)
-
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @model_validate(EducationAutocompleteQuery)
+    def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
         return dump_response(
             EducationAutocompleteResponse,
-            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {},
+            application_services().accounts.education.autocomplete(
+                request_context,
+                keywords=args.keywords,
+                page=args.page,
+                limit=args.limit,
+            ),
         )
 
 
@@ -605,59 +577,30 @@ class EducationAutoCompleteApi(Resource):
 class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    @enable_change_email
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def post(self, current_user: Account):
-        payload = console_ns.payload or {}
-        args = ChangeEmailSendPayload.model_validate(payload)
-
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailSendPayload)
+    def post(self, args: ChangeEmailSendPayload, request_context: RequestContext):
         ip_address = extract_remote_ip(request)
-        if AccountService.is_email_send_ip_limit(ip_address):
-            raise EmailSendIpLimitError()
-
-        if args.language is not None and args.language == "zh-Hans":
-            language = "zh-Hans"
-        else:
-            language = "en-US"
-        account = current_user
-        user_email = current_user.email
-        email_for_sending = args.email.lower()
-        # Default to the initial phase; any legacy/unexpected client input is
-        # coerced back to `old_email` so we never trust the caller to declare
-        # later phases without a verified predecessor token.
-        send_phase = AccountService.CHANGE_EMAIL_PHASE_OLD
-        if args.phase is not None and args.phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
-            send_phase = AccountService.CHANGE_EMAIL_PHASE_NEW
-            if args.token is None:
-                raise InvalidTokenError()
-
-            reset_data = AccountService.get_change_email_data(args.token)
-            if reset_data is None:
-                raise InvalidTokenError()
-
-            if not isinstance(reset_data, ChangeEmailOldEmailVerifiedToken):
-                raise InvalidTokenError()
-            if not reset_data.is_bound_to_account(current_user.id):
-                raise InvalidTokenError()
-            user_email = reset_data.email
-
-            if user_email.lower() != current_user.email.lower():
-                raise InvalidEmailError()
-        else:
-            if email_for_sending != current_user.email.lower():
-                raise InvalidEmailError()
-            email_for_sending = current_user.email
-
-        token = AccountService.send_change_email_email(
-            account=account,
-            email=email_for_sending,
-            old_email=user_email,
-            language=language,
-            phase=send_phase,
-        )
+        language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
+        try:
+            token = application_services().accounts.change_email.send_code(
+                request_context,
+                requested_email=args.email,
+                language=language,
+                phase=args.phase,
+                predecessor_token=args.token,
+                ip_address=ip_address,
+            )
+        except account_errors.ChangeEmailSendIPLimitedError:
+            raise EmailSendIpLimitError() from None
+        except account_errors.ChangeEmailSendRateLimitError as error:
+            raise EmailChangeRateLimitExceededError(error.retry_after_minutes) from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.InvalidChangeEmailAddressError:
+            raise InvalidEmailError() from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
@@ -665,47 +608,25 @@ class ChangeEmailSendEmailApi(Resource):
 class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
-    @enable_change_email
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def post(self, current_user: Account):
-        payload = console_ns.payload or {}
-        args = ChangeEmailValidityPayload.model_validate(payload)
-
-        user_email = args.email.lower()
-
-        is_change_email_error_rate_limit = AccountService.is_change_email_error_rate_limit(user_email)
-        if is_change_email_error_rate_limit:
-            raise EmailChangeLimitError()
-
-        token_data = AccountService.get_change_email_data(args.token)
-        if token_data is None:
-            raise InvalidTokenError()
-        if not token_data.is_bound_to_account(current_user.id):
-            raise InvalidTokenError()
-
-        normalized_token_email = token_data.email.lower()
-        if user_email != normalized_token_email:
-            raise InvalidEmailError()
-
-        if args.code != token_data.code:
-            AccountService.add_change_email_error_rate_limit(user_email)
-            raise EmailCodeError()
-
-        if isinstance(token_data, ChangeEmailOldEmailToken | ChangeEmailNewEmailToken):
-            refreshed_token_data = token_data.promote()
-        else:
-            raise InvalidTokenError()
-
-        # Verified, revoke the first token
-        AccountService.revoke_change_email_token(args.token)
-
-        new_token = AccountService.generate_change_email_token(refreshed_token_data, current_user)
-
-        AccountService.reset_change_email_error_rate_limit(user_email)
-        return VerificationTokenResponse(is_valid=True, email=normalized_token_email, token=new_token).model_dump(
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailValidityPayload)
+    def post(self, args: ChangeEmailValidityPayload, request_context: RequestContext):
+        try:
+            verification = application_services().accounts.change_email.verify_code(
+                request_context,
+                email=args.email,
+                code=args.code,
+                token=args.token,
+            )
+        except account_errors.ChangeEmailVerificationLimitError:
+            raise EmailChangeLimitError() from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.InvalidChangeEmailAddressError:
+            raise InvalidEmailError() from None
+        except account_errors.InvalidChangeEmailCodeError:
+            raise EmailCodeError() from None
+        return VerificationTokenResponse(is_valid=True, email=verification.email, token=verification.token).model_dump(
             mode="json"
         )
 
@@ -713,54 +634,26 @@ class ChangeEmailCheckApi(Resource):
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
-    @enable_change_email
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
-        payload = console_ns.payload or {}
-        args = ChangeEmailResetPayload.model_validate(payload)
-        normalized_new_email = args.new_email.lower()
-
-        freeze_type = AccountService.get_account_freeze_type(normalized_new_email)
-        if freeze_type:
-            if freeze_type == "email_domain_suspended":
-                raise EmailDomainSuspendedError()
-            raise AccountInFreezeError()
-
-        if not AccountService.check_email_unique(normalized_new_email, session=db.session()):
-            raise EmailAlreadyInUseError()
-
-        reset_data = AccountService.get_change_email_data(args.token)
-        if not reset_data:
-            raise InvalidTokenError()
-        if not reset_data.is_bound_to_account(current_user.id):
-            raise InvalidTokenError()
-
-        if not isinstance(reset_data, ChangeEmailNewEmailVerifiedToken):
-            raise InvalidTokenError()
-
-        # Bind the new email to the token that was mailed and verified, so a
-        # verified token cannot be reused with a different `new_email` value.
-        if reset_data.email.lower() != normalized_new_email:
-            raise InvalidTokenError()
-
-        if current_user.email.lower() != reset_data.old_email.lower():
-            raise AccountNotFound()
-
-        # Revoke only after all checks pass so failed attempts don't burn a
-        # legitimately verified token.
-        AccountService.revoke_change_email_token(args.token)
-
-        updated_account = AccountService.update_account_email(
-            current_user, email=normalized_new_email, session=db.session()
-        )
-
-        AccountService.send_change_email_completed_notify_email(
-            email=normalized_new_email,
-        )
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailResetPayload)
+    def post(self, args: ChangeEmailResetPayload, request_context: RequestContext):
+        try:
+            updated_account = application_services().accounts.change_email.reset(
+                request_context,
+                new_email=args.new_email,
+                token=args.token,
+            )
+        except account_errors.AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except account_errors.AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+        except account_errors.AccountEmailAlreadyInUseError:
+            raise EmailAlreadyInUseError() from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
 
         return dump_response(AccountResponse, updated_account)
 
@@ -770,15 +663,14 @@ class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
-    def post(self):
-        payload = console_ns.payload or {}
-        args = CheckEmailUniquePayload.model_validate(payload)
-        normalized_email = args.email.lower()
-        freeze_type = AccountService.get_account_freeze_type(normalized_email)
-        if freeze_type:
-            if freeze_type == "email_domain_suspended":
-                raise EmailDomainSuspendedError()
-            raise AccountInFreezeError()
-        if not AccountService.check_email_unique(normalized_email, session=db.session()):
-            raise EmailAlreadyInUseError()
+    @model_validate(CheckEmailUniquePayload)
+    def post(self, args: CheckEmailUniquePayload):
+        try:
+            application_services().accounts.change_email.ensure_available(args.email)
+        except account_errors.AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except account_errors.AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+        except account_errors.AccountEmailAlreadyInUseError:
+            raise EmailAlreadyInUseError() from None
         return SimpleResultResponse(result="success").model_dump(mode="json")

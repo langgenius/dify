@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -256,8 +257,50 @@ class MessageService:
             session.add(feedback)
 
         session.commit()
+        if rating:
+            cls._emit_feedback_telemetry(
+                app_model=app_model, message=message, user=user, rating=rating, content=content
+            )
 
         return feedback
+
+    @classmethod
+    def _emit_feedback_telemetry(
+        cls,
+        *,
+        app_model: App,
+        message: Message,
+        user: Account | EndUser,
+        rating: FeedbackRating | None,
+        content: str | None,
+    ) -> None:
+        try:
+            from core.telemetry import FeedbackCreatedEvent, TelemetryContext, emit
+
+            if message.id is None:
+                return
+
+            emit(
+                FeedbackCreatedEvent(
+                    context=TelemetryContext(tenant_id=app_model.tenant_id),
+                    payload={
+                        "message_id": str(message.id),
+                        "app_id": str(app_model.id) if app_model.id is not None else None,
+                        "conversation_id": (
+                            str(message.conversation_id) if message.conversation_id is not None else None
+                        ),
+                        "from_end_user_id": str(user.id) if isinstance(user, EndUser) and user.id is not None else None,
+                        "from_account_id": str(user.id) if isinstance(user, Account) and user.id is not None else None,
+                        "rating": rating.value if rating else None,
+                        "from_source": (
+                            FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN
+                        ).value,
+                        "content": content,
+                    },
+                )
+            )
+        except Exception:
+            logger.warning("Failed to emit feedback_created telemetry", exc_info=True)
 
     @classmethod
     def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int, *, session: Session):
@@ -368,10 +411,14 @@ class MessageService:
             if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=app_model.tenant_id,
-            model_type=ModelType.LLM,
-        )
+        try:
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=app_model.tenant_id,
+                model_type=ModelType.LLM,
+            )
+        except Exception:
+            logger.exception("Failed to resolve the history model for suggested questions")
+            return []
 
         # get memory of conversation (read-only)
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
@@ -386,7 +433,10 @@ class MessageService:
             instruction_prompt = None
 
         configured_model = suggested_questions_after_answer_config.get("model")
-        with measure_time() as timer:
+        with (
+            measure_time() as timer,
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
+        ):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,
                 histories=histories,
