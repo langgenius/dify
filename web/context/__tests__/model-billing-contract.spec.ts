@@ -60,6 +60,15 @@ describe('model billing rolling contracts', () => {
         },
         balance_generated_at: '2026-09-03T06:00:00Z',
         usage_generated_at: '2026-09-03T05:59:30Z',
+        entitlement_status: 'active',
+        allowance: {
+          window_id: 'invoice-period-1',
+          source_ref: 'invoice-1',
+          amount_usd_micro: '59000000',
+          available_usd_micro: '20000000',
+          starts_at: '2026-09-01T00:00:00Z',
+          ends_at: '2026-10-01T00:00:00Z',
+        },
       },
     })
 
@@ -68,6 +77,11 @@ describe('model billing rolling contracts', () => {
       status: 'available',
       billed_usd_micro: '999988',
       request_count: '9007199254740993',
+    })
+    expect(result.tokener_metering?.entitlement_status).toBe('active')
+    expect(result.tokener_metering?.allowance).toMatchObject({
+      amount_usd_micro: '59000000',
+      available_usd_micro: '20000000',
     })
   })
 
@@ -104,5 +118,8 @@ describe('model billing rolling contracts', () => {
       end_date: '2026-09-03',
       error_code: 'metering_unavailable',
     })
+    expect(result.tokener_metering?.allowance ?? null).toBeNull()
+    expect(result.tokener_metering?.entitlement_status ?? null).toBeNull()
+    expect(result.tokener_metering?.entitlement_error_code ?? null).toBeNull()
   })
 })

@@ -91,6 +91,9 @@ const formatDecimalInteger = (value: string) => {
   return new Intl.NumberFormat().format(BigInt(value))
 }
 
+const formatUtcAllowancePeriod = (startsAt: string, endsAt: string) =>
+  `${startsAt.slice(0, 10)} – ${endsAt.slice(0, 10)}`
+
 type TokenerQuotaPanelProps = {
   bootstrapStatus?: ModelProviderCreditsResponse['tokener_bootstrap_status']
   metering: TokenerMetering | null
@@ -130,6 +133,19 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
   }
 
   const currentMonth = metering.current_month
+  const entitlementStatus = metering.entitlement_status
+  const entitlementMessageKey =
+    entitlementStatus === 'processing'
+      ? 'modelProvider.tokenerEntitlementProcessing'
+      : entitlementStatus === 'retrying'
+        ? 'modelProvider.tokenerEntitlementRetrying'
+        : entitlementStatus === 'failed'
+          ? 'modelProvider.tokenerEntitlementFailed'
+          : null
+  // An allowance is usable only when the service reports it active. Older
+  // metering responses did not include entitlement_status, so keep displaying
+  // their optional allowance without inventing a processing state.
+  const allowance = entitlementMessageKey ? null : metering.allowance
   return (
     <div
       role="group"
@@ -188,6 +204,46 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             </div>
           )}
         </div>
+        {entitlementMessageKey && (
+          <div
+            role="status"
+            className="mt-2 border-t border-divider-subtle pt-2 system-sm-regular text-text-secondary"
+          >
+            {t(($) => $[entitlementMessageKey], { ns: 'common' })}
+          </div>
+        )}
+        {allowance && (
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-divider-subtle pt-2">
+            <div className="flex items-baseline gap-1">
+              <span className="system-md-semibold text-text-secondary">
+                {formatUsdMicro(allowance.amount_usd_micro)}
+              </span>
+              <span className="system-sm-regular text-text-tertiary">
+                {t(($) => $['modelProvider.tokenerAllowanceTotal'], { ns: 'common' })}
+              </span>
+            </div>
+            <span aria-hidden className="text-text-quaternary">
+              ·
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="system-md-semibold text-text-secondary">
+                {formatUsdMicro(allowance.available_usd_micro)}
+              </span>
+              <span className="system-sm-regular text-text-tertiary">
+                {t(($) => $['modelProvider.tokenerAllowanceRemaining'], { ns: 'common' })}
+              </span>
+            </div>
+            <span aria-hidden className="text-text-quaternary">
+              ·
+            </span>
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $['modelProvider.tokenerAllowancePeriod'], {
+                ns: 'common',
+                period: formatUtcAllowancePeriod(allowance.starts_at, allowance.ends_at),
+              })}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

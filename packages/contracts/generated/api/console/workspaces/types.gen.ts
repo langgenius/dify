@@ -1450,6 +1450,7 @@ export type ProviderResponse = {
 }
 
 export type TokenerMeteringResponse = {
+  allowance?: TokenerAllowanceMeteringResponse | null
   available_usd_micro: string
   balance_generated_at: string
   currency: 'USD'
@@ -1460,6 +1461,8 @@ export type TokenerMeteringResponse = {
     | ({
         status: 'unavailable'
       } & TokenerCurrentMonthUnavailableMeteringResponse)
+  entitlement_error_code?: string | null
+  entitlement_status?: 'active' | 'failed' | 'processing' | 'retrying' | null
   tenant_id: string
   usage_generated_at?: string | null
 }
@@ -2144,6 +2147,15 @@ export type SystemConfigurationResponse = {
   current_quota_type?: ProviderQuotaType | null
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
+}
+
+export type TokenerAllowanceMeteringResponse = {
+  amount_usd_micro: string
+  available_usd_micro: string
+  ends_at: string
+  source_ref: string
+  starts_at: string
+  window_id: string
 }
 
 export type TokenerCurrentMonthAvailableMeteringResponse = {

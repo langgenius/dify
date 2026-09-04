@@ -28,6 +28,7 @@ from services.billing_service import BillingService, TokenerBootstrapUpstreamErr
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    TokenerEducationCheckoutUnsupportedError,
 )
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -140,6 +141,43 @@ class TestBillingServiceSendRequest:
             BillingService._send_request("GET", "/test")
         assert exc_info.value.status_code == status_code
         assert "Unable to retrieve billing information" in str(exc_info.value)
+
+    def test_get_request_keeps_only_allowlisted_tokener_education_error_code(
+        self, mock_httpx_request, mock_billing_config
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.CONFLICT
+        mock_response.json.return_value = {
+            "reason": "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED",
+            "message": "upstream detail must not be retained",
+        }
+        mock_httpx_request.return_value = mock_response
+
+        with pytest.raises(_BillingHTTPStatusError) as exc_info:
+            BillingService._send_request("GET", "/subscription/payment-link")
+
+        assert exc_info.value.upstream_error_code == "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+        assert "upstream detail" not in str(exc_info.value)
+
+    def test_subscription_payment_link_maps_tokener_education_conflict(self) -> None:
+        error = _BillingHTTPStatusError(
+            "sanitized upstream error",
+            httpx.codes.CONFLICT,
+            "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED",
+        )
+        with (
+            patch.object(BillingService, "_send_request", side_effect=error),
+            pytest.raises(TokenerEducationCheckoutUnsupportedError),
+        ):
+            BillingService.get_subscription("professional", "year", "student@example.com", TENANT_ID)
+
+    def test_subscription_payment_link_keeps_other_conflicts_generic(self) -> None:
+        error = _BillingHTTPStatusError("sanitized upstream error", httpx.codes.CONFLICT, "UNRECOGNIZED_CODE")
+        with (
+            patch.object(BillingService, "_send_request", side_effect=error),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService.get_subscription("professional", "year", "user@example.com", TENANT_ID)
 
     def test_put_request_success(self, mock_httpx_request, mock_billing_config):
         """Test successful PUT request."""
@@ -338,6 +376,74 @@ class TestBillingServiceSendRequest:
         assert result["available_usd_micro"] == "12500000"
         assert result["current_month"] == payload["current_month"]
         assert "usage_generated_at" not in result
+
+    def test_tokener_metering_preserves_optional_allowance_and_entitlement_state(self) -> None:
+        payload = _tokener_metering_payload()
+        payload.update(
+            entitlement_status="active",
+            allowance={
+                "window_id": "invoice-period-1",
+                "source_ref": "invoice-1",
+                "amount_usd_micro": "59000000",
+                "available_usd_micro": "20000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+            },
+        )
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+        ):
+            result = BillingService.get_tokener_metering(TENANT_ID)
+
+        assert result["available_usd_micro"] == "12500000"
+        assert result["entitlement_status"] == "active"
+        assert result["allowance"] == {
+            "window_id": "invoice-period-1",
+            "source_ref": "invoice-1",
+            "amount_usd_micro": "59000000",
+            "available_usd_micro": "20000000",
+            "starts_at": "2026-09-01T00:00:00Z",
+            "ends_at": "2026-10-01T00:00:00Z",
+        }
+
+    @pytest.mark.parametrize(
+        ("allowance_override", "entitlement_override"),
+        [
+            ({"available_usd_micro": "59000001"}, {}),
+            ({"amount_usd_micro": "059000000"}, {}),
+            ({"available_usd_micro": "020000000"}, {}),
+            ({"starts_at": "2026-10-01T00:00:00Z"}, {}),
+            ({"starts_at": "2026-09-01T00:00:00"}, {}),
+            ({}, {"entitlement_status": "unknown"}),
+            ({}, {"entitlement_error_code": "unsafe code"}),
+            ({}, {"entitlement_error_code": "ALLOWANCE_FAILED"}),
+        ],
+    )
+    def test_tokener_metering_rejects_invalid_optional_entitlement_fields(
+        self,
+        allowance_override: dict[str, object],
+        entitlement_override: dict[str, object],
+    ) -> None:
+        payload = _tokener_metering_payload()
+        allowance: dict[str, object] = {
+            "window_id": "invoice-period-1",
+            "source_ref": "invoice-1",
+            "amount_usd_micro": "59000000",
+            "available_usd_micro": "20000000",
+            "starts_at": "2026-09-01T00:00:00Z",
+            "ends_at": "2026-10-01T00:00:00Z",
+        }
+        allowance.update(allowance_override)
+        payload["allowance"] = allowance
+        payload.update(entitlement_override)
+
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
 
     @pytest.mark.parametrize(
         ("status_code", "expected_error"),

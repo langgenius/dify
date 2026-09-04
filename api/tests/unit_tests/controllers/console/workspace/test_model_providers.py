@@ -328,6 +328,15 @@ class TestModelProviderCreditsApi:
                 "error_code": "metering_unavailable",
             },
             "balance_generated_at": "2026-09-03T06:00:00Z",
+            "entitlement_status": "active",
+            "allowance": {
+                "window_id": "invoice-period-1",
+                "source_ref": "invoice-1",
+                "amount_usd_micro": "59000000",
+                "available_usd_micro": "20000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+            },
         }
         credit_pool = EffectiveCreditPool(
             model_billing_source=ModelBillingSource.TOKENER,
@@ -355,6 +364,16 @@ class TestModelProviderCreditsApi:
             },
             "balance_generated_at": "2026-09-03T06:00:00Z",
             "usage_generated_at": None,
+            "allowance": {
+                "window_id": "invoice-period-1",
+                "source_ref": "invoice-1",
+                "amount_usd_micro": "59000000",
+                "available_usd_micro": "20000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+            },
+            "entitlement_status": "active",
+            "entitlement_error_code": None,
         }
 
 
