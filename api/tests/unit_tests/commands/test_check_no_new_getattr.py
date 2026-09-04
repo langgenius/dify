@@ -254,9 +254,8 @@ def test_main_ci_passes_style_base_rev_input() -> None:
         "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
         in style_job.group("job")
     )
-    assert (
-        "run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}"
-        in style_job.group("job")
+    assert "run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}" in style_job.group(
+        "job"
     )
 
     for filter_name in ("api", "python-style"):
