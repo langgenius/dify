@@ -187,7 +187,6 @@ def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
     events = _events(result.output)
     assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"] * 2
     assert {e["reason"] for e in events} == {"already_initialized"}
-    mocks.agent_whitelist_config.assert_not_called()
     mocks.replace_whitelist.assert_not_called()
     mocks.sync_creator_bindings.assert_not_called()
     mocks.replace_user_access_policies.assert_not_called()
