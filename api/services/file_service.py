@@ -241,58 +241,6 @@ class FileService:
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
-    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_image_signature(
-            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
-        )
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file.mime_type
-
-    def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file
-
-    def get_public_image_preview(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key)
-
-        return generator, upload_file.mime_type
-
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
             upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))

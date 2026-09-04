@@ -20,6 +20,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
@@ -46,6 +47,7 @@ from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourSt
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
+from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
@@ -164,6 +166,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.trial_app_usage import TrialAppUsageRecorder
+from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
@@ -236,6 +239,7 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     files: FileService
+    upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -575,6 +579,10 @@ def build_application_services(
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
         files=file_service,
+        upload_file_delivery=UploadFileDeliveryService(
+            files=UploadFileDeliveryQueryRepository(session_factory=database_client),
+            storage=storage,
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,

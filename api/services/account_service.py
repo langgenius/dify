@@ -1705,12 +1705,6 @@ class TenantService:
         session.commit()
 
     @staticmethod
-    def get_custom_config(tenant_id: str):
-        tenant = db.get_or_404(Tenant, tenant_id)
-
-        return tenant.custom_config_dict
-
-    @staticmethod
     def is_owner(account: Account, tenant: Tenant, *, session: Session) -> bool:
         return TenantService.get_user_role(account, tenant, session=session) == TenantAccountRole.OWNER
 
