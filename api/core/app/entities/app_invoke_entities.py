@@ -289,6 +289,9 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     ``prompt_file_mappings`` preserves the raw request ``files`` array for the
     Agent backend prompt. These references are appended to the backend prompt
     text while the stored chat message keeps the user's original query.
+    ``files`` holds the same uploads parsed into File entities so the chat
+    pipeline persists MessageFile records for the conversation history; the
+    agent backend itself only consumes the prompt locators.
     """
 
     agent_id: str
