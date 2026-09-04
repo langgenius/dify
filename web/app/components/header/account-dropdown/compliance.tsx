@@ -1,6 +1,6 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -54,18 +54,21 @@ function ComplianceDocActionVisual({
 }: ComplianceDocActionVisualProps) {
   if (isCurrentPlanCanDownload) {
     return (
-      <Button
-        size="small"
-        disabled={isPending}
-        loading={isPending}
-        aria-hidden
-        className="pointer-events-none flex items-center"
-      >
-        <span className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled" />
+      <span data-disabled={isPending || undefined} className={buttonVariants({ size: 'small' })}>
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled"
+        />
         <span className="system-xs-medium text-components-button-secondary-text">
           {downloadText}
         </span>
-      </Button>
+        {isPending && (
+          <span
+            className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+            aria-hidden
+          />
+        )}
+      </span>
     )
   }
 
@@ -154,6 +157,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     <DropdownMenuItem
       className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
+      disabled={isPending}
       onClick={handleSelect}
     >
       {icon}

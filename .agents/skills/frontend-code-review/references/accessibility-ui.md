@@ -63,7 +63,6 @@ Flag:
 - Missing stable `name` on form fields that submit or validate.
 - Incorrect input `type`, `inputMode`, `autoComplete`, or `spellCheck` for email, token, URL, number, search, code, or username fields.
 - Labels that are not clickable.
-- Submit buttons disabled before a request starts, preventing normal submit behavior.
 - Non-submit buttons inside forms missing `type="button"`.
 - Errors not associated with fields or not reachable by screen readers.
 - Error recovery that does not focus or expose the first invalid field.
@@ -77,7 +76,11 @@ Prefer visible labels and associate them through the appropriate field primitive
 
 Flag:
 
-- Loading state without `aria-busy`, `role="status"`, or another accessible update path when it changes user interaction.
+- Loading controls whose accessible name disappears, or whose user-relevant progress has no
+  feature-owned status path. Follow the Dify UI Button contract for focused loading buttons; do not
+  add `aria-busy` to a button as a generic pending-state substitute.
+- The same pending state passed to both Dify UI Button `loading` and `disabled`, which duplicates
+  state ownership and obscures whether `disabled` expresses independent unavailability.
 - Spinner or decorative loading icon exposed to screen readers.
 - Disabled controls that hide the reason users cannot proceed.
 - `aria-disabled` used without manually blocking click, Space, and Enter.

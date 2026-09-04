@@ -42,6 +42,7 @@ const Loaded: React.FC<LoadedProps> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
+  const installButtonLabelId = React.useId()
   const toInstallVersion = payload.version
   const pluginId = (payload as Plugin).plugin_id
   const { installedInfo, isLoading } = useCheckInstalled({
@@ -167,8 +168,9 @@ const Loaded: React.FC<LoadedProps> = ({
           onClick={handleInstall}
           disabled={isLoading}
           loading={isInstalling}
+          aria-labelledby={installButtonLabelId}
         >
-          <span>
+          <span id={installButtonLabelId}>
             {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
               ns: 'plugin',
             })}

@@ -1,4 +1,4 @@
-"""Framework-neutral contracts for Console account use cases."""
+"""Framework-neutral contracts shared by account use cases."""
 
 from __future__ import annotations
 

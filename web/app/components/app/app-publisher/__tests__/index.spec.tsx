@@ -1,8 +1,5 @@
 /* oxlint-disable typescript/no-explicit-any */
-import {
-  DeploymentStatus,
-  EnvironmentStatus,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -458,6 +455,8 @@ describe('AppPublisher', () => {
 
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
+        appId: 'app-1',
+        appMode: AppModeEnum.WORKFLOW,
         url: '/apps/app-1/workflows/workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
@@ -726,7 +725,7 @@ describe('AppPublisher', () => {
                   marked_name: 'Release 5',
                   version: 'v5',
                 },
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               },
               environment: {
                 description: '',

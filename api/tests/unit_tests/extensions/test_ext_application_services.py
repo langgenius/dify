@@ -29,7 +29,10 @@ from repositories.account_oauth_repository import (
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
 from services.account_adapters import (
@@ -70,6 +73,8 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -279,6 +284,51 @@ def test_build_application_services_wires_app_site_boundary(
     assert services.app_sites._sites._session_factory is sqlite_session_factory
 
 
+def test_build_application_services_wires_workflow_app_log_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.workflow_app_logs, WorkflowAppLogQueryService)
+    assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogQueryRepository)
+    assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_app_statistic_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_statistics, AppStatisticQueryRepository)
+    assert services.app_statistics._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_run_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    workflow_runs = services.workflow_runs
+    assert isinstance(workflow_runs, WorkflowRunService)
+    assert isinstance(workflow_runs._workflow_runs, DifyAPISQLAlchemyWorkflowRunRepository)
+    assert workflow_runs._workflow_runs._session_maker is sqlite_session_factory
+
+
 def test_build_application_services_wires_billing_service(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -452,7 +502,6 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
     assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
-    assert services.notifications._accounts is accounts
     assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
@@ -740,14 +789,12 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     )
     with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=builtin_payload):
         result = services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )
     assert result.recommended_apps
 
     apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
     with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )
