@@ -349,6 +349,138 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
   })
 
+  it('announces committed messages as a labelled log without putting streaming tokens in it', () => {
+    const store = createStore()
+    store.set(difyBuilderStreamingTurnAtom, {
+      sessionId: 'session-1',
+      operationId: 'operation-1',
+      turnId: 'turn-streaming',
+      sequence: 1,
+      atVersion: 2,
+      revision: 1,
+      stageId: 'build.test',
+      replyText: 'Streaming reply',
+    })
+
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy
+          activeInteraction={null}
+          changesExpanded={false}
+          interrupted={false}
+          items={[
+            {
+              seq: 0,
+              at_version: 1,
+              kind: 'user',
+              payload: { text: 'Build a support workflow', turn_id: 'turn-user-1' },
+            },
+            {
+              seq: 1,
+              at_version: 1,
+              kind: 'assistant_turn',
+              payload: {
+                turn_id: 'turn-assistant-1',
+                stage_id: 'build.plan',
+                execution: { status: 'completed' },
+                reply_text: 'The plan is ready.',
+              },
+            },
+          ]}
+          onActionPayloadChange={vi.fn()}
+        />
+      </Provider>,
+    )
+
+    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    expect(log).toHaveAttribute('aria-live', 'polite')
+    expect(log).toHaveAttribute('aria-relevant', 'additions')
+    expect(within(log).getByRole('heading', { name: 'common.you' })).toBeInTheDocument()
+    expect(
+      within(log).getByRole('heading', { name: 'workflow.difyBuilder.panelTitle' }),
+    ).toBeInTheDocument()
+    expect(log).toContainElement(screen.getByText('The plan is ready.'))
+    expect(log).not.toContainElement(screen.getByText('Streaming reply'))
+  })
+
+  it('keeps a stable status while an assistant reply streams without execution steps', () => {
+    const store = createStore()
+    store.set(difyBuilderStreamingTurnAtom, {
+      sessionId: 'session-1',
+      operationId: 'operation-1',
+      turnId: 'turn-streaming',
+      sequence: 1,
+      atVersion: 2,
+      revision: 1,
+      stageId: 'build.test',
+      replyText: 'Streaming reply',
+    })
+
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy
+          activeInteraction={null}
+          changesExpanded={false}
+          interrupted={false}
+          items={[]}
+          onActionPayloadChange={vi.fn()}
+        />
+      </Provider>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.running')
+  })
+
+  it('lets the visible resource label toggle its checkbox and describes it with metadata', async () => {
+    const user = userEvent.setup()
+    const onActionPayloadChange = vi.fn()
+    const resourceCard: Extract<ConversationItem, { kind: 'resource_select' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'resource_select',
+      payload: {
+        recommended: [
+          {
+            id: 'knowledge-base-1',
+            kind: 'dataset',
+            label: 'Support knowledge base',
+            meta: '12 documents',
+            readiness: 'ready',
+          },
+        ],
+      },
+    }
+
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={{
+          action_id: 'confirm_resources',
+          card: resourceCard,
+          valid_at_version: 1,
+        }}
+        changesExpanded={false}
+        interrupted={false}
+        items={[resourceCard]}
+        onActionPayloadChange={onActionPayloadChange}
+      />,
+    )
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Support knowledge base' })
+    expect(checkbox).toBeChecked()
+    expect(checkbox).toHaveAccessibleDescription('12 documents')
+
+    await user.click(screen.getByText('Support knowledge base'))
+
+    expect(checkbox).not.toBeChecked()
+    expect(onActionPayloadChange).toHaveBeenLastCalledWith('confirm_resources', {
+      resource_ids: [],
+      conflict_policy: 'ask',
+    })
+  })
+
   it('restores the current interaction separately and freezes historical forms', async () => {
     const user = userEvent.setup()
     const oldCard: Extract<ConversationItem, { kind: 'form' }> = {
@@ -679,6 +811,7 @@ describe('DifyBuilderConversation test data form', () => {
     const card = heading.closest('article')
     expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.test')
     expect(card).toHaveTextContent('One node returned an error.')
+    expect(card).toHaveTextContent('common.api.actionFailed')
     expect(card?.querySelector('[data-card-status="failed"]')).toBeInTheDocument()
   })
 })

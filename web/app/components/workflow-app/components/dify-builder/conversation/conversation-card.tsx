@@ -23,16 +23,20 @@ export const ConversationCard = memo(
     busy,
     interactive,
     invalidated,
+    formId,
     onActionPayloadChange,
     onActionValidityChange,
+    onFormSubmit,
   }: {
     item: ConversationItem
     busy: boolean
     interactive: boolean
     changesExpanded: boolean
     invalidated: boolean
+    formId?: string
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
+    onFormSubmit?: () => void
   }) => {
     const { t } = useTranslation()
 
@@ -41,11 +45,12 @@ export const ConversationCard = memo(
 
     if (item.kind === 'user' || item.kind === 'decision') {
       return (
-        <div className="flex justify-end">
+        <article className="flex justify-end">
+          <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
           <div className="max-w-[316px] rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
             {item.payload.text}
           </div>
-        </div>
+        </article>
       )
     }
 
@@ -55,11 +60,12 @@ export const ConversationCard = memo(
       const hasReply = Boolean(item.payload.reply_text)
       if (!hasExecution && !hasReasoning && !hasReply) return null
       return (
-        <div className="flex flex-col gap-2">
+        <article className="flex flex-col gap-2">
+          <h3 className="sr-only">{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h3>
           {hasExecution ? <ExecutionProgress execution={item.payload.execution} /> : null}
           <Thinking text={item.payload.reasoning_text} />
           {item.payload.reply_text ? <AssistantReply text={item.payload.reply_text} /> : null}
-        </div>
+        </article>
       )
     }
 
@@ -76,10 +82,12 @@ export const ConversationCard = memo(
         <FormCard
           item={item}
           busy={busy}
+          formId={formId}
           interactive={interactive}
           invalidated={invalidated}
           onActionPayloadChange={onActionPayloadChange}
           onActionValidityChange={onActionValidityChange}
+          onSubmit={onFormSubmit}
         />
       )
     }
@@ -195,9 +203,9 @@ export const ConversationCard = memo(
           invalidated={invalidated}
           status={
             item.payload.tone === 'success'
-              ? { state: 'done' }
+              ? { label: t(($) => $['api.success'], { ns: 'common' }), state: 'done' }
               : item.payload.tone === 'error'
-                ? { state: 'failed' }
+                ? { label: t(($) => $['api.actionFailed'], { ns: 'common' }), state: 'failed' }
                 : undefined
           }
           subheadline={item.payload.subtitle}

@@ -77,7 +77,6 @@ const DifyBuilderModelSelector = () => {
         <button
           type="button"
           disabled={readonly}
-          aria-label={t(($) => $['modelProvider.model'], { ns: 'common' })}
           className="flex min-w-0 items-center gap-0.5 rounded-md p-1 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="max-w-36 truncate">

@@ -1,7 +1,7 @@
 import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
@@ -53,6 +53,8 @@ const DifyBuilderActionBar = ({
   actions,
   busy,
   changesExpanded,
+  formActionId,
+  formId,
   pendingActionId,
   recheckReady,
   onAction,
@@ -61,6 +63,8 @@ const DifyBuilderActionBar = ({
   actions: Action[]
   busy: boolean
   changesExpanded: boolean
+  formActionId?: string
+  formId?: string
   pendingActionId: string | null
   recheckReady: boolean
   onAction: (action: Action) => void
@@ -73,6 +77,7 @@ const DifyBuilderActionBar = ({
       {visibleActions.map((action) => {
         const loading = pendingActionId === action.id
         const awaitingChecklist = action.id === 'recheck' && !recheckReady
+        const submitsForm = action.id === formActionId && formId !== undefined
         const invalid = FORM_ACTION_IDS.has(action.id)
           ? actionValidity[action.id] !== true
           : actionValidity[action.id] === false
@@ -82,12 +87,16 @@ const DifyBuilderActionBar = ({
             size="small"
             variant={action.kind === 'primary' ? 'primary' : 'secondary'}
             tone={action.kind === 'destructive' ? 'destructive' : 'default'}
+            type={submitsForm ? 'submit' : 'button'}
+            form={submitsForm ? formId : undefined}
             loading={loading}
             disabled={
-              loading ? false : busy || pendingActionId !== null || awaitingChecklist || invalid
+              loading
+                ? false
+                : busy || pendingActionId !== null || awaitingChecklist || (!submitsForm && invalid)
             }
             aria-expanded={action.id === 'view_changes' ? changesExpanded : undefined}
-            onClick={() => onAction(action)}
+            onClick={submitsForm ? undefined : () => onAction(action)}
           >
             {action.label}
           </Button>
@@ -118,6 +127,7 @@ const DifyBuilderPanel = () => {
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
+  const interactionFormId = useId()
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionInteractionState, setActionInteractionState] = useState(
@@ -128,6 +138,11 @@ const DifyBuilderPanel = () => {
   const activeInteractionKey = activeInteraction
     ? `${activeInteraction.action_id}:${activeInteraction.card.seq}`
     : ''
+  const activeFormActionId =
+    activeInteraction?.card.kind === 'form' && FORM_ACTION_IDS.has(activeInteraction.action_id)
+      ? activeInteraction.action_id
+      : undefined
+  const activeFormId = activeFormActionId ? `${interactionFormId}-interaction` : undefined
   const currentActionInteractionState =
     actionInteractionState.key === activeInteractionKey
       ? actionInteractionState
@@ -229,6 +244,12 @@ const DifyBuilderPanel = () => {
     ],
   )
 
+  const handleActiveFormSubmit = useCallback(() => {
+    if (!activeFormActionId) return
+    const action = actions.find((action) => action.id === activeFormActionId)
+    if (action) void handleAction(action)
+  }, [actions, activeFormActionId, handleAction])
+
   const handleReset = () => {
     reset()
     pinnedToBottomRef.current = true
@@ -301,8 +322,10 @@ const DifyBuilderPanel = () => {
                 busy={interactionBusy}
                 changesExpanded={changesExpanded}
                 interrupted={interrupted}
+                activeFormId={activeFormId}
                 onActionPayloadChange={handleActionPayloadChange}
                 onActionValidityChange={handleActionValidityChange}
+                onActiveFormSubmit={handleActiveFormSubmit}
                 onStreamingContentChange={scrollToBottomIfPinned}
               />
             </>
@@ -354,6 +377,8 @@ const DifyBuilderPanel = () => {
             actions={actions}
             busy={interactionBusy}
             changesExpanded={changesExpanded}
+            formActionId={activeFormActionId}
+            formId={activeFormId}
             pendingActionId={pendingActionId}
             recheckReady={recheckReady}
             onAction={(action) => void handleAction(action)}

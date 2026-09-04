@@ -124,8 +124,13 @@ describe('DifyBuilderPanel', () => {
     expect(screen.queryByRole('button', { name: /attach/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /voice|microphone/i })).not.toBeInTheDocument()
     expect(composer).toBeEnabled()
+    const sendButton = screen.getByRole('button', {
+      name: 'workflow.difyBuilder.messageSend',
+    })
+    expect(sendButton).toHaveAttribute('type', 'submit')
+    expect(sendButton.closest('form')).toBe(composer.closest('form'))
     await user.type(composer, 'Make the repair smaller')
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(sendButton)
     expect(mocks.sendMessage).toHaveBeenCalledWith('Make the repair smaller')
     await waitFor(() => expect(composer).toHaveValue(''))
   })
@@ -237,8 +242,15 @@ describe('DifyBuilderPanel', () => {
       [card],
     )
 
-    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'AI agents')
-    await user.click(screen.getByRole('button', { name: 'Provide test data' }))
+    const input = screen.getByRole('textbox', { name: 'Topic' })
+    const action = screen.getByRole('button', { name: 'Provide test data' })
+    const form = input.closest('form')
+    expect(form).not.toBeNull()
+    expect(action).toHaveAttribute('type', 'submit')
+    expect(action).toHaveAttribute('form', form?.id)
+
+    await user.type(input, 'AI agents')
+    await user.click(action)
 
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
       mode: 'provide',
@@ -328,13 +340,14 @@ describe('DifyBuilderPanel', () => {
     await user.paste('{"name":')
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(action).toBeDisabled()
+    expect(action).toBeEnabled()
     await user.click(action)
     expect(mocks.runAction).not.toHaveBeenCalled()
+    expect(input).toHaveFocus()
 
     await user.clear(input)
     await user.paste('{"name":"Ada"}')
-    await waitFor(() => expect(action).toBeEnabled())
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     await user.click(action)
 
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
