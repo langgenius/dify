@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import AliasChoices, AliasPath
+from pydantic import AliasChoices
 from pydantic.fields import FieldInfo
 
 
@@ -21,21 +21,12 @@ class RemoteSettingsSource:
             return field_value, field_name, False
 
         validation_alias = field.validation_alias
-        aliases: list[str] = []
         if isinstance(validation_alias, str):
-            aliases.append(validation_alias)
+            aliases = [validation_alias]
         elif isinstance(validation_alias, AliasChoices):
-            for alias in validation_alias.choices:
-                if isinstance(alias, str):
-                    aliases.append(alias)
-                elif isinstance(alias, AliasPath) and alias.path and isinstance(alias.path[0], str):
-                    aliases.append(alias.path[0])
-        elif (
-            isinstance(validation_alias, AliasPath)
-            and validation_alias.path
-            and isinstance(validation_alias.path[0], str)
-        ):
-            aliases.append(validation_alias.path[0])
+            aliases = [alias for alias in validation_alias.choices if isinstance(alias, str)]
+        else:
+            aliases = []
 
         for alias in aliases:
             field_value = remote_configs.get(alias)
