@@ -941,21 +941,27 @@ class TestSegmentPagination:
         assert limit >= 1
         assert limit <= 100
 
-    def test_has_more_calculation(self):
-        """Test has_more pagination flag calculation."""
-        segments_count = 20
+    def test_has_more_false_on_last_page_exact_limit(self):
+        """Last page that fills the limit exactly must not claim more rows."""
+        page = 1
         limit = 20
+        total = 20
+        effective_limit = min(limit, 100)
 
-        has_more = segments_count == limit
-        assert has_more is True
-
-    def test_no_more_when_incomplete_page(self):
-        """Test has_more is False for incomplete page."""
-        segments_count = 15
-        limit = 20
-
-        has_more = segments_count == limit
+        has_more = page * effective_limit < total
+        assert effective_limit == 20
         assert has_more is False
+
+    def test_has_more_true_when_limit_exceeds_cap_with_remaining_rows(self):
+        """Capped pages must still report remaining rows after the first 100."""
+        page = 1
+        limit = 200
+        total = 150
+        effective_limit = min(limit, 100)
+
+        has_more = page * effective_limit < total
+        assert effective_limit == 100
+        assert has_more is True
 
 
 # =============================================================================
@@ -1028,6 +1034,95 @@ class TestSegmentApiGet:
         assert "total" in response
         assert response["page"] == 1
         mock_dump_segments.assert_called_once_with([mock_segment], {}, session=session_factory.session)
+
+    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
+    def test_list_segments_has_more_false_on_last_page_exact_limit(
+        self,
+        session_factory,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """A full last page must set has_more false instead of forcing another fetch."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        session_factory.session.scalar.return_value = mock_dataset
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        page_size = 20
+        segments = [mock_segment] * page_size
+        mock_seg_svc.get_segments.return_value = (segments, page_size)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(page_size)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit={page_size}",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
+    def test_list_segments_has_more_true_when_limit_exceeds_cap(
+        self,
+        session_factory,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        session_factory.session.scalar.return_value = mock_dataset
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        returned_count = 100
+        total = 150
+        segments = [mock_segment] * returned_count
+        mock_seg_svc.get_segments.return_value = (segments, total)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(returned_count)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit=200",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)

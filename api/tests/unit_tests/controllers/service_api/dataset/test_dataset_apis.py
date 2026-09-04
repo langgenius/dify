@@ -266,6 +266,66 @@ class TestDatasetListApiGet:
             False,
         )
 
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_false_on_last_page_exact_limit(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A full last page must set has_more false instead of forcing another fetch."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        page_size = 20
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * page_size, page_size)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context(f"/datasets?page=1&limit={page_size}", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_true_when_limit_exceeds_cap(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        returned_count = 100
+        total = 150
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * returned_count, total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=200", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
+        assert mock_dataset_svc.get_datasets.call_args.args[1] == 100
+
 
 class TestDatasetListApiPost:
     """Test suite for DatasetListApi.post() endpoint."""
