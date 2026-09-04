@@ -41,6 +41,19 @@ def test_analyze_impact_returns_fields_values_targets():
     assert out["target_node_ids"] == ["llm"]  # unknown id dropped
 
 
+def test_analyze_impact_reconciles_boolean_value_with_field_type():
+    m = _FakeInstance([json.dumps({
+        "fields": [{"key": "confirm_clear", "label": "Confirm clear", "type": "text"}],
+        "values": {"confirm_clear": True},
+        "target_node_ids": ["llm"],
+    })])
+
+    out = edit.analyze_impact(m, "clear the canvas", _GRAPH)
+
+    assert out["fields"][0]["type"] == "bool"
+    assert out["values"]["confirm_clear"] is True
+
+
 def test_analyze_impact_none_model_degrades():
     out = edit.analyze_impact(None, "make formal", _GRAPH)
     assert out["fields"]

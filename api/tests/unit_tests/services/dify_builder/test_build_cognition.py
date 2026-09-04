@@ -39,6 +39,18 @@ def test_analyze_goal_returns_fields_and_values():
     assert out["values"] == {"categories": "billing"}
 
 
+def test_analyze_goal_reconciles_field_type_with_value():
+    m = _FakeInstance([json.dumps({
+        "fields": [{"key": "max_results", "label": "Max results", "type": "text"}],
+        "values": {"max_results": 5},
+    })])
+
+    out = build.analyze_goal(m, "limit search results")
+
+    assert out["fields"][0]["type"] == "number"
+    assert out["values"]["max_results"] == 5
+
+
 def test_analyze_goal_degrades_to_generic_field_on_none():
     out = build.analyze_goal(None, "some goal")
     assert out["fields"]
