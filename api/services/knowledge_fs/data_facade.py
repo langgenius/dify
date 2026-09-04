@@ -2559,7 +2559,11 @@ class KnowledgeFSDataFacade:
             capability_token=issued.token,
             trace_id=issued.trace_id,
             payload=payload,
+            query=(),
+            bind_space_in_body=False,
+            resource_id=None,
             path_parameters=path_parameters,
+            headers=(),
         )
 
     def _interactive_child(

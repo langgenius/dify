@@ -146,6 +146,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSInitialSourcePreviewJobCreateResponse,
     KnowledgeFSInitialSourcePreviewJobResponse,
+    KnowledgeFSInitialSourcePreviewPageResponse,
     KnowledgeFSInitialSourcePreviewPayload,
     KnowledgeFSInitialSourcePreviewResponse,
     KnowledgeFSInitialWebsiteSourcePreviewPayload,
@@ -893,7 +894,7 @@ class KnowledgeFSInitialSourcePreviewJobsApi(Resource):
         )
         return dump_response(
             KnowledgeFSInitialSourcePreviewJobCreateResponse,
-            KnowledgeFSInitialSourcePreviewJobCreateResponse(jobId=result.job_id),
+            KnowledgeFSInitialSourcePreviewJobCreateResponse(job_id=result.job_id),
         ), HTTPStatus.ACCEPTED
 
 
@@ -914,20 +915,27 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
             remote = _console_services().facade.get_namespace_source_preview(
                 tenant_id=tenant_id, account_id=account.id, job_id=job_id
             )
+            status: Literal["pending", "running", "completed", "failed", "canceled"]
+            if remote.status == "queued":
+                status = "pending"
+            elif remote.status == "consumed":
+                status = "completed"
+            else:
+                status = remote.status
             result = KnowledgeFSInitialSourcePreviewJobResponse(
-                jobId=remote.job_id,
-                status={"queued": "pending", "consumed": "completed"}.get(remote.status, remote.status),
+                job_id=remote.job_id,
+                status=status,
                 result=(
                     KnowledgeFSInitialSourcePreviewResponse(
                         kind="website_crawl",
-                        configurationFingerprint=remote.configuration_fingerprint,
+                        configuration_fingerprint=remote.configuration_fingerprint,
                         pages=[
-                            {
-                                "pageId": page.page_id,
-                                "sourceUrl": page.source_url,
-                                "title": page.title,
-                                "description": page.description,
-                            }
+                            KnowledgeFSInitialSourcePreviewPageResponse(
+                                page_id=page.page_id,
+                                source_url=page.source_url,
+                                title=page.title,
+                                description=page.description,
+                            )
                             for page in remote.pages
                         ],
                     )
@@ -954,10 +962,14 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
             remote = _console_services().facade.cancel_namespace_source_preview(
                 tenant_id=tenant_id, account_id=account.id, job_id=job_id
             )
-            result = KnowledgeFSInitialSourcePreviewJobResponse(
-                jobId=remote.job_id,
-                status={"queued": "pending", "consumed": "completed"}.get(remote.status, remote.status),
-            )
+            status: Literal["pending", "running", "completed", "failed", "canceled"]
+            if remote.status == "queued":
+                status = "pending"
+            elif remote.status == "consumed":
+                status = "completed"
+            else:
+                status = remote.status
+            result = KnowledgeFSInitialSourcePreviewJobResponse(job_id=remote.job_id, status=status)
         except KnowledgeFSProductResourceNotFoundError as exc:
             raise NotFound() from exc
         return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)

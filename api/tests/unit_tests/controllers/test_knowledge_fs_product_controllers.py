@@ -33,6 +33,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSNamespacePreviewJobResponse,
+    KnowledgeFSNamespacePreviewPageResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSStagedUploadResponse,
@@ -155,6 +157,95 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/evidence",
         "/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/missing",
     }
+
+
+def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = SimpleNamespace(id="account-1")
+    preview_service = SimpleNamespace(require_visible_credential=MagicMock())
+    facade = SimpleNamespace(
+        create_namespace_source_preview=MagicMock(return_value=SimpleNamespace(job_id="job-1")),
+        get_namespace_source_preview=MagicMock(
+            return_value=KnowledgeFSNamespacePreviewJobResponse(
+                job_id="job-1",
+                status="completed",
+                configuration_fingerprint="f" * 64,
+                expires_at="2030-01-01T00:00:00Z",
+                pages=[
+                    KnowledgeFSNamespacePreviewPageResponse(
+                        page_id="page-1",
+                        source_url="https://example.com/page",
+                        title="Page",
+                    )
+                ],
+            )
+        ),
+        cancel_namespace_source_preview=MagicMock(
+            return_value=KnowledgeFSNamespacePreviewJobResponse(
+                job_id="job-1",
+                status="consumed",
+                configuration_fingerprint="f" * 64,
+                expires_at="2030-01-01T00:00:00Z",
+            )
+        ),
+    )
+    monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(console_resources, "KnowledgeFSInitialSourcePreviewService", lambda _: preview_service)
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "kind": "website_crawl",
+            "credentialId": "credential-1",
+            "datasource": "website",
+            "pluginId": "plugin-1",
+            "provider": "firecrawl",
+            "parameters": {"url": "https://example.com"},
+        },
+    ):
+        response, status = inspect.unwrap(console_resources.KnowledgeFSInitialSourcePreviewJobsApi.post)(
+            console_resources.KnowledgeFSInitialSourcePreviewJobsApi()
+        )
+    assert status == 202
+    assert response == {"job_id": "job-1", "status": "pending"}
+    preview_service.require_visible_credential.assert_called_once()
+    facade.create_namespace_source_preview.assert_called_once()
+
+    with app.test_request_context():
+        response = inspect.unwrap(console_resources.KnowledgeFSInitialSourcePreviewJobApi.get)(
+            console_resources.KnowledgeFSInitialSourcePreviewJobApi(), "job-1"
+        )
+    assert response["status"] == "completed"
+    assert response["result"]["pages"] == [
+        {
+            "description": None,
+            "page_id": "page-1",
+            "source_url": "https://example.com/page",
+            "title": "Page",
+        }
+    ]
+
+    facade.get_namespace_source_preview.return_value = KnowledgeFSNamespacePreviewJobResponse(
+        job_id="job-1",
+        status="queued",
+        configuration_fingerprint="f" * 64,
+        expires_at="2030-01-01T00:00:00Z",
+    )
+    with app.test_request_context():
+        response = inspect.unwrap(console_resources.KnowledgeFSInitialSourcePreviewJobApi.get)(
+            console_resources.KnowledgeFSInitialSourcePreviewJobApi(), "job-1"
+        )
+    assert response["status"] == "pending"
+    assert response["result"] is None
+
+    with app.test_request_context(method="DELETE"):
+        response = inspect.unwrap(console_resources.KnowledgeFSInitialSourcePreviewJobApi.delete)(
+            console_resources.KnowledgeFSInitialSourcePreviewJobApi(), "job-1"
+        )
+    assert response == {"job_id": "job-1", "result": None, "status": "completed"}
 
 
 @pytest.mark.parametrize(

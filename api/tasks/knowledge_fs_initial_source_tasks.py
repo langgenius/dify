@@ -286,6 +286,7 @@ def _start_workflow(
                 not selection.page_id for selection in payload.selection
             ):
                 raise ValueError("Website namespace preview selection requires page IDs and fingerprint")
+            page_ids = [selection.page_id for selection in payload.selection if selection.page_id is not None]
             imported = facade.consume_namespace_source_preview(
                 tenant_id=tenant_id,
                 account_id=account_id,
@@ -293,7 +294,7 @@ def _start_workflow(
                 source_id=source_id,
                 payload=KnowledgeFSNamespacePreviewConsumePayload(
                     previewJobId=payload.preview_job_id,
-                    pageIds=[selection.page_id for selection in payload.selection],
+                    pageIds=page_ids,
                     configurationFingerprint=payload.preview_configuration_fingerprint,
                 ),
                 idempotency_key=f"{request_id}:crawl-import",
