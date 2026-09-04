@@ -16,7 +16,10 @@ export type TraceExport = {
   trace: TraceEntry[]
 }
 
-export const buildTraceExport = (snapshot: TraceSnapshot, view: SessionView | null): TraceExport => ({
+export const buildTraceExport = (
+  snapshot: TraceSnapshot,
+  view: SessionView | null,
+): TraceExport => ({
   meta: {
     session_id: view?.session_id ?? '',
     app_id: view?.app_id ?? '',
@@ -40,7 +43,8 @@ export const serializeTraceExport = (data: TraceExport): string => {
     data,
     (_key, value) => {
       if (typeof value === 'bigint') return value.toString()
-      if (typeof value === 'function') return `[Function ${(value as { name?: string }).name || 'anonymous'}]`
+      if (typeof value === 'function')
+        return `[Function ${(value as { name?: string }).name || 'anonymous'}]`
       if (typeof value === 'object' && value !== null) {
         if (seen.has(value)) return '[Circular]'
         seen.add(value)
