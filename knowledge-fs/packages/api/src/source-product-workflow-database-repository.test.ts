@@ -29,6 +29,55 @@ const now = "2026-07-14T12:00:00.000Z";
 describe.each(["postgres", "tidb"] as const)(
   "database source-product workflow repository (%s)",
   (dialect) => {
+    it("finds an authorized crawl import by its stable product idempotency key", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const idempotencyKey = "initial-website-source:operation-1:crawl-import";
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        return {
+          rows: [
+            {
+              ...sourceRunRow("failed"),
+              idempotency_key: idempotencyKey,
+              kind: "crawl-import",
+              payload: JSON.stringify({ selectedSourceUrls: ["https://example.test/page"] }),
+            },
+          ],
+          rowsAffected: 1,
+        };
+      });
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(
+        repository.findCrawlImportByIdempotency({
+          candidateGrants: [],
+          idempotencyKey,
+          knowledgeSpaceId,
+          sourceId,
+          tenantId,
+        }),
+      ).resolves.toMatchObject({ id: runId, idempotencyKey, kind: "crawl-import" });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({
+        maxRows: 1,
+        operation: "select",
+        tableName: "source_workflow_runs",
+      });
+      expect(calls[0]?.params.slice(0, 4)).toEqual([
+        tenantId,
+        knowledgeSpaceId,
+        sourceId,
+        idempotencyKey,
+      ]);
+      const quote = dialect === "postgres" ? '"' : "`";
+      expect(calls[0]?.sql).toContain(`${quote}kind${quote} = 'crawl-import'`);
+      expect(calls[0]?.sql).toContain(
+        `CASE WHEN ${quote}active_slot${quote} = 1 THEN 0 ELSE 1 END`,
+      );
+      assertSqlPlaceholderArity(calls[0], dialect);
+    });
+
     it("admits a Source workflow while a different Source is being deleted", async () => {
       const calls: DatabaseExecuteInput[] = [];
       let deletingSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99";

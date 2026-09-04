@@ -175,6 +175,63 @@ describe("source-product workflow staged content store", () => {
   });
 });
 
+describe("source-product workflow scheduler", () => {
+  it("serializes ticks, reports claim failures, and continues scheduling", async () => {
+    let releaseFirst: ((runs: readonly SourceWorkflowRun[]) => void) | undefined;
+    const firstClaim = new Promise<readonly SourceWorkflowRun[]>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const claimError = new Error("database unavailable");
+    const claim = vi
+      .fn()
+      .mockImplementationOnce(() => firstClaim)
+      .mockRejectedValueOnce(claimError)
+      .mockResolvedValue([]);
+    const onTickError = vi.fn();
+    let scheduled: (() => void) | undefined;
+    const interval = { unref: vi.fn() } as unknown as ReturnType<typeof setInterval>;
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation((handler) => {
+      scheduled = handler as () => void;
+      return interval;
+    });
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval").mockImplementation(() => {});
+    const runtime = createSourceProductWorkflowRuntime({
+      access: {} as never,
+      contentStore: {} as never,
+      deletionFence: {} as never,
+      logicalInventory: {} as never,
+      logicalRevisions: {} as never,
+      materializer: {} as never,
+      onTickError,
+      repository: { claim } as never,
+      sources: {} as never,
+      workerId: "source-workflow-scheduler-test",
+    });
+
+    try {
+      const stop = runtime.start();
+      if (!scheduled || !releaseFirst) throw new Error("Expected the workflow scheduler to start");
+
+      scheduled();
+      await vi.waitFor(() => expect(claim).toHaveBeenCalledOnce());
+      scheduled();
+      expect(claim).toHaveBeenCalledOnce();
+
+      releaseFirst([]);
+      await vi.waitFor(() => expect(onTickError).toHaveBeenCalledWith(claimError));
+      expect(claim).toHaveBeenCalledTimes(2);
+
+      scheduled();
+      await vi.waitFor(() => expect(claim).toHaveBeenCalledTimes(3));
+      await stop();
+      expect(clearIntervalSpy).toHaveBeenCalledWith(interval);
+    } finally {
+      setIntervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    }
+  });
+});
+
 describe("source-product workflow provider imports", () => {
   it("stages a crawl preview, imports the frozen selection, and drains staged content", async () => {
     let source = sourceRecord("crawl-preview-source", {

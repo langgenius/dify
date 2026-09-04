@@ -24,6 +24,40 @@ const knowledgeSpaceId = "space-a";
 const editor = { scopes: [], subjectId: "editor-a", tenantId };
 
 describe("source product workflows", () => {
+  it("recovers a website crawl import across replacement capability grants", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository({
+      resolveCapabilityGrantScope: () => [],
+    });
+    const source = sourceRecord("source-lost-ack", [], { type: "web" });
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      generateRunId: () => "crawl-import-lost-ack",
+      now: () => "2026-09-04T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => (id === source.id ? source : null) },
+    });
+    const request = {
+      callerKind: "interactive" as const,
+      idempotencyKey: "initial-website-source:operation-1:crawl-import",
+      knowledgeSpaceId,
+      sourceId: source.id,
+      sourceUrls: ["https://example.test/page"],
+      subject: editor,
+    };
+    const created = await service.createCrawlImport({
+      ...request,
+      capability: { contentScopeIds: [], grantId: "original-grant" },
+    });
+
+    await expect(
+      service.findCrawlImportByIdempotency({
+        ...request,
+        capability: { contentScopeIds: [], grantId: "replacement-grant" },
+      }),
+    ).resolves.toMatchObject({ id: created.id });
+  });
+
   it("stages selected website bodies as object references before persisting the workflow", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     const source = sourceRecord("source-web", [], { type: "web" });

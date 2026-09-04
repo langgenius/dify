@@ -234,6 +234,28 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       getRun(database, database, runId, false).then((run) =>
         run?.tenantId === tenantId && run.knowledgeSpaceId === knowledgeSpaceId ? run : null,
       ),
+    findCrawlImportByIdempotency: async ({
+      candidateGrants,
+      idempotencyKey,
+      knowledgeSpaceId,
+      sourceId,
+      tenantId,
+    }) => {
+      const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId, sourceId, idempotencyKey];
+      const permissionPredicate = boundSourceRunPermissionScopeSql(
+        database,
+        params,
+        candidateGrants,
+      );
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "source_id")} = ${p(database, 3)} AND ${q(database, "kind")} = 'crawl-import' AND ${q(database, "idempotency_key")} = ${p(database, 4)} AND ${permissionPredicate} ORDER BY CASE WHEN ${q(database, "active_slot")} = 1 THEN 0 ELSE 1 END ASC, ${q(database, "created_at")} DESC, ${q(database, "id")} DESC LIMIT 1;`,
+        tableName: runTable,
+      });
+      return result.rows[0] ? mapRun(result.rows[0]) : null;
+    },
     listRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, sourceId, tenantId }) => {
       listLimit(limit);
       const readLimit = limit + 1;

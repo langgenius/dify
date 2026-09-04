@@ -2198,6 +2198,22 @@ export function createKnowledgeGateway({
           })}\n`,
         );
       },
+      onTickError: (error) => {
+        process.stderr.write(
+          `${JSON.stringify({
+            errorClass: error instanceof Error ? error.name : typeof error,
+            errorCode:
+              error && typeof error === "object" && "code" in error
+                ? String(error.code)
+                : undefined,
+            errorMessage:
+              error instanceof Error ? error.message : "Unknown source workflow tick error",
+            event: "knowledge_fs.source_workflow.tick_error",
+            stage: "claim",
+            workerId: sourceProduct.workerId,
+          })}\n`,
+        );
+      },
       ...(onlineDocumentConnector ? { onlineDocuments: onlineDocumentConnector } : {}),
       ...(onlineDriveConnector ? { onlineDrive: onlineDriveConnector } : {}),
       repository: sourceProduct.repository,

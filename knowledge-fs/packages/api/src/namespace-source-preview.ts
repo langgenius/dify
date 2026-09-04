@@ -17,6 +17,7 @@ import {
 import type {
   SourceProductWorkflowService,
   SourceWorkflowPrincipal,
+  SourceWorkflowRun,
 } from "./source-product-workflow";
 import type { SourceRepository } from "./source-repository";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
@@ -98,6 +99,31 @@ export class NamespaceSourcePreviewError extends Error {
     super(message);
     this.name = "NamespaceSourcePreviewError";
   }
+}
+
+function matchesPreviewCrawlImport(
+  workflow: SourceWorkflowRun,
+  selected: readonly NamespaceSourcePreviewPage[],
+): boolean {
+  const sourceUrls = workflow.payload.selectedSourceUrls;
+  const references = workflow.payload.stagedPageReferences;
+  if (
+    !Array.isArray(sourceUrls) ||
+    sourceUrls.length !== selected.length ||
+    sourceUrls.some((value, index) => value !== selected[index]?.sourceUrl) ||
+    !Array.isArray(references) ||
+    references.length !== selected.length
+  ) {
+    return false;
+  }
+  return references.every((value, index) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const reference = value as Readonly<Record<string, unknown>>;
+    return (
+      reference.sourceUrl === selected[index]?.sourceUrl &&
+      reference.contentHash === selected[index]?.contentHash
+    );
+  });
 }
 
 const jobsTable = "namespace_source_preview_jobs";
@@ -610,20 +636,45 @@ export function createNamespaceSourcePreviewService(input: {
           throw new NamespaceSourcePreviewError("PREVIEW_PAGE_NOT_FOUND", "Preview page not found");
         selected.push(page);
       }
-      const workflow = await input.workflows.createCrawlImport({
-        ...principal,
-        knowledgeSpaceId: request.knowledgeSpaceId,
-        sourceId: request.sourceId,
-        idempotencyKey: request.idempotencyKey,
-        sourceUrls: selected.map((page) => page.sourceUrl),
-        pageReferences: selected.map((page) => ({
-          contentHash: page.contentHash,
-          contentObjectKey: page.contentObjectKey,
-          sourceUrl: page.sourceUrl,
-          ...(page.title ? { title: page.title } : {}),
-          ...(page.description ? { description: page.description } : {}),
-        })),
-      });
+      const recoverWorkflow = async () => {
+        const existing = await input.workflows.findCrawlImportByIdempotency({
+          ...principal,
+          idempotencyKey: request.idempotencyKey,
+          knowledgeSpaceId: request.knowledgeSpaceId,
+          sourceId: request.sourceId,
+        });
+        if (existing && !matchesPreviewCrawlImport(existing, selected)) {
+          throw new NamespaceSourcePreviewError(
+            "PREVIEW_IMPORT_CONFLICT",
+            "Preview import idempotency key belongs to a different page selection",
+          );
+        }
+        return existing;
+      };
+      let workflow = await recoverWorkflow();
+      if (!workflow) {
+        try {
+          workflow = await input.workflows.createCrawlImport({
+            ...principal,
+            knowledgeSpaceId: request.knowledgeSpaceId,
+            sourceId: request.sourceId,
+            idempotencyKey: request.idempotencyKey,
+            sourceUrls: selected.map((page) => page.sourceUrl),
+            pageReferences: selected.map((page) => ({
+              contentHash: page.contentHash,
+              contentObjectKey: page.contentObjectKey,
+              sourceUrl: page.sourceUrl,
+              ...(page.title ? { title: page.title } : {}),
+              ...(page.description ? { description: page.description } : {}),
+            })),
+          });
+        } catch (error) {
+          // The workflow insert may have committed while its response was lost, or a concurrent
+          // retry may have won the active-slot race. Recover only the exact website import.
+          workflow = await recoverWorkflow();
+          if (!workflow) throw error;
+        }
+      }
       await input.repository.consume({
         jobId: job.id,
         now: now().toISOString(),

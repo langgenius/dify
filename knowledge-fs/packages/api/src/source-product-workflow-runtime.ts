@@ -200,6 +200,8 @@ export function createSourceProductWorkflowRuntime(input: {
         readonly run: SourceWorkflowRun;
       }) => void)
     | undefined;
+  /** Reports scheduler-level failures such as an unsuccessful repository claim. */
+  readonly onTickError?: ((error: unknown) => void) | undefined;
   readonly onlineDocuments?: OnlineDocumentConnector | undefined;
   readonly onlineDrive?: OnlineDriveConnector | undefined;
   readonly repository: SourceProductWorkflowRepository;
@@ -333,13 +335,21 @@ export function createSourceProductWorkflowRuntime(input: {
     return counts;
   };
 
+  const reportTickError = (error: unknown) => {
+    try {
+      input.onTickError?.(error);
+    } catch {
+      // Observability must never stop future source workflow claims.
+    }
+  };
+
   return {
     tick,
     start: () => {
       if (!timer) {
         timer = setInterval(() => {
           if (stopping) return;
-          lane = lane.then(tick, tick).catch(() => undefined);
+          lane = lane.then(tick, tick).catch(reportTickError);
         }, intervalMs);
         timer.unref?.();
       }

@@ -508,6 +508,31 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         ? cloneRun(run)
         : null;
     },
+    findCrawlImportByIdempotency: async ({
+      candidateGrants,
+      idempotencyKey,
+      knowledgeSpaceId,
+      sourceId,
+      tenantId,
+    }) => {
+      const candidates = Array.from(runs.values())
+        .filter(
+          (run) =>
+            run.tenantId === tenantId &&
+            run.knowledgeSpaceId === knowledgeSpaceId &&
+            run.sourceId === sourceId &&
+            run.kind === "crawl-import" &&
+            run.idempotencyKey === idempotencyKey,
+        )
+        .filter((run) => runPermissionScopeAllows(run, candidateGrants))
+        .sort(
+          (left, right) =>
+            Number(right.activeSlot === 1) - Number(left.activeSlot === 1) ||
+            right.createdAt.localeCompare(left.createdAt) ||
+            right.id.localeCompare(left.id),
+        );
+      return candidates[0] ? cloneRun(candidates[0]) : null;
+    },
     listRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, sourceId, tenantId }) => {
       const list = Array.from(runs.values())
         .filter((run) => run.tenantId === tenantId && run.knowledgeSpaceId === knowledgeSpaceId)

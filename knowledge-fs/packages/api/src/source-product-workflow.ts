@@ -309,6 +309,14 @@ export interface SourceProductWorkflowRepository {
     readonly runId: string;
     readonly tenantId: string;
   }): Promise<SourceWorkflowRun | null>;
+  /** Website namespace-preview lost-ACK recovery scoped by the stable product idempotency key. */
+  findCrawlImportByIdempotency(input: {
+    readonly candidateGrants: readonly string[];
+    readonly idempotencyKey: string;
+    readonly knowledgeSpaceId: string;
+    readonly sourceId: string;
+    readonly tenantId: string;
+  }): Promise<SourceWorkflowRun | null>;
   heartbeat(input: {
     readonly fence: SourceWorkflowFence;
     readonly leaseExpiresAt: string;
@@ -571,6 +579,14 @@ export interface SourceProductWorkflowService {
       readonly sourceUrls: readonly string[];
     },
   ): Promise<SourceWorkflowRun>;
+  /** Recover a website crawl import after its creation response was not observed by the caller. */
+  findCrawlImportByIdempotency(
+    input: SourceWorkflowPrincipal & {
+      readonly idempotencyKey: string;
+      readonly knowledgeSpaceId: string;
+      readonly sourceId: string;
+    },
+  ): Promise<SourceWorkflowRun | null>;
   createPreview(
     input: SourceWorkflowPrincipal & {
       readonly idempotencyKey: string;
@@ -1154,6 +1170,22 @@ export function createSourceProductWorkflowService(input: {
     },
     get: async (request) =>
       (await getAuthorized(request, request.knowledgeSpaceId, request.runId, "read"))?.run ?? null,
+    findCrawlImportByIdempotency: async (request) => {
+      const { decision } = await requireSource(
+        request,
+        request.knowledgeSpaceId,
+        request.sourceId,
+        "read",
+      );
+      return input.repository.findCrawlImportByIdempotency({
+        candidateGrants:
+          request.capability?.contentScopeIds ?? decision?.permissionSnapshot.candidateGrants ?? [],
+        idempotencyKey: bounded(request.idempotencyKey, "idempotency key", 255),
+        knowledgeSpaceId: request.knowledgeSpaceId,
+        sourceId: request.sourceId,
+        tenantId: request.subject.tenantId,
+      });
+    },
     list: async (request) => {
       const decision = request.capability
         ? undefined

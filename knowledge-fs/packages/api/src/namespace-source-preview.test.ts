@@ -10,6 +10,7 @@ describe("namespace website source preview", () => {
   it("stores content in KFS and consumes only selected page ids", async () => {
     const objects = new Map<string, Uint8Array>();
     const createCrawlImport = vi.fn(async () => ({ id: "22222222-2222-4222-8222-222222222222" }));
+    const findCrawlImportByIdempotency = vi.fn(async () => null);
     const service = createNamespaceSourcePreviewService({
       repository: createInMemoryNamespaceSourcePreviewRepository(),
       storage: {
@@ -31,7 +32,7 @@ describe("namespace website source preview", () => {
           pages: [{ sourceUrl: "https://example.com/a", title: "A", content: "large body" }],
         })),
       },
-      workflows: { createCrawlImport } as never,
+      workflows: { createCrawlImport, findCrawlImportByIdempotency } as never,
       sources: {
         get: vi.fn(async () => ({
           type: "web",
@@ -104,6 +105,71 @@ describe("namespace website source preview", () => {
       }),
     );
     expect(JSON.stringify(createCrawlImport.mock.calls[0])).not.toContain("large body");
+    expect(objects.size).toBe(0);
+  });
+
+  it("recovers an exact crawl import when workflow creation commits but its response is lost", async () => {
+    const objects = new Map<string, Uint8Array>();
+    const repository = createInMemoryNamespaceSourcePreviewRepository();
+    const findCrawlImportByIdempotency = vi.fn();
+    const createCrawlImport = vi.fn(async () => {
+      throw new Error("workflow response lost");
+    });
+    const service = createNamespaceSourcePreviewService({
+      repository,
+      storage: memoryStorage(objects) as never,
+      websiteCrawl: crawlPages([{ sourceUrl: "https://example.com/a", content: "body" }]),
+      workflows: { createCrawlImport, findCrawlImportByIdempotency } as never,
+      sources: {
+        get: vi.fn(async () => ({
+          type: "web",
+          metadata: {
+            credentialId: "credential",
+            pluginId: "plugin",
+            provider: "firecrawl",
+            datasource: "crawl",
+            initialPreview: { configurationFingerprint: "f".repeat(64) },
+          },
+        })),
+      } as never,
+      now: () => new Date("2026-09-04T00:00:00.000Z"),
+    });
+    const { subject, job } = await createJob(service);
+    await service.tick();
+    const [page] = await service.pages(subject, job.id);
+    if (!page) throw new Error("Expected a preview page");
+    const recovered = {
+      id: "22222222-2222-4222-8222-222222222222",
+      payload: {
+        selectedSourceUrls: [page.sourceUrl],
+        stagedPageReferences: [{ contentHash: page.contentHash, sourceUrl: page.sourceUrl }],
+      },
+    };
+    findCrawlImportByIdempotency.mockResolvedValueOnce(null).mockResolvedValueOnce(recovered);
+
+    await expect(
+      service.consume(
+        {
+          callerKind: "interactive",
+          capability: { contentScopeIds: [], grantId: "replacement-grant" },
+          subject,
+        },
+        {
+          jobId: job.id,
+          pageIds: [page.pageId],
+          configurationFingerprint: "f".repeat(64),
+          knowledgeSpaceId: "11111111-1111-4111-8111-111111111111",
+          sourceId: "33333333-3333-4333-8333-333333333333",
+          idempotencyKey: "request:crawl-import",
+        },
+      ),
+    ).resolves.toBe(recovered.id);
+
+    expect(createCrawlImport).toHaveBeenCalledOnce();
+    await expect(service.get(subject, job.id)).resolves.toMatchObject({
+      importWorkflowId: recovered.id,
+      status: "consumed",
+    });
     expect(objects.size).toBe(0);
   });
 
