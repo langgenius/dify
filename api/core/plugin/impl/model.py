@@ -16,7 +16,12 @@ from core.plugin.entities.plugin_daemon import (
     TTSAudioChunk,
 )
 from core.plugin.impl.base import BasePluginClient
-from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
+from core.plugin.impl.exc import (
+    PluginDaemonUnavailableError,
+    PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
+    is_plugin_runtime_unavailable,
+)
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -215,7 +220,9 @@ class PluginModelClient(BasePluginClient):
         try:
             yield from response
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            if is_plugin_runtime_unavailable(e.message):
+                raise PluginDaemonUnavailableError(description=e.message) from e
+            raise ValueError(e.message + str(e.code)) from e
 
     def start_llm_polling(
         self,
@@ -615,7 +622,9 @@ class PluginModelClient(BasePluginClient):
                 hex_str = result.result
                 yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            if is_plugin_runtime_unavailable(e.message):
+                raise PluginDaemonUnavailableError(description=e.message) from e
+            raise ValueError(e.message + str(e.code)) from e
 
     def get_tts_model_voices(
         self,

@@ -1,9 +1,15 @@
 import json
 
+import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.impl import exc as exc_module
-from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError
+from core.plugin.impl.exc import (
+    PluginDaemonError,
+    PluginDaemonUnavailableError,
+    PluginInvokeError,
+    is_plugin_runtime_unavailable,
+)
 
 
 class TestPluginImplExceptions:
@@ -41,3 +47,25 @@ class TestPluginImplExceptions:
         err = PluginInvokeError("not-json")
 
         assert err._get_error_object() == {}
+
+
+class TestPluginRuntimeUnavailableClassification:
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "no available node, plugin runtime not found",
+            "Request to Plugin Daemon Service failed",
+        ],
+    )
+    def test_runtime_outage_messages_are_unavailable(self, message: str):
+        assert is_plugin_runtime_unavailable(message) is True
+
+    def test_missing_plugin_installation_is_not_unavailable(self):
+        assert is_plugin_runtime_unavailable("plugin not found") is False
+
+    def test_invalid_parameter_message_is_not_unavailable(self):
+        assert is_plugin_runtime_unavailable("Missing required parameter") is False
+
+    def test_unavailable_error_is_not_a_value_error(self):
+        err = PluginDaemonUnavailableError("no available node, plugin runtime not found")
+        assert not isinstance(err, ValueError)
