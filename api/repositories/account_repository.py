@@ -11,6 +11,7 @@ from services.account_email import normalize_email
 from services.account_login_service import ConsoleAuthAccountRepository
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
+    AccountAuthenticationSnapshot,
     AccountCredentials,
     AccountEmailResetResult,
     AccountEmailResetStatus,
@@ -62,6 +63,22 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             if account is None:
                 return None
             return AccountCredentials(password_hash=account.password, password_salt=account.password_salt)
+
+    @override
+    def find_for_authentication(self, email: str) -> AccountAuthenticationSnapshot | None:
+        with self._session_factory() as session:
+            account = session.scalar(select(Account).where(Account.email == email).limit(1))
+            if account is None and email != email.lower():
+                account = session.scalar(select(Account).where(Account.email == email.lower()).limit(1))
+            if account is None:
+                return None
+            return AccountAuthenticationSnapshot(
+                id=account.id,
+                email=account.email,
+                status=account.status.value,
+                password_hash=account.password,
+                password_salt=account.password_salt,
+            )
 
     @override
     def list_for_login(self, email: str) -> tuple[LoginAccountSnapshot, ...]:

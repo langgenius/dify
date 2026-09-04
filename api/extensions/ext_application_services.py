@@ -1,6 +1,6 @@
 """Composition root for application services used by transport adapters."""
 
-import json
+import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,9 +8,7 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import uuid4
 
-import httpx
 from flask import Flask, current_app
-from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -20,7 +18,7 @@ from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
-from enums import DeploymentEdition, WebAppAccessMode
+from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -124,6 +122,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.account_service import AccountService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_gateways import (
@@ -137,7 +136,6 @@ from services.compliance_download_service import ComplianceDownloadService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
-from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service_gateway import FeatureServiceGateway
@@ -172,15 +170,20 @@ from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
+from services.web_authentication_adapters import (
+    AccountServiceWebAuthenticationSecurityGateway,
+    LoggingWebAuthenticationAuditGateway,
+    PassportWebAppSessionGateway,
+    TokenManagerWebAuthenticationGateway,
+)
+from services.web_authentication_service import WebAuthenticationService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
 )
 from services.web_passport_service import WebPassportService
-from services.webapp_access_query_service import (
-    WebAppAccessQueryService,
-    WebAppAccessUnavailableError,
-)
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
@@ -189,24 +192,6 @@ from services.workspace_query_service import WorkspaceQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 _EXTENSION_KEY = "application_services"
-
-
-def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
-    try:
-        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
-        raise WebAppAccessUnavailableError from e
-    try:
-        return WebAppAccessMode(settings.access_mode)
-    except ValueError as e:
-        raise WebAppAccessUnavailableError from e
-
-
-def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
-    try:
-        return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise WebAppAccessUnavailableError from e
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +222,7 @@ class ApplicationServices:
     data_source_api_key_auth: DataSourceApiKeyAuthService
     data_source_oauth: Mapping[str, DataSourceOAuthService]
     webapp_access: WebAppAccessQueryService
+    web_authentication: WebAuthenticationService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
@@ -406,6 +392,16 @@ def build_application_services(
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
     passwords = DefaultAccountPasswordHasher()
+    webapp_access_repository = WebAppAccessQueryRepository(session_factory=database_client)
+    webapp_access = WebAppAccessQueryService(
+        access=webapp_access_repository,
+        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
+        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+    )
+    web_authentication_tokens = TokenManagerWebAuthenticationGateway(
+        reset_password_rate_limiter=AccountService.reset_password_rate_limiter,
+        access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
@@ -586,11 +582,21 @@ def build_application_services(
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
-        webapp_access=WebAppAccessQueryService(
-            access=WebAppAccessQueryRepository(session_factory=database_client),
-            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-            access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        webapp_access=webapp_access,
+        web_authentication=WebAuthenticationService(
+            accounts=accounts,
+            passwords=passwords,
+            tokens=web_authentication_tokens,
+            security=AccountServiceWebAuthenticationSecurityGateway(
+                account_service=AccountService,
+            ),
+            app_access=webapp_access,
+            app_sessions=PassportWebAppSessionGateway(
+                sessions=webapp_access_repository,
+                app_access=webapp_access,
+            ),
+            audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
+            private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol
 
 from services.entities.account_entities import (
+    AccountAuthenticationSnapshot,
     AccountCredentials,
     AccountDeletionChallenge,
     AccountEmailResetResult,
@@ -25,6 +26,8 @@ class AccountRepository(Protocol):
     def activate_pending(self, account_id: str, *, initialized_at: datetime) -> None: ...
 
     def get_credentials(self, account_id: str) -> AccountCredentials | None: ...
+
+    def find_for_authentication(self, email: str) -> AccountAuthenticationSnapshot | None: ...
 
     def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None: ...
 

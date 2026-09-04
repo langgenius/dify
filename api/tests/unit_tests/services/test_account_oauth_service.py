@@ -98,6 +98,9 @@ class FakeAccounts:
     def get_credentials(self, account_id: str) -> NoReturn:
         raise AssertionError(account_id)
 
+    def find_for_authentication(self, email: str) -> NoReturn:
+        raise AssertionError(email)
+
     def update_profile(self, account_id: str, changes: object) -> NoReturn:
         raise AssertionError((account_id, changes))
 
