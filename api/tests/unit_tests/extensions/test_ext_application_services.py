@@ -434,7 +434,6 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
     assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
-    assert services.notifications._accounts is accounts
     assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
@@ -722,14 +721,12 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     )
     with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=builtin_payload):
         result = services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )
     assert result.recommended_apps
 
     apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
     with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         services.recommended_app_queries.list_recommended(
-            requested_language="en-US",
-            interface_language=None,
+            language="en-US",
         )
