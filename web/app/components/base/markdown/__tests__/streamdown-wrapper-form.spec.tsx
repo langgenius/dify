@@ -76,6 +76,21 @@ describe('StreamdownWrapper Markdown form field names', () => {
     expect(screen.queryByText('*')).not.toBeInTheDocument()
   })
 
+  it('should pass the data-tone attribute through sanitization to the rendered submit button', async () => {
+    const { default: StreamdownWrapper } = await import('../streamdown-wrapper')
+    const content = `
+<form data-format="json">
+  <input type="hidden" name="task" value="long-running-job" />
+  <button type="submit" data-variant="ghost" data-tone="destructive">Stop task</button>
+</form>`
+
+    render(<StreamdownWrapper latexContent={content} mode="static" />)
+
+    expect(screen.getByRole('button', { name: 'Stop task' })).toHaveClass(
+      'text-components-button-destructive-ghost-text',
+    )
+  })
+
   it('should keep incomplete Markdown repair enabled when no form is present', async () => {
     const { default: StreamdownWrapper } = await import('../streamdown-wrapper')
 
