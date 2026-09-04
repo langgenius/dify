@@ -25,14 +25,15 @@ Automatically add `title` only when every condition below is satisfied:
 - “Bounded” means fixed text, an enum, or a value with an explicit owner-level maximum length.
 - The exact already-evaluated display value can be reused without repeating a function call, getter, conversion, mutation, async operation, or other potentially effectful expression.
 - The final rendered element does not already receive an equivalent title through its props, wrapper, child component, or covering interaction target.
-- No Tooltip, PreviewCard, Popover, expandable content, “show more” action, detail view, copy/reveal action, or other full-content owner exists.
+- No Tooltip, Popover, expandable content, “show more” action, detail view, copy/reveal action, or other full-content owner exists. A PreviewCard counts only under the `COVERED` rule below.
 - The native tooltip will not compete with another hover, focus, pointer, or keyboard interaction.
 
 ## COVERED
 
 Classify as `COVERED` and make no change when another component or interaction already owns full-content disclosure, including:
 
-- Tooltip, PreviewCard, or Popover;
+- Tooltip or Popover;
+- a [PreviewCard] whose trigger is a real destination link and whose destination contains the equivalent full content; the preview popup itself is only a visual enhancement, not the disclosure owner;
 - expandable or “show more” content;
 - a detail view opened from the current surface;
 - a copy or reveal action;
@@ -58,6 +59,7 @@ Classify as `REVIEW`, make no code change, and report the reason when:
 - the value bound or sensitivity cannot be proven;
 - the final DOM element or pointer owner cannot be traced;
 - the component is interactive;
+- PreviewCard content would be the only path to the full content, or its trigger is not a destination link;
 - the content uses `line-clamp-*` without an existing full-content path;
 - actual truncation or the intended product behavior cannot be established from the owner contract.
 
@@ -71,3 +73,5 @@ Do not introduce:
 - suppressions for candidates outside the allowlist.
 
 Test the feature-owned disclosure behavior through its public interface. Assert native `title` only when it is an explicitly accepted product contract. Do not use `getByTitle` or `toHaveAttribute('title', ...)` merely to prove a migration, and do not use title-based selectors to test unrelated interactions.
+
+[PreviewCard]: ../../packages/dify-ui/docs/overlays.md#primitive-semantics
