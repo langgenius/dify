@@ -1046,7 +1046,7 @@ class DatasetRetrieval:
         ``CreatorUserRole.END_USER`` enum. Query logging is a side effect, so an
         unsupported value should be skipped instead of aborting retrieval.
         """
-        normalized_user_from = str(user_from).strip().lower().replace("-", "_")
+        normalized_user_from = user_from.strip().lower().replace("-", "_")
         if normalized_user_from == CreatorUserRole.ACCOUNT.value:
             return CreatorUserRole.ACCOUNT
         if normalized_user_from == CreatorUserRole.END_USER.value:

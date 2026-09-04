@@ -72,7 +72,7 @@ def get_credit_usage_app_type(app_mode: AppMode | str | None) -> CreditUsageAppT
         return CreditUsageAppType.UNKNOWN
 
     try:
-        normalized_app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(str(app_mode))
+        normalized_app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
     except ValueError:
         return CreditUsageAppType.UNKNOWN
 

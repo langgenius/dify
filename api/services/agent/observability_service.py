@@ -419,10 +419,10 @@ class AgentObservabilityService:
 
     @staticmethod
     def _positive_feedback_rate(*, like_count: int | None, total_count: int | None) -> float | None:
-        total = int(total_count or 0)
+        total = total_count or 0
         if total == 0:
             return None
-        return int(like_count or 0) / total
+        return like_count or 0 / total
 
     def _list_workflow_messages(
         self,
@@ -629,7 +629,7 @@ class AgentObservabilityService:
             "conversation_id": conversation.id,
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
-            "message_count": int(message_count or 0),
+            "message_count": message_count or 0,
             "user_rate": user_rate,
             "operation_rate": operation_rate,
             "unread": conversation.read_at is None,

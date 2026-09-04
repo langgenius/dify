@@ -33,7 +33,7 @@ class UnstructuredWordExtractor(BaseExtractor):
 
             is_doc = detect_filetype(self._file_path) == FileType.DOC
         except ImportError:
-            _, extension = os.path.splitext(str(self._file_path))
+            _, extension = os.path.splitext(self._file_path)
             is_doc = extension == ".doc"
 
         if is_doc and unstructured_version < (0, 4, 11):

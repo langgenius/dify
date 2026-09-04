@@ -66,5 +66,5 @@ def _normalize_terminal_events(terminal_events: Iterable[str | StreamEvent] | No
         if isinstance(item, StreamEvent):
             values.add(item.value)
         else:
-            values.add(str(item))
+            values.add(item)
     return values

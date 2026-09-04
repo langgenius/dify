@@ -287,7 +287,7 @@ class AliyunDataTrace(BaseTraceInstance):
 
         tool_config = trace_info.tool_config if isinstance(trace_info.tool_config, Mapping) else {}
         tool_inputs_json = serialize_json_data(trace_info.tool_inputs)
-        tool_result = str(trace_info.tool_outputs)
+        tool_result = trace_info.tool_outputs
         inputs_json = serialize_json_data(trace_info.inputs)
         provider_type = tool_config.get("tool_provider_type") or tool_config.get("provider_type")
 

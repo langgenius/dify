@@ -317,8 +317,8 @@ class VectorSpaceAdmissionService:
     def _get_usage_and_limit_mb(self, tenant_id: str) -> tuple[float, int]:
         try:
             vector_space = BillingService.get_vector_space(tenant_id)
-            current_usage_mb = float(vector_space["size"])
-            plan_limit_mb = int(vector_space["limit"])
+            current_usage_mb = vector_space["size"]
+            plan_limit_mb = vector_space["limit"]
         except Exception as error:
             raise VectorSpaceAdmissionError(
                 "Unable to verify vector storage usage right now. Please try again later."

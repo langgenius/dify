@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_enterprise_telemetry_enabled() -> bool:
-    return bool(
+    return (
         dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
     )
 

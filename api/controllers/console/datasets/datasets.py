@@ -467,7 +467,7 @@ class DatasetListApi(Resource):
         query = ConsoleDatasetListQuery.model_validate(query_params)
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             session=session,
         )
@@ -476,7 +476,7 @@ class DatasetListApi(Resource):
         include_own_datasets = False
         if dify_config.RBAC_ENABLED:
             whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
             )
             has_default_readonly = _has_dataset_list_permission(

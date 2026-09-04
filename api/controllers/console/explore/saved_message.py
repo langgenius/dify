@@ -64,7 +64,7 @@ class SavedMessageListApi(InstalledAppResource):
             raise NotCompletionAppError()
 
         try:
-            SavedMessageService.save(app_model, current_user, str(req_data.message_id), session=db.session())
+            SavedMessageService.save(app_model, current_user, req_data.message_id, session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
