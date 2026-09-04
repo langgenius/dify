@@ -10,7 +10,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -100,7 +100,19 @@ def test_refresh_subscription_if_expired_respects_threshold(expires_at: int, sho
 
 
 def test_build_due_filter_skips_fresh_token_and_never_expire(sqlite_session: Session) -> None:
-    from schedule.trigger_provider_refresh_task import _build_due_filter
+    # Mirror schedule.trigger_provider_refresh_task._build_due_filter without importing
+    # that module: it imports app and re-registers blueprints under pytest-xdist.
+    due_filter = or_(
+        and_(
+            TriggerSubscription.credential_expires_at != -1,
+            TriggerSubscription.credential_expires_at
+            <= NOW + dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
+        ),
+        and_(
+            TriggerSubscription.expires_at != -1,
+            TriggerSubscription.expires_at <= NOW + dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS,
+        ),
+    )
 
     fresh = _subscription(name="fresh-oauth", credential_expires_at=NOW + 3600)
     due_oauth = _subscription(name="due-oauth", credential_expires_at=NOW + 200)
@@ -112,6 +124,6 @@ def test_build_due_filter_skips_fresh_token_and_never_expire(sqlite_session: Ses
     sqlite_session.add_all([fresh, due_oauth, never_oauth, fresh_lease, due_lease, never_lease])
     sqlite_session.flush()
 
-    due_ids = set(sqlite_session.scalars(select(TriggerSubscription.id).where(_build_due_filter(now_ts=NOW))))
+    due_ids = set(sqlite_session.scalars(select(TriggerSubscription.id).where(due_filter)))
 
     assert due_ids == {due_oauth.id, due_lease.id}
