@@ -113,7 +113,6 @@ class TriggerSubscription(TypeBase):
     visibility: Mapped[PermissionEnum] = mapped_column(
         EnumText(PermissionEnum, length=40),
         nullable=False,
-        server_default=sa.text("'all_team_members'"),
         default=PermissionEnum.ALL_TEAM,
     )
 
@@ -199,7 +198,7 @@ class TriggerOAuthTenantClient(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False, default="{}")
     created_at: Mapped[datetime] = mapped_column(
@@ -465,7 +464,7 @@ class AppTrigger(TypeBase):
     node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, server_default="", default="")
+    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, default="")
     status: Mapped[str] = mapped_column(
         EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.ENABLED
     )
