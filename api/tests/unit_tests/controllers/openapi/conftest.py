@@ -18,6 +18,7 @@ def _stub_execute(
     scope=None,
     allowed_token_types=None,
     edition=None,
+    require_valid_enterprise_license=False,
     workspace_membership=False,
     allowed_roles=None,
     rbac=None,

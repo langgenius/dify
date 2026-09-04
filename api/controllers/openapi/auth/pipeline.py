@@ -119,8 +119,8 @@ class PipelineRouter:
     """Entry point for openapi auth.
 
     `guard()` is the decorator that endpoints attach to. It applies
-    global gates (edition, token type) then dispatches to the matching
-    `PipelineRoute` for the token type.
+    global gates (edition, license, token type) then dispatches to the
+    matching `PipelineRoute` for the token type.
     """
 
     def __init__(self, routes: dict[TokenType, PipelineRoute]) -> None:
@@ -132,6 +132,7 @@ class PipelineRouter:
         scope: Scope | None = None,
         allowed_token_types: frozenset[TokenType] | None = None,
         edition: frozenset[DeploymentEdition] | None = None,
+        require_valid_enterprise_license: bool = False,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
@@ -140,6 +141,7 @@ class PipelineRouter:
             scope=scope,
             allowed_token_types=allowed_token_types,
             edition=edition,
+            require_valid_enterprise_license=require_valid_enterprise_license,
             workspace_membership=workspace_membership,
             allowed_roles=allowed_roles,
             rbac=rbac,
@@ -151,6 +153,7 @@ class PipelineRouter:
         scope: Scope | None = None,
         allowed_token_types: frozenset[TokenType] | None = None,
         edition: frozenset[DeploymentEdition] | None = None,
+        require_valid_enterprise_license: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
     ) -> Callable:
@@ -158,6 +161,7 @@ class PipelineRouter:
             scope=scope,
             allowed_token_types=allowed_token_types,
             edition=edition,
+            require_valid_enterprise_license=require_valid_enterprise_license,
             workspace_membership=True,
             allowed_roles=allowed_roles,
             rbac=rbac,
@@ -169,6 +173,7 @@ class PipelineRouter:
         scope: Scope | None,
         allowed_token_types: frozenset[TokenType] | None,
         edition: frozenset[DeploymentEdition] | None,
+        require_valid_enterprise_license: bool,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
         rbac: RBACRequirement | None,
@@ -183,6 +188,7 @@ class PipelineRouter:
                     scope=scope,
                     allowed_token_types=allowed_token_types,
                     edition=edition,
+                    require_valid_enterprise_license=require_valid_enterprise_license,
                     workspace_membership=workspace_membership,
                     allowed_roles=allowed_roles,
                     rbac=rbac,
@@ -201,6 +207,7 @@ class PipelineRouter:
         scope: Scope | None,
         allowed_token_types: frozenset[TokenType] | None,
         edition: frozenset[DeploymentEdition] | None,
+        require_valid_enterprise_license: bool,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
@@ -210,7 +217,9 @@ class PipelineRouter:
             raise NotFound()
 
         license_checked = False
-        if edition is not None and DeploymentEdition.ENTERPRISE in edition:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and (
+            require_valid_enterprise_license or (edition is not None and DeploymentEdition.ENTERPRISE in edition)
+        ):
             _check_license()
             license_checked = True
 
