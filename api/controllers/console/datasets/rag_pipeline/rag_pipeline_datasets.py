@@ -9,9 +9,13 @@ from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPipelineImportResponse
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    edit_permission_required,
     model_validate,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -49,6 +53,10 @@ class CreateRagPipelineDatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
     @with_current_user
     @with_current_tenant_id
     @model_validate(RagPipelineDatasetImportPayload)

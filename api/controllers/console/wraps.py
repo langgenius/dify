@@ -38,7 +38,18 @@ from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogo
 
 # Re-exported so controllers can import the RBAC enums and decorator alongside
 # other console wraps from this module.
-__all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
+__all__ = [
+    "RBACPermission",
+    "RBACResourceScope",
+    "account_initialization_required",
+    "cloud_edition_billing_rate_limit_check",
+    "edit_permission_required",
+    "model_validate",
+    "rbac_permission_required",
+    "setup_required",
+    "with_current_tenant_id",
+    "with_current_user",
+]
 
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
