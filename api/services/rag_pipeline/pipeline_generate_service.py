@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.rag.entities.dataset_reference import DocumentRef
 from models.dataset import Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
-from services.dataset_ref_service import DatasetRefService, DocumentRef
+from services.dataset_ref_service import DatasetRefService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 

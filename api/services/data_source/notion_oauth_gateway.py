@@ -9,8 +9,8 @@ from pydantic import TypeAdapter, ValidationError
 
 from core.helper.ssrf_proxy import MaxRetriesExceededError, SSRFProxy
 from core.tools.errors import ToolSSRFError
-from services.data_source_oauth_service import DataSourceOAuthError, DataSourceProviderGateway
-from services.entities.data_source_oauth_entities import DataSourceOAuthAuthorization
+from services.data_source.oauth_service import DataSourceOAuthError, DataSourceProviderGateway
+from services.entities.data_source.oauth import DataSourceOAuthAuthorization
 
 
 class _NotionPageSummary(TypedDict):

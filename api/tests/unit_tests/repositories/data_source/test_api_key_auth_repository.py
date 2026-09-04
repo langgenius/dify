@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.source import DataSourceApiKeyAuthBinding
-from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
-from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
+from repositories.data_source.api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from services.entities.data_source.api_key_auth import DataSourceApiKeyAuthCredentials
 
 
 def _binding(

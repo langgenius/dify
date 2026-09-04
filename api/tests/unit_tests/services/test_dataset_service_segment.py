@@ -2,7 +2,15 @@
 
 from collections.abc import Callable
 
-from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
+from flask_sqlalchemy.pagination import SelectPagination
+from sqlalchemy import literal, select
+from sqlalchemy.orm import Session
+
+from core.rag.entities.dataset_reference import DatasetRef, DocumentRef, SegmentRef
+from models.account import Tenant
+from models.dataset import DatasetProcessRule, DocumentSegmentSummary
+from models.enums import ProcessRuleMode
+from services.dataset_ref_service import DatasetRefService
 
 from .dataset_service_test_helpers import (
     Account,
@@ -16,7 +24,6 @@ from .dataset_service_test_helpers import (
     ModelType,
     SegmentService,
     SegmentUpdateArgs,
-    SimpleNamespace,
     _make_child_chunk,
     _make_dataset,
     _make_document,
@@ -26,6 +33,35 @@ from .dataset_service_test_helpers import (
     patch,
     pytest,
 )
+
+
+def _account() -> Account:
+    account = Account(name="User", email="user-1@example.com")
+    account.id = "user-1"
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    account._current_tenant = tenant
+    return account
+
+
+def _process_rule(rule_id: str) -> DatasetProcessRule:
+    process_rule = DatasetProcessRule(
+        dataset_id="dataset-1",
+        mode=ProcessRuleMode.AUTOMATIC,
+        rules=None,
+        created_by="user-1",
+    )
+    process_rule.id = rule_id
+    return process_rule
+
+
+def _summary(content: str) -> DocumentSegmentSummary:
+    return DocumentSegmentSummary(
+        dataset_id="dataset-1",
+        document_id="doc-1",
+        chunk_id="segment-1",
+        summary_content=content,
+    )
 
 
 def _make_segment_ref(segment_id: str = "segment-1"):
@@ -40,13 +76,11 @@ def _make_segment_ref(segment_id: str = "segment-1"):
 class TestDatasetRefService:
     """Unit tests for typed dataset resource refs."""
 
-    def test_dataset_ref_is_plain_named_tuple(self):
+    def test_create_dataset_ref_carries_workspace_owner(self):
         dataset_ref = DatasetRefService.create_dataset_ref(_make_dataset())
 
-        assert isinstance(dataset_ref, DatasetRef)
         assert dataset_ref.tenant_id == "tenant-1"
         assert dataset_ref.dataset_id == "dataset-1"
-        assert tuple(dataset_ref) == ("tenant-1", "dataset-1")
 
     @pytest.mark.parametrize(
         ("document_dataset_id", "document_tenant_id"),
@@ -105,7 +139,7 @@ class TestSegmentServiceChildChunks:
 
     def test_create_child_chunk_assigns_next_position_and_commits(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         document = _make_document()
         segment = _make_segment()
 
@@ -137,7 +171,7 @@ class TestSegmentServiceChildChunks:
 
     def test_create_child_chunk_rolls_back_and_raises_on_vector_failure(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         document = _make_document()
         segment = _make_segment()
 
@@ -159,7 +193,7 @@ class TestSegmentServiceChildChunks:
 
     def test_update_child_chunks_updates_deletes_and_creates_records(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         document = _make_document()
         segment = _make_segment()
         existing_a = ChildChunk(
@@ -220,7 +254,7 @@ class TestSegmentServiceChildChunks:
 
     def test_update_child_chunks_rolls_back_on_vector_failure(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         document = _make_document()
         segment = _make_segment()
         existing_chunk = _make_child_chunk()
@@ -245,11 +279,11 @@ class TestSegmentServiceChildChunks:
 
     def test_update_child_chunk_updates_vector_and_commits(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         child_chunk = _make_child_chunk()
 
         with (
-            patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
+            patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
@@ -270,7 +304,7 @@ class TestSegmentServiceChildChunks:
 
     def test_delete_child_chunk_raises_delete_index_error_on_vector_failure(self):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         child_chunk = _make_child_chunk()
 
         with (
@@ -297,9 +331,18 @@ class TestSegmentServiceQueries:
         with patch("services.dataset_service.current_user", account):
             yield account
 
-    def test_get_child_chunks_applies_keyword_filter_and_paginate(self, account_context):
+    def test_get_child_chunks_applies_keyword_filter_and_paginate(
+        self,
+        account_context,
+        sqlite_session: Session,
+    ):
         session = MagicMock()
-        paginated = SimpleNamespace(items=["chunk"], total=1)
+        paginated = SelectPagination(
+            select=select(literal("chunk")),
+            session=sqlite_session,
+            page=1,
+            per_page=20,
+        )
 
         with (
             patch("services.dataset_service.paginate_query") as mock_paginate,
@@ -330,7 +373,7 @@ class TestSegmentServiceQueries:
 
         assert result is child_chunk
 
-        session.scalar.return_value = SimpleNamespace()
+        session.scalar.return_value = object()
         result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", session)
 
         assert result is None
@@ -354,9 +397,14 @@ class TestSegmentServiceQueries:
         assert "child_chunks.document_id = 'doc-1'" in sql
         assert "child_chunks.segment_id = 'segment-1'" in sql
 
-    def test_get_segments_uses_status_and_keyword_filters(self):
+    def test_get_segments_uses_status_and_keyword_filters(self, sqlite_session: Session):
         session = MagicMock()
-        paginated = SimpleNamespace(items=["segment"], total=1)
+        paginated = SelectPagination(
+            select=select(literal("segment")),
+            session=sqlite_session,
+            page=1,
+            per_page=20,
+        )
 
         with (
             patch("services.dataset_service.paginate_query") as mock_paginate,
@@ -397,7 +445,7 @@ class TestSegmentServiceQueries:
 
         assert result is segment
 
-        session.scalar.return_value = SimpleNamespace()
+        session.scalar.return_value = object()
         result = SegmentService.get_segment_by_id("segment-1", "tenant-1", session)
 
         assert result is None
@@ -509,7 +557,7 @@ class TestSegmentServiceMutations:
             doc_form=IndexStructureType.QA_INDEX,
             word_count=0,
         )
-        refreshed_segment = SimpleNamespace(id="segment-1")
+        refreshed_segment = _make_segment()
         args = {
             "content": "question",
             "answer": "answer",
@@ -662,7 +710,7 @@ class TestSegmentServiceMutations:
         segment = _make_segment(content="same content", keywords=["old"])
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=20)
         dataset = _make_dataset()
-        refreshed_segment = SimpleNamespace(id=segment.id)
+        refreshed_segment = _make_segment(segment_id=segment.id)
         args = SegmentUpdateArgs(content="same content", keywords=["new"])
 
         with (
@@ -687,9 +735,9 @@ class TestSegmentServiceMutations:
             word_count=20,
         )
         dataset = _make_dataset(indexing_technique="high_quality")
-        refreshed_segment = SimpleNamespace(id=segment.id)
-        processing_rule = SimpleNamespace(id=document.dataset_process_rule_id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        refreshed_segment = _make_segment(segment_id=segment.id)
+        processing_rule = _process_rule(document.dataset_process_rule_id)
+        existing_summary = _summary("old summary")
         embedding_model_instance = object()
         args = SegmentUpdateArgs(
             content="same content",
@@ -732,8 +780,8 @@ class TestSegmentServiceMutations:
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
         dataset.summary_index_setting = {"enable": True}
-        refreshed_segment = SimpleNamespace(id=segment.id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        refreshed_segment = _make_segment(segment_id=segment.id)
+        existing_summary = _summary("old summary")
         embedding_model = MagicMock()
         embedding_model.get_text_embedding_num_tokens.return_value = [9]
         args = SegmentUpdateArgs(content="new content", keywords=["kw-1"])
@@ -771,8 +819,8 @@ class TestSegmentServiceMutations:
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
         dataset.summary_index_setting = {"enable": True}
-        refreshed_segment = SimpleNamespace(id=segment.id)
-        existing_summary = SimpleNamespace(summary_content="same summary")
+        refreshed_segment = _make_segment(segment_id=segment.id)
+        existing_summary = _summary("same summary")
         embedding_model = MagicMock()
         embedding_model.get_text_embedding_num_tokens.return_value = [7]
         args = SegmentUpdateArgs(content="new text", summary="same summary")
@@ -844,7 +892,7 @@ class TestSegmentServiceMutations:
         session = MagicMock()
         dataset = _make_dataset()
         document = _make_document(word_count=3)
-        current_user = SimpleNamespace(current_tenant_id="tenant-1")
+        current_user = _account()
 
         with (
             patch("services.dataset_service.current_user", current_user),
@@ -886,7 +934,7 @@ class TestSegmentServiceMutations:
         document = _make_document()
         segment_a = _make_segment(segment_id="segment-a", enabled=False)
         segment_b = _make_segment(segment_id="segment-b", enabled=False)
-        current_user = SimpleNamespace(id="user-1", current_tenant_id="tenant-1")
+        current_user = _account()
 
         with (
             patch("services.dataset_service.current_user", current_user),
@@ -913,7 +961,7 @@ class TestSegmentServiceMutations:
         document = _make_document()
         segment_a = _make_segment(segment_id="segment-a", enabled=True)
         segment_b = _make_segment(segment_id="segment-b", enabled=True)
-        current_user = SimpleNamespace(id="user-1", current_tenant_id="tenant-1")
+        current_user = _account()
 
         with (
             patch("services.dataset_service.current_user", current_user),
@@ -940,11 +988,11 @@ class TestSegmentServiceChildChunkTailHelpers:
 
     def test_update_child_chunk_rolls_back_on_vector_failure(self):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         child_chunk = _make_child_chunk()
 
         with (
-            patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
+            patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
@@ -952,7 +1000,12 @@ class TestSegmentServiceChildChunkTailHelpers:
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
                 SegmentService.update_child_chunk(
-                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset, session
+                    "new content",
+                    child_chunk,
+                    _make_segment(),
+                    _make_document(),
+                    dataset,
+                    session,
                 )
 
         session.rollback.assert_called_once()
@@ -960,7 +1013,7 @@ class TestSegmentServiceChildChunkTailHelpers:
 
     def test_delete_child_chunk_commits_after_successful_vector_delete(self):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1")
+        dataset = _make_dataset()
         child_chunk = _make_child_chunk()
 
         with (
@@ -990,7 +1043,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         segment = _make_segment(content="question", word_count=8)
         document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=20)
         dataset = _make_dataset()
-        refreshed_segment = SimpleNamespace(id=segment.id)
+        refreshed_segment = _make_segment(segment_id=segment.id)
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
@@ -1019,7 +1072,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         segment = _make_segment(content="old", word_count=3)
         document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
-        refreshed_segment = SimpleNamespace(id=segment.id)
+        refreshed_segment = _make_segment(segment_id=segment.id)
         embedding_model = MagicMock()
         embedding_model.get_text_embedding_num_tokens.return_value = [21]
 
@@ -1062,9 +1115,9 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         )
         dataset = _make_dataset(indexing_technique="high_quality")
         dataset.embedding_model_provider = None
-        refreshed_segment = SimpleNamespace(id=segment.id)
-        processing_rule = SimpleNamespace(id=document.dataset_process_rule_id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        refreshed_segment = _make_segment(segment_id=segment.id)
+        processing_rule = _process_rule(document.dataset_process_rule_id)
+        existing_summary = _summary("old summary")
         embedding_model_instance = object()
 
         with (
@@ -1119,7 +1172,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             word_count=20,
         )
         dataset = _make_dataset(indexing_technique="economy")
-        refreshed_segment = SimpleNamespace(id=segment.id)
+        refreshed_segment = _make_segment(segment_id=segment.id)
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,

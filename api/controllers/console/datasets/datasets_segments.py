@@ -44,6 +44,7 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
+from core.rag.entities.dataset_reference import SegmentRef
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -63,7 +64,7 @@ from libs.pagination import paginate_query
 from models import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
-from services.dataset_ref_service import DatasetRefService, SegmentRef
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError

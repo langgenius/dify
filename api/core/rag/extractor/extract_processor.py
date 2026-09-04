@@ -224,6 +224,7 @@ class ExtractProcessor:
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
+                notion_access_token=extract_setting.notion_info.notion_access_token,
                 credential_id=extract_setting.notion_info.credential_id,
             )
             return extractor.extract()

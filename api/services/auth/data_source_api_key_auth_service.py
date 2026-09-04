@@ -5,7 +5,7 @@ from dataclasses import replace
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.entities.data_source_api_key_auth_entities import (
+from services.entities.data_source.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthBindingRecord,
     DataSourceApiKeyAuthCredentials,

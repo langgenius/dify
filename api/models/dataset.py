@@ -18,7 +18,7 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
-from core.rag.entities import ParentMode, Rule
+from core.rag.entities import ParentMode, PreProcessingRuleKey, Rule
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 class PreProcessingRuleItem(TypedDict):
-    id: str
+    id: PreProcessingRuleKey
     enabled: bool
 
 
@@ -490,7 +490,6 @@ class DatasetProcessRule(TypeBase):
     )
 
     MODES = ["automatic", "custom", "hierarchical"]
-    PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
     AUTOMATIC_RULES: ClassVar[AutomaticRulesConfig] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},

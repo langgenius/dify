@@ -60,3 +60,17 @@ class WorkspaceMemberQueryRepository(WorkspaceMemberQuery):
             )
 
         return records
+
+    def get_legacy_role(self, *, workspace_id: str, account_id: str) -> str | None:
+        """Return one member's role without loading the whole workspace roster."""
+
+        with self._session_factory() as session:
+            role = session.scalar(
+                select(TenantAccountJoin.role)
+                .where(
+                    TenantAccountJoin.tenant_id == workspace_id,
+                    TenantAccountJoin.account_id == account_id,
+                )
+                .limit(1)
+            )
+            return role.value if role is not None else None

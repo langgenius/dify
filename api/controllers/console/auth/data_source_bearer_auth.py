@@ -26,7 +26,7 @@ from services.auth.errors import (
     InvalidDataSourceApiKeyAuthCredentialsError,
     UnsupportedDataSourceApiKeyAuthProviderError,
 )
-from services.entities.data_source_api_key_auth_entities import (
+from services.entities.data_source.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthCredentials,
 )
@@ -79,7 +79,7 @@ class ApiKeyAuthDataSource(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ApiKeyAuthDataSourceListResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):
-        bindings = application_services().data_source_api_key_auth.list_bindings(request_context)
+        bindings = application_services().data_sources.api_key_auth.list_bindings(request_context)
         return dump_response(
             ApiKeyAuthDataSourceListResponse,
             {
@@ -121,7 +121,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
             ),
         )
         try:
-            application_services().data_source_api_key_auth.create_binding(request_context, command)
+            application_services().data_sources.api_key_auth.create_binding(request_context, command)
         except UnsupportedDataSourceApiKeyAuthProviderError as exc:
             raise DataSourceApiKeyAuthProviderNotSupportedError() from exc
         except InvalidDataSourceApiKeyAuthCredentialsError as exc:
@@ -143,5 +143,5 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
         rbac_resource_required=False,
     )
     def delete(self, request_context: RequestContext, binding_id: UUID):
-        application_services().data_source_api_key_auth.delete_binding(request_context, str(binding_id))
+        application_services().data_sources.api_key_auth.delete_binding(request_context, str(binding_id))
         return "", HTTPStatus.NO_CONTENT

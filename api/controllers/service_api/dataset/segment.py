@@ -26,6 +26,7 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
+from core.rag.entities.dataset_reference import SegmentRef
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -40,7 +41,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, Document, DocumentSegment
-from services.dataset_ref_service import DatasetRefService, SegmentRef
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError

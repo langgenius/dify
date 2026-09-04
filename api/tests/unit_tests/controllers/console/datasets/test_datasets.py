@@ -3,7 +3,6 @@ import json
 from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
@@ -41,6 +40,7 @@ from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.entities.dataset_reference import DatasetRef
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
@@ -48,7 +48,6 @@ from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
-from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 
@@ -300,7 +299,7 @@ class TestDatasetList(_UsesSQLiteSession):
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(resource_ids=[]),
+                    return_value=enterprise_rbac_service.ResourceWhitelistResources(resource_ids=[]),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -327,7 +326,7 @@ class TestDatasetList(_UsesSQLiteSession):
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(unrestricted=True, resource_ids=[]),
+                    return_value=enterprise_rbac_service.ResourceWhitelistResources(unrestricted=True, resource_ids=[]),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -353,7 +352,9 @@ class TestDatasetList(_UsesSQLiteSession):
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
+                    return_value=enterprise_rbac_service.ResourceWhitelistResources(
+                        resource_ids=["dataset-whitelist-only"]
+                    ),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -393,7 +394,9 @@ class TestDatasetList(_UsesSQLiteSession):
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
+                    return_value=enterprise_rbac_service.ResourceWhitelistResources(
+                        resource_ids=["dataset-whitelist-only"]
+                    ),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -418,7 +421,7 @@ class TestDatasetList(_UsesSQLiteSession):
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(resource_ids=[]),
+                    return_value=enterprise_rbac_service.ResourceWhitelistResources(resource_ids=[]),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):

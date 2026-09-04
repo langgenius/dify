@@ -9,7 +9,7 @@ from services.auth.errors import (
     DataSourceApiKeyAuthProviderUnavailableError,
     UnsupportedDataSourceApiKeyAuthProviderError,
 )
-from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
+from services.entities.data_source.api_key_auth import DataSourceApiKeyAuthCredentials
 
 
 class TestProviderApiKeyAuthCredentialValidator:

@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, Field, WithJsonSchema
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class ParentMode(StrEnum):
@@ -9,19 +9,11 @@ class ParentMode(StrEnum):
     PARAGRAPH = "paragraph"
 
 
-PreProcessingRuleID = Annotated[
-    str,
-    WithJsonSchema(
-        {
-            "enum": ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"],
-            "type": "string",
-        }
-    ),
-]
+type PreProcessingRuleKey = Literal["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
 
 
 class PreProcessingRule(BaseModel):
-    id: PreProcessingRuleID = Field(description="Rule identifier.")
+    id: PreProcessingRuleKey = Field(description="Rule identifier.")
     enabled: bool = Field(description="Whether this preprocessing rule is enabled.")
 
 

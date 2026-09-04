@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.entities.data_source_oauth_entities import (
+from services.entities.data_source.oauth import (
     DataSourceOAuthAuthorization,
     DataSourceOAuthBindingRecord,
     DataSourceOAuthCallback,

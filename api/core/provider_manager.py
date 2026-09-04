@@ -1157,6 +1157,7 @@ class ProviderManager:
             if user is not None:
                 stmt = CredentialPermissionService.apply_visibility_filter(
                     stmt,
+                    tenant_id=tenant_id,
                     model_id_column=ProviderCredential.id,
                     model_user_id_column=ProviderCredential.user_id,
                     model_visibility_column=ProviderCredential.visibility,

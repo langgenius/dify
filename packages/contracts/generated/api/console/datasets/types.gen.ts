@@ -931,7 +931,7 @@ export type WeightModel = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+  id: PreProcessingRuleKey
 }
 
 export type Segmentation = {
@@ -1063,6 +1063,8 @@ export type WeightVectorSetting = {
   embedding_provider_name: string
   vector_weight: number
 }
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
 export type HitTestingDocument = {
   data_source_type: string

@@ -171,6 +171,48 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:dataset-application-boundary]
+name = Dataset application services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.data_source.binding_application_service
+    services.data_source.notion_import_application_service
+    services.entities.data_source.credential
+    services.entities.data_source.notion_import
+    services.entities.knowledge_entities.indexing_estimate
+    services.knowledge.application
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+    services.dataset_service
+    services.datasource_provider_service
+    core.datasource.datasource_manager
+    core.indexing_runner
+    core.rag.extractor.notion_extractor
+
+[importlinter:contract:dataset-reference-boundary]
+name = Dataset owner references do not depend on web application layers
+type = forbidden
+source_modules =
+    core.rag.entities.dataset_reference
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:init-validation-service-boundary]
 name = Initialization validation application service is framework and persistence neutral
 type = forbidden
@@ -315,7 +357,7 @@ forbidden_modules =
 name = Data source OAuth application service is framework and persistence neutral
 type = forbidden
 source_modules =
-    services.data_source_oauth_service
+    services.data_source.oauth_service
 forbidden_modules =
     configs
     controllers

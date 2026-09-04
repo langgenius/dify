@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.model_manager import ModelInstance
 from models.account import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -39,7 +40,6 @@ from .dataset_service_test_helpers import (
     RetrievalModel,
     Rule,
     Segmentation,
-    SimpleNamespace,
     WebsiteInfo,
     _make_features,
     _make_lock_context,
@@ -933,13 +933,22 @@ class TestDocumentServiceCreateValidation:
     """Unit tests for document creation validation helpers."""
 
     def test_document_create_args_validate_requires_data_source_or_process_rule(self):
-        knowledge_config = SimpleNamespace(data_source=None, process_rule=None)
+        knowledge_config = KnowledgeConfig(indexing_technique="economy")
 
         with pytest.raises(ValueError, match="Data source or Process rule is required"):
             DocumentService.document_create_args_validate(knowledge_config)
 
     def test_document_create_args_validate_delegates_to_sub_validators(self):
-        knowledge_config = SimpleNamespace(data_source=object(), process_rule=object())
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(mode="automatic"),
+        )
 
         with (
             patch.object(DocumentService, "data_source_args_validate") as validate_data_source,
@@ -950,39 +959,20 @@ class TestDocumentServiceCreateValidation:
         validate_data_source.assert_called_once_with(knowledge_config)
         validate_process_rule.assert_called_once_with(knowledge_config)
 
-    def test_data_source_args_validate_rejects_invalid_type(self):
-        knowledge_config = SimpleNamespace(
-            data_source=SimpleNamespace(
-                info_list=SimpleNamespace(
-                    data_source_type="bad-source",
-                    file_info_list=None,
-                    notion_info_list=None,
-                    website_info_list=None,
-                )
-            )
-        )
-
-        with pytest.raises(ValueError, match="Data source type is invalid"):
-            DocumentService.data_source_args_validate(knowledge_config)
-
     @pytest.mark.parametrize(
-        ("data_source_type", "field_name", "message"),
+        ("data_source_type", "message"),
         [
-            ("upload_file", "file_info_list", "File source info is required"),
-            ("notion_import", "notion_info_list", "Notion source info is required"),
-            ("website_crawl", "website_info_list", "Website source info is required"),
+            ("upload_file", "File source info is required"),
+            ("notion_import", "Notion source info is required"),
+            ("website_crawl", "Website source info is required"),
         ],
     )
-    def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, field_name, message):
-        info_values = {
-            "data_source_type": data_source_type,
-            "file_info_list": object(),
-            "notion_info_list": object(),
-            "website_info_list": object(),
-        }
-        info_values[field_name] = None
-        info_list = SimpleNamespace(**info_values)
-        knowledge_config = SimpleNamespace(data_source=SimpleNamespace(info_list=info_list))
+    def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, message):
+        info_list = InfoList.model_validate({"data_source_type": data_source_type})
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(info_list=info_list),
+        )
 
         with pytest.raises(ValueError, match=message):
             DocumentService.data_source_args_validate(knowledge_config)
@@ -1202,44 +1192,6 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     account_context,
                     session=sqlite_session,
                 )
-
-    def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(
-        self, account_context, unbound_session: Session
-    ):
-        dataset = _dataset_row(indexing_technique=None)
-        knowledge_config = SimpleNamespace(
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            original_document_id=None,
-            data_source=None,
-            indexing_technique="broken-technique",
-        )
-
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
-            with pytest.raises(ValueError, match="Indexing technique is invalid"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
-
-    def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(
-        self, account_context, unbound_session: Session
-    ):
-        dataset = _dataset_row()
-        knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
-        knowledge_config.process_rule = SimpleNamespace(mode="unsupported-mode", rules=None)
-
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset,
-                knowledge_config,
-                account_context,
-                session=unbound_session,
-            )
-
-        assert documents == []
-        assert batch == ""
 
     def test_save_document_with_dataset_id_upload_file_creates_and_reindexes_documents(
         self, account_context, sqlite_session: Session
@@ -1798,13 +1750,9 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
 
 
 class TestDocumentServiceEstimateValidation:
-    """Unit tests for estimate_args_validate branches."""
+    """Keep only the compatibility contract owned by the legacy service."""
 
-    def test_estimate_args_validate_rejects_missing_info_list(self):
-        with pytest.raises(ValueError, match="Field required"):
-            DocumentService.estimate_args_validate({})
-
-    def test_estimate_args_validate_sets_empty_rules_for_automatic_mode(self):
+    def test_estimate_args_validate_delegates_to_shared_normalizer(self):
         args = {
             "info_list": {"data_source_type": "upload_file"},
             "process_rule": {"mode": "automatic", "rules": {"ignored": True}},
@@ -1813,114 +1761,6 @@ class TestDocumentServiceEstimateValidation:
         DocumentService.estimate_args_validate(args)
 
         assert args["process_rule"]["rules"] == {}
-
-    def test_estimate_args_validate_rejects_unknown_pre_processing_rule_id(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "unknown", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-            },
-        }
-
-        with pytest.raises(ValueError, match="pre_processing_rules id is invalid"):
-            DocumentService.estimate_args_validate(args)
-
-    def test_estimate_args_validate_deduplicates_rules_for_custom_mode(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [
-                        {"id": "remove_stopwords", "enabled": True},
-                        {"id": "remove_stopwords", "enabled": False},
-                    ],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["pre_processing_rules"] == [{"id": "remove_stopwords", "enabled": False}]
-
-    def test_estimate_args_validate_custom_mode_drops_hierarchical_fields(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                    "parent_mode": "full-doc",
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 64},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"] == {
-            "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-            "segmentation": {"separator": "\n", "max_tokens": 128},
-        }
-
-    def test_estimate_args_validate_requires_summary_index_provider_name(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-                "summary_index_setting": {"enable": True, "model_name": "summary-model"},
-            },
-        }
-
-        with pytest.raises(ValueError, match="Field required"):
-            DocumentService.estimate_args_validate(args)
-
-    def test_estimate_args_validate_preserves_hierarchical_fields(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "hierarchical",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 512},
-                    "parent_mode": "full-doc",
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["parent_mode"] == "full-doc"
-        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
-
-    def test_estimate_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "hierarchical",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 512},
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["parent_mode"] == "paragraph"
-        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
 
 
 class TestDocumentServiceSaveDocumentAdditionalBranches:
@@ -1963,10 +1803,10 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             ) as get_binding,
             patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
         ):
-            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = SimpleNamespace(
-                model_name="default-embedding",
-                provider="default-provider",
-            )
+            default_model = object.__new__(ModelInstance)
+            default_model.model_name = "default-embedding"
+            default_model.provider = "default-provider"
+            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = default_model
 
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
