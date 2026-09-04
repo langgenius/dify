@@ -3,8 +3,13 @@
 import { eventIterator, oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetDifyBuilderSessionsBySessionIdConversationPath,
+  zGetDifyBuilderSessionsBySessionIdConversationQuery,
+  zGetDifyBuilderSessionsBySessionIdConversationResponse,
   zGetDifyBuilderSessionsBySessionIdPath,
   zGetDifyBuilderSessionsBySessionIdResponse,
+  zGetDifyBuilderSessionsBySessionIdStreamPath,
+  zGetDifyBuilderSessionsBySessionIdStreamResponse,
   zPostDifyBuilderAgentPingResponse,
   zPostDifyBuilderSessionsBody,
   zPostDifyBuilderSessionsBySessionIdActionsBody,
@@ -54,6 +59,26 @@ export const actions = {
   post: post2,
 }
 
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdConversation',
+    path: '/dify-builder/sessions/{session_id}/conversation',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetDifyBuilderSessionsBySessionIdConversationPath,
+      query: zGetDifyBuilderSessionsBySessionIdConversationQuery.optional(),
+    }),
+  )
+  .output(zGetDifyBuilderSessionsBySessionIdConversationResponse)
+
+export const conversation = {
+  get,
+}
+
 export const post3 = oc
   .route({
     inputStructure: 'detailed',
@@ -74,7 +99,22 @@ export const messages = {
   post: post3,
 }
 
-export const get = oc
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdStream',
+    path: '/dify-builder/sessions/{session_id}/stream',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdStreamPath }))
+  .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
+
+export const stream = {
+  get: get2,
+}
+
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -83,12 +123,14 @@ export const get = oc
     tags: ['console'],
   })
   .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdPath }))
-  .output(eventIterator(zGetDifyBuilderSessionsBySessionIdResponse))
+  .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get,
+  get: get3,
   actions,
+  conversation,
   messages,
+  stream,
 }
 
 export const post4 = oc

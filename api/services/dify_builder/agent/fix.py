@@ -1,6 +1,6 @@
 """Real LLM cognition for Dify Builder's Fix mode.
 
-Pure functions called by LlmBuilderAgent when DIFY_BUILDER_AGENT_MODE=llm.
+Pure functions called by ``LlmBuilderAgent`` for Fix cognition.
 On any dead-end (no model, unparseable output, or -- for propose_repair -- no
 valid repair) they DEGRADE to an honest, surface-to-human result rather than
 crashing the advance or applying a canned guess.

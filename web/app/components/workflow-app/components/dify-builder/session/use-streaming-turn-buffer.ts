@@ -39,15 +39,20 @@ const cancelFrame = (frame: ScheduledFrame) => {
 
 const toStreamingTurn = (message: AgentMessageEventData): DifyBuilderStreamingTurn => ({
   sessionId: message.session_id,
+  operationId: message.operation_id,
   turnId: message.id,
   sequence: message.seq,
   atVersion: message.at_version,
+  revision: message.revision,
   stageId: message.stage_id,
   replyText: message.answer,
 })
 
 const isSameTurn = (left: DifyBuilderStreamingTurn, right: DifyBuilderStreamingTurn) =>
-  left.sessionId === right.sessionId && left.turnId === right.turnId
+  left.sessionId === right.sessionId &&
+  left.operationId === right.operationId &&
+  left.turnId === right.turnId &&
+  left.atVersion === right.atVersion
 
 /**
  * Keeps token-frequency updates out of SessionView. Deltas are buffered in a
@@ -74,7 +79,9 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
       return
 
     setStreamingTurn((current) => {
-      if (!current || !isSameTurn(current, pending)) return pending
+      if (!current || !isSameTurn(current, pending))
+        return current && current.atVersion > pending.atVersion ? current : pending
+      if (current.revision >= pending.revision) return current
       return {
         ...pending,
         replyText: `${current.replyText}${pending.replyText}`,
@@ -122,6 +129,8 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
 
       const next = toStreamingTurn(message)
       const pending = pendingTurnRef.current
+      if (pending && isSameTurn(pending, next) && pending.revision >= next.revision) return
+      if (pending && !isSameTurn(pending, next) && pending.atVersion > next.atVersion) return
       pendingTurnRef.current =
         pending && isSameTurn(pending, next)
           ? { ...next, replyText: `${pending.replyText}${next.replyText}` }

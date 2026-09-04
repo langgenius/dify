@@ -47,7 +47,7 @@ class LlmBuilderAgent:
             if not self._resolution_failed:
                 self._resolution_failed = True
                 logger.warning(
-                    "Dify Builder: model resolution failed for tenant %s in llm mode; degrading to heuristic cognition",
+                    "Dify Builder: model resolution failed for tenant %s; degrading to heuristic cognition",
                     self._tenant_id,
                     exc_info=True,
                 )

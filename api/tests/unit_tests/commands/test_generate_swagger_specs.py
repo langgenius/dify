@@ -302,21 +302,20 @@ def test_finalize_openapi_payload_documents_typed_sse_and_json_preflight_errors(
     assert operation["x-dify-typed-event-stream-response"] == "EventResponse"
 
 
-def test_generate_specs_document_dify_builder_as_four_typed_sse_operations(tmp_path: Path):
+def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operations(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     module.generate_specs(tmp_path)
     payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
     paths = payload["paths"]
-    builder_operations = {
+    sse_operations = {
         ("post", "/dify-builder/sessions"),
-        ("get", "/dify-builder/sessions/{session_id}"),
         ("post", "/dify-builder/sessions/{session_id}/actions"),
         ("post", "/dify-builder/sessions/{session_id}/messages"),
+        ("get", "/dify-builder/sessions/{session_id}/stream"),
     }
 
-    assert "/dify-builder/sessions/{session_id}/stream" not in paths
-    for method, path in builder_operations:
+    for method, path in sse_operations:
         operation = paths[path][method]
         assert operation["responses"]["200"]["content"] == {
             "text/event-stream": {"schema": {"$ref": "#/components/schemas/DifyBuilderStreamEventResponse"}}
@@ -325,6 +324,24 @@ def test_generate_specs_document_dify_builder_as_four_typed_sse_operations(tmp_p
         for status, response in operation["responses"].items():
             if status != "200":
                 assert set(response["content"]) == {"application/json"}
+
+    json_operations = {
+        "/dify-builder/sessions/{session_id}": "DifyBuilderSessionViewResponse",
+        "/dify-builder/sessions/{session_id}/conversation": "DifyBuilderConversationPageResponse",
+    }
+    for path, response_schema in json_operations.items():
+        operation = paths[path]["get"]
+        assert operation["responses"]["200"]["content"] == {
+            "application/json": {"schema": {"$ref": f"#/components/schemas/{response_schema}"}}
+        }
+        assert "x-dify-typed-event-stream-response" not in operation
+
+    session_schema = payload["components"]["schemas"]["DifyBuilderSessionViewResponse"]
+    assert "conversation" not in session_schema["properties"]
+    assert {"active_interaction", "conversation_last_seq"} <= session_schema["properties"].keys()
+    stream_schema = json.dumps(payload["components"]["schemas"]["DifyBuilderStreamEventResponse"])
+    assert "command_started" in stream_schema
+    assert "snapshot" not in stream_schema
 
     serialized_request_schemas = json.dumps(
         {

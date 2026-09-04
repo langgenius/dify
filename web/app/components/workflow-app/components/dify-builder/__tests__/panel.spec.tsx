@@ -1,9 +1,9 @@
-import type { SessionView } from '../types'
+import type { ConversationItem, SessionView } from '../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import DifyBuilderPanel from '../panel'
-import { difyBuilderSessionViewAtom } from '../session/state'
+import { difyBuilderConversationAtom, difyBuilderSessionViewAtom } from '../session/state'
 import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
@@ -23,25 +23,8 @@ const sessionView: SessionView = {
   app_revision: { observed: 'hash-1', current: 'hash-1', conflicted: false },
   app_id: 'app-1',
   canvas_read_only: false,
-  conversation: [
-    {
-      seq: 0,
-      at_version: 1,
-      kind: 'user',
-      payload: { text: 'Fix the workflow', turn_id: 'turn-user-1' },
-    },
-    {
-      seq: 1,
-      at_version: 1,
-      kind: 'assistant_turn',
-      payload: {
-        turn_id: 'turn-1',
-        stage_id: 'fix.plan',
-        trace: { status: 'completed' },
-        reply_text: 'I found the failing configuration.',
-      },
-    },
-  ],
+  active_interaction: null,
+  conversation_last_seq: 1,
   entry_mode: 'fix',
   interrupted: false,
   phase: 'plan',
@@ -50,6 +33,26 @@ const sessionView: SessionView = {
   state: 'fix.await_approval',
   version: 1,
 }
+
+const sessionConversation: ConversationItem[] = [
+  {
+    seq: 0,
+    at_version: 1,
+    kind: 'user',
+    payload: { text: 'Fix the workflow', turn_id: 'turn-user-1' },
+  },
+  {
+    seq: 1,
+    at_version: 1,
+    kind: 'assistant_turn',
+    payload: {
+      turn_id: 'turn-1',
+      stage_id: 'fix.plan',
+      trace: { status: 'completed' },
+      reply_text: 'I found the failing configuration.',
+    },
+  },
+]
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
@@ -68,9 +71,11 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
 const renderPanel = (
   view: SessionView = sessionView,
   initializeStore?: (store: ReturnType<typeof createStore>) => void,
+  conversation: ConversationItem[] = sessionConversation,
 ) => {
   const store = createStore()
   store.set(difyBuilderSessionViewAtom, view)
+  store.set(difyBuilderConversationAtom, conversation)
   store.set(difyBuilderRuntimeAtom, {
     appId: 'app-1',
     canEdit: true,
@@ -79,6 +84,7 @@ const renderPanel = (
     onSyncDraft: vi.fn(async () => undefined),
     session: {
       refresh: vi.fn(async () => true),
+      loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
       reset: mocks.reset,
       runAction: mocks.runAction,
@@ -204,24 +210,32 @@ describe('DifyBuilderPanel', () => {
 
   it('wraps provided test inputs in the backend testdata payload', async () => {
     const user = userEvent.setup()
-    renderPanel({
-      ...sessionView,
-      actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
-      conversation: [
-        {
-          seq: 0,
-          at_version: 1,
-          kind: 'form',
-          payload: {
-            variant: 'testdata',
-            fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
-            values: {},
-          },
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: {},
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card,
+          valid_at_version: 1,
         },
-      ],
-      phase: 'test',
-      state: 'build.await_testdata',
-    })
+        conversation_last_seq: 0,
+        phase: 'test',
+        state: 'build.await_testdata',
+      },
+      undefined,
+      [card],
+    )
 
     await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'AI agents')
     await user.click(screen.getByRole('button', { name: 'Provide test data' }))
@@ -232,26 +246,81 @@ describe('DifyBuilderPanel', () => {
     })
   })
 
-  it('blocks malformed JSON test data and submits the parsed value after correction', async () => {
+  it('preserves an active form draft when the session version advances', async () => {
     const user = userEvent.setup()
-    renderPanel({
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: {},
+      },
+    }
+    const view: SessionView = {
       ...sessionView,
       actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
-      conversation: [
-        {
-          seq: 0,
-          at_version: 1,
-          kind: 'form',
-          payload: {
-            variant: 'testdata',
-            fields: [{ key: 'profile', label: 'Profile', type: 'json_object' }],
-            values: {},
-          },
-        },
-      ],
+      active_interaction: {
+        action_id: 'provide_testdata',
+        card,
+        valid_at_version: 1,
+      },
+      conversation_last_seq: 0,
       phase: 'test',
       state: 'build.await_testdata',
+    }
+    const { store } = renderPanel(view, undefined, [card])
+
+    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'AI agents')
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, {
+        ...view,
+        version: 2,
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card: { ...card, payload: { ...card.payload } },
+          valid_at_version: 2,
+        },
+      })
     })
+
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
+    await user.click(screen.getByRole('button', { name: 'Provide test data' }))
+    expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
+      mode: 'provide',
+      inputs: { topic: 'AI agents' },
+    })
+  })
+
+  it('blocks malformed JSON test data and submits the parsed value after correction', async () => {
+    const user = userEvent.setup()
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'profile', label: 'Profile', type: 'json_object' }],
+        values: {},
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+        phase: 'test',
+        state: 'build.await_testdata',
+      },
+      undefined,
+      [card],
+    )
     const input = screen.getByRole('textbox', { name: 'Profile' })
     const action = screen.getByRole('button', { name: 'Provide test data' })
 
@@ -275,21 +344,29 @@ describe('DifyBuilderPanel', () => {
   })
 
   it('preserves numeric defaults in form cards', () => {
-    renderPanel({
-      ...sessionView,
-      conversation: [
-        {
-          seq: 0,
-          at_version: 1,
-          kind: 'form',
-          payload: {
-            variant: 'build_requirements',
-            fields: [{ key: 'retries', label: 'Retries', type: 'number' }],
-            values: { retries: 3 },
-          },
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'build_requirements',
+        fields: [{ key: 'retries', label: 'Retries', type: 'number' }],
+        values: { retries: 3 },
+      },
+    }
+    renderPanel(
+      {
+        ...sessionView,
+        active_interaction: {
+          action_id: 'submit_requirements',
+          card,
+          valid_at_version: 1,
         },
-      ],
-    })
+        conversation_last_seq: 0,
+      },
+      undefined,
+      [card],
+    )
 
     expect(screen.getByRole('spinbutton', { name: 'Retries' })).toHaveValue(3)
   })
@@ -325,6 +402,28 @@ describe('DifyBuilderPanel', () => {
     await user.click(reset)
 
     expect(mocks.reset).toHaveBeenCalledOnce()
+  })
+
+  it('shows durable recovery guidance and keeps a paused composer disabled', () => {
+    renderPanel({
+      ...sessionView,
+      actions: [{ id: 'resume', label: 'Resume', kind: 'primary' }],
+      recovery: {
+        can_continue: false,
+        can_restart: true,
+        message: 'The draft changed while Builder was paused.',
+        recovery_class: 'structure_changed',
+      },
+      run_status: 'paused',
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The draft changed while Builder was paused.',
+    )
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeEnabled()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).toBeDisabled()
   })
 
   it('offers an accessible retry action after canvas refresh failure', async () => {

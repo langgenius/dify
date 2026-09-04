@@ -1,17 +1,25 @@
 import type { DifyBuilderRuntime } from '../store'
 import type { SessionView } from '../types'
 import { createStore } from 'jotai'
-import { difyBuilderSessionBusyAtom, difyBuilderSessionViewAtom } from '../session/state'
 import {
+  difyBuilderConversationAtom,
+  difyBuilderSessionBusyAtom,
+  difyBuilderSessionViewAtom,
+} from '../session/state'
+import {
+  difyBuilderActiveInteractionAtom,
+  difyBuilderCanComposeAtom,
   difyBuilderCanStartFixAtom,
   difyBuilderCanvasLockedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderResetAtom,
+  difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
   difyBuilderStartPromptAtom,
@@ -21,7 +29,7 @@ import {
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   app_id: 'app-1',
   canvas_read_only: false,
-  conversation: [],
+  conversation_last_seq: -1,
   interrupted: false,
   run_status: 'complete',
   session_id: 'session-1',
@@ -39,6 +47,7 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
     onSyncDraft: vi.fn(async () => undefined),
     session: {
       refresh: vi.fn(async () => true),
+      loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
       reset: vi.fn(),
       runAction,
@@ -53,6 +62,42 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
   }) satisfies DifyBuilderRuntime
 
 describe('Dify Builder store', () => {
+  it('exposes only an interaction fenced to the current session version', () => {
+    const store = createStore()
+    const card = {
+      at_version: 1,
+      kind: 'form' as const,
+      payload: { fields: [], values: {}, variant: 'testdata' as const },
+      seq: 1,
+    }
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card,
+          valid_at_version: 1,
+        },
+        version: 2,
+      }),
+    )
+    expect(store.get(difyBuilderActiveInteractionAtom)).toBeNull()
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card,
+          valid_at_version: 2,
+        },
+        version: 2,
+      }),
+    )
+    expect(store.get(difyBuilderActiveInteractionAtom)?.card).toEqual(card)
+  })
+
   it('requires the feature, edit permission, and an idle terminal session to start a fix', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
@@ -99,6 +144,49 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
   })
 
+  it('treats thinking as active and only enables chat at conversational gates', () => {
+    const store = createStore()
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'thinking' }))
+    expect(store.get(difyBuilderRunActiveAtom)).toBe(true)
+    expect(store.get(difyBuilderInteractionBusyAtom)).toBe(true)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_confirmation' }))
+    expect(store.get(difyBuilderRunActiveAtom)).toBe(false)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(true)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(false)
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'paused' }))
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        recovery: {
+          can_continue: true,
+          can_restart: true,
+          message: 'Choose how to recover.',
+          recovery_class: 'config_only',
+        },
+        run_status: 'waiting_confirmation',
+      }),
+    )
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        app_revision: { observed: 'old', current: 'new', conflicted: true },
+        run_status: 'waiting_confirmation',
+      }),
+    )
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+  })
+
   it('does not notify fix-entry subscribers when only conversation content changes', () => {
     const store = createStore()
     store.set(difyBuilderRuntimeAtom, createRuntime(vi.fn(async () => true)))
@@ -106,20 +194,14 @@ describe('Dify Builder store', () => {
     const listener = vi.fn()
     const unsubscribe = store.sub(difyBuilderCanStartFixAtom, listener)
 
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        conversation: [
-          {
-            at_version: 2,
-            kind: 'notice',
-            payload: { text: 'Repair complete' },
-            seq: 1,
-          },
-        ],
-        version: 2,
-      }),
-    )
+    store.set(difyBuilderConversationAtom, [
+      {
+        at_version: 2,
+        kind: 'notice',
+        payload: { text: 'Repair complete' },
+        seq: 1,
+      },
+    ])
 
     expect(listener).not.toHaveBeenCalled()
 

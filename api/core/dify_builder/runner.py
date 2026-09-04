@@ -19,12 +19,20 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   missing registry entry, mirroring Go's non-sentinel ``fmt.Errorf``).
 """
 
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from core.dify_builder import recovery
-from core.dify_builder.contract import AgentMessageEventData, AssistantTurnItem, Trace, UserItem
+from core.dify_builder.contract import (
+    AgentMessageEventData,
+    AssistantTurnItem,
+    ErrorCard,
+    ProgressEventData,
+    Trace,
+    UserItem,
+)
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
     Checkpoint,
@@ -41,6 +49,8 @@ from core.dify_builder.state import PcState, is_terminal, is_waiting
 
 __all__ = ["CommittedTransition", "Env", "Handler", "Runner", "StepResult"]
 
+_MESSAGE_HISTORY_LIMIT = 24
+
 
 @dataclass(frozen=True)
 class CommittedTransition:
@@ -53,6 +63,9 @@ class CommittedTransition:
     """
 
     session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
     version: int
     state: PcState
     settled: bool
@@ -84,6 +97,26 @@ class Env:
     # is committed. The accumulated reply becomes authoritative in the
     # CAS-backed commit below.
     emit_message: Callable[[AgentMessageEventData], None] | None = None
+    # Called for low-frequency, curated trace snapshots while a handler is
+    # doing structured cognition or external work. These events are transient;
+    # the next CAS-backed commit remains authoritative.
+    emit_progress: Callable[[ProgressEventData], None] | None = None
+    # Correlation metadata for the handler transition currently running.
+    # The runner resets it before every independently committed step.
+    operation_id: str = ""
+    stage_id: str = ""
+    at_version: int = 0
+    event_revision: int = 0
+
+    def begin_operation(self, session: Session) -> None:
+        self.operation_id = str(uuid.uuid4())
+        self.stage_id = str(session.current_state)
+        self.at_version = session.version + 1
+        self.event_revision = 0
+
+    def next_event_revision(self) -> int:
+        self.event_revision += 1
+        return self.event_revision
 
 
 @dataclass
@@ -113,6 +146,13 @@ class Runner:
         *,
         settled: bool,
     ) -> None:
+        at_version = session.version + 1
+        for item in items:
+            # Handler helpers own conversation sequence numbers; the runner is
+            # the only layer that knows which CAS version will make them
+            # durable. Stamp every item here so cards can never remain at the
+            # placeholder version used while a step is being assembled.
+            item.at_version = at_version
         new_version = self._env.repo.compare_and_advance(
             session.id,
             session.version,
@@ -126,12 +166,44 @@ class Runner:
             self._env.emit_commit(
                 CommittedTransition(
                     session_id=session.id,
+                    operation_id=self._env.operation_id,
+                    stage_id=self._env.stage_id,
+                    at_version=new_version,
                     version=new_version,
                     state=next_state,
                     settled=settled,
                     items=list(items),
                 )
             )
+
+    def fail(self, session_id: str) -> Session:
+        """Durably close an unexpected worker failure.
+
+        The generic public copy is intentional: exception details stay in the
+        worker log. A failed session remains restartable through the normal
+        recovery action instead of being represented only by an expired Redis
+        lock or an ephemeral SSE error. The operation metadata captured before
+        the failing step also fences out an older worker whose lock expired:
+        that worker must not overwrite a newer, non-terminal session head.
+        """
+        session, context = self._env.repo.get_session(session_id)
+        if is_terminal(session.current_state):
+            return session
+        if self._env.at_version > 0 and (
+            session.version != self._env.at_version - 1 or str(session.current_state) != self._env.stage_id
+        ):
+            raise ConflictError(
+                f"dify_builder: refusing stale failure for session {session_id} "
+                f"at version {session.version} state {session.current_state}"
+            )
+        self._env.begin_operation(session)
+        item = ErrorCard(
+            title="Builder step failed",
+            body="The operation could not be completed. Restart from the current draft to continue.",
+        ).to_item(seq=context.next_seq, at_version=session.version + 1)
+        context.next_seq += 1
+        self._commit(session, PcState.FAILED, context, [item], settled=True)
+        return session
 
     def advance(self, session_id: str, turn: Turn) -> Session:
         """Run the current state's handler with the turn, then auto-advance
@@ -142,6 +214,7 @@ class Runner:
         version race raises ConflictError with nothing applied.
         """
         s, fc = self._env.repo.get_session(session_id)
+        self._env.begin_operation(s)
 
         action_kind = turn.action.kind if turn.action is not None else ""
 
@@ -150,20 +223,14 @@ class Runner:
         # client-generated turn id before applying the normal stale-version
         # gate: a complete turn is an idempotent success; a partial turn
         # resumes from the durable head without duplicating the user message.
-        message_history: list[ConversationItem] | None = None
         message_user_exists = False
         if action_kind == "message" and turn.action is not None:
             turn_id = turn.action.payload.get("client_turn_id")
             if not isinstance(turn_id, str) or not turn_id:
                 raise ValueError("dify_builder: message client_turn_id is required")
-            message_history = self._env.repo.list_conversation(session_id)
-            message_user_exists = any(
-                item.kind == "user" and item.payload.get("turn_id") == turn_id for item in message_history
-            )
-            assistant_exists = any(
-                item.kind == "assistant_turn" and item.payload.get("turn_id") == turn_id for item in message_history
-            )
-            if assistant_exists:
+            turn_kinds = self._env.repo.get_conversation_turn_kinds(session_id, turn_id)
+            message_user_exists = "user" in turn_kinds
+            if "assistant_turn" in turn_kinds:
                 return s
             if message_user_exists:
                 turn.action.base_version = s.version
@@ -196,6 +263,7 @@ class Runner:
             if settled:
                 return s
             turn = Turn(actor=turn.actor)  # action consumed
+            self._env.begin_operation(s)
             # fall through to the advance loop below
 
         if action_kind == "message":
@@ -215,7 +283,11 @@ class Runner:
                 )
                 fc.next_seq += 1
                 self._commit(s, s.current_state, fc, [user_item], settled=False)
-                message_history = self._env.repo.list_conversation(session_id)
+                # The assistant half targets the next CAS version. Give it a
+                # fresh operation fence so a failure after the durable user
+                # bubble can still be recorded without looking like a stale
+                # worker from the prior commit.
+                self._env.begin_operation(s)
 
             graph, _graph_hash = self._env.dify.read_graph(s.app_id, turn.actor)
             assistant_seq = fc.next_seq
@@ -227,18 +299,24 @@ class Runner:
                 self._env.emit_message(
                     AgentMessageEventData(
                         session_id=s.id,
+                        operation_id=self._env.operation_id,
                         id=turn_id,
                         answer=delta,
                         seq=assistant_seq,
                         at_version=assistant_version,
+                        revision=self._env.next_event_revision(),
                         stage_id=str(s.current_state),
                     )
                 )
 
+            message_history = self._env.repo.list_recent_conversation(
+                session_id,
+                limit=_MESSAGE_HISTORY_LIMIT,
+            )
             reply = self._env.agent.respond_to_message(
                 s.current_state,
                 fc,
-                message_history or self._env.repo.list_conversation(session_id),
+                message_history,
                 graph,
                 text,
                 emit_delta,
@@ -266,6 +344,8 @@ class Runner:
             if handler is None:
                 raise RuntimeError(f"dify_builder: no handler for state {s.current_state}")
 
+            if not first:
+                self._env.begin_operation(s)
             step_turn = turn if first else Turn(actor=turn.actor)  # action consumed; keep actor for working steps
             res = handler(self._env, step_turn, s, fc)
             if res.context is None:

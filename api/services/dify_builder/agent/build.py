@@ -1,6 +1,6 @@
 """Real LLM cognition for Dify Builder's Build mode (light methods).
 
-Pure functions called by LlmBuilderAgent when DIFY_BUILDER_AGENT_MODE=llm.
+Pure functions called by ``LlmBuilderAgent`` for Build cognition.
 Each degrades to an honest result on model-None / provider-error / parse-fail
 rather than crashing the advance. build_nodes lives in the same module
 (added in Task A6)."""

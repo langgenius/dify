@@ -957,14 +957,6 @@ class WorkflowConfig(BaseSettings):
         default="ask",
     )
 
-    DIFY_BUILDER_AGENT_MODE: str = Field(
-        description=(
-            "Dify Builder agent cognition source: placeholder (canned, deterministic) "
-            "| llm (real agent shell / real cognition)."
-        ),
-        default="placeholder",
-    )
-
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """

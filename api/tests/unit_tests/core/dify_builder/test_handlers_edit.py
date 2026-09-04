@@ -80,6 +80,8 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis():
     assert fc.goal_text == "Add a review gate"
     assert fc.edit_rules  # analyze_impact populated the rules
     assert "llm" in fc.edit_target_node_ids
+    assert fc.last_snapshot_hash
+    assert fc.last_structure_fingerprint
     kinds = [i.kind for i in repo.list_conversation(s.id)]
     assert "summary" in kinds  # context summary
     assert "form" in kinds
@@ -376,7 +378,7 @@ def test_edit_test_input_failure_routes_to_testdata_gate():
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["tone"] == "error"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["stage_id"] == "edit.await_testdata"
+    assert assistant.payload["stage_id"] == "edit.test_affected_paths"
 
 
 def test_edit_test_config_failure_still_routes_to_repair_gate():
@@ -399,8 +401,8 @@ def test_edit_test_config_failure_still_routes_to_repair_gate():
     assert result.context.test_input_ref == "ti-1"  # untouched on the config path
 
 
-def test_review_publish_reaches_terminal_edit_publish_with_publish_card():
-    from core.dify_builder.handlers_edit import handle_review
+def test_review_publish_enters_working_publish_before_side_effect():
+    from core.dify_builder.handlers_edit import handle_publish, handle_review
 
     dify = FakeEditDifyPort()
     events: list[dict] = []
@@ -410,10 +412,15 @@ def test_review_publish_reaches_terminal_edit_publish_with_publish_card():
         env, Turn(action=Action(kind="publish_workflow", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )
     assert res.next == PcState.EDIT_PUBLISH
+    assert dify.published is False
+    assert [item.kind for item in res.items] == ["decision"]
+
+    s.current_state = PcState.EDIT_PUBLISH
+    publish = handle_publish(env, Turn(actor=_actor()), s, res.context)
+    assert publish.next == PcState.EDIT_COMPLETE
     assert dify.published is True
-    kinds = {i.kind for i in res.items}
-    assert "publish" in kinds
-    assert any(i.kind == "summary" and i.payload["variant"] == "completion" for i in res.items)
+    assert any(item.kind == "publish" for item in publish.items)
+    assert any(item.kind == "summary" and item.payload["variant"] == "completion" for item in publish.items)
     assert {"event": "publish_workflow"} in events
 
 
@@ -427,7 +434,7 @@ def test_review_keep_draft_reaches_terminal_without_publish_card():
     res = handle_review(
         env, Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )
-    assert res.next == PcState.EDIT_PUBLISH  # same terminal, mock: keep_draft = Task Completed
+    assert res.next == PcState.EDIT_COMPLETE
     assert dify.published is False  # but no real publish
     assert not any(i.kind == "publish" for i in res.items)  # and no publish card
     assert any(i.kind == "summary" and i.payload["variant"] == "completion" for i in res.items)
@@ -534,9 +541,7 @@ def test_edit_await_repair_keep_draft_goes_to_review():
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
-    result = handle_await_repair(
-        env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext()
-    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext())
     assert result.next == PcState.EDIT_REVIEW
 
 
@@ -546,9 +551,7 @@ def test_edit_await_repair_undo_reverts():
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
     s = _seed_edit_session(repo, PcState.EDIT_AWAIT_REPAIR, edit_target_node_ids=["llm"])
-    result = handle_await_repair(
-        env, Turn(actor=_actor(), action=Action(kind="undo")), *repo.get_session(s.id)
-    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="undo")), *repo.get_session(s.id))
     assert result.next == PcState.EDIT_REVERTED
     assert any(i.kind == "decision" for i in result.items)
 
@@ -583,9 +586,10 @@ def test_edit_registry_covers_all_non_terminal_edit_states():
         PcState.EDIT_TEST_AFFECTED_PATHS,
         PcState.EDIT_AWAIT_REPAIR,
         PcState.EDIT_REVIEW,
+        PcState.EDIT_PUBLISH,
         PcState.EDIT_REVERTED,
     }
-    assert PcState.EDIT_PUBLISH not in edit_registry()  # terminal: no handler
+    assert PcState.EDIT_COMPLETE not in edit_registry()
 
 
 def test_full_edit_flow_goal_to_publish():
@@ -618,9 +622,7 @@ def test_full_edit_flow_goal_to_publish():
     assert out.current_state == PcState.EDIT_PLAN_APPROVAL
 
     # 3) approve_plan (-> approve_repair) -> THE EDIT -> edit.apply_changes
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_APPLY_CHANGES
     # the existing llm node was reconfigured with the submitted rule value.
     graph, _hash = dify.read_graph("app", _actor())
@@ -628,9 +630,7 @@ def test_full_edit_flow_goal_to_publish():
     assert llm["data"]["risk_threshold"] == "high"
 
     # 4) run_affected_tests -> edit.await_testdata (gate; no test input prepared yet)
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_AWAIT_TESTDATA
 
     # 4b) provide_testdata (mock) -> edit.test_affected_paths (working, auto) -> rest at edit.review
@@ -638,11 +638,9 @@ def test_full_edit_flow_goal_to_publish():
     out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.EDIT_REVIEW
 
-    # 5) publish_workflow -> edit.publish (terminal)
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="publish_workflow", base_version=out.version), actor=_actor())
-    )
-    assert out.current_state == PcState.EDIT_PUBLISH
+    # 5) publish_workflow -> edit.publish (working) -> edit.complete (terminal)
+    out = runner.advance(s.id, Turn(action=Action(kind="publish_workflow", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_COMPLETE
     assert dify.published is True
 
     items = repo.list_conversation(s.id)
@@ -685,7 +683,7 @@ def test_full_edit_flow_keep_draft_completes_without_publish():
     assert out.current_state == PcState.EDIT_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.EDIT_PUBLISH  # terminal, Task Completed
+    assert out.current_state == PcState.EDIT_COMPLETE
     assert dify.published is False  # keep_draft does not publish
     assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))
 

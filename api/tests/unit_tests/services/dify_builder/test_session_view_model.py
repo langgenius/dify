@@ -12,7 +12,7 @@ def test_session_view_has_model_field_default_none():
         canvas_read_only=False,
         run_status=RunStatus.WAITING_INPUT,
         interrupted=False,
-        conversation=[],
+        conversation_last_seq=-1,
     )
     assert view.model is None
 

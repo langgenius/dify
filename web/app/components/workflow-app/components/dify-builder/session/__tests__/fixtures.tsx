@@ -1,6 +1,10 @@
-import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  DifyBuilderConversationPageResponse,
+  DifyBuilderStreamEventResponse,
+  ProgressEventData,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
-import type { SessionView } from '../../types'
+import type { ConversationItem, SessionView } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { useDifyBuilderSessionController } from '../use-session-controller'
@@ -13,14 +17,25 @@ export const createSessionView = (overrides: Partial<SessionView> = {}): Session
   canvas_read_only: true,
   run_status: 'executing',
   interrupted: false,
-  conversation: [],
+  conversation_last_seq: -1,
+  active_interaction: null,
   app_revision: { observed: 'revision-1', current: 'revision-1', conflicted: false },
   ...overrides,
 })
 
-export const snapshotEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
-  event: 'snapshot',
-  data: view,
+export const commandStartedEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
+  event: 'command_started',
+  data: { kind: 'command_started', ...view },
+})
+
+export const conversationPage = (
+  data: ConversationItem[] = [],
+  hasMore = false,
+): DifyBuilderConversationPageResponse => ({
+  data,
+  has_more: hasMore,
+  first_seq: data[0]?.seq ?? null,
+  last_seq: data.at(-1)?.seq ?? null,
 })
 
 export const stateEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
@@ -28,16 +43,47 @@ export const stateEvent = (view: SessionView): DifyBuilderStreamEventResponse =>
   data: { kind: 'state', ...view },
 })
 
-export const agentMessageEvent = (answer: string): DifyBuilderStreamEventResponse => ({
+export const agentMessageEvent = (
+  answer: string,
+  revision = 1,
+): DifyBuilderStreamEventResponse => ({
   event: 'agent_message',
   data: {
     kind: 'agent_message',
     session_id: 'session-1',
+    operation_id: 'operation-1',
     id: 'turn-1',
     answer,
     seq: 1,
     at_version: 4,
+    revision,
     stage_id: 'fix.await_approval',
+  },
+})
+
+export const progressEvent = (
+  overrides: Partial<ProgressEventData> = {},
+): DifyBuilderStreamEventResponse => ({
+  event: 'progress',
+  data: {
+    kind: 'progress',
+    session_id: 'session-1',
+    operation_id: 'operation-1',
+    stage_id: 'fix.verify',
+    at_version: 2,
+    revision: 1,
+    trace: {
+      status: 'running',
+      steps: [
+        {
+          id: 'fix-run-validation',
+          label: 'Run the repaired workflow',
+          state: 'active',
+          tone: 'neutral',
+        },
+      ],
+    },
+    ...overrides,
   },
 })
 

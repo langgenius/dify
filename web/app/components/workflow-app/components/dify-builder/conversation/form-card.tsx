@@ -31,12 +31,14 @@ export const FormCard = memo(
   ({
     item,
     busy,
+    interactive,
     invalidated,
     onActionPayloadChange,
     onActionValidityChange,
   }: {
     item: Extract<ConversationItem, { kind: 'form' }>
     busy: boolean
+    interactive: boolean
     invalidated: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
@@ -54,7 +56,7 @@ export const FormCard = memo(
         : item.payload.variant === 'edit_rules'
           ? 'submit_edit_rules'
           : 'provide_testdata'
-    const frozen = busy || invalidated || item.payload.frozen === true
+    const frozen = busy || !interactive || invalidated || item.payload.frozen === true
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
     const actionPayloadChangeRef = useRef(onActionPayloadChange)
     const actionValidityChangeRef = useRef(onActionValidityChange)
@@ -68,7 +70,7 @@ export const FormCard = memo(
     }, [onActionValidityChange])
 
     useEffect(() => {
-      if (invalidated || item.payload.frozen === true) return
+      if (!interactive || invalidated || item.payload.frozen === true) return
 
       actionPayloadChangeRef.current(
         actionId,
@@ -77,7 +79,7 @@ export const FormCard = memo(
           : prepared.preparedValues,
       )
       actionValidityChangeRef.current?.(actionId, prepared.valid)
-    }, [actionId, invalidated, item.payload.frozen, prepared])
+    }, [actionId, interactive, invalidated, item.payload.frozen, prepared])
 
     const updateValues = (key: string, value: unknown) => {
       setValues((current) => ({ ...current, [key]: value }))
