@@ -29,7 +29,7 @@ from services.agent.errors import (
     AgentHomeSnapshotTooLargeError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
-from services.agent.workspace_service import AgentWorkspaceService
+from services.agent.workspace_service import AgentWorkspaceBindingGenerationMismatchError, AgentWorkspaceService
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -75,6 +75,8 @@ def _persist_build_binding(
     app_id: str,
     backing_app_id: str | None,
     base_home_snapshot_id: str | None = "home-old",
+    agent_config_version_id: str = "build-1",
+    agent_config_version_kind: AgentConfigVersionKind = AgentConfigVersionKind.BUILD_DRAFT,
 ) -> None:
     runtime_app_id = backing_app_id or app_id
     session.add_all(
@@ -106,8 +108,8 @@ def _persist_build_binding(
                 workspace_id="workspace-1",
                 agent_id="agent-1",
                 base_home_snapshot_id=base_home_snapshot_id,
-                agent_config_version_id="build-1",
-                agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                agent_config_version_id=agent_config_version_id,
+                agent_config_version_kind=agent_config_version_kind,
                 backend_binding_ref="binding-ref-1",
                 status=AgentWorkingResourceStatus.ACTIVE,
             ),
@@ -165,6 +167,41 @@ def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.Monkey
 
     assert snapshot.snapshot_ref == "snapshot-ref-2"
     assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is snapshot
+
+
+@pytest.mark.parametrize(
+    ("base_home_snapshot_id", "agent_config_version_id", "agent_config_version_kind"),
+    [
+        (None, "build-1", AgentConfigVersionKind.BUILD_DRAFT),
+        ("home-old", "build-2", AgentConfigVersionKind.BUILD_DRAFT),
+        ("home-old", "build-1", AgentConfigVersionKind.SNAPSHOT),
+    ],
+)
+def test_build_apply_rejects_binding_from_a_different_generation(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    base_home_snapshot_id: str | None,
+    agent_config_version_id: str,
+    agent_config_version_kind: AgentConfigVersionKind,
+) -> None:
+    _persist_build_binding(
+        sqlite_session,
+        app_id="app-1",
+        backing_app_id=None,
+        base_home_snapshot_id=base_home_snapshot_id,
+        agent_config_version_id=agent_config_version_id,
+        agent_config_version_kind=agent_config_version_kind,
+    )
+    client = _client(snapshot_ref="snapshot-ref-2")
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(AgentWorkspaceBindingGenerationMismatchError):
+        AgentHomeSnapshotService.create_for_build_apply(
+            session=sqlite_session,
+            build_draft=_build_draft(),
+        )
+
+    client.create_home_snapshot_from_binding_sync.assert_not_called()
 
 
 def test_build_apply_fails_fast_without_source_binding(unbound_session: Session) -> None:
