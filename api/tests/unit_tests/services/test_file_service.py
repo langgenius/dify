@@ -10,7 +10,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -164,14 +163,14 @@ class TestFileService:
         assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
         mock_extract_tenant_id.assert_not_called()
 
-    def test_upload_file_persists_purpose(self, file_service: FileService):
+    def test_upload_file_persists_purpose(self, file_service: FileService, config_overrides: Callable[..., None]):
         user = MagicMock(spec=Account)
         user.id = "user-id"
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
 
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
             patch("services.file_service.extract_tenant_id", return_value="tenant-id"),
             patch("services.file_service.file_helpers.get_signed_file_url"),
         ):
@@ -203,11 +202,11 @@ class TestFileService:
                 purpose=UploadFilePurpose.ICON,
             )
 
-    def test_resolve_upload_file_storage(self):
+    def test_resolve_upload_file_storage(self, config_overrides: Callable[..., None]):
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
             public_storage = MagicMock()
             public_storage_registry.get.return_value = public_storage
@@ -232,10 +231,10 @@ class TestFileService:
             public_storage_registry.get.return_value = None
             assert resolve_upload_file_storage(UploadFilePurpose.ICON) is private_storage
 
-    def test_resolve_public_upload_file_requires_public_storage(self):
+    def test_resolve_public_upload_file_requires_public_storage(self, config_overrides: Callable[..., None]):
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
         with (
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
             public_storage_registry.get.return_value = None
 
@@ -379,7 +378,9 @@ class TestFileService:
             assert result == base64.b64encode(b"test content").decode()
             mock_storage.load_once.assert_called_once_with("test_key")
 
-    def test_get_file_base64_uses_public_storage_for_icon(self, file_service: FileService, db_session: Session):
+    def test_get_file_base64_uses_public_storage_for_icon(
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
+    ):
         key = "public/upload_files/tenant-id/icon.png"
         self._persist_upload_file(
             db_session,
@@ -387,11 +388,11 @@ class TestFileService:
             purpose=UploadFilePurpose.ICON,
             storage_type=StorageType.S3,
         )
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
 
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
             public_storage = MagicMock()
             public_storage_registry.get.return_value = public_storage
@@ -437,7 +438,7 @@ class TestFileService:
             file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
 
     def test_get_icon_url_with_presigned_fallback_preserves_legacy_behavior(
-        self, file_service: FileService, db_session: Session
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
     ):
         self._persist_upload_file(
             db_session,
@@ -445,9 +446,9 @@ class TestFileService:
             mime_type="image/png",
             key="upload_files/tenant_id/icon.png",
         )
+        config_overrides(FILES_ACCESS_TIMEOUT=300)
 
         with (
-            patch.object(dify_config, "FILES_ACCESS_TIMEOUT", 300),
             patch("services.file_service.storage") as mock_storage,
         ):
             mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
@@ -465,7 +466,7 @@ class TestFileService:
         )
 
     def test_get_icon_url_with_presigned_fallback_uses_build_icon_url_for_proxy_policy(
-        self, file_service: FileService, db_session: Session
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
     ):
         self._persist_upload_file(
             db_session,
@@ -475,11 +476,11 @@ class TestFileService:
             purpose=UploadFilePurpose.ICON,
             storage_type=StorageType.S3,
         )
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
 
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
             patch("services.file_service.build_icon_url", return_value="https://api.example.com/icon") as build_url,
         ):
             public_storage = MagicMock()
@@ -493,7 +494,7 @@ class TestFileService:
         private_storage.generate_presigned_url.assert_not_called()
 
     def test_get_icon_url_with_presigned_fallback_uses_build_icon_url_for_presigned_policy(
-        self, file_service: FileService, db_session: Session
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
     ):
         self._persist_upload_file(
             db_session,
@@ -506,11 +507,11 @@ class TestFileService:
         policies = {
             "ICON": {StorageType.S3: PublicStoragePolicyConfig(download_mode="presigned")},
         }
+        config_overrides(PUBLIC_STORAGE_POLICIES=policies)
 
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", policies),
             patch(
                 "services.file_service.build_icon_url",
                 return_value="https://s3.example.com/icon.png?signature=test",
@@ -670,7 +671,7 @@ class TestFileService:
             assert file.key == upload_file.key
 
     def test_get_file_generator_by_file_id_uses_public_storage_for_icon(
-        self, file_service: FileService, db_session: Session
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
     ):
         key = "public/upload_files/tenant-id/icon.png"
         upload_file = self._persist_upload_file(
@@ -679,12 +680,12 @@ class TestFileService:
             purpose=UploadFilePurpose.ICON,
             storage_type=StorageType.S3,
         )
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
 
         with (
             patch("services.file_service.file_helpers.verify_file_signature", return_value=True),
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
             public_storage = MagicMock()
             public_storage_registry.get.return_value = public_storage
@@ -749,7 +750,9 @@ class TestFileService:
             db_session.expire_all()
             assert db_session.get(UploadFile, "file_id") is None
 
-    def test_delete_file_uses_public_storage_for_icon(self, file_service: FileService, db_session: Session):
+    def test_delete_file_uses_public_storage_for_icon(
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
+    ):
         key = "public/upload_files/tenant-id/icon.png"
         self._persist_upload_file(
             db_session,
@@ -757,11 +760,11 @@ class TestFileService:
             purpose=UploadFilePurpose.ICON,
             storage_type=StorageType.S3,
         )
+        config_overrides(PUBLIC_STORAGE_POLICIES=_icon_s3_policies())
 
         with (
             patch("services.file_service.storage") as private_storage,
             patch("core.file.upload_file_policy.public_storage") as public_storage_registry,
-            patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _icon_s3_policies()),
         ):
             public_storage = MagicMock()
             public_storage_registry.get.return_value = public_storage

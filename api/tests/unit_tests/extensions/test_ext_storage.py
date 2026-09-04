@@ -1,9 +1,9 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
-from configs import dify_config
 from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from extensions.ext_storage import PublicStorage, PublicStorageRegistry
 from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
@@ -28,11 +28,13 @@ def test_public_storage_forwards_content_type_to_s3() -> None:
     storage_runner.save.assert_called_once_with("public/icon.png", b"image", content_type="image/png")
 
 
-def test_public_storage_registry_stays_disabled_without_initializing_backend() -> None:
+def test_public_storage_registry_stays_disabled_without_initializing_backend(
+    config_overrides: Callable[..., None],
+) -> None:
     registry = PublicStorageRegistry()
+    config_overrides(PUBLIC_STORAGE_ENABLED=False)
 
     with (
-        patch.object(dify_config, "PUBLIC_STORAGE_ENABLED", False),
         patch("extensions.storage.aws_s3_storage.AwsS3Storage") as storage_factory,
     ):
         registry.init_app(Flask(__name__))
@@ -42,18 +44,20 @@ def test_public_storage_registry_stays_disabled_without_initializing_backend() -
     storage_factory.assert_not_called()
 
 
-def test_public_storage_registry_initializes_policy_s3_backend() -> None:
+def test_public_storage_registry_initializes_policy_s3_backend(config_overrides: Callable[..., None]) -> None:
     registry = PublicStorageRegistry()
     storage_runner = object()
+    config_overrides(
+        PUBLIC_STORAGE_ENABLED=True,
+        PUBLIC_STORAGE_POLICIES=_policies(),
+        PUBLIC_STORAGE_ENDPOINT="https://r2.example.com",
+        PUBLIC_STORAGE_REGION="auto",
+        PUBLIC_STORAGE_ACCESS_KEY="access-key",
+        PUBLIC_STORAGE_SECRET_KEY="secret-key",
+        PUBLIC_STORAGE_ADDRESS_STYLE="path",
+    )
 
     with (
-        patch.object(dify_config, "PUBLIC_STORAGE_ENABLED", True),
-        patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _policies()),
-        patch.object(dify_config, "PUBLIC_STORAGE_ENDPOINT", "https://r2.example.com"),
-        patch.object(dify_config, "PUBLIC_STORAGE_REGION", "auto"),
-        patch.object(dify_config, "PUBLIC_STORAGE_ACCESS_KEY", "access-key"),
-        patch.object(dify_config, "PUBLIC_STORAGE_SECRET_KEY", "secret-key"),
-        patch.object(dify_config, "PUBLIC_STORAGE_ADDRESS_STYLE", "path"),
         patch("extensions.storage.aws_s3_storage.AwsS3Storage", return_value=storage_runner) as storage_factory,
     ):
         registry.init_app(Flask(__name__))
@@ -75,34 +79,40 @@ def test_public_storage_registry_initializes_policy_s3_backend() -> None:
     )
 
 
-def test_public_storage_registry_rejects_incomplete_connection_configuration() -> None:
+def test_public_storage_registry_rejects_incomplete_connection_configuration(
+    config_overrides: Callable[..., None],
+) -> None:
     registry = PublicStorageRegistry()
+    config_overrides(
+        PUBLIC_STORAGE_ENABLED=True,
+        PUBLIC_STORAGE_POLICIES=_policies(bucket=None),
+        PUBLIC_STORAGE_ENDPOINT="https://r2.example.com",
+        S3_BUCKET_NAME=None,
+        PUBLIC_STORAGE_ACCESS_KEY="access-key",
+        PUBLIC_STORAGE_SECRET_KEY="secret-key",
+    )
 
     with (
-        patch.object(dify_config, "PUBLIC_STORAGE_ENABLED", True),
-        patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _policies(bucket=None)),
-        patch.object(dify_config, "PUBLIC_STORAGE_ENDPOINT", "https://r2.example.com"),
-        patch.object(dify_config, "S3_BUCKET_NAME", None),
-        patch.object(dify_config, "PUBLIC_STORAGE_ACCESS_KEY", "access-key"),
-        patch.object(dify_config, "PUBLIC_STORAGE_SECRET_KEY", "secret-key"),
         pytest.raises(ValueError, match="Public storage configuration is incomplete"),
     ):
         registry.init_app(Flask(__name__))
 
 
-def test_public_storage_registry_falls_back_to_s3_bucket_name() -> None:
+def test_public_storage_registry_falls_back_to_s3_bucket_name(config_overrides: Callable[..., None]) -> None:
     registry = PublicStorageRegistry()
     storage_runner = object()
+    config_overrides(
+        PUBLIC_STORAGE_ENABLED=True,
+        PUBLIC_STORAGE_POLICIES=_policies(bucket=None),
+        PUBLIC_STORAGE_ENDPOINT="https://r2.example.com",
+        PUBLIC_STORAGE_REGION="auto",
+        S3_BUCKET_NAME="fallback-files",
+        PUBLIC_STORAGE_ACCESS_KEY="access-key",
+        PUBLIC_STORAGE_SECRET_KEY="secret-key",
+        PUBLIC_STORAGE_ADDRESS_STYLE="path",
+    )
 
     with (
-        patch.object(dify_config, "PUBLIC_STORAGE_ENABLED", True),
-        patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", _policies(bucket=None)),
-        patch.object(dify_config, "PUBLIC_STORAGE_ENDPOINT", "https://r2.example.com"),
-        patch.object(dify_config, "PUBLIC_STORAGE_REGION", "auto"),
-        patch.object(dify_config, "S3_BUCKET_NAME", "fallback-files"),
-        patch.object(dify_config, "PUBLIC_STORAGE_ACCESS_KEY", "access-key"),
-        patch.object(dify_config, "PUBLIC_STORAGE_SECRET_KEY", "secret-key"),
-        patch.object(dify_config, "PUBLIC_STORAGE_ADDRESS_STYLE", "path"),
         patch("extensions.storage.aws_s3_storage.AwsS3Storage", return_value=storage_runner) as storage_factory,
     ):
         registry.init_app(Flask(__name__))
@@ -111,7 +121,9 @@ def test_public_storage_registry_falls_back_to_s3_bucket_name() -> None:
     assert storage_factory.call_args.args[0].bucket_name == "fallback-files"
 
 
-def test_public_storage_registry_rejects_multiple_storage_types_for_one_purpose() -> None:
+def test_public_storage_registry_rejects_multiple_storage_types_for_one_purpose(
+    config_overrides: Callable[..., None],
+) -> None:
     registry = PublicStorageRegistry()
     policies = {
         "ICON": {
@@ -120,9 +132,6 @@ def test_public_storage_registry_rejects_multiple_storage_types_for_one_purpose(
         }
     }
 
-    with (
-        patch.object(dify_config, "PUBLIC_STORAGE_ENABLED", True),
-        patch.object(dify_config, "PUBLIC_STORAGE_POLICIES", policies),
-        pytest.raises(ValueError, match="must configure exactly one storage type"),
-    ):
+    config_overrides(PUBLIC_STORAGE_ENABLED=True, PUBLIC_STORAGE_POLICIES=policies)
+    with pytest.raises(ValueError, match="must configure exactly one storage type"):
         registry.init_app(Flask(__name__))

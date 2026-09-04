@@ -1,3 +1,5 @@
+from typing import Any
+
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.file.upload_file_policy import (
@@ -8,6 +10,19 @@ from graphon.file import helpers as file_helpers
 from models.enums import UploadFilePurpose
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+
+    return resolve_icon_file_url(icon)
 
 
 def resolve_icon_file_url(upload_file_id: str) -> str:

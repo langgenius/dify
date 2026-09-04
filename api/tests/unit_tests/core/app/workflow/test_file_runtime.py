@@ -223,11 +223,11 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
 
 def test_resolve_upload_file_url_does_not_load_upload_file_without_access_scope(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
+    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
     controller = MagicMock()
     controller.current_scope.return_value = None
 
@@ -241,11 +241,11 @@ def test_resolve_upload_file_url_does_not_load_upload_file_without_access_scope(
 
 def test_resolve_upload_file_url_keeps_attachment_on_proxy(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
+    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
 
     result = _build_runtime().resolve_upload_file_url(
         upload_file_id="upload-file-id",

@@ -9,6 +9,16 @@ from extensions.storage.storage_type import StorageType
 from models.enums import UploadFilePurpose
 
 
+def test_build_icon_url_uses_specialized_icon_file_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
+    resolve_url = MagicMock(return_value="https://icons.example.com/icon.png")
+    monkeypatch.setattr(upload_file_url, "resolve_icon_file_url", resolve_url)
+
+    result = upload_file_url.build_icon_url("image", "file-id")
+
+    assert result == "https://icons.example.com/icon.png"
+    resolve_url.assert_called_once_with("file-id")
+
+
 def test_resolve_icon_file_url_uses_proxy_without_direct_policy(monkeypatch: pytest.MonkeyPatch) -> None:
     has_direct_policy = MagicMock(return_value=False)
     proxy_url = MagicMock(return_value="https://api.example.com/files/icon/file-preview")

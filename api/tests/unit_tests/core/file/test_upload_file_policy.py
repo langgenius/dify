@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
@@ -16,6 +17,7 @@ from models.enums import UploadFilePurpose
 
 def _configure_icon_s3_policy(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     *,
     enabled: bool = True,
     download_mode: PublicStorageDownloadMode = "proxy",
@@ -26,19 +28,16 @@ def _configure_icon_s3_policy(
         cf_waf_hmac_base_url="https://icons.example.com",
         cf_waf_hmac_secret="unit-secret",
     )
-    monkeypatch.setattr(
-        dify_config,
-        "PUBLIC_STORAGE_POLICIES",
-        {"ICON": {StorageType.S3: policy_config}},
-    )
+    config_overrides(PUBLIC_STORAGE_POLICIES={"ICON": {StorageType.S3: policy_config}})
     policy_storage = MagicMock() if enabled else None
     monkeypatch.setattr(upload_file_policy.public_storage, "get", lambda *_: policy_storage)
 
 
 def test_resolve_upload_file_storage_policy_matches_purpose_storage_type_and_key(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    _configure_icon_s3_policy(monkeypatch, download_mode="presigned")
+    _configure_icon_s3_policy(monkeypatch, config_overrides, download_mode="presigned")
 
     policy = upload_file_policy.resolve_upload_file_storage_policy(
         UploadFilePurpose.ICON,
@@ -71,8 +70,9 @@ def test_resolve_upload_file_storage_policy_matches_purpose_storage_type_and_key
 
 def test_resolve_upload_file_storage_policy_excludes_disabled_policy(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    _configure_icon_s3_policy(monkeypatch, enabled=False)
+    _configure_icon_s3_policy(monkeypatch, config_overrides, enabled=False)
 
     assert upload_file_policy.resolve_upload_file_storage_policy(UploadFilePurpose.ICON) is None
     assert (
@@ -136,8 +136,10 @@ def test_upload_file_storage_policy_generates_cloudflare_waf_hmac_url() -> None:
     assert parse_qs(parsed.query) == {"verify": [f"1700000000-{expected_mac}"]}
 
 
-def test_has_direct_upload_file_download_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    _configure_icon_s3_policy(monkeypatch, download_mode="proxy")
+def test_has_direct_upload_file_download_policy(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    _configure_icon_s3_policy(monkeypatch, config_overrides, download_mode="proxy")
     assert upload_file_policy.has_direct_upload_file_download_policy(UploadFilePurpose.ICON) is False
 
     dify_config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3].download_mode = "presigned"

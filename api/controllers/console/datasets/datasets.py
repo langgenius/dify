@@ -34,6 +34,7 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.file.upload_file_url import build_icon_url
 from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -44,7 +45,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
-from libs.helper import build_icon_url, dump_response, to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
 from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, UploadFile

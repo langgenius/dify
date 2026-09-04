@@ -22,13 +22,14 @@ from constants import (
 from core.file.upload_file_policy import (
     resolve_upload_file_storage_policy,
 )
+from core.file.upload_file_url import build_icon_url
 from core.rag.extractor.extract_processor import ExtractProcessor
 from enums import DeploymentEdition
 from extensions.ext_storage import Storage, storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import build_icon_url, extract_tenant_id
+from libs.helper import extract_tenant_id
 from models import Account
 from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import EndUser, UploadFile

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, PositiveInt, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 
-from extensions.storage.storage_type import StorageType
+from enums.storage_type import StorageType
 
 type PublicStorageDownloadMode = Literal["proxy", "presigned", "cf_waf_hmac"]
 type PublicStoragePolicies = dict[str, dict[StorageType, "PublicStoragePolicyConfig"]]
