@@ -1113,7 +1113,10 @@ def migrate_dataset_permissions_to_rbac(
         )
 
 
-def _iter_agent_rows(tenant_id: str, batch_size: int) -> Iterator[tuple[str, str | None, str | None]]:
+_AgentRow = tuple[str, str | None, str | None]
+
+
+def _iter_agent_row_batches(tenant_id: str, batch_size: int) -> Iterator[list[_AgentRow]]:
     last_agent_id: str | None = None
     while True:
         with session_factory.create_session() as session:
@@ -1130,12 +1133,14 @@ def _iter_agent_rows(tenant_id: str, batch_size: int) -> Iterator[tuple[str, str
             if not rows:
                 return
 
-        for row in rows:
-            yield (
+        yield [
+            (
                 str(row.id),
                 str(row.created_by) if row.created_by else None,
                 str(row.backing_app_id) if row.backing_app_id else None,
             )
+            for row in rows
+        ]
 
         last_agent_id = str(rows[-1].id)
 
@@ -1155,15 +1160,7 @@ class _AgentAccessBootstrapOptions:
     operator_account_id: str
     member_batch_size: int
     apply: bool
-
-
-def _agent_access_is_initialized(
-    configured: bool | None,
-    scope: RBACResourceWhitelistScope,
-    account_ids: list[str],
-) -> bool:
-    fabricated_default_body = scope is RBACResourceWhitelistScope.ALL and not account_ids
-    return not fabricated_default_body if configured is None else configured
+    initialized: bool
 
 
 def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions) -> None:
@@ -1248,6 +1245,11 @@ def _agent_access_bootstrap_failure(
 
 
 def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _AgentAccessBootstrapCounts) -> None:
+    if options.initialized:
+        counts.already_initialized += 1
+        _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.ALREADY_INITIALIZED)
+        return
+
     config = RBACService.AgentAccess.legacy_whitelist_config(
         tenant_id=options.tenant_id,
         account_id=options.operator_account_id,
@@ -1262,11 +1264,6 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
         return
 
     account_ids = sorted(set(config.account_ids))
-    if _agent_access_is_initialized(config.configured, scope, account_ids):
-        counts.already_initialized += 1
-        _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.ALREADY_INITIALIZED)
-        return
-
     _report_backing_app_specific_whitelist(options)
 
     if options.apply:
@@ -1303,26 +1300,31 @@ def _bootstrap_tenant_agent_access(
     counts: _AgentAccessBootstrapCounts,
 ) -> None:
     owner_account_id: str | None = None
-    for agent_id, creator_account_id, backing_app_id in _iter_agent_rows(tenant_id, agent_batch_size):
-        if creator_account_id:
-            operator_account_id = creator_account_id
-        else:
-            if owner_account_id is None:
-                with session_factory.create_session() as session:
-                    owner_account_id = _owner_account_id(tenant_id, session=session)
-            operator_account_id = owner_account_id
-        _bootstrap_agent_access(
-            _AgentAccessBootstrapOptions(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                creator_account_id=creator_account_id,
-                backing_app_id=backing_app_id,
-                operator_account_id=operator_account_id,
-                member_batch_size=member_batch_size,
-                apply=apply,
-            ),
-            counts,
+    for rows in _iter_agent_row_batches(tenant_id, agent_batch_size):
+        initialized_agent_ids = set(
+            RBACService.Migrations.list_configured_agent_ids(tenant_id, [agent_id for agent_id, _, _ in rows])
         )
+        for agent_id, creator_account_id, backing_app_id in rows:
+            if creator_account_id:
+                operator_account_id = creator_account_id
+            else:
+                if owner_account_id is None:
+                    with session_factory.create_session() as session:
+                        owner_account_id = _owner_account_id(tenant_id, session=session)
+                operator_account_id = owner_account_id
+            _bootstrap_agent_access(
+                _AgentAccessBootstrapOptions(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    creator_account_id=creator_account_id,
+                    backing_app_id=backing_app_id,
+                    operator_account_id=operator_account_id,
+                    member_batch_size=member_batch_size,
+                    apply=apply,
+                    initialized=agent_id in initialized_agent_ids,
+                ),
+                counts,
+            )
 
 
 @click.command(
@@ -1330,10 +1332,8 @@ def _bootstrap_tenant_agent_access(
     help=(
         "Upgrade step for agent RBAC. Phase 1 asks the RBAC service to replace agent.manage on every "
         "custom role with agent.create plus the agent.full_access binding. Phase 2 bootstraps the access "
-        "rows pre-existing agents never got, so they stay visible to workspace members. On an RBAC "
-        "service too old to report whether a scope row exists, an agent whose scope was set to all "
-        "with no members by hand is indistinguishable from an uninitialised one and will be re-seeded. "
-        "Dry run by default."
+        "rows pre-existing agents never got, so they stay visible to workspace members. Agents that "
+        "already have a whitelist scope row are skipped. Dry run by default."
     ),
 )
 @click.option("--tenant-id", help="Only migrate a single workspace.")

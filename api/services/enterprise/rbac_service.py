@@ -294,7 +294,6 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
     rbac_whitelist_scope: str | None = Field(
         default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
     )
-    configured: bool | None = None
 
     @field_validator("account_ids", mode="before")
     @classmethod
@@ -316,6 +315,10 @@ class LegacyAgentRoleMigration(_RBACModel):
 class LegacyAgentMigrationReport(_RBACModel):
     roles: list[LegacyAgentRoleMigration] = Field(default_factory=list)
     role_templates: list[LegacyAgentRoleMigration] = Field(default_factory=list)
+
+
+class ConfiguredAgentIDs(_RBACModel):
+    configured_agent_ids: list[str] = Field(default_factory=list)
 
 
 class ResourceWhitelistResources(_RBACModel):
@@ -2172,6 +2175,16 @@ class RBACService:
                 json={"apply": apply},
             )
             return LegacyAgentMigrationReport.model_validate(data or {})
+
+        @staticmethod
+        def list_configured_agent_ids(tenant_id: str, agent_ids: list[str]) -> list[str]:
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/migrations/agent-access-state",
+                tenant_id=tenant_id,
+                json={"agent_ids": agent_ids},
+            )
+            return ConfiguredAgentIDs.model_validate(data or {}).configured_agent_ids
 
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""

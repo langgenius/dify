@@ -23,7 +23,7 @@ def _events(output: str) -> list[dict[str, object]]:
 
 @pytest.fixture(autouse=True)
 def _no_agents() -> Iterator[None]:
-    with patch(f"{MODULE}._iter_agent_rows", return_value=iter(())):
+    with patch(f"{MODULE}._iter_agent_row_batches", return_value=iter(())):
         yield
 
 
@@ -62,11 +62,8 @@ def test_apply_flag_writes_and_reports_applied() -> None:
 def _whitelist_config(
     scope: str | None = "all",
     account_ids: list[str] | None = None,
-    configured: bool | None = None,
 ) -> _LegacyResourceWhitelistConfig:
-    return _LegacyResourceWhitelistConfig(
-        rbac_whitelist_scope=scope, account_ids=account_ids or [], configured=configured
-    )
+    return _LegacyResourceWhitelistConfig(rbac_whitelist_scope=scope, account_ids=account_ids or [])
 
 
 @dataclass
@@ -84,6 +81,7 @@ class _AgentPhaseMocks:
 @dataclass
 class _AgentPhaseSetup:
     agents: list[tuple[str, str | None, str | None]]
+    configured_agent_ids: list[str] = field(default_factory=list)
     agent_configs: list[_LegacyResourceWhitelistConfig] | None = None
     app_config: _LegacyResourceWhitelistConfig = field(default_factory=_whitelist_config)
     workspace_members: list[str] = field(default_factory=lambda: ["m1", "m2", "m3"])
@@ -103,7 +101,13 @@ def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, 
                 return_value=LegacyAgentMigrationReport(),
             )
         )
-        stack.enter_context(patch(f"{MODULE}._iter_agent_rows", return_value=iter(setup.agents)))
+        stack.enter_context(patch(f"{MODULE}._iter_agent_row_batches", return_value=iter([setup.agents])))
+        stack.enter_context(
+            patch(
+                f"{MODULE}.RBACService.Migrations.list_configured_agent_ids",
+                return_value=setup.configured_agent_ids,
+            )
+        )
         agent_whitelist_config = stack.enter_context(patch(f"{MODULE}.RBACService.AgentAccess.legacy_whitelist_config"))
         if setup.agent_configs is None:
             agent_whitelist_config.return_value = _whitelist_config()
@@ -175,10 +179,7 @@ def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
         ["--apply"],
         _AgentPhaseSetup(
             agents=[("ag1", "c1", None), ("ag2", "c2", None)],
-            agent_configs=[
-                _whitelist_config(account_ids=["m1", "m2"]),
-                _whitelist_config(account_ids=["m1"]),
-            ],
+            configured_agent_ids=["ag1", "ag2"],
         ),
     )
 
@@ -186,6 +187,7 @@ def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
     events = _events(result.output)
     assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"] * 2
     assert {e["reason"] for e in events} == {"already_initialized"}
+    mocks.agent_whitelist_config.assert_not_called()
     mocks.replace_whitelist.assert_not_called()
     mocks.sync_creator_bindings.assert_not_called()
     mocks.replace_user_access_policies.assert_not_called()
