@@ -42,6 +42,7 @@ import {
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from './state'
+import { createTraceBuffer, readTraceState, readTraceVersion } from './trace-buffer'
 import { useDifyBuilderExecutionProgress } from './use-execution-progress'
 import { useDifyBuilderReasoningBuffer } from './use-reasoning-buffer'
 import { useDifyBuilderStreamingTurnBuffer } from './use-streaming-turn-buffer'
@@ -75,6 +76,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
   >(undefined)
   const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
+  const traceRef = useRef(createTraceBuffer())
 
   useEffect(() => {
     return () => {
@@ -227,6 +229,14 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         terminalEvent: null,
       }
       const handleEvent = async (event: DifyBuilderStreamEventResponse): Promise<boolean> => {
+        traceRef.current.append({
+          dir: 'in',
+          kind: event.event,
+          payload: event.data,
+          version: readTraceVersion(event.data),
+          state: readTraceState(event.data),
+        })
+
         if (event.event === 'command_started') {
           outcome.sawCommandStarted = true
           outcome.sessionId = event.data.session_id
@@ -423,6 +433,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       knownSessionId,
       expectTerminalEvent,
       startsSession = false,
+      trace,
     }: SessionCommandOptions) => {
       const startingView = store.get(difyBuilderSessionViewAtom)
       const startingVersion = startsSession
@@ -448,6 +459,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       }
 
       try {
+        if (trace) traceRef.current.append({ dir: 'out', kind: trace.kind, payload: trace.payload })
         const events = await openStream(controller.signal)
         if (controller.signal.aborted) return false
         const outcome = await consumeStream(events, controller, knownSessionId)
@@ -561,6 +573,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         startsSession: true,
         expectTerminalEvent: true,
         openStream: (signal) => createFixSession(appId, failedRunId, modelConfig, signal),
+        trace: {
+          kind: 'session_start',
+          payload: { scenario: 'fix', app_id: appId, failed_run_id: failedRunId },
+        },
       }),
     [runCommand],
   )
@@ -572,6 +588,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         expectTerminalEvent: true,
         openStream: (signal) =>
           createChecklistFixSession(appId, checklistErrors, modelConfig, signal),
+        trace: {
+          kind: 'session_start',
+          payload: { scenario: 'fix', app_id: appId, checklist_errors: checklistErrors },
+        },
       }),
     [runCommand],
   )
@@ -582,6 +602,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         startsSession: true,
         expectTerminalEvent: true,
         openStream: (signal) => createBuildSession(appId, goalText, modelConfig, signal),
+        trace: {
+          kind: 'session_start',
+          payload: { scenario: 'build', app_id: appId, goal_text: goalText },
+        },
       }),
     [runCommand],
   )
@@ -592,6 +616,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         startsSession: true,
         expectTerminalEvent: true,
         openStream: (signal) => createEditSession(appId, goalText, modelConfig, signal),
+        trace: {
+          kind: 'session_start',
+          payload: { scenario: 'edit', app_id: appId, goal_text: goalText },
+        },
       }),
     [runCommand],
   )
@@ -712,6 +740,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
             view.app_revision?.current ?? '',
             signal,
           ),
+        trace: {
+          kind: 'action',
+          payload: { action_id: actionId, payload, base_version: view.version },
+        },
       })
     },
     [runCommand, store],
@@ -738,6 +770,14 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         expectTerminalEvent: true,
         openStream: (signal) =>
           sendSessionMessage(view.session_id, normalizedText, view.version, clientTurnId, signal),
+        trace: {
+          kind: 'message',
+          payload: {
+            text: normalizedText,
+            base_version: view.version,
+            client_turn_id: clientTurnId,
+          },
+        },
       })
       if (sent && pendingMessageRef.current?.turnId === clientTurnId)
         pendingMessageRef.current = null
@@ -766,6 +806,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     setLastError('')
     setLastCanvasEvent(null)
     canvasCursorRef.current = undefined
+    traceRef.current.clear()
     setIsBusy(false)
   }, [
     executionProgress,
@@ -781,6 +822,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     streamingTurnBuffer,
   ])
 
+  const getTrace = useCallback(() => traceRef.current.snapshot(), [])
+
   return useMemo(
     () => ({
       startFix,
@@ -794,6 +837,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       sendMessage,
       updateModel,
       reset,
+      getTrace,
     }),
     [
       refresh,
@@ -807,6 +851,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       startEdit,
       startFix,
       updateModel,
+      getTrace,
     ],
   )
 }
