@@ -29,7 +29,7 @@ snapshots.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai.messages import UserContent
 
@@ -164,21 +164,18 @@ def build_pydantic_ai_compositor(
     selected provider set explicitly so provider defaulting stays at outer runtime
     boundaries rather than being duplicated here.
     """
-    return cast(
-        Compositor[
-            PydanticAIPrompt[object],
-            PydanticAITool[object],
-            AllPromptTypes,
-            AllToolTypes,
-            UserContent,
-            AllUserPromptTypes,
-        ],
-        Compositor.from_config(
-            config,
-            providers=providers,
-            node_providers=node_providers,
-            **PYDANTIC_AI_TRANSFORMERS,  # pyright: ignore[reportArgumentType]
-        ),
+    return Compositor[
+        PydanticAIPrompt[object],
+        PydanticAITool[object],
+        AllPromptTypes,
+        AllToolTypes,
+        UserContent,
+        AllUserPromptTypes,
+    ].from_config(
+        config,
+        providers=providers,
+        node_providers=node_providers,
+        **PYDANTIC_AI_TRANSFORMERS,
     )
 
 

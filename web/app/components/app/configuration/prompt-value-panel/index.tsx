@@ -4,6 +4,7 @@ import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -17,13 +18,12 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowRightSLine, RiPlayLargeFill } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -44,6 +44,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
+  const baseId = useId()
   const {
     readonly,
     canTestAndRun = false,
@@ -159,12 +160,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
           <div className="px-4 pt-3 pb-4">
-            {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
+            {promptVariables.map(({ key, name, type, options, max_length, required }) => (
               <div key={key} className="mb-4 last-of-type:mb-0">
                 <div>
                   {type !== 'checkbox' && (
                     <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-                      <div className="truncate">{name || key}</div>
+                      <div id={`${baseId}-${key}-label`} className="truncate">
+                        {name || key}
+                      </div>
                       {!required && (
                         <span className="system-xs-regular text-text-tertiary">
                           {t(($) => $['panel.optional'], { ns: 'workflow' })}
@@ -175,19 +178,17 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   <div className="grow">
                     {type === 'string' && (
                       <Input
+                        aria-labelledby={`${baseId}-${key}-label`}
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => {
-                          handleInputValueChange(key, e.target.value)
-                        }}
+                        onValueChange={(value) => handleInputValueChange(key, value)}
                         placeholder={name}
-                        autoFocus={index === 0}
                         maxLength={max_length}
                         readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'paragraph' && (
                       <Textarea
-                        aria-label={name}
+                        aria-labelledby={`${baseId}-${key}-label`}
                         className="h-30 grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
@@ -208,7 +209,10 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                           handleInputValueChange(key, nextValue)
                         }}
                       >
-                        <SelectTrigger className="w-full bg-gray-50">
+                        <SelectTrigger
+                          aria-labelledby={`${baseId}-${key}-label`}
+                          className="w-full bg-gray-50"
+                        >
                           <SelectValue
                             placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
                           />
@@ -225,13 +229,11 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'number' && (
                       <Input
+                        aria-labelledby={`${baseId}-${key}-label`}
                         type="number"
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => {
-                          handleInputValueChange(key, e.target.value)
-                        }}
+                        onValueChange={(value) => handleInputValueChange(key, value)}
                         placeholder={name}
-                        autoFocus={index === 0}
                         maxLength={max_length}
                         readOnly={debugInputReadonly}
                       />

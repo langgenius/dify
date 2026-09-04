@@ -240,7 +240,7 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.fetchQuery(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
       return response.data.find((provider) => provider.provider === providerName)
     } catch {
       return undefined

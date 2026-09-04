@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
@@ -63,19 +63,23 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
       const context = await getServerConsoleClientContext()
 
       await Promise.all([
-        queryClient.fetchQuery(serverUserProfileQueryOptions()),
-        queryClient.prefetchQuery(
-          serverConsoleQuery.workspaces.current.summary.get.queryOptions({
-            context,
-            retry: false,
-          }),
-        ),
-        queryClient.prefetchQuery(
-          serverConsoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
-            context,
-            retry: false,
-          }),
-        ),
+        queryClient.query(serverUserProfileQueryOptions()),
+        queryClient
+          .query(
+            serverConsoleQuery.workspaces.current.summary.get.queryOptions({
+              context,
+              retry: false,
+            }),
+          )
+          .catch(noop),
+        queryClient
+          .query(
+            serverConsoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
+              context,
+              retry: false,
+            }),
+          )
+          .catch(noop),
       ])
     } catch (error) {
       await handleProfileError(error)

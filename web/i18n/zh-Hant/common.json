@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} 點額度",
   "mainNav.workspace.creditsUnit": "點額度",
   "mainNav.workspace.inviteMembers": "邀請成員",
+  "mainNav.workspace.noResults": "找不到工作區",
   "mainNav.workspace.openMenu": "開啟工作區選單",
   "mainNav.workspace.searchPlaceholder": "搜尋工作區",
   "mainNav.workspace.settings": "工作區設定",

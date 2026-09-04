@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 type CarouselApi = ReturnType<typeof useEmblaCarousel>[1]
 
 type CarouselProps = {
+  'aria-labelledby': string
   children: React.ReactNode
   className?: string
   showNavigation?: boolean
@@ -104,6 +105,7 @@ const CarouselControls = ({
 }
 
 const Carousel = ({
+  'aria-labelledby': ariaLabelledBy,
   children,
   className,
   showNavigation = true,
@@ -154,7 +156,12 @@ const Carousel = ({
   }, [api])
 
   return (
-    <div className={cn('relative', className)} role="region" aria-roledescription="carousel">
+    <div
+      className={cn('relative', className)}
+      role="region"
+      aria-roledescription="carousel"
+      aria-labelledby={ariaLabelledBy}
+    >
       {showNavigation && (
         <CarouselControls
           api={api}

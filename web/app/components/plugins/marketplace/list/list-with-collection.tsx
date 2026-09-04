@@ -3,7 +3,7 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { useMarketplaceMoreClick } from '../atoms'
@@ -81,6 +81,7 @@ const ListWithCollection = ({
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
+  const collectionLabelPrefixId = useId()
   const defaultOnMoreClick = useMarketplaceMoreClick()
   const handleMoreClick = onCollectionMoreClick ?? defaultOnMoreClick
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth)
@@ -105,12 +106,13 @@ const ListWithCollection = ({
           const pages = buildCarouselPages(plugins, itemsPerPage)
           const hasMultiplePages = pages.length > 1
           const isPartnersCollection = PARTNERS_COLLECTION_NAMES.has(collection.name)
+          const collectionLabelId = `${collectionLabelPrefixId}-${encodeURIComponent(collection.name)}`
 
           return (
             <div key={collection.name} className="py-3">
               <div className="flex items-end justify-between">
                 <div>
-                  <div className="title-xl-semi-bold text-text-primary">
+                  <div id={collectionLabelId} className="title-xl-semi-bold text-text-primary">
                     {collection.label[getLanguage(locale)]}
                   </div>
                   <div className="flex items-center gap-x-2 system-xs-regular text-text-tertiary">
@@ -143,6 +145,7 @@ const ListWithCollection = ({
               </div>
               {hasMultiplePages ? (
                 <Carousel
+                  aria-labelledby={collectionLabelId}
                   className="mt-2"
                   showNavigation
                   showPagination

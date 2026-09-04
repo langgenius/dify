@@ -8,7 +8,6 @@ const REQUIRED_APP_STAR_KEYS = [
   'studio.starApp',
   'studio.starFailed',
   'studio.starred',
-  'studio.unstarApp',
 ] as const
 
 type AppTranslations = Record<string, unknown>

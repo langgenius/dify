@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} кредитів",
   "mainNav.workspace.creditsUnit": "кредити",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Робочі простори не знайдено",
   "mainNav.workspace.openMenu": "Відкрити меню робочого простору",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",
