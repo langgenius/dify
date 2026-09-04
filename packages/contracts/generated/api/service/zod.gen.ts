@@ -1062,11 +1062,7 @@ export const zDocumentStatusListResponse = z.object({
 /**
  * EndUserDetail
  *
- * Full EndUser record for API responses.
- *
- * Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
- * (always False). The database column is exposed as `_is_anonymous`, so this DTO maps
- * `is_anonymous` from `_is_anonymous` to return the stored value.
+ * Full end-user detail returned by the Service API.
  */
 export const zEndUserDetail = z.object({
   app_id: z.uuid().nullish(),

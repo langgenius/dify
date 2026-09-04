@@ -1,13 +1,14 @@
 import uuid
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
+from controllers.openapi.auth import prepare as prepare_module
 from controllers.openapi.auth.data import AuthData, ExternalIdentity
 from controllers.openapi.auth.prepare import (
     load_account,
@@ -23,12 +24,23 @@ from models import Account, App, EndUser, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
-from services import end_user_service
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
+
+
+class _AppScopedEndUserServicesStub:
+    def __init__(self, commands: AppScopedEndUserService[EndUser]) -> None:
+        self.commands = commands
+
+
+class _ApplicationServicesStub:
+    def __init__(self, commands: AppScopedEndUserService[EndUser]) -> None:
+        self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
 
 
 def _make_auth_data(**kwargs: object) -> AuthData:
@@ -205,6 +217,8 @@ class TestResolveExternalUser:
         self,
         sqlite_engine: Engine,
         sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _app()
         tenant = _tenant()
@@ -215,9 +229,11 @@ class TestResolveExternalUser:
             external_identity=ExternalIdentity(email="user@sso.com"),
         )
 
-        with patch.object(type(end_user_service.db), "engine", new_callable=PropertyMock) as engine:
-            engine.return_value = sqlite_engine
-            resolve_external_user(data)
+        commands = AppScopedEndUserService(
+            end_users=AppScopedEndUserRepo(session_factory=sqlite_session_factory),
+        )
+        monkeypatch.setattr(prepare_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        resolve_external_user(data)
 
         assert isinstance(data.caller, EndUser)
         assert data.caller_kind == "end_user"

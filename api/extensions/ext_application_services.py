@@ -27,6 +27,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
 from libs.passport import PassportService
+from models.model import EndUser
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -37,6 +38,7 @@ from repositories.account_oauth_repository import (
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
@@ -125,6 +127,8 @@ from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -227,6 +231,12 @@ class AccountServices:
 
 
 @dataclass(frozen=True, slots=True)
+class AppScopedEndUserServices:
+    commands: AppScopedEndUserService[EndUser]
+    queries: AppScopedEndUserQueryService
+
+
+@dataclass(frozen=True, slots=True)
 class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
@@ -236,6 +246,7 @@ class ApplicationServices:
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     data_source_oauth: Mapping[str, DataSourceOAuthService]
+    app_scoped_end_users: AppScopedEndUserServices
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
@@ -404,6 +415,7 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
     passwords = DefaultAccountPasswordHasher()
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
@@ -586,6 +598,10 @@ def build_application_services(
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
+        app_scoped_end_users=AppScopedEndUserServices(
+            commands=AppScopedEndUserService(end_users=app_scoped_end_user_repository),
+            queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
+        ),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
