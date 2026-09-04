@@ -81,6 +81,17 @@ const DatePicker = ({
 
   const handleOpenChange = useCallback<NonNullable<PopoverProps['onOpenChange']>>(
     (nextOpen, details) => {
+      const isFocusGuardClose =
+        !nextOpen && details.reason === 'focus-out' && details.event.type === 'focusin'
+      if (isFocusGuardClose) {
+        details.cancel()
+        // Let Base UI move focus past its guard before the controlled root closes.
+        queueMicrotask(() => {
+          setIsOpen(false)
+          setView(ViewType.date)
+        })
+        return
+      }
       const outsideTarget =
         details.reason === 'focus-out' && details.event instanceof FocusEvent
           ? details.event.relatedTarget
@@ -253,10 +264,10 @@ const DatePicker = ({
               })
             }
 
-            const placeholderDate =
-              state.open && selectedDate
-                ? selectedDate.format(timeFormat)
-                : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+            const triggerPlaceholder = placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+            const triggerDisplayValue = state.open
+              ? selectedDate?.format(timeFormat) || ''
+              : displayValue
 
             return (
               <div
@@ -269,19 +280,19 @@ const DatePicker = ({
                 <button
                   {...props}
                   type="button"
-                  aria-label={`${placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })}${displayValue ? `: ${displayValue}` : ''}`}
+                  aria-label={`${triggerPlaceholder}${triggerDisplayValue ? `: ${triggerDisplayValue}` : ''}`}
                   className="flex min-w-0 flex-1 cursor-pointer items-center gap-x-0.5 rounded-lg px-2 py-1 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
                   data-testid="date-picker-trigger"
                 >
                   <span
                     className={cn(
                       'min-w-0 flex-1 truncate p-1 system-xs-regular',
-                      displayValue
+                      triggerDisplayValue
                         ? 'text-components-input-text-filled'
                         : 'text-components-input-text-placeholder',
                     )}
                   >
-                    {state.open ? placeholderDate : displayValue || placeholderDate}
+                    {triggerDisplayValue || triggerPlaceholder}
                   </span>
                   <span
                     aria-hidden

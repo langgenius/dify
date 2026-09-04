@@ -55,6 +55,25 @@ describe('DatePicker', () => {
       expect(getDateTrigger()).not.toHaveTextContent('time.defaultPlaceholder')
     })
 
+    it('should keep the accessible name in sync with the displayed draft date', async () => {
+      const user = userEvent.setup()
+      const props = createDatePickerProps({
+        value: dayjs('2024-06-15'),
+        placeholder: 'Select date',
+        needTimePicker: false,
+      })
+      render(<DatePicker {...props} />)
+
+      const trigger = getDateTrigger()
+      const initialText = trigger.textContent
+
+      await user.click(trigger)
+      await user.click(screen.getByRole('button', { name: '20' }))
+
+      expect(trigger.textContent).not.toBe(initialText)
+      expect(trigger).toHaveAccessibleName(`Select date: ${trigger.textContent}`)
+    })
+
     it('should render with empty value when no value is provided', () => {
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
@@ -97,7 +116,8 @@ describe('DatePicker', () => {
       openPicker()
       openPicker() // second click closes
 
-      expect(getDateTrigger())!.toBeInTheDocument()
+      expect(getDateTrigger()).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should restore selected date from value when reopening', () => {
