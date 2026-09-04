@@ -155,7 +155,7 @@ def test_whitelist_put_queues_the_seed_task_only_when_auto_including(
         patch.object(spec.access, "replace_whitelist", replace),
         patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as seed_task,
     ):
-        inspect.unwrap(apis.whitelist.put)(apis.whitelist(), **{_id_param(spec): resource_id})
+        inspect.unwrap(vars(apis.whitelist)["put"])(apis.whitelist(), **{_id_param(spec): resource_id})
 
     tenant_id, actor_id, target_id, payload = replace.call_args.args
     assert (tenant_id, actor_id, target_id) == ("tenant-1", "acct-actor", resource_id)
