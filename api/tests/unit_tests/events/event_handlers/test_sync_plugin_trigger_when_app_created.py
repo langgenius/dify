@@ -1,13 +1,15 @@
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 from events.event_handlers.sync_plugin_trigger_when_app_created import handle
 from models.model import AppMode
+from models.workflow import Workflow
 
 
 def test_syncs_plugin_trigger_relationships_from_published_workflow() -> None:
     app = SimpleNamespace(mode=AppMode.WORKFLOW.value)
-    published_workflow = object()
+    published_workflow = cast(Workflow, object())
 
     with patch(
         "events.event_handlers.sync_plugin_trigger_when_app_created.TriggerService.sync_plugin_trigger_relationships"
@@ -19,7 +21,7 @@ def test_syncs_plugin_trigger_relationships_from_published_workflow() -> None:
 
 def test_keeps_draft_workflow_relationship_sync() -> None:
     app = SimpleNamespace(mode=AppMode.WORKFLOW.value)
-    draft_workflow = object()
+    draft_workflow = cast(Workflow, object())
 
     with patch(
         "events.event_handlers.sync_plugin_trigger_when_app_created.TriggerService.sync_plugin_trigger_relationships"
