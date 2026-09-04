@@ -44,11 +44,11 @@ def test_agenton_pydantic_ai_example_smoke() -> None:
     result = _run_example("agenton_examples.pydantic_ai_bridge")
 
     assert result.returncode == 0, result.stderr
-    assert "SystemPromptPart: Prefer concrete details." in result.stdout
-    assert "UserPromptPart: [\"Use the tools for 'layer composition'.\"]" in result.stdout
-    assert "ToolCallPart: count_words(" in result.stdout
-    assert "ToolCallPart: write_tagline(" in result.stdout
-    assert "TextPart:" in result.stdout
+    assert "SystemPromptPart(content='Prefer concrete details.'," in result.stdout
+    assert "UserPromptPart(content=[\"Use the tools for 'layer composition'.\"]," in result.stdout
+    assert "ToolCallPart(tool_name='count_words'" in result.stdout
+    assert "ToolCallPart(tool_name='write_tagline'" in result.stdout
+    assert "TextPart(content=" in result.stdout
 
 
 def test_agenton_session_snapshot_example_smoke() -> None:

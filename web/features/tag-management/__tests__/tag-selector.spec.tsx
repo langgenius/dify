@@ -150,6 +150,12 @@ describe('TagSelector', () => {
     expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
+  it('adds the owning app name to the combobox accessible name', () => {
+    render(<TagSelector {...defaultProps} contextLabel="Test App" />)
+
+    expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
+  })
+
   it('keeps dataset tag interactions inside the tag trigger', async () => {
     const user = userEvent.setup()
     const onOuterClick = vi.fn()
@@ -202,6 +208,20 @@ describe('TagSelector', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
+  })
+
+  it('matches existing tags without offering a case-only duplicate', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'frontend',
+    )
+
+    expect(screen.getByRole('option', { name: 'Frontend' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /common\.tag\.create/i })).not.toBeInTheDocument()
   })
 
   it('applies added tags only when the popup closes', async () => {

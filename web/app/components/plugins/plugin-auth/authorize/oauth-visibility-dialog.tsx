@@ -2,11 +2,12 @@ import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import PermissionSelector from './permission-selector'
@@ -45,7 +46,18 @@ const OAuthVisibilityDialog = ({
             <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
               {t(($) => $['auth.oauthCredentialPermissionDescription'], { ns: 'plugin' })}
             </DialogDescription>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" disabled={loading} />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                  disabled={loading}
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="px-6 py-3">
             <PermissionSelector

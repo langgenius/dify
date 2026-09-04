@@ -403,7 +403,7 @@ const VirtualizedModelList = ({
   }, [virtualizer, virtualizerRef])
 
   return (
-    <ScrollArea className="relative overflow-hidden">
+    <ScrollArea className="overflow-hidden">
       <ScrollAreaViewport
         ref={scrollRef}
         role="region"
@@ -609,7 +609,7 @@ const InlinePopoverDemo = () => {
         }}
       >
         <PopoverTrigger render={<Button variant="secondary" />}>Choose reviewer</PopoverTrigger>
-        <PopoverContent placement="bottom-start" sideOffset={4} popupClassName="w-80 p-0">
+        <PopoverContent placement="bottom-start" sideOffset={4} className="w-80 p-0">
           <PopoverTitle className="sr-only">Choose reviewer</PopoverTitle>
           <Combobox
             inline

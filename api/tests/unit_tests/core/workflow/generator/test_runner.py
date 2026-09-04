@@ -17,10 +17,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jinja2 import Template
 
-from configs import dify_config
 from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _llm_result(text: str) -> MagicMock:
@@ -456,7 +456,7 @@ class _ParallelBuilderModel:
 
 class TestParallelNodeBuilder:
     def test_builder_concurrency_caps_at_configured_workers(self, monkeypatch):
-        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 2)
+        apply_config_overrides(monkeypatch, WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=2)
         planner = {
             "title": "URL Summarizer",
             "description": "Summarize a URL.",
@@ -512,7 +512,7 @@ class TestParallelNodeBuilder:
         assert [edge["source"] for edge in result["graph"]["edges"]] == ["node1", "node2"]
 
     def test_higher_worker_config_runs_all_builders_in_one_wave(self, monkeypatch):
-        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 5)
+        apply_config_overrides(monkeypatch, WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=5)
         planner = {
             "title": "URL Summarizer",
             "description": "Summarize a URL.",
@@ -561,7 +561,7 @@ class TestParallelNodeBuilder:
         # One worker: node1's builder fails immediately, node2's blocks the
         # worker briefly, node3 sits in the queue. The failure must cancel
         # node3 before the worker frees up — no LLM call for it at all.
-        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 1)
+        apply_config_overrides(monkeypatch, WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=1)
         planner = {
             "title": "x",
             "description": "x",

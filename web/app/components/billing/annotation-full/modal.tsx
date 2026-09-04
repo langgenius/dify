@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import GridMask from '@/app/components/base/grid-mask'
@@ -24,7 +25,17 @@ const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
       }}
     >
       <DialogContent className="w-full overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <GridMask
           wrapperClassName="rounded-lg"

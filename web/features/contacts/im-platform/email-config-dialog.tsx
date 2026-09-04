@@ -4,19 +4,15 @@ import type { ContactImIntegrationView, ContactImProviderDefinition } from './ty
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
@@ -111,7 +107,18 @@ export function ContactEmailConfigDialog({
       }}
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={isPending} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              className="absolute top-6 right-6"
+              disabled={isPending}
+              size="lg"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['imPlatform.email.title'])}
@@ -137,7 +144,7 @@ export function ContactEmailConfigDialog({
           <div className="space-y-5 overflow-y-auto px-6 py-2">
             <Field name="emailProvider">
               <FieldLabel>{t(($) => $['imPlatform.email.provider'])}</FieldLabel>
-              <FieldControl disabled value="Resend" />
+              <Input disabled value="Resend" />
             </Field>
 
             <div className="flex items-center gap-2 pt-1">
@@ -156,13 +163,14 @@ export function ContactEmailConfigDialog({
               <FieldDescription>
                 {t(($) => $['imPlatform.email.senderEmailDescription'])}
               </FieldDescription>
-              <FieldControl
+              <Input
                 required
                 autoComplete="email"
                 placeholder="sybil@dify.ai"
                 type="email"
                 value={values.senderEmail}
-                onValueChange={(senderEmail) => {
+                onChange={(event) => {
+                  const senderEmail = event.currentTarget.value
                   setTestSucceeded(false)
                   setValues((current) => ({ ...current, senderEmail }))
                 }}
@@ -180,11 +188,12 @@ export function ContactEmailConfigDialog({
               <FieldDescription>
                 {t(($) => $['imPlatform.email.senderNameDescription'])}
               </FieldDescription>
-              <FieldControl
+              <Input
                 autoComplete="organization"
                 placeholder="sybil"
                 value={values.senderName}
-                onValueChange={(senderName) => {
+                onChange={(event) => {
+                  const senderName = event.currentTarget.value
                   setTestSucceeded(false)
                   setValues((current) => ({ ...current, senderName }))
                 }}
@@ -198,13 +207,14 @@ export function ContactEmailConfigDialog({
                   ? t(($) => $['imPlatform.email.apiKeyConfigured'])
                   : t(($) => $['imPlatform.email.apiKeyDescription'])}
               </FieldDescription>
-              <FieldControl
+              <Input
                 autoComplete="new-password"
                 placeholder={t(($) => $['imPlatform.email.apiKeyPlaceholder'])}
                 required={!integration?.secretConfigured}
                 type="password"
                 value={apiKey}
-                onValueChange={(value) => {
+                onChange={(event) => {
+                  const value = event.currentTarget.value
                   setTestSucceeded(false)
                   setApiKey(value)
                 }}

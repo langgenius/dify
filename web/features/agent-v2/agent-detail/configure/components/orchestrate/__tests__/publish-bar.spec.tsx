@@ -6,6 +6,7 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
@@ -421,6 +422,18 @@ describe('AgentConfigurePublishBar', () => {
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000100000)
   })
 
+  it('should show the complete saved time in a tooltip on hover', async () => {
+    const user = userEvent.setup()
+    renderPublishBar({ draftSavedAt: 1710000100000 })
+
+    const savedTime = screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/)
+    await user.hover(savedTime)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(savedTime.textContent ?? '')).toHaveLength(2)
+    })
+  })
+
   it('should render published state from the active snapshot and disable publish logic', () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: true,
@@ -581,6 +594,35 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
+  it('should refresh cached workflow references before publishing', async () => {
+    const { onPublish, queryClient } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const referencesQueryKey = ['agent-referencing-workflows', { params: { agent_id: 'agent-1' } }]
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    queryClient.setQueryDefaults(['agent-referencing-workflows'], { staleTime: Infinity })
+    queryClient.setQueryData(referencesQueryKey, { data: [] })
+    workflowReferences.data = publishedReferences
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    expect(onPublish).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(2)
+  })
+
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
       activeConfigSnapshot,
@@ -696,7 +738,7 @@ describe('AgentConfigurePublishBar', () => {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
     expect(impactDetails).toBeInTheDocument()
-    expect(workflowReferences.fetchCount).toBe(1)
+    expect(workflowReferences.fetchCount).toBe(2)
     expect(
       screen.getAllByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,

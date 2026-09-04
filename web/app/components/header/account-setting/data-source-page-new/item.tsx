@@ -31,6 +31,7 @@ const Item = ({
       {renaming && (
         <div className="flex w-full items-center space-x-1">
           <Input
+            aria-label={`${t(($) => $['operation.rename'], { ns: 'common' })} ${credentialItem.name}`}
             className="h-6 min-w-0 grow"
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}

@@ -263,6 +263,7 @@ scripts/stress-test/reports/
 .qoder/*
 .context/
 # Vitest local reports
+web/.vitest-browser/
 web/.vitest-reports/
 
 # dify-agent-runtime

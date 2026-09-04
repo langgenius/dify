@@ -97,7 +97,7 @@ Toutes les offres de Dify sont accompagnées d'API correspondantes, vous permett
   Nous hébergeons un service [Dify Cloud](https://dify.ai) pour que tout le monde puisse l'essayer sans aucune configuration. Il fournit toutes les capacités de la version auto-hébergée et comprend 200 appels GPT-4 gratuits dans le plan bac à sable.
 
 - **Auto-hébergement Dify Community Edition</br>**
-  Lancez rapidement Dify dans votre environnement avec ce [guide de démarrage](#quick-start).
+  Lancez rapidement Dify dans votre environnement avec ce [guide de démarrage](#démarrage-rapide).
   Utilisez notre [documentation](https://docs.dify.ai) pour plus de références et des instructions plus détaillées.
 
 - **Dify pour les entreprises / organisations</br>**
@@ -107,7 +107,7 @@ Toutes les offres de Dify sont accompagnées d'API correspondantes, vous permett
 
 Mettez une étoile à Dify sur GitHub et soyez instantanément informé des nouvelles versions.
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Démarrage rapide
 
@@ -132,78 +132,31 @@ Après l'exécution, vous pouvez accéder au tableau de bord Dify dans votre nav
 
 ## Prochaines étapes
 
-Si vous devez personnaliser la configuration, veuillez vous référer aux commentaires dans notre fichier [.env.example](../../docker/.env.example) et mettre à jour les valeurs correspondantes dans votre fichier `.env`. De plus, vous devrez peut-être apporter des modifications au fichier `docker-compose.yaml` lui-même, comme changer les versions d'image, les mappages de ports ou les montages de volumes, en fonction de votre environnement de déploiement et de vos exigences spécifiques. Après avoir effectué des modifications, veuillez réexécuter `docker-compose up -d`. Vous pouvez trouver la liste complète des variables d'environnement disponibles [ici](https://docs.dify.ai/getting-started/install-self-hosted/environments).
-
-### Surveillance des Métriques avec Grafana
-
-Importez le tableau de bord dans Grafana, en utilisant la base de données PostgreSQL de Dify comme source de données, pour surveiller les métriques avec une granularité d'applications, de locataires, de messages et plus.
-
-- [Tableau de bord Grafana par @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
-
-### Déploiement avec Kubernetes
-
-Si vous souhaitez configurer une configuration haute disponibilité, la communauté fournit des [Helm Charts](https://helm.sh/) et des fichiers YAML, à travers lesquels vous pouvez déployer Dify sur Kubernetes.
-
-- [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart par @magicsong](https://github.com/magicsong/ai-charts)
-- [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [Fichier YAML par @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NOUVEAU ! Fichiers YAML (compatible avec Dify v1.6.0) par @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Utilisation de Terraform pour le déploiement
-
-Déployez Dify sur une plateforme cloud en un clic en utilisant [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform par @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### Utilisation d'AWS CDK pour le déploiement
-
-Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
-
-##### AWS
-
-- [AWS CDK par @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK par @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-Déployez Dify en un clic sur Alibaba Cloud avec [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### Utilisation d'Azure Devops Pipeline pour déployer sur AKS
-
-Déployez Dify sur AKS en un clic en utilisant [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
+Pour les options de configuration personnalisée, d’observabilité et de déploiement, consultez la page [Configuration avancée](ADVANCED_SETUP.md).
 
 ## Contribuer
 
-Pour ceux qui souhaitent contribuer du code, consultez notre [Guide de contribution](./CONTRIBUTING.md).
-Dans le même temps, veuillez envisager de soutenir Dify en le partageant sur les réseaux sociaux et lors d'événements et de conférences.
+Dify accueille les contributions de toutes sortes :
 
-> Nous recherchons des contributeurs pour aider à traduire Dify dans des langues autres que le mandarin ou l'anglais. Si vous êtes intéressé à aider, veuillez consulter le [README i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) pour plus d'informations, et laissez-nous un commentaire dans le canal `global-users` de notre [Serveur communautaire Discord](https://discord.gg/8Tpq4AcN9c).
+- **Code** : consultez le [guide de contribution](./CONTRIBUTING.md), puis parcourez les [issues accessibles aux nouveaux contributeurs](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Idées et retours** : lancez ou rejoignez une [discussion GitHub](https://github.com/langgenius/dify/discussions).
+- **Traductions** : suivez le [guide d’internationalisation](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) pour ajouter ou mettre à jour une langue.
+- **Communauté** : partagez les applications que vous créez, aidez les autres utilisateurs et faites connaître Dify.
 
-**Contributeurs**
+### Contributeurs
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Communauté & Contact
+## Communauté et contact
 
-- [Discussion GitHub](https://github.com/langgenius/dify/discussions). Meilleur pour: partager des commentaires et poser des questions.
-- [Problèmes GitHub](https://github.com/langgenius/dify/issues). Meilleur pour: les bogues que vous rencontrez en utilisant Dify.AI et les propositions de fonctionnalités. Consultez notre [Guide de contribution](./CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). Meilleur pour: partager vos applications et passer du temps avec la communauté.
-- [X(Twitter)](https://twitter.com/dify_ai). Meilleur pour: partager vos applications et passer du temps avec la communauté.
+Choisissez le canal le plus adapté à votre demande :
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions) : obtenez de l’aide, partagez vos retours et proposez des idées.
+- [GitHub Issues](https://github.com/langgenius/dify/issues) : signalez des bogues reproductibles et suivez les travaux d’ingénierie. Consultez le [guide de contribution](./CONTRIBUTING.md) avant d’ouvrir une issue.
+- [Discord](https://discord.gg/FngNHpbcY7) : échangez en temps réel, partagez vos applications et rencontrez d’autres utilisateurs de Dify.
+- [X](https://x.com/dify_ai) : suivez les nouvelles versions et les actualités du projet.
 ## Historique des étoiles
 
 [![Graphique de l'historique des étoiles](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

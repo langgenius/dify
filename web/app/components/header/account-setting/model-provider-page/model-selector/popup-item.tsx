@@ -151,7 +151,7 @@ function PopupItem({
                     <>
                       <span
                         aria-hidden="true"
-                        className="i-custom-vender-line-financeandecommerce-credits-coin size-3"
+                        className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
                       <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
@@ -241,10 +241,9 @@ function PopupItem({
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <span
-                              aria-label={suggestionTip}
-                              className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
-                            />
+                            <span className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary">
+                              <span className="sr-only">{suggestionTip}</span>
+                            </span>
                           }
                         />
                         <TooltipContent placement="top">{suggestionTip}</TooltipContent>

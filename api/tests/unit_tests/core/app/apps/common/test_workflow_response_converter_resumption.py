@@ -5,6 +5,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
+from models.account import Account
 
 
 def _build_converter() -> WorkflowResponseConverter:
@@ -26,7 +27,8 @@ def _build_converter() -> WorkflowResponseConverter:
         workflow_execution_id="run-1",
         call_depth=0,
     )
-    account = SimpleNamespace(id="acc-1", name="tester", email="tester@example.com")
+    account = Account(name="tester", email="tester@example.com")
+    account.id = "acc-1"
     return WorkflowResponseConverter(
         application_generate_entity=app_entity,
         user=account,

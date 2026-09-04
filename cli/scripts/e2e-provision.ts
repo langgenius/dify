@@ -62,9 +62,10 @@ async function consoleLogin(): Promise<{ cookieString: string; csrfToken: string
   if (!res.ok) throw new Error(`console/api/login failed: HTTP ${res.status}`)
 
   const setCookies = res.headers.getSetCookie?.() ?? []
-  const cookieString = setCookies.map((c) => c.split(';')[0]).join('; ')
+  const cookiePairs = setCookies.map((c) => c.split(';')[0] ?? '')
+  const cookieString = cookiePairs.join('; ')
   // cookie names may have __Host- prefix on HTTPS deployments
-  const csrfPair = setCookies.map((c) => c.split(';')[0]).find((p) => p.includes('csrf_token='))
+  const csrfPair = cookiePairs.find((p) => p.includes('csrf_token='))
   const csrfToken = csrfPair
     ? csrfPair.slice(csrfPair.indexOf('csrf_token=') + 'csrf_token='.length)
     : ''

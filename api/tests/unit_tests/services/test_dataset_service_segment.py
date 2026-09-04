@@ -1,5 +1,7 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
+from collections.abc import Callable
+
 from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
 
 from .dataset_service_test_helpers import (
@@ -471,13 +473,13 @@ class TestSegmentServiceValidation:
         with pytest.raises(ValueError, match="Content is empty"):
             SegmentService.segment_create_args_validate({"content": "   "}, document)
 
-    def test_segment_create_args_validate_enforces_attachment_limit(self):
+    def test_segment_create_args_validate_enforces_attachment_limit(self, config_overrides: Callable[..., None]):
+        config_overrides(SINGLE_CHUNK_ATTACHMENT_LIMIT=1)
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         args = {"content": "hello", "attachment_ids": ["a-1", "a-2"]}
 
-        with patch("services.dataset_service.dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT", 1):
-            with pytest.raises(ValueError, match="Exceeded maximum attachment limit of 1"):
-                SegmentService.segment_create_args_validate(args, document)
+        with pytest.raises(ValueError, match="Exceeded maximum attachment limit of 1"):
+            SegmentService.segment_create_args_validate(args, document)
 
     def test_segment_create_args_validate_requires_attachment_ids_list(self):
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)

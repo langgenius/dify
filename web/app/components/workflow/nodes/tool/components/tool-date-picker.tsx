@@ -94,7 +94,7 @@ const ToolDatePicker: FC<Props> = ({
             <button
               type="button"
               aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="pointer-events-none absolute top-1/2 right-2 z-[1] flex size-4 -translate-y-1/2 items-center justify-center rounded border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary opacity-0 shadow-xs group-focus-within/date-trigger:pointer-events-auto group-focus-within/date-trigger:opacity-100 group-hover/date-trigger:pointer-events-auto group-hover/date-trigger:opacity-100 hover:bg-components-button-secondary-bg-hover hover:text-text-secondary [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
+              className="pointer-events-none absolute top-1/2 right-2 z-1 flex size-4 -translate-y-1/2 items-center justify-center rounded border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary opacity-0 shadow-xs group-focus-within/date-trigger:pointer-events-auto group-focus-within/date-trigger:opacity-100 group-hover/date-trigger:pointer-events-auto group-hover/date-trigger:opacity-100 hover:bg-components-button-secondary-bg-hover hover:text-text-secondary [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
               onClick={(event) => {
                 handleClear(event)
                 onChange('')

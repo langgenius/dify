@@ -3,15 +3,6 @@
 import * as z from 'zod'
 
 /**
- * ApiKeyAuthBindingPayload
- */
-export const zApiKeyAuthBindingPayload = z.object({
-  category: z.string(),
-  credentials: z.record(z.string(), z.unknown()),
-  provider: z.string(),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -35,6 +26,30 @@ export const zApiKeyAuthDataSourceItem = z.object({
  */
 export const zApiKeyAuthDataSourceListResponse = z.object({
   sources: z.array(zApiKeyAuthDataSourceItem),
+})
+
+/**
+ * ApiKeyAuthConfigPayload
+ */
+export const zApiKeyAuthConfigPayload = z.object({
+  api_key: z.string().min(1),
+})
+
+/**
+ * ApiKeyAuthCredentialsPayload
+ */
+export const zApiKeyAuthCredentialsPayload = z.object({
+  auth_type: z.string().min(1),
+  config: zApiKeyAuthConfigPayload,
+})
+
+/**
+ * ApiKeyAuthBindingPayload
+ */
+export const zApiKeyAuthBindingPayload = z.object({
+  category: z.string().min(1),
+  credentials: zApiKeyAuthCredentialsPayload,
+  provider: z.string().min(1),
 })
 
 /**

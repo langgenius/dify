@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.moderation.base import ModerationError
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -25,6 +26,7 @@ def _build_app_config(dataset=None, external_tools=None, additional_features=Non
     app_config = MagicMock()
     app_config.app_id = APP_ID
     app_config.tenant_id = TENANT_ID
+    app_config.app_mode = AppMode.COMPLETION
     app_config.prompt_template = MagicMock()
     app_config.dataset = dataset
     app_config.external_data_variables = external_tools or []
@@ -245,7 +247,11 @@ class TestCompletionAppRunner:
             model_parameters={"max_tokens": 10},
             stop=["stop"],
             stream=stream,
-            request_metadata={"app_id": APP_ID},
+            request_metadata={
+                "app_id": APP_ID,
+                "app_type": CreditUsageAppType.COMPLETION,
+                "created_by": CreditUsageCreatedBy.APP,
+            },
         )
 
     def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture, sqlite_session: Session):

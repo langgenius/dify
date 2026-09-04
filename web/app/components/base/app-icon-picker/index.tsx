@@ -179,6 +179,7 @@ function AppIconPickerContent({
 
   return (
     <DialogContent
+      backdropProps={{ forceRender: true }}
       className={cn(
         'w-full overflow-hidden! border-none text-left align-middle',
         s.container,

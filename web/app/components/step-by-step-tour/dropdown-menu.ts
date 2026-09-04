@@ -8,16 +8,11 @@ const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME =
   'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
 const STEP_BY_STEP_TOUR_MENU_PRESENTATION_CLASS_NAME = 'pointer-events-none cursor-default'
 
-type DropdownMenuPositionerProps = DropdownMenuContentProps['positionerProps']
-type DropdownMenuPopupProps = DropdownMenuContentProps['popupProps']
-
 type StepByStepTourDropdownMenuContentProps = {
   highlightPart?: string
   disableMotion?: boolean
   interactionMode?: 'interactive' | 'presentation'
-  popupClassName?: string
-  popupProps?: DropdownMenuPopupProps
-  positionerProps?: DropdownMenuPositionerProps
+  className?: string
 }
 
 const blockPresentationMenuEvent = (event: SyntheticEvent) => {
@@ -29,91 +24,43 @@ const stopMenuEventPropagation = (event: SyntheticEvent) => {
   event.stopPropagation()
 }
 
-const composeStepByStepTourEventHandlers = <Event extends SyntheticEvent>(
-  handler: ((event: Event) => void) | undefined,
-  stepByStepTourHandler: (event: Event) => void,
-) => {
-  return (event: Event) => {
-    handler?.(event)
-    stepByStepTourHandler(event)
-  }
-}
-
 export const getStepByStepTourDropdownMenuContentProps = ({
   highlightPart,
   disableMotion = false,
   interactionMode = 'interactive',
-  popupClassName,
-  popupProps,
-  positionerProps,
+  className,
 }: StepByStepTourDropdownMenuContentProps): Pick<
   DropdownMenuContentProps,
-  'popupClassName' | 'popupProps' | 'positionerProps'
-> => {
+  | 'aria-hidden'
+  | 'className'
+  | 'onClick'
+  | 'onClickCapture'
+  | 'onKeyDownCapture'
+  | 'onMouseDownCapture'
+  | 'onPointerDownCapture'
+> & {
+  [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]?: string
+} => {
   const isPresentation = interactionMode === 'presentation'
-  const nextPositionerProps =
-    highlightPart || isPresentation
-      ? ({
-          ...positionerProps,
-          ...(highlightPart
-            ? { [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: highlightPart }
-            : undefined),
-          ...(isPresentation
-            ? {
-                onClickCapture: composeStepByStepTourEventHandlers(
-                  positionerProps?.onClickCapture,
-                  blockPresentationMenuEvent,
-                ),
-                onMouseDownCapture: composeStepByStepTourEventHandlers(
-                  positionerProps?.onMouseDownCapture,
-                  blockPresentationMenuEvent,
-                ),
-                onPointerDownCapture: composeStepByStepTourEventHandlers(
-                  positionerProps?.onPointerDownCapture,
-                  blockPresentationMenuEvent,
-                ),
-                onKeyDownCapture: composeStepByStepTourEventHandlers(
-                  positionerProps?.onKeyDownCapture,
-                  blockPresentationMenuEvent,
-                ),
-              }
-            : undefined),
-        } as DropdownMenuPositionerProps)
-      : positionerProps
-  const nextPopupProps = isPresentation
-    ? ({
-        ...popupProps,
-        'aria-hidden': true,
-        onClickCapture: composeStepByStepTourEventHandlers(
-          popupProps?.onClickCapture,
-          blockPresentationMenuEvent,
-        ),
-        onMouseDownCapture: composeStepByStepTourEventHandlers(
-          popupProps?.onMouseDownCapture,
-          blockPresentationMenuEvent,
-        ),
-        onPointerDownCapture: composeStepByStepTourEventHandlers(
-          popupProps?.onPointerDownCapture,
-          blockPresentationMenuEvent,
-        ),
-        onKeyDownCapture: composeStepByStepTourEventHandlers(
-          popupProps?.onKeyDownCapture,
-          blockPresentationMenuEvent,
-        ),
-      } as DropdownMenuPopupProps)
-    : ({
-        ...popupProps,
-        onClick: composeStepByStepTourEventHandlers(popupProps?.onClick, stopMenuEventPropagation),
-      } as DropdownMenuPopupProps)
 
   return {
-    popupClassName: cn(
-      popupClassName,
+    ...(highlightPart
+      ? { [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: highlightPart }
+      : undefined),
+    className: cn(
+      className,
       disableMotion && STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME,
       isPresentation && STEP_BY_STEP_TOUR_MENU_PRESENTATION_CLASS_NAME,
     ),
-    popupProps: nextPopupProps,
-    positionerProps: nextPositionerProps,
+    ...(isPresentation
+      ? {
+          'aria-hidden': true,
+          onClickCapture: blockPresentationMenuEvent,
+          onMouseDownCapture: blockPresentationMenuEvent,
+          onPointerDownCapture: blockPresentationMenuEvent,
+          onKeyDownCapture: blockPresentationMenuEvent,
+        }
+      : { onClick: stopMenuEventPropagation }),
   }
 }
 

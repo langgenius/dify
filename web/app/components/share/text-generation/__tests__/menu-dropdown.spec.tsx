@@ -240,15 +240,6 @@ describe('MenuDropdown', () => {
     })
   })
 
-  describe('placement prop', () => {
-    it('should accept custom placement', () => {
-      render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)
-
-      const triggerButton = screen.getByRole('button')
-      expect(triggerButton).toBeInTheDocument()
-    })
-  })
-
   describe('toggle behavior', () => {
     it('should close dropdown when clicking trigger again', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)

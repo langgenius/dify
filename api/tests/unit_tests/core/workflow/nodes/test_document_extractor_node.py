@@ -442,6 +442,48 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
 
 
 @pytest.mark.parametrize(
+    ("extension", "mime_type", "route_label"),
+    [
+        (".odt", "text/plain", "extension"),
+        (None, "application/vnd.oasis.opendocument.text", "mime_type"),
+    ],
+)
+def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
+    document_extractor_node,
+    extension,
+    mime_type,
+    route_label,
+):
+    file = Mock(spec=File)
+    file.extension = extension
+    file.mime_type = mime_type
+
+    def fake_partition(file_content, *, suffix, unstructured_api_config, load_local_partition, render_element):
+        assert file_content == b"odt content"
+        assert suffix == ".odt"
+        assert unstructured_api_config == document_extractor_node._unstructured_api_config
+        assert load_local_partition.__name__ == "_load_partition_odt"
+        assert render_element is not None
+        return f"extracted through {route_label}"
+
+    with (
+        patch(
+            "graphon.nodes.document_extractor.node._download_file_content",
+            return_value=b"odt content",
+        ) as mock_download,
+        patch("graphon.nodes.document_extractor.node._partition_unstructured_file", side_effect=fake_partition),
+    ):
+        text = _extract_text_from_file(
+            document_extractor_node.http_client,
+            file,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+
+    assert text == f"extracted through {route_label}"
+    mock_download.assert_called_once_with(document_extractor_node.http_client, file)
+
+
+@pytest.mark.parametrize(
     ("extension", "mime_type"),
     [
         (".xlsx", "text/plain"),

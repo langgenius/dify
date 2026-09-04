@@ -88,13 +88,18 @@ class AccountStatus(enum.StrEnum):
 
 class Account(UserMixin, TypeBase):
     __tablename__ = "accounts"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="account_pkey"), sa.Index("account_email_idx", "email"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="account_pkey"),
+        sa.Index("account_email_idx", "email"),
+        sa.Index("account_normalized_email_idx", "normalized_email"),
+    )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255))
+    normalized_email: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     password: Mapped[str | None] = mapped_column(String(255), default=None)
     password_salt: Mapped[str | None] = mapped_column(String(255), default=None)
     avatar: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -181,15 +186,6 @@ class Account(UserMixin, TypeBase):
 
     def get_status(self) -> AccountStatus:
         return self.status
-
-    @classmethod
-    def get_by_openid(cls, provider: str, open_id: str):
-        account_integrate = db.session.execute(
-            select(AccountIntegrate).where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
-        ).scalar_one_or_none()
-        if account_integrate:
-            return db.session.scalar(select(Account).where(Account.id == account_integrate.account_id))
-        return None
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property

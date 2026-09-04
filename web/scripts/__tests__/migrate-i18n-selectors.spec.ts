@@ -277,7 +277,7 @@ export function translate(selector: SelectorParam<'app'>, key: string, kind: key
 
     it('should adapt local react-i18next translation mocks', () => {
       // Arrange
-      const source = `import { vi } from 'vitest'
+      const source = `import { vi } from 'vite-plus/test'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -295,7 +295,7 @@ const businessProps = {
       const result = transformSource(source, 'example.spec.ts')
 
       // Assert
-      expect(result.output).toBe(`import { vi } from 'vitest'
+      expect(result.output).toBe(`import { vi } from 'vite-plus/test'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -320,7 +320,7 @@ const businessProps = {
 
     it('should adapt selector mocks from the local i18n facade', () => {
       // Arrange
-      const source = `import { vi } from 'vitest'
+      const source = `import { vi } from 'vite-plus/test'
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
@@ -346,7 +346,7 @@ vi.mock('#i18n', () => ({
 
     it('should defer mock callbacks declared outside a hoisted factory', () => {
       // Arrange
-      const source = `import { vi } from 'vitest'
+      const source = `import { vi } from 'vite-plus/test'
 
 const mockTranslation = (key: string) => key
 
@@ -373,7 +373,7 @@ vi.mock('#i18n', () => ({
     it('should preserve selector-aware i18next mock adapters', () => {
       // Arrange
       const source = `import type { Namespace, SelectorParam } from 'i18next'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 vi.mock('i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('i18next')>()
@@ -394,7 +394,7 @@ vi.mock('i18next', async (importOriginal) => {
     it('should transform a multiline JSX Trans mock without overlapping edits', () => {
       // Arrange
       const source = `import type { ReactNode } from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -443,7 +443,7 @@ vi.mock('react-i18next', () => ({
 
     it('should adapt only translation values configured through a referenced hoisted mock', () => {
       // Arrange
-      const source = `import { vi } from 'vitest'
+      const source = `import { vi } from 'vite-plus/test'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const reactI18nextMock = {
@@ -465,7 +465,7 @@ const businessProps = {
       const result = transformSource(source, 'example.spec.ts')
 
       // Assert
-      expect(result.output).toBe(`import { vi } from 'vitest'
+      expect(result.output).toBe(`import { vi } from 'vite-plus/test'
 import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())

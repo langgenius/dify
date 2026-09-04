@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
+from unittest.mock import Mock, patch
+
+import pytest
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType
@@ -9,6 +14,7 @@ from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason
 from repositories.sqlalchemy_api_workflow_run_repository import (
+    DifyAPISQLAlchemyWorkflowRunRepository,
     _build_human_input_required_reason,
     _PrivateWorkflowPauseEntity,
 )
@@ -151,3 +157,31 @@ def test_private_workflow_pause_entity_preserves_list_shaped_pause_reasons() -> 
 
     assert isinstance(result, list)
     assert result == pause_reasons
+
+
+def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    pause_model = WorkflowPause(
+        workflow_id="workflow-1",
+        workflow_run_id="run-1",
+        state_object_key="workflow-state.json",
+    )
+    pause_model.id = "pause-1"
+    session = Mock(spec=Session)
+
+    with (
+        patch(
+            "repositories.sqlalchemy_api_workflow_run_repository.storage.delete",
+            side_effect=PermissionError("DeleteObject denied"),
+        ) as delete_state_object,
+        caplog.at_level(logging.ERROR, logger="repositories.sqlalchemy_api_workflow_run_repository"),
+    ):
+        DifyAPISQLAlchemyWorkflowRunRepository._delete_pause_model(session, pause_model)
+
+    delete_state_object.assert_called_once_with(pause_model.state_object_key)
+    session.delete.assert_called_once_with(pause_model)
+    assert "pause_id=pause-1" in caplog.text
+    assert "workflow_run_id=run-1" in caplog.text
+    assert "object_key=workflow-state.json" in caplog.text
+    assert caplog.records[-1].exc_info is not None

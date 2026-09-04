@@ -1,6 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
@@ -105,8 +112,15 @@ const IndexMethod = ({
                 className="mr-3 w-24 shrink-0"
                 value={keywordNumber}
                 onValueChange={onKeywordNumberChange}
-                aria-label={keywordNumberLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{keywordNumberLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
               <Input
                 aria-label={keywordNumberLabel}
                 disabled={readonly}

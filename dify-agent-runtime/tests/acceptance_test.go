@@ -170,6 +170,84 @@ func TestRunSimpleScript(t *testing.T) {
 	}
 }
 
+func TestPTYModesMergeStdoutAndStderr(t *testing.T) {
+	for _, tgt := range targets() {
+		for _, tc := range []struct {
+			name string
+			mode string
+		}{
+			{name: "default"},
+			{name: "explicit", mode: "pty"},
+		} {
+			t.Run(tgt.name+"/"+tc.name, func(t *testing.T) {
+				payload := map[string]any{
+					"script":  "printf 'stdout-marker\\n'; printf 'stderr-marker\\n' >&2",
+					"timeout": 10,
+				}
+				if tc.mode != "" {
+					payload["mode"] = tc.mode
+				}
+				result := runJob(t, tgt, payload)
+				assertJobDone(t, result)
+				assertExitCode(t, result, 0)
+				output := result["output"].(string)
+				if !strings.Contains(output, "stdout-marker") || !strings.Contains(output, "stderr-marker") {
+					t.Fatalf("PTY output did not merge stdout and stderr: %q", output)
+				}
+			})
+		}
+	}
+}
+
+func TestRunStdioSeparatesStdoutAndStderr(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script":  "printf '{\"ok\":true}'\nprintf 'warning' >&2",
+				"mode":    "stdio",
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			if output := result["output"].(string); output != `{"ok":true}` {
+				t.Errorf("stdio output = %q, want stdout-only JSON", output)
+			}
+		})
+	}
+}
+
+func TestStdioInputIsRejected(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script":  "sleep 60",
+				"mode":    "stdio",
+				"timeout": 0.1,
+			})
+			jobID := result["job_id"].(string)
+			defer func() {
+				resp := doPost(t, tgt, fmt.Sprintf("/v1/jobs/%s/terminate", jobID), map[string]any{"grace_seconds": 0}, true)
+				resp.Body.Close()
+			}()
+
+			resp := doPost(t, tgt, fmt.Sprintf("/v1/jobs/%s/input", jobID), map[string]any{
+				"text":    "ignored\n",
+				"offset":  0,
+				"timeout": 1,
+			}, true)
+			assertStatus(t, resp, http.StatusConflict)
+			body := readBody(t, resp)
+			var failure map[string]map[string]string
+			if err := json.Unmarshal(body, &failure); err != nil {
+				t.Fatal(err)
+			}
+			if code := failure["error"]["code"]; code != "input_unsupported" {
+				t.Errorf("error code = %q, want input_unsupported", code)
+			}
+		})
+	}
+}
+
 func TestRunWithEnv(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
@@ -431,10 +509,12 @@ func TestSendInput(t *testing.T) {
 				"timeout": 2, // Will timeout waiting for input
 			})
 			jobID := result["job_id"].(string)
+			t.Cleanup(func() {
+				cleanupJobBestEffort(tgt, jobID)
+			})
 
 			if result["done"] == true {
-				// Already finished (possible race), skip
-				t.Skip("job completed before input could be sent")
+				t.Fatalf("interactive PTY job completed before input was sent: %#v", result)
 			}
 
 			// Send input
@@ -451,7 +531,7 @@ func TestSendInput(t *testing.T) {
 			json.Unmarshal(body, &inputResult)
 			output := inputResult["output"].(string)
 			if !strings.Contains(output, "got:hello-input") {
-				t.Logf("output after input: %q (may need more wait time)", output)
+				t.Fatalf("input result did not contain command echo: %q", output)
 			}
 		})
 	}
@@ -551,23 +631,73 @@ func TestLandlockCanReadSystemBinaries(t *testing.T) {
 	}
 }
 
-func TestLandlockCanWriteTmpdir(t *testing.T) {
+func TestLandlockUsesWorkspaceAsTempSpace(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			// TMPDIR ($CWD/.tmp) should be writable; /tmp should be denied.
+			// The workspace itself is cwd and temp space; shared /tmp remains denied.
 			result := runJob(t, tgt, map[string]any{
-				"script":  "echo TMPDIR=$TMPDIR && touch $TMPDIR/landlock-tmp-test && echo tmpdir_ok && touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
-				"env":     map[string]string{"HOME": "/home/dify"},
+				"script": "test \"$PWD\" = /workspace && test \"$TMPDIR\" = /workspace && test \"$TMP\" = /workspace && test \"$TEMP\" = /workspace && " +
+					"touch \"$TMPDIR/landlock-tmp-test\" && echo workspace_temp_ok; " +
+					"touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
+				"cwd": "/workspace",
+				"env": map[string]string{
+					"HOME":   "/home/dify",
+					"TMPDIR": "/tmp",
+					"TMP":    "/tmp",
+					"TEMP":   "/tmp",
+				},
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
 			output := result["output"].(string)
-			if !strings.Contains(output, "tmpdir_ok") {
-				t.Errorf("expected write to $TMPDIR to succeed, got %q", output)
+			if !strings.Contains(output, "workspace_temp_ok") {
+				t.Errorf("expected workspace temp checks to pass, got %q", output)
 			}
 			if !strings.Contains(output, "tmp_exit=1") && !strings.Contains(output, "Permission denied") {
 				t.Errorf("expected write to /tmp to be denied, got %q", output)
 			}
+		})
+	}
+}
+
+func TestRunnerDoesNotCreateCwdTmpDirectory(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			freshCwd := fmt.Sprintf("/workspace/no-auto-tmp-%s-%d", tgt.name, time.Now().UnixNano())
+			setup := runJob(t, tgt, map[string]any{
+				"script": "mkdir -p -- \"$FRESH_CWD\"",
+				"cwd":    "/workspace",
+				"env": map[string]string{
+					"HOME":      "/home/dify",
+					"FRESH_CWD": freshCwd,
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			t.Cleanup(func() {
+				cleanup := runJob(t, tgt, map[string]any{
+					"script": "rm -rf -- \"$FRESH_CWD\"",
+					"cwd":    "/workspace",
+					"env": map[string]string{
+						"HOME":      "/home/dify",
+						"FRESH_CWD": freshCwd,
+					},
+					"timeout": 10,
+				})
+				assertJobDone(t, cleanup)
+				assertExitCode(t, cleanup, 0)
+			})
+
+			result := runJob(t, tgt, map[string]any{
+				"script":  "test ! -e \"$PWD/.tmp\"",
+				"cwd":     freshCwd,
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
 		})
 	}
 }
@@ -718,6 +848,25 @@ func doPost(t *testing.T, tgt target, path string, payload map[string]any, withA
 		t.Fatalf("[%s] POST %s failed: %v", tgt.name, path, err)
 	}
 	return resp
+}
+
+func cleanupJobBestEffort(tgt target, jobID string) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	body, _ := json.Marshal(map[string]any{"grace_seconds": 0})
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/jobs/%s/terminate", tgt.baseURL, jobID), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	if resp, err := client.Do(req); err == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}
+
+	req, _ = http.NewRequest("DELETE", fmt.Sprintf("%s/v1/jobs/%s?force=true&grace_seconds=0", tgt.baseURL, jobID), nil)
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	if resp, err := client.Do(req); err == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}
 }
 
 func readBody(t *testing.T, resp *http.Response) []byte {

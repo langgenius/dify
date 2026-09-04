@@ -1054,14 +1054,6 @@ describe('update-plugin', () => {
     })
 
     describe('Props', () => {
-      it('should support custom placement', () => {
-        // Act
-        render(<PluginVersionPicker {...defaultProps} isShow={true} placement="top-end" />)
-
-        // Assert
-        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-      })
-
       it('should support custom offset', () => {
         // Act
         render(

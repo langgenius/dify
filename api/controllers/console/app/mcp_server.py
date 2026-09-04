@@ -190,7 +190,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
     @get_app_model
     def post(self, current_tenant_id: str, app_model: App):

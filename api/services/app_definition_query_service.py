@@ -28,6 +28,24 @@ class AppDefinitionSummary(NamedTuple):
     author_name: str | None
 
 
+class AppSiteConfiguration(NamedTuple):
+    title: str
+    chat_color_theme: str | None
+    chat_color_theme_inverted: bool
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    description: str | None
+    copyright: str | None
+    privacy_policy: str | None
+    input_placeholder: str | None
+    custom_disclaimer: str | None
+    default_language: str
+    prompt_public: bool
+    show_workflow_steps: bool
+    use_icon_as_answer_icon: bool
+
+
 class AppDefinitionQuery(Protocol):
     def get_published_parameter_config(
         self,
@@ -39,6 +57,8 @@ class AppDefinitionQuery(Protocol):
     def get_tool_icon_sources(self, app_id: str) -> Sequence[AppToolIconSource] | None: ...
 
     def get_summary(self, app_id: str) -> AppDefinitionSummary | None: ...
+
+    def get_site_configuration(self, app_id: str) -> AppSiteConfiguration | None: ...
 
 
 class AppDefinitionUnavailableError(ValueError):
@@ -111,3 +131,9 @@ class AppDefinitionQueryService:
         if summary is None:
             raise AppDefinitionUnavailableError("App not found")
         return summary
+
+    def get_site_configuration(self, app_id: str) -> AppSiteConfiguration:
+        configuration = self._definitions.get_site_configuration(app_id)
+        if configuration is None:
+            raise AppDefinitionUnavailableError("Site not found")
+        return configuration

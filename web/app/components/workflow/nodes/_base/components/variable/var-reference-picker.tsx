@@ -420,9 +420,8 @@ const VarReferencePicker: FC<Props> = ({
         )}
         <PopoverContent
           placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
-          sideOffset={0}
-          className="mt-1"
-          popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+          sideOffset={4}
+          className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           {!isConstant && (
             <VarReferencePopup

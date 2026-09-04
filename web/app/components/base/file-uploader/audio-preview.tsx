@@ -20,7 +20,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({ url, title, onCancel }) => {
     >
       <DialogContent
         className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
-        backdropClassName="bg-transparent!"
+        backdropProps={{ className: 'bg-transparent!' }}
       >
         <div tabIndex={-1}>
           <audio controls title={title} autoPlay={false} preload="metadata">

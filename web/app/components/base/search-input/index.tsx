@@ -1,7 +1,7 @@
-import type { InputProps } from '@langgenius/dify-ui/input'
+import type { InputGroupInputProps } from '@langgenius/dify-ui/input-group'
 import type { Ref } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -11,7 +11,10 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<InputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
+} & Pick<
+  InputGroupInputProps,
+  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name'
+>
 
 export function SearchInput({
   ref,
@@ -19,6 +22,7 @@ export function SearchInput({
   className,
   value,
   onValueChange,
+  name = 'query',
   autoFocus,
   disabled,
   'aria-describedby': ariaDescribedBy,
@@ -41,22 +45,14 @@ export function SearchInput({
   }
 
   return (
-    <div className={cn('relative', className)}>
-      <span
-        className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-        aria-hidden="true"
-      />
-      <Input
+    <InputGroup className={className}>
+      <InputGroupInput
         ref={inputRef}
         type="search"
-        name="query"
+        name={name}
         aria-describedby={ariaDescribedBy}
         aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
-        className={cn(
-          'ps-7',
-          !!inputValue && 'pe-7',
-          '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
-        )}
+        className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
         placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
         value={inputValue}
         disabled={disabled}
@@ -94,19 +90,24 @@ export function SearchInput({
         autoFocus={autoFocus}
         enterKeyHint="search"
       />
+      <InputGroupAddon className="ps-1.75 pe-1.25">
+        <span
+          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          aria-hidden="true"
+        />
+      </InputGroupAddon>
       {!!inputValue && !disabled && (
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-          onClick={handleClear}
-        >
-          <span
-            className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary"
-            aria-hidden="true"
-          />
-        </button>
+        <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+          <IconButton
+            size="sm"
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+            className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+            onClick={handleClear}
+          >
+            <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+          </IconButton>
+        </InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   )
 }

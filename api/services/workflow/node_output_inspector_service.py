@@ -26,8 +26,8 @@ Design constraints baked into this version:
    Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
-     :class:`WorkflowAgentBindingResolver` (the binding owns the canonical
-     ``DeclaredOutputConfig`` list and falls back to PRD defaults when empty).
+     :class:`WorkflowAgentBindingResolver` (the binding owns custom declarations;
+     the system ``text`` output is derived for display).
    * Other node kinds don't have a declared-output schema yet; we surface the
      keys present in the execution payload as a best-effort list typed
      ``unknown`` so the panel can still render them.
@@ -60,14 +60,11 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingResolver,
 )
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    WorkflowAgentRuntimeRequestBuilder,
-)
 from factories.file_factory.builders import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
-from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 
 logger = logging.getLogger(__name__)
@@ -783,7 +780,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs)))
+        return list(effective_declared_outputs(node_job.declared_outputs))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:

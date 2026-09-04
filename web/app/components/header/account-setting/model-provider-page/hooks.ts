@@ -75,11 +75,11 @@ export const useLanguage = () => {
   return locale.replace('-', '_')
 }
 
-type UseModelListOptions = {
+type ModelQueryOptions = {
   enabled?: boolean
 }
 
-export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelListOptions = {}) => {
+export const useModelList = (type: ModelTypeEnum, { enabled = true }: ModelQueryOptions = {}) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
       input: {
@@ -99,16 +99,20 @@ export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelLi
   }
 }
 
-export const useDefaultModel = (type: ModelTypeEnum) => {
+export const useDefaultModel = (
+  type: ModelTypeEnum,
+  { enabled = true }: ModelQueryOptions = {},
+) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: commonQueryKeys.defaultModel(type),
     queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
+    enabled,
   })
 
   return {
     data: data?.data,
     mutate: refetch,
-    isLoading: isPending,
+    isLoading: enabled && isPending,
   }
 }
 
@@ -236,7 +240,7 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.fetchQuery(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
       return response.data.find((provider) => provider.provider === providerName)
     } catch {
       return undefined

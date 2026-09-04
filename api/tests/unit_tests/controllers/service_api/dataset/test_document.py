@@ -18,16 +18,19 @@ Focus on:
 import inspect
 import json
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
+from controllers.service_api.dataset import document as document_module
 from controllers.service_api.dataset.document import (
     DeprecatedDocumentAddByTextApi,
     DeprecatedDocumentUpdateByFileApi,
@@ -45,8 +48,19 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
+from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
+from models.enums import (
+    ApiTokenType,
+    CreatorUserRole,
+    DataSourceType,
+    DocumentCreatedFrom,
+    DocumentDocType,
+    IndexingStatus,
+    SegmentStatus,
+)
+from models.model import ApiToken, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
@@ -55,6 +69,30 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 
 def _document_data_source_info() -> dict[str, str]:
     return {"type": "website_crawl", "url": "https://example.com/docs", "title": "Docs"}
+
+
+def _account() -> Account:
+    account = Account(name="Document API User", email=f"document-api-{uuid.uuid4()}@example.com")
+    account.id = "user-1"
+    return account
+
+
+def _upload_file() -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="documents/file.txt",
+        name="file.txt",
+        size=10,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    upload_file.id = str(uuid.uuid4())
+    return upload_file
 
 
 def _unwrap_non_wrapped_controller(view):
@@ -603,8 +641,8 @@ class TestDocumentServiceFileOperations:
     @patch("services.dataset_service.DocumentService._get_upload_file_for_upload_file_document")
     def test_get_document_download_url(self, mock_get_file, mock_signed_url, sqlite_session: Session):
         """Test generation of download URL."""
-        mock_doc = Mock()
-        mock_file = Mock()
+        mock_doc = make_serializable_document()
+        mock_file = _upload_file()
         mock_file.id = "file_id"
         mock_get_file.return_value = mock_file
         mock_signed_url.return_value = "https://example.com/download"
@@ -622,11 +660,9 @@ class TestDocumentServiceSaveValidation:
 
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
-    @patch("services.dataset_service.current_user")
-    def test_save_document_validates_doc_form(self, mock_user, mock_features, mock_check_form, sqlite_session: Session):
+    def test_save_document_validates_doc_form(self, mock_features, mock_check_form, sqlite_session: Session):
         """Test that doc_form is validated during save."""
-        mock_user.current_tenant_id = "tenant_id"
-        dataset = Mock()
+        dataset = make_dataset(tenant_id="tenant_id")
         config = Mock()
         features = Mock()
         features.billing.enabled = False
@@ -641,7 +677,7 @@ class TestDocumentServiceSaveValidation:
         # Skip actual logic by mocking dependent calls or raising error to stop early
         with pytest.raises(TestStopError):
             # We just want to check check_doc_form is called early
-            DocumentService.save_document_with_dataset_id(dataset, config, Mock(), session=session)
+            DocumentService.save_document_with_dataset_id(dataset, config, _account(), session=session)
 
         # This will fail if we raise exception before check_doc_form,
         # but check_doc_form is the first thing called.
@@ -972,7 +1008,24 @@ class TestDocumentApiGet:
                     )
 
 
-class TestDocumentApiDelete:
+class SQLiteControllerTest:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _use_sqlite_session(self, sqlite_session: Session, sqlite_engine: Engine) -> Iterator[None]:
+        self.session = sqlite_session
+        with (
+            patch.object(type(document_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
+            patch.object(document_module, "current_user", _account()),
+        ):
+            yield
+
+    def _persist_dataset(self, dataset: Dataset) -> None:
+        self.session.add(dataset)
+        self.session.commit()
+
+
+class TestDocumentApiDelete(SQLiteControllerTest):
     """Test suite for DocumentApi.delete() endpoint.
 
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check`` which
@@ -982,13 +1035,12 @@ class TestDocumentApiDelete:
     """
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_delete_document_success(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_document):
+    def test_delete_document_success(self, mock_doc_svc, app: Flask, mock_tenant, mock_document):
         """Test successful document deletion."""
         # Arrange
         dataset_id = str(uuid.uuid4())
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         mock_doc_svc.get_document.return_value = mock_document
         mock_doc_svc.check_archived.return_value = False
@@ -1003,7 +1055,7 @@ class TestDocumentApiDelete:
             delete = inspect.unwrap(type(api).delete)
             response = delete(
                 api,
-                mock_db.session,
+                self.session,
                 tenant_id=mock_tenant,
                 dataset_id=dataset_id,
                 document_id=mock_document.id,
@@ -1011,17 +1063,16 @@ class TestDocumentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_doc_svc.delete_document.assert_called_once_with(mock_document, mock_db.session)
+        mock_doc_svc.delete_document.assert_called_once_with(mock_document, self.session)
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_delete_document_not_found(self, mock_db, mock_doc_svc, app: Flask, mock_tenant):
+    def test_delete_document_not_found(self, mock_doc_svc, app: Flask, mock_tenant):
         """Test 404 when document not found."""
         # Arrange
         dataset_id = str(uuid.uuid4())
         document_id = str(uuid.uuid4())
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         mock_doc_svc.get_document.return_value = None
 
@@ -1035,20 +1086,19 @@ class TestDocumentApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=dataset_id,
                     document_id=document_id,
                 )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_delete_document_archived_forbidden(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_document):
+    def test_delete_document_archived_forbidden(self, mock_doc_svc, app: Flask, mock_tenant, mock_document):
         """Test ArchivedDocumentImmutableError when deleting archived document."""
         # Arrange
         dataset_id = str(uuid.uuid4())
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         mock_doc_svc.get_document.return_value = mock_document
         mock_doc_svc.check_archived.return_value = True
@@ -1063,20 +1113,18 @@ class TestDocumentApiDelete:
             with pytest.raises(ArchivedDocumentImmutableError):
                 delete(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=dataset_id,
                     document_id=mock_document.id,
                 )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_delete_document_dataset_not_found(self, mock_db, mock_doc_svc, app: Flask, mock_tenant):
+    def test_delete_document_dataset_not_found(self, mock_doc_svc, app: Flask, mock_tenant):
         """Test ValueError when dataset not found."""
         # Arrange
         dataset_id = str(uuid.uuid4())
         document_id = str(uuid.uuid4())
-        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -1088,23 +1136,22 @@ class TestDocumentApiDelete:
             with pytest.raises(ValueError, match="Dataset does not exist."):
                 delete(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=dataset_id,
                     document_id=document_id,
                 )
 
 
-class TestDocumentListApi:
+class TestDocumentListApi(SQLiteControllerTest):
     """Test suite for DocumentListApi endpoint."""
 
     @patch("controllers.service_api.dataset.document.paginate_query")
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_list_documents_success(self, mock_db, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset):
+    def test_list_documents_success(self, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset):
         """Test successful document list retrieval."""
         # Arrange
-        mock_db.session.scalar.side_effect = [mock_dataset, 0, 0]
+        self._persist_dataset(mock_dataset)
 
         documents = [
             make_serializable_document(
@@ -1128,7 +1175,7 @@ class TestDocumentListApi:
         ):
             api = DocumentListApi()
             response = inspect.unwrap(type(api).get)(
-                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
             )
 
         # Assert
@@ -1142,11 +1189,9 @@ class TestDocumentListApi:
         assert "data_source_info_dict" not in response["data"][0]
         assert "doc_metadata_details" not in response["data"][0]
 
-    @patch("controllers.service_api.dataset.document.db")
-    def test_list_documents_dataset_not_found(self, mock_db, app: Flask, mock_tenant, mock_dataset):
+    def test_list_documents_dataset_not_found(self, app: Flask, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -1155,15 +1200,14 @@ class TestDocumentListApi:
         ):
             api = DocumentListApi()
             with pytest.raises(NotFound):
-                inspect.unwrap(type(api).get)(api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id)
+                inspect.unwrap(type(api).get)(api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id)
 
 
-class TestDocumentIndexingStatusApi:
+class TestDocumentIndexingStatusApi(SQLiteControllerTest):
     """Test suite for DocumentIndexingStatusApi endpoint."""
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_get_indexing_status_success(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+    def test_get_indexing_status_success(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
         """Test successful indexing status retrieval."""
         # Arrange
         batch_id = "batch_123"
@@ -1176,8 +1220,25 @@ class TestDocumentIndexingStatusApi:
 
         mock_doc_svc.get_batch_documents.return_value = [document]
 
-        # scalar() called 3 times: dataset lookup, completed_segments count, total_segments count
-        mock_db.session.scalar.side_effect = [mock_dataset, 5, 5]
+        self._persist_dataset(mock_dataset)
+        self.session.add_all(
+            [
+                DocumentSegment(
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    document_id=document.id,
+                    position=position,
+                    content=f"Segment {position}",
+                    word_count=2,
+                    tokens=2,
+                    created_by="user-1",
+                    status=SegmentStatus.COMPLETED,
+                    completed_at=datetime(2021, 1, 1, tzinfo=UTC),
+                )
+                for position in range(1, 6)
+            ]
+        )
+        self.session.commit()
 
         # Act
         with app.test_request_context(
@@ -1187,7 +1248,7 @@ class TestDocumentIndexingStatusApi:
             api = DocumentIndexingStatusApi()
             response = inspect.unwrap(type(api).get)(
                 api,
-                mock_db.session,
+                self.session,
                 tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 batch=batch_id,
@@ -1216,12 +1277,10 @@ class TestDocumentIndexingStatusApi:
             ]
         }
 
-    @patch("controllers.service_api.dataset.document.db")
-    def test_get_indexing_status_dataset_not_found(self, mock_db, app: Flask, mock_tenant, mock_dataset):
+    def test_get_indexing_status_dataset_not_found(self, app: Flask, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange
         batch_id = "batch_123"
-        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -1232,21 +1291,18 @@ class TestDocumentIndexingStatusApi:
             with pytest.raises(NotFound):
                 inspect.unwrap(type(api).get)(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     batch=batch_id,
                 )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.db")
-    def test_get_indexing_status_documents_not_found(
-        self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset
-    ):
+    def test_get_indexing_status_documents_not_found(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
         """Test 404 when no documents found for batch."""
         # Arrange
         batch_id = "batch_empty"
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
         mock_doc_svc.get_batch_documents.return_value = []
 
         # Act & Assert
@@ -1258,14 +1314,14 @@ class TestDocumentIndexingStatusApi:
             with pytest.raises(NotFound):
                 inspect.unwrap(type(api).get)(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     batch=batch_id,
                 )
 
 
-class TestDocumentAddByTextApi:
+class TestDocumentAddByTextApi(SQLiteControllerTest):
     """Test suite for DocumentAddByTextApi.post() endpoint.
 
     ``post`` is wrapped by ``@cloud_edition_billing_resource_check`` and
@@ -1286,9 +1342,8 @@ class TestDocumentAddByTextApi:
         ``FeatureService.get_knowledge_rate_limit``.
         Both call ``validate_and_get_api_token`` first.
         """
-        mock_api_token = Mock()
-        mock_api_token.tenant_id = tenant_id
-        mock_validate_token.return_value = mock_api_token
+        api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
+        mock_validate_token.return_value = api_token
 
         mock_features = Mock()
         mock_features.billing.enabled = False
@@ -1306,16 +1361,12 @@ class TestDocumentAddByTextApi:
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.KnowledgeConfig")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_document_by_text_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
-        mock_current_user,
         mock_file_svc_cls,
         mock_knowledge_config,
         mock_doc_svc,
@@ -1327,12 +1378,9 @@ class TestDocumentAddByTextApi:
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
 
-        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
+        self._persist_dataset(mock_dataset)
         mock_dataset.indexing_technique = "economy"
-        mock_current_user.id = str(uuid.uuid4())
-
-        mock_upload_file = Mock()
-        mock_upload_file.id = str(uuid.uuid4())
+        mock_upload_file = _upload_file()
         mock_file_svc = Mock()
         mock_file_svc.upload_text.return_value = mock_upload_file
         mock_file_svc_cls.return_value = mock_file_svc
@@ -1357,7 +1405,7 @@ class TestDocumentAddByTextApi:
         ):
             api = DocumentAddByTextApi()
             response, status = _unwrap_non_wrapped_controller(type(api).post)(
-                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
             )
 
         # Assert
@@ -1366,19 +1414,16 @@ class TestDocumentAddByTextApi:
             200,
         )
         assert "data_source_info_dict" not in response["document"]
-        assert mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["session"] is mock_db.session
+        assert mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["session"] is self.session
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.dataset.document.db")
     def test_create_document_dataset_not_found(
-        self, mock_db, mock_validate_token, mock_feature_svc, app: Flask, mock_tenant, mock_dataset
+        self, mock_validate_token, mock_feature_svc, app: Flask, mock_tenant, mock_dataset
     ):
         """Test ValueError when dataset not found."""
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
-
-        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -1390,14 +1435,13 @@ class TestDocumentAddByTextApi:
             api = DocumentAddByTextApi()
             with pytest.raises(ValueError, match="Dataset does not exist."):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.dataset.document.db")
     def test_create_document_missing_indexing_technique(
-        self, mock_db, mock_validate_token, mock_feature_svc, app: Flask, mock_tenant, mock_dataset
+        self, mock_validate_token, mock_feature_svc, app: Flask, mock_tenant, mock_dataset
     ):
         """Test error when both dataset and payload lack indexing_technique.
 
@@ -1409,7 +1453,7 @@ class TestDocumentAddByTextApi:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
 
         mock_dataset.indexing_technique = None
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         # Act & Assert
         with app.test_request_context(
@@ -1421,7 +1465,7 @@ class TestDocumentAddByTextApi:
             api = DocumentAddByTextApi()
             with pytest.raises(ValueError, match="indexing_technique is required."):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
 
@@ -1474,9 +1518,8 @@ class TestDocumentRouteDeprecation:
 
 def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     """Configure mocks to neutralise billing/auth decorators."""
-    mock_api_token = Mock()
-    mock_api_token.tenant_id = tenant_id
-    mock_validate_token.return_value = mock_api_token
+    api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
+    mock_validate_token.return_value = api_token
     mock_features = Mock()
     mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
@@ -1489,7 +1532,7 @@ def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
 
-class TestDocumentUpdateByTextApiPost:
+class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
     """Test suite for DocumentUpdateByTextApi.post() endpoint.
 
     ``post`` is wrapped by ``@cloud_edition_billing_resource_check`` and
@@ -1498,16 +1541,12 @@ class TestDocumentUpdateByTextApiPost:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_text_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
-        mock_current_user,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
@@ -1518,11 +1557,9 @@ class TestDocumentUpdateByTextApiPost:
         """Test successful document update by text."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
+        self._persist_dataset(mock_dataset)
 
-        mock_current_user.id = "user-1"
-        mock_upload = Mock()
-        mock_upload.id = str(uuid.uuid4())
+        mock_upload = _upload_file()
         mock_file_svc_cls.return_value.upload_text.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-text", name="Updated Doc")
@@ -1539,7 +1576,7 @@ class TestDocumentUpdateByTextApiPost:
             api = DocumentUpdateByTextApi()
             response, status = _unwrap_non_wrapped_controller(type(api).post)(
                 api,
-                mock_db.session,
+                self.session,
                 tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,
@@ -1550,21 +1587,18 @@ class TestDocumentUpdateByTextApiPost:
             200,
         )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_text_dataset_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
-        mock_db.session.scalar.return_value = None
 
         doc_id = str(uuid.uuid4())
         with app.test_request_context(
@@ -1577,14 +1611,14 @@ class TestDocumentUpdateByTextApiPost:
             with pytest.raises(ValueError, match="Dataset does not exist"):
                 _unwrap_non_wrapped_controller(type(api).post)(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
                 )
 
 
-class TestDocumentAddByFileApiPost:
+class TestDocumentAddByFileApiPost(SQLiteControllerTest):
     """Test suite for DocumentAddByFileApi.post() endpoint.
 
     ``post`` is wrapped by two ``@cloud_edition_billing_resource_check``
@@ -1593,16 +1627,12 @@ class TestDocumentAddByFileApiPost:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_success_serializes_document_and_batch_shape(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
-        mock_current_user,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
@@ -1614,11 +1644,9 @@ class TestDocumentAddByFileApiPost:
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
-        mock_db.session.scalar.side_effect = [mock_dataset, 0]
+        self._persist_dataset(mock_dataset)
 
-        mock_current_user.id = "user-1"
-        mock_upload = Mock()
-        mock_upload.id = str(uuid.uuid4())
+        mock_upload = _upload_file()
         mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-create-file", name="File Document")
@@ -1640,7 +1668,7 @@ class TestDocumentAddByFileApiPost:
         ):
             api = DocumentAddByFileApi()
             response, status = _unwrap_non_wrapped_controller(type(api).post)(
-                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
             )
 
         assert (response, status) == (
@@ -1653,12 +1681,8 @@ class TestDocumentAddByFileApiPost:
         return_value=15,
     )
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
-    @patch("controllers.service_api.dataset.document.db")
     def test_add_by_file_too_large_returns_http_413(
         self,
-        mock_db,
-        mock_current_user,
         mock_file_svc_cls,
         mock_get_limit,
         app: Flask,
@@ -1668,8 +1692,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
-        mock_db.session.scalar.return_value = mock_dataset
-        mock_current_user.__bool__ = Mock(return_value=True)
+        self._persist_dataset(mock_dataset)
         mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
 
         from io import BytesIO
@@ -1687,28 +1710,25 @@ class TestDocumentAddByFileApiPost:
             api = DocumentAddByFileApi()
             with pytest.raises(FileTooLargeHTTPError) as exc_info:
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
         assert exc_info.value.code == 413
         assert exc_info.value.error_code == "file_too_large"
         mock_get_limit.assert_called_once_with(mock_tenant)
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_dataset_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
-        mock_db.session.scalar.return_value = None
 
         from io import BytesIO
 
@@ -1723,17 +1743,15 @@ class TestDocumentAddByFileApiPost:
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="Dataset does not exist"):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_external_dataset(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1741,7 +1759,7 @@ class TestDocumentAddByFileApiPost:
         """Test ValueError when dataset is external."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "external"
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         from io import BytesIO
 
@@ -1756,17 +1774,15 @@ class TestDocumentAddByFileApiPost:
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="External datasets"):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_no_file_uploaded(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1778,7 +1794,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/document/create_by_file",
@@ -1790,17 +1806,15 @@ class TestDocumentAddByFileApiPost:
             api = DocumentAddByFileApi()
             with pytest.raises(NoFileUploadedError):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_missing_indexing_technique(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1810,7 +1824,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = None
         mock_dataset.chunk_structure = None
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         from io import BytesIO
 
@@ -1825,11 +1839,11 @@ class TestDocumentAddByFileApiPost:
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="indexing_technique is required"):
                 _unwrap_non_wrapped_controller(type(api).post)(
-                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                    api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
                 )
 
 
-class TestDocumentUpdateByFileApiPatch:
+class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
     """Test suite for the canonical document file update endpoint.
 
     ``patch`` is wrapped by ``@cloud_edition_billing_resource_check`` and
@@ -1885,21 +1899,18 @@ class TestDocumentUpdateByFileApiPatch:
             document_id=doc_id,
         )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_file_dataset_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
-        mock_db.session.scalar.return_value = None
 
         from io import BytesIO
 
@@ -1916,20 +1927,18 @@ class TestDocumentUpdateByFileApiPatch:
             with pytest.raises(ValueError, match="Dataset does not exist"):
                 _unwrap_non_wrapped_controller(type(api).patch)(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
                 )
 
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_file_external_dataset(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1937,7 +1946,7 @@ class TestDocumentUpdateByFileApiPatch:
         """Test ValueError when dataset is external."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "external"
-        mock_db.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset)
 
         from io import BytesIO
 
@@ -1954,7 +1963,7 @@ class TestDocumentUpdateByFileApiPatch:
             with pytest.raises(ValueError, match="External datasets"):
                 _unwrap_non_wrapped_controller(type(api).patch)(
                     api,
-                    mock_db.session,
+                    self.session,
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
@@ -1962,16 +1971,12 @@ class TestDocumentUpdateByFileApiPatch:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
-    @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_file_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_db,
-        mock_current_user,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
@@ -1983,11 +1988,9 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset.indexing_technique = "economy"
         mock_dataset.provider = "vendor"
         mock_dataset.chunk_structure = None
-        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
+        self._persist_dataset(mock_dataset)
 
-        mock_current_user.id = "user-1"
-        mock_upload = Mock()
-        mock_upload.id = str(uuid.uuid4())
+        mock_upload = _upload_file()
         mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-file", name="File Document", batch="batch-1")
@@ -2008,7 +2011,7 @@ class TestDocumentUpdateByFileApiPatch:
             api = DocumentApi()
             response, status = _unwrap_non_wrapped_controller(type(api).patch)(
                 api,
-                mock_db.session,
+                self.session,
                 tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,

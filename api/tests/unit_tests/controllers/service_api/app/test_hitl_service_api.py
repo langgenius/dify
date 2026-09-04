@@ -40,6 +40,7 @@ from enums import DeploymentEdition
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, MessageStatus
 from models.human_input import HumanInputForm
@@ -49,6 +50,7 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _DummyRateLimit:
@@ -140,7 +142,7 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         paused_nodes=["node-1"],
         reasons=[
             {
-                "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
+                "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                 "form_id": "form-1",
                 "expiration_time": 100,
             }
@@ -311,7 +313,7 @@ class TestHitlServiceApi:
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
-            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+            response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
         assert response.get_data(as_text=True) == "data: streamed\n\n"
         msg_generator.retrieve_events.assert_called_once_with(
@@ -356,7 +358,7 @@ class TestHitlServiceApi:
             "/workflow/run-1/events?user=u1&include_state_snapshot=true&continue_on_pause=true",
             method="GET",
         ):
-            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+            response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
         assert response.get_data(as_text=True) == "data: snapshot\n\n"
         msg_generator.retrieve_events.assert_not_called()
@@ -379,7 +381,7 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
 
         workflow = MagicMock()
@@ -432,7 +434,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
+        assert response["data"]["reasons"][0]["TYPE"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -523,7 +525,7 @@ class TestHitlServiceApi:
                     outputs={},
                     reasons=[
                         {
-                            "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
+                            "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                             "form_id": "form-1",
                             "node_id": "node-1",
                             "expiration_time": 123,
@@ -678,7 +680,7 @@ class TestHitlServiceApi:
         assert pause_resp.data.reasons[0]["TYPE"] == "human_input_required"
         assert pause_resp.data.reasons[0]["form_id"] == "form-1"
         assert pause_resp.data.reasons[0]["form_token"] == "token"
-        assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
+        assert pause_resp.data.reasons[0]["expiration_time"] == to_utc_timestamp(expiration_time)
 
         assert isinstance(responses[0], HumanInputRequiredResponse)
         hi_resp = responses[0]
@@ -689,7 +691,7 @@ class TestHitlServiceApi:
         assert hi_resp.data.actions[0].id == "approve"
         assert hi_resp.data.display_in_ui is True
         assert hi_resp.data.form_token == "token"
-        assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
+        assert hi_resp.data.expiration_time == to_utc_timestamp(expiration_time)
 
     # Snapshot payload contract
     def test_snapshot_events_include_pause_payload_contract(
@@ -746,13 +748,13 @@ class TestHitlServiceApi:
         ]
         assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
         assert events[3]["data"]["form_token"] == "wtok"
-        assert events[3]["data"]["expiration_time"] == int(expiration_time.timestamp())
+        assert events[3]["data"]["expiration_time"] == to_utc_timestamp(expiration_time)
         pause_data = events[-1]["data"]
         assert pause_data["paused_nodes"] == ["node-1"]
         assert pause_data["outputs"] == {"result": "value"}
         assert pause_data["reasons"][0]["TYPE"] == "human_input_required"
         assert pause_data["reasons"][0]["form_token"] == "wtok"
-        assert pause_data["reasons"][0]["expiration_time"] == int(expiration_time.timestamp())
+        assert pause_data["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
         assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
         assert pause_data["created_at"] == int(workflow_run.created_at.timestamp())
         assert pause_data["elapsed_time"] == workflow_run.elapsed_time

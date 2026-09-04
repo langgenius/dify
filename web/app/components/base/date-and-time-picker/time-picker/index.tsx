@@ -26,11 +26,9 @@ const TimePicker = ({
   renderTrigger,
   title,
   minuteFilter,
-  popupClassName,
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
-  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -268,10 +266,9 @@ const TimePicker = ({
         }}
       />
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={0}
-        className={popupClassName}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}

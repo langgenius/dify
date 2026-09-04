@@ -139,11 +139,7 @@ describe('variable utils', () => {
         expect.arrayContaining([
           expect.objectContaining({
             nodeId: 'node-1',
-            vars: [
-              { variable: 'text', type: VarType.string },
-              { variable: 'files', type: VarType.arrayFile },
-              { variable: 'json', type: VarType.object },
-            ],
+            vars: [{ variable: 'text', type: VarType.string }],
           }),
         ]),
       )
@@ -188,16 +184,13 @@ describe('variable utils', () => {
           expect.objectContaining({
             nodeId: 'node-1',
             vars: [
+              { variable: 'text', type: VarType.string },
               { variable: 'summary', type: VarType.string },
               { variable: 'attachments', type: VarType.arrayFile },
             ],
           }),
         ]),
       )
-      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'text',
-        type: VarType.string,
-      })
     })
   })
 

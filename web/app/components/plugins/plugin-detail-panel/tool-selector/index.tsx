@@ -1,5 +1,4 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import type { ReactElement, Ref } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -33,7 +32,6 @@ type TriggerProps =
 
 type Props = Readonly<{
   disabled?: boolean
-  placement?: Placement
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
@@ -55,7 +53,6 @@ function ToolSelector({
   selectedTools,
   isEdit,
   disabled,
-  placement = 'left',
   onSelect,
   onSelectMultiple,
   onDelete,
@@ -171,9 +168,9 @@ function ToolSelector({
       ) : null}
 
       <PopoverContent
-        placement={placement}
+        placement="left"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           className={cn(

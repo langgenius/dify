@@ -1,14 +1,32 @@
-from types import SimpleNamespace
+import json
 from unittest.mock import patch
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from models.model import AppMode
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
+
+
+def _app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", name="Workflow App", mode=AppMode.WORKFLOW)
+
+
+def _workflow() -> Workflow:
+    return Workflow(
+        id="wf-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features=json.dumps({}),
+        created_by="account-1",
+    )
 
 
 class TestWorkflowAppConfigManager:
     def test_get_app_config(self):
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        workflow = SimpleNamespace(id="wf-1", features_dict={})
+        app_model = _app()
+        workflow = _workflow()
 
         with (
             patch(

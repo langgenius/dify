@@ -138,5 +138,8 @@ class PipelineRunApiEntity(BaseModel):
         )
     )
     response_mode: PipelineResponseMode = Field(
-        description="Response mode. Use `streaming` for SSE or `blocking` for JSON."
+        description=(
+            "Response mode for draft runs. Use `streaming` for SSE or `blocking` for JSON. Published runs are queued "
+            "and always return batch metadata as JSON."
+        )
     )

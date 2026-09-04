@@ -2,7 +2,8 @@ import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.ge
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
@@ -93,7 +94,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
             <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t(($) => $['versionHistory.editField.title'], { ns: 'workflow' })}
             </FieldLabel>
-            <FieldControl
+            <Input
               value={title}
               placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={setTitle}

@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '../../../llm/types'
-import type { Field } from '@/app/components/workflow/nodes/llm/types'
+import type { Field, StructuredOutput } from '../../../llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
@@ -295,7 +295,7 @@ const Item: FC<ItemProps> = ({
       <PopoverContent
         placement="left-start"
         sideOffset={0}
-        popupClassName={cn(
+        className={cn(
           VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,
           'border-none bg-transparent p-0 shadow-none backdrop-blur-none',
         )}
@@ -357,7 +357,9 @@ const VarReferenceVars: FC<Props> = ({
   const { t } = useTranslation()
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const searchValue = searchText ?? internalSearchValue
+  const searchLabel = t(($) => $['common.searchVar'], { ns: 'workflow' })
   const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
   const selectableItems = useMemo(() => {
     return filteredVars.flatMap((node) =>
@@ -475,20 +477,50 @@ const VarReferenceVars: FC<Props> = ({
     <>
       {!hideSearch && (
         <>
-          <div className={cn('m-2', searchBoxClassName)} onClick={(e) => e.stopPropagation()}>
-            <Input
-              className={VAR_SEARCH_INPUT_CLASS_NAME}
-              showLeftIcon
-              showClearIcon
+          <InputGroup
+            className={cn('m-2 w-auto', searchBoxClassName)}
+            onClick={(event) => event.stopPropagation()}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) onBlur?.()
+            }}
+          >
+            <InputGroupInput
+              ref={searchInputRef}
+              type="search"
+              aria-label={searchLabel}
+              autoComplete="off"
+              className={cn(
+                VAR_SEARCH_INPUT_CLASS_NAME,
+                '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
+              )}
               value={searchValue}
-              placeholder={t(($) => $['common.searchVar'], { ns: 'workflow' }) || ''}
-              onChange={(e) => setInternalSearchValue(e.target.value)}
+              placeholder={searchLabel}
+              onValueChange={setInternalSearchValue}
               onKeyDown={handleKeyDown}
-              onClear={() => setInternalSearchValue('')}
-              onBlur={onBlur}
               autoFocus={autoFocus}
             />
-          </div>
+            <InputGroupAddon className="ps-2 pe-0.5">
+              <span
+                aria-hidden="true"
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+              />
+            </InputGroupAddon>
+            {!!searchValue && (
+              <InputGroupAddon align="inline-end" className="ps-0.5 pe-2">
+                <IconButton
+                  size="xs"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+                  onClick={() => {
+                    setInternalSearchValue('')
+                    searchInputRef.current?.focus()
+                  }}
+                >
+                  <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
+                </IconButton>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
           <div
             className="relative -left-1 h-[0.5px] bg-black/5"
             style={{

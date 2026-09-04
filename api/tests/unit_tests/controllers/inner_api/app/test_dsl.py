@@ -13,9 +13,10 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import event, select
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.app import dsl as dsl_module
 from controllers.inner_api.app.dsl import (
@@ -24,11 +25,12 @@ from controllers.inner_api.app.dsl import (
     InnerAppDSLImportPayload,
     _get_active_account,
 )
-from models import Account, App
-from models.account import AccountStatus
+from models import Account, App, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _persist_app(session: Session) -> App:
@@ -46,6 +48,24 @@ def _persist_app(session: Session) -> App:
     session.add(app)
     session.commit()
     return app
+
+
+def _persist_account(session: Session, *, workspace_id: str = "ws-123") -> Account:
+    account = Account(name="DSL Creator", email="user@example.com", status=AccountStatus.ACTIVE)
+    tenant = Tenant(name="DSL Workspace")
+    tenant.id = workspace_id
+    session.add_all([account, tenant])
+    session.flush()
+    session.add(
+        TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+    )
+    session.commit()
+    return account
 
 
 class TestInnerAppDSLImportPayload:
@@ -160,38 +180,40 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        account = _persist_account(sqlite_session)
+        self._transaction_events.clear()
+        mock_get_account.return_value = account
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "yaml_content": "version: 0.6.0\n",
-                    "creator_email": "user@example.com",
-                }
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {
+            "yaml_content": "version: 0.6.0\n",
+            "creator_email": "user@example.com",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 200
         assert body["status"] == "completed"
-        call_session = mock_account.set_tenant_id_with_session.call_args.kwargs["session"]
-        assert isinstance(call_session, Session)
+        assert account.current_tenant_id == "ws-123"
+        assert self._mock_dsl.import_app.call_args.kwargs["account"] is account
         assert self._transaction_events == ["commit"]
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask):
-        mock_get_account.return_value = MagicMock()
+    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+        with app.test_request_context(json=payload):
+            body, status_code = unwrapped(
+                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+            )
 
         assert status_code == 202
         assert body["status"] == "pending"
@@ -199,17 +221,17 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_account.set_tenant_id_with_session.side_effect = lambda _tenant_id, *, session: session.execute(select(1))
-        mock_get_account.return_value = mock_account
+    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+        with app.test_request_context(json=payload):
+            body, status_code = unwrapped(
+                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+            )
 
         assert status_code == 400
         assert body["status"] == "failed"
@@ -220,10 +242,9 @@ class TestEnterpriseAppDSLImport:
         mock_get_account.return_value = None
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
+        with app.test_request_context(json=payload):
+            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 404
@@ -466,3 +487,22 @@ class TestEnterpriseAppDSLExport:
         body, status_code = result
         assert status_code == 404
         assert "app not found" in body["message"]
+
+
+class TestModelValidateDecorator:
+    """The handler tests above unwrap the view, so this is what covers the decorator."""
+
+    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask) -> None:
+        api_instance = EnterpriseAppDSLImport()
+
+        with (
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
+            app.test_request_context(
+                method="POST",
+                json={},
+                headers={"X-Inner-Api-Key": "inner-api-key"},
+            ),
+            pytest.raises(UnprocessableEntity),
+        ):
+            api_instance.post(workspace_id="ws-123")

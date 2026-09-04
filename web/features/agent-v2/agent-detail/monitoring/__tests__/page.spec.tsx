@@ -40,7 +40,6 @@ vi.mock('echarts-for-react', () => ({
 }))
 
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
   useLocale: () => 'en-US',
 }))
 
@@ -191,6 +190,13 @@ describe('AgentMonitoringPage', () => {
       },
     })
     expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+  })
+
+  it('should show the monitoring description without the obsolete documentation link', () => {
+    renderPage()
+
+    expect(screen.getByText('agentV2.agentDetail.monitoring.description')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('should render statistics summary values and chart options from backend data', async () => {

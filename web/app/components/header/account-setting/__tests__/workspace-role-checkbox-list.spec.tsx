@@ -1,5 +1,6 @@
 import type { Role } from '@/models/access-control'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import WorkspaceRoleCheckboxList from '../workspace-role-checkbox-list'
 
@@ -77,6 +78,27 @@ describe('WorkspaceRoleCheckboxList', () => {
     expect(selectedRole).toHaveAttribute('data-checked', '')
     expect(unselectedRole).not.toHaveAttribute('data-checked')
     expect(screen.queryByRole('checkbox', { name: /First role/i })).not.toBeInTheDocument()
+  })
+
+  it('should clear the role search and return focus to the search input', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={[]}
+        selectedRoles={[]}
+        onSelectedRolesChange={vi.fn()}
+      />,
+    )
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'permission.role.searchPlaceholder',
+    })
+    await user.type(searchInput, 'First')
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
   })
 
   it('should expose disabled state on single-role options', () => {

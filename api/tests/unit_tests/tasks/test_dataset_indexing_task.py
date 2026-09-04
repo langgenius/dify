@@ -27,6 +27,7 @@ from tasks.document_indexing_task import (
     normal_document_indexing_task,
     priority_document_indexing_task,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -318,7 +319,7 @@ class TestDocumentIndexing:
             document_ids=[control_document_id],
         )
         _patch_features(monkeypatch, features)
-        monkeypatch.setattr("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", str(batch_limit))
+        apply_config_overrides(monkeypatch, BATCH_UPLOAD_LIMIT=str(batch_limit))
 
         _document_indexing(dataset_id, document_ids)
 

@@ -14,12 +14,12 @@ _SETUP_LOCK_TIMEOUT_SECONDS = 300
 
 
 class RegisterServiceAccountProvisioner(SetupAccountProvisioner):
-    def __init__(self, client: sessionmaker[Session]) -> None:
-        self._client = client
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
 
     @override
     def provision(self, setup: SetupInput) -> None:
-        with self._client() as session:
+        with self._session_factory() as session:
             RegisterService.setup(
                 email=setup.email,
                 name=setup.name,

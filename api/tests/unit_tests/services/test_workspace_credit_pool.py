@@ -1,7 +1,8 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
 from services.credit_pool_service import CreditPoolBalance
@@ -13,9 +14,12 @@ from services.workspace_service import WorkspaceService
     [(500, 120, 380, False), (-1, 999, -1, True)],
 )
 def test_get_effective_credit_pool_prefers_available_paid_pool(
-    quota_limit: int, quota_used: int, remaining_credits: int, is_unlimited: bool
+    quota_limit: int,
+    quota_used: int,
+    remaining_credits: int,
+    is_unlimited: bool,
+    unbound_session: Session,
 ) -> None:
-    session = MagicMock()
     paid_pool = CreditPoolBalance(
         tenant_id="tenant-1",
         pool_type="paid",
@@ -34,9 +38,9 @@ def test_get_effective_credit_pool_prefers_available_paid_pool(
         patch("services.workspace_service.BillingService.get_info", return_value=billing_info),
         patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool) as get_pool,
     ):
-        result = WorkspaceService.get_effective_credit_pool("tenant-1", session=session)
+        result = WorkspaceService.get_effective_credit_pool("tenant-1", session=unbound_session)
 
-    get_pool.assert_called_once_with(tenant_id="tenant-1", pool_type="paid", session=session)
+    get_pool.assert_called_once_with(tenant_id="tenant-1", pool_type="paid", session=unbound_session)
     assert result.pool_type == "paid"
     assert result.quota_limit == quota_limit
     assert result.quota_used == quota_used
@@ -46,8 +50,7 @@ def test_get_effective_credit_pool_prefers_available_paid_pool(
     assert result.next_credit_reset_date == 1775001600
 
 
-def test_get_effective_credit_pool_exposes_exhausted_trial_pool() -> None:
-    session = MagicMock()
+def test_get_effective_credit_pool_exposes_exhausted_trial_pool(unbound_session: Session) -> None:
     trial_pool = CreditPoolBalance(
         tenant_id="tenant-1",
         pool_type="trial",
@@ -66,9 +69,9 @@ def test_get_effective_credit_pool_exposes_exhausted_trial_pool() -> None:
         patch("services.workspace_service.BillingService.get_info", return_value=billing_info),
         patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=trial_pool) as get_pool,
     ):
-        result = WorkspaceService.get_effective_credit_pool("tenant-1", session=session)
+        result = WorkspaceService.get_effective_credit_pool("tenant-1", session=unbound_session)
 
-    get_pool.assert_called_once_with(tenant_id="tenant-1", pool_type="trial", session=session)
+    get_pool.assert_called_once_with(tenant_id="tenant-1", pool_type="trial", session=unbound_session)
     assert result.pool_type == "trial"
     assert result.remaining_credits == 0
     assert result.is_unlimited is False

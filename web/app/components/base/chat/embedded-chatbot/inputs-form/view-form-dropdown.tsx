@@ -31,7 +31,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           data-testid="view-form-dropdown-content"

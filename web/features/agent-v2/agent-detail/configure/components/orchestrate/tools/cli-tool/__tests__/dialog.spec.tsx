@@ -10,6 +10,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => () => 'https://docs.example.com',
+}))
+
 type CliToolDialogProps = Parameters<typeof CliToolDialog>[0]
 
 function renderCliToolDialog(props?: Partial<CliToolDialogProps>) {
@@ -129,6 +133,16 @@ describe('CliToolDialog', () => {
   })
 
   describe('Actions', () => {
+    it('should link to documentation through the shared documentation URL', () => {
+      renderCliToolDialog()
+
+      expect(
+        screen.getByRole('link', {
+          name: /agentV2\.agentDetail\.configure\.tools\.cliDialog\.learnMore/,
+        }),
+      ).toHaveAttribute('href', 'https://docs.example.com')
+    })
+
     it('should keep the form open when the backdrop is clicked', async () => {
       const user = userEvent.setup()
       const { onOpenChange } = renderCliToolDialog()

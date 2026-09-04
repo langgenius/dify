@@ -161,10 +161,10 @@ def main() -> int:
             minimum_total=args.minimum_total,
         )
     except CoverageGateError as error:
-        print(f"Coverage gate failed: {error}", file=sys.stderr)
+        print(f"Coverage gate failed: {error}", file=sys.stderr)  # noqa: T201
         return 1
 
-    print(
+    print(  # noqa: T201
         f"Coverage gate passed for {len(scoped_files)} files: "
         f"statements={summary.statement_percent:.2f}%, "
         f"branches={summary.branch_percent:.2f}%, total={summary.total_percent:.2f}%"

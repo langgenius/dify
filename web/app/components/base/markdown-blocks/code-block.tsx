@@ -1,11 +1,12 @@
 import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import ReactEcharts from 'echarts-for-react'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import SVGBtn from '@/app/components/base/svg'
 import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
@@ -137,7 +138,7 @@ type EChartsEventParams = {
   [key: string]: any
 }
 
-const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
@@ -543,7 +544,20 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
-          {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          {language === 'svg' && (
+            <Toggle
+              pressed={isSVG}
+              onPressedChange={setIsSVG}
+              render={
+                <IconButton aria-label="SVG">
+                  <span
+                    aria-hidden
+                    className={isSVG ? 'i-ri-file-code-fill size-4' : 'i-ri-file-code-line size-4'}
+                  />
+                </IconButton>
+              }
+            />
+          )}
           <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
@@ -552,5 +566,3 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   )
 })
 CodeBlock.displayName = 'CodeBlock'
-
-export default CodeBlock

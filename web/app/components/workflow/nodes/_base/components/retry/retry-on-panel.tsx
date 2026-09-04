@@ -1,18 +1,34 @@
 import type { Node } from '@/app/components/workflow/types'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  NumberField,
+  NumberFieldGroup,
+  NumberFieldInput,
+  NumberFieldUnit,
+} from '@langgenius/dify-ui/number-field'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
-import s from './style.module.css'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
   const { t } = useTranslation()
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
+  const retryEnabledId = useId()
+  const retryOnFailureLabel = t(($) => $['nodes.common.retry.retryOnFailure'], {
+    ns: 'workflow',
+  })
   const maxRetriesLabel = t(($) => $['nodes.common.retry.maxRetries'], { ns: 'workflow' })
   const retryIntervalLabel = t(($) => $['nodes.common.retry.retryInterval'], { ns: 'workflow' })
 
@@ -48,12 +64,14 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
     <>
       <div className="pt-2">
         <div className="flex h-10 items-center justify-between px-4 py-2">
-          <div className="flex items-center">
-            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $['nodes.common.retry.retryOnFailure'], { ns: 'workflow' })}
-            </div>
-          </div>
+          <label
+            htmlFor={retryEnabledId}
+            className="mr-0.5 system-sm-semibold-uppercase text-text-secondary"
+          >
+            {retryOnFailureLabel}
+          </label>
           <Switch
+            id={retryEnabledId}
             checked={retry_config?.retry_enabled ?? false}
             onCheckedChange={(v) => handleRetryEnabledChange(v)}
           />
@@ -71,21 +89,34 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 onValueChange={handleMaxRetriesChange}
                 min={1}
                 max={10}
-                aria-label={maxRetriesLabel}
-              />
-              <Input
-                aria-label={maxRetriesLabel}
-                type="number"
-                wrapperClassName="w-[100px]"
+              >
+                <SliderLabel className="sr-only">{maxRetriesLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.times'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
+              <NumberField
+                className="w-25 shrink-0"
                 value={retry_config?.max_retries || 3}
-                onChange={(e) =>
-                  handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)
-                }
                 min={1}
                 max={10}
-                unit={t(($) => $['nodes.common.retry.times'], { ns: 'workflow' }) || ''}
-                className={s.input}
-              />
+                format={{ useGrouping: false }}
+                onValueChange={(value) => handleMaxRetriesChange(value ?? 3)}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={maxRetriesLabel} />
+                  <NumberFieldUnit>
+                    {t(($) => $['nodes.common.retry.times'], { ns: 'workflow' })}
+                  </NumberFieldUnit>
+                </NumberFieldGroup>
+              </NumberField>
             </Fieldset>
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
@@ -98,21 +129,34 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 onValueChange={handleRetryIntervalChange}
                 min={100}
                 max={5000}
-                aria-label={retryIntervalLabel}
-              />
-              <Input
-                aria-label={retryIntervalLabel}
-                type="number"
-                wrapperClassName="w-[100px]"
+              >
+                <SliderLabel className="sr-only">{retryIntervalLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
+              <NumberField
+                className="w-25 shrink-0"
                 value={retry_config?.retry_interval || 1000}
-                onChange={(e) =>
-                  handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)
-                }
                 min={100}
                 max={5000}
-                unit={t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' }) || ''}
-                className={s.input}
-              />
+                format={{ useGrouping: false }}
+                onValueChange={(value) => handleRetryIntervalChange(value ?? 1000)}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={retryIntervalLabel} />
+                  <NumberFieldUnit>
+                    {t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' })}
+                  </NumberFieldUnit>
+                </NumberFieldGroup>
+              </NumberField>
             </Fieldset>
           </div>
         )}

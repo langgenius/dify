@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Combobox,
@@ -115,6 +116,20 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Input group and controls', () => {
+    it('should show the compound focus surface when keyboard users enter without Field', async () => {
+      const screen = await renderInputCombobox()
+      const inputGroup = screen.getByTestId('input-group')
+      const input = screen.getByTestId('input')
+      const restingBoxShadow = getComputedStyle(inputGroup.element()).boxShadow
+
+      await userEvent.keyboard('{Tab}')
+
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(inputGroup.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
+    })
+
     it('should set input defaults and forward passthrough props', async () => {
       const screen = await renderInputCombobox({
         children: (
@@ -366,6 +381,28 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Multiple selection chips', () => {
+    it('should show the compound focus surface for a nested input without Field', async () => {
+      const screen = await renderWithSafeViewport(
+        <Combobox multiple items={['maya', 'nora']}>
+          <ComboboxInputGroup data-testid="input-group">
+            <ComboboxChips>
+              <ComboboxInput aria-label="Reviewers" data-testid="input" />
+            </ComboboxChips>
+          </ComboboxInputGroup>
+        </Combobox>,
+      )
+      const inputGroup = screen.getByTestId('input-group')
+      const input = screen.getByTestId('input')
+      const restingBoxShadow = getComputedStyle(inputGroup.element()).boxShadow
+
+      await userEvent.keyboard('{Tab}')
+
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(inputGroup.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
+    })
+
     it('should expose a controlled null value to a typed multiple value renderer', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox<string, true> multiple value={null}>

@@ -18,9 +18,6 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
-
-
 AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
 AGENT_STUB_API_BASE_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_API_BASE_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
@@ -37,17 +34,6 @@ class AgentStubEndpoint:
     host: str
     port: int | None
     path: str
-
-
-def agent_stub_drive_base_for_ref(drive_ref: str | None) -> str:
-    """Return the fixed sandbox-local Agent Stub drive base for one drive ref."""
-    normalized_ref = (drive_ref or "").strip()
-    if not normalized_ref:
-        return DEFAULT_AGENT_STUB_DRIVE_BASE
-    drive_ref_parts = normalized_ref.split("/")
-    if normalized_ref.startswith("/") or any(part in {"", ".", ".."} for part in drive_ref_parts):
-        raise ValueError("Agent Stub drive_ref must be a safe relative path")
-    return f"{DEFAULT_AGENT_STUB_DRIVE_BASE.rstrip('/')}/{'/'.join(drive_ref_parts)}"
 
 
 def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
@@ -101,16 +87,6 @@ def agent_stub_file_upload_request_url(base_url: str) -> str:
 def agent_stub_file_download_request_url(base_url: str) -> str:
     """Return the stable HTTP download-request endpoint URL for one base URL."""
     return f"{_require_http_base_url(base_url)}/files/download-request"
-
-
-def agent_stub_drive_manifest_url(base_url: str) -> str:
-    """Return the stable HTTP drive-manifest endpoint URL for one base URL."""
-    return f"{_require_http_base_url(base_url)}/drive/manifest"
-
-
-def agent_stub_drive_commit_url(base_url: str) -> str:
-    """Return the stable HTTP drive-commit endpoint URL for one base URL."""
-    return f"{_require_http_base_url(base_url)}/drive/commit"
 
 
 def agent_stub_config_manifest_url(base_url: str) -> str:
@@ -270,70 +246,6 @@ class AgentStubFileDownloadResponse(BaseModel):
     download_url: str
 
 
-class AgentStubDriveFileRef(BaseModel):
-    """Trusted file reference used by Agent Stub drive commit requests."""
-
-    kind: Literal["upload_file", "tool_file"]
-    id: str
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class AgentStubDriveCommitItem(BaseModel):
-    """One drive key to file binding committed through the Agent Stub."""
-
-    key: str
-    file_ref: AgentStubDriveFileRef | None = None
-    value_owned_by_drive: bool = True
-    is_skill: bool = False
-    skill_metadata: dict[str, str] | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class AgentStubDriveCommitRequest(BaseModel):
-    """Request body for one Agent Stub drive commit batch."""
-
-    items: list[AgentStubDriveCommitItem]
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class AgentStubDriveItem(BaseModel):
-    """One manifest or commit item returned by the Agent Stub drive API.
-
-    Known stable fields stay typed, while extra response metadata from the Dify
-    API is preserved for forward compatibility.
-    """
-
-    key: str
-    size: int | None = None
-    hash: str | None = None
-    mime_type: str | None = None
-    file_kind: Literal["upload_file", "tool_file"] | None = None
-    file_id: str | None = None
-    created_at: int | None = None
-    download_url: str | None = None
-    value_owned_by_drive: bool | None = None
-    removed: bool | None = None
-    is_skill: bool | None = None
-    skill_metadata: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
-
-
-class AgentStubDriveManifestResponse(BaseModel):
-    """Response body for one Agent Stub drive manifest request."""
-
-    items: list[AgentStubDriveItem]
-
-
-class AgentStubDriveCommitResponse(BaseModel):
-    """Response body for one Agent Stub drive commit request."""
-
-    items: list[AgentStubDriveItem]
-
-
 class AgentStubConfigVersionInfo(BaseModel):
     id: str
     kind: Literal["snapshot", "draft", "build_draft"]
@@ -424,10 +336,8 @@ def _require_http_base_url(base_url: str) -> str:
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
-    "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
     "AGENT_STUB_API_BASE_URL_ENV_VAR",
-    "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",
@@ -445,12 +355,6 @@ __all__ = [
     "AgentStubConfigSkillItem",
     "AgentStubConfigSkillItemsResponse",
     "AgentStubConfigVersionInfo",
-    "AgentStubDriveCommitItem",
-    "AgentStubDriveCommitRequest",
-    "AgentStubDriveCommitResponse",
-    "AgentStubDriveFileRef",
-    "AgentStubDriveItem",
-    "AgentStubDriveManifestResponse",
     "AgentStubFileDownloadRequest",
     "AgentStubFileDownloadResponse",
     "AgentStubFileMapping",
@@ -463,9 +367,6 @@ __all__ = [
     "agent_stub_config_push_url",
     "agent_stub_config_skill_inspect_url",
     "agent_stub_connections_url",
-    "agent_stub_drive_base_for_ref",
-    "agent_stub_drive_commit_url",
-    "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",

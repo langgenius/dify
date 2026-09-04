@@ -33,6 +33,7 @@ export type ContactView = {
 
 export type AvailablePlatformContact = {
   avatar_url: string | null
+  departmentPath?: string[]
   email: string
   id: string
   name: string
@@ -67,6 +68,17 @@ export type CreateExternalContactCommand = {
 
 export type CreateExternalContactResult =
   | { contactId: string; kind: 'created' }
+  | { contactId: string; kind: 'duplicate_external_contact' }
+  | { contactId: string; kind: 'matches_workspace_contact' }
+  | { contactId: string; kind: 'matches_platform_contact' }
+  | { kind: 'failed' }
+
+export type UpdateExternalContactCommand = CreateExternalContactCommand & {
+  contactId: string
+}
+
+export type UpdateExternalContactResult =
+  | { contactId: string; kind: 'updated' }
   | { contactId: string; kind: 'duplicate_external_contact' }
   | { contactId: string; kind: 'matches_workspace_contact' }
   | { contactId: string; kind: 'matches_platform_contact' }

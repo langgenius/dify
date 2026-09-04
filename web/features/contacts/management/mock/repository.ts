@@ -123,6 +123,48 @@ export function createContactsMockRepository({
       return { contactId, kind: 'created' }
     },
 
+    async updateExternalContact(command) {
+      await wait()
+      if (scenario.failures.createExternal) return { kind: 'failed' }
+
+      const email = normalizeEmail(command.email)
+      const target = contacts.find(
+        (contact) => contact.id === command.contactId && contact.type === 'external',
+      )
+      if (!target) return { kind: 'failed' }
+
+      const conflict = contacts.find(
+        (contact) =>
+          contact.id !== command.contactId &&
+          contact.email &&
+          normalizeEmail(contact.email) === email,
+      )
+      if (conflict?.type === 'external') {
+        return { contactId: conflict.id, kind: 'duplicate_external_contact' }
+      }
+      if (conflict?.type === 'workspace') {
+        return { contactId: conflict.id, kind: 'matches_workspace_contact' }
+      }
+      if (conflict?.type === 'platform') {
+        return { contactId: conflict.id, kind: 'matches_platform_contact' }
+      }
+
+      const availablePlatformContact =
+        target.email && normalizeEmail(target.email) === email
+          ? undefined
+          : availablePlatformContacts.find((contact) => normalizeEmail(contact.email) === email)
+      if (availablePlatformContact) {
+        return { contactId: availablePlatformContact.id, kind: 'matches_platform_contact' }
+      }
+
+      contacts = contacts.map((contact) =>
+        contact.id === command.contactId
+          ? { ...contact, email, name: command.displayName.trim() }
+          : contact,
+      )
+      return { contactId: command.contactId, kind: 'updated' }
+    },
+
     async listAvailablePlatformContacts(query) {
       await wait()
       if (scenario.failures.platformContacts) throw new Error('platform_contacts_failed')

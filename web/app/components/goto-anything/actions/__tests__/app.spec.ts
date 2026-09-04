@@ -69,7 +69,6 @@ describe('app search query', () => {
       'app-1:configuration',
       'app-1:overview',
       'app-1:logs',
-      'app-1:develop',
     ])
     expect(
       workflowOptions.select!(response([app({ id: 'wf-1', mode: 'workflow' })])).map(

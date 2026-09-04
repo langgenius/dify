@@ -1,9 +1,9 @@
 'use client'
-
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { buttonVariants } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -32,7 +32,17 @@ export default function AccountAboutDialog({
         <DialogTitle className="sr-only">
           {t(($) => $['userProfile.about'], { ns: 'common' })}
         </DialogTitle>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="flex flex-col items-center gap-4 px-6 py-12">
           <DifyLogo alt="Dify" size="large" className="mx-auto" />
 

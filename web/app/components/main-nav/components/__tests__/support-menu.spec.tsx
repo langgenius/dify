@@ -4,8 +4,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { fireEvent, screen } from '@testing-library/react'
-import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -13,16 +13,22 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import SupportMenu from '../support-menu'
 
-const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, mockSetShowPricingModal } =
-  vi.hoisted(() => ({
-    mockConfig: {
-      supportEmailAddress: '',
-      zendeskWidgetKey: 'zendesk-key',
-    },
-    mockOpenZendeskWindow: vi.fn(),
-    mockMailToSupport: vi.fn(),
-    mockSetShowPricingModal: vi.fn(),
-  }))
+const {
+  mockConfig,
+  mockOpenZendeskWindow,
+  mockMailToSupport,
+  mockSetShowPricingModal,
+  mockToastError,
+} = vi.hoisted(() => ({
+  mockConfig: {
+    supportEmailAddress: '',
+    zendeskWidgetKey: 'zendesk-key',
+  },
+  mockOpenZendeskWindow: vi.fn(),
+  mockMailToSupport: vi.fn(),
+  mockSetShowPricingModal: vi.fn(),
+  mockToastError: vi.fn(),
+}))
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     langGeniusVersionInfo: { current_version: '1.0.0' },
@@ -30,8 +36,14 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/app/components/base/zendesk/utils', () => ({
-  openZendeskWindow: mockOpenZendeskWindow,
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: {
+    open: mockOpenZendeskWindow,
+  },
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { error: mockToastError },
 }))
 
 vi.mock('@/app/components/header/utils/util', () => ({
@@ -67,6 +79,7 @@ describe('SupportMenu', () => {
     deploymentEdition = 'CLOUD'
     mockConfig.supportEmailAddress = ''
     mockConfig.zendeskWidgetKey = 'zendesk-key'
+    mockOpenZendeskWindow.mockResolvedValue(undefined)
     mockConsoleState.current = {
       langGeniusVersionInfo: { current_version: '1.0.0' },
       userProfile: { email: 'user@example.com' },
@@ -100,25 +113,29 @@ describe('SupportMenu', () => {
     )
   }
 
-  it('renders contact us before community support entries when Zendesk is configured', () => {
+  it('renders contact us before Discord when Zendesk is configured', () => {
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.community')).toBeInTheDocument()
+    expect(screen.getByText('Discord')).toBeInTheDocument()
     expect(
       screen
         .getByText('common.userProfile.contactUs')
-        .compareDocumentPosition(screen.getByText('common.userProfile.forum')),
+        .compareDocumentPosition(screen.getByText('Discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.forum' })).toHaveClass(
-      'mx-0',
-      'px-3',
-    )
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalledWith('CLOUD')
+    expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
+  })
+
+  it('reports a Zendesk load failure so the user can retry', async () => {
+    mockOpenZendeskWindow.mockRejectedValueOnce(new Error('load failed'))
+    renderSupportMenu()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
@@ -146,7 +163,7 @@ describe('SupportMenu', () => {
     )
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(openZendeskWindow).not.toHaveBeenCalled()
+    expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
   it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {
@@ -160,7 +177,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('Discord')).toBeInTheDocument()
   })
 
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
@@ -176,7 +193,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalledWith('CLOUD')
+    expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
     expect(mockSetShowPricingModal).not.toHaveBeenCalled()
   })
 
@@ -212,7 +229,7 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('Discord')).toBeInTheDocument()
   })
 
   it('renders email support when Zendesk is not configured for a dedicated support channel', () => {
@@ -228,12 +245,12 @@ describe('SupportMenu', () => {
     ).toHaveAttribute('href', 'mailto:support@example.com')
   })
 
-  it('has correct forum and community links', () => {
+  it('has the correct Discord link', () => {
     renderSupportMenu()
 
-    const forumLink = screen.getByText('common.userProfile.forum').closest('a')
-    const communityLink = screen.getByText('common.userProfile.community').closest('a')
-    expect(forumLink).toHaveAttribute('href', 'https://forum.dify.ai/')
-    expect(communityLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    expect(screen.getByRole('menuitem', { name: 'Discord' })).toHaveAttribute(
+      'href',
+      'https://discord.gg/5AEfbxcd9k',
+    )
   })
 })

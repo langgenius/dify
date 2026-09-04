@@ -27,7 +27,7 @@ from models import (
     PinnedConversation,
     SavedMessage,
 )
-from models.agent import AgentConfigDraftType, AgentDriveFile, AgentDriveFileKind
+from models.agent import AgentConfigDraftType
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
@@ -93,14 +93,13 @@ def _tool_file(*, name: str, conversation_id: str | None = CONVERSATION_ID) -> T
     )
 
 
-def test_cleanup_removes_owned_resources_and_preserves_drive_files(sqlite_session: Session) -> None:
+def test_cleanup_removes_owned_resources(sqlite_session: Session) -> None:
     conversation = _conversation(CONVERSATION_ID, deleted=True)
     other_conversation = _conversation(OTHER_CONVERSATION_ID, deleted=False)
     message = _message()
     owned_file = _tool_file(name="owned.txt")
-    drive_file = _tool_file(name="drive.txt")
     other_file = _tool_file(name="other.txt", conversation_id=OTHER_CONVERSATION_ID)
-    sqlite_session.add_all([conversation, other_conversation, message, owned_file, drive_file, other_file])
+    sqlite_session.add_all([conversation, other_conversation, message, owned_file, other_file])
     sqlite_session.flush()
 
     message_chain = MessageChain(message_id=MESSAGE_ID, type=MessageChainType.SYSTEM, input=None, output=None)
@@ -202,15 +201,6 @@ def test_cleanup_removes_owned_resources_and_preserves_drive_files(sqlite_sessio
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             conversation_id=CONVERSATION_ID,
         ),
-        AgentDriveFile(
-            tenant_id=TENANT_ID,
-            agent_id=AGENT_ID,
-            key="drive.txt",
-            file_kind=AgentDriveFileKind.TOOL_FILE,
-            file_id=drive_file.id,
-            value_owned_by_drive=False,
-            is_skill=False,
-        ),
         HumanInputFormRecipient(
             form_id=form.id,
             delivery_id=delivery.id,
@@ -230,7 +220,6 @@ def test_cleanup_removes_owned_resources_and_preserves_drive_files(sqlite_sessio
     form_id = form.id
     owned_file_id = owned_file.id
     owned_file_key = owned_file.file_key
-    drive_file_id = drive_file.id
     other_file_id = other_file.id
 
     with patch("tasks.delete_conversation_task.storage") as storage_mock:
@@ -245,12 +234,6 @@ def test_cleanup_removes_owned_resources_and_preserves_drive_files(sqlite_sessio
     )
     assert sqlite_session.scalar(select(HumanInputForm).where(HumanInputForm.id == form_id)) is None
     assert sqlite_session.get(ToolFile, owned_file_id) is None
-    preserved_drive_file = sqlite_session.get(ToolFile, drive_file_id)
-    assert preserved_drive_file is not None
-    assert preserved_drive_file.conversation_id is None
-    preserved_drive_entry = sqlite_session.scalar(select(AgentDriveFile).where(AgentDriveFile.file_id == drive_file_id))
-    assert preserved_drive_entry is not None
-    assert preserved_drive_entry.value_owned_by_drive is True
     assert sqlite_session.get(ToolFile, other_file_id) is not None
     assert sqlite_session.get(Conversation, OTHER_CONVERSATION_ID) is not None
 

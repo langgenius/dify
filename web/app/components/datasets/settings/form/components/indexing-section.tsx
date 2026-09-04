@@ -153,7 +153,7 @@ const IndexingSection = ({
       {/* Embedding Model */}
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
-          <div className="flex w-[180px] shrink-0 flex-col pt-1">
+          <div className="flex w-45 shrink-0 flex-col pt-1">
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>

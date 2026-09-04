@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ConfigurationsSectionProps = {
@@ -17,18 +18,21 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
   onSseReadTimeoutChange,
 }) => {
   const { t } = useTranslation()
+  const timeoutInputId = useId()
+  const sseReadTimeoutInputId = useId()
 
   return (
     <>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">
+          <label htmlFor={timeoutInputId} className="system-sm-medium text-text-secondary">
             {t(($) => $['mcp.modal.timeout'], { ns: 'tools' })}
-          </span>
+          </label>
         </div>
         <NumberField value={timeout} min={0} onValueChange={(value) => onTimeoutChange(value ?? 0)}>
           <NumberFieldGroup>
             <NumberFieldInput
+              id={timeoutInputId}
               placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
             />
           </NumberFieldGroup>
@@ -36,9 +40,9 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
       </div>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">
+          <label htmlFor={sseReadTimeoutInputId} className="system-sm-medium text-text-secondary">
             {t(($) => $['mcp.modal.sseReadTimeout'], { ns: 'tools' })}
-          </span>
+          </label>
         </div>
         <NumberField
           value={sseReadTimeout}
@@ -47,6 +51,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
         >
           <NumberFieldGroup>
             <NumberFieldInput
+              id={sseReadTimeoutInputId}
               placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
             />
           </NumberFieldGroup>

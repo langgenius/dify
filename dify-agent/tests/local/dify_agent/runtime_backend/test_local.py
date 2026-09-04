@@ -5,7 +5,7 @@ import shlex
 from typing import Mapping
 
 import pytest
-from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from shellctl.shared import DeleteJobResponse, JobMode, JobResult, JobStatusName, JobStatusView
 
 from dify_agent.runtime_backend import (
     BindingCreateError,
@@ -22,6 +22,7 @@ class _RunCall:
     commands: tuple[tuple[str, ...], ...]
     cwd: str | None
     env: Mapping[str, str] | None
+    mode: JobMode
 
 
 @dataclass(slots=True)
@@ -40,12 +41,13 @@ class _Client:
         cwd: str | None = None,
         env: Mapping[str, str] | None = None,
         timeout: float = 10.0,
+        mode: JobMode = JobMode.PTY,
     ) -> JobResult:
         del timeout
         commands = tuple(
             tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
-        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env))
+        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env, mode=mode))
         return JobResult(
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,
@@ -165,6 +167,7 @@ async def test_local_binding_create_materializes_home_and_new_workspace() -> Non
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
     assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+    assert all(run.mode is JobMode.STDIO for run in factory.runs)
 
 
 @pytest.mark.anyio
@@ -193,6 +196,57 @@ async def test_local_binding_create_uses_empty_default_home_without_snapshot_acc
     assert allocation.binding_ref == "binding-1:workspace-1"
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert all("/snapshots" not in part for command in factory.commands for part in command)
+
+
+@pytest.mark.anyio
+async def test_local_binding_bootstraps_custom_roots_from_common_root() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/tmp/dify-agent/homes",
+        workspace_root="/tmp/dify-agent/workspaces",
+        snapshot_root="/tmp/dify-agent/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
+        )
+    )
+
+    assert factory.runs[0].cwd == "/tmp/dify-agent"
+    assert factory.runs[0].env == {"HOME": "/tmp/dify-agent"}
+
+
+@pytest.mark.anyio
+async def test_local_binding_separates_root_workspace_from_home_control_scope() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
+        )
+    )
+
+    assert factory.runs[0].cwd == "/workspace"
+    assert factory.runs[0].env == {"HOME": "/home/dify"}
 
 
 @pytest.mark.anyio
@@ -245,6 +299,7 @@ async def test_local_binding_acquire_scopes_commands_to_materialized_home_and_wo
     pwd_run = next(run for run in factory.runs if run.commands == (("pwd",),))
     assert pwd_run.cwd == "/workspaces/workspace-1"
     assert pwd_run.env == {"HOME": "/homes/binding-1"}
+    assert pwd_run.mode is JobMode.PTY
     with pytest.raises(ValueError, match="outside this RuntimeLease"):
         await lease.commands.run("cat secret", cwd="/homes/other", timeout=10.0)
     await backend.release(lease)
@@ -318,87 +373,6 @@ async def test_local_snapshot_delete_removes_snapshot_directory() -> None:
     await backend.delete("home-home-2")
 
     assert ("rm", "-rf", "--", "/snapshots/home-home-2") in factory.commands
-
-
-@pytest.mark.anyio
-async def test_local_backend_materializes_same_agent_twice_in_one_workspace() -> None:
-    factory = _Factory()
-    backend = LocalExecutionBindingBackend(
-        endpoint="http://shellctl",
-        auth_token="",
-        client_factory=factory,  # pyright: ignore[reportArgumentType]
-    )
-
-    first = await backend.create_binding(
-        ExecutionBindingCreateSpec(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            binding_id="binding-1",
-            workspace_id="workspace-1",
-            existing_workspace_ref=None,
-            home_snapshot_ref="home-home-1",
-        )
-    )
-    second = await backend.create_binding(
-        ExecutionBindingCreateSpec(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            binding_id="binding-2",
-            workspace_id="workspace-1",
-            existing_workspace_ref=first.workspace_ref,
-            home_snapshot_ref="home-home-1",
-        )
-    )
-
-    assert first.binding_ref == "binding-1:workspace-1"
-    assert second.binding_ref == "binding-2:workspace-1"
-    assert first.workspace_ref == second.workspace_ref == "workspace-1"
-    first_lease = await backend.acquire(first.binding_ref)
-    second_lease = await backend.acquire(second.binding_ref)
-    assert first_lease.layout.home_dir != second_lease.layout.home_dir
-    assert first_lease.layout.workspace_dir == second_lease.layout.workspace_dir
-    await backend.release(first_lease)
-    await backend.release(second_lease)
-
-    await backend.destroy_binding(
-        ExecutionBindingDestroySpec(
-            binding_ref=first.binding_ref,
-            destroy_workspace=False,
-        )
-    )
-    surviving_lease = await backend.acquire(second.binding_ref)
-    assert surviving_lease.layout.home_dir == "/home/dify/.dify-agent-materialized-homes/binding-2"
-    assert surviving_lease.layout.workspace_dir == "/home/dify/.dify-agent-workspaces/workspace-1"
-    await backend.release(surviving_lease)
-
-    workspace_dir = "/home/dify/.dify-agent-workspaces/workspace-1"
-    assert ("test", "-d", workspace_dir) in factory.commands
-    assert factory.commands.count(("mkdir", "-p", workspace_dir)) == 1
-    assert (
-        "rm",
-        "-rf",
-        "--",
-        "/home/dify/.dify-agent-materialized-homes/binding-1",
-    ) in factory.commands
-    assert (
-        "rm",
-        "-rf",
-        "--",
-        "/home/dify/.dify-agent-materialized-homes/binding-1",
-        workspace_dir,
-    ) not in factory.commands
-    assert (
-        "cp",
-        "-a",
-        "/home/dify/.dify-agent-home-snapshots/home-home-1/.",
-        "/home/dify/.dify-agent-materialized-homes/binding-1/",
-    ) in factory.commands
-    assert (
-        "cp",
-        "-a",
-        "/home/dify/.dify-agent-home-snapshots/home-home-1/.",
-        "/home/dify/.dify-agent-materialized-homes/binding-2/",
-    ) in factory.commands
 
 
 @pytest.mark.anyio

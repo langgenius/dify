@@ -20,6 +20,7 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @dataclass(frozen=True)
@@ -77,7 +78,7 @@ class _PauseEntity:
 def test_pause_details_returns_backstage_input_url(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
+    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com")
 
     tenant_id = str(uuid4())
     run_id = str(uuid4())
@@ -137,7 +138,7 @@ def test_pause_details_returns_backstage_input_url(
 
 
 def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
+    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com")
 
     run_id = str(uuid4())
     _persist_run(

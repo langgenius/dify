@@ -3,8 +3,9 @@ import * as React from 'react'
 import { Button } from '../button'
 import { Checkbox } from '../checkbox'
 import { CheckboxGroup } from '../checkbox-group'
-import { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel } from '../field'
+import { Field, FieldDescription, FieldError, FieldItem, FieldLabel } from '../field'
 import { Fieldset, FieldsetLegend } from '../fieldset'
+import { Input } from '../input'
 import { Form } from './index'
 
 const meta = {
@@ -36,13 +37,13 @@ function BasicFormDemo() {
       >
         <Field name="name">
           <FieldLabel>Name</FieldLabel>
-          <FieldControl required placeholder="Enter a name" />
+          <Input required placeholder="Enter a name" />
           <FieldError match="valueMissing">Name is required.</FieldError>
         </Field>
 
         <Field name="email">
           <FieldLabel>Email</FieldLabel>
-          <FieldControl type="email" required placeholder="name@example.com" />
+          <Input type="email" required placeholder="name@example.com" />
           <FieldDescription>Used for account notifications.</FieldDescription>
           <FieldError match="valueMissing">Email is required.</FieldError>
           <FieldError match="typeMismatch">Enter a valid email address.</FieldError>

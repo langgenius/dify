@@ -3,11 +3,11 @@
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiCloseCircleFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
 
 type CategoriesFilterProps = {
@@ -18,6 +18,7 @@ const CategoriesFilter = ({ value, onChange }: CategoriesFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const searchLabel = t(($) => $.searchCategories, { ns: 'plugin' })
   const { categories: options, categoriesMap } = useCategories()
   const filteredOptions = options.filter((option) =>
     option.name.toLowerCase().includes(searchText.toLowerCase()),
@@ -65,16 +66,27 @@ const CategoriesFilter = ({ value, onChange }: CategoriesFilterProps) => {
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder={t(($) => $.searchCategories, { ns: 'plugin' })}
-            />
+            <InputGroup>
+              <InputGroupInput
+                type="search"
+                aria-label={searchLabel}
+                autoComplete="off"
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+                placeholder={searchLabel}
+                value={searchText}
+                onValueChange={setSearchText}
+              />
+              <InputGroupAddon className="ps-2 pe-0.5">
+                <span
+                  aria-hidden="true"
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+            </InputGroup>
           </div>
           <CheckboxGroup
             aria-label={t(($) => $.allCategories, { ns: 'plugin' })}

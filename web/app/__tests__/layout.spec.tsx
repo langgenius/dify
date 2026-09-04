@@ -1,19 +1,12 @@
-import { QueryClient } from '@tanstack/react-query'
-
-let queryClient: QueryClient
-
 const mocks = vi.hoisted(() => ({
-  getSystemFeatures: vi.fn(),
-  requestHeaders: new Headers(),
+  dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
+  getOptionalSystemFeatures: vi.fn(),
+  headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  getSystemFeaturesQueryClient: () => queryClient,
-  systemFeaturesServerQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.getSystemFeatures,
-    retry: false,
-  }),
+  dehydrateSystemFeatures: mocks.dehydrateSystemFeatures,
+  getOptionalSystemFeatures: mocks.getOptionalSystemFeatures,
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -30,17 +23,17 @@ vi.mock('@/i18n-config/server', () => ({
 }))
 
 vi.mock('@/next/headers', () => ({
-  headers: async () => mocks.requestHeaders,
+  headers: mocks.headers,
 }))
 
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    mocks.headers.mockResolvedValue(new Headers())
   })
 
-  it('caches the resolved System Features for dehydration', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({
+  it('uses optional System Features for branded metadata', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
         application_title: 'Acme AI',
         enabled: true,
@@ -56,19 +49,53 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Acme AI',
       },
     })
+  })
 
-    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
+  it('points the icons at the branding favicon when one is configured', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
         application_title: 'Acme AI',
         enabled: true,
+        favicon: 'https://cdn.example.com/brand.ico',
       },
       deployment_edition: 'CLOUD',
     })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: {
+        icon: 'https://cdn.example.com/brand.ico',
+        apple: 'https://cdn.example.com/brand.ico',
+      },
+    })
   })
 
-  it('renders the client recovery path when the server prefetch fails', async () => {
-    mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
+  it('falls back to the static favicon without branding', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: { enabled: false },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('falls back to the static favicon when branding is enabled without one', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: { application_title: 'Acme AI', enabled: true, favicon: '' },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('renders the client recovery path when optional System Features are unavailable', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
     const { default: RootLayout, generateMetadata } = await import('../layout')
 
     await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
@@ -78,7 +105,5 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Dify',
       },
     })
-
-    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
   })
 })

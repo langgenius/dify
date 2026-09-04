@@ -14,7 +14,7 @@ import Chat from '../index'
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
 // ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
 //                 and the VoiceInput / FileContextProvider chains.
-// PromptLogModal– pulls CopyFeedbackNew and deep modal dep chain.
+// PromptLogModal– pulls CopyFeedback and deep modal dep chain.
 // AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
 //                 from ahooks, and AgentLogDetail (workflow graph renderer).
 // es-toolkit/compat – debounce must return a fn with .cancel() or the cleanup

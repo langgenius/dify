@@ -478,13 +478,16 @@ describe('ApiKeyModal', () => {
     const mockOnClose = vi.fn()
     render(
       <Dialog open>
-        <DialogContent backdropClassName="bg-transparent">
+        <DialogContent>
           <ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />
         </DialogContent>
       </Dialog>,
     )
 
-    const backdrop = document.querySelector('.bg-background-overlay')
+    const backdrop = screen
+      .getAllByRole('presentation', { hidden: true })
+      .filter((element) => element.hasAttribute('data-open'))
+      .at(-1)
     expect(backdrop).toBeInTheDocument()
 
     fireEvent.pointerDown(backdrop!)

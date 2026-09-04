@@ -9,6 +9,7 @@ import type {
   FindExternalContactsByEmailsCommand,
   RemoveContactsCommand,
   RemoveMemberCommand,
+  UpdateExternalContactCommand,
   UpgradeExternalContactsToWorkspaceCommand,
 } from './types'
 import {
@@ -103,6 +104,25 @@ export function useCreateExternalContact() {
         repository.createExternalContact(command),
       onSuccess: (result) => {
         if (result.kind !== 'created') return
+        void queryClient.invalidateQueries({
+          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
+        })
+      },
+    }),
+  )
+}
+
+export function useUpdateExternalContact() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const queryClient = useQueryClient()
+
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: UpdateExternalContactCommand) =>
+        repository.updateExternalContact(command),
+      onSuccess: (result) => {
+        if (result.kind !== 'updated') return
         void queryClient.invalidateQueries({
           queryKey: contactsManagementQueryKeys.all(context.workspaceId),
         })

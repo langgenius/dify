@@ -712,6 +712,32 @@ class TestParagraphIndexProcessor:
         assert files == []
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
 
+    def test_extract_images_from_text_warning_carries_traceback(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The build failure is logged at WARNING with the traceback attached, not just str(exception)."""
+        text = "![img](/files/11111111-1111-1111-1111-111111111111/image-preview)"
+        session = self.session
+        session.add(self._upload_file(file_id="11111111-1111-1111-1111-111111111111"))
+        session.flush()
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
+                side_effect=RuntimeError("build failed"),
+            ),
+            caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+        ):
+            ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
+
+        record = next(r for r in caplog.records if r.levelno == logging.WARNING)
+        assert record.exc_info is not None
+        _, exc_value, exc_traceback = record.exc_info
+        assert isinstance(exc_value, RuntimeError)
+        assert exc_traceback is not None
+        # The formatted output carries the call chain, and the message itself no longer inlines the exception.
+        assert "Traceback (most recent call last)" in caplog.text
+        assert "RuntimeError: build failed" in caplog.text
+        assert "build failed" not in record.getMessage()
+
     def test_extract_images_from_segment_attachments(self, caplog: pytest.LogCaptureFixture) -> None:
         session = self.session
         uploads = [

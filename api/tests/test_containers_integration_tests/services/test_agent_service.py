@@ -26,10 +26,10 @@ class TestAgentService:
             patch("services.agent_service.ToolManager", autospec=True) as mock_tool_manager,
             patch("services.agent_service.AgentConfigManager", autospec=True) as mock_agent_config_manager,
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
-            patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.app_service.SystemFeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
-            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
             mock_plugin_agent_client_instance = mock_plugin_agent_client.return_value
@@ -67,12 +67,12 @@ class TestAgentService:
             mock_current_user.timezone = "UTC"
 
             # Setup default mock returns for app service
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for model configuration
             mock_model_instance = mock_model_manager.return_value
@@ -104,9 +104,7 @@ class TestAgentService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(

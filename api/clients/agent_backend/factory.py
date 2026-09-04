@@ -8,10 +8,23 @@ from clients.agent_backend.client import AgentBackendRunClient, DifyAgentBackend
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 
 
-def create_agent_backend_client(*, base_url: str, api_token: str | None = None, stream_timeout: float = 30) -> Client:
+def create_agent_backend_client(
+    *,
+    base_url: str,
+    api_token: str | None = None,
+    stream_timeout: float = 30,
+    timeout: float = 30.0,
+    binding_file_download_timeout: float = 240,
+) -> Client:
     api_token = api_token.strip() if api_token else None
     headers = {"Authorization": f"Bearer {api_token}"} if api_token else None
-    return Client(base_url=base_url, stream_timeout=stream_timeout, headers=headers)
+    return Client(
+        base_url=base_url,
+        stream_timeout=stream_timeout,
+        timeout=timeout,
+        binding_file_download_timeout=binding_file_download_timeout,
+        headers=headers,
+    )
 
 
 def create_agent_backend_run_client(

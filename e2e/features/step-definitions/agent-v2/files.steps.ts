@@ -62,8 +62,9 @@ Then(
   async function (this: DifyWorld) {
     const page = this.getPage()
     const dialog = page.getByRole('dialog', { name: 'Upload file' })
+    const notifications = page.getByRole('region', { name: 'Notifications' })
 
-    await expect(page.getByText('Upload one file.')).toBeVisible()
+    await expect(notifications.getByRole('dialog')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Upload' })).toBeDisabled()
     await expect(
       dialog.getByText(agentBuilderTestMaterials.smallFile, { exact: true }),

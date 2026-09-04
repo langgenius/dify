@@ -70,7 +70,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           <RiArrowDownSLine className="size-3" />
         </>
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[288px] p-1">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[288px] p-1">
         <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $.publishAs, { ns: 'appDebug' })}
         </div>

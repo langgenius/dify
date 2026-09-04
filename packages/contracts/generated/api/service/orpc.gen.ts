@@ -5,9 +5,9 @@ import * as z from 'zod'
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
-  zDeleteConversationsByCIdBody,
-  zDeleteConversationsByCIdPath,
-  zDeleteConversationsByCIdResponse,
+  zDeleteConversationsByConversationIdBody,
+  zDeleteConversationsByConversationIdPath,
+  zDeleteConversationsByConversationIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
@@ -26,9 +26,9 @@ import {
   zGetAppsAnnotationReplyByActionStatusByJobIdResponse,
   zGetAppsAnnotationsQuery,
   zGetAppsAnnotationsResponse,
-  zGetConversationsByCIdVariablesPath,
-  zGetConversationsByCIdVariablesQuery,
-  zGetConversationsByCIdVariablesResponse,
+  zGetConversationsByConversationIdVariablesPath,
+  zGetConversationsByConversationIdVariablesQuery,
+  zGetConversationsByConversationIdVariablesResponse,
   zGetConversationsQuery,
   zGetConversationsResponse,
   zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath,
@@ -68,10 +68,7 @@ import {
   zGetFilesByFileIdPreviewPath,
   zGetFilesByFileIdPreviewQuery,
   zGetFilesByFileIdPreviewResponse,
-  zGetFormHumanInputByFormToken2Path,
-  zGetFormHumanInputByFormToken2Response,
   zGetFormHumanInputByFormTokenPath,
-  zGetFormHumanInputByFormTokenQuery,
   zGetFormHumanInputByFormTokenResponse,
   zGetInfoResponse,
   zGetMessagesByMessageIdSuggestedPath,
@@ -83,9 +80,9 @@ import {
   zGetParametersResponse,
   zGetRootResponse,
   zGetSiteResponse,
-  zGetWorkflowByTaskIdEventsPath,
-  zGetWorkflowByTaskIdEventsQuery,
-  zGetWorkflowByTaskIdEventsResponse,
+  zGetWorkflowByWorkflowRunIdEventsPath,
+  zGetWorkflowByWorkflowRunIdEventsQuery,
+  zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowsLogsQuery,
   zGetWorkflowsLogsResponse,
   zGetWorkflowsRunByWorkflowRunIdPath,
@@ -126,9 +123,9 @@ import {
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
-  zPostConversationsByCIdNameBody,
-  zPostConversationsByCIdNamePath,
-  zPostConversationsByCIdNameResponse,
+  zPostConversationsByConversationIdNameBody,
+  zPostConversationsByConversationIdNamePath,
+  zPostConversationsByConversationIdNameResponse,
   zPostDatasetsBody,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
@@ -197,9 +194,6 @@ import {
   zPostDatasetsTagsUnbindingResponse,
   zPostFilesUploadBody,
   zPostFilesUploadResponse,
-  zPostFormHumanInputByFormToken2Body,
-  zPostFormHumanInputByFormToken2Path,
-  zPostFormHumanInputByFormToken2Response,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
@@ -219,17 +213,21 @@ import {
   zPutAppsAnnotationsByAnnotationIdBody,
   zPutAppsAnnotationsByAnnotationIdPath,
   zPutAppsAnnotationsByAnnotationIdResponse,
-  zPutConversationsByCIdVariablesByVariableIdBody,
-  zPutConversationsByCIdVariablesByVariableIdPath,
-  zPutConversationsByCIdVariablesByVariableIdResponse,
+  zPutConversationsByConversationIdVariablesByVariableIdBody,
+  zPutConversationsByConversationIdVariablesByVariableIdPath,
+  zPutConversationsByConversationIdVariablesByVariableIdResponse,
 } from './zod.gen'
 
+/**
+ * Return public Service API metadata without requiring an API key
+ */
 export const get = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getRoot',
     path: '/',
+    summary: 'Return public Service API metadata without requiring an API key',
     tags: ['service_api'],
   })
   .output(zGetRootResponse)
@@ -564,15 +562,18 @@ export const post8 = oc
       'Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postConversationsByCIdName',
-    path: '/conversations/{c_id}/name',
+    operationId: 'postConversationsByConversationIdName',
+    path: '/conversations/{conversation_id}/name',
     summary: 'Rename Conversation',
     tags: ['Conversations'],
   })
   .input(
-    z.object({ body: zPostConversationsByCIdNameBody, params: zPostConversationsByCIdNamePath }),
+    z.object({
+      body: zPostConversationsByConversationIdNameBody,
+      params: zPostConversationsByConversationIdNamePath,
+    }),
   )
-  .output(zPostConversationsByCIdNameResponse)
+  .output(zPostConversationsByConversationIdNameResponse)
 
 export const name = {
   post: post8,
@@ -589,18 +590,18 @@ export const put2 = oc
       'Update the value of a specific conversation variable. The value must match the expected type.',
     inputStructure: 'detailed',
     method: 'PUT',
-    operationId: 'putConversationsByCIdVariablesByVariableId',
-    path: '/conversations/{c_id}/variables/{variable_id}',
+    operationId: 'putConversationsByConversationIdVariablesByVariableId',
+    path: '/conversations/{conversation_id}/variables/{variable_id}',
     summary: 'Update Conversation Variable',
     tags: ['Conversations'],
   })
   .input(
     z.object({
-      body: zPutConversationsByCIdVariablesByVariableIdBody,
-      params: zPutConversationsByCIdVariablesByVariableIdPath,
+      body: zPutConversationsByConversationIdVariablesByVariableIdBody,
+      params: zPutConversationsByConversationIdVariablesByVariableIdPath,
     }),
   )
-  .output(zPutConversationsByCIdVariablesByVariableIdResponse)
+  .output(zPutConversationsByConversationIdVariablesByVariableIdResponse)
 
 export const byVariableId = {
   put: put2,
@@ -616,18 +617,18 @@ export const get5 = oc
     description: 'Retrieve variables from a specific conversation.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getConversationsByCIdVariables',
-    path: '/conversations/{c_id}/variables',
+    operationId: 'getConversationsByConversationIdVariables',
+    path: '/conversations/{conversation_id}/variables',
     summary: 'List Conversation Variables',
     tags: ['Conversations'],
   })
   .input(
     z.object({
-      params: zGetConversationsByCIdVariablesPath,
-      query: zGetConversationsByCIdVariablesQuery.optional(),
+      params: zGetConversationsByConversationIdVariablesPath,
+      query: zGetConversationsByConversationIdVariablesQuery.optional(),
     }),
   )
-  .output(zGetConversationsByCIdVariablesResponse)
+  .output(zGetConversationsByConversationIdVariablesResponse)
 
 export const variables = {
   get: get5,
@@ -644,16 +645,21 @@ export const delete2 = oc
     description: 'Delete a conversation.',
     inputStructure: 'detailed',
     method: 'DELETE',
-    operationId: 'deleteConversationsByCId',
-    path: '/conversations/{c_id}',
+    operationId: 'deleteConversationsByConversationId',
+    path: '/conversations/{conversation_id}',
     successStatus: 204,
     summary: 'Delete Conversation',
     tags: ['Conversations'],
   })
-  .input(z.object({ body: zDeleteConversationsByCIdBody, params: zDeleteConversationsByCIdPath }))
-  .output(zDeleteConversationsByCIdResponse)
+  .input(
+    z.object({
+      body: zDeleteConversationsByConversationIdBody,
+      params: zDeleteConversationsByConversationIdPath,
+    }),
+  )
+  .output(zDeleteConversationsByConversationIdResponse)
 
-export const byCId = {
+export const byConversationId = {
   delete: delete2,
   name,
   variables,
@@ -680,7 +686,7 @@ export const get6 = oc
 
 export const conversations = {
   get: get6,
-  byCId,
+  byConversationId,
 }
 
 /**
@@ -920,6 +926,8 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
 
 /**
+ * Create document by text through the deprecated underscore alias
+ *
  * Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
  *
  * @deprecated
@@ -933,6 +941,7 @@ export const post16 = oc
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
     path: '/datasets/{dataset_id}/document/create_by_text',
+    summary: 'Create document by text through the deprecated underscore alias',
     tags: ['service_api'],
   })
   .input(
@@ -1408,6 +1417,8 @@ export const post24 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
 
 /**
+ * Update document by text through the deprecated underscore alias
+ *
  * Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
  *
  * @deprecated
@@ -1421,6 +1432,7 @@ export const post25 = oc
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_text',
+    summary: 'Update document by text through the deprecated underscore alias',
     tags: ['service_api'],
   })
   .input(
@@ -1549,9 +1561,12 @@ export const documents = {
  * Retrieve Chunks from a Knowledge Base / Test Retrieval
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
+ *
+ * @deprecated
  */
 export const post26 = oc
   .route({
+    deprecated: true,
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
     inputStructure: 'detailed',
@@ -1789,12 +1804,12 @@ export const datasource = {
 /**
  * Run Pipeline
  *
- * Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
+ * Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
  */
 export const post30 = oc
   .route({
     description:
-      'Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.',
+      'Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdPipelineRun',
@@ -2075,44 +2090,12 @@ export const files = {
   byFileId,
 }
 
-export const get23 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getFormHumanInputByFormToken',
-    path: '/form/human-input/{form_token}',
-    tags: ['service_api'],
-  })
-  .input(
-    z.object({
-      params: zGetFormHumanInputByFormTokenPath,
-      query: zGetFormHumanInputByFormTokenQuery,
-    }),
-  )
-  .output(zGetFormHumanInputByFormTokenResponse)
-
-export const post34 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postFormHumanInputByFormToken',
-    path: '/form/human-input/{form_token}',
-    tags: ['service_api'],
-  })
-  .input(
-    z.object({
-      body: zPostFormHumanInputByFormTokenBody,
-      params: zPostFormHumanInputByFormTokenPath,
-    }),
-  )
-  .output(zPostFormHumanInputByFormTokenResponse)
-
 /**
  * Get Human Input Form
  *
  * Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.
  */
-export const get24 = oc
+export const get23 = oc
   .route({
     description:
       "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
@@ -2123,15 +2106,15 @@ export const get24 = oc
     summary: 'Get Human Input Form',
     tags: ['Human Input'],
   })
-  .input(z.object({ params: zGetFormHumanInputByFormToken2Path }))
-  .output(zGetFormHumanInputByFormToken2Response)
+  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
+  .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
  * Submit Human Input Form
  *
  * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
-export const post35 = oc
+export const post34 = oc
   .route({
     description:
       "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
@@ -2144,15 +2127,15 @@ export const post35 = oc
   })
   .input(
     z.object({
-      body: zPostFormHumanInputByFormToken2Body,
-      params: zPostFormHumanInputByFormToken2Path,
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
     }),
   )
-  .output(zPostFormHumanInputByFormToken2Response)
+  .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
-  get: get24,
-  post: post35,
+  get: get23,
+  post: post34,
 }
 
 export const humanInput = {
@@ -2168,7 +2151,7 @@ export const form = {
  *
  * Retrieve basic information about this application, including name, description, tags, and mode.
  */
-export const get25 = oc
+export const get24 = oc
   .route({
     description:
       'Retrieve basic information about this application, including name, description, tags, and mode.',
@@ -2182,7 +2165,7 @@ export const get25 = oc
   .output(zGetInfoResponse)
 
 export const info = {
-  get: get25,
+  get: get24,
 }
 
 /**
@@ -2190,7 +2173,7 @@ export const info = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post36 = oc
+export const post35 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -2210,7 +2193,7 @@ export const post36 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post36,
+  post: post35,
 }
 
 /**
@@ -2218,7 +2201,7 @@ export const feedbacks2 = {
  *
  * Get next questions suggestions for the current message.
  */
-export const get26 = oc
+export const get25 = oc
   .route({
     description: 'Get next questions suggestions for the current message.',
     inputStructure: 'detailed',
@@ -2237,7 +2220,7 @@ export const get26 = oc
   .output(zGetMessagesByMessageIdSuggestedResponse)
 
 export const suggested = {
-  get: get26,
+  get: get25,
 }
 
 export const byMessageId = {
@@ -2250,7 +2233,7 @@ export const byMessageId = {
  *
  * Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.
  */
-export const get27 = oc
+export const get26 = oc
   .route({
     description:
       'Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.',
@@ -2265,7 +2248,7 @@ export const get27 = oc
   .output(zGetMessagesResponse)
 
 export const messages = {
-  get: get27,
+  get: get26,
   byMessageId,
 }
 
@@ -2274,7 +2257,7 @@ export const messages = {
  *
  * Retrieve metadata about this application, including tool icons and other configuration details.
  */
-export const get28 = oc
+export const get27 = oc
   .route({
     description:
       'Retrieve metadata about this application, including tool icons and other configuration details.',
@@ -2288,7 +2271,7 @@ export const get28 = oc
   .output(zGetMetaResponse)
 
 export const meta = {
-  get: get28,
+  get: get27,
 }
 
 /**
@@ -2296,7 +2279,7 @@ export const meta = {
  *
  * Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.
  */
-export const get29 = oc
+export const get28 = oc
   .route({
     description:
       "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
@@ -2310,7 +2293,7 @@ export const get29 = oc
   .output(zGetParametersResponse)
 
 export const parameters = {
-  get: get29,
+  get: get28,
 }
 
 /**
@@ -2318,7 +2301,7 @@ export const parameters = {
  *
  * Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.
  */
-export const get30 = oc
+export const get29 = oc
   .route({
     description:
       'Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.',
@@ -2332,7 +2315,7 @@ export const get30 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get30,
+  get: get29,
 }
 
 /**
@@ -2340,7 +2323,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post37 = oc
+export const post36 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -2354,7 +2337,7 @@ export const post37 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post37,
+  post: post36,
 }
 
 /**
@@ -2362,32 +2345,35 @@ export const textToAudio = {
  *
  * Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
  */
-export const get31 = oc
+export const get30 = oc
   .route({
     description:
       'Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkflowByTaskIdEvents',
-    path: '/workflow/{task_id}/events',
+    operationId: 'getWorkflowByWorkflowRunIdEvents',
+    path: '/workflow/{workflow_run_id}/events',
     summary: 'Stream Workflow Events',
     tags: ['Chatflows', 'Workflows'],
   })
   .input(
-    z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery }),
+    z.object({
+      params: zGetWorkflowByWorkflowRunIdEventsPath,
+      query: zGetWorkflowByWorkflowRunIdEventsQuery,
+    }),
   )
-  .output(zGetWorkflowByTaskIdEventsResponse)
+  .output(zGetWorkflowByWorkflowRunIdEventsResponse)
 
 export const events = {
-  get: get31,
+  get: get30,
 }
 
-export const byTaskId3 = {
+export const byWorkflowRunId = {
   events,
 }
 
 export const workflow = {
-  byTaskId: byTaskId3,
+  byWorkflowRunId,
 }
 
 /**
@@ -2395,7 +2381,7 @@ export const workflow = {
  *
  * Retrieve paginated workflow execution logs with filtering options.
  */
-export const get32 = oc
+export const get31 = oc
   .route({
     description: 'Retrieve paginated workflow execution logs with filtering options.',
     inputStructure: 'detailed',
@@ -2409,7 +2395,7 @@ export const get32 = oc
   .output(zGetWorkflowsLogsResponse)
 
 export const logs = {
-  get: get32,
+  get: get31,
 }
 
 /**
@@ -2417,7 +2403,7 @@ export const logs = {
  *
  * Retrieve the current execution results of a workflow task based on the workflow execution ID.
  */
-export const get33 = oc
+export const get32 = oc
   .route({
     description:
       'Retrieve the current execution results of a workflow task based on the workflow execution ID.',
@@ -2431,8 +2417,8 @@ export const get33 = oc
   .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
 
-export const byWorkflowRunId = {
-  get: get33,
+export const byWorkflowRunId2 = {
+  get: get32,
 }
 
 /**
@@ -2440,7 +2426,7 @@ export const byWorkflowRunId = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post38 = oc
+export const post37 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -2454,8 +2440,8 @@ export const post38 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
-  post: post38,
-  byWorkflowRunId,
+  post: post37,
+  byWorkflowRunId: byWorkflowRunId2,
 }
 
 /**
@@ -2463,7 +2449,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post39 = oc
+export const post38 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -2482,15 +2468,15 @@ export const post39 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post39,
+  post: post38,
 }
 
-export const byTaskId4 = {
+export const byTaskId3 = {
   stop: stop3,
 }
 
 export const tasks = {
-  byTaskId: byTaskId4,
+  byTaskId: byTaskId3,
 }
 
 /**
@@ -2498,7 +2484,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post40 = oc
+export const post39 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -2518,7 +2504,7 @@ export const post40 = oc
   .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
-  post: post40,
+  post: post39,
 }
 
 export const byWorkflowId = {
@@ -2537,7 +2523,7 @@ export const workflows = {
  *
  * Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.
  */
-export const get34 = oc
+export const get33 = oc
   .route({
     description:
       'Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.',
@@ -2552,7 +2538,7 @@ export const get34 = oc
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
-  get: get34,
+  get: get33,
 }
 
 export const modelTypes = {

@@ -14,6 +14,7 @@ from core.app.file_access import DatabaseFileAccessController, FileAccessScope, 
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import CreatorUserRole, ToolFile, UploadFile
 
@@ -37,6 +38,16 @@ TEST_CONFIG = FileUploadConfig(
 def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
     return _build_from_mapping(
         mapping=mapping,
+        tenant_id=tenant_id,
+        config=config,
+        strict_type_validation=strict_type_validation,
+        access_controller=TEST_ACCESS_CONTROLLER,
+    )
+
+
+def build_from_mappings(*, mappings, tenant_id, config=None, strict_type_validation=False):
+    return _build_from_mappings(
+        mappings=mappings,
         tenant_id=tenant_id,
         config=config,
         strict_type_validation=strict_type_validation,
@@ -231,6 +242,25 @@ def test_build_from_remote_url(mock_http_head):
     assert file.type == FileType.IMAGE
     assert file.filename == "remote_test.jpg"
     assert file.size == 2048
+
+
+def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "factories.file_factory.builders.helpers.get_signed_file_url",
+        lambda **_kwargs: "https://example.com/signed-upload-file",
+    )
+    mapping = {
+        "transfer_method": "remote_url",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "image",
+    }
+
+    files = build_from_mappings(mappings=[mapping], tenant_id=TEST_TENANT_ID)
+
+    assert len(files) == 1
+    assert files[0].transfer_method == FileTransferMethod.REMOTE_URL
+    assert resolve_file_record_id(files[0].reference) == TEST_UPLOAD_FILE_ID
+    assert files[0].storage_key == "test_key"
 
 
 def test_build_from_remote_url_prefers_filename_extension_over_mimetype():

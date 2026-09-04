@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from uuid import UUID
 
@@ -40,6 +41,9 @@ class ApiKeyItem(ResponseModel):
     id: str
     type: str
     token: str
+    # Dataset keys only: the knowledge bases this key is bound to. Empty = the key can
+    # access every dataset in the tenant (default). App keys are always empty.
+    dataset_ids: list[str] = []
     last_used_at: int | None = None
     created_at: int | None = None
 
@@ -54,6 +58,38 @@ class ApiKeyList(ResponseModel):
 
 
 register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
+
+
+def mask_api_token(token: str) -> str:
+    """Mask a secret token for list responses.
+
+    Reveal-once: the full secret is only returned by the create endpoint. List
+    endpoints expose just enough (prefix + last 4) to identify a key, never the
+    full value, so an existing key's secret cannot be retrieved after creation.
+    """
+    if len(token) <= 8:
+        return "***"
+    return f"{token[:5]}...{token[-4:]}"
+
+
+def build_masked_api_key_list(
+    api_tokens: Iterable[ApiToken],
+    bindings_by_token: Mapping[str, list[str]] | None = None,
+) -> ApiKeyList:
+    """Build an ApiKeyList from ORM tokens with their secrets masked.
+
+    ``bindings_by_token`` maps an api_token id to the dataset ids it is bound to
+    (from DatasetApiTokenBinding); tokens absent from the map are unbound (empty =
+    access all). App-key lists omit it entirely.
+    """
+    bindings_by_token = bindings_by_token or {}
+    items: list[ApiKeyItem] = []
+    for api_token in api_tokens:
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.token = mask_api_token(item.token)
+        item.dataset_ids = bindings_by_token.get(str(api_token.id), [])
+        items.append(item)
+    return ApiKeyList(data=items)
 
 
 def _get_resource(resource_id, tenant_id, resource_model, *, session: Session):
@@ -94,7 +130,9 @@ class BaseApiKeyListResource(Resource):
                 getattr(ApiToken, self.resource_id_field) == resource_id,
             )
         ).all()
-        return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
+        # App and agent keys keep their existing (unmasked) list behavior; reveal-once
+        # masking is scoped to dataset keys, which build their list in datasets.py.
+        return ApiKeyList(data=[ApiKeyItem.model_validate(key, from_attributes=True) for key in keys])
 
     @edit_permission_required
     @with_session
@@ -271,6 +309,10 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_id_field = "app_id"
 
 
+# Dataset service-API keys are also managed at the workspace level (create with a set of
+# knowledge bases, list, delete) by DatasetApiKeyApi in
+# controllers/console/datasets/datasets.py, using DatasetApiTokenBinding for scoping.
+# The per-dataset routes below remain for callers that key an API token to a single dataset.
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_dataset_api_keys")

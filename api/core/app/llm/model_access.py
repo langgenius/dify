@@ -9,7 +9,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
@@ -126,6 +126,27 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
         DifyCredentialsProvider(run_context=run_context, provider_manager=provider_manager),
         DifyModelFactory(run_context=run_context, model_manager=model_manager),
     )
+
+
+def resolve_model_context_window(
+    *,
+    run_context: DifyRunContext,
+    provider_name: str,
+    model_name: str,
+) -> int | None:
+    """Return the selected model's credential-bound context-window capability.
+
+    The ``ModelInstance`` and its schema are resolved with the current
+    tenant/user ``DifyRunContext``. A positive, non-boolean plugin-declared
+    ``CONTEXT_SIZE`` is returned; a missing or invalid value returns ``None``.
+    Model lookup and schema errors propagate. This function does not infer a
+    window from the model name or fall back to a model registry or cache.
+    """
+    model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
+    context_window = model_instance.get_model_schema().model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    if isinstance(context_window, bool) or not isinstance(context_window, int) or context_window <= 0:
+        return None
+    return context_window
 
 
 def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:

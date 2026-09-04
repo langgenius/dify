@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,50 +16,24 @@ import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { DeleteAgentDialog } from '@/features/agent-v2/roster/components/delete-agent-dialog'
 import { DuplicateAgentDialog } from '@/features/agent-v2/roster/components/duplicate-agent-dialog'
 import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agent-dialog'
+import { useRouter } from '@/next/navigation'
 
-type AgentDetailSidebarActionAgent = Pick<
-  AgentAppPartial,
-  | 'app_id'
-  | 'description'
-  | 'icon'
-  | 'icon_background'
-  | 'icon_type'
-  | 'icon_url'
-  | 'id'
-  | 'mode'
-  | 'name'
-  | 'role'
->
+type AgentDetailSidebarActionAgent = AgentFormSource & Pick<AgentAppPartial, 'app_id'>
 
 export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tApp } = useTranslation('app')
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [editSessionKey, setEditSessionKey] = useState(0)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-  const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const { exportAppDsl, isExporting } = useExportAppDsl()
-  const dialogAgent: AgentAppPartial = {
-    description: agent.description,
-    icon: agent.icon,
-    icon_background: agent.icon_background,
-    icon_type: agent.icon_type,
-    icon_url: agent.icon_url,
-    id: agent.id,
-    mode: agent.mode,
-    name: agent.name,
-    role: agent.role,
-  }
-
+  const router = useRouter()
   const handleEditOpen = () => {
-    setEditSessionKey((key) => key + 1)
     setIsEditOpen(true)
   }
 
   const handleDuplicateOpen = () => {
-    setDuplicateSessionKey((key) => key + 1)
     setIsDuplicateOpen(true)
   }
 
@@ -83,7 +58,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
           <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
             <span>{t(($) => $['roster.editInfo'])}</span>
@@ -110,15 +85,9 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <EditAgentDialog
-        agent={dialogAgent}
-        formKey={editSessionKey}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-      />
+      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
       <DuplicateAgentDialog
-        agent={dialogAgent}
-        formKey={duplicateSessionKey}
+        agent={agent}
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />
@@ -127,6 +96,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         agentName={agent.name}
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
+        onDeleted={() => router.replace('/agents')}
       />
     </>
   )

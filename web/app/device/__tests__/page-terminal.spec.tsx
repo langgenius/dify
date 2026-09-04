@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
@@ -80,7 +80,9 @@ describe('error_expired terminal state', () => {
   it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
-    expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
+    await waitFor(() => {
+      expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
+    })
   })
 
   it('ghost button resets to code_entry', async () => {

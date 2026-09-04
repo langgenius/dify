@@ -13,4 +13,4 @@ description: Use when writing or changing Vitest or React Testing Library tests 
 4. Run the focused spec before the affected suite and relevant static checks.
 5. Report the behavior verified and any remaining browser, visual, or end-to-end risk.
 
-Recommend deleting low-value tests as readily as adding missing behavior coverage. Use `web/docs/test.md` for policy and Web commands; use the `packages/dify-ui/README.md` Development section for Dify UI commands.
+Recommend deleting low-value tests as readily as adding missing behavior coverage. Use `web/docs/test.md` for policy and Web commands; use `packages/dify-ui/docs/testing.md` for Dify UI commands.

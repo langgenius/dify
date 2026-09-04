@@ -113,7 +113,9 @@ describe('Filter', () => {
     it('should render filter components', () => {
       render(<Filter {...defaultProps} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should return null when loading', () => {
@@ -125,13 +127,17 @@ describe('Filter', () => {
     it('should render sort component in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should not render sort component when not in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode={false} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -246,7 +252,9 @@ describe('Filter', () => {
     it('should update keyword when typing in search input', () => {
       render(<Filter {...defaultProps} />)
 
-      const searchInput = screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/)
+      const searchInput = screen.getByRole('searchbox', {
+        name: /(?:^|\.)operation\.search(?=$|:)/,
+      })
       fireEvent.change(searchInput, { target: { value: 'test search' } })
 
       expect(mockSetQueryParams).toHaveBeenCalledWith({
@@ -392,7 +400,9 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithSort} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should handle descending sort order', () => {
@@ -404,7 +414,9 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithDescSort} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
   })
 })

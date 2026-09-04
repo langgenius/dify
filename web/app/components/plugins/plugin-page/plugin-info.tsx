@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import KeyValueItem from '../base/key-value-item'
@@ -25,7 +26,17 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
       }}
     >
       <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
         </DialogTitle>

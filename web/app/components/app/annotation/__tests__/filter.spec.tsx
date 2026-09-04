@@ -114,7 +114,7 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
       expect(screen.getByText(childContent)).toBeInTheDocument()
     })
   })
@@ -161,7 +161,9 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toHaveValue('test-keyword')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue(
+        'test-keyword',
+      )
     })
   })
 
@@ -187,7 +189,7 @@ describe('Filter', () => {
       )
 
       // Act
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'updated' } })
 
       // Assert
@@ -240,7 +242,7 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toHaveValue('')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue('')
     })
 
     it('should handle undefined keyword in queryParams', () => {
@@ -260,7 +262,7 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
 
     it('should handle zero count', () => {
@@ -280,7 +282,7 @@ describe('Filter', () => {
       )
 
       // Assert - should still render when count is 0
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
   })
 })

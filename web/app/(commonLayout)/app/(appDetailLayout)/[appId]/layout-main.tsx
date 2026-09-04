@@ -37,7 +37,6 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
     return t(($) => $['appMenus.promptEng'], { ns: 'common' })
   if (pathname.endsWith('/access-point'))
     return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
-  if (pathname.endsWith('/develop')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
   if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
   if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
   if (pathname.endsWith('/annotations'))
@@ -79,6 +78,22 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
   const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
+  const shouldBlockAgentResourceAccess =
+    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
+  const canViewAccessPoint =
+    routeAppDetail?.id === appId &&
+    currentWorkspace.id &&
+    !isLoadingCurrentWorkspace &&
+    !isLoadingWorkspacePermissionKeys &&
+    !isLoadingAppDetail
+      ? getAppACLCapabilities(routeAppDetail.permission_keys, {
+          currentUserId,
+          resourceMaintainer: routeAppDetail.maintainer,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        }).canViewAccessPoint
+      : false
+  const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
   useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
@@ -140,15 +155,20 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
+    const isAccessPointPath = pathname.endsWith('access-point')
     const isDeployPath = pathname.endsWith('deploy')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath && !appACLCapabilities.canAccessConfig) ||
+      (isAccessConfigPath &&
+        (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+      (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
       (isDeployPath &&
-        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
+        ((routeAppDetail.mode !== AppModeEnum.WORKFLOW &&
+          routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
+          !appACLCapabilities.canDeploy))
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {
@@ -195,27 +215,28 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   ])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
-  const content = !appDetail ? (
-    <div className="flex min-w-0 grow items-center justify-center bg-background-body">
-      <Loading />
-    </div>
-  ) : (
-    <div
-      className={cn(
-        'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
-        !isWorkflowPage && 'pt-1 pr-1 pb-1',
-      )}
-    >
+  const content =
+    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+      <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+        <Loading />
+      </div>
+    ) : (
       <div
         className={cn(
-          'min-w-0 grow overflow-hidden bg-components-panel-bg',
-          !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
         )}
       >
-        {children}
+        <div
+          className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">

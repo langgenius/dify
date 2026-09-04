@@ -11,6 +11,7 @@ from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
@@ -63,6 +64,7 @@ def _model_instance(
     instance.credentials = {"api_key": "hosted"}
     instance.model_type_instance = MagicMock()
     instance.load_balancing_manager = None
+    instance._request_metadata = None
     return instance, provider_model
 
 
@@ -71,13 +73,14 @@ def _persist_app(
     *,
     request: AgentLLMInvokeRequest,
     tenant_id: str | None = None,
+    mode: AppMode = AppMode.CHAT,
 ) -> App:
     app = App(
         id=request.caller.app_id,
         tenant_id=tenant_id or request.caller.tenant_id,
         name="Agent LLM gateway test app",
         description="",
-        mode=AppMode.CHAT,
+        mode=mode,
         enable_site=False,
         enable_api=False,
         max_active_requests=None,
@@ -175,7 +178,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     sqlite_session: Session,
 ) -> None:
     request = _request()
-    _persist_app(sqlite_session, request=request)
+    _persist_app(sqlite_session, request=request, mode=AppMode.WORKFLOW)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
     reservation = MagicMock(commit_before_delivery=True)
@@ -190,7 +193,12 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
         chunks = list(service.invoke(prepared))
 
     assert chunks == [provider_chunk]
-    model_instance.reserve_quota.assert_called_once_with(request_id=request.caller.invocation_id)
+    model_instance.reserve_quota.assert_called_once_with(
+        request_id=request.caller.invocation_id,
+        app_type=CreditUsageAppType.WORKFLOW,
+        created_by=CreditUsageCreatedBy.AGENT_NODE,
+    )
+    assert provider_invoke.call_args.kwargs["request_metadata"]["agent_config_version_kind"] == "draft"
     reservation.commit.assert_called_once_with(provider_chunk.delta.usage)
     reservation.release.assert_called_once_with()
     provider_invoke.assert_called_once()
@@ -225,6 +233,39 @@ def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
     assert model_instance.invoke_llm.call_args.kwargs["prompt_messages"] is prompt_messages
+
+
+def test_standalone_agent_app_gateway_is_attributed_to_app() -> None:
+    request = _request()
+    model_instance = MagicMock(spec=ModelInstance)
+    model_instance.invoke_llm.return_value = iter([])
+    prepared = PreparedAgentLLMInvocation(
+        request=request,
+        model_instance=model_instance,
+        app_type=CreditUsageAppType.AGENT_V2,
+    )
+
+    assert list(AgentLLMInnerService().invoke(prepared)) == []
+    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    assert request_metadata["created_by"] is CreditUsageCreatedBy.APP
+    assert request_metadata["agent_config_version_kind"] == "draft"
+
+
+def test_agent_build_draft_gateway_is_attributed_to_build_draft() -> None:
+    request = _request()
+    request.caller.agent_config_version_kind = "build_draft"
+    model_instance = MagicMock(spec=ModelInstance)
+    model_instance.invoke_llm.return_value = iter([])
+    prepared = PreparedAgentLLMInvocation(
+        request=request,
+        model_instance=model_instance,
+        app_type=CreditUsageAppType.AGENT_V2,
+    )
+
+    assert list(AgentLLMInnerService().invoke(prepared)) == []
+    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    assert request_metadata["created_by"] is CreditUsageCreatedBy.BUILD_DRAFT
+    assert request_metadata["agent_config_version_kind"] == "build_draft"
 
 
 def test_retried_gateway_delivery_uses_one_effective_billing_charge(

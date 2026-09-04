@@ -85,7 +85,7 @@ def _use_sqlite_banner_service(
 ) -> None:
     service = ExploreBannerQueryService(
         banners=ExploreBannerQueryRepository(sqlite_session_factory),
-        is_enabled=lambda: True,
+        enabled=True,
     )
     monkeypatch.setattr(
         banner_module,
@@ -97,7 +97,7 @@ def _use_sqlite_banner_service(
 class TestExploreBannerQueryService:
     def test_returns_empty_without_querying_when_disabled(self) -> None:
         banners = FakeExploreBannerQuery()
-        service = ExploreBannerQueryService(banners=banners, is_enabled=lambda: False)
+        service = ExploreBannerQueryService(banners=banners, enabled=False)
 
         assert service.list_for_language("fr-FR") == ()
         assert banners.requested_languages == []
@@ -105,7 +105,7 @@ class TestExploreBannerQueryService:
     def test_returns_requested_language(self) -> None:
         record = _record()
         banners = FakeExploreBannerQuery({"fr-FR": (record,)})
-        service = ExploreBannerQueryService(banners=banners, is_enabled=lambda: True)
+        service = ExploreBannerQueryService(banners=banners, enabled=True)
 
         assert service.list_for_language("fr-FR") == (record,)
         assert banners.requested_languages == ["fr-FR"]
@@ -113,14 +113,14 @@ class TestExploreBannerQueryService:
     def test_falls_back_to_en_us(self) -> None:
         record = _record(title="fallback")
         banners = FakeExploreBannerQuery({"en-US": (record,)})
-        service = ExploreBannerQueryService(banners=banners, is_enabled=lambda: True)
+        service = ExploreBannerQueryService(banners=banners, enabled=True)
 
         assert service.list_for_language("es-ES") == (record,)
         assert banners.requested_languages == ["es-ES", "en-US"]
 
     def test_does_not_repeat_default_language_query(self) -> None:
         banners = FakeExploreBannerQuery()
-        service = ExploreBannerQueryService(banners=banners, is_enabled=lambda: True)
+        service = ExploreBannerQueryService(banners=banners, enabled=True)
 
         assert service.list_for_language("en-US") == ()
         assert banners.requested_languages == ["en-US"]

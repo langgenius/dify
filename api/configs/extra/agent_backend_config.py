@@ -37,6 +37,19 @@ class AgentBackendConfig(BaseSettings):
         default=3,
     )
 
+    AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description=(
+            "Client timeout for Agent backend calls that may carry a Home Snapshot transfer: "
+            "snapshot capture and delete, and Execution Binding creation that restores one. "
+        ),
+        default=45.0,
+    )
+
+    AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Client timeout for converting a Binding file to a ToolFile through the Agent backend.",
+        default=240,
+    )
+
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
             "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "

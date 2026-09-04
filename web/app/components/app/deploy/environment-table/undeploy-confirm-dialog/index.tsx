@@ -50,9 +50,6 @@ export function UndeployConfirmDialog({
             <p className="system-md-regular text-text-secondary">
               {t(($) => $['studio.undeployConfirmDesc'])}
             </p>
-            <p className="system-md-medium text-text-warning">
-              {t(($) => $['deployTab.undeployConfirmWarning'])}
-            </p>
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>

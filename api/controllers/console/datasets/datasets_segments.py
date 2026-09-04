@@ -631,12 +631,16 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     ):
         # check dataset
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
+
         # check document
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
+        document_ref = DatasetRefService.create_document_ref_from_id(
+            DatasetRefService.create_dataset_ref(dataset), document_id_str
+        )
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
         if not document:
             raise NotFound("Document not found.")
 

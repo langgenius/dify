@@ -1,29 +1,32 @@
 import json
-from typing import override
+from http import HTTPStatus
+from typing import Never
 
 import httpx
 
-from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
+from services.auth.errors import (
+    DataSourceApiKeyAuthCredentialValidationError,
+    DataSourceApiKeyAuthProviderUnavailableError,
+    InvalidDataSourceApiKeyAuthCredentialsError,
+)
+from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
 
 # Explicit bounded timeout for credential-validation requests so a slow or
 # hanging Firecrawl endpoint cannot block the worker indefinitely.
 _CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
 
 
-class FirecrawlAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: AuthCredentials):
-        super().__init__(credentials)
-        auth_type = credentials.get("auth_type")
-        if auth_type != "bearer":
-            raise ValueError("Invalid auth type, Firecrawl auth type must be Bearer")
-        self.api_key = credentials.get("config", {}).get("api_key", None)
-        self.base_url = credentials.get("config", {}).get("base_url", "https://api.firecrawl.dev")
+class FirecrawlAuth:
+    def __init__(self, credentials: DataSourceApiKeyAuthCredentials):
+        if credentials.auth_type != "bearer":
+            raise InvalidDataSourceApiKeyAuthCredentialsError("Invalid auth type, Firecrawl auth type must be Bearer")
+        self.api_key = credentials.api_key
+        self.base_url = credentials.options.get("base_url", "https://api.firecrawl.dev")
 
         if not self.api_key:
-            raise ValueError("No API key provided")
+            raise InvalidDataSourceApiKeyAuthCredentialsError("No API key provided")
 
-    @override
-    def validate_credentials(self):
+    def validate_credentials(self) -> bool:
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
@@ -48,10 +51,18 @@ class FirecrawlAuth(ApiKeyAuthBase):
     def _post_request(self, url, data, headers):
         return httpx.post(url, headers=headers, json=data, timeout=_CREDENTIAL_TIMEOUT)
 
-    def _handle_error(self, response):
+    def _handle_error(self, response) -> Never:
+        if (
+            response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+            or response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+        ):
+            raise DataSourceApiKeyAuthProviderUnavailableError("firecrawl", response.status_code)
+
         try:
             payload = response.json()
         except json.JSONDecodeError:
             payload = {}
         error_message = payload.get("error") or payload.get("message") or (response.text or "Unknown error occurred")
-        raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+        raise DataSourceApiKeyAuthCredentialValidationError(
+            f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
+        )

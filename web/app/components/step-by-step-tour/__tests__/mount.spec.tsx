@@ -10,6 +10,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { createRef } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -485,6 +486,7 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
 }
 
 const renderStepByStepTourMount = (searchParams = '') => {
+  const recoveryAnchorRef = createRef<HTMLButtonElement>()
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   queryClient.setQueryData(
@@ -504,7 +506,12 @@ const renderStepByStepTourMount = (searchParams = '') => {
   return render(
     <JotaiProvider store={jotaiStore}>
       <QueryClientProvider client={queryClient}>
-        <StepByStepTourMount />
+        <div data-testid="step-by-step-tour-clip-boundary" style={{ overflow: 'hidden' }}>
+          <StepByStepTourMount recoveryAnchorRef={recoveryAnchorRef} />
+          <button ref={recoveryAnchorRef} type="button">
+            Open help menu
+          </button>
+        </div>
       </QueryClientProvider>
     </JotaiProvider>,
     { wrapper },
@@ -592,18 +599,41 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(
-      screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.'),
     ).toBeInTheDocument()
+    expect(screen.getByTestId('step-by-step-tour-clip-boundary')).not.toContainElement(
+      screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    )
     await expectStepByStepTourPatch({ action: 'skip' })
 
-    await user.click(screen.getByRole('button', { name: 'Got it' }))
+    const dismissButton = screen.getByRole('button', { name: 'Got it' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
+
+    await user.click(dismissButton)
 
     expect(
-      screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open help menu' })).toHaveFocus()
+  })
+
+  it('returns keyboard focus to Help after dismissing the recovery hint with Escape', async () => {
+    renderStepByStepTourMount()
+
+    await user.click(await screen.findByRole('button', { name: 'Skip tour' }))
+    await screen.findByRole('dialog', { name: 'Step-by-step Tour recovery tip' })
+
+    await user.keyboard('{Escape}')
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open help menu' })).toHaveFocus()
   })
 
   it('restores the checklist after Skip fails and allows retry', async () => {
@@ -616,7 +646,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
       expect(
-        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).toBeInTheDocument()
     })
     deferred.reject(new Error('patch failed'))
@@ -624,7 +654,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
     })
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -637,7 +667,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(2)
       expect(
-        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).toBeInTheDocument()
     })
   })
@@ -1498,7 +1528,7 @@ describe('StepByStepTourMount', () => {
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
         action: 'guide_skipped',

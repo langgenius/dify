@@ -13,7 +13,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,

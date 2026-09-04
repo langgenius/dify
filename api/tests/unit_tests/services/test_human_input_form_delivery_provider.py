@@ -56,6 +56,7 @@ class _FailingProvider:
         self.delivery_method_type = delivery_method_type
 
     def send(self, *, context: HumanInputFormDeliveryContext) -> None:
+        del context
         raise TimeoutError("provider timed out")
 
 

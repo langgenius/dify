@@ -17,7 +17,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import with_session
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
-    IncludeSecretQuery,
+    SnippetExportQuery,
     SnippetImportPayload,
     SnippetListQuery,
     UpdateSnippetPayload,
@@ -89,7 +89,7 @@ register_schema_models(
     CreateSnippetPayload,
     UpdateSnippetPayload,
     SnippetImportPayload,
-    IncludeSecretQuery,
+    SnippetExportQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -221,7 +221,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Update customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -265,7 +265,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -289,7 +289,7 @@ class CustomizedSnippetExportApi(Resource):
     @console_ns.doc("export_customized_snippet")
     @console_ns.doc(description="Export snippet configuration as DSL")
     @console_ns.doc(params={"snippet_id": "Snippet ID to export"})
-    @console_ns.doc(params=query_params_from_model(IncludeSecretQuery))
+    @console_ns.doc(params=query_params_from_model(SnippetExportQuery))
     @console_ns.response(200, "Snippet exported successfully", console_ns.models[TextFileResponse.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required
@@ -304,7 +304,7 @@ class CustomizedSnippetExportApi(Resource):
         """Export snippet as DSL."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -312,11 +312,18 @@ class CustomizedSnippetExportApi(Resource):
             raise NotFound("Snippet not found")
 
         # Get include_secret parameter
-        query = IncludeSecretQuery.model_validate(request.args.to_dict())
+        query = SnippetExportQuery.model_validate(request.args.to_dict())
 
         with Session(db.engine) as session:
             export_service = SnippetDslService(session)
-            result = export_service.export_snippet_dsl(snippet=snippet, include_secret=query.include_secret == "true")
+            try:
+                result = export_service.export_snippet_dsl(
+                    snippet=snippet,
+                    include_secret=query.include_secret == "true",
+                    workflow_id=query.workflow_id,
+                )
+            except ValueError as exc:
+                raise NotFound(str(exc)) from exc
 
         # Set filename with .snippet extension
         filename = f"{snippet.name}.snippet"
@@ -421,7 +428,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         """Check dependencies for a snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -451,7 +458,7 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
         """Increment snippet use count when it is inserted into a workflow."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 

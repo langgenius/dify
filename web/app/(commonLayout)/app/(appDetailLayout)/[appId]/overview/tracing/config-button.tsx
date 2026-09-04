@@ -26,7 +26,7 @@ const ConfigBtn: FC<Props> = ({ className, hasConfigured, children, ...popupProp
       <PopoverContent
         placement="bottom-end"
         sideOffset={12}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <ConfigPopup {...popupProps} />
       </PopoverContent>

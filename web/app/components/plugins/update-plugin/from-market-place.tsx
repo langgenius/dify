@@ -2,7 +2,8 @@
 import type { UpdateFromMarketPlacePayload } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -150,7 +151,17 @@ const UpdatePluginModal = ({
         backdropProps={{ forceRender: true }}
         className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
       >
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         {doShowDowngradeWarningModal && (
           <DowngradeWarningModal
             onCancel={onCancel}

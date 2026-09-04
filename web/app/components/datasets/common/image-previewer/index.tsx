@@ -155,7 +155,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
     >
       <DialogContent
         className="image-previewer inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-background-overlay-fullscreen p-5! pb-4! shadow-none! backdrop-blur-[6px]"
-        backdropClassName="bg-transparent!"
+        backdropProps={{ className: 'bg-transparent!' }}
       >
         <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
           <IconButton

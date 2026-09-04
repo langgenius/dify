@@ -3,14 +3,16 @@ from contextlib import nullcontext
 
 import pytest
 
-from services.retention.workflow_run.archive_download_task_cache import (
+from services.retention.workflow_run.archive_download_task import (
     ARCHIVE_DOWNLOAD_FORMAT_VERSION,
-    ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
-    WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
     build_pending_archive_download_task,
+)
+from services.retention.workflow_run.archive_download_task_cache import (
+    ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
+    WorkflowRunArchiveDownloadTaskCache,
 )
 
 
@@ -119,7 +121,7 @@ def test_build_archive_download_id_rejects_empty_bundle_refs() -> None:
 
 def test_archive_download_task_cache_round_trips_with_ttl() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis)
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
     task = build_pending_archive_download_task(
         tenant_id="tenant-1",
         requested_by="account-1",
@@ -142,7 +144,7 @@ def test_archive_download_task_cache_round_trips_with_ttl() -> None:
 
 def test_archive_download_task_cache_uses_per_download_lock() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis)
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
 
     with cache.lock(tenant_id="tenant-1", download_id="download-1"):
         pass
@@ -158,7 +160,7 @@ def test_archive_download_task_cache_uses_per_download_lock() -> None:
 
 def test_archive_download_task_cache_delete_removes_entry() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis)
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
     task = WorkflowRunArchiveDownloadTask(
         download_id="download-1",
         tenant_id="tenant-1",
@@ -183,7 +185,7 @@ def test_archive_download_task_cache_delete_removes_entry() -> None:
 
 def test_archive_download_task_cache_ignores_malformed_json() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis)
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
     redis.setex("workflow_run_archive_download:tenant-1:download-1", 3600, "{")
 
     assert cache.get(tenant_id="tenant-1", download_id="download-1") is None

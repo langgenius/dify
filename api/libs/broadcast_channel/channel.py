@@ -4,6 +4,7 @@ Broadcast channel for Pub/Sub messaging.
 
 from __future__ import annotations
 
+import abc
 import types
 from abc import abstractmethod
 from collections.abc import Iterator
@@ -96,6 +97,15 @@ class Subscriber(Protocol):
     @abstractmethod
     def subscribe(self) -> Subscription:
         pass
+
+
+class SupportsPreparedSubscription(Subscriber, abc.ABC):
+    """Optional capability for fixing a subscription's delivery boundary before activation."""
+
+    @abstractmethod
+    def prepare_subscription(self) -> Subscription:
+        """Create an inactive subscription whose logical delivery boundary is already fixed."""
+        ...
 
 
 class Topic(Producer, Subscriber, Protocol):

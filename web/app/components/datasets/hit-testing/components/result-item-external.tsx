@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -56,7 +57,17 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
           }}
         >
           <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-200! flex-col overflow-hidden! border-none text-left align-middle">
-            <DialogCloseButton />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
               {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
             </DialogTitle>

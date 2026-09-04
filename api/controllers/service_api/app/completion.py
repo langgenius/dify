@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import ChatBlockingResponse, CompletionBlockingResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
@@ -27,6 +27,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    SCOPED_TASK_STOP_USER_DESCRIPTION,
     InputFileList,
     expect_user_json,
     expect_with_user,
@@ -163,7 +164,12 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
-register_response_schema_models(service_api_ns, SimpleResultResponse)
+register_response_schema_models(
+    service_api_ns,
+    SimpleResultResponse,
+    ChatBlockingResponse,
+    CompletionBlockingResponse,
+)
 
 
 @service_api_ns.route("/completion-messages")
@@ -206,7 +212,11 @@ class CompletionApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(200, "Completion created successfully")
+    @service_api_ns.response(
+        200,
+        "Completion created successfully",
+        service_api_ns.models[CompletionBlockingResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -279,7 +289,11 @@ class CompletionStopApi(Resource):
             400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(
@@ -289,7 +303,6 @@ class CompletionStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -361,7 +374,11 @@ class ChatApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(200, "Message sent successfully")
+    @service_api_ns.response(
+        200,
+        "Message sent successfully",
+        service_api_ns.models[ChatBlockingResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -458,7 +475,11 @@ class ChatStopApi(Resource):
             400: "`not_chat_app` : App mode does not match the API route.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(
@@ -468,7 +489,6 @@ class ChatStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])

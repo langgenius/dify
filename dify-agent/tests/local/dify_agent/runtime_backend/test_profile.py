@@ -40,6 +40,19 @@ def test_local_backend_requires_shellctl_endpoint() -> None:
         _ = RuntimeBackendSettings(runtime_backend="local")
 
 
+def test_local_backend_uses_root_workspace_directory_by_default() -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="local",
+        local_sandbox_endpoint="http://shellctl.example",
+    )
+
+    profile = create_runtime_backend_profile(settings)
+
+    assert settings.local_sandbox_workspace_root == "/workspace"
+    assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert profile.execution_bindings.workspace_root == "/workspace"
+
+
 def test_local_backend_passes_configured_roots_to_drivers() -> None:
     settings = RuntimeBackendSettings(
         runtime_backend="local",

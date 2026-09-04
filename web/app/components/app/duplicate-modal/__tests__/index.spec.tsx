@@ -2,15 +2,19 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DuplicateAppModal from '../index'
 
-const toastErrorMock = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
+const { mockProviderContext, toastErrorMock } = vi.hoisted(() => ({
+  mockProviderContext: {
     plan: {
       usage: { buildApps: 0 },
       total: { buildApps: 1 },
     },
     enableBilling: true,
-  }),
+  },
+  toastErrorMock: vi.fn(),
+}))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => mockProviderContext,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -20,11 +24,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      open-icon-picker
-    </button>
-  ),
+  default: () => <span>app-icon</span>,
+}))
+
+vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
+  default: () => <div>apps-full</div>,
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
@@ -67,8 +71,30 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
 }))
 
 describe('DuplicateAppModal', () => {
+  const getIconButton = () =>
+    screen.getByRole('button', {
+      name: /operation\.edit.*appCustomize\.subTitle/,
+    })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mockProviderContext.plan.usage.buildApps = 0
+    mockProviderContext.plan.total.buildApps = 1
+  })
+
+  it('should render a named dialog', () => {
+    render(
+      <DuplicateAppModal
+        appName="Demo App"
+        icon_type="emoji"
+        icon="🤖"
+        show
+        onConfirm={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
   })
 
   it('should validate the name before duplicating and update the input value', async () => {
@@ -88,13 +114,14 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
     await user.clear(input)
     await user.type(input, 'Updated App')
     expect(input).toHaveValue('Updated App')
 
     await user.clear(input)
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
+    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.keyboard('{Enter}')
 
     expect(toastErrorMock).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)appCustomize\.nameRequired(?=$|:)/),
@@ -120,7 +147,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(getIconButton())
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
@@ -161,6 +188,50 @@ describe('DuplicateAppModal', () => {
     expect(onHide).toHaveBeenCalledTimes(1)
   })
 
+  it('should call onHide when Escape is pressed', async () => {
+    const onHide = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <DuplicateAppModal
+        appName="Demo App"
+        icon_type="emoji"
+        icon="🤖"
+        show
+        onConfirm={vi.fn()}
+        onHide={onHide}
+      />,
+    )
+
+    await user.keyboard('{Escape}')
+
+    expect(onHide).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not submit with Enter when the app limit is reached', async () => {
+    const onConfirm = vi.fn()
+    const onHide = vi.fn()
+    const user = userEvent.setup()
+    mockProviderContext.plan.usage.buildApps = 1
+
+    render(
+      <DuplicateAppModal
+        appName="Demo App"
+        icon_type="emoji"
+        icon="🤖"
+        show
+        onConfirm={onConfirm}
+        onHide={onHide}
+      />,
+    )
+
+    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.keyboard('{Enter}')
+
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(onHide).not.toHaveBeenCalled()
+  })
+
   it('should preserve the current image icon when the picker closes without selecting', async () => {
     const onConfirm = vi.fn()
     const user = userEvent.setup()
@@ -177,7 +248,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(getIconButton())
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
@@ -189,7 +260,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
-    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(getIconButton())
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })

@@ -128,7 +128,6 @@ export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailRespon
   const response = await consoleClient.explore.apps.byAppId.get({
     params: { app_id: id },
   })
-  if (!response) throw new Error('Recommended app not found')
   return normalizeAppDetail(response)
 }
 

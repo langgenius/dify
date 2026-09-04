@@ -32,7 +32,6 @@ from services.entities.dsl_entities import (
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -491,29 +490,34 @@ class SnippetDslService:
 
         self._session.commit()
         if workflow_data:
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
             )
-            enqueue_agent_resource_collection(
-                tenant_id=snippet.tenant_id,
-                binding_ids=binding_ids,
-                home_snapshot_ids=home_snapshot_ids,
-            )
         return snippet
 
-    def export_snippet_dsl(self, snippet: CustomizedSnippet, include_secret: bool = False) -> str:
+    def export_snippet_dsl(
+        self, snippet: CustomizedSnippet, include_secret: bool = False, workflow_id: str | None = None
+    ) -> str:
         """
         Export snippet as DSL
         :param snippet: CustomizedSnippet instance
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export; defaults to the draft workflow
         :return: YAML string
         """
         snippet_service = self._snippet_service()
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
+            if workflow_id
+            else snippet_service.get_draft_workflow(snippet=snippet)
+        )
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            workflow_description = (
+                f"published workflow {workflow_id}" if workflow_id else "draft workflow configuration"
+            )
+            raise ValueError(f"Missing {workflow_description}, please check.")
 
         icon_info = snippet.icon_info or {}
         export_data = {

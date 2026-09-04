@@ -78,6 +78,7 @@ describe('billing utils', () => {
         activated: false,
         enabled: false,
       },
+      enable_skill: false,
       human_input_email_delivery_enabled: false,
       is_allow_transfer_workspace: false,
       knowledge_pipeline: {

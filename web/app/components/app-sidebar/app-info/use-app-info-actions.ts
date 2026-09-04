@@ -15,6 +15,11 @@ import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/u
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '@/service/app-deletion'
 import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
@@ -306,8 +311,10 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return
+    markAppDeletionStarted(appDetail.id)
     try {
       await deleteApp(appDetail.id)
+      markAppDeletionSucceeded(appDetail.id)
       toast(
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
@@ -319,6 +326,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
       setAppDetail()
       replace('/apps')
     } catch (e: unknown) {
+      markAppDeletionFailed(appDetail.id)
       toast(
         `${t(($) => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
         { type: 'error' },

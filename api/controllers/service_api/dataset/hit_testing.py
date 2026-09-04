@@ -14,7 +14,11 @@ register_schema_models(service_api_ns, HitTestingPayload)
 register_response_schema_models(service_api_ns, HitTestingResponse)
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/hit-testing", "/datasets/<uuid:dataset_id>/retrieve")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/hit-testing",
+    doc={"post": {"deprecated": True}},
+)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/retrieve")
 class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     @service_api_ns.doc(
         summary="Retrieve Chunks from a Knowledge Base / Test Retrieval",

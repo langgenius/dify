@@ -155,7 +155,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         }
         render={content}
       />
-      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
         {tooltip}
       </PopoverContent>
     </Popover>

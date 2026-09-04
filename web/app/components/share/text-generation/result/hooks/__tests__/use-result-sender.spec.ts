@@ -33,8 +33,8 @@ const {
   validateResultRequestMock: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: mockTrackEvent,
+vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
+  trackWebAppEvent: mockTrackEvent,
 }))
 
 vi.mock('@/context/web-app-context', () => ({

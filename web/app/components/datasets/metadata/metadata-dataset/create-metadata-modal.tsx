@@ -32,7 +32,7 @@ export function CreateMetadataModal({
         placement="left-start"
         sideOffset={popupLeft}
         alignOffset={-38}
-        popupClassName="w-[320px]"
+        className="w-[320px]"
       >
         <CreateContent
           {...createContentProps}

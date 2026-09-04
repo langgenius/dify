@@ -17,7 +17,8 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
   return (
     <>
       {skeletonKeys.map((key) => (
-        <div
+        <li
+          aria-hidden
           key={key}
           className="h-40 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
@@ -34,7 +35,7 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
               <SkeletonRectangle className="h-3 w-4/5 animate-pulse" />
             </div>
           </SkeletonContainer>
-        </div>
+        </li>
       ))}
     </>
   )

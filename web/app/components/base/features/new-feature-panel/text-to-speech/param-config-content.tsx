@@ -3,10 +3,13 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -14,7 +17,7 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
-import AudioBtn from '@/app/components/base/audio-btn'
+import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Infotip } from '@/app/components/base/infotip'
 import { languages } from '@/i18n-config/language'
@@ -125,14 +128,20 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
           >
             {languageItem ? formatLanguageName(languageItem) : localLanguagePlaceholder}
           </SelectTrigger>
-          <SelectContent listClassName="max-h-60">
-            {languages.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                <SelectItemText>{formatLanguageName(item)}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList className="max-h-60">
+                  {languages.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{formatLanguageName(item)}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
       </div>
       <div className="mb-3">
@@ -157,14 +166,20 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               >
                 {voiceItem?.name ?? localVoicePlaceholder}
               </SelectTrigger>
-              <SelectContent listClassName="max-h-60">
-                {voiceItems?.map((item: SelectOption) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    <SelectItemText>{item.name}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <SelectPortal>
+                <SelectPositioner>
+                  <SelectPopup>
+                    <SelectList className="max-h-60">
+                      {voiceItems?.map((item: SelectOption) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          <SelectItemText>{item.name}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectList>
+                  </SelectPopup>
+                </SelectPositioner>
+              </SelectPortal>
             </div>
           </Select>
           {languageItem?.example && (
@@ -173,12 +188,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               role="group"
               aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
-              <AudioBtn
-                value={languageItem?.example}
-                isAudition
-                voice={text2speech?.voice}
-                noCache
-              />
+              <AudioBtn value={languageItem?.example} isAudition voice={text2speech?.voice} />
             </div>
           )}
         </div>

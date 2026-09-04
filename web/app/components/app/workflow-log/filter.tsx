@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
@@ -87,16 +87,13 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
         }))}
       />
-      <Input
-        wrapperClassName="w-[200px]"
-        showLeftIcon
-        showClearIcon
+      <SearchInput
+        className="w-50"
         value={queryParams.keyword ?? ''}
         placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
-        onChange={(e) => {
-          setQueryParams({ ...queryParams, keyword: e.target.value })
+        onValueChange={(value) => {
+          setQueryParams({ ...queryParams, keyword: value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
     </div>
   )

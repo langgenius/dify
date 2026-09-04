@@ -111,6 +111,16 @@ describe('DetailSidebarFrame', () => {
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
+  it('keeps collapsed bottom actions in place when they are hovered', () => {
+    renderDetailSidebarFrame()
+    fireEvent.click(screen.getByTestId('detail-toggle'))
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'help' }))
+
+    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
+  })
+
   it('persists expansion when the hovered preview toggle is clicked', () => {
     renderDetailSidebarFrame()
     fireEvent.click(screen.getByTestId('detail-toggle'))

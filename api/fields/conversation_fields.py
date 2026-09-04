@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, WithJsonSchema, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
@@ -26,6 +26,9 @@ from models.model import (
 )
 
 type JSONValue = Any
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
 
 
 class _SessionResponseSource[SourceT]:
@@ -141,15 +144,15 @@ class ConversationResponseSource(_SessionResponseSource[ConversationModel]):
 
 
 class MessageFile(ResponseModel):
-    id: str
+    id: UUIDString
     filename: str
     type: str
-    url: str | None = None
+    url: URLString | None = None
     mime_type: str | None = None
     size: int | None = None
     transfer_method: str
     belongs_to: str | None = None
-    upload_file_id: str | None = None
+    upload_file_id: UUIDString | None = None
 
     @field_validator("transfer_method", mode="before")
     @classmethod
@@ -160,13 +163,13 @@ class MessageFile(ResponseModel):
 
 
 class SimpleConversation(ResponseModel):
-    id: str
+    id: UUIDString
     name: str
     inputs: dict[str, JSONValue]
     status: str
     introduction: str | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    created_at: Int64 | None = None
+    updated_at: Int64 | None = None
 
     @field_validator("inputs", mode="before")
     @classmethod
@@ -240,7 +243,7 @@ class AgentThought(ResponseModel):
     thought: str | None = None
     answer: str | None = None
     tool: str | None = None
-    tool_labels: JSONValue
+    tool_labels: JSONValue = Field(description="Labels for tools used.")
     tool_input: str | None = None
     created_at: int | None = None
     observation: str | None = None

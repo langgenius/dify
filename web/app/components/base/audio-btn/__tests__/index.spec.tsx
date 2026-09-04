@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
 import { useParams, usePathname } from '@/next/navigation'
-import AudioBtn from '../index'
+import { AudioBtn } from '../index'
 
 const mockPlayAudio = vi.fn()
 const mockPauseAudio = vi.fn()

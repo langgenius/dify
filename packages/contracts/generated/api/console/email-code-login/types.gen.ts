@@ -21,6 +21,7 @@ export type EmailCodeLoginPayload = {
   language?: string | null
   timezone?: string | null
   token: string
+  turnstile_token?: string | null
 }
 
 export type SimpleResultResponse = {

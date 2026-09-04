@@ -37,9 +37,11 @@ type SanitizeSchema = {
 
 const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
 
-const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), {
-  ssr: false,
-})
+const CodeBlock = dynamic(
+  () =>
+    import('@/app/components/base/markdown-blocks/code-block').then((module) => module.CodeBlock),
+  { ssr: false },
+)
 
 const mathPlugin = createMathPlugin({
   singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,

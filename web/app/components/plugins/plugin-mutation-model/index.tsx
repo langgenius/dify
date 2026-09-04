@@ -2,9 +2,11 @@ import type { UseMutationResult } from '@tanstack/react-query'
 import type { FC, ReactNode } from 'react'
 import type { Plugin } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 
 type Props = Readonly<{
@@ -32,6 +34,8 @@ const PluginMutationModal: FC<Props> = ({
   mutate,
   modalBottomLeft,
 }: Props) => {
+  const { t } = useTranslation()
+
   return (
     <Dialog
       open
@@ -40,7 +44,17 @@ const PluginMutationModal: FC<Props> = ({
       }}
     >
       <DialogContent className="w-full min-w-140 overflow-hidden! border-none text-left align-middle">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">{modelTitle}</DialogTitle>
 
         <div className="mt-3 mb-2 system-md-regular text-text-secondary">{description}</div>

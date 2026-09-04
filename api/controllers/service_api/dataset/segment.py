@@ -15,6 +15,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.common.session import with_session
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import (
@@ -77,7 +78,7 @@ class SegmentListQuery(BaseModel):
 
 
 class SegmentUpdatePayload(BaseModel):
-    segment: SegmentUpdateArgs = Field(description="Chunk update payload.")
+    segment: SegmentUpdateArgs = Field(description="Chunk data to update.")
 
 
 class ChildChunkListQuery(BaseModel):
@@ -259,6 +260,7 @@ class SegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segments retrieved successfully",
+            400: "Bad request - embedding model is not configured",
             401: "Unauthorized - invalid API token",
             404: "Dataset or document not found",
         }
@@ -353,6 +355,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             204: "Segment deleted successfully",
+            400: "Bad request - invalid dataset model state or concurrent deletion",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }
@@ -395,6 +398,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segment updated successfully",
+            400: "Bad request - invalid segment or embedding model configuration",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }
@@ -403,7 +407,16 @@ class DatasetSegmentApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+    @model_validate(SegmentUpdatePayload)
+    def post(
+        self,
+        payload: SegmentUpdatePayload,
+        session: Session,
+        tenant_id: str,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+    ):
         _, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         # check dataset
@@ -438,8 +451,6 @@ class DatasetSegmentApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
-
         updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset, session)
         summary = SummaryIndexService.get_segment_summary(
             segment_id=updated_segment.id, dataset_id=dataset_id_str, session=session
@@ -469,6 +480,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segment retrieved successfully",
+            400: "Bad request - invalid dataset model configuration",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }
@@ -545,7 +557,16 @@ class ChildChunkApi(DatasetApiResource):
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+    @model_validate(ChildChunkCreatePayload)
+    def post(
+        self,
+        payload: ChildChunkCreatePayload,
+        session: Session,
+        tenant_id: str,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+    ):
         _, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         dataset_id_str = str(dataset_id)
@@ -581,9 +602,6 @@ class ChildChunkApi(DatasetApiResource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-
-        # validate args
-        payload = ChildChunkCreatePayload.model_validate(service_api_ns.payload or {})
 
         try:
             child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
@@ -761,8 +779,10 @@ class DatasetChildChunkApi(DatasetApiResource):
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
+    @model_validate(ChildChunkUpdatePayload)
     def patch(
         self,
+        payload: ChildChunkUpdatePayload,
         session: Session,
         tenant_id: str,
         dataset_id: UUID,
@@ -794,9 +814,6 @@ class DatasetChildChunkApi(DatasetApiResource):
         child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref, session=session)
         if not child_chunk:
             raise NotFound("Child chunk not found.")
-
-        # validate args
-        payload = ChildChunkUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
             child_chunk = SegmentService.update_child_chunk(

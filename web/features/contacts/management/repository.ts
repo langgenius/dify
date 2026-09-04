@@ -14,6 +14,8 @@ import type {
   RemoveContactsResult,
   RemoveMemberCommand,
   RemoveMemberResult,
+  UpdateExternalContactCommand,
+  UpdateExternalContactResult,
   UpgradeExternalContactsToWorkspaceCommand,
   UpgradeExternalContactsToWorkspaceResult,
 } from './types'
@@ -37,6 +39,9 @@ export type ContactsManagementRepository = {
   listContacts: (query: ContactsListQuery) => Promise<ContactPage<ContactView>>
   removeContacts: (command: RemoveContactsCommand) => Promise<RemoveContactsResult>
   removeMember: (command: RemoveMemberCommand) => Promise<RemoveMemberResult>
+  updateExternalContact: (
+    command: UpdateExternalContactCommand,
+  ) => Promise<UpdateExternalContactResult>
   upgradeExternalContactsToWorkspace: (
     command: UpgradeExternalContactsToWorkspaceCommand,
   ) => Promise<UpgradeExternalContactsToWorkspaceResult>

@@ -7,8 +7,10 @@ const Agentation = dynamic(() => import('agentation').then((module) => module.Ag
   ssr: false,
 })
 
+const IS_AGENTATION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_AGENTATION !== 'false'
+
 export function AgentationLoader() {
-  if (!IS_DEV) return null
+  if (!IS_DEV || !IS_AGENTATION_ENABLED) return null
 
   return <Agentation />
 }

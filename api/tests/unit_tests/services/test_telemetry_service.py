@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -14,22 +15,20 @@ from services.telemetry_service import CommunityTelemetryService
 
 
 @pytest.fixture
-def telemetry_enabled(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
-    monkeypatch.setattr(telemetry_service.dify_config, "DISABLE_TELEMETRY", False)
-    monkeypatch.setattr(telemetry_service.dify_config, "DO_NOT_TRACK", False)
-    monkeypatch.setattr(telemetry_service.dify_config, "CI", False)
-    monkeypatch.setattr(telemetry_service.dify_config, "TELEMETRY_ENDPOINT", "https://telemetry.example.test/v1/events")
-    monkeypatch.setattr(
-        telemetry_service.dify_config,
-        "TELEMETRY_FALLBACK_ENDPOINT",
-        "https://telemetry-cn.example.test/v1/events",
+def telemetry_enabled(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        DISABLE_TELEMETRY=False,
+        DO_NOT_TRACK=False,
+        CI=False,
+        TELEMETRY_ENDPOINT="https://telemetry.example.test/v1/events",
+        TELEMETRY_FALLBACK_ENDPOINT="https://telemetry-cn.example.test/v1/events",
+        TELEMETRY_TIMEOUT_SECONDS=2,
     )
-    monkeypatch.setattr(telemetry_service.dify_config, "TELEMETRY_TIMEOUT_SECONDS", 2)
 
 
-def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+def test_telemetry_is_disabled_for_enterprise(config_overrides: Callable[..., None]):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
     assert CommunityTelemetryService._is_enabled() is False
 
@@ -45,9 +44,9 @@ def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
     ],
 )
 def test_telemetry_is_disabled_when_a_required_condition_is_not_met(
-    telemetry_enabled, monkeypatch: pytest.MonkeyPatch, setting: str, value: str | bool
+    telemetry_enabled, config_overrides: Callable[..., None], setting: str, value: str | bool
 ):
-    monkeypatch.setattr(telemetry_service.dify_config, setting, value)
+    config_overrides(**{setting: value})
 
     assert CommunityTelemetryService._is_enabled() is False
 
@@ -59,11 +58,16 @@ def test_reporting_without_setup_is_skipped(sqlite_session: Session, telemetry_e
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_marks_reported_at(sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
+def test_report_install_marks_reported_at(
+    sqlite_session: Session,
+    telemetry_enabled,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
-    monkeypatch.setattr(telemetry_service.dify_config.project, "version", "running-version")
+    config_overrides(project=telemetry_service.dify_config.project.model_copy(update={"version": "running-version"}))
 
     sent_payloads: list[dict[str, str | int]] = []
 
@@ -191,12 +195,15 @@ def test_report_install_does_not_use_fallback_endpoint_after_http_error(
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
 def test_report_heartbeat_retries_pending_install_before_heartbeat(
-    sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    telemetry_enabled,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
-    monkeypatch.setattr(telemetry_service.dify_config.project, "version", "running-version")
+    config_overrides(project=telemetry_service.dify_config.project.model_copy(update={"version": "running-version"}))
 
     sent_payloads: list[dict[str, str | int]] = []
 
@@ -263,8 +270,10 @@ def test_report_heartbeat_failure_does_not_mark_the_day_reported(
     assert setup.last_heartbeat_at is None
 
 
-def test_send_event_skips_when_telemetry_is_disabled(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "DISABLE_TELEMETRY", True)
+def test_send_event_skips_when_telemetry_is_disabled(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(DISABLE_TELEMETRY=True)
     post_mock = Mock()
     monkeypatch.setattr(telemetry_service.httpx, "post", post_mock)
 
@@ -272,8 +281,10 @@ def test_send_event_skips_when_telemetry_is_disabled(monkeypatch: pytest.MonkeyP
     post_mock.assert_not_called()
 
 
-def test_send_event_skips_an_empty_fallback_endpoint(telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(telemetry_service.dify_config, "TELEMETRY_FALLBACK_ENDPOINT", "")
+def test_send_event_skips_an_empty_fallback_endpoint(
+    telemetry_enabled, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(TELEMETRY_FALLBACK_ENDPOINT="")
 
     def fake_post(url: str, json: dict[str, str], timeout: int):
         raise httpx.ConnectError("offline", request=httpx.Request("POST", url))
@@ -283,12 +294,10 @@ def test_send_event_skips_an_empty_fallback_endpoint(telemetry_enabled, monkeypa
     assert CommunityTelemetryService._send_event({"event": "heartbeat"}) is False
 
 
-def test_send_event_does_not_retry_the_same_endpoint(telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        telemetry_service.dify_config,
-        "TELEMETRY_FALLBACK_ENDPOINT",
-        telemetry_service.dify_config.TELEMETRY_ENDPOINT,
-    )
+def test_send_event_does_not_retry_the_same_endpoint(
+    telemetry_enabled, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(TELEMETRY_FALLBACK_ENDPOINT=telemetry_service.dify_config.TELEMETRY_ENDPOINT)
     post_mock = Mock(
         return_value=httpx.Response(
             204,

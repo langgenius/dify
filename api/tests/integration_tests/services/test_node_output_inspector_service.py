@@ -159,13 +159,6 @@ def seeded_run(
         node_id="agent-node-1",
         node_type="agent",
         outputs={"text": "hello world"},
-        execution_metadata={
-            "output_type_check": {
-                "passed": True,
-                "results": [{"name": "text", "type": "string", "status": "ready"}],
-            },
-            "attempt": 0,
-        },
         index=1,
     )
     tool_execution = _make_execution(
@@ -263,7 +256,7 @@ def test_snapshot_returns_agent_v2_declared_outputs_with_status_ready(seeded_run
     """Happy path: agent v2 node + tool node both render, statuses come from
     real ``WorkflowRun`` + ``WorkflowNodeExecutionModel`` rows."""
     app_model, workflow_run, _ = seeded_run
-    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([]))
     snapshot = _snapshot_workflow_run(
         service,
         app_model=app_model,
@@ -440,7 +433,7 @@ def test_snapshot_surfaces_output_check_failure_from_metadata(flask_req_ctx, fak
 
 def test_node_detail_serves_one_node(seeded_run):
     app_model, workflow_run, _ = seeded_run
-    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([]))
     view = _node_detail(
         service,
         app_model=app_model,
@@ -464,10 +457,10 @@ def test_output_preview_for_file_renders_signed_url(seeded_run, fake_app_model):
             select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == agent_execution.id)
         )
         assert row is not None
-        row.outputs = json.dumps({"text": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}})
+        row.outputs = json.dumps({"report": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}})
         session.commit()
 
-    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "file"}]))
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "report", "type": "file"}]))
     with patch(
         "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
         return_value="https://signed.example/x.pdf",
@@ -477,9 +470,9 @@ def test_output_preview_for_file_renders_signed_url(seeded_run, fake_app_model):
             app_model=fake_app_model,
             workflow_run_id=workflow_run.id,
             node_id="agent-node-1",
-            output_name="text",
+            output_name="report",
         )
-    assert preview.output_name == "text"
+    assert preview.output_name == "report"
     assert isinstance(preview.value, dict)
     assert preview.value["preview_url"] == "https://signed.example/x.pdf"
     assert preview.value["filename"] == "x.pdf"
@@ -524,7 +517,7 @@ def test_keeps_latest_execution_per_node_by_index(flask_req_ctx, fake_app_model)
         run_id, ex_ids = workflow_run.id, [older.id, newer.id]
 
     try:
-        service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
+        service = NodeOutputInspectorService(binding_resolver=_stub_resolver([]))
         snapshot = _snapshot_workflow_run(service, app_model=fake_app_model, workflow_run_id=run_id)
         assert snapshot.node_outputs[0].outputs[0].value_preview == "second attempt"
     finally:

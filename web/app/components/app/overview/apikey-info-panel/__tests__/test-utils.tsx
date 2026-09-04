@@ -50,6 +50,7 @@ const defaultProviderContext = {
   isFetchedPlan: false,
   isFetchedPlanInfo: false,
   enableBilling: false,
+  enableSkill: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,

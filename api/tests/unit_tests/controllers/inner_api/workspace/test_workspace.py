@@ -8,19 +8,35 @@ handler tests use inspect.unwrap() to bypass them and focus on business logic.
 
 import inspect
 from datetime import datetime
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from controllers.inner_api.workspace.workspace import (
     EnterpriseWorkspace,
+    EnterpriseWorkspaceMember,
     EnterpriseWorkspaceNoOwnerEmail,
     WorkspaceCreatePayload,
+    WorkspaceMemberPayload,
     WorkspaceOwnerlessPayload,
 )
-from models.account import TenantStatus
+from models import Account, Tenant
+from models.account import TenantAccountJoin, TenantAccountRole, TenantStatus
+from services.account_service import (
+    EnterpriseWorkspaceMemberAccountNotFoundError,
+    EnterpriseWorkspaceMemberWorkspaceNotFoundError,
+)
+
+
+@pytest.fixture
+def database_session(sqlite_session_factory: sessionmaker[Session]):
+    session_proxy = scoped_session(sqlite_session_factory)
+    with patch("controllers.inner_api.workspace.workspace.db.session", session_proxy):
+        yield session_proxy
+    session_proxy.remove()
 
 
 class TestWorkspaceCreatePayload:
@@ -68,6 +84,32 @@ class TestWorkspaceOwnerlessPayload:
         assert "name" in str(exc_info.value)
 
 
+class TestWorkspaceMemberPayload:
+    """Test WorkspaceMemberPayload Pydantic model validation"""
+
+    def test_valid_payload(self):
+        data = {
+            "workspace_id": "workspace-id",
+            "account_id": "account-id",
+            "email": "member@example.com",
+            "role": "normal",
+            "operator_account_id": "operator-id",
+        }
+        payload = WorkspaceMemberPayload.model_validate(data)
+        assert payload.workspace_id == "workspace-id"
+        assert payload.account_id == "account-id"
+        assert payload.email == "member@example.com"
+        assert payload.role == "normal"
+        assert payload.current is False
+        assert payload.operator_account_id == "operator-id"
+
+    def test_missing_account_id_fails_validation(self):
+        data = {"workspace_id": "workspace-id", "email": "member@example.com"}
+        with pytest.raises(ValidationError) as exc_info:
+            WorkspaceMemberPayload.model_validate(data)
+        assert "account_id" in str(exc_info.value)
+
+
 class TestEnterpriseWorkspace:
     """Test EnterpriseWorkspace API endpoint handler logic.
 
@@ -85,23 +127,21 @@ class TestEnterpriseWorkspace:
         assert callable(api_instance.post)
 
     @patch("controllers.inner_api.workspace.workspace.TenantService")
-    @patch("controllers.inner_api.workspace.workspace.db")
-    def test_post_creates_workspace_with_owner(self, mock_db, mock_tenant_svc, api_instance, app: Flask):
+    def test_post_creates_workspace_with_owner(
+        self, mock_tenant_svc, api_instance, app: Flask, sqlite_session: Session, database_session
+    ):
         """Test that post() creates a workspace and assigns the owner account"""
         # Arrange
-        mock_account = MagicMock()
-        mock_account.email = "owner@example.com"
-        mock_db.session.scalar.return_value = mock_account
+        account = Account(name="Owner", email="owner@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
 
         now = datetime(2025, 1, 1, 12, 0, 0)
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-id"
-        mock_tenant.name = "My Workspace"
-        mock_tenant.plan = "sandbox"
-        mock_tenant.status = TenantStatus.NORMAL
-        mock_tenant.created_at = now
-        mock_tenant.updated_at = now
-        mock_tenant_svc.create_owner_tenant.return_value = mock_tenant
+        tenant = Tenant(name="My Workspace", plan="sandbox", status=TenantStatus.NORMAL)
+        tenant.id = "tenant-id"
+        tenant.created_at = now
+        tenant.updated_at = now
+        mock_tenant_svc.create_owner_tenant.return_value = tenant
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
@@ -114,19 +154,18 @@ class TestEnterpriseWorkspace:
         assert result["message"] == "enterprise workspace created."
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["name"] == "My Workspace"
-        mock_tenant_svc.create_owner_tenant.assert_called_once_with(
-            mock_account,
-            name="My Workspace",
-            is_from_dashboard=True,
-            session=ANY,
-        )
+        mock_tenant_svc.create_owner_tenant.assert_called_once()
+        call_args = mock_tenant_svc.create_owner_tenant.call_args
+        assert call_args.args[0].id == account.id
+        assert call_args.kwargs == {
+            "name": "My Workspace",
+            "is_from_dashboard": True,
+            "session": database_session(),
+        }
 
-    @patch("controllers.inner_api.workspace.workspace.db")
-    def test_post_returns_404_when_owner_not_found(self, mock_db, api_instance, app: Flask):
+    @pytest.mark.usefixtures("database_session")
+    def test_post_returns_404_when_owner_not_found(self, api_instance, app: Flask):
         """Test that post() returns 404 when the owner account does not exist"""
-        # Arrange
-        mock_db.session.scalar.return_value = None
-
         # Act
         unwrapped_post = inspect.unwrap(api_instance.post)
         with app.test_request_context():
@@ -156,20 +195,22 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
 
     @patch("controllers.inner_api.workspace.workspace.tenant_was_created")
     @patch("controllers.inner_api.workspace.workspace.TenantService")
-    def test_post_creates_ownerless_workspace(self, mock_tenant_svc, mock_event, api_instance, app: Flask):
+    def test_post_creates_ownerless_workspace(
+        self, mock_tenant_svc, mock_event, api_instance, app: Flask, database_session
+    ):
         """Test that post() creates a workspace without an owner and returns expected fields"""
         # Arrange
         now = datetime(2025, 1, 1, 12, 0, 0)
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-id"
-        mock_tenant.name = "My Workspace"
-        mock_tenant.encrypt_public_key = "pub-key"
-        mock_tenant.plan = "sandbox"
-        mock_tenant.status = TenantStatus.NORMAL
-        mock_tenant.custom_config = None
-        mock_tenant.created_at = now
-        mock_tenant.updated_at = now
-        mock_tenant_svc.create_tenant.return_value = mock_tenant
+        tenant = Tenant(
+            name="My Workspace",
+            encrypt_public_key="pub-key",
+            plan="sandbox",
+            status=TenantStatus.NORMAL,
+        )
+        tenant.id = "tenant-id"
+        tenant.created_at = now
+        tenant.updated_at = now
+        mock_tenant_svc.create_tenant.return_value = tenant
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
@@ -183,5 +224,120 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["encrypt_public_key"] == "pub-key"
         assert result["tenant"]["custom_config"] == {}
-        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
-        mock_event.send.assert_called_once_with(mock_tenant)
+        mock_tenant_svc.create_tenant.assert_called_once_with(
+            "My Workspace", is_from_dashboard=True, session=database_session()
+        )
+        mock_event.send.assert_called_once_with(tenant)
+
+
+class TestEnterpriseWorkspaceMember:
+    """Test EnterpriseWorkspaceMember API endpoint handler logic."""
+
+    @pytest.fixture
+    def api_instance(self):
+        return EnterpriseWorkspaceMember()
+
+    def test_has_post_method(self, api_instance):
+        assert hasattr(api_instance, "post")
+        assert callable(api_instance.post)
+
+    @patch("controllers.inner_api.workspace.workspace.TenantService")
+    def test_post_joins_existing_account_to_workspace(self, mock_tenant_svc, api_instance, app: Flask):
+        membership = TenantAccountJoin(
+            tenant_id="workspace-id",
+            account_id="account-id",
+            role=TenantAccountRole.NORMAL,
+        )
+        mock_tenant_svc.join_enterprise_workspace_member.return_value = membership
+
+        unwrapped_post = inspect.unwrap(api_instance.post)
+        with app.test_request_context():
+            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+                mock_ns.payload = {
+                    "workspace_id": "workspace-id",
+                    "account_id": "account-id",
+                    "email": "member@example.com",
+                    "role": "normal",
+                    "operator_account_id": "operator-id",
+                }
+                result = unwrapped_post(api_instance)
+
+        assert result["message"] == "enterprise workspace member joined."
+        assert result["member"] == {
+            "workspace_id": "workspace-id",
+            "account_id": "account-id",
+            "role": "normal",
+        }
+        mock_tenant_svc.join_enterprise_workspace_member.assert_called_once_with(
+            workspace_id="workspace-id",
+            account_id="account-id",
+            email="member@example.com",
+            role=TenantAccountRole.NORMAL,
+            operator_account_id="operator-id",
+        )
+
+    @patch("controllers.inner_api.workspace.workspace.TenantService")
+    def test_post_returns_404_when_workspace_not_found(self, mock_tenant_svc, api_instance, app: Flask):
+        mock_tenant_svc.join_enterprise_workspace_member.side_effect = EnterpriseWorkspaceMemberWorkspaceNotFoundError
+
+        unwrapped_post = inspect.unwrap(api_instance.post)
+        with app.test_request_context():
+            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+                mock_ns.payload = {
+                    "workspace_id": "missing-workspace",
+                    "account_id": "account-id",
+                    "email": "member@example.com",
+                    "role": "normal",
+                }
+                result = unwrapped_post(api_instance)
+
+        assert result == ({"message": "workspace not found."}, 404)
+        mock_tenant_svc.join_enterprise_workspace_member.assert_called_once()
+
+    @patch("controllers.inner_api.workspace.workspace.TenantService")
+    def test_post_returns_404_when_account_not_found(self, mock_tenant_svc, api_instance, app: Flask):
+        mock_tenant_svc.join_enterprise_workspace_member.side_effect = EnterpriseWorkspaceMemberAccountNotFoundError
+
+        unwrapped_post = inspect.unwrap(api_instance.post)
+        with app.test_request_context():
+            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+                mock_ns.payload = {
+                    "workspace_id": "workspace-id",
+                    "account_id": "missing-account",
+                    "email": "member@example.com",
+                    "role": "normal",
+                }
+                result = unwrapped_post(api_instance)
+
+        assert result == ({"message": "account not found."}, 404)
+        mock_tenant_svc.join_enterprise_workspace_member.assert_called_once()
+
+    @pytest.mark.usefixtures("database_session")
+    def test_post_rejects_owner_role(self, api_instance, app: Flask):
+        unwrapped_post = inspect.unwrap(api_instance.post)
+        with app.test_request_context():
+            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+                mock_ns.payload = {
+                    "workspace_id": "workspace-id",
+                    "account_id": "account-id",
+                    "email": "member@example.com",
+                    "role": "owner",
+                }
+                result = unwrapped_post(api_instance)
+
+        assert result == ({"message": "cannot join workspace as owner."}, 400)
+
+    @pytest.mark.usefixtures("database_session")
+    def test_post_rejects_invalid_role(self, api_instance, app: Flask):
+        unwrapped_post = inspect.unwrap(api_instance.post)
+        with app.test_request_context():
+            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+                mock_ns.payload = {
+                    "workspace_id": "workspace-id",
+                    "account_id": "account-id",
+                    "email": "member@example.com",
+                    "role": "not-a-role",
+                }
+                result = unwrapped_post(api_instance)
+
+        assert result == ({"message": "invalid workspace member role."}, 400)

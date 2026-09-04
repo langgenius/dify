@@ -1,34 +1,69 @@
-"""
-Console-facing workflow-run archive queries.
-
-The object store remains the recoverable archive source of truth. This module only reads the DB bundle index and writes
-temporary Redis download-task state, so console requests never list R2 online.
-"""
+"""Application service for Console workflow-run archive downloads."""
 
 import datetime
 import logging
 import uuid
-from collections.abc import Callable
+from collections.abc import Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
+from typing import Any, NamedTuple, Protocol
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from models.workflow import WorkflowRunArchiveBundle
-from services.retention.workflow_run.archive_download_task_cache import (
+from machinery.context import RequestContext
+from services.retention.workflow_run.archive_download_task import (
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
-    WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
     build_pending_archive_download_task,
 )
 
 logger = logging.getLogger(__name__)
 
-ArchiveDownloadTaskDispatcher = Callable[
-    [WorkflowRunArchiveDownloadTask, WorkflowRunArchiveDownloadTaskCache],
-    WorkflowRunArchiveDownloadTask,
-]
+
+class WorkflowRunArchiveBundleRecord(NamedTuple):
+    """Persistence-neutral metadata for one immutable archive bundle."""
+
+    year: int
+    month: int
+    shard: str
+    bundle_id: str
+    workflow_run_count: int
+    row_count: int
+    archive_bytes: int
+    archived_at: datetime.datetime
+
+
+class WorkflowRunArchiveBundleQuery(Protocol):
+    def list_for_tenant(self, tenant_id: str) -> Sequence[WorkflowRunArchiveBundleRecord]: ...
+
+    def list_for_tenant_month(
+        self,
+        tenant_id: str,
+        *,
+        year: int,
+        month: int,
+    ) -> Sequence[WorkflowRunArchiveBundleRecord]: ...
+
+
+class WorkflowRunArchiveDownloadTaskStore(Protocol):
+    def get(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None: ...
+
+    def save(self, task: WorkflowRunArchiveDownloadTask) -> None: ...
+
+    def lock(self, *, tenant_id: str, download_id: str) -> AbstractContextManager[Any]: ...
+
+
+class WorkflowRunArchiveDownloadTaskDispatcher(Protocol):
+    def __call__(self, task: WorkflowRunArchiveDownloadTask) -> None: ...
+
+
+class WorkflowRunArchiveDownloadUrlSigner(Protocol):
+    def __call__(
+        self,
+        storage_key: str,
+        *,
+        expires_in: int,
+        filename: str,
+    ) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -47,7 +82,7 @@ class WorkflowRunArchiveMonth:
 
 @dataclass(frozen=True)
 class WorkflowRunArchiveSummary:
-    """Top-level archive totals shown on the console page."""
+    """Top-level archive totals shown on the Console page."""
 
     archived_month_count: int
     workflow_run_count: int
@@ -68,212 +103,161 @@ class WorkflowRunArchiveNotFoundError(Exception):
 
 
 class WorkflowRunArchiveDownloadTaskNotFoundError(Exception):
-    """Raised when the temporary Redis task has expired or never existed."""
+    """Raised when the temporary download task has expired or never existed."""
 
 
 class WorkflowRunArchiveDownloadNotReadyError(Exception):
     """Raised when a cached download task has not produced a file yet."""
 
 
-def list_workflow_run_archives(
-    session: Session,
-    tenant_id: str,
-    *,
-    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
-) -> WorkflowRunArchiveList:
-    """Return monthly archive metadata for one tenant from the DB bundle index."""
-    stmt = (
-        select(WorkflowRunArchiveBundle)
-        .where(WorkflowRunArchiveBundle.tenant_id == tenant_id)
-        .order_by(
-            WorkflowRunArchiveBundle.year.desc(),
-            WorkflowRunArchiveBundle.month.desc(),
-            WorkflowRunArchiveBundle.shard,
-            WorkflowRunArchiveBundle.bundle_id,
-        )
-    )
-    month_bundles: dict[tuple[int, int], list[WorkflowRunArchiveBundle]] = {}
-    for bundle in session.scalars(stmt):
-        month_bundles.setdefault((bundle.year, bundle.month), []).append(bundle)
+class WorkflowRunArchiveService:
+    def __init__(
+        self,
+        *,
+        bundles: WorkflowRunArchiveBundleQuery,
+        tasks: WorkflowRunArchiveDownloadTaskStore,
+        dispatcher: WorkflowRunArchiveDownloadTaskDispatcher,
+        sign_download_url: WorkflowRunArchiveDownloadUrlSigner,
+    ) -> None:
+        self._bundles = bundles
+        self._tasks = tasks
+        self._dispatcher = dispatcher
+        self._sign_download_url = sign_download_url
 
-    task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
-    months: list[WorkflowRunArchiveMonth] = []
-    for (year, month), bundles in month_bundles.items():
-        bundle_refs = [(bundle.shard, bundle.bundle_id) for bundle in bundles]
-        months.append(
-            WorkflowRunArchiveMonth(
-                year=year,
-                month=month,
-                bundle_count=len(bundles),
-                workflow_run_count=sum(bundle.workflow_run_count for bundle in bundles),
-                row_count=sum(bundle.row_count for bundle in bundles),
-                archive_bytes=sum(bundle.archive_bytes for bundle in bundles),
-                latest_archived_at=max(bundle.archived_at for bundle in bundles),
-                download_task=_get_cached_month_download_task(
-                    task_cache,
-                    tenant_id=tenant_id,
+    def list_archives(self, context: RequestContext) -> WorkflowRunArchiveList:
+        """Return monthly archive metadata for the active workspace."""
+        tenant_id = context.active_workspace_id
+        records_by_month: dict[tuple[int, int], list[WorkflowRunArchiveBundleRecord]] = {}
+        for record in self._bundles.list_for_tenant(tenant_id):
+            records_by_month.setdefault((record.year, record.month), []).append(record)
+
+        months: list[WorkflowRunArchiveMonth] = []
+        for year, month in sorted(records_by_month, reverse=True):
+            records = records_by_month[(year, month)]
+            bundle_refs = [(record.shard, record.bundle_id) for record in records]
+            months.append(
+                WorkflowRunArchiveMonth(
                     year=year,
                     month=month,
-                    bundle_refs=bundle_refs,
-                ),
+                    bundle_count=len(records),
+                    workflow_run_count=sum(record.workflow_run_count for record in records),
+                    row_count=sum(record.row_count for record in records),
+                    archive_bytes=sum(record.archive_bytes for record in records),
+                    latest_archived_at=max(record.archived_at for record in records),
+                    download_task=self._get_cached_month_download_task(
+                        tenant_id=tenant_id,
+                        year=year,
+                        month=month,
+                        bundle_refs=bundle_refs,
+                    ),
+                )
             )
+
+        latest_archived_at = max((archive.latest_archived_at for archive in months), default=None)
+        return WorkflowRunArchiveList(
+            summary=WorkflowRunArchiveSummary(
+                archived_month_count=len(months),
+                workflow_run_count=sum(archive.workflow_run_count for archive in months),
+                archive_bytes=sum(archive.archive_bytes for archive in months),
+                latest_archived_at=latest_archived_at,
+            ),
+            months=months,
         )
-    latest_archived_at = max((month.latest_archived_at for month in months), default=None)
-    return WorkflowRunArchiveList(
-        summary=WorkflowRunArchiveSummary(
-            archived_month_count=len(months),
-            workflow_run_count=sum(month.workflow_run_count for month in months),
-            archive_bytes=sum(month.archive_bytes for month in months),
-            latest_archived_at=latest_archived_at,
-        ),
-        months=months,
-    )
 
+    def create_download(
+        self,
+        context: RequestContext,
+        *,
+        year: int,
+        month: int,
+    ) -> WorkflowRunArchiveDownloadTask:
+        """Create or return the idempotent download task for one workspace/month."""
+        tenant_id = context.active_workspace_id
+        bundles = self._bundles.list_for_tenant_month(tenant_id, year=year, month=month)
+        if not bundles:
+            raise WorkflowRunArchiveNotFoundError(f"Workflow run archive not found: {year:04d}-{month:02d}")
 
-def _get_cached_month_download_task(
-    cache: WorkflowRunArchiveDownloadTaskCache,
-    *,
-    tenant_id: str,
-    year: int,
-    month: int,
-    bundle_refs: list[tuple[str, str]],
-) -> WorkflowRunArchiveDownloadTask | None:
-    if not bundle_refs:
-        return None
-    download_id = build_archive_download_id(
-        tenant_id=tenant_id,
-        year=year,
-        month=month,
-        bundle_refs=bundle_refs,
-    )
-    try:
-        return cache.get(tenant_id=tenant_id, download_id=download_id)
-    except Exception:
-        logger.warning("Failed to read cached workflow run archive download task: %s", download_id, exc_info=True)
-        return None
-
-
-def create_workflow_run_archive_download_task(
-    session: Session,
-    *,
-    tenant_id: str,
-    requested_by: str,
-    year: int,
-    month: int,
-    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
-    dispatcher: ArchiveDownloadTaskDispatcher | None = None,
-) -> WorkflowRunArchiveDownloadTask:
-    """
-    Create or return the idempotent Redis task for downloading one tenant/month archive.
-
-    The task identity is based on the exact ordered bundle set currently indexed for the month. If the month receives a
-    new bundle later, the next request gets a different download id and prepares a fresh file.
-    """
-    bundles = _list_archive_bundles(session, tenant_id=tenant_id, year=year, month=month)
-    if not bundles:
-        raise WorkflowRunArchiveNotFoundError(f"Workflow run archive not found: {year:04d}-{month:02d}")
-
-    bundle_refs = [(bundle.shard, bundle.bundle_id) for bundle in bundles]
-    download_id = build_archive_download_id(
-        tenant_id=tenant_id,
-        year=year,
-        month=month,
-        bundle_refs=bundle_refs,
-    )
-    task = build_pending_archive_download_task(
-        tenant_id=tenant_id,
-        requested_by=requested_by,
-        year=year,
-        month=month,
-        bundle_ids=[bundle.bundle_id for bundle in bundles],
-        bundle_refs=bundle_refs,
-        archive_bytes=sum(bundle.archive_bytes for bundle in bundles),
-        download_id=download_id,
-    )
-    task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
-    dispatch = dispatcher or _dispatch_workflow_run_archive_download_task
-    with task_cache.lock(tenant_id=tenant_id, download_id=download_id):
-        existing = task_cache.get(tenant_id=tenant_id, download_id=download_id)
-        if existing is None or existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
-            task_to_queue = task
-        elif existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
-            task_to_queue = existing
-        else:
-            return existing
-
-        queued_task = task_to_queue.model_copy(
-            update={"celery_task_id": uuid.uuid4().hex, "updated_at": datetime.datetime.now(datetime.UTC)}
+        bundle_refs = [(bundle.shard, bundle.bundle_id) for bundle in bundles]
+        download_id = build_archive_download_id(
+            tenant_id=tenant_id,
+            year=year,
+            month=month,
+            bundle_refs=bundle_refs,
         )
-        task_cache.save(queued_task)
-
-    return dispatch(queued_task, task_cache)
-
-
-def get_workflow_run_archive_download_task(
-    *,
-    tenant_id: str,
-    download_id: str,
-    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
-) -> WorkflowRunArchiveDownloadTask:
-    """Return a cached archive download task or raise when the TTL has expired."""
-    task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
-    task = task_cache.get(tenant_id=tenant_id, download_id=download_id)
-    if task is None:
-        raise WorkflowRunArchiveDownloadTaskNotFoundError(f"Workflow run archive download not found: {download_id}")
-    return task
-
-
-def get_ready_workflow_run_archive_download_task(
-    *,
-    tenant_id: str,
-    download_id: str,
-    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
-) -> WorkflowRunArchiveDownloadTask:
-    """Return a ready cached archive download task or raise when the file is not available."""
-    task = get_workflow_run_archive_download_task(tenant_id=tenant_id, download_id=download_id, cache=cache)
-    if task.status != WorkflowRunArchiveDownloadStatus.READY or not task.storage_key or not task.file_name:
-        raise WorkflowRunArchiveDownloadNotReadyError(f"Workflow run archive download is not ready: {download_id}")
-    return task
-
-
-def _list_archive_bundles(
-    session: Session,
-    *,
-    tenant_id: str,
-    year: int,
-    month: int,
-) -> list[WorkflowRunArchiveBundle]:
-    stmt = (
-        select(WorkflowRunArchiveBundle)
-        .where(
-            WorkflowRunArchiveBundle.tenant_id == tenant_id,
-            WorkflowRunArchiveBundle.year == year,
-            WorkflowRunArchiveBundle.month == month,
+        task = build_pending_archive_download_task(
+            tenant_id=tenant_id,
+            requested_by=context.account_id,
+            year=year,
+            month=month,
+            bundle_ids=[bundle.bundle_id for bundle in bundles],
+            bundle_refs=bundle_refs,
+            archive_bytes=sum(bundle.archive_bytes for bundle in bundles),
+            download_id=download_id,
         )
-        .order_by(WorkflowRunArchiveBundle.shard, WorkflowRunArchiveBundle.bundle_id)
-    )
-    return list(session.scalars(stmt))
 
+        with self._tasks.lock(tenant_id=tenant_id, download_id=download_id):
+            existing = self._tasks.get(tenant_id=tenant_id, download_id=download_id)
+            if existing is None or existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
+                task_to_queue = task
+            elif existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
+                task_to_queue = existing
+            else:
+                return existing
 
-def _dispatch_workflow_run_archive_download_task(
-    task: WorkflowRunArchiveDownloadTask,
-    cache: WorkflowRunArchiveDownloadTaskCache,
-) -> WorkflowRunArchiveDownloadTask:
-    """
-    Enqueue background ZIP preparation after the caller atomically claimed and cached the Celery id.
-    """
-    from tasks.workflow_run_archive_download_tasks import prepare_workflow_run_archive_download_task
+            queued_task = task_to_queue.model_copy(
+                update={"celery_task_id": uuid.uuid4().hex, "updated_at": datetime.datetime.now(datetime.UTC)}
+            )
+            self._tasks.save(queued_task)
 
-    celery_task_id = task.celery_task_id
-    if celery_task_id is None:
-        raise ValueError("celery_task_id is required before dispatch")
+        try:
+            self._dispatcher(queued_task)
+        except Exception:
+            return self._record_dispatch_failure(queued_task)
+        return queued_task
 
-    try:
-        prepare_workflow_run_archive_download_task.apply_async(
-            args=(task.tenant_id, task.download_id),
-            task_id=celery_task_id,
+    def get_download(self, context: RequestContext, *, download_id: str) -> WorkflowRunArchiveDownloadTask:
+        """Return a cached download task or raise after its TTL expires."""
+        tenant_id = context.active_workspace_id
+        task = self._tasks.get(tenant_id=tenant_id, download_id=download_id)
+        if task is None:
+            raise WorkflowRunArchiveDownloadTaskNotFoundError(f"Workflow run archive download not found: {download_id}")
+        return task
+
+    def get_download_url(self, context: RequestContext, *, download_id: str) -> str:
+        """Return a short-lived URL for a ready archive download."""
+        task = self.get_download(context, download_id=download_id)
+        if task.status != WorkflowRunArchiveDownloadStatus.READY or not task.storage_key or not task.file_name:
+            raise WorkflowRunArchiveDownloadNotReadyError(f"Workflow run archive download is not ready: {download_id}")
+        return self._sign_download_url(
+            task.storage_key,
+            expires_in=self._presigned_url_expires_in(task.expires_at),
+            filename=task.file_name,
         )
-    except Exception:
+
+    def _get_cached_month_download_task(
+        self,
+        *,
+        tenant_id: str,
+        year: int,
+        month: int,
+        bundle_refs: Sequence[tuple[str, str]],
+    ) -> WorkflowRunArchiveDownloadTask | None:
+        download_id = build_archive_download_id(
+            tenant_id=tenant_id,
+            year=year,
+            month=month,
+            bundle_refs=bundle_refs,
+        )
+        try:
+            return self._tasks.get(tenant_id=tenant_id, download_id=download_id)
+        except Exception:
+            logger.warning("Failed to read cached workflow run archive download task: %s", download_id, exc_info=True)
+            return None
+
+    def _record_dispatch_failure(
+        self,
+        task: WorkflowRunArchiveDownloadTask,
+    ) -> WorkflowRunArchiveDownloadTask:
         failure_time = datetime.datetime.now(datetime.UTC)
         failed_task = task.model_copy(
             update={
@@ -283,16 +267,20 @@ def _dispatch_workflow_run_archive_download_task(
                 "finished_at": failure_time,
             }
         )
-        with cache.lock(tenant_id=task.tenant_id, download_id=task.download_id):
-            current = cache.get(tenant_id=task.tenant_id, download_id=task.download_id)
+        with self._tasks.lock(tenant_id=task.tenant_id, download_id=task.download_id):
+            current = self._tasks.get(tenant_id=task.tenant_id, download_id=task.download_id)
             if (
                 current is not None
                 and current.status == WorkflowRunArchiveDownloadStatus.PENDING
-                and current.celery_task_id == celery_task_id
+                and current.celery_task_id == task.celery_task_id
             ):
-                cache.save(failed_task)
+                self._tasks.save(failed_task)
                 current = failed_task
         logger.exception("Failed to enqueue workflow run archive download task %s", task.download_id)
         return current or failed_task
 
-    return task
+    @staticmethod
+    def _presigned_url_expires_in(expires_at: datetime.datetime) -> int:
+        expires_at_utc = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=datetime.UTC)
+        remaining_seconds = int((expires_at_utc - datetime.datetime.now(datetime.UTC)).total_seconds())
+        return max(1, min(3600, remaining_seconds))

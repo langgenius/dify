@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'

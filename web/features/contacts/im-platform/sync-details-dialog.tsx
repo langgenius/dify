@@ -4,11 +4,12 @@ import type { ContactImSafeReason, ContactImSyncResult } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -86,7 +87,17 @@ export function ContactImSyncDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[760px] max-h-[calc(100dvh-2rem)] w-[840px] flex-col overflow-hidden! p-0!">
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              className="absolute top-6 right-6"
+              size="lg"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['imPlatform.details.title'])}
@@ -133,10 +144,8 @@ export function ContactImSyncDetailsDialog({
             <div className="shrink-0 overflow-x-auto border-y border-divider-subtle px-6 py-3">
               <SegmentedControl
                 aria-label={t(($) => $['imPlatform.details.filters'])}
-                value={[resultFilter ?? ALL_RESULTS]}
-                onValueChange={(values) => {
-                  const value = values[0]
-                  if (!value) return
+                value={resultFilter ?? ALL_RESULTS}
+                onValueChange={(value) => {
                   setResultFilter(
                     value === ALL_RESULTS ? undefined : (value as ContactImSyncResult),
                   )

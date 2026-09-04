@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,7 @@ import pytest
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 class TestPGVector:
@@ -466,12 +468,10 @@ def test_search_by_full_text_branches_for_bigm_and_standard():
 
 def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pytest.MonkeyPatch):
     factory = pgvector_module.PGVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(pgvector_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_HOST", "localhost")

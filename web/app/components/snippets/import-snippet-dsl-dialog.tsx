@@ -12,12 +12,12 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -106,6 +106,7 @@ function SnippetDSLConfirmDialog({
 }
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
+  const dslUrlInputId = useId()
   const { t } = useTranslation()
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -210,19 +211,12 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
     }
   }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
 
-  const tabs = useMemo(
-    () => [
-      {
-        key: ImportSnippetDSLDialogTab.FromFile,
-        label: t(($) => $.importFromDSLFile, { ns: 'snippet' }),
-      },
-      {
-        key: ImportSnippetDSLDialogTab.FromUrl,
-        label: t(($) => $.importFromDSLUrl, { ns: 'snippet' }),
-      },
-    ],
-    [t],
-  )
+  const handleTabChange = (value: string | number) => {
+    if (value === ImportSnippetDSLDialogTab.FromFile)
+      setCurrentTab(ImportSnippetDSLDialogTab.FromFile)
+    if (value === ImportSnippetDSLDialogTab.FromUrl)
+      setCurrentTab(ImportSnippetDSLDialogTab.FromUrl)
+  }
 
   const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
   const importDisabled =
@@ -235,8 +229,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
         <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $.importDialogTitle, { ns: 'snippet' })}
+          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $.importDialogTitle, { ns: 'snippet' })}
+            </DialogTitle>
             <button
               type="button"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -246,39 +242,54 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
               <span className="i-ri-close-line size-5" />
             </button>
           </div>
-          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={cn(
-                  'relative flex h-full cursor-pointer items-center',
-                  currentTab === tab.key && 'text-text-primary',
-                )}
-                onClick={() => setCurrentTab(tab.key)}
+          <Tabs value={currentTab} onValueChange={handleTabChange}>
+            <TabsList
+              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+              className="h-9 gap-6 border-b border-divider-subtle px-6"
+            >
+              <TabsTab
+                value={ImportSnippetDSLDialogTab.FromFile}
+                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                disabled={isSubmitting}
               >
-                {tab.label}
-                {currentTab === tab.key && (
-                  <span className="absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600" />
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="px-6 py-4">
-            {currentTab === ImportSnippetDSLDialogTab.FromFile && (
+                {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
+              </TabsTab>
+              <TabsTab
+                value={ImportSnippetDSLDialogTab.FromUrl}
+                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                disabled={isSubmitting}
+              >
+                {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
+              </TabsTab>
+            </TabsList>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromFile}
+              tabIndex={-1}
+              className="px-6 py-4"
+            >
               <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-            )}
-            {currentTab === ImportSnippetDSLDialogTab.FromUrl && (
+            </TabsPanel>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromUrl}
+              tabIndex={-1}
+              className="px-6 py-4"
+            >
               <div>
-                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
+                <label
+                  htmlFor={dslUrlInputId}
+                  className="mb-1 block system-md-semibold text-text-secondary"
+                >
+                  DSL URL
+                </label>
                 <Input
+                  id={dslUrlInputId}
                   placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
                   value={dslUrl}
                   onChange={(event) => setDslUrl(event.target.value)}
                 />
               </div>
-            )}
-          </div>
+            </TabsPanel>
+          </Tabs>
           <div className="flex justify-end px-6 py-5">
             <Button className="mr-2" disabled={isSubmitting} onClick={onClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

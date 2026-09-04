@@ -212,22 +212,6 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type FormAccessRequestResponse = {
-  challenge_token: string
-  expires_in_seconds: number
-  resend_after_seconds: number
-}
-
-export type FormDefinitionResponse = {
-  expiration_time: number
-  form_content?: string | null
-  inputs?: Array<FormInputConfig>
-  resolved_default_values?: {
-    [key: string]: string
-  }
-  user_actions?: Array<UserActionConfig>
-}
-
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -241,15 +225,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type FormSubmitResponse = {
-  [key: string]: unknown
-}
-
-export type FormUploadTokenResponse = {
-  expires_at: number
-  upload_token: string
-}
 
 export type GeneratedAppResponse = JsonValue
 
@@ -316,19 +291,6 @@ export type HumanInputFormSubmitResponse = {
 export type HumanInputUploadTokenResponse = {
   expires_at: number
   upload_token: string
-}
-
-export type HumanInputV2FormSubmitRequest = {
-  action: string
-  challenge_token?: string | null
-  inputs: {
-    [key: string]: JsonValue2
-  }
-  otp_code?: string | null
-}
-
-export type JsonObject = {
-  [key: string]: unknown
 }
 
 export type JsonValue =
@@ -401,18 +363,327 @@ export type ParagraphInputConfig = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type PassportAccessTokenResponse = {
@@ -689,19 +960,39 @@ export type WebSiteResponse = {
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
-}
-
-export type FormSubmitResponseWritable = {
-  [key: string]: unknown
 }
 
 export type GeneratedAppResponseWritable = JsonValue
@@ -1102,88 +1393,24 @@ export type GetFormHumanInputByFormTokenData = {
     form_token: string
   }
   query?: never
-  url: '/form/human-input/{form_token}'
-}
-
-export type GetFormHumanInputByFormTokenResponses = {
-  200: FormDefinitionResponse
-}
-
-export type GetFormHumanInputByFormTokenResponse =
-  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
-
-export type PostFormHumanInputByFormTokenData = {
-  body: HumanInputV2FormSubmitRequest
-  path: {
-    form_token: string
-  }
-  query?: never
-  url: '/form/human-input/{form_token}'
-}
-
-export type PostFormHumanInputByFormTokenResponses = {
-  200: FormSubmitResponse
-}
-
-export type PostFormHumanInputByFormTokenResponse =
-  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
-
-export type PostFormHumanInputByFormTokenAccessRequestData = {
-  body?: never
-  path: {
-    form_token: string
-  }
-  query?: never
-  url: '/form/human-input/{form_token}/access-request'
-}
-
-export type PostFormHumanInputByFormTokenAccessRequestResponses = {
-  200: FormAccessRequestResponse
-}
-
-export type PostFormHumanInputByFormTokenAccessRequestResponse =
-  PostFormHumanInputByFormTokenAccessRequestResponses[keyof PostFormHumanInputByFormTokenAccessRequestResponses]
-
-export type PostFormHumanInputByFormTokenUploadTokenData = {
-  body?: never
-  path: {
-    form_token: string
-  }
-  query?: never
-  url: '/form/human-input/{form_token}/upload-token'
-}
-
-export type PostFormHumanInputByFormTokenUploadTokenResponses = {
-  200: FormUploadTokenResponse
-}
-
-export type PostFormHumanInputByFormTokenUploadTokenResponse =
-  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
-
-export type GetFormHumanInputByFormToken2Data = {
-  body?: never
-  path: {
-    form_token: string
-  }
-  query?: never
   url: '/form/human_input/{form_token}'
 }
 
-export type GetFormHumanInputByFormToken2Errors = {
+export type GetFormHumanInputByFormTokenErrors = {
   403: unknown
   404: unknown
   412: unknown
   429: unknown
 }
 
-export type GetFormHumanInputByFormToken2Responses = {
+export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormToken2Response =
-  GetFormHumanInputByFormToken2Responses[keyof GetFormHumanInputByFormToken2Responses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
-export type PostFormHumanInputByFormToken2Data = {
+export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayload
   path: {
     form_token: string
@@ -1192,21 +1419,21 @@ export type PostFormHumanInputByFormToken2Data = {
   url: '/form/human_input/{form_token}'
 }
 
-export type PostFormHumanInputByFormToken2Errors = {
+export type PostFormHumanInputByFormTokenErrors = {
   400: unknown
   404: unknown
   412: unknown
   429: unknown
 }
 
-export type PostFormHumanInputByFormToken2Responses = {
+export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormToken2Response =
-  PostFormHumanInputByFormToken2Responses[keyof PostFormHumanInputByFormToken2Responses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
-export type PostFormHumanInputByFormTokenUploadToken2Data = {
+export type PostFormHumanInputByFormTokenUploadTokenData = {
   body?: never
   path: {
     form_token: string
@@ -1215,18 +1442,18 @@ export type PostFormHumanInputByFormTokenUploadToken2Data = {
   url: '/form/human_input/{form_token}/upload-token'
 }
 
-export type PostFormHumanInputByFormTokenUploadToken2Errors = {
+export type PostFormHumanInputByFormTokenUploadTokenErrors = {
   404: unknown
   412: unknown
   429: unknown
 }
 
-export type PostFormHumanInputByFormTokenUploadToken2Responses = {
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
   200: HumanInputUploadTokenResponse
 }
 
-export type PostFormHumanInputByFormTokenUploadToken2Response =
-  PostFormHumanInputByFormTokenUploadToken2Responses[keyof PostFormHumanInputByFormTokenUploadToken2Responses]
+export type PostFormHumanInputByFormTokenUploadTokenResponse =
+  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostHumanInputFormsFilesData = {
   body?: never
@@ -1468,9 +1695,12 @@ export type PostRemoteFilesUploadData = {
 
 export type PostRemoteFilesUploadErrors = {
   400: unknown
+  404: unknown
   413: unknown
   415: unknown
+  422: unknown
   500: unknown
+  502: unknown
 }
 
 export type PostRemoteFilesUploadResponses = {
@@ -1493,6 +1723,7 @@ export type GetRemoteFilesByUrlErrors = {
   400: unknown
   404: unknown
   500: unknown
+  502: unknown
 }
 
 export type GetRemoteFilesByUrlResponses = {
@@ -1645,7 +1876,9 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: unknown
+  404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappAccessModeResponses = {
@@ -1668,6 +1901,7 @@ export type GetWebappPermissionErrors = {
   400: unknown
   401: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappPermissionResponses = {

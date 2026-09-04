@@ -62,7 +62,7 @@ const mockUseWorkspaceRoleList = ({
 const RoleSelectorWrapper = () => <RoleSelector />
 
 const getTrigger = () => screen.getByRole('combobox', { name: /members\.role/i })
-const getListbox = () => screen.getByRole('listbox', { name: /members\.role/i })
+const getListbox = () => screen.getByRole('listbox')
 
 describe('RoleSelector', () => {
   beforeEach(() => {

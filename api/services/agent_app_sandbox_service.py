@@ -476,6 +476,7 @@ def _default_client_factory() -> Client:
     return create_agent_backend_client(
         base_url=base_url,
         api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        binding_file_download_timeout=dify_config.AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
     )
 
 

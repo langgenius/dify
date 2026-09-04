@@ -63,7 +63,7 @@ describe('Contact IM sync details dialog', () => {
       'failed',
     ]) {
       expect(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: `contacts.imPlatform.details.filter.${result} 1`,
         }),
       ).toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('Contact IM sync details dialog', () => {
     const user = userEvent.setup()
     renderDetails(ContactImMockScenario.SyncPartialSuccess)
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'contacts.imPlatform.details.filter.unmatched 1',
       }),
     )
@@ -93,14 +93,14 @@ describe('Contact IM sync details dialog', () => {
     const user = userEvent.setup()
     renderDetails(ContactImMockScenario.SyncPartialSuccess)
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'contacts.imPlatform.details.filter.unmatched 1',
       }),
     )
     expect(await screen.findByText('Member unmatched-1')).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'contacts.imPlatform.details.filter.failed 1' }),
+      screen.getByRole('radio', { name: 'contacts.imPlatform.details.filter.failed 1' }),
     )
     expect(await screen.findByText('Member failed-1')).toBeInTheDocument()
     expect(screen.queryByText('Member unmatched-1')).not.toBeInTheDocument()

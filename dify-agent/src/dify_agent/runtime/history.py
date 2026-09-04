@@ -1,24 +1,21 @@
 """Helpers for optional Dify Agent history-layer integration.
 
 Dify Agent keeps pydantic-ai conversation history as an optional Agenton layer
-named ``history``. The runner always injects the current Dify system prompt via
-temporary ``message_history`` instead of ``Agent.system_prompt(...)`` so the
-model sees ``current system prompt -> stored history -> current user prompt``
-even when persisted history is present. Only zero-argument system prompt
-callables are supported here because the prompts are rendered outside
-pydantic-ai's normal run context; this matches Dify's current plain-prompt
-compositions and fails fast for unsupported context-dependent prompt shapes.
+named ``history``. Current system instructions belong to each run and are never
+stored. Once Pydantic AI binds and builds messages in the run capture, its
+complete captured history replaces the layer for every terminal outcome,
+including interrupted runs. A failure or cancellation before the capture
+contains messages preserves the previously restored history.
 """
 
 from __future__ import annotations
 
-import inspect
-from collections.abc import Awaitable, Callable, Sequence
-from typing import Protocol, cast
+from collections.abc import Sequence
+from dataclasses import replace
+from typing import Protocol
 
-from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
+from pydantic_ai.messages import ModelMessage, ModelRequest
 
-from agenton.layers.types import PydanticAIPrompt
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryLayer
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID
 from dify_agent.protocol.schemas import RunComposition
@@ -68,66 +65,22 @@ def get_history_layer(run: SupportsHistoryLayerLookup) -> PydanticAIHistoryLayer
         return None
 
 
-async def build_run_message_history(
-    *,
-    system_prompts: Sequence[PydanticAIPrompt[object]],
-    stored_history: Sequence[ModelMessage],
-) -> list[ModelMessage] | None:
-    """Build temporary pydantic-ai history for one Dify Agent loop.
-
-    Current system prompts are rendered first into one transient
-    ``ModelRequest`` prefix, followed by any already stored history messages.
-    When both inputs are empty, the helper returns ``None`` so callers can omit
-    the ``message_history`` argument entirely and preserve pydantic-ai's empty
-    history behavior.
-    """
-    rendered_system_parts: list[SystemPromptPart] = []
-    for prompt in system_prompts:
-        prompt_text = await _render_system_prompt(prompt)
-        if prompt_text is None:
-            continue
-        rendered_system_parts.append(SystemPromptPart(content=prompt_text))
-
-    message_history: list[ModelMessage] = []
-    if rendered_system_parts:
-        message_history.append(ModelRequest(parts=rendered_system_parts))
-    message_history.extend(stored_history)
-    return message_history or None
-
-
-def append_successful_run_history(
+def replace_run_history(
     history_layer: PydanticAIHistoryLayer | None,
-    new_messages: Sequence[ModelMessage],
+    messages: Sequence[ModelMessage],
 ) -> None:
-    """Append only newly produced pydantic-ai messages after successful runs."""
-    if history_layer is None or not new_messages:
+    """Persist a run's captured history without transient instructions."""
+    if history_layer is None:
         return
-    history_layer.append_messages(new_messages)
-
-
-async def _render_system_prompt(prompt: PydanticAIPrompt[object]) -> str | None:
-    signature = inspect.signature(prompt)
-    if signature.parameters:
-        raise ValueError(
-            "Dify Agent runtime currently supports only zero-argument system prompts when rendering temporary "
-            "message history."
-        )
-
-    prompt_without_context = cast(Callable[[], str | None | Awaitable[str | None]], prompt)
-    prompt_value = prompt_without_context()
-    if inspect.isawaitable(prompt_value):
-        prompt_value = await prompt_value
-    if prompt_value is None:
-        return None
-    if not isinstance(prompt_value, str):
-        raise TypeError(f"System prompt callables must return str | None, got '{type(prompt_value).__name__}'.")
-    return prompt_value
+    persistent_messages = [
+        replace(message, instructions=None) if isinstance(message, ModelRequest) else message for message in messages
+    ]
+    history_layer.replace_messages(persistent_messages)
 
 
 __all__ = [
     "SupportsHistoryLayerLookup",
-    "append_successful_run_history",
-    "build_run_message_history",
     "get_history_layer",
+    "replace_run_history",
     "validate_history_layer_composition",
 ]

@@ -113,7 +113,7 @@ const Publisher = () => {
           placement="bottom-end"
           sideOffset={4}
           alignOffset={40}
-          popupClassName={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
+          className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
         >
           <Popup
             onRequestClose={closePopover}

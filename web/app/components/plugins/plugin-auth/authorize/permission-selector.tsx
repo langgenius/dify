@@ -73,7 +73,7 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="w-(--anchor-width) max-w-(--available-width)"
+        className="w-(--anchor-width) max-w-(--available-width)"
       >
         <DropdownMenuRadioGroup<CredentialPermission>
           value={permission}
@@ -98,7 +98,6 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             <DropdownMenuRadioItemIndicator />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<CredentialPermission>
-            aria-label={allTeamMembersLabel}
             value={PermissionLevel.allTeamMembers}
             closeOnClick
             className="touch-manipulation"

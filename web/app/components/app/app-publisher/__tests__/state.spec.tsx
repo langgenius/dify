@@ -1,6 +1,6 @@
 import {
   DeploymentOperationStatus,
-  DeploymentStatus,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
@@ -32,7 +32,7 @@ type QueryOptions = {
               id: string
               status: string
             }
-            status: string
+            runtimeState: string
           }
         }
       }
@@ -204,11 +204,11 @@ function renderState(initialOpen = true) {
 }
 
 function environmentDeploymentResponse({
-  deploymentStatus,
+  runtimeState,
   operationId,
   operationStatus,
 }: {
-  deploymentStatus: string
+  runtimeState: string
   operationId: string
   operationStatus: string
 }) {
@@ -220,7 +220,7 @@ function environmentDeploymentResponse({
       },
       deployment: {
         current_version:
-          deploymentStatus === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING
+          runtimeState === RuntimeState.RUNTIME_STATE_RUNNING
             ? {
                 id: 'version-development',
                 marked_comment: '',
@@ -239,7 +239,7 @@ function environmentDeploymentResponse({
           status: operationStatus,
           type: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
         },
-        status: deploymentStatus,
+        runtimeState,
       },
       environment: {
         description: '',
@@ -316,7 +316,7 @@ describe('app publisher environment state', () => {
               marked_name: `Release ${input.params.environment_id}`,
               version: `2026-07-31.${input.params.environment_id}`,
             },
-            status: 'DEPLOYMENT_STATUS_RUNNING',
+            runtimeState: 'RUNTIME_STATE_RUNNING',
           },
           environment: {
             description: '',
@@ -361,7 +361,7 @@ describe('app publisher environment state', () => {
   it('discovers and resumes polling a first deployment while the environment remains not in use', async () => {
     const user = userEvent.setup()
     const response = environmentDeploymentResponse({
-      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
       operationId: 'operation-development',
       operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
     })
@@ -394,7 +394,7 @@ describe('app publisher environment state', () => {
   it('stops automatic status polling while the deployment query is failing', async () => {
     const user = userEvent.setup()
     const response = environmentDeploymentResponse({
-      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
       operationId: 'operation-staging',
       operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
     })
@@ -465,7 +465,7 @@ describe('app publisher environment state', () => {
       .mockResolvedValue(appEnvironments(true))
     queryMocks.deploymentRequest.mockResolvedValue(
       environmentDeploymentResponse({
-        deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+        runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
         operationId: 'operation-development',
         operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
       }),
@@ -497,7 +497,7 @@ describe('app publisher environment state', () => {
       deploymentQueryOptions?.refetchInterval?.({
         state: {
           data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+            runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
             operationId: 'operation-development',
             operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
           }),
@@ -508,7 +508,7 @@ describe('app publisher environment state', () => {
       deploymentQueryOptions?.refetchInterval?.({
         state: {
           data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+            runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
             operationId: 'operation-development',
             operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
           }),
@@ -525,12 +525,12 @@ describe('app publisher environment state', () => {
       async (input: { params: { environment_id: string } }) =>
         input.params.environment_id === 'staging'
           ? environmentDeploymentResponse({
-              deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+              runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               operationId: 'operation-staging',
               operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
             })
           : environmentDeploymentResponse({
-              deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+              runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
               operationId: 'operation-development',
               operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
             }),
@@ -551,7 +551,7 @@ describe('app publisher environment state', () => {
       getDeploymentQueryOptions('staging')?.refetchInterval?.({
         state: {
           data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+            runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
             operationId: 'operation-staging',
             operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
           }),
@@ -577,7 +577,7 @@ describe('app publisher environment state', () => {
       getDeploymentQueryOptions('development')?.refetchInterval?.({
         state: {
           data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+            runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
             operationId: 'operation-development',
             operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
           }),
@@ -608,7 +608,7 @@ describe('app publisher environment state', () => {
     queryMocks.environmentRequest.mockResolvedValue(appEnvironments(true))
     queryMocks.deploymentRequest.mockResolvedValue(
       environmentDeploymentResponse({
-        deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+        runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
         operationId: 'operation-staging',
         operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
       }),

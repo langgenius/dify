@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 
 class RagPipelineManageService:
     @staticmethod
-    def list_rag_pipeline_datasources(tenant_id: str) -> list[PluginDatasourceProviderEntity]:
+    def list_rag_pipeline_datasources(
+        tenant_id: str,
+    ) -> list[PluginDatasourceProviderEntity]:
         """
         list rag pipeline datasources
         """
@@ -18,10 +20,16 @@ class RagPipelineManageService:
         manager = PluginDatasourceManager()
         datasources = manager.fetch_datasource_providers(tenant_id)
         for datasource in datasources:
+            if not datasource.declaration.credentials_schema and not datasource.declaration.oauth_schema:
+                # built-in providers that declare neither credentials nor OAuth never require authorization
+                datasource.is_authorized = True
+                continue
             datasource_provider_service = DatasourceProviderService()
             try:
                 credentials = datasource_provider_service.get_datasource_credentials(
-                    tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+                    tenant_id=tenant_id,
+                    provider=datasource.provider,
+                    plugin_id=datasource.plugin_id,
                 )
                 if credentials:
                     datasource.is_authorized = True

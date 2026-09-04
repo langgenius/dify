@@ -344,7 +344,7 @@ const Operations = ({
               </div>
             }
           />
-          <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+          <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
             {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
           </PopoverContent>
         </Popover>
@@ -403,7 +403,7 @@ const Operations = ({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName={cn('w-50 py-0', className)}
+              className={cn('w-50 py-0', className)}
             >
               <div className="w-full py-1">
                 {canShowPrimarySection && (

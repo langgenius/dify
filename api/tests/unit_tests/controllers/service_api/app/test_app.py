@@ -17,8 +17,10 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.service_api.app import app as app_controller
+from controllers.service_api.app import site as site_controller
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
+from controllers.service_api.app.site import AppSiteApi
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.base import TypeBase
@@ -27,6 +29,7 @@ from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionSummary,
     AppDefinitionUnavailableError,
+    AppSiteConfiguration,
 )
 
 
@@ -288,6 +291,62 @@ def test_get_info_maps_unavailable_app(
     with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
         with pytest.raises(AppUnavailableError):
             AppInfoApi().get()
+
+
+def test_get_site_configuration_queries_authenticated_app(
+    flask_app: Flask,
+    authenticated_controller: AppDatabase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_definitions = Mock()
+    app_definitions.get_site_configuration.return_value = AppSiteConfiguration(
+        title="Test Site",
+        chat_color_theme="light",
+        chat_color_theme_inverted=False,
+        icon_type="emoji",
+        icon="robot",
+        icon_background="#ffffff",
+        description="A test site",
+        copyright=None,
+        privacy_policy=None,
+        input_placeholder="Ask anything",
+        custom_disclaimer=None,
+        default_language="en-US",
+        prompt_public=False,
+        show_workflow_steps=True,
+        use_icon_as_answer_icon=False,
+    )
+    monkeypatch.setattr(
+        site_controller,
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
+    )
+
+    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
+        response = AppSiteApi().get()
+
+    app_definitions.get_site_configuration.assert_called_once_with(authenticated_controller.app_id)
+    assert response["title"] == "Test Site"
+    assert response["icon"] == "robot"
+    assert response["icon_url"] is None
+
+
+@pytest.mark.usefixtures("authenticated_controller")
+def test_get_site_configuration_maps_missing_site_to_forbidden(
+    flask_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_definitions = Mock()
+    app_definitions.get_site_configuration.side_effect = AppDefinitionUnavailableError("Site not found")
+    monkeypatch.setattr(
+        site_controller,
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
+    )
+
+    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
+        with pytest.raises(Forbidden):
+            AppSiteApi().get()
 
 
 @pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])

@@ -15,6 +15,7 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
@@ -302,6 +303,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_id=self.application_generate_entity.user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            app_type=CreditUsageAppType.RAG_PIPELINE,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,

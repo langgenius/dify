@@ -1,8 +1,7 @@
 import type { FC } from 'react'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -22,21 +21,18 @@ const TimeoutInput: FC<Props> = ({ timeout, unit, onChange, readonly }) => {
   const daysLabel = t(($) => $[`${i18nPrefix}.timeout.days`], { ns: 'workflow' })
   const hoursLabel = t(($) => $[`${i18nPrefix}.timeout.hours`], { ns: 'workflow' })
 
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (/^\d*$/.test(value)) onChange({ timeout: Number(value) || 1, unit })
-    else onChange({ timeout: 1, unit })
-  }
   return (
     <div className="flex items-center gap-1">
-      <Input
-        wrapperClassName="w-16"
-        type="number"
+      <NumberField
         value={timeout}
         min={1}
-        onChange={handleValueChange}
+        onValueChange={(value) => onChange({ timeout: value ?? 1, unit })}
         disabled={readonly}
-      />
+      >
+        <NumberFieldGroup className="w-16">
+          <NumberFieldInput aria-label={timeoutLabel} />
+        </NumberFieldGroup>
+      </NumberField>
       <SegmentedControl<'day' | 'hour'>
         value={unit}
         onValueChange={(unit) => onChange({ timeout, unit })}

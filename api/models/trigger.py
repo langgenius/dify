@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
@@ -18,7 +18,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
-from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
@@ -291,17 +290,15 @@ class WorkflowTriggerLog(TypeBase):
     triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> WorkflowTriggerLogDict:
         """Convert to dictionary for API responses"""

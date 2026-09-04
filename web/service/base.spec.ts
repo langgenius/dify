@@ -328,6 +328,44 @@ describe('handleStream', () => {
       expect(onData).not.toHaveBeenCalled()
     })
 
+    it('should pass the TTS MIME type through the stream boundary', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const onTTSChunk = vi.fn()
+      const ttsEvent = {
+        event: 'tts_message',
+        message_id: 'message-1',
+        audio: 'audio-chunk',
+        audio_type: 'audio/wav',
+      }
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(ttsEvent)}\n`),
+          })
+          .mockResolvedValueOnce({ done: true, value: undefined }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: { getReader: () => mockReader },
+      } as unknown as Response
+      const interveningNoops = Array.from({ length: 18 }, () => undefined)
+
+      ;(handleStream as (...args: unknown[]) => void)(
+        mockResponse,
+        onData,
+        onCompleted,
+        ...interveningNoops,
+        onTTSChunk,
+      )
+
+      await waitFor(() => {
+        expect(onTTSChunk).toHaveBeenCalledWith('message-1', 'audio-chunk', 'audio/wav')
+      })
+    })
+
     it('should complete with error when the stream reader rejects', async () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()
@@ -461,7 +499,24 @@ describe('ssePost and sseGet', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Base model not found')
     })
-    expect(onError).toHaveBeenCalledWith('Server Error')
+    expect(onError).toHaveBeenCalledWith('Base model not found')
+  })
+
+  it('should preserve the response error for silent requests without notifying', async () => {
+    const onError = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ code: 'model_not_found', message: 'Base model not found' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, silent: true })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
+    })
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should route the stream error through a custom notifier', async () => {
@@ -564,6 +619,43 @@ describe('ssePost and sseGet', () => {
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
   })
 
+  it('should not notify stream reader failures when silent', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
+      },
+      {
+        onError,
+        onCompleted,
+        silent: true,
+      },
+    )
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
   it('should not notify when the stream reader is aborted', async () => {
     const onError = vi.fn()
     const onNotifyError = vi.fn()
@@ -609,7 +701,7 @@ describe('ssePost and sseGet', () => {
   })
 
   it('uses the environment webapp API for workflow runs and stops', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(null, { status: 204 }))
@@ -617,17 +709,19 @@ describe('ssePost and sseGet', () => {
     await ssePost('/workflows/run', { body: { inputs: {} } }, { isPublicAPI: true })
     await postPublic('/workflows/tasks/task-1/stop')
 
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`${PUBLIC_API_PREFIX}/env/workflow-app/workflows/run`)
+    expect(fetchSpy.mock.calls[0]![0]).toBe(
+      `${PUBLIC_API_PREFIX}/environment/workflow-app/workflows/run`,
+    )
     const stopRequest = fetchSpy.mock.calls[1]![0]
     expect(stopRequest).toBeInstanceOf(Request)
     if (!(stopRequest instanceof Request)) throw new TypeError('Expected a request')
     expect(stopRequest.url).toBe(
-      `${PUBLIC_API_PREFIX}/env/workflow-app/workflows/tasks/task-1/stop`,
+      `${PUBLIC_API_PREFIX}/environment/workflow-app/workflows/tasks/task-1/stop`,
     )
   })
 
   it('uses the environment webapp API for local and remote uploads', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     const urls: string[] = []
     const createXhr = () => {
       const xhr = {
@@ -650,8 +744,8 @@ describe('ssePost and sseGet', () => {
     await upload({ xhr: createXhr(), data: new FormData() }, true, '/remote-files/upload')
 
     expect(urls).toEqual([
-      `${PUBLIC_API_PREFIX}/env/workflow-app/files/upload`,
-      `${PUBLIC_API_PREFIX}/env/workflow-app/remote-files/upload`,
+      `${PUBLIC_API_PREFIX}/environment/workflow-app/files/upload`,
+      `${PUBLIC_API_PREFIX}/environment/workflow-app/remote-files/upload`,
     ])
   })
 })

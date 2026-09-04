@@ -1,3 +1,4 @@
+import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
 import type {
   PostWorkspacesInfoData,
   PostWorkspacesInfoResponse,
@@ -233,13 +234,8 @@ export const sendEMailLoginCode = (
     },
   })
 
-export const emailLoginWithCode = (data: {
-  email: string
-  code: string
-  token: string
-  language: string
-  timezone?: string
-}): Promise<LoginResponse> => post<LoginResponse>('/email-code-login/validity', { body: data })
+export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (
   email: string,

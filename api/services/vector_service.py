@@ -3,6 +3,8 @@ import logging
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class VectorService:
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create_segments_vector(
         cls,
         keywords_list: list[list[str]] | None,
@@ -112,6 +115,7 @@ class VectorService:
             index_processor.load(dataset, [], multimodal_documents, with_keywords=False, session=session)
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def update_segment_vector(
         cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset, session: Session
     ):
@@ -145,6 +149,7 @@ class VectorService:
                 keyword.add_texts([document], session)
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_child_chunks(
         cls,
         segment: DocumentSegment,
@@ -214,6 +219,7 @@ class VectorService:
         session.flush()
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create_child_chunk_vector(cls, child_segment: ChildChunk, dataset: Dataset, *, session: Session):
         child_document = Document(
             page_content=child_segment.content,
@@ -230,6 +236,7 @@ class VectorService:
             vector.add_texts([child_document], duplicate_check=True)
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def update_child_chunk_vector(
         cls,
         new_child_chunks: list[ChildChunk],
@@ -283,6 +290,7 @@ class VectorService:
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def update_multimodel_vector(
         cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset, session: Session
     ):

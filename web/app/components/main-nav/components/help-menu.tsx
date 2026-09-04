@@ -1,7 +1,7 @@
 'use client'
 
 import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
-import type { ReactElement } from 'react'
+import type { ReactElement, Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -56,6 +56,7 @@ import SupportMenu from './support-menu'
 type HelpMenuProps = {
   triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerRef?: Ref<HTMLButtonElement>
   triggerSize?: IconButtonProps['size']
 }
 
@@ -87,7 +88,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps) => {
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -152,12 +153,14 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
     <>
       <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
+          ref={triggerRef}
           data-learn-dify-help-target
           render={
             <IconButton
               size={triggerSize ?? 'lg'}
               aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
               className={cn(
+                'focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                 usesDefaultTrigger && [
                   'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
                   !triggerSize && 'size-7 p-0',
@@ -176,7 +179,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
         <DropdownMenuContent
           placement="top-end"
           sideOffset={8}
-          popupClassName="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <>
             <DropdownMenuGroup className="p-1">

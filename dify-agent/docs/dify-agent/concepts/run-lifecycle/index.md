@@ -76,8 +76,9 @@ current run. Callers control whether each layer is suspended or deleted through
 `CreateRunRequest.on_exit`.
 
 Exit signals control the **layer lifecycle state**, not the execution state of an
-`agent run`. The default policy is `suspend`, so a successful `agent run` returns
-a reusable `session_snapshot`.
+`agent run`. The default policy is `suspend`, so any run that enters and exits its
+compositor context can return a reusable `session_snapshot`, including failed or
+cancelled runs. Failures or cancellations before entry have no new snapshot.
 
 ### Default: suspend layers
 

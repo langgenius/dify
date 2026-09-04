@@ -8,7 +8,13 @@ from flask import Flask, g
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import MemberInviteEmailApi
 from enums import DeploymentEdition
-from models.account import Account, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountRole
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-1"
+    return tenant
 
 
 @pytest.fixture
@@ -35,6 +41,14 @@ def _build_feature_flags():
 
 class TestMemberInviteEmailApi:
     @pytest.fixture(autouse=True)
+    def _member_config(self, config_overrides) -> None:
+        config_overrides(
+            RBAC_ENABLED=False,
+            CONSOLE_WEB_URL="https://console.example.com",
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        )
+
+    @pytest.fixture(autouse=True)
     def _mock_member_invite_lock(self):
         with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
             yield
@@ -47,14 +61,10 @@ class TestMemberInviteEmailApi:
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
+        tenant = _tenant()
 
         with (
-            patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             with app.test_request_context(
                 "/workspaces/current/members/invite-email",
@@ -90,26 +100,25 @@ class TestMemberInviteEmailApi:
         mock_invite_member,
         mock_get_features,
         app,
+        config_overrides,
     ):
         """When RBAC is enabled, any non-empty role string should be accepted."""
+        config_overrides(RBAC_ENABLED=True)
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "rbac-token"
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
-        with patch("controllers.console.workspace.members.dify_config") as mock_config:
-            mock_config.RBAC_ENABLED = True
-            mock_config.CONSOLE_WEB_URL = "https://console.example.com"
-            with app.test_request_context(
-                "/workspaces/current/members/invite-email",
-                method="POST",
-                json={"emails": ["user@example.com"], "role": "rbac-role-id-abc", "language": "en-US"},
-            ):
-                account = Account(name="tester", email="tester@example.com")
-                account._current_tenant = tenant
-                g._login_user = account
-                g._current_tenant = tenant
-                response, status_code = MemberInviteEmailApi().post()
+        with app.test_request_context(
+            "/workspaces/current/members/invite-email",
+            method="POST",
+            json={"emails": ["user@example.com"], "role": "rbac-role-id-abc", "language": "en-US"},
+        ):
+            account = Account(name="tester", email="tester@example.com")
+            account._current_tenant = tenant
+            g._login_user = account
+            g._current_tenant = tenant
+            response, status_code = MemberInviteEmailApi().post()
 
         assert status_code == 201
         mock_invite_member.assert_called_once()
@@ -129,22 +138,19 @@ class TestMemberInviteEmailApi:
         """When RBAC is disabled, an invalid role string should be rejected."""
         mock_get_features.return_value = _build_feature_flags()
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
-        with patch("controllers.console.workspace.members.dify_config") as mock_config:
-            mock_config.RBAC_ENABLED = False
-            mock_config.CONSOLE_WEB_URL = "https://console.example.com"
-            with app.test_request_context(
-                "/workspaces/current/members/invite-email",
-                method="POST",
-                json={"emails": ["user@example.com"], "role": "invalid-role", "language": "en-US"},
-            ):
-                account = Account(name="tester", email="tester@example.com")
-                account._current_tenant = tenant
-                g._login_user = account
-                g._current_tenant = tenant
-                with pytest.raises(InvalidMemberRoleError) as exc_info:
-                    MemberInviteEmailApi().post()
+        with app.test_request_context(
+            "/workspaces/current/members/invite-email",
+            method="POST",
+            json={"emails": ["user@example.com"], "role": "invalid-role", "language": "en-US"},
+        ):
+            account = Account(name="tester", email="tester@example.com")
+            account._current_tenant = tenant
+            g._login_user = account
+            g._current_tenant = tenant
+            with pytest.raises(InvalidMemberRoleError) as exc_info:
+                MemberInviteEmailApi().post()
 
         assert exc_info.value.error_code == "invalid_role"
         assert exc_info.value.data == {"code": "invalid_role", "message": "Invalid role.", "status": 400}
@@ -162,21 +168,18 @@ class TestMemberInviteEmailApi:
         """When RBAC is disabled, owner role should be rejected for invite."""
         mock_get_features.return_value = _build_feature_flags()
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
-        with patch("controllers.console.workspace.members.dify_config") as mock_config:
-            mock_config.RBAC_ENABLED = False
-            mock_config.CONSOLE_WEB_URL = "https://console.example.com"
-            with app.test_request_context(
-                "/workspaces/current/members/invite-email",
-                method="POST",
-                json={"emails": ["user@example.com"], "role": "owner", "language": "en-US"},
-            ):
-                account = Account(name="tester", email="tester@example.com")
-                account._current_tenant = tenant
-                g._login_user = account
-                g._current_tenant = tenant
-                with pytest.raises(InvalidMemberRoleError) as exc_info:
-                    MemberInviteEmailApi().post()
+        with app.test_request_context(
+            "/workspaces/current/members/invite-email",
+            method="POST",
+            json={"emails": ["user@example.com"], "role": "owner", "language": "en-US"},
+        ):
+            account = Account(name="tester", email="tester@example.com")
+            account._current_tenant = tenant
+            g._login_user = account
+            g._current_tenant = tenant
+            with pytest.raises(InvalidMemberRoleError) as exc_info:
+                MemberInviteEmailApi().post()
 
         assert exc_info.value.error_code == "invalid_role"

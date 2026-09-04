@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
+import { playwright } from 'vite-plus/test/browser-playwright'
 import {
   createCodeInspectorPlugin,
   createForceInspectorClientInjectionPlugin,
@@ -11,6 +12,7 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
+const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -22,20 +24,7 @@ export default defineConfig(({ mode }) => {
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
-      if (isTest) {
-        return [
-          nextStaticImageTestPlugin({ projectRoot }),
-          react(),
-          {
-            // Stub .mdx files so components importing them can be unit-tested
-            name: 'mdx-stub',
-            enforce: 'pre',
-            transform(_: string, id: string) {
-              if (id.endsWith('.mdx')) return { code: 'export default () => null', map: null }
-            },
-          },
-        ]
-      }
+      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
 
       if (isStorybook) return [react()]
 
@@ -91,16 +80,55 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
-      pool: 'threads',
-      environment: 'happy-dom',
-      globals: true,
-      setupFiles: ['./vitest.setup.ts'],
-      exclude: [...configDefaults.exclude, '**/*.browser.spec.{ts,tsx}'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
         exclude: ['**/__mocks__/**'],
       },
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: 'unit',
+            pool: 'threads',
+            environment: 'happy-dom',
+            globals: true,
+            setupFiles: ['./vitest.setup.ts'],
+            exclude: [...configDefaults.exclude, browserTestPattern],
+          },
+        },
+        {
+          extends: true,
+          define: {
+            'process.env': '{}',
+          },
+          plugins: lazyPlugins(async () => {
+            const { default: tailwindcss } = await import('@tailwindcss/vite')
+            return [tailwindcss()]
+          }),
+          optimizeDeps: {
+            include: ['vite-plus/test/browser'],
+          },
+          test: {
+            name: 'browser',
+            globals: true,
+            setupFiles: ['./vitest.browser.setup.ts'],
+            include: [browserTestPattern],
+            browser: {
+              enabled: true,
+              provider: playwright(),
+              instances: [{ browser: 'chromium' }],
+              headless: true,
+              screenshotDirectory: './.vitest-browser/screenshots',
+              screenshotFailures: true,
+              trace: {
+                mode: 'retain-on-failure',
+                tracesDir: './.vitest-browser/traces',
+              },
+            },
+          },
+        },
+      ],
     },
   }
 })

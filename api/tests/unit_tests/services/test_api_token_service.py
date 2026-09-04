@@ -14,8 +14,27 @@ from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module
 from models.engine import db
+from models.enums import ApiTokenType
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache, CachedApiToken
+
+
+def _api_token(
+    *,
+    token_id: str = "id-123",
+    app_id: str = "app-123",
+    tenant_id: str = "tenant-123",
+    token: str = "token-123",
+) -> ApiToken:
+    """Create a mapped API token for cache and single-flight behavior tests."""
+    return ApiToken(
+        id=token_id,
+        app_id=app_id,
+        tenant_id=tenant_id,
+        type=ApiTokenType.APP,
+        token=token,
+        last_used_at=None,
+    )
 
 
 @pytest.fixture
@@ -124,7 +143,7 @@ class TestFetchTokenWithSingleFlight:
     def test_should_query_db_when_lock_acquired_and_cache_missed(self):
         auth_token = "token-123"
         scope = "app"
-        db_token = MagicMock()
+        db_token = _api_token()
         lock = MagicMock()
         lock.acquire.return_value = True
 
@@ -143,7 +162,7 @@ class TestFetchTokenWithSingleFlight:
     def test_should_query_db_directly_when_lock_not_acquired(self):
         auth_token = "token-123"
         scope = "app"
-        db_token = MagicMock()
+        db_token = _api_token()
         lock = MagicMock()
         lock.acquire.return_value = False
 
@@ -184,7 +203,7 @@ class TestFetchTokenWithSingleFlight:
     def test_should_fallback_to_db_query_when_lock_raises_exception(self):
         auth_token = "token-123"
         scope = "app"
-        db_token = MagicMock()
+        db_token = _api_token()
         lock = MagicMock()
         lock.acquire.side_effect = RuntimeError("redis lock error")
 
@@ -322,14 +341,7 @@ class TestApiTokenCacheCoreBranches:
     @patch("services.api_token_service.redis_client")
     def test_set_should_return_false_when_cache_write_raises_exception(self, mock_redis):
         mock_redis.setex.side_effect = Exception("redis write failed")
-        api_token = MagicMock()
-        api_token.id = "id-123"
-        api_token.app_id = "app-123"
-        api_token.tenant_id = "tenant-123"
-        api_token.type = "app"
-        api_token.token = "token-123"
-        api_token.last_used_at = None
-        api_token.created_at = None
+        api_token = _api_token()
         result = ApiTokenCache.set("token-123", "app", api_token)
         assert result is False
 

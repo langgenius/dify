@@ -13,7 +13,7 @@ import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
@@ -53,6 +53,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
+  const nameInputId = useId()
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
   const [appIcon, setAppIcon] = useState<AppIconSelection>({
@@ -290,11 +291,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="system-sm-semibold text-text-secondary">
+                    <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
                       {t(($) => $['newApp.captionName'], { ns: 'app' })}
                     </label>
                   </div>
                   <Input
+                    id={nameInputId}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}

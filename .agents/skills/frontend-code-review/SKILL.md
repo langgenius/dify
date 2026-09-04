@@ -27,7 +27,7 @@ Read only the packs matched by the diff:
 - Stable Dify runtime invariants in the named paths: [`references/dify-invariants.md`][dify-invariants]
 - General TypeScript or styling quality not owned above: [`references/code-quality.md`][code-quality]
 
-Read `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, `web/docs/overlay.md`, or `web/docs/test.md` only when the reviewed code falls under that contract. Check current official documentation when local code and bundled references do not settle a framework, browser, or accessibility behavior.
+Read `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, `packages/dify-ui/docs/overlays.md`, or `web/docs/test.md` only when the reviewed code falls under that contract. Check current official documentation when local code and bundled references do not settle a framework, browser, or accessibility behavior.
 
 ## Severity And Output
 

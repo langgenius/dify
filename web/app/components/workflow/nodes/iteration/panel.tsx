@@ -11,7 +11,14 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -150,8 +157,15 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
                 max={MAX_PARALLEL_LIMIT}
                 min={MIN_ITERATION_PARALLEL_NUM}
                 className="mt-4 flex-1 shrink-0"
-                aria-label={maxParallelismLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maxParallelismLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
             </Fieldset>
           </Field>
         </div>

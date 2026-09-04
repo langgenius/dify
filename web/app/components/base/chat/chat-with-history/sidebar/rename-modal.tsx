@@ -2,10 +2,12 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 
 type IRenameModalProps = {
   isShow: boolean
@@ -27,29 +29,32 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['chat.renameConversation'], { ns: 'common' })}
         </DialogTitle>
-        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
-          {t(($) => $['chat.conversationName'], { ns: 'common' })}
-        </div>
-        <Input
-          className="mt-2 h-10 w-full"
-          value={tempName}
-          onChange={(e) => setTempName(e.target.value)}
-          placeholder={conversationNamePlaceholder}
-        />
+        <Form
+          onFormSubmit={() => {
+            if (!saveLoading) onSave(tempName)
+          }}
+        >
+          <Field name="conversationName" className="mt-6 gap-0">
+            <FieldLabel className="py-0 text-sm leading-5.25 font-medium text-text-primary">
+              {t(($) => $['chat.conversationName'], { ns: 'common' })}
+            </FieldLabel>
+            <Input
+              className="mt-2 h-10"
+              value={tempName}
+              onValueChange={setTempName}
+              placeholder={conversationNamePlaceholder}
+            />
+          </Field>
 
-        <div className="mt-10 flex justify-end">
-          <Button className="mr-2 shrink-0" onClick={onClose}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            className="shrink-0"
-            onClick={() => onSave(tempName)}
-            loading={saveLoading}
-          >
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </div>
+          <div className="mt-10 flex justify-end">
+            <Button type="button" className="mr-2 shrink-0" onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </div>
+        </Form>
       </DialogContent>
     </Dialog>
   )

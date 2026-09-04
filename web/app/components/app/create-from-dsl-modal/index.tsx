@@ -11,9 +11,10 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -309,7 +310,7 @@ function CreateFromDSLModal({
                 >
                   <Field name="dslUrl">
                     <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
-                    <FieldControl
+                    <Input
                       type="url"
                       inputMode="url"
                       autoComplete="off"

@@ -59,7 +59,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
         placement="bottom-end"
         sideOffset={4}
         alignOffset={44}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-xs">
           <div className="system-md-medium text-text-primary">

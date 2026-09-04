@@ -16,6 +16,20 @@ from core.mcp.utils import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _mcp_config(config_overrides) -> None:
+    config_overrides(
+        SSRF_PROXY_ALL_URL=None,
+        SSRF_PROXY_HTTP_URL=None,
+        SSRF_PROXY_HTTPS_URL=None,
+        HTTP_REQUEST_NODE_SSL_VERIFY=True,
+        SSRF_DEFAULT_TIME_OUT=30.0,
+        SSRF_DEFAULT_CONNECT_TIME_OUT=10.0,
+        SSRF_DEFAULT_READ_TIME_OUT=60.0,
+        SSRF_DEFAULT_WRITE_TIME_OUT=30.0,
+    )
+
+
 class TestConstants:
     """Test module constants."""
 
@@ -32,11 +46,9 @@ class TestConstants:
 class TestCreateSSRFProxyMCPHTTPClient:
     """Test create_ssrf_proxy_mcp_http_client function."""
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_with_all_url_proxy(self, mock_config):
+    def test_create_client_with_all_url_proxy(self, config_overrides):
         """Test client creation with SSRF_PROXY_ALL_URL configured."""
-        mock_config.SSRF_PROXY_ALL_URL = "http://proxy.example.com:8080"
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
+        config_overrides(SSRF_PROXY_ALL_URL="http://proxy.example.com:8080")
 
         client = create_ssrf_proxy_mcp_http_client(
             headers={"Authorization": "Bearer token"}, timeout=httpx.Timeout(30.0)
@@ -50,13 +62,13 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_with_http_https_proxies(self, mock_config):
+    def test_create_client_with_http_https_proxies(self, config_overrides):
         """Test client creation with separate HTTP/HTTPS proxies."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = "http://http-proxy.example.com:8080"
-        mock_config.SSRF_PROXY_HTTPS_URL = "http://https-proxy.example.com:8443"
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = False
+        config_overrides(
+            SSRF_PROXY_HTTP_URL="http://http-proxy.example.com:8080",
+            SSRF_PROXY_HTTPS_URL="http://https-proxy.example.com:8443",
+            HTTP_REQUEST_NODE_SSL_VERIFY=False,
+        )
 
         client = create_ssrf_proxy_mcp_http_client()
 
@@ -66,13 +78,8 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_without_proxy(self, mock_config):
+    def test_create_client_without_proxy(self):
         """Test client creation without proxy configuration."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = None
-        mock_config.SSRF_PROXY_HTTPS_URL = None
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
 
         headers = {"X-Custom-Header": "value"}
         timeout = httpx.Timeout(timeout=30.0, connect=5.0, read=10.0, write=30.0)
@@ -88,13 +95,8 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_default_params(self, mock_config):
+    def test_create_client_default_params(self):
         """Test client creation with default parameters."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = None
-        mock_config.SSRF_PROXY_HTTPS_URL = None
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
 
         client = create_ssrf_proxy_mcp_http_client()
 
@@ -140,15 +142,8 @@ class TestSSRFProxySSEConnect:
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    @patch("core.mcp.utils.dify_config")
-    def test_sse_connect_without_client(self, mock_config, mock_create_client, mock_connect_sse):
+    def test_sse_connect_without_client(self, mock_create_client, mock_connect_sse):
         """Test SSE connection without pre-configured client."""
-        # Setup config
-        mock_config.SSRF_DEFAULT_TIME_OUT = 30.0
-        mock_config.SSRF_DEFAULT_CONNECT_TIME_OUT = 10.0
-        mock_config.SSRF_DEFAULT_READ_TIME_OUT = 60.0
-        mock_config.SSRF_DEFAULT_WRITE_TIME_OUT = 30.0
-
         # Setup mocks
         mock_client = Mock(spec=httpx.Client)
         mock_create_client.return_value = mock_client

@@ -9,7 +9,7 @@ import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -38,7 +38,12 @@ import {
   useCreateInlineAgentBinding,
   useWorkflowInlineAgentDetail,
 } from './hooks'
-import { getAgentV2DeclaredOutputs } from './output-variables'
+import {
+  AGENT_V2_RESERVED_OUTPUT_NAMES,
+  getAgentV2CustomDeclaredOutputs,
+  getAgentV2DeclaredOutputs,
+  normalizeAgentV2DeclaredOutputs,
+} from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
 
 function FloatingOutputEditor({
@@ -82,6 +87,7 @@ function FloatingOutputEditor({
         key={`${editOutputRequestKey ?? 0}-${output.name}`}
         editingIndex={isExistingOutput ? outputIndex : undefined}
         existingOutputs={outputs}
+        reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
         state={{
           ...(isExistingOutput ? { outputIndex } : {}),
           draft: createDraft(output),
@@ -125,7 +131,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
     requestKey: number
   } | null>(null)
   const [isOutputVariablesCollapsed, setIsOutputVariablesCollapsed] = useState(true)
-  const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
@@ -134,7 +139,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
   )
-  const declaredOutputs = localDeclaredOutputs ?? getAgentV2DeclaredOutputs(inputs)
+  const normalizedDeclaredOutputs = useMemo(
+    () => normalizeAgentV2DeclaredOutputs(inputs.agent_declared_outputs ?? []),
+    [inputs.agent_declared_outputs],
+  )
+  const declaredOutputs = localDeclaredOutputs ?? normalizedDeclaredOutputs
   const rosterAgentId =
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id
@@ -176,7 +185,12 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isAgentBindingPending =
     isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
-  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
+  const saveToRosterTarget =
+    configsMap?.flowId &&
+    (configsMap.flowType === FlowType.appFlow || configsMap.flowType === FlowType.snippet)
+      ? { flowId: configsMap.flowId, flowType: configsMap.flowType }
+      : null
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!saveToRosterTarget
   const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent =
     rosterAgentQuery.data ??
@@ -226,8 +240,15 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       const newInputs = produce(inputsRef.current, (draft) => {
         draft.agent_task = value
         if (removedPromptOutputNames.length) {
-          const currentDeclaredOutputs = getAgentV2DeclaredOutputs(draft)
-          if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+          const currentDeclaredOutputs = getAgentV2CustomDeclaredOutputs(
+            draft.agent_declared_outputs ?? [],
+          )
+          if (
+            removedPromptOutputNames.length === 1 &&
+            addedPromptOutputNames.length === 1 &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+          ) {
             const oldName = removedPromptOutputNames[0]!
             const nextName = addedPromptOutputNames[0]!
             draft.agent_declared_outputs = currentDeclaredOutputs.map((output) =>
@@ -244,7 +265,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       inputsRef.current = newInputs
       promptOutputNamesRef.current = currentPromptOutputNames
       if (removedPromptOutputNames.length)
-        setLocalDeclaredOutputs(newInputs.agent_declared_outputs ?? [])
+        setLocalDeclaredOutputs(getAgentV2DeclaredOutputs(newInputs))
       setInputs(newInputs)
     },
     [setInputs],
@@ -361,14 +382,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   ])
 
   const handleSaveInlineToRosterOpen = useCallback(() => {
-    setSaveToRosterSessionKey((key) => key + 1)
     setIsSaveToRosterDialogOpen(true)
   }, [])
 
   const handleInlineSavedToRoster = useCallback(
-    (binding: AgentComposerBindingResponse) => {
-      if (binding.binding_type !== 'roster_agent' || !binding.agent_id) return
-
+    (agentId: string) => {
       setOpenInlineAgentPanelNodeId(undefined)
       setIsInlineAgentPanelOpenedFromTrigger(false)
       setIsRosterAgentPanelOpen(true)
@@ -378,7 +396,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         delete draft._openInlineAgentPanel
         draft.agent_binding = {
           binding_type: 'roster_agent',
-          agent_id: binding.agent_id!,
+          agent_id: agentId,
         }
       })
       inputsRef.current = newInputs
@@ -525,7 +543,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setIsOutputVariablesCollapsed(false)
       const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
       let nextAgentTask = agentTask
-      let nextOutputs = outputs
+      let nextOutputs = normalizeAgentV2DeclaredOutputs(outputs)
       if (agentTask !== undefined) {
         const nextPromptOutputNames = extractAgentOutputNames(agentTask)
         const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(
@@ -535,11 +553,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           (name) => !promptOutputNamesRef.current.has(name),
         )
 
-        if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+        if (
+          removedPromptOutputNames.length === 1 &&
+          addedPromptOutputNames.length === 1 &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+        ) {
           const oldName = removedPromptOutputNames[0]!
           const nextName = addedPromptOutputNames[0]!
           const oldOutputIndex = previousOutputs.findIndex((output) => output.name === oldName)
-          const nextOutput = outputs.find((output) => output.name === nextName)
+          const nextOutput = nextOutputs.find((output) => output.name === nextName)
           if (oldOutputIndex >= 0 && nextOutput) {
             nextOutputs = previousOutputs.map((output, index) =>
               index === oldOutputIndex ? nextOutput : output,
@@ -547,11 +570,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           }
         }
       }
-      if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
+      if (nextAgentTask === undefined && previousOutputs.length === nextOutputs.length) {
         const renamedOutputs = previousOutputs
           .map((previousOutput, index) => ({
             oldName: previousOutput.name,
-            nextName: outputs[index]?.name,
+            nextName: nextOutputs[index]?.name,
           }))
           .filter(({ oldName, nextName }) => nextName && oldName !== nextName)
 
@@ -563,8 +586,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         }
       }
 
+      const customOutputs = getAgentV2CustomDeclaredOutputs(nextOutputs)
       const newInputs = produce(inputsRef.current, (draft) => {
-        draft.agent_declared_outputs = nextOutputs
+        draft.agent_declared_outputs = customOutputs
         if (nextAgentTask !== undefined) draft.agent_task = nextAgentTask
       })
       inputsRef.current = newInputs
@@ -675,17 +699,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        <SaveInlineAgentToRosterDialog
-          key={saveToRosterSessionKey}
-          flowId={configsMap?.flowId}
-          flowType={configsMap?.flowType}
-          formKey={saveToRosterSessionKey}
-          initialAgent={inlineAgent}
-          nodeId={id}
-          open={isSaveToRosterDialogOpen}
-          onOpenChange={setIsSaveToRosterDialogOpen}
-          onSaved={handleInlineSavedToRoster}
-        />
+        {saveToRosterTarget && inlineAgent && (
+          <SaveInlineAgentToRosterDialog
+            flowId={saveToRosterTarget.flowId}
+            flowType={saveToRosterTarget.flowType}
+            initialAgent={inlineAgent}
+            nodeId={id}
+            open={isSaveToRosterDialogOpen}
+            onOpenChange={setIsSaveToRosterDialogOpen}
+            onSaved={handleInlineSavedToRoster}
+          />
+        )}
       </div>
       <div
         aria-disabled={isInlineAgentPending}

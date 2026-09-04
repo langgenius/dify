@@ -126,11 +126,6 @@ describe('TagManagementModal', () => {
       expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     })
 
-    it('should render the close button', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
-    })
-
     it('should render the new tag input with placeholder', () => {
       render(<TagManagementModal {...defaultProps} />)
       expect(screen.getByRole('textbox', { name: i18n.addNew })).toBeInTheDocument()
@@ -178,7 +173,7 @@ describe('TagManagementModal', () => {
       const onClose = vi.fn()
       render(<TagManagementModal {...defaultProps} onClose={onClose} />)
 
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })

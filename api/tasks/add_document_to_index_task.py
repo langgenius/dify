@@ -128,8 +128,8 @@ def add_document_to_index_task(dataset_document_id: str):
                         dataset=dataset,
                         segment_ids=segment_ids_list,
                     )
-                except Exception as e:
-                    logger.warning("Failed to enable summaries for document %s: %s", dataset_document.id, str(e))
+                except Exception:
+                    logger.warning("Failed to enable summaries for document %s", dataset_document.id, exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(

@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+import json
 from unittest.mock import MagicMock, patch
 
 import dify_vdb_analyticdb.analyticdb_vector as analyticdb_module
@@ -8,6 +8,7 @@ from dify_vdb_analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAP
 from dify_vdb_analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def test_init_prefers_openapi_when_api_config_is_provided():
@@ -85,7 +86,7 @@ def test_get_type_is_analyticdb():
 
 def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch: pytest.MonkeyPatch):
     factory = AnalyticdbVectorFactory()
-    dataset = SimpleNamespace(id="dataset-1", index_struct_dict=None, index_struct=None)
+    dataset = Dataset(id="dataset-1")
 
     monkeypatch.setattr(analyticdb_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_HOST", None)
@@ -111,9 +112,7 @@ def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch: pytest.
 
 def test_factory_builds_sql_config_when_host_is_present(monkeypatch: pytest.MonkeyPatch):
     factory = AnalyticdbVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-2", index_struct_dict={"vector_store": {"class_prefix": "EXISTING"}}, index_struct=None
-    )
+    dataset = Dataset(id="dataset-2", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING"}}))
 
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_HOST", "127.0.0.1")
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_PORT", 5432)

@@ -1,7 +1,9 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
@@ -33,17 +35,17 @@ const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps)
           </button>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <Menu
-          breadcrumbs={breadcrumbs}
-          startIndex={startIndex}
-          onBreadcrumbClick={onBreadcrumbClick}
-        />
-      </DropdownMenuContent>
+      <DropdownMenuPortal>
+        <DropdownMenuPositioner placement="bottom-start" sideOffset={4}>
+          <DropdownMenuPopup>
+            <Menu
+              breadcrumbs={breadcrumbs}
+              startIndex={startIndex}
+              onBreadcrumbClick={onBreadcrumbClick}
+            />
+          </DropdownMenuPopup>
+        </DropdownMenuPositioner>
+      </DropdownMenuPortal>
       <span className="system-xs-regular text-divider-deep">/</span>
     </DropdownMenu>
   )

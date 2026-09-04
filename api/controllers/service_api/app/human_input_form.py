@@ -9,11 +9,11 @@ import json
 import logging
 from collections.abc import Sequence
 from http import HTTPStatus
-from typing import Any
+from typing import Annotated
 
 from flask import Response, abort, request
 from flask_restx import Resource
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
@@ -21,11 +21,12 @@ from controllers.common.human_input_v2_contracts import FormDefinitionResponse a
 from controllers.common.human_input_v2_contracts import FormSubmitResponse as HumanInputV2FormSubmitResponse
 from controllers.common.human_input_v2_contracts import HumanInputV2ServiceFormSubmitRequest, ServiceFormQuery
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from core.workflow.nodes.human_input.entities import FormInputConfig
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -35,12 +36,15 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 logger = logging.getLogger(__name__)
 
 
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+
+
 class HumanInputFormDefinitionResponse(ResponseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig]
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list)
-    expiration_time: int | None = None
+    user_actions: list[UserActionConfig]
+    expiration_time: Int64 | None = None
 
 
 class HumanInputFormSubmitResponse(ResponseModel):
@@ -175,9 +179,8 @@ class WorkflowHumanInputFormApi(Resource):
         service_api_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, form_token: str):
-        payload = HumanInputFormSubmitPayload.model_validate(service_api_ns.payload or {})
-
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, app_model: App, end_user: EndUser, form_token: str):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:

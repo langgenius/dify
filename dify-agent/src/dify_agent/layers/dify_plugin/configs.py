@@ -109,6 +109,7 @@ class DifyPluginLLMLayerConfig(LayerConfig):
     model_provider: str
     model: str
     model_settings: ModelSettings | None = None
+    context_window_tokens: int | None = Field(default=None, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

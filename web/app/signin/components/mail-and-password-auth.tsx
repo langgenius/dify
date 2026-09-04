@@ -1,14 +1,16 @@
+import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -24,21 +26,12 @@ type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
 }
 
-type LoginRequestBody = {
-  email: string
-  password: string
-  language: string
-  remember_me: boolean
-  invite_token?: string
-}
-
 function hasErrorCode(error: unknown, code: string) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -46,29 +39,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
-
   const [isLoading, setIsLoading] = useState(false)
 
   const handleEmailPasswordLogin = async () => {
-    if (!email) {
-      toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-      return
-    }
-    if (!emailRegex.test(email)) {
-      toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-      return
-    }
-    if (!password?.trim()) {
-      toast.error(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return
-    }
-
+    if (isLoading) return
     try {
       setIsLoading(true)
-      const loginData: LoginRequestBody = {
+      const loginData: LoginPayload = {
         email,
         password: encryptPassword(password),
-        language: locale,
         remember_me: true,
       }
       if (isInvite)
@@ -97,9 +76,8 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         toast.error(res.data)
       }
     } catch (error) {
-      if (hasErrorCode(error, 'authentication_failed')) {
+      if (hasErrorCode(error, 'authentication_failed'))
         toast.error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' }))
-      }
     } finally {
       setIsLoading(false)
     }
@@ -111,52 +89,51 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         void handleEmailPasswordLogin()
       }}
     >
-      <Field name="email" disabled={isInvite} className="mb-3">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
-          {t(($) => $.email, { ns: 'login' })}
-        </FieldLabel>
-        <FieldControl
+      <Field
+        name="email"
+        disabled={isInvite}
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className="mb-3"
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+        <Input
           value={email}
           onValueChange={setEmail}
           disabled={isInvite}
           type="email"
+          required
           autoComplete="email"
           spellCheck={false}
           placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
         />
+        <FieldError>
+          {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
+        </FieldError>
       </Field>
 
-      <Field name="password" className="mb-3">
-        <div className="my-2 flex items-center justify-between">
-          <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-            {t(($) => $.password, { ns: 'login' })}
-          </FieldLabel>
-          <Link
-            href={`/reset-password?${searchParams.toString()}`}
-            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-            tabIndex={isEmailSetup ? 0 : -1}
-            aria-disabled={!isEmailSetup}
-          >
-            {t(($) => $.forget, { ns: 'login' })}
-          </Link>
-        </div>
-        <div className="relative mt-1">
-          <FieldControl
+      <Field name="password" className="relative mb-3">
+        <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
+        <InputGroup>
+          <InputGroupInput
             value={password}
             onValueChange={setPassword}
             type={showPassword ? 'text' : 'password'}
+            required
             autoComplete="current-password"
             spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-            className="pr-10"
           />
-          <div className="absolute inset-y-0 right-0 flex items-center">
+          <InputGroupAddon align="inline-end">
             <IconButton
               size="lg"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',
               })}
-              className="mr-1"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -165,18 +142,25 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
                 <span className="i-ri-eye-line size-4" aria-hidden="true" />
               )}
             </IconButton>
-          </div>
-        </div>
+          </InputGroupAddon>
+        </InputGroup>
+        <Link
+          href={`/reset-password?${searchParams.toString()}`}
+          className={`absolute inset-e-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+          tabIndex={isEmailSetup ? 0 : -1}
+          aria-disabled={!isEmailSetup}
+        >
+          {t(($) => $.forget, { ns: 'login' })}
+        </Link>
+        <FieldError>
+          {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
+            ns: 'login',
+          })}
+        </FieldError>
       </Field>
 
       <div className="mb-2">
-        <Button
-          type="submit"
-          loading={isLoading}
-          variant="primary"
-          disabled={isLoading || !email || !password}
-          className="w-full"
-        >
+        <Button type="submit" loading={isLoading} variant="primary" className="w-full">
           {t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>

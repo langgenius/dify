@@ -12,13 +12,11 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Web Full-Stack E2E
+  core-build:
+    name: Prepare Core E2E Web Build
+    if: ${{ !inputs.run-external-runtime }}
     runs-on: depot-ubuntu-24.04-4
-    timeout-minutes: 120
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -26,10 +24,190 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Switch Ubuntu mirror
-        run: |
-          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
+      - name: Setup web dependencies
+        uses: ./.github/actions/setup-web
+
+      - name: Run E2E support unit tests
+        working-directory: ./e2e
+        run: vp run test:unit
+
+      - name: Build production Web app
+        working-directory: ./e2e
+        env:
+          E2E_FORCE_WEB_BUILD: '1'
+        run: vp run e2e:web:build
+
+      - name: Package Web build
+        run: >-
+          tar -cf e2e-web-build.tar -C web
+          .next/BUILD_ID
+          .next/e2e-web-build.sha256
+          .next/standalone
+          .next/static
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: core-e2e-web-build
+          path: e2e-web-build.tar
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  chromium-full:
+    name: Chromium Full (${{ matrix.shard }}/3)
+    if: ${{ !inputs.run-external-runtime }}
+    needs: core-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      E2E_ADMIN_EMAIL: e2e-admin@example.com
+      E2E_ADMIN_NAME: E2E Admin
+      E2E_ADMIN_PASSWORD: E2eAdmin12345
+      E2E_INIT_PASSWORD: E2eInit12345
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web dependencies
+        uses: ./.github/actions/setup-web
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install API dependencies
+        run: uv sync --project api --dev
+
+      - name: Download Web build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: core-e2e-web-build
+
+      - name: Extract Web build
+        run: tar -xf e2e-web-build.tar -C web
+
+      - name: Install Chromium
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:chromium
+
+      - name: Run Chromium full shard
+        working-directory: ./e2e
+        run: vp run e2e:full -- --shard ${{ matrix.shard }}/3
+
+      - name: Upload Cucumber report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cucumber-report-chromium-${{ matrix.shard }}
+          path: e2e/cucumber-report
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 7
+
+      - name: Upload E2E logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-logs-chromium-${{ matrix.shard }}
+          path: e2e/.logs/*.log
+          if-no-files-found: ignore
+          include-hidden-files: true
+          overwrite: true
+          retention-days: 7
+
+  webkit-smoke:
+    name: WebKit Browser Smoke
+    if: ${{ !inputs.run-external-runtime }}
+    needs: core-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      E2E_ADMIN_EMAIL: e2e-admin@example.com
+      E2E_ADMIN_NAME: E2E Admin
+      E2E_ADMIN_PASSWORD: E2eAdmin12345
+      E2E_BROWSER: webkit
+      E2E_INIT_PASSWORD: E2eInit12345
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web dependencies
+        uses: ./.github/actions/setup-web
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install API dependencies
+        run: uv sync --project api --dev
+
+      - name: Download Web build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: core-e2e-web-build
+
+      - name: Extract Web build
+        run: tar -xf e2e-web-build.tar -C web
+
+      - name: Install WebKit
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:webkit
+
+      - name: Run WebKit browser smoke
+        working-directory: ./e2e
+        run: vp run e2e:full -- --tags '@browser-smoke'
+
+      - name: Upload Cucumber report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cucumber-report-webkit
+          path: e2e/cucumber-report
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 7
+
+      - name: Upload E2E logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-logs-webkit
+          path: e2e/.logs/*.log
+          if-no-files-found: ignore
+          include-hidden-files: true
+          overwrite: true
+          retention-days: 7
+
+  external-runtime:
+    name: Web Full-Stack E2E
+    if: ${{ inputs.run-external-runtime }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
@@ -46,82 +224,12 @@ jobs:
       - name: Install API dependencies
         run: uv sync --project api --dev
 
-      - name: Run E2E support unit tests
-        if: ${{ !inputs.run-external-runtime }}
-        working-directory: ./e2e
-        run: vp run test:unit
-
-      - name: Install Playwright browsers for core E2E
-        if: ${{ !inputs.run-external-runtime }}
-        timeout-minutes: 15
-        working-directory: ./e2e
-        run: vp run e2e:install:ci
-
-      - name: Install Chromium for external runtime E2E
-        if: ${{ inputs.run-external-runtime }}
+      - name: Install Chromium
         timeout-minutes: 15
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
 
-      - name: Run isolated source-api and built-web Cucumber E2E tests
-        if: ${{ !inputs.run-external-runtime }}
-        working-directory: ./e2e
-        env:
-          E2E_ADMIN_EMAIL: e2e-admin@example.com
-          E2E_ADMIN_NAME: E2E Admin
-          E2E_ADMIN_PASSWORD: E2eAdmin12345
-          E2E_FORCE_WEB_BUILD: '1'
-          E2E_INIT_PASSWORD: E2eInit12345
-        run: vp run e2e:full
-
-      - name: Preserve Chromium E2E report and logs
-        if: ${{ !cancelled() && !inputs.run-external-runtime }}
-        run: |
-          if [[ -d e2e/cucumber-report ]]; then
-            mv e2e/cucumber-report e2e/cucumber-report-non-external
-          fi
-          if [[ -d e2e/.logs ]]; then
-            mv e2e/.logs e2e/.logs-non-external
-          fi
-
-      - name: Run WebKit keyboard and browser smoke tests
-        if: ${{ !inputs.run-external-runtime }}
-        working-directory: ./e2e
-        env:
-          E2E_ADMIN_EMAIL: e2e-admin@example.com
-          E2E_ADMIN_NAME: E2E Admin
-          E2E_ADMIN_PASSWORD: E2eAdmin12345
-          E2E_BROWSER: webkit
-          E2E_INIT_PASSWORD: E2eInit12345
-        run: |
-          teardown_webkit_smoke() {
-            local run_status=$?
-            trap - EXIT
-            if ! vp run e2e:middleware:down; then
-              echo "::error title=E2E teardown failed::WebKit smoke middleware did not shut down cleanly."
-              if [[ "$run_status" -eq 0 ]]; then
-                run_status=1
-              fi
-            fi
-            exit "$run_status"
-          }
-
-          trap teardown_webkit_smoke EXIT
-          vp run e2e:middleware:up
-          vp run e2e -- --tags '@browser-smoke'
-
-      - name: Preserve WebKit E2E report and logs
-        if: ${{ !cancelled() && !inputs.run-external-runtime }}
-        run: |
-          if [[ -d e2e/cucumber-report ]]; then
-            mv e2e/cucumber-report e2e/cucumber-report-webkit
-          fi
-          if [[ -d e2e/.logs ]]; then
-            mv e2e/.logs e2e/.logs-webkit
-          fi
-
       - name: Run prepared and external runtime E2E tests
-        if: ${{ inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -154,10 +262,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cucumber-report
-          path: |
-            e2e/cucumber-report
-            e2e/cucumber-report-non-external
-            e2e/cucumber-report-webkit
+          path: e2e/cucumber-report
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E logs
@@ -165,18 +271,17 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-logs
-          path: |
-            e2e/.logs/*.log
-            e2e/.logs-non-external/*.log
-            e2e/.logs-webkit/*.log
+          path: e2e/.logs/*.log
           include-hidden-files: true
+          overwrite: true
           retention-days: 7
 
       - name: Upload E2E seed report
-        if: ${{ !cancelled() && inputs.run-external-runtime }}
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-seed-report
           path: e2e/seed-report
           if-no-files-found: ignore
+          overwrite: true
           retention-days: 7

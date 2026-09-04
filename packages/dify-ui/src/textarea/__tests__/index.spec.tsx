@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Field, FieldDescription, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'

@@ -1,5 +1,4 @@
 import json
-from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -7,7 +6,9 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
-from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.account import Account
+from models.snippet import CustomizedSnippet, SnippetType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowType
 from services.snippet_generate_service import SnippetGenerateService
 
 
@@ -28,8 +29,22 @@ def _workflow(graph: dict) -> Workflow:
     )
 
 
-def _session_maker(session: object | None = None) -> Mock:
-    return Mock(return_value=nullcontext(session or Mock()))
+def _snippet(*, input_fields: list[dict] | None = None) -> CustomizedSnippet:
+    return CustomizedSnippet(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        input_fields=json.dumps(input_fields) if input_fields else None,
+    )
+
+
+def _account(account_id: str = "user-1") -> Account:
+    account = Account(name="Test User", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
 
 
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
@@ -67,7 +82,7 @@ def test_is_virtual_start_event(message, expected):
 
 def test_ensure_start_node_returns_workflow_when_start_already_exists():
     workflow = _workflow({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []})
-    snippet = SimpleNamespace(input_fields_list=[])
+    snippet = _snippet()
 
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
 
@@ -83,8 +98,8 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
         "edges": [{"source": "llm-1", "target": "answer-1"}],
     }
     workflow = _workflow(graph)
-    snippet = SimpleNamespace(
-        input_fields_list=[
+    snippet = _snippet(
+        input_fields=[
             {
                 "variable": "query",
                 "label": "Query",
@@ -139,8 +154,8 @@ def test_generate_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-            user=SimpleNamespace(id="user-1"),
+            snippet=_snippet(),
+            user=_account(),
             args={"inputs": {}},
             invoke_from="debugger",
         )
@@ -148,8 +163,8 @@ def test_generate_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyP
 
 def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", input_fields_list=[])
-    user = SimpleNamespace(id="user-1")
+    snippet = _snippet()
+    user = _account()
     raw_stream = iter(
         [
             {"event": "node_started", "data": {"node_id": SNIPPET_VIRTUAL_START_NODE_ID}},
@@ -189,8 +204,8 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
 
 def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", input_fields_list=[])
-    user = SimpleNamespace(id="user-1")
+    snippet = _snippet()
+    user = _account()
     generator = SimpleNamespace(generate=Mock(return_value={"data": {"outputs": {"answer": "ok"}}}))
 
     monkeypatch.setattr(
@@ -219,7 +234,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
 
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
-    snippet = SimpleNamespace(input_fields_list=[])
+    snippet = _snippet()
     ensure_start_node = Mock(return_value=workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
 
@@ -231,9 +246,9 @@ def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch)
 
 def test_run_draft_node_delegates_to_workflow_service(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    account = SimpleNamespace(id="account-1")
-    execution = SimpleNamespace(id="execution-1")
+    snippet = _snippet()
+    account = _account("account-1")
+    execution = WorkflowNodeExecutionModel(id="execution-1")
     workflow_service = SimpleNamespace(run_draft_workflow_node=Mock(return_value=execution))
 
     monkeypatch.setattr(
@@ -271,10 +286,10 @@ def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch: pytest.M
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.run_draft_node(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            snippet=_snippet(),
             node_id="llm-1",
             user_inputs={},
-            account=SimpleNamespace(id="account-1"),
+            account=_account("account-1"),
         )
 
 
@@ -283,8 +298,8 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     workflow = _workflow({"nodes": [{"id": "iteration-1", "data": {"type": "iteration"}}], "edges": []})
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    user = SimpleNamespace(id="user-1")
+    snippet = _snippet()
+    user = _account()
     response = iter(["event"])
     generator = SimpleNamespace(single_iteration_generate=Mock(return_value=response))
     workflow_generator_class = Mock(return_value=generator)
@@ -316,7 +331,9 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
-def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
+def test_generate_single_iteration_raises_when_draft_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
+):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -324,11 +341,11 @@ def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatc
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate_single_iteration(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-            user=SimpleNamespace(id="user-1"),
+            snippet=_snippet(),
+            user=_account(),
             node_id="iteration-1",
             args={"inputs": {}},
-            session_maker=_session_maker(),
+            session_maker=unbound_session_factory,
         )
 
 
@@ -337,8 +354,8 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     workflow = _workflow({"nodes": [{"id": "loop-1", "data": {"type": "loop"}}], "edges": []})
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    user = SimpleNamespace(id="user-1")
+    snippet = _snippet()
+    user = _account()
     response = iter(["event"])
     generator = SimpleNamespace(single_loop_generate=Mock(return_value=response))
     workflow_generator_class = Mock(return_value=generator)
@@ -370,7 +387,9 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
-def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
+def test_generate_single_loop_raises_when_draft_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
+):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -378,11 +397,11 @@ def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch: py
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate_single_loop(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-            user=SimpleNamespace(id="user-1"),
+            snippet=_snippet(),
+            user=_account(),
             node_id="loop-1",
             args=SimpleNamespace(inputs={}),
-            session_maker=_session_maker(),
+            session_maker=unbound_session_factory,
         )
 
 
@@ -394,8 +413,8 @@ def test_run_published_raises_when_published_workflow_missing(monkeypatch: pytes
 
     with pytest.raises(ValueError, match="No published workflow found"):
         SnippetGenerateService.run_published(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-            user=SimpleNamespace(id="user-1"),
+            snippet=_snippet(),
+            user=_account(),
             args={"inputs": {}},
             invoke_from="service-api",
         )

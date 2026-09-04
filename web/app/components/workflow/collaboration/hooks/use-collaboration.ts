@@ -29,7 +29,7 @@ const initialState: CollaborationViewState = {
   isLeader: false,
 }
 
-export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore) {
+export function useCollaboration(appId: string, canEdit: boolean, reactFlowStore?: ReactFlowStore) {
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)
@@ -40,7 +40,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   })
 
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) {
+    if (!appId || !isCollaborationEnabled || !canEdit) {
       Promise.resolve().then(() => {
         setState(initialState)
       })
@@ -110,7 +110,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
       cursorServiceRef.current?.stopTracking()
       if (connectionId) collaborationManager.disconnect(connectionId)
     }
-  }, [appId, reactFlowStore, isCollaborationEnabled])
+  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled])
 
   const prevIsConnected = useRef(false)
   useEffect(() => {
@@ -126,7 +126,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
     containerRef: React.RefObject<HTMLElement>,
     reactFlowInstance?: ReactFlowInstance,
   ) => {
-    if (!isCollaborationEnabled || !cursorServiceRef.current) return
+    if (!isCollaborationEnabled || !canEdit || !cursorServiceRef.current) return
 
     if (cursorServiceRef.current) {
       cursorServiceRef.current.startTracking(
@@ -150,7 +150,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
     nodePanelPresence: state.nodePanelPresence || {},
     isLeader: state.isLeader || false,
     leaderId: collaborationManager.getLeaderId(),
-    isEnabled: isCollaborationEnabled,
+    isEnabled: isCollaborationEnabled && canEdit,
     startCursorTracking,
     stopCursorTracking,
   }

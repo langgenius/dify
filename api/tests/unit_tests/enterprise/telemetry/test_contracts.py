@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from core.telemetry.gateway import CASE_ROUTING
 from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase, TelemetryEnvelope
 
 
@@ -153,78 +152,26 @@ class TestTelemetryEnvelope:
         assert envelope.metadata is None
 
 
-class TestCaseRouting:
-    """Tests for CASE_ROUTING table."""
+class TestEventRoutingMetadata:
+    """Verify event classes declare correct routing fields (replaces CASE_ROUTING table tests)."""
 
-    def test_all_cases_routed(self) -> None:
-        """Verify all 14 cases have routing entries."""
-        assert len(CASE_ROUTING) == 14
-        for case in TelemetryCase:
-            assert case in CASE_ROUTING
+    def test_trace_enterprise_only_events(self) -> None:
+        from core.telemetry.events import DraftNodeExecutionTraceEvent, PromptGenerationEvent
 
-    def test_trace_ce_eligible_cases(self) -> None:
-        """Verify trace cases with CE eligibility."""
-        ce_eligible_trace_cases = {
-            TelemetryCase.WORKFLOW_RUN,
-            TelemetryCase.MESSAGE_RUN,
-        }
-        for case in ce_eligible_trace_cases:
-            route = CASE_ROUTING[case]
-            assert route.signal_type == SignalType.TRACE
-            assert route.ce_eligible is True
+        for cls in (DraftNodeExecutionTraceEvent, PromptGenerationEvent):
+            assert cls.signal_type is SignalType.TRACE  # type: ignore[attr-defined]
+            assert cls.ce_eligible is False  # type: ignore[attr-defined]
+            assert cls.trace_task_name is not None  # type: ignore[attr-defined]
 
-    def test_trace_enterprise_only_cases(self) -> None:
-        """Verify trace cases that are enterprise-only."""
-        enterprise_only_trace_cases = {
-            TelemetryCase.NODE_EXECUTION,
-            TelemetryCase.DRAFT_NODE_EXECUTION,
-            TelemetryCase.PROMPT_GENERATION,
-        }
-        for case in enterprise_only_trace_cases:
-            route = CASE_ROUTING[case]
-            assert route.signal_type == SignalType.TRACE
-            assert route.ce_eligible is False
+    def test_metric_log_events(self) -> None:
+        from core.telemetry.events import (
+            AppCreatedEvent,
+            AppDeletedEvent,
+            AppUpdatedEvent,
+            FeedbackCreatedEvent,
+        )
 
-    def test_metric_log_cases(self) -> None:
-        """Verify metric/log-only cases."""
-        metric_log_cases = {
-            TelemetryCase.APP_CREATED,
-            TelemetryCase.APP_UPDATED,
-            TelemetryCase.APP_DELETED,
-            TelemetryCase.FEEDBACK_CREATED,
-        }
-        for case in metric_log_cases:
-            route = CASE_ROUTING[case]
-            assert route.signal_type == SignalType.METRIC_LOG
-            assert route.ce_eligible is False
-
-    def test_routing_table_completeness(self) -> None:
-        """Verify routing table covers all cases with correct types."""
-        trace_cases = {
-            TelemetryCase.WORKFLOW_RUN,
-            TelemetryCase.MESSAGE_RUN,
-            TelemetryCase.NODE_EXECUTION,
-            TelemetryCase.DRAFT_NODE_EXECUTION,
-            TelemetryCase.PROMPT_GENERATION,
-            TelemetryCase.TOOL_EXECUTION,
-            TelemetryCase.MODERATION_CHECK,
-            TelemetryCase.SUGGESTED_QUESTION,
-            TelemetryCase.DATASET_RETRIEVAL,
-            TelemetryCase.GENERATE_NAME,
-        }
-        metric_log_cases = {
-            TelemetryCase.APP_CREATED,
-            TelemetryCase.APP_UPDATED,
-            TelemetryCase.APP_DELETED,
-            TelemetryCase.FEEDBACK_CREATED,
-        }
-
-        all_cases = trace_cases | metric_log_cases
-        assert len(all_cases) == 14
-        assert all_cases == set(TelemetryCase)
-
-        for case in trace_cases:
-            assert CASE_ROUTING[case].signal_type == SignalType.TRACE
-
-        for case in metric_log_cases:
-            assert CASE_ROUTING[case].signal_type == SignalType.METRIC_LOG
+        for cls in (AppCreatedEvent, AppUpdatedEvent, AppDeletedEvent, FeedbackCreatedEvent):
+            assert cls.signal_type is SignalType.METRIC_LOG  # type: ignore[attr-defined]
+            assert cls.ce_eligible is False  # type: ignore[attr-defined]
+            assert cls.trace_task_name is None  # type: ignore[attr-defined]

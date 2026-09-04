@@ -3,8 +3,8 @@ import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul
 import type { DifyWorld } from '../../support/world'
 import { zPostAgentByAgentIdConfigFilesResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/agent-drive'
 import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
+import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/config-assets'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,

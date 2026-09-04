@@ -168,7 +168,9 @@ class TestAudioServiceTranscriptTTSMessageLookup:
                 voice="en-US-Neural",
             )
 
-        assert result == b"audio from message"
+        assert result is not None
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio from message"
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello from message",
             voice="en-US-Neural",

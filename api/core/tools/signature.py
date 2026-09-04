@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import json
 import os
 import time
 import urllib.parse
@@ -95,6 +96,7 @@ def get_signed_file_uri_for_plugin(
     user_id: str,
     conversation_id: str | None = None,
     user_from: Literal["account", "end-user"] | None = None,
+    max_size: int | None = None,
 ) -> str:
     """Build a signed plugin-upload URI without selecting a network origin."""
 
@@ -109,6 +111,7 @@ def get_signed_file_uri_for_plugin(
         timestamp=timestamp,
         nonce=nonce,
         user_from=user_from,
+        max_size=max_size,
     )
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
@@ -123,6 +126,8 @@ def get_signed_file_uri_for_plugin(
         query_params["conversation_id"] = conversation_id
     if user_from is not None:
         query_params["user_from"] = user_from
+    if max_size is not None:
+        query_params["max_size"] = str(max_size)
     query = urllib.parse.urlencode(query_params)
     return f"/files/upload/for-plugin?{query}"
 
@@ -138,6 +143,7 @@ def verify_plugin_file_signature(
     timestamp: str,
     nonce: str,
     sign: str,
+    max_size: int | None = None,
 ) -> bool:
     """Verify the signature used by the plugin-facing file upload endpoint."""
 
@@ -150,6 +156,7 @@ def verify_plugin_file_signature(
         timestamp=timestamp,
         nonce=nonce,
         user_from=user_from,
+        max_size=max_size,
     )
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
@@ -171,13 +178,33 @@ def _plugin_upload_signature_payload(
     timestamp: str,
     nonce: str,
     user_from: Literal["account", "end-user"] | None,
+    max_size: int | None,
 ) -> str:
-    """Build the compatible upload signature payload with optional identity ownership.
+    """Build the compatible upload signature payload with optional protected claims.
 
-    Omitting ``user_from`` preserves the legacy payload. When present, the
-    identity kind is appended and HMAC-protected so account/end-user ownership
-    cannot be altered.
+    Omitting ``max_size`` preserves the legacy payload. Size-limited tickets use
+    a versioned JSON payload so unconstrained string fields cannot absorb or
+    impersonate optional trailing claims.
     """
+
+    if max_size is not None:
+        return json.dumps(
+            {
+                "conversation_id": conversation_id or "",
+                "filename": filename,
+                "max_size": max_size,
+                "mimetype": mimetype,
+                "nonce": nonce,
+                "tenant_id": tenant_id,
+                "timestamp": timestamp,
+                "user_from": user_from,
+                "user_id": user_id,
+                "version": 2,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
 
     payload = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
     if user_from is not None:

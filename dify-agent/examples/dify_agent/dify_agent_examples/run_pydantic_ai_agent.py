@@ -78,7 +78,7 @@ async def main() -> None:
         async with agent.run_stream("Explain the theory of relativity") as run:
             async for piece in run.stream_output():
                 print(piece, end="", flush=True)
-            print(run.usage())
+            print(run.usage)
 
 
 if __name__ == "__main__":

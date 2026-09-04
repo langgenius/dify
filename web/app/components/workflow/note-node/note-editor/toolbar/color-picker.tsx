@@ -62,7 +62,7 @@ const ColorPicker = ({ theme, onThemeChange }: ColorPickerProps) => {
       <PopoverContent
         placement="top"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg">
           {COLOR_LIST.map((color) => (
