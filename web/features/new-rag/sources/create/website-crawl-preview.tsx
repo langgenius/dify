@@ -13,7 +13,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
@@ -438,6 +438,8 @@ export function WebsiteCrawlPreview({
 }) {
   const { t } = useTranslation('knowledgeSpace')
   const router = useRouter()
+  const primaryActionLabelId = useId()
+  const stopButtonLabelId = useId()
   const parameterSchemas = useMemo(
     () =>
       providerOption
@@ -631,7 +633,8 @@ export function WebsiteCrawlPreview({
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
   const runId = run?.id
-  const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
+  const workflowUnavailable = stopping || active || uncertainOperation || selectionInteractionLocked
+  const locked = starting || workflowUnavailable
   const host = normalizedURL?.host ?? providerName
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
   const crawlingStatusText = t(($) => $.crawlingPages, {
@@ -1214,11 +1217,14 @@ export function WebsiteCrawlPreview({
             className="mt-4 w-full"
             disabled={
               !configuration ||
-              (locked && requestError !== 'POLL_FAILED' && !canReconcileUncertainOperation)
+              (workflowUnavailable &&
+                requestError !== 'POLL_FAILED' &&
+                !canReconcileUncertainOperation)
             }
-            loading={starting || (active && !pollPaused)}
+            loading={starting}
+            aria-labelledby={primaryActionLabelId}
           >
-            {primaryLabel}
+            <span id={primaryActionLabelId}>{primaryLabel}</span>
           </Button>
         )}
       </Form>
@@ -1245,10 +1251,13 @@ export function WebsiteCrawlPreview({
                 variant="ghost-accent"
                 size="small"
                 className="ml-auto shrink-0"
-                disabled={stopping}
+                loading={stopping}
+                aria-labelledby={stopButtonLabelId}
                 onClick={() => void stop()}
               >
-                {stopping ? t(($) => $.stoppingCrawl) : t(($) => $.stopCrawl)}
+                <span id={stopButtonLabelId}>
+                  {stopping ? t(($) => $.stoppingCrawl) : t(($) => $.stopCrawl)}
+                </span>
               </Button>
             </div>
             {requestError === 'CANCEL_FAILED' && (
@@ -1362,7 +1371,7 @@ export function WebsiteCrawlPreview({
       {!showSuccess && syncPolicyField && <div className="mt-4">{syncPolicyField}</div>}
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
-          <Button type="button" disabled={discarding} loading={discarding} onClick={cancel}>
+          <Button type="button" loading={discarding} onClick={cancel}>
             {t(($) => $.cancelAddSource)}
           </Button>
           <span id="add-source-selection-requirement" className="sr-only">

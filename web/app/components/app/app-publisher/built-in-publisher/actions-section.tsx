@@ -113,7 +113,7 @@ export function PublisherActionsSection({
               {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
             </SuggestedAction>
           </TooltipTrigger>
-          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
+          <TooltipContent>{disabledFunctionTooltip}</TooltipContent>
         </Tooltip>
       )}
       {canViewAccessPoint && (

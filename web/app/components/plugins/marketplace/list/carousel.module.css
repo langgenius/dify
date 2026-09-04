@@ -1,0 +1,5 @@
+@media (max-width: 879px) {
+  :global([data-marketplace-standalone]) .pagination {
+    display: none;
+  }
+}

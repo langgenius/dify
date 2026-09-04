@@ -493,7 +493,6 @@ export function QualityActions({
       {badCaseAvailable && (
         <DropdownMenu>
           <DropdownMenuTrigger
-            disabled={pending}
             render={<Button loading={pending} variant={noResults ? 'secondary' : 'ghost'} />}
           >
             <span aria-hidden className="i-ri-thumb-down-line size-4" />
@@ -510,12 +509,7 @@ export function QualityActions({
         </DropdownMenu>
       )}
       {!noResults && (
-        <Button
-          disabled={pending}
-          loading={pending}
-          variant="secondary"
-          onClick={() => void onGolden()}
-        >
+        <Button loading={pending} variant="secondary" onClick={() => void onGolden()}>
           <span aria-hidden className="i-ri-thumb-up-line size-4" />
           {t(($) => $['retrievalTest.keepGoldenQuestion'])}
         </Button>

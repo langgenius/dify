@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './model'
@@ -67,6 +67,8 @@ function AutomaticChunkPageLoader({
 export function DocumentChunkTreePanel() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
+  const treeHeadingId = useId()
+  const loadMoreLabelId = useId()
   const chunkCount = useAtomValue(documentDetailChunksAtom).length
   const error = Boolean(useAtomValue(documentChunksQueryErrorAtom))
   const hasNextPage = useAtomValue(documentChunksQueryHasNextPageAtom)
@@ -193,7 +195,6 @@ export function DocumentChunkTreePanel() {
         key={node.id}
         id={`document-chunk-treeitem-${node.id}`}
         aria-expanded={hasChildren ? expanded : undefined}
-        aria-label={label}
         aria-level={depth + 1}
         aria-posinset={positionInSet}
         aria-selected={activeSelectedNodeId === node.id}
@@ -232,7 +233,7 @@ export function DocumentChunkTreePanel() {
 
   return (
     <aside className="min-h-52 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
-      <h2 className="px-2 pb-2 system-xs-regular text-text-tertiary">
+      <h2 id={treeHeadingId} className="px-2 pb-2 system-xs-regular text-text-tertiary">
         {t(($) => $.documentContents)}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
@@ -268,7 +269,7 @@ export function DocumentChunkTreePanel() {
           aria-activedescendant={
             currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
-          aria-label={t(($) => $.documentContents)}
+          aria-labelledby={treeHeadingId}
           className="max-h-[70vh] space-y-0.5 overflow-auto py-1 pr-5 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
           role="tree"
           tabIndex={0}
@@ -298,11 +299,11 @@ export function DocumentChunkTreePanel() {
             {t(($) => $.documentChunksLoadMoreError)}
           </p>
           <Button
-            disabled={isFetchingNextPage}
             loading={isFetchingNextPage}
+            aria-labelledby={loadMoreLabelId}
             onClick={() => void fetchNextPage()}
           >
-            {tCommon(($) => $['operation.retry'])}
+            <span id={loadMoreLabelId}>{tCommon(($) => $['operation.retry'])}</span>
           </Button>
         </div>
       ) : (

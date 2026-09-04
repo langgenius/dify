@@ -93,7 +93,7 @@ describe('agent/tool-icon', () => {
 
     expect(screen.getByText('indicator:warning')).toBeInTheDocument()
     expect(
-      screen.getByLabelText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}'),
+      screen.getByText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}'),
     ).toBeInTheDocument()
 
     mockWorkflowTools = []
@@ -104,7 +104,7 @@ describe('agent/tool-icon', () => {
     expect(marketplaceIcon).toHaveAttribute('src', 'https://example.com/market-tool.png')
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
     expect(
-      screen.getByLabelText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}'),
+      screen.getByText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}'),
     ).toBeInTheDocument()
   })
 

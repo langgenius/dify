@@ -65,10 +65,9 @@ export function DocumentReindexAction() {
   return (
     <>
       <Button
-        aria-busy={guardBusy || reindexing || cancelBusy}
         aria-describedby={disabledReasonId}
         className="gap-1 pl-3"
-        disabled={inProgress ? !canCancel : disabled || guardBusy}
+        disabled={inProgress ? !canCancel : disabled}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
         onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
       >

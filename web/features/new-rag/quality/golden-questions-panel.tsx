@@ -398,11 +398,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           ))}
           {query.hasNextPage && (
             <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
-              <Button
-                loading={query.isFetchingNextPage}
-                disabled={query.isFetchingNextPage}
-                onClick={() => void query.fetchNextPage()}
-              >
+              <Button loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
                 {t(($) => $.loadMore)}
               </Button>
             </div>
@@ -488,7 +484,6 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
             <AlertDialogConfirmButton
               tone="destructive"
               loading={deleteSubmitting}
-              disabled={deleteSubmitting}
               onClick={() => {
                 if (deleteIds) void deleteGolden(deleteIds)
               }}

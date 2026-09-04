@@ -398,39 +398,64 @@ describe('ModelParameterTrigger', () => {
     })
 
     it('should render configured model id and incompatible tooltip when model is missing from the provider list', async () => {
+      const user = userEvent.setup()
       renderComponent()
 
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument()
-      await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.incompatibleTip'))
+      const trigger = screen.getByRole('button', {
+        name: /common.modelProvider.selector.incompatibleTip/,
+      })
+      await user.hover(trigger)
       expect(
-        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+        await screen.findByText(
+          (content, element) =>
+            content === 'common.modelProvider.selector.incompatibleTip' &&
+            !!element &&
+            !trigger.contains(element),
+        ),
       ).toBeInTheDocument()
     })
 
     it('should render configure required tooltip for no-configure status', async () => {
+      const user = userEvent.setup()
       mockUseCurrentModel.mockReturnValue({
         currentProvider: { provider: 'openai' },
         currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
       })
       renderComponent()
 
-      await userEvent.hover(
-        screen.getByLabelText('common.modelProvider.selector.configureRequired'),
-      )
+      const trigger = screen.getByRole('button', {
+        name: /common.modelProvider.selector.configureRequired/,
+      })
+      await user.hover(trigger)
       expect(
-        await screen.findByText('common.modelProvider.selector.configureRequired'),
+        await screen.findByText(
+          (content, element) =>
+            content === 'common.modelProvider.selector.configureRequired' &&
+            !!element &&
+            !trigger.contains(element),
+        ),
       ).toBeInTheDocument()
     })
 
     it('should render disabled tooltip for disabled status', async () => {
+      const user = userEvent.setup()
       mockUseCurrentModel.mockReturnValue({
         currentProvider: { provider: 'openai' },
         currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.disabled },
       })
       renderComponent()
 
-      await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.disabled'))
-      expect(await screen.findByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      const trigger = screen.getByRole('button', { name: /common.modelProvider.selector.disabled/ })
+      await user.hover(trigger)
+      expect(
+        await screen.findByText(
+          (content, element) =>
+            content === 'common.modelProvider.selector.disabled' &&
+            !!element &&
+            !trigger.contains(element),
+        ),
+      ).toBeInTheDocument()
     })
   })
 

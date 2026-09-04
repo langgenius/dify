@@ -56,9 +56,8 @@ function BulkReindexAction() {
     <>
       <Button
         aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-        aria-busy={pending}
         className="shrink-0"
-        disabled={disabled || reindexDisabled || busy}
+        disabled={disabled || reindexDisabled || (busy && !pending)}
         loading={pending}
         size="small"
         onClick={() => void run()}
@@ -90,10 +89,9 @@ function BulkDownloadAction() {
   return (
     <>
       <Button
-        aria-busy={pending}
         aria-describedby={disabled ? 'document-download-unavailable' : undefined}
         className="shrink-0"
-        disabled={disabled || busy}
+        disabled={disabled || (busy && !pending)}
         loading={pending}
         size="small"
         onClick={() => void run()}
@@ -121,7 +119,7 @@ function BulkAvailabilityAction() {
   return (
     <Button
       className="shrink-0"
-      disabled={resultsUnavailable || actionDisabled || busy}
+      disabled={resultsUnavailable || actionDisabled || (busy && !pending)}
       size="small"
       loading={pending}
       onClick={() => void run()}
@@ -141,7 +139,7 @@ function BulkRemoveAction() {
     <>
       <Button
         className="shrink-0"
-        disabled={resultsUnavailable || busy}
+        disabled={resultsUnavailable || (busy && !pending)}
         loading={pending}
         size="small"
         tone="destructive"
@@ -165,7 +163,6 @@ function BulkRemoveAction() {
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={pending}
               loading={pending}
               tone="destructive"
               onClick={() =>

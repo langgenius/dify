@@ -199,6 +199,14 @@ const run = (state: string, overrides: Partial<SourceWorkflowRun> = {}): SourceW
   ...overrides,
 })
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 async function fillValidForm() {
   const user = userEvent.setup()
   await user.type(screen.getByLabelText(/^knowledgeSpace\.rootUrl/), 'https://docs.dify.ai')
@@ -438,7 +446,7 @@ describe('WebsiteCrawlPreview', () => {
     expect(screen.getByText('knowledgeSpace.crawlFailedDescription')).toBeInTheDocument()
   })
 
-  it('locks the surrounding setup and keeps pending feedback visible while crawling', async () => {
+  it('locks the surrounding setup without reporting an active crawl as pending', async () => {
     const onInteractionLockChange = vi.fn()
     clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
 
@@ -454,8 +462,8 @@ describe('WebsiteCrawlPreview', () => {
 
     await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
     const crawling = screen.getByRole('button', { name: 'knowledgeSpace.crawling' })
-    expect(crawling).toHaveAttribute('aria-disabled', 'true')
-    expect(crawling.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(crawling).toBeDisabled()
+    expect(crawling.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
   })
 
   it('keeps the surrounding setup locked while the selected pages are submitted', async () => {
@@ -832,8 +840,9 @@ describe('WebsiteCrawlPreview', () => {
   })
 
   it('stops the active run once and keeps pages already discovered', async () => {
+    const cancelDeferred = createDeferred<SourceWorkflowRun>()
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
-    clientMock.cancel.mockResolvedValue(run('canceled', { progressCompleted: 1 }))
+    clientMock.cancel.mockReturnValue(cancelDeferred.promise)
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
@@ -843,11 +852,17 @@ describe('WebsiteCrawlPreview', () => {
     await user.dblClick(stop)
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
+    const stopping = screen.getByRole('button', { name: 'knowledgeSpace.stoppingCrawl' })
+    expect(stopping).toBe(stop)
+    expect(stopping).not.toBeDisabled()
+    expect(stopping).toHaveAttribute('aria-disabled', 'true')
+    expect(stopping).toHaveFocus()
     expect(clientMock.cancel).toHaveBeenCalledWith({
       body: { reason: 'user_requested' },
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
     expect(screen.getByText('Getting started')).toBeInTheDocument()
+    await act(async () => cancelDeferred.resolve(run('canceled', { progressCompleted: 1 })))
     expect(await screen.findByText('knowledgeSpace.crawlStopped')).toHaveAttribute('role', 'status')
   })
 

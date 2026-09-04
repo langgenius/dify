@@ -726,13 +726,7 @@ function WebsiteSourceEditDialogContent({
             {!previewPages.length && (
               <Button
                 className="w-full"
-                disabled={
-                  pending ||
-                  previewing ||
-                  !parametersValid ||
-                  !providerOption ||
-                  !previewBindingReady
-                }
+                disabled={pending || !parametersValid || !providerOption || !previewBindingReady}
                 loading={previewing}
                 type="button"
                 variant="primary"

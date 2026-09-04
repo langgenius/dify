@@ -139,7 +139,6 @@ function DocumentsTaskQueryRecovery() {
           <Button
             ref={taskRetryButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.tasksErrorDescription)}`}
-            aria-busy={recovery.taskFetching}
             className="mt-3"
             loading={recovery.taskFetching}
             size="small"
@@ -164,7 +163,6 @@ function DocumentsTaskQueryRecovery() {
           <Button
             ref={documentRetryButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
-            aria-busy={recovery.documentFetching}
             className="mt-3"
             loading={recovery.documentFetching}
             size="small"
@@ -445,8 +443,6 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
                   : undefined
             }
             size="small"
-            aria-busy={pending}
-            disabled={pending}
             loading={pending}
             onClick={() => void performAction(action)}
           >
@@ -589,7 +585,6 @@ function DocumentsTaskLoadMore() {
     <div className="mt-4 flex justify-center">
       <Button
         ref={loadMoreButtonRef}
-        aria-busy={pagination.fetching}
         loading={pagination.fetching}
         onBlur={() => {
           loadMoreRequestedRef.current = false

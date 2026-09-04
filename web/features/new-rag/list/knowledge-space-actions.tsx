@@ -154,7 +154,7 @@ export function KnowledgeSpaceActions({
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={deleteConfirmation !== name || deleteMutation.isPending}
+              disabled={deleteConfirmation !== name}
               loading={deleteMutation.isPending}
               onClick={deleteKnowledge}
             >

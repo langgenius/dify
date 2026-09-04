@@ -22,7 +22,12 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  infiniteQueryOptions,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -639,60 +644,64 @@ function ResourceConfiguration({
     provider.id,
   ])
 
-  const pagesQuery = useInfiniteQuery({
-    queryKey: ['new-rag', 'connected-source-pages', knowledgeSpaceId, previewSource?.id],
-    queryFn: ({ pageParam }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-        params: {
-          control_space_id: knowledgeSpaceId,
-          source_id: previewSource?.id ?? '',
-        },
-        query: {
-          limit: RESOURCE_PAGE_SIZE,
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
-      }),
-    enabled: !driveTransport && Boolean(previewSource),
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    initialPageParam: null as string | null,
-    retry: false,
-  })
-  const filesQuery = useInfiniteQuery({
-    queryKey: ['new-rag', 'connected-source-files', knowledgeSpaceId, previewSource?.id],
-    queryFn: ({ pageParam }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
-        params: {
-          control_space_id: knowledgeSpaceId,
-          source_id: previewSource?.id ?? '',
-        },
-        query: {
-          maxKeys: RESOURCE_PAGE_SIZE,
-          ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
-          ...(pageParam?.continuationToken
-            ? { continuationToken: pageParam.continuationToken }
-            : {}),
-        },
-      }),
-    enabled: driveTransport && Boolean(previewSource),
-    getNextPageParam: (lastPage, _allPages, _lastPageParam, allPageParams) => {
-      const candidate = lastPage.buckets.find(
-        (bucket) => bucket.is_truncated && bucket.continuation_token,
-      )
-      if (!candidate?.continuation_token) return undefined
-      const next: FilePageParam = {
-        bucket: candidate.bucket ?? undefined,
-        continuationToken: candidate.continuation_token,
-      }
-      return allPageParams.some(
-        (page) =>
-          page?.bucket === next.bucket && page?.continuationToken === next.continuationToken,
-      )
-        ? undefined
-        : next
-    },
-    initialPageParam: null as FilePageParam,
-    retry: false,
-  })
+  const pagesQuery = useInfiniteQuery(
+    infiniteQueryOptions({
+      queryKey: ['new-rag', 'connected-source-pages', knowledgeSpaceId, previewSource?.id],
+      queryFn: ({ pageParam }) =>
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+          params: {
+            control_space_id: knowledgeSpaceId,
+            source_id: previewSource?.id ?? '',
+          },
+          query: {
+            limit: RESOURCE_PAGE_SIZE,
+            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          },
+        }),
+      enabled: !driveTransport && Boolean(previewSource),
+      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      initialPageParam: null as string | null,
+      retry: false,
+    }),
+  )
+  const filesQuery = useInfiniteQuery(
+    infiniteQueryOptions({
+      queryKey: ['new-rag', 'connected-source-files', knowledgeSpaceId, previewSource?.id],
+      queryFn: ({ pageParam }) =>
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
+          params: {
+            control_space_id: knowledgeSpaceId,
+            source_id: previewSource?.id ?? '',
+          },
+          query: {
+            maxKeys: RESOURCE_PAGE_SIZE,
+            ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
+            ...(pageParam?.continuationToken
+              ? { continuationToken: pageParam.continuationToken }
+              : {}),
+          },
+        }),
+      enabled: driveTransport && Boolean(previewSource),
+      getNextPageParam: (lastPage, _allPages, _lastPageParam, allPageParams) => {
+        const candidate = lastPage.buckets.find(
+          (bucket) => bucket.is_truncated && bucket.continuation_token,
+        )
+        if (!candidate?.continuation_token) return undefined
+        const next: FilePageParam = {
+          bucket: candidate.bucket ?? undefined,
+          continuationToken: candidate.continuation_token,
+        }
+        return allPageParams.some(
+          (page) =>
+            page?.bucket === next.bucket && page?.continuationToken === next.continuationToken,
+        )
+          ? undefined
+          : next
+      },
+      initialPageParam: null as FilePageParam,
+      retry: false,
+    }),
+  )
 
   const pageResources = useMemo<PageResource[]>(() => {
     const groups = new Map<
@@ -1404,7 +1413,6 @@ function ResourceConfiguration({
           variant="primary"
           loading={submitting}
           disabled={
-            submitting ||
             selectionPending ||
             !previewSource ||
             !selected.size ||

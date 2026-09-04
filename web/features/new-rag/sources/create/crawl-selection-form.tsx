@@ -269,7 +269,7 @@ function ReadyCrawlSelectionForm({
         onSelectionChange={updateSelectedPageIds}
         pages={pages}
         progressFailed={run.progressFailed}
-        recrawlDisabled={submissionLocked}
+        recrawlDisabled={submitting || selectionUncertain}
         rootUrl={rootUrl}
         selectedPageIds={selectedPageIds}
       />
@@ -298,7 +298,7 @@ function ReadyCrawlSelectionForm({
         <Button
           type="submit"
           variant="primary"
-          disabled={!canSubmit || formBusy || workflowUncertain}
+          disabled={!canSubmit || busy || workflowUncertain}
           loading={submitting}
           aria-describedby={!selectedPageIds.size ? 'add-source-selection-requirement' : undefined}
         >

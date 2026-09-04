@@ -51,7 +51,7 @@ export function KnowledgeSpaceCard({
         className="block outline-hidden after:absolute after:inset-0 after:z-0 after:rounded-xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid"
       >
         <div className="relative z-1 flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
-          <div aria-label={iconName ?? t(($) => $.cardType)} title={iconName} className="shrink-0">
+          <div title={iconName} className="shrink-0">
             <KnowledgeSpaceIcon
               background={summary?.icon_background}
               icon={summary?.icon}

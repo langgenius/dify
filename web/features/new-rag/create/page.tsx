@@ -547,9 +547,7 @@ export function CreateKnowledgePage() {
                     type="submit"
                     variant="primary"
                     loading={submissionPending}
-                    disabled={
-                      submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked
-                    }
+                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked}
                   >
                     {t(($) => $.createTitle)}
                   </Button>

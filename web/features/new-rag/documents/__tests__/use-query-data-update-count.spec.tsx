@@ -1,4 +1,9 @@
-import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query'
+import {
+  infiniteQueryOptions,
+  QueryClient,
+  QueryClientProvider,
+  useInfiniteQuery,
+} from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { useQueryDataUpdateCount } from '../use-query-data-update-count'
 
@@ -6,12 +11,14 @@ const queryKey = ['task-generation'] as const
 const sharedPage = { items: ['task-1'] }
 
 function GenerationProbe({ queryClient }: { queryClient: QueryClient }) {
-  const query = useInfiniteQuery({
-    queryFn: async () => sharedPage,
-    initialPageParam: null,
-    getNextPageParam: () => undefined,
-    queryKey,
-  })
+  const query = useInfiniteQuery(
+    infiniteQueryOptions({
+      queryFn: async () => sharedPage,
+      initialPageParam: null,
+      getNextPageParam: () => undefined,
+      queryKey,
+    }),
+  )
   const dataUpdateCount = useQueryDataUpdateCount(queryClient, queryKey)
 
   return (

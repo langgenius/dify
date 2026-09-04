@@ -570,8 +570,6 @@ export const documentReindexDisabledAtom = atom((get) => {
   const document = get(documentDetailDocumentAtom)
   return (
     !get(documentCanEditAtom) ||
-    get(documentReindexBusyAtom) ||
-    get(documentSubmissionPendingAtom) ||
     get(documentTaskIsActiveAtom) ||
     get(documentTasksQueryIsPendingAtom) ||
     get(documentTasksQueryIsFetchingNextPageAtom) ||

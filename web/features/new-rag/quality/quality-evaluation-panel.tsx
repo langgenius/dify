@@ -702,7 +702,6 @@ export function QualityEvaluationPanel({
               <div className="flex justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={listQuery.isFetchingNextPage}
-                  disabled={listQuery.isFetchingNextPage}
                   onClick={() => void listQuery.fetchNextPage()}
                 >
                   {t(($) => $.loadMore)}

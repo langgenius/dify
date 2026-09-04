@@ -551,6 +551,14 @@ const connection = (
   version,
 })
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1229,6 +1237,30 @@ describe('AddSourcePage', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
+  it('keeps the connection action focused and explicitly named while pending', async () => {
+    const user = userEvent.setup()
+    const createConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
+    clientMock.createConnection.mockReturnValue(createConnectionDeferred.promise)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
+    const connectButton = screen.getByRole('button', { name: connectFirecrawlButtonName })
+    await user.click(connectButton)
+
+    const pendingButton = screen.getByRole('button', {
+      name: 'knowledgeSpace.connectingProvider',
+    })
+    expect(pendingButton).toBe(connectButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(pendingButton).toHaveFocus()
+    await user.click(pendingButton)
+    expect(clientMock.createConnection).toHaveBeenCalledOnce()
+
+    await act(async () => createConnectionDeferred.resolve(connection('active')))
+    await screen.findByText(/knowledgeSpace\.providerConnected/)
+  })
+
   it('discovers installed website providers and keeps the provider-management action', () => {
     queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
@@ -1423,6 +1455,29 @@ describe('AddSourcePage', () => {
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
     expect(screen.getByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+  })
+
+  it('keeps the refresh action focused and explicitly named while pending', async () => {
+    const user = userEvent.setup()
+    const refreshConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
+    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    clientMock.refreshConnection.mockReturnValue(refreshConnectionDeferred.promise)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    const refreshButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    await user.click(refreshButton)
+
+    const pendingButton = screen.getByRole('button', {
+      name: 'knowledgeSpace.refreshingConnection',
+    })
+    expect(pendingButton).toBe(refreshButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(pendingButton).toHaveFocus()
+    await user.click(pendingButton)
+    expect(clientMock.refreshConnection).toHaveBeenCalledOnce()
+
+    await act(async () => refreshConnectionDeferred.resolve(connection('active')))
+    await screen.findByText(/knowledgeSpace\.providerConnected/)
   })
 
   it('reconciles a refresh version race and retries with the server version', async () => {

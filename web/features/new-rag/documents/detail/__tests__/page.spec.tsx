@@ -2762,7 +2762,7 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus())
   })
 
-  it('keeps re-index visibly busy through invalidation and stale task-list reconciliation', async () => {
+  it('keeps re-index cancellation available through invalidation and stale task-list reconciliation', async () => {
     const user = userEvent.setup()
     let finishInvalidation: (() => void) | undefined
     const invalidation = new Promise<void>((resolve) => {
@@ -2774,12 +2774,12 @@ describe('DocumentDetailPage', () => {
     const button = screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })
     await user.click(button)
 
-    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button).toHaveAccessibleName('knowledgeSpace.cancelDocumentReindex')
+    expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
     finishInvalidation?.()
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    expect(button).toHaveAttribute('aria-busy', 'true')
     expect(button).toHaveTextContent('knowledgeSpace.cancelDocumentReindex')
     expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()

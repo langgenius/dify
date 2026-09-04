@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import type { KnowledgeFsApiAccessStatus } from './api-access-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -149,9 +149,9 @@ export function KnowledgeSpaceShell({
             {t(($) => (notFound ? $.notFoundDescription : $.detailErrorDescription))}
           </p>
           <div className="mt-5 flex gap-2">
-            <Button nativeButton={false} render={<Link href={newKnowledgeListPath} />}>
+            <Link href={newKnowledgeListPath} className={buttonVariants()}>
               {t(($) => $.backToList)}
-            </Button>
+            </Link>
             {!notFound && (
               <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
                 {tCommon(($) => $['operation.retry'])}

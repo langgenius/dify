@@ -309,7 +309,7 @@ function GoldenQuestionDialogSession({
               <Button
                 type="button"
                 loading={matchMutation.isPending}
-                disabled={!evidenceQuery.trim() || pending || matchMutation.isPending}
+                disabled={!evidenceQuery.trim() || pending}
                 onClick={() => void findEvidence()}
               >
                 {t(($) => $['qualityPage.findEvidence'])}

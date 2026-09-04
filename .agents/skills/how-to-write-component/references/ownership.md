@@ -19,6 +19,7 @@ Read this document when auditing, adding, moving, splitting, or refactoring Reac
 - A page or feature root may wire route identity, providers, layout, navigation, and genuine cross-surface coordination. It must not call a child-specific state or query hook merely to assemble that child's props.
 - Keep child contracts at the ownership boundary: stable domain identity, a small immutable snapshot, placement options, or named cross-boundary commands. Do not pass an internal state machine as separate `data`, `pending`, `error`, `retry`, `open`, setter, and callback props when the parent does not use them, and do not hide the same fan-out in a props bag or hook result object.
 - Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
+- Repeated TanStack Query hooks for the same key and input in Client Component siblings under one QueryClient share that cache. Separate Server Component QueryClients do not, so request-level deduplication needs an identified request-local cache or verified framework or transport owner.
 - Treat parent input according to what the child boundary does with it:
   - If the child only renders or performs a light local decision, pass the snapshot as props. It does not become a new state owner.
   - If the child builds queries, dialogs, mutations, derivations, commands, or a reset lifecycle around a stable identity or snapshot, give that boundary a feature-local state file. This does not by itself require a new module or directory.
@@ -26,6 +27,7 @@ Read this document when auditing, adding, moving, splitting, or refactoring Reac
 - One pass-through layer is acceptable for stable identity and placement. It is not permission to relay workflow state and handlers through an unrelated component.
 - Route identity may pass once from a framework route into its feature boundary. If multiple descendants, queries, facts, or commands need it, bridge it into the feature graph and stop passing it as props.
 - A query snapshot may cross once as immutable display input. Query keys, observer methods, retry/loading/error groups, and invalidation mechanics belong to the query surface or feature graph and must not be decomposed into props.
+- Do not replace prop drilling with one large view-model hook. Move each query, derived value, and handler to the concrete owner that consumes it.
 - Keep source selection, defaults, validation, dirty checks, and payload shaping beside the workflow that owns submission.
 
 ## Boundaries

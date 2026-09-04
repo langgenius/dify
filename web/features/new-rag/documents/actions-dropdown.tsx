@@ -128,7 +128,7 @@ function RenameDocumentDialog({
               {tCommon(($) => $['operation.cancel'])}
             </Button>
             <Button
-              disabled={pending || !nextTitle.trim() || nextTitle.trim() === document.title}
+              disabled={!nextTitle.trim() || nextTitle.trim() === document.title}
               loading={pending}
               type="submit"
               variant="primary"
@@ -294,7 +294,6 @@ function RemoveDocumentDialog({
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
-            disabled={pending}
             loading={pending}
             tone="destructive"
             onClick={() =>

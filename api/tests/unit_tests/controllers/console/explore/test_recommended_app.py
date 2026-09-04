@@ -7,7 +7,7 @@ from flask import Flask
 from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
-from models import Account
+from machinery.context import RequestContext
 from models.model import AppMode, IconType
 from services.recommended_app_query_service import (
     LearnDifyAppListResult,
@@ -21,11 +21,13 @@ from services.recommended_app_query_service import (
 )
 
 
-def make_account(interface_language: str | None) -> Account:
-    account = Account(name="Test User", email="user@example.com")
-    account.id = "account-1"
-    account.interface_language = interface_language
-    return account
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
 
 
 class TestRecommendedAppListApi:
@@ -44,17 +46,16 @@ class TestRecommendedAppListApi:
                 return_value=SimpleNamespace(recommended_app_queries=queries),
             ),
         ):
-            result = method(api, module.RecommendedAppsQuery(language="en-US"), make_account("fr-FR"))
+            result = method(api, module.RecommendedAppsQuery(language="en-US"), _request_context())
 
         queries.list_recommended.assert_called_once_with(
-            requested_language="en-US",
-            interface_language="fr-FR",
+            language="en-US",
         )
         assert result == {"recommended_apps": [], "categories": []}
 
 
 class TestLearnDifyAppListApi:
-    def test_get_with_language_param(self, app: Flask) -> None:
+    def test_get_uses_default_language(self, app: Flask) -> None:
         api = module.LearnDifyAppListApi()
         method = unwrap(api.get)
 
@@ -62,18 +63,17 @@ class TestLearnDifyAppListApi:
         queries.list_learn_dify.return_value = LearnDifyAppListResult(recommended_apps=())
 
         with (
-            app.test_request_context("/", query_string={"language": "en-US"}),
+            app.test_request_context("/"),
             patch.object(
                 module,
                 "application_services",
                 return_value=SimpleNamespace(recommended_app_queries=queries),
             ),
         ):
-            result = method(api, module.RecommendedAppsQuery(language="en-US"), make_account("fr-FR"))
+            result = method(api, module.RecommendedAppsQuery(), _request_context())
 
         queries.list_learn_dify.assert_called_once_with(
-            requested_language="en-US",
-            interface_language="fr-FR",
+            language="en-US",
         )
         assert result == {"recommended_apps": []}
 
@@ -102,7 +102,7 @@ class TestRecommendedAppApi:
                 return_value=SimpleNamespace(recommended_app_queries=queries),
             ),
         ):
-            result = method(api, "11111111-1111-1111-1111-111111111111")
+            result = method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
 
         queries.get_detail.assert_called_once_with("11111111-1111-1111-1111-111111111111")
         assert result == {
@@ -130,7 +130,7 @@ class TestRecommendedAppApi:
             ),
         ):
             with pytest.raises(module.RecommendedAppNotFoundError) as exc_info:
-                method(api, "11111111-1111-1111-1111-111111111111")
+                method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
 
         assert exc_info.value.data == {
             "code": "recommended_app_not_found",
