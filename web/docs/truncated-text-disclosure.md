@@ -24,6 +24,7 @@ Automatically add `title` only when every condition below is satisfied:
 - The target is a native, non-editable, pointer-reachable text container whose own hit area receives the pointer, or a documented component that forwards `title` unchanged to that final DOM element.
 - The final element intentionally implements single-line truncation. A truncation-related class alone is not sufficient evidence.
 - The full content is a bounded, non-sensitive, single-line plain string.
+- The truncated portion is supplemental; users do not need it to understand, distinguish, or complete the current task.
 - “Bounded” means fixed text, an enum, or a value with an explicit owner-level maximum length.
 - The exact already-evaluated display value can be reused without repeating a function call, getter, conversion, mutation, async operation, or other potentially effectful expression.
 - The final rendered element does not already receive an equivalent title through its props, wrapper, child component, or covering interaction target.
@@ -59,6 +60,7 @@ Classify as `SKIP` and make no change when any condition below applies:
 Classify as `REVIEW`, make no code change, and report the reason when:
 
 - the correct disclosure owner is ambiguous or product-specific;
+- users need the full value to understand, distinguish, or complete the task, but no cross-input disclosure owner exists;
 - the value bound or sensitivity cannot be proven;
 - the final DOM element or pointer owner cannot be traced;
 - the component is interactive;
