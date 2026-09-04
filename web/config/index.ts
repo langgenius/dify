@@ -11,6 +11,19 @@ const getStringConfig = (envVar: string | undefined, defaultValue: string) => {
   return defaultValue
 }
 
+const isLocalMarketplaceApiUrl = (url: string | undefined) =>
+  /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/)/i.test(url ?? '')
+
+// NEXT_PUBLIC_* is inlined at build. The standalone marketplace image sets
+// MARKETPLACE_API_URL at runtime instead, so SSR must read that here or it
+// falls through to localhost:5002 and creator pages throw.
+const runtimeMarketplaceApiUrl =
+  typeof globalThis.window === 'undefined' &&
+  process.env.MARKETPLACE_API_URL &&
+  !isLocalMarketplaceApiUrl(process.env.MARKETPLACE_API_URL)
+    ? process.env.MARKETPLACE_API_URL
+    : undefined
+
 export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
   'http://localhost:5001/console/api',
@@ -20,7 +33,7 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   'http://localhost:5001/api',
 )
 export const MARKETPLACE_API_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
+  runtimeMarketplaceApiUrl || env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
 export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
