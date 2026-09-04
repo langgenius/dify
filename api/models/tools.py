@@ -109,19 +109,17 @@ class BuiltinToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[CredentialType] = mapped_column(
         EnumText(CredentialType, length=32),
         nullable=False,
-        server_default=sa.text("'api-key'"),
         default=CredentialType.API_KEY,
     )
-    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
     visibility: Mapped[PermissionEnum] = mapped_column(
         EnumText(PermissionEnum, length=40),
         nullable=False,
-        server_default=sa.text("'all_team_members'"),
         default=PermissionEnum.ALL_TEAM,
     )
 
@@ -248,13 +246,13 @@ class WorkflowToolProvider(TypeBase):
     # name of the workflow provider
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # label of the workflow provider
-    label: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
+    label: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # app id of the workflow provider
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # version of the workflow provider
-    version: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
+    version: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -264,7 +262,7 @@ class WorkflowToolProvider(TypeBase):
     # parameter configuration
     parameter_configuration: Mapped[str] = mapped_column(LongText, nullable=False, default="[]")
     # privacy policy
-    privacy_policy: Mapped[str | None] = mapped_column(String(255), nullable=True, server_default="", default=None)
+    privacy_policy: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -343,9 +341,9 @@ class MCPToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"), default=30.0)
+    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, default=30.0)
     sse_read_timeout: Mapped[float] = mapped_column(
-        sa.Float, nullable=False, server_default=sa.text("300"), default=300.0
+        sa.Float, nullable=False, default=300.0
     )
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
@@ -355,7 +353,7 @@ class MCPToolProvider(TypeBase):
     #   "off"       — no forwarding (default; preserves pre-M2 behaviour).
     #   "idp_token" — forward an SSO access token minted by dify-enterprise.
     identity_mode: Mapped[str] = mapped_column(
-        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
+        sa.String(32), nullable=False, default="off"
     )
 
     def load_user(self) -> Account | None:
