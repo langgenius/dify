@@ -1,6 +1,6 @@
 import type { SearchParams } from 'nuqs/server'
 import type { MarketplaceSearchParams } from './search-params'
-import { dehydrate } from '@tanstack/react-query'
+import { dehydrate, noop } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/app/get-query-client'
 import { marketplaceQuery } from '@/service/client'
@@ -25,9 +25,11 @@ export async function prefetchMarketplaceDehydratedState(searchParams?: Promise<
 
   if (shouldSearchMarketplacePlugins(params)) {
     await withinServerBudget(
-      queryClient.prefetchInfiniteQuery(
-        getMarketplacePluginsInfiniteQueryOptions(getMarketplacePluginsSearchParams(params)),
-      ),
+      queryClient
+        .infiniteQuery(
+          getMarketplacePluginsInfiniteQueryOptions(getMarketplacePluginsSearchParams(params)),
+        )
+        .catch(noop),
     )
     return dehydrate(queryClient)
   }
@@ -35,12 +37,14 @@ export async function prefetchMarketplaceDehydratedState(searchParams?: Promise<
   if (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(params.category)) return
 
   await withinServerBudget(
-    queryClient.prefetchQuery({
-      queryKey: marketplaceQuery.collections.queryKey({
-        input: { query: getCollectionsParams(params.category) },
-      }),
-      queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
-    }),
+    queryClient
+      .query({
+        queryKey: marketplaceQuery.collections.queryKey({
+          input: { query: getCollectionsParams(params.category) },
+        }),
+        queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
+      })
+      .catch(noop),
   )
   return dehydrate(queryClient)
 }
