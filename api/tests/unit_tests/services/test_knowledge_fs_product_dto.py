@@ -429,6 +429,7 @@ def test_connector_initial_source_requires_an_exact_credential_binding() -> None
 
 
 def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() -> None:
+    query_id = "10000000-0000-4000-8000-000000000010"
     payload = KnowledgeFSRetrievalTestPayload.model_validate(
         {
             "filters": {
@@ -439,6 +440,7 @@ def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() ->
             "includeText": True,
             "mode": "deep",
             "query": "  camera evidence  ",
+            "queryId": query_id,
         }
     )
 
@@ -457,11 +459,14 @@ def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() ->
         "includeText": True,
         "mode": "deep",
         "query": "camera evidence",
+        "queryId": query_id,
     }
     with pytest.raises(ValidationError):
         KnowledgeFSRetrievalTestPayload(query="camera", mode="auto")  # type: ignore[arg-type]
     with pytest.raises(ValidationError):
         KnowledgeFSRetrievalMetadataFilters(tags=[f"tag-{index}" for index in range(101)])
+    with pytest.raises(ValidationError):
+        KnowledgeFSRetrievalTestPayload(query="camera", queryId="not-a-uuid")
 
 
 def test_retrieval_test_payload_accepts_transient_workflow_image_grants() -> None:

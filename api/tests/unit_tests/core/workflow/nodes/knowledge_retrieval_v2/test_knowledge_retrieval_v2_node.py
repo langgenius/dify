@@ -411,6 +411,9 @@ def test_multi_space_retrieval_uses_one_system_reranker_and_returns_mixed_metric
     assert rerank_manager.default_calls
     assert rerank_manager.explicit_calls == []
     assert all(call["payload"].include_text is True for call in service.calls)  # type: ignore[attr-defined]
+    query_ids = {call["payload"].query_id for call in service.calls}  # type: ignore[attr-defined]
+    assert len(query_ids) == 1
+    assert query_ids.pop().version == 4  # type: ignore[union-attr]
     assert all(
         call["payload"].filters.document_types == ["handbook"]  # type: ignore[attr-defined]
         for call in service.calls
@@ -1113,8 +1116,9 @@ def test_threshold_filtered_results_are_not_recorded_as_a_raw_retrieval_miss(
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )
+    service = RecordingCapabilityService({"space-a": _response(mode="fast", score=0.91, space="a", text="A")})
     result = _node(
-        service=RecordingCapabilityService({"space-a": _response(mode="fast", score=0.91, space="a", text="A")}),
+        service=service,
         spaces=["space-a"],
         rerank_model_manager=RecordingRerankModelManager(RecordingRerankModel({"A": 0.42})),
         node_data_overrides={"score_threshold": 0.8},
@@ -1123,6 +1127,9 @@ def test_threshold_filtered_results_are_not_recorded_as_a_raw_retrieval_miss(
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["result"].value == []
     assert result.outputs["metrics"].value["workflow_rerank"]["output_count"] == 0
+    assert "scoreThreshold" not in service.calls[0]["payload"].model_dump(  # type: ignore[attr-defined]
+        mode="json", by_alias=True
+    )
     assert dispatched == []
 
 
