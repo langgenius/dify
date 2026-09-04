@@ -3,13 +3,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flask import g
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.rbac import RBACResourceScope
-from extensions.ext_database import db
-from models.dataset import Dataset
-from models.model import App
+from services.rbac_resource_service import RBACResourceService
 
 if TYPE_CHECKING:
     from models.agent import Agent
@@ -51,18 +48,11 @@ def _required(path_args: Mapping[str, object], param: str) -> str:
     return str(value)
 
 
-def _load_agent_binding(tenant_id: str, app_id: str) -> "Agent | None":
-    app_model = db.session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
-    if app_model is None:
-        return None
-    return app_model.agent_app_binding_with_session(session=db.session, include_archived=True)
-
-
 def agent_binding(tenant_id: str, app_id: str) -> "Agent | None":
     cache: dict[tuple[str, str], Agent | None] = g.setdefault(_AGENT_BINDING_CACHE_KEY, {})
     key = (tenant_id, app_id)
     if key not in cache:
-        cache[key] = _load_agent_binding(tenant_id, app_id)
+        cache[key] = RBACResourceService.get_app_agent_binding(tenant_id, app_id)
     return cache[key]
 
 
@@ -112,13 +102,7 @@ class PlainApp(_ParamLocator):
         return ResourceIdentity(self.scope, app_id)
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        return db.session.scalar(
-            select(App.maintainer).where(
-                App.id == identity.id,
-                App.tenant_id == tenant_id,
-                App.status == "normal",
-            )
-        )
+        return RBACResourceService.get_app_maintainer(tenant_id, identity.id)
 
 
 class AgentBehindApp(_ParamLocator):
@@ -145,9 +129,7 @@ class DatasetId(_ParamLocator):
         return ResourceIdentity(self.scope, _required(path_args, self.param))
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        return db.session.scalar(
-            select(Dataset.maintainer).where(Dataset.id == identity.id, Dataset.tenant_id == tenant_id)
-        )
+        return RBACResourceService.get_dataset_maintainer(tenant_id, identity.id)
 
 
 class DatasetByPipeline(DatasetId):
@@ -155,9 +137,7 @@ class DatasetByPipeline(DatasetId):
 
     def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
         pipeline_id = _required(path_args, self.param)
-        dataset_id = db.session.scalar(
-            select(Dataset.id).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == tenant_id)
-        )
+        dataset_id = RBACResourceService.get_dataset_id_by_pipeline(tenant_id, pipeline_id)
         if dataset_id is None:
             raise NotFound("Dataset not found for pipeline")
-        return ResourceIdentity(self.scope, str(dataset_id))
+        return ResourceIdentity(self.scope, dataset_id)
