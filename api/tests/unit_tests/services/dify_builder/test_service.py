@@ -1476,3 +1476,19 @@ def test_repeat_failure_resurfaces_offer_no_wedge(
     assert view.recovery is not None  # offer resurfaces -- no dead end
     assert view.recovery.can_continue is True
     assert view.recovery.can_restart is True
+
+
+def test_recovery_continue_retry_carries_the_working_states_access_tier() -> None:
+    """A recovery_continue (Retry) re-runs the interrupted working handler, so it
+    must be gated at that op's tier: RELEASE at publish states, TEST_AND_RUN at test
+    states, EDIT elsewhere. recovery_restart (reset only) stays EDIT."""
+    from services.dify_builder.service import AppAccess, _app_access_for_action
+
+    assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.FIX_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.BUILD_TEST_AND_REPAIR, "recovery_continue") == AppAccess.TEST_AND_RUN
+    assert _app_access_for_action(PcState.FIX_VERIFY, "recovery_continue") == AppAccess.TEST_AND_RUN
+    assert _app_access_for_action(PcState.EDIT_TEST_AFFECTED_PATHS, "recovery_continue") == AppAccess.TEST_AND_RUN
+    # a non-privileged working step (diagnose) and recovery_restart stay EDIT
+    assert _app_access_for_action(PcState.FIX_DIAGNOSE, "recovery_continue") == AppAccess.EDIT
+    assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_restart") == AppAccess.EDIT
