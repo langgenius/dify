@@ -146,6 +146,12 @@ class FilePreviewApi(Resource):
         if args.as_attachment or is_svg:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+            # Force a generic binary Content-Type when downloading as an
+            # attachment (or for SVG, which browsers sniff dangerously) so
+            # the browser does not try to render the file inline. Inline
+            # previews (as_attachment=False) must keep the real mime type —
+            # otherwise user-uploaded and generated images render as broken
+            # previews in the logs UI (#40479).
             response.headers["Content-Type"] = "application/octet-stream"
         if is_svg:
             response.headers["X-Content-Type-Options"] = "nosniff"
