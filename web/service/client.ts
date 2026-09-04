@@ -6,6 +6,11 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { consoleRouterContract } from '@dify/contracts/console'
 import type {
+  EnvironmentAccess,
+  GetEnvironmentDeploymentResponse,
+  ListEnvironmentDeploymentsResponse,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type {
   GetReleaseResponse,
   ListReleasesResponse,
   PrecheckReleaseRequest,
@@ -212,27 +217,40 @@ function invalidateEnvironmentApiKeyQueries(
   ])
 }
 
-function invalidateWorkflowDeploymentQueries(
+function environmentDeploymentQueries(
   query: ConsoleQueryUtils,
-  client: QueryClient,
   params: { app_id: string; environment_id: string },
-  { appEnvironments }: { appEnvironments: boolean },
 ) {
   const environmentParams = {
     app_id: params.app_id,
     environment_id: params.environment_id,
   }
-  const queryKeys: QueryKey[] = [
-    query.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-      input: {
-        params: {
-          app_id: params.app_id,
-        },
-      },
-    }).queryKey,
-    query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+
+  return {
+    deployment: query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
       input: { params: environmentParams },
-    }).queryKey,
+    }),
+    deployments:
+      query.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      }),
+  }
+}
+
+function invalidateEnvironmentDeploymentQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  { appEnvironments }: { appEnvironments: boolean },
+) {
+  const environmentQueries = environmentDeploymentQueries(query, params)
+  const queryKeys: QueryKey[] = [
+    environmentQueries.deployments.queryKey,
+    environmentQueries.deployment.queryKey,
   ]
 
   if (appEnvironments) {
@@ -248,6 +266,65 @@ function invalidateWorkflowDeploymentQueries(
   }
 
   return invalidateQueryKeys(client, queryKeys)
+}
+
+function syncEnvironmentAccessCaches(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  accessPatch: Partial<EnvironmentAccess>,
+) {
+  const environmentQueries = environmentDeploymentQueries(query, params)
+
+  client.setQueryData<ListEnvironmentDeploymentsResponse>(
+    environmentQueries.deployments.queryKey,
+    (current) => {
+      if (
+        !current?.environment_deployments.some(
+          (deployment) => deployment.environment.id === params.environment_id,
+        )
+      )
+        return current
+
+      return {
+        ...current,
+        environment_deployments: current.environment_deployments.map((deployment) =>
+          deployment.environment.id === params.environment_id
+            ? {
+                ...deployment,
+                access: {
+                  ...deployment.access,
+                  ...accessPatch,
+                },
+              }
+            : deployment,
+        ),
+      }
+    },
+  )
+  client.setQueryData<GetEnvironmentDeploymentResponse>(
+    environmentQueries.deployment.queryKey,
+    (current) => {
+      if (!current || current.environment_deployment.environment.id !== params.environment_id)
+        return current
+
+      return {
+        ...current,
+        environment_deployment: {
+          ...current.environment_deployment,
+          access: {
+            ...current.environment_deployment.access,
+            ...accessPatch,
+          },
+        },
+      }
+    },
+  )
+
+  return invalidateQueryKeys(client, [
+    environmentQueries.deployments.queryKey,
+    environmentQueries.deployment.queryKey,
+  ])
 }
 
 function appInstanceQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
@@ -490,8 +567,8 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-        timezone: {
-          post: {
+        profile: {
+          patch: {
             mutationOptions: {
               onSuccess: async (_data, _variables, _onMutateResult, context) => {
                 await context.client.invalidateQueries({
@@ -1342,12 +1419,52 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 },
               },
             },
+            updateEnvironmentApi: {
+              mutationOptions: {
+                onSuccess: (updatedApi, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+                      input: { params: variables.params },
+                    }).queryKey,
+                    updatedApi,
+                  )
+
+                  return syncEnvironmentAccessCaches(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { enable_api: updatedApi.enabled },
+                  )
+                },
+              },
+            },
+            updateEnvironmentSite: {
+              mutationOptions: {
+                onSuccess: (updatedSite, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions(
+                      {
+                        input: { params: variables.params },
+                      },
+                    ).queryKey,
+                    updatedSite,
+                  )
+
+                  return syncEnvironmentAccessCaches(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { enable_site: updatedSite.enabled },
+                  )
+                },
+              },
+            },
           },
           deploymentService: {
             deployWorkflow: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
-                  return invalidateWorkflowDeploymentQueries(
+                  return invalidateEnvironmentDeploymentQueries(
                     consoleQuery,
                     context.client,
                     variables.params,
@@ -1359,7 +1476,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             undeployWorkflow: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
-                  return invalidateWorkflowDeploymentQueries(
+                  return invalidateEnvironmentDeploymentQueries(
                     consoleQuery,
                     context.client,
                     variables.params,
@@ -1407,16 +1524,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
 
                     const listResponse = await context.client
-                      .fetchQuery(
-                        consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-                          input: {
-                            query: {
-                              pageNumber: 1,
-                              resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                      .query({
+                        ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions(
+                          {
+                            input: {
+                              query: {
+                                pageNumber: 1,
+                                resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                              },
                             },
                           },
-                        }),
-                      )
+                        ),
+                        staleTime: 0,
+                      })
                       .catch(() => undefined)
 
                     if (listResponse?.appInstances?.some((app) => app.id === appInstanceId)) break

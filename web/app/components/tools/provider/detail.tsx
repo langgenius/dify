@@ -101,7 +101,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
       const summary = providers.find((item) => item.provider === collection?.id)
       if (!summary) return
       try {
-        const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
+        const response = await queryClient.query({
+          ...modelProviderDetailsQueryOptions(),
+          staleTime: 'static',
+        })
         const provider = response.data.find((item) => item.provider === summary.provider)
         if (!provider) return
         setShowModelModal({

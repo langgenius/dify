@@ -155,7 +155,10 @@ export function usePublishController({
 
       if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       void queryClient
-        .fetchQuery(appWorkflowQueryOptions(appId))
+        .query({
+          ...appWorkflowQueryOptions(appId),
+          staleTime: 0,
+        })
         .then((publishedWorkflow) => {
           workflowStore?.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
         })

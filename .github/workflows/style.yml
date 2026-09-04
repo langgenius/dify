@@ -45,13 +45,24 @@ jobs:
             .github/workflows/style.yml
             .github/workflows/main-ci.yml
 
+      - name: Check changed files (dify-agent)
+        id: changed-files-dify-agent
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            dify-agent/**
+            .github/workflows/style.yml
+            .github/workflows/main-ci.yml
+
       - name: Setup UV and Python
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true' || steps.changed-files-dify-agent.outputs.any_changed == 'true'
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
           python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
+          cache-dependency-glob: |
+            api/uv.lock
+            dify-agent/uv.lock
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -78,6 +89,14 @@ jobs:
         env:
           PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
+
+      - name: Run Dify Agent Ruff
+        if: steps.changed-files-dify-agent.outputs.any_changed == 'true'
+        run: make -C dify-agent check
+
+      - name: Run Dify Agent Type Checks
+        if: steps.changed-files-dify-agent.outputs.any_changed == 'true'
+        run: make -C dify-agent typecheck
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
