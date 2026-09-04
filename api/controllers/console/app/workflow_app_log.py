@@ -4,29 +4,25 @@ from typing import Any
 from dateutil.parser import isoparse
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
-    account_initialization_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import to_timestamp
-from libs.login import login_required
+from libs.helper import dump_response, to_timestamp
+from machinery.context import RequestContext
 from models import App
 from models.model import AppMode
-from services.workflow_app_service import WorkflowAppService
 
 
 class WorkflowAppLogQuery(BaseModel):
@@ -136,34 +132,32 @@ class WorkflowAppLogApi(Resource):
         "Workflow app logs retrieved successfully",
         console_ns.models[WorkflowAppLogPaginationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
+    @console_account_admission(
+        rbac_resource_scope=RBACResourceScope.APP,
+        rbac_permission=RBACPermission.APP_LOG_AND_ANNOTATION,
+    )
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(WorkflowAppLogQuery)
-    def get(self, req_data: WorkflowAppLogQuery, app_model: App):
+    def get(
+        self,
+        req_data: WorkflowAppLogQuery,
+        _request_context: RequestContext,
+        app_model: App,
+    ):
         """
         Get workflow app logs
         """
-
-        # get paginate workflow app logs
-        workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-                session=session,
-                app_model=app_model,
-                keyword=req_data.keyword,
-                status=req_data.status,
-                created_at_before=req_data.created_at__before,
-                created_at_after=req_data.created_at__after,
-                page=req_data.page,
-                limit=req_data.limit,
-                detail=req_data.detail,
-                created_by_end_user_session_id=req_data.created_by_end_user_session_id,
-                created_by_account=req_data.created_by_account,
-            )
-
-            return WorkflowAppLogPaginationResponse.model_validate(
-                workflow_app_log_pagination, from_attributes=True
-            ).model_dump(mode="json")
+        result = application_services().workflow_app_logs.list_logs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=req_data.keyword,
+            status=req_data.status,
+            created_at_before=req_data.created_at__before,
+            created_at_after=req_data.created_at__after,
+            page=req_data.page,
+            limit=req_data.limit,
+            detail=req_data.detail,
+            created_by_end_user_session_id=req_data.created_by_end_user_session_id,
+            created_by_account=req_data.created_by_account,
+        )
+        return dump_response(WorkflowAppLogPaginationResponse, result)
