@@ -463,7 +463,7 @@ jobs:
       - name: Type-check Dify Agent KnowledgeFS integration
         working-directory: ./dify-agent
         run: >-
-          uv run --project . --dev basedpyright --level error
+          uv run --project . --dev pyrefly check --summary=none
           src/dify_agent/layers/dify_core_tools/client.py
           tests/local/dify_agent/layers/dify_core_tools/test_client.py
 

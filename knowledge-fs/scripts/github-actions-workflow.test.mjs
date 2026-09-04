@@ -384,7 +384,7 @@ test("root workflow directly gates the Dify Agent KnowledgeFS core-tool callback
   }
   assert.match(lint.run, /ruff format --check/);
   assert.match(lint.run, /ruff check/);
-  assert.match(typecheck.run, /basedpyright --level error/);
+  assert.match(typecheck.run, /pyrefly check --summary=none/);
   assert.match(unitTests.run, /pytest[\s\S]*-q/);
 });
 
