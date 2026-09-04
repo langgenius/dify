@@ -16,6 +16,10 @@ than reusing the Flask-request-scoped ``db.session``, since this runs in a
 Celery worker, not a Flask request. The ``FlaskTask`` base
 (``extensions.ext_celery.init_app``) already wraps the task body in
 ``app.app_context()``, so this module must NOT push its own context.
+
+Once a message's user half is durable, a failed assistant half remains at
+the current waiting gate. The client can then retry with the same
+``client_turn_id`` without duplicating the user bubble.
 """
 
 import logging
@@ -111,6 +115,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     env: Env | None = None
     loaded_session: Session | None = None
     last_progress: ProgressEventData | None = None
+    action: Action | None = None
     try:
         repo = _build_repo()
         dify = WorkflowServiceDifyPort()
@@ -256,7 +261,24 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 )
             except Exception:
                 logger.exception("dify_builder failed progress publish failed for session %s", session_id)
-        if runner is not None:
+        retryable_message_failure = False
+        failed_action_kind = action.kind if action is not None else action_dict.get("kind")
+        failed_action_payload = action.payload if action is not None else action_dict.get("payload")
+        if repo is not None and failed_action_kind == "message" and isinstance(failed_action_payload, dict):
+            client_turn_id = failed_action_payload.get("client_turn_id")
+            if isinstance(client_turn_id, str) and client_turn_id:
+                try:
+                    turn_kinds = repo.get_conversation_turn_kinds(session_id, client_turn_id)
+                    retryable_message_failure = "user" in turn_kinds and "assistant_turn" not in turn_kinds
+                except Exception:
+                    logger.exception(
+                        "dify_builder could not inspect failed message turn for session %s",
+                        session_id,
+                    )
+
+        if retryable_message_failure:
+            terminal_error = {"kind": "error", "error": "step failed", "recoverable": True}
+        elif runner is not None:
             try:
                 runner.fail(session_id)
                 assert repo is not None

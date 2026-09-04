@@ -3,6 +3,7 @@ import type { SessionView } from '../types'
 import { createStore } from 'jotai'
 import {
   difyBuilderConversationAtom,
+  difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -19,6 +20,7 @@ import {
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderResetAtom,
+  difyBuilderRetryMessageAtom,
   difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
@@ -224,7 +226,7 @@ describe('Dify Builder store', () => {
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
   })
 
-  it('preserves a newer draft while the submitted draft is still sending', async () => {
+  it('clears the submitted draft immediately and preserves a newer draft while sending', async () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     let finishSending!: (sent: boolean) => void
@@ -242,6 +244,7 @@ describe('Dify Builder store', () => {
     store.set(difyBuilderDraftAtom, 'First draft')
 
     const sending = store.set(difyBuilderSendDraftAtom)
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
     await vi.waitFor(() => {
       expect(runtime.session.sendMessage).toHaveBeenCalledWith('First draft')
     })
@@ -250,6 +253,40 @@ describe('Dify Builder store', () => {
 
     expect(await sending).toBe(true)
     expect(store.get(difyBuilderDraftAtom)).toBe('Newer draft')
+  })
+
+  it('keeps the submitted draft cleared when sending fails', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    runtime.session.sendMessage = vi.fn(async () => false)
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
+    )
+    store.set(difyBuilderDraftAtom, 'Retry this message')
+
+    expect(await store.set(difyBuilderSendDraftAtom)).toBe(false)
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
+  })
+
+  it('retries a failed message with its original turn id', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
+    )
+    store.set(difyBuilderRetryableMessageAtom, {
+      sessionId: 'session-1',
+      text: 'Retry this message',
+      turnId: 'turn-retry-1',
+    })
+
+    expect(await store.set(difyBuilderRetryMessageAtom, 'turn-retry-1')).toBe(true)
+    expect(runtime.session.sendMessage).toHaveBeenCalledWith('Retry this message', 'turn-retry-1')
+    expect(store.get(difyBuilderRetryableMessageAtom)).toBeNull()
   })
 
   it('clears the composer draft when resetting the session', () => {

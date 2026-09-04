@@ -8,6 +8,12 @@ import type {
 } from '../types'
 import { atom } from 'jotai'
 
+export type DifyBuilderRetryableMessage = {
+  sessionId: string
+  text: string
+  turnId: string
+}
+
 export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
 // The only session lifecycle value persisted by the browser. SessionView is
 // an in-memory server projection rebuilt from GET on restore and updated by
@@ -18,6 +24,7 @@ export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
 export const difyBuilderSessionLastErrorAtom = atom('')
+export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage | null>(null)
 export const difyBuilderExecutionProgressAtom = atom<DifyBuilderExecutionProgress | null>(null)
 export const difyBuilderReasoningAtom = atom<DifyBuilderReasoning | null>(null)
 export const difyBuilderStreamingTurnAtom = atom<DifyBuilderStreamingTurn | null>(null)
@@ -34,6 +41,7 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastErrorAtom,
+  difyBuilderRetryableMessageAtom,
   difyBuilderExecutionProgressAtom,
   difyBuilderReasoningAtom,
   difyBuilderStreamingTurnAtom,
