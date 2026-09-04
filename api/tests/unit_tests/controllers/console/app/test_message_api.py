@@ -9,6 +9,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -141,6 +142,27 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     assert result is response_source
     response_source_factory.assert_called_once_with(message, session=session)
+
+
+def test_list_chat_messages_soft_deleted_conversation_raises_not_found(app: Flask, sqlite_session: Session) -> None:
+    _persist_message(sqlite_session, message_id="m-1")
+    conversation = sqlite_session.get(Conversation, "conversation-1")
+    assert conversation is not None
+    conversation.id = "550e8400-e29b-41d4-a716-446655440000"
+    conversation.is_deleted = True
+    sqlite_session.flush()
+
+    with app.test_request_context(
+        "/console/api/apps/app-1/chat-messages",
+        method="GET",
+        query_string={"conversation_id": "550e8400-e29b-41d4-a716-446655440000"},
+    ):
+        with pytest.raises(NotFound):
+            message_module._list_chat_messages(
+                session=sqlite_session,
+                app_model=SimpleNamespace(id="app-1", mode=AppMode.CHAT),
+                current_user=SimpleNamespace(id="account-1"),
+            )
 
 
 def test_message_response_source_uses_caller_session_for_nested_fields(unbound_session: Session) -> None:
