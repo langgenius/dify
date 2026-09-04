@@ -191,12 +191,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 5
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -293,12 +287,6 @@
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
     "typescript/no-explicit-any": {
@@ -616,14 +604,6 @@
   "web/app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
@@ -1209,14 +1189,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/image-gallery/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/image-uploader/__tests__/image-preview.spec.tsx": {
     "erasable-syntax-only/parameter-properties": {
       "count": 1
@@ -1237,14 +1209,6 @@
   },
   "web/app/components/base/image-uploader/image-link-input.tsx": {
     "regexp/no-unused-capturing-group": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/image-uploader/image-list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
       "count": 1
     }
   },
@@ -1309,12 +1273,6 @@
     }
   },
   "web/app/components/base/markdown-blocks/link.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1628,14 +1586,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/tab-slider-plain/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 12
@@ -1696,11 +1646,6 @@
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/datasets/chunk.tsx": {
-    "jsx-a11y/label-has-associated-control": {
-      "count": 2
     }
   },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
@@ -1792,14 +1737,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/create/file-uploader/components/upload-dropzone.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/datasets/create/file-uploader/hooks/use-file-upload.ts": {
@@ -1961,14 +1898,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/documents/create-from-pipeline/data-source/local-file/components/upload-dropzone.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
@@ -2160,12 +2089,6 @@
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
     }
   },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
@@ -3383,14 +3306,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/_base/components/form-input-boolean.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/form-input-item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3765,14 +3680,6 @@
   },
   "web/app/components/workflow/nodes/http/components/authorization/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/http/components/authorization/radio-group.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },

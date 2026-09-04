@@ -197,13 +197,14 @@ const SettingBuiltInTool: FC<Props> = ({
                       </IconButton>
                     </div>
                     {showBackButton && (
-                      <div
-                        className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                      <button
+                        type="button"
+                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
                         <RiArrowLeftLine className="size-4" />
                         {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
-                      </div>
+                      </button>
                     )}
                     <div className="flex items-center gap-1">
                       <Icon size="tiny" className="size-6" src={collection.icon} />

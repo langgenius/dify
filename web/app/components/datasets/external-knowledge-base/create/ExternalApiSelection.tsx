@@ -71,9 +71,9 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     <form className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">
+          <div className="system-sm-semibold text-text-secondary">
             {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-          </label>
+          </div>
         </div>
         {apiItems.length > 0 ? (
           <ExternalApiSelect

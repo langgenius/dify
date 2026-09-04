@@ -37,16 +37,21 @@ const ImageGallery: FC<Props> = ({ srcs }) => {
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
       {srcs.map((src, index) =>
         !src ? null : (
-          <img
+          <button
+            type="button"
             key={index}
             className={s.item}
             style={imgStyle}
-            src={src}
-            alt=""
-            data-testid="gallery-image" // Added for testing
             onClick={() => setImagePreviewUrl(src)}
-            onError={(e) => e.currentTarget.remove()}
-          />
+          >
+            <img
+              className={s.image}
+              src={src}
+              alt=""
+              data-testid="gallery-image" // Added for testing
+              onError={(e) => e.currentTarget.parentElement?.remove()}
+            />
+          </button>
         ),
       )}
       {imagePreviewUrl && (

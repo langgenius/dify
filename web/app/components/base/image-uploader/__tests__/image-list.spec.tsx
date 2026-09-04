@@ -72,7 +72,9 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} readonly onRemove={vi.fn()} />)
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -131,7 +133,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} onRemove={onRemove} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onRemove).toHaveBeenCalledTimes(1)
       expect(onRemove).toHaveBeenCalledWith('file-1')
@@ -280,8 +282,8 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} />)
 
-      // Button exists, clicking it should not throw
-      await user.click(screen.getByRole('button'))
+      // Remove button exists, clicking it should not throw
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     })
   })
 })

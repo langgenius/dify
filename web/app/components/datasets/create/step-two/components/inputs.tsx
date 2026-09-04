@@ -23,9 +23,7 @@ import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return (
-    <label className="text-xs leading-none font-semibold text-text-secondary">
-      {props.children}
-    </label>
+    <span className="text-xs leading-none font-semibold text-text-secondary">{props.children}</span>
   )
 }
 

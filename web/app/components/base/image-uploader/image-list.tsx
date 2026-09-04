@@ -104,19 +104,24 @@ const ImageList: FC<ImageListProps> = ({
                 )}
               </div>
             )}
-            <img
-              className="h-16 w-16 cursor-pointer rounded-lg border-[0.5px] border-black/5 object-cover"
-              alt={item.file?.name}
-              onLoad={() => handleImageLinkLoadSuccess(item)}
-              onError={() => handleImageLinkLoadError(item)}
-              src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
+            <button
+              type="button"
+              className="block cursor-pointer appearance-none rounded-lg border-0 bg-transparent p-0 leading-none"
               onClick={() =>
                 item.progress === 100 &&
                 setImagePreviewUrl(
                   (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string,
                 )
               }
-            />
+            >
+              <img
+                className="h-16 w-16 rounded-lg border-[0.5px] border-black/5 object-cover"
+                alt={item.file?.name}
+                onLoad={() => handleImageLinkLoadSuccess(item)}
+                onError={() => handleImageLinkLoadError(item)}
+                src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
+              />
+            </button>
             {!readonly && (
               <button
                 type="button"

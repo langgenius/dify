@@ -30,9 +30,9 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
 
   return (
     <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-text-tertiary">
+      <div className="mb-2 block text-xs font-medium text-text-tertiary">
         {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
-      </label>
+      </div>
 
       <div className="space-y-1.5">
         {rows.map((row, rowIndex) => (
