@@ -583,6 +583,7 @@ def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_sess
 def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
     tool = _agent_tool("tool1")
     tool_entity = mocker.Mock(spec=Tool, entity=_tool_entity("tool1"))
+    tool_entity.runtime = ToolRuntime(tenant_id="tenant")
     schema = {
         "type": "object",
         "properties": {"param1": {"type": "string", "description": "desc"}},
@@ -609,6 +610,7 @@ def test_convert_dataset_retriever_tool(runner: BaseAgentRunner, mocker: MockerF
 def test_init_prompt_tools_adds_agent_and_dataset_tools(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
     agent_tool = _agent_tool("agent_tool")
     agent_runtime = mocker.Mock(spec=Tool, entity=_tool_entity("agent_tool"))
+    agent_runtime.runtime = ToolRuntime(tenant_id="tenant")
     agent_runtime.get_llm_parameters_json_schema.return_value = {"type": "object", "properties": {}}
     mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=agent_runtime)
     dataset_tool = _dataset_tool(mocker, "dataset_tool")
