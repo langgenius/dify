@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Цей сеанс App Builder більше недоступний.",
   "difyBuilder.error.sessionBusy": "App Builder усе ще обробляє попередню дію.",
   "difyBuilder.error.streamUnavailable": "Підключення до App Builder недоступне.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Невдалий запуск",
   "difyBuilder.fixChecklistPrompt_one": "Виправити {{count}} проблему конфігурації",
   "difyBuilder.fixChecklistPrompt_other": "Виправити {{count}} проблеми конфігурації",

@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "この App Builder セッションは利用できなくなりました。",
   "difyBuilder.error.sessionBusy": "App Builder は前の操作を処理中です。",
   "difyBuilder.error.streamUnavailable": "App Builder への接続を利用できません。",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "失敗した実行",
   "difyBuilder.fixChecklistPrompt_one": "{{count}} 件の設定問題を修正する",
   "difyBuilder.fixChecklistPrompt_other": "{{count}} 件の設定問題を修正する",

@@ -8,6 +8,7 @@ export type SessionCommandOptions = {
   knownSessionId?: string
   expectTerminalEvent: boolean
   startsSession?: boolean
+  trace?: { kind: string; payload: unknown }
 }
 
 export type SessionStreamOutcome = {

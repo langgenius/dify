@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Deze App Builder-sessie is niet meer beschikbaar.",
   "difyBuilder.error.sessionBusy": "App Builder verwerkt de vorige actie nog.",
   "difyBuilder.error.streamUnavailable": "De verbinding met App Builder is niet beschikbaar.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Mislukte uitvoering",
   "difyBuilder.fixChecklistPrompt_one": "{{count}} configuratieprobleem oplossen",
   "difyBuilder.fixChecklistPrompt_other": "{{count}} configuratieproblemen oplossen",

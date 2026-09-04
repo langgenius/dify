@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Ta seja App Builder ni več na voljo.",
   "difyBuilder.error.sessionBusy": "App Builder še vedno obdeluje prejšnje dejanje.",
   "difyBuilder.error.streamUnavailable": "Povezava z App Builderjem ni na voljo.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Neuspešen zagon",
   "difyBuilder.fixChecklistPrompt_one": "Odpravi {{count}} težavo s konfiguracijo",
   "difyBuilder.fixChecklistPrompt_other": "Odpravi {{count}} težav s konfiguracijo",

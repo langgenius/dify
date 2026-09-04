@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Phiên App Builder này không còn khả dụng.",
   "difyBuilder.error.sessionBusy": "App Builder vẫn đang xử lý hành động trước đó.",
   "difyBuilder.error.streamUnavailable": "Không thể kết nối với App Builder.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Lần chạy thất bại",
   "difyBuilder.fixChecklistPrompt_one": "Khắc phục {{count}} vấn đề cấu hình",
   "difyBuilder.fixChecklistPrompt_other": "Khắc phục {{count}} vấn đề cấu hình",

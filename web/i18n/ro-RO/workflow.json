@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Această sesiune App Builder nu mai este disponibilă.",
   "difyBuilder.error.sessionBusy": "App Builder încă procesează acțiunea anterioară.",
   "difyBuilder.error.streamUnavailable": "Conexiunea la App Builder nu este disponibilă.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Rulare eșuată",
   "difyBuilder.fixChecklistPrompt_one": "Remediază {{count}} problemă de configurare",
   "difyBuilder.fixChecklistPrompt_other": "Remediază {{count}} probleme de configurare",

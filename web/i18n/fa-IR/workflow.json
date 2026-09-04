@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "این نشست App Builder دیگر در دسترس نیست.",
   "difyBuilder.error.sessionBusy": "App Builder هنوز در حال پردازش اقدام قبلی است.",
   "difyBuilder.error.streamUnavailable": "اتصال App Builder در دسترس نیست.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "اجرای ناموفق",
   "difyBuilder.fixChecklistPrompt_one": "رفع {{count}} مشکل پیکربندی",
   "difyBuilder.fixChecklistPrompt_other": "رفع {{count}} مشکل پیکربندی",
