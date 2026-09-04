@@ -29,6 +29,7 @@ from repositories.account_oauth_repository import (
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
@@ -278,6 +279,20 @@ def test_build_application_services_wires_workflow_app_log_boundary(
     assert isinstance(services.workflow_app_logs, WorkflowAppLogQueryService)
     assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogQueryRepository)
     assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_app_statistic_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_statistics, AppStatisticQueryRepository)
+    assert services.app_statistics._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_workflow_run_service(
