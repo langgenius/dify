@@ -15,12 +15,18 @@ type ApiItem = {
 }
 
 type ExternalApiSelectProps = {
+  'aria-labelledby'?: string
   items: ApiItem[]
   value?: string
   onSelect: (item: ApiItem) => void
 }
 
-const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onSelect }) => {
+const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
+  'aria-labelledby': ariaLabelledBy,
+  items,
+  value,
+  onSelect,
+}) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
@@ -59,6 +65,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
     <div className="relative w-full">
       <button
         type="button"
+        aria-labelledby={ariaLabelledBy}
         className={`flex w-full cursor-pointer appearance-none items-center justify-between gap-0.5 self-stretch rounded-lg border-0 bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >
