@@ -414,6 +414,11 @@
       "count": 1
     }
   },
+  "web/app/components/app/deploy/shared/deployment-configuration/use-deployment-configuration-queries.ts": {
+    "@tanstack/query/prefer-query-options": {
+      "count": 2
+    }
+  },
   "web/app/components/app/in-site-message/__tests__/notification.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
