@@ -49,6 +49,29 @@ RESOURCE_ID = {
     svc.RBACResourceType.AGENT: "agent-1",
 }
 
+# The URL segment and path parameter of each resource kind, spelled out here instead of read
+# back from the same enum the controller builds its URLs from, so a rename fails this test.
+RESOURCE_URL_PARTS = {
+    svc.RBACResourceType.APP: ("apps", "app_id"),
+    svc.RBACResourceType.DATASET: ("datasets", "dataset_id"),
+    svc.RBACResourceType.AGENT: ("agents", "agent_id"),
+}
+
+# Only app and dataset carry a maintainer column to pin to the top of the member list.
+MAINTAINER_HELPER = {
+    svc.RBACResourceType.APP: "app_maintainer_id",
+    svc.RBACResourceType.DATASET: "dataset_maintainer_id",
+    svc.RBACResourceType.AGENT: None,
+}
+
+
+def _segment(spec: rbac_mod._ResourceAccessRoutes) -> str:
+    return RESOURCE_URL_PARTS[spec.resource_type][0]
+
+
+def _id_param(spec: rbac_mod._ResourceAccessRoutes) -> str:
+    return RESOURCE_URL_PARTS[spec.resource_type][1]
+
 
 @pytest.fixture
 def app() -> Flask:
@@ -88,8 +111,8 @@ def _patched_current_ids() -> Generator[None]:
 
 
 def _expected_routes(spec: rbac_mod._ResourceAccessRoutes) -> dict[str, tuple[str, set[str]]]:
-    resource = f"/workspaces/current/rbac/{spec.url_segment}/<uuid:{spec.id_param}>"
-    workspace = f"/workspaces/current/rbac/workspace/{spec.url_segment}"
+    resource = f"/workspaces/current/rbac/{_segment(spec)}/<uuid:{_id_param(spec)}>"
+    workspace = f"/workspaces/current/rbac/workspace/{_segment(spec)}"
     prefix = spec.class_prefix
     return {
         f"/workspaces/current/rbac/role-permissions/catalog/{spec.resource_type.value}": (
@@ -145,10 +168,10 @@ def test_matrix_reads_the_resource_client(
 ) -> None:
     matrix = MagicMock(return_value=spec.matrix_model())
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/access-policy"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/access-policy"),
         patch.object(spec.access, "matrix", matrix),
     ):
-        inspect.unwrap(apis.matrix.get)(apis.matrix(), **{spec.id_param: resource_id})
+        inspect.unwrap(apis.matrix.get)(apis.matrix(), **{_id_param(spec): resource_id})
 
     matrix.assert_called_once_with("tenant-1", "acct-actor", resource_id)
 
@@ -158,10 +181,10 @@ def test_whitelist_get_reads_the_resource_client(
 ) -> None:
     whitelist = MagicMock(return_value=svc.ResourceWhitelist())
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/whitelist"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/whitelist"),
         patch.object(spec.access, "whitelist", whitelist),
     ):
-        inspect.unwrap(apis.whitelist.get)(apis.whitelist(), **{spec.id_param: resource_id})
+        inspect.unwrap(apis.whitelist.get)(apis.whitelist(), **{_id_param(spec): resource_id})
 
     whitelist.assert_called_once_with("tenant-1", "acct-actor", resource_id)
 
@@ -181,21 +204,21 @@ def test_whitelist_put_queues_the_seed_task_only_when_auto_including(
     )
     with (
         app.test_request_context(
-            f"/{spec.url_segment}/{resource_id}/whitelist",
+            f"/{_segment(spec)}/{resource_id}/whitelist",
             method="PUT",
             json={"automatic_include_workspace_members": automatic_include_workspace_members},
         ),
         patch.object(spec.access, "replace_whitelist", replace),
         patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as seed_task,
     ):
-        inspect.unwrap(apis.whitelist.put)(apis.whitelist(), **{spec.id_param: resource_id})
+        inspect.unwrap(apis.whitelist.put)(apis.whitelist(), **{_id_param(spec): resource_id})
 
     tenant_id, actor_id, target_id, payload = replace.call_args.args
     assert (tenant_id, actor_id, target_id) == ("tenant-1", "acct-actor", resource_id)
     assert payload.automatic_include_workspace_members is automatic_include_workspace_members
 
     if automatic_include_workspace_members:
-        seed_task.delay.assert_called_once_with("tenant-1", "acct-actor", **{spec.id_param: resource_id})
+        seed_task.delay.assert_called_once_with("tenant-1", "acct-actor", **{_id_param(spec): resource_id})
     else:
         seed_task.delay.assert_not_called()
 
@@ -205,10 +228,10 @@ def test_whitelist_config_reads_the_resource_client(
 ) -> None:
     config = MagicMock(return_value=svc.ResourceWhitelistConfig(automatic_include_workspace_members=True))
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/whitelist_config"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/whitelist_config"),
         patch.object(spec.access, "whitelist_config", config),
     ):
-        response = inspect.unwrap(apis.whitelist_config.get)(apis.whitelist_config(), **{spec.id_param: resource_id})
+        response = inspect.unwrap(apis.whitelist_config.get)(apis.whitelist_config(), **{_id_param(spec): resource_id})
 
     assert response == {"automatic_include_workspace_members": True}
     config.assert_called_once_with("tenant-1", "acct-actor", resource_id)
@@ -219,16 +242,38 @@ def test_user_access_policies_forwards_pagination(
 ) -> None:
     policies = MagicMock(return_value=svc.ResourceUserAccessPoliciesResponse())
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/user-access-policies?page=2&limit=30"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/user-access-policies?page=2&limit=30&reverse=true"),
         patch.object(spec.access, "user_access_policies", policies),
         patch("controllers.console.workspace.rbac.svc.app_maintainer_id", return_value=None),
         patch("controllers.console.workspace.rbac.svc.dataset_maintainer_id", return_value=None),
     ):
-        inspect.unwrap(apis.user_access_policies.get)(apis.user_access_policies(), **{spec.id_param: resource_id})
+        inspect.unwrap(apis.user_access_policies.get)(apis.user_access_policies(), **{_id_param(spec): resource_id})
 
     assert policies.call_args.args == ("tenant-1", "acct-actor", resource_id)
     options = policies.call_args.kwargs["options"]
     assert (options.page_number, options.results_per_page) == (2, 30)
+    assert options.reverse is True
+
+
+def test_user_access_policies_pins_the_maintainer_only_where_one_exists(
+    app: Flask, apis: rbac_mod._ResourceAccessApis, spec: rbac_mod._ResourceAccessRoutes, resource_id: str
+) -> None:
+    policies = MagicMock(return_value=svc.ResourceUserAccessPoliciesResponse())
+    helpers = {name: MagicMock(return_value=None) for name in ("app_maintainer_id", "dataset_maintainer_id")}
+    with (
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/user-access-policies"),
+        patch.object(spec.access, "user_access_policies", policies),
+        patch("controllers.console.workspace.rbac.svc.app_maintainer_id", helpers["app_maintainer_id"]),
+        patch("controllers.console.workspace.rbac.svc.dataset_maintainer_id", helpers["dataset_maintainer_id"]),
+    ):
+        inspect.unwrap(apis.user_access_policies.get)(apis.user_access_policies(), **{_id_param(spec): resource_id})
+
+    expected_helper = MAINTAINER_HELPER[spec.resource_type]
+    for name, helper in helpers.items():
+        if name == expected_helper:
+            helper.assert_called_once_with("tenant-1", resource_id)
+        else:
+            helper.assert_not_called()
 
 
 def test_user_access_policy_assignment_forwards_ids(
@@ -237,7 +282,7 @@ def test_user_access_policy_assignment_forwards_ids(
     replace = MagicMock(return_value=svc.ReplaceUserAccessPoliciesResponse())
     with (
         app.test_request_context(
-            f"/{spec.url_segment}/{resource_id}/users/acct-target/access-policies",
+            f"/{_segment(spec)}/{resource_id}/users/acct-target/access-policies",
             method="PUT",
             json={"access_policy_ids": ["policy-1", "policy-2"]},
         ),
@@ -246,7 +291,7 @@ def test_user_access_policy_assignment_forwards_ids(
         inspect.unwrap(apis.user_access_policy_assignment.put)(
             apis.user_access_policy_assignment(),
             target_account_id="acct-target",
-            **{spec.id_param: resource_id},
+            **{_id_param(spec): resource_id},
         )
 
     tenant_id, actor_id, target_id, target_account_id, payload = replace.call_args.args
@@ -264,11 +309,11 @@ def test_role_bindings_reads_the_resource_client(
 ) -> None:
     bindings = MagicMock(return_value=svc.RoleBindingsResponse())
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/access-policies/policy-1/role-bindings"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/access-policies/policy-1/role-bindings"),
         patch.object(spec.access, "list_role_bindings", bindings),
     ):
         inspect.unwrap(apis.role_bindings.get)(
-            apis.role_bindings(), policy_id="policy-1", **{spec.id_param: resource_id}
+            apis.role_bindings(), policy_id="policy-1", **{_id_param(spec): resource_id}
         )
 
     bindings.assert_called_once_with("tenant-1", "acct-actor", resource_id, "policy-1")
@@ -279,11 +324,11 @@ def test_member_bindings_get_reads_the_resource_client(
 ) -> None:
     bindings = MagicMock(return_value=svc.MemberBindingsResponse())
     with (
-        app.test_request_context(f"/{spec.url_segment}/{resource_id}/access-policies/policy-1/member-bindings"),
+        app.test_request_context(f"/{_segment(spec)}/{resource_id}/access-policies/policy-1/member-bindings"),
         patch.object(spec.access, "list_member_bindings", bindings),
     ):
         inspect.unwrap(apis.member_bindings.get)(
-            apis.member_bindings(), policy_id="policy-1", **{spec.id_param: resource_id}
+            apis.member_bindings(), policy_id="policy-1", **{_id_param(spec): resource_id}
         )
 
     bindings.assert_called_once_with("tenant-1", "acct-actor", resource_id, "policy-1")
@@ -295,14 +340,14 @@ def test_member_bindings_delete_forwards_account_ids(
     delete = MagicMock()
     with (
         app.test_request_context(
-            f"/{spec.url_segment}/{resource_id}/access-policies/policy-1/member-bindings",
+            f"/{_segment(spec)}/{resource_id}/access-policies/policy-1/member-bindings",
             method="DELETE",
             json={"account_ids": ["acct-2", "acct-3"]},
         ),
         patch.object(spec.access, "delete_member_bindings", delete),
     ):
         response = inspect.unwrap(apis.member_bindings.delete)(
-            apis.member_bindings(), policy_id="policy-1", **{spec.id_param: resource_id}
+            apis.member_bindings(), policy_id="policy-1", **{_id_param(spec): resource_id}
         )
 
     assert response == {"result": "success"}
@@ -317,7 +362,7 @@ def test_workspace_matrix_forwards_pagination(
     matrix = MagicMock(return_value=svc.WorkspaceAccessMatrix())
     method_name = WORKSPACE_ACCESS_METHODS[spec.resource_type]["matrix"]
     with (
-        app.test_request_context(f"/workspace/{spec.url_segment}/access-policy?page=4&limit=10"),
+        app.test_request_context(f"/workspace/{_segment(spec)}/access-policy?page=4&limit=10&reverse=true"),
         patch.object(svc.RBACService.WorkspaceAccess, method_name, matrix),
     ):
         inspect.unwrap(apis.workspace_matrix.get)(apis.workspace_matrix())
@@ -325,6 +370,7 @@ def test_workspace_matrix_forwards_pagination(
     assert matrix.call_args.args == ("tenant-1", "acct-actor")
     options = matrix.call_args.kwargs["options"]
     assert (options.page_number, options.results_per_page) == (4, 10)
+    assert options.reverse is True
 
 
 def test_workspace_role_bindings_reads_the_workspace_client(
@@ -333,7 +379,7 @@ def test_workspace_role_bindings_reads_the_workspace_client(
     bindings = MagicMock(return_value=svc.RoleBindingsResponse())
     method_name = WORKSPACE_ACCESS_METHODS[spec.resource_type]["role_bindings"]
     with (
-        app.test_request_context(f"/workspace/{spec.url_segment}/access-policies/policy-1/role-bindings"),
+        app.test_request_context(f"/workspace/{_segment(spec)}/access-policies/policy-1/role-bindings"),
         patch.object(svc.RBACService.WorkspaceAccess, method_name, bindings),
     ):
         inspect.unwrap(apis.workspace_role_bindings.get)(apis.workspace_role_bindings(), "policy-1")
@@ -347,7 +393,7 @@ def test_workspace_member_bindings_reads_the_workspace_client(
     bindings = MagicMock(return_value=svc.MemberBindingsResponse())
     method_name = WORKSPACE_ACCESS_METHODS[spec.resource_type]["member_bindings"]
     with (
-        app.test_request_context(f"/workspace/{spec.url_segment}/access-policies/policy-1/member-bindings"),
+        app.test_request_context(f"/workspace/{_segment(spec)}/access-policies/policy-1/member-bindings"),
         patch.object(svc.RBACService.WorkspaceAccess, method_name, bindings),
     ):
         inspect.unwrap(apis.workspace_member_bindings.get)(apis.workspace_member_bindings(), "policy-1")
@@ -362,7 +408,7 @@ def test_workspace_bindings_put_forwards_role_and_account_ids(
     method_name = WORKSPACE_ACCESS_METHODS[spec.resource_type]["replace_bindings"]
     with (
         app.test_request_context(
-            f"/workspace/{spec.url_segment}/access-policies/policy-1/bindings",
+            f"/workspace/{_segment(spec)}/access-policies/policy-1/bindings",
             method="PUT",
             json={"role_ids": ["role-1"], "account_ids": ["acct-2"]},
         ),

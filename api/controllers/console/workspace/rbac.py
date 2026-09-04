@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -580,6 +580,9 @@ class RBACMyPermissionsApi(Resource):
 # The three resource kinds expose the same twelve endpoints and differ only in
 # the URL segment, the path parameter and which inner-API client they call, so
 # they are declared once as a table and registered in a loop.
+#
+# `dev/lint_response_contracts.py` is AST-based and cannot see generated classes, so the
+# documented-vs-returned response models below are covered by tests, not by that linter.
 # ---------------------------------------------------------------------------
 
 
@@ -699,7 +702,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
     resource_prefix = f"/workspaces/current/rbac/{spec.url_segment}/<uuid:{id_param}>"
     workspace_prefix = f"/workspaces/current/rbac/workspace/{spec.url_segment}"
 
-    def resource_id(path_params) -> str:
+    def resource_id(path_params: Mapping[str, object]) -> str:
         return str(path_params[id_param])
 
     def register(resource: type[Resource], name: str, url: str) -> type[Resource]:

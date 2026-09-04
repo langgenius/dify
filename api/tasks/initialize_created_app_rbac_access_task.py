@@ -160,10 +160,8 @@ def _resolve_target_resource(
     """Return the resource kind and id for the single id the caller supplied."""
     provided = [(resource_type, rid) for resource_type, rid in resource_ids.items() if rid is not None]
     if len(provided) != 1:
-        raise ValueError(
-            "exactly one of app_id, dataset_id, agent_id must be given, got: "
-            + ", ".join(sorted(resource_type.value for resource_type, _ in provided))
-        )
+        given = ", ".join(sorted(resource_type.value for resource_type, _ in provided)) or "none"
+        raise ValueError(f"exactly one of app_id, dataset_id, agent_id must be given, got: {given}")
     resource_type, resource_id = provided[0]
     return _WHITELIST_RESOURCE_KIND_BY_TYPE[resource_type], resource_id
 
