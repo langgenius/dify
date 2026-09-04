@@ -50,13 +50,14 @@ describe('permission', () => {
       expect(releaseCapabilities.canDeploy).toBe(false)
     })
 
-    it('keeps access point permission independent from other app ACL permissions', () => {
-      const accessPointCapabilities = getAppACLCapabilities([AppACLPermission.AccessPoint])
-      const layoutCapabilities = getAppACLCapabilities([AppACLPermission.ViewLayout])
+    it('allows Access Point managers to view the page without granting management to viewers', () => {
+      const viewCapabilities = getAppACLCapabilities([AppACLPermission.AccessPointView])
+      const manageCapabilities = getAppACLCapabilities([AppACLPermission.AccessPointManage])
 
-      expect(accessPointCapabilities.canAccessPoint).toBe(true)
-      expect(accessPointCapabilities.canAccessLayout).toBe(false)
-      expect(layoutCapabilities.canAccessPoint).toBe(false)
+      expect(viewCapabilities.canViewAccessPoint).toBe(true)
+      expect(viewCapabilities.canManageAccessPoint).toBe(false)
+      expect(manageCapabilities.canViewAccessPoint).toBe(true)
+      expect(manageCapabilities.canManageAccessPoint).toBe(true)
     })
 
     it('keeps monitor, tracing config, and log/annotation permissions independent', () => {
@@ -118,7 +119,8 @@ describe('permission', () => {
       })
 
       expect(capabilities.canViewLayout).toBe(true)
-      expect(capabilities.canAccessPoint).toBe(true)
+      expect(capabilities.canViewAccessPoint).toBe(true)
+      expect(capabilities.canManageAccessPoint).toBe(true)
       expect(capabilities.canTestAndRun).toBe(true)
       expect(capabilities.canEdit).toBe(true)
       expect(capabilities.canImportExportDSL).toBe(true)

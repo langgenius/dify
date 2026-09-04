@@ -5,8 +5,7 @@ the EE blueprint chain is what gives CE deploys no callers on this surface
 in practice, but the explicit short-circuit avoids any test/fixture that
 flips the surface on without flipping the license.
 
-Reuses ``FeatureService.get_system_features()`` so the license status
-travels the same path as the console reads.
+Uses the narrow system license policy shared with Console admission.
 
 Companion to ``controllers.console.wraps.enterprise_license_required`` —
 that one is for console (cookie-authed, force-logout 401). This one is
@@ -24,7 +23,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from enums import DeploymentEdition
 from services.entities.feature_entities import LicenseStatus
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +46,8 @@ def license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def _is_license_valid() -> bool:
     try:
-        features = FeatureService.get_system_features()
+        license_status = SystemFeatureService.get_license_status()
     except Exception:
-        logger.exception("license_gate: FeatureService.get_system_features failed")
+        logger.exception("license_gate: SystemFeatureService.get_license_status failed")
         return False
-    return features.license.status in _VALID_LICENSE_STATUSES
+    return license_status in _VALID_LICENSE_STATUSES

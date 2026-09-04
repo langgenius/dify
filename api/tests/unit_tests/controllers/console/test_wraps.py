@@ -14,6 +14,7 @@ from werkzeug.exceptions import HTTPException
 from controllers.common.wraps import _extract_resource_id
 from controllers.console import api as console_api
 from controllers.console import flask_admission
+from controllers.console import wraps as wraps_module
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
@@ -52,6 +53,24 @@ from tests.unit_tests.config_override import config_overrides_context
 def reset_setup_required_cache():
     """Keep setup_required's process cache isolated across unit tests."""
     _is_setup_completed.reset_success()
+
+
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_features(workspace_id: str):
+            return wraps_module.FeatureService.get_features(workspace_id, exclude_vector_space=True)
+
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -197,15 +216,18 @@ class TestCurrentContextInjection:
         account_initialization_required.assert_called_once()
 
     def test_console_email_registration_admission_checks_features_once(self):
-        features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         with (
             patch(
                 "controllers.console.flask_admission.setup_required", side_effect=lambda view: view
             ) as setup_required,
             patch(
-                "controllers.console.flask_admission.FeatureService.get_system_features",
-                return_value=features,
-            ) as get_system_features,
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=True,
+            ) as is_email_password_login_enabled,
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=True,
+            ) as is_registration_allowed,
         ):
 
             class Handler:
@@ -218,7 +240,8 @@ class TestCurrentContextInjection:
 
         assert result == "ok"
         setup_required.assert_called_once()
-        get_system_features.assert_called_once_with()
+        is_email_password_login_enabled.assert_called_once_with()
+        is_registration_allowed.assert_called_once_with()
 
     @pytest.mark.parametrize(
         ("enable_email_password_login", "is_allow_register"),
@@ -232,15 +255,15 @@ class TestCurrentContextInjection:
         enable_email_password_login: bool,
         is_allow_register: bool,
     ) -> None:
-        features = SimpleNamespace(
-            enable_email_password_login=enable_email_password_login,
-            is_allow_register=is_allow_register,
-        )
         with (
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch(
-                "controllers.console.flask_admission.FeatureService.get_system_features",
-                return_value=features,
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=enable_email_password_login,
+            ),
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=is_allow_register,
             ),
         ):
 
@@ -1231,16 +1254,16 @@ class TestEnterpriseLicense:
 
     def test_should_allow_with_valid_license(self):
         """Test that valid licenses allow access"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = LicenseStatus.ACTIVE
 
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=LicenseStatus.ACTIVE,
+        ):
             result = enterprise_feature()
 
         # Assert
@@ -1249,16 +1272,16 @@ class TestEnterpriseLicense:
     @pytest.mark.parametrize("invalid_status", [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST])
     def test_should_reject_with_invalid_license(self, invalid_status):
         """Test that invalid licenses raise UnauthorizedAndForceLogout"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = invalid_status
 
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=invalid_status,
+        ):
             with pytest.raises(UnauthorizedAndForceLogout) as exc_info:
                 enterprise_feature()
             assert "license is invalid" in str(exc_info.value)

@@ -21,11 +21,11 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 @pytest.fixture
 def setup_dependencies() -> Iterator[MagicMock]:
     with (
-        patch("services.account_service.FeatureService") as feature_service,
+        patch("services.account_service.SystemFeatureService") as feature_service,
         patch("services.account_service.BillingService") as billing_service,
         patch("services.account_service.CommunityTelemetryService.report_install") as report_install,
     ):
-        feature_service.get_system_features.return_value.is_allow_register = True
+        feature_service.is_registration_allowed.return_value = True
         feature_service.get_license.return_value.seats.is_available.return_value = True
         feature_service.get_license.return_value.workspaces.is_available.return_value = True
         feature_service.is_workspace_creation_allowed.return_value = True

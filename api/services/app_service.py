@@ -49,8 +49,8 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -703,7 +703,7 @@ class AppService:
             app.id,
         )
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
@@ -1155,7 +1155,7 @@ class AppService:
         )
 
         # clean up web app settings
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:

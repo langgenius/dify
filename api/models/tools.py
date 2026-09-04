@@ -62,7 +62,7 @@ class ToolOAuthTenantClient(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), init=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False, init=False)
 
@@ -109,7 +109,7 @@ class BuiltinToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[CredentialType] = mapped_column(
         EnumText(CredentialType, length=32),

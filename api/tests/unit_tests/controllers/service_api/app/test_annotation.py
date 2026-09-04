@@ -229,7 +229,8 @@ class TestAnnotationListApi:
         handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
         with app.test_request_context("/apps/annotations", method="GET"):
-            response = handler(api, MagicMock(), app_model=app_model)
+            query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+            response = handler(api, query, MagicMock(), app_model=app_model)
         assert response["page"] == 1
         assert response["limit"] == 20
         session = get_mock.call_args.args[-1]
@@ -244,7 +245,8 @@ class TestAnnotationListApi:
         handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
         with app.test_request_context("/apps/annotations?page=2&limit=5&keyword=refund", method="GET"):
-            response = handler(api, MagicMock(), app_model=app_model)
+            query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+            response = handler(api, query, MagicMock(), app_model=app_model)
         assert response["total"] == 1
         assert response["page"] == 2
         assert response["limit"] == 5
@@ -259,11 +261,12 @@ class TestAnnotationListApi:
         get_mock = Mock(return_value=([], 0))
         monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
         api = AnnotationListApi()
-        handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app")
+        # The parse moved into @model_validate, so build the query the way the decorator does and
+        # assert it is what rejects the input, before the view is ever reached.
         with app.test_request_context(f"/apps/annotations?{query_string}", method="GET"):
             with pytest.raises(ValidationError):
-                handler(api, MagicMock(), app_model=app_model)
+                AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+        assert unwrap(api.get) is not api.get
         get_mock.assert_not_called()
 
     def test_create(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

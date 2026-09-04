@@ -40,8 +40,6 @@ class BillingPortalService:
 
     def _resolve_account_email_and_workspace_id(self, context: RequestContext) -> tuple[str, str]:
         workspace_id = context.active_workspace_id
-        if workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
 
         account = self._accounts.get(context.account_id)
         if account is None:

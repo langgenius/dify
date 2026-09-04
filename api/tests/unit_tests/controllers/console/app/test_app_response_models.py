@@ -563,8 +563,8 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     )
     monkeypatch.setattr(
         app_module,
-        "FeatureService",
-        SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
+        "SystemFeatureService",
+        SimpleNamespace(is_webapp_auth_enabled=lambda: False),
     )
     get_permissions = MagicMock(
         return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
@@ -680,9 +680,9 @@ def test_app_list_api_attaches_permission_keys(
                 get_paginate_apps,
             )
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
@@ -865,9 +865,9 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
                 lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
             )
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
 
             resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
@@ -922,9 +922,9 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
                 lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-whitelist-only"]),
             )
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
 
             method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
@@ -960,9 +960,9 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
                 lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-not-permitted"]),
             )
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
 
             method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
@@ -996,9 +996,9 @@ def test_app_detail_api_attaches_current_user_permission_keys(
             get_app = MagicMock(return_value=app_obj)
             monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
             get_permissions = MagicMock(
                 return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
@@ -1081,9 +1081,9 @@ def test_app_copy_api_attaches_permission_keys(
                 ),
             )
             monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
             )
             monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=sqlite_engine))
             monkeypatch.setattr(

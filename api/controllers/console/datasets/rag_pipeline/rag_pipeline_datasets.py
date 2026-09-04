@@ -17,7 +17,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from fields.dataset_fields import DatasetDetailResponse
+from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -116,6 +116,7 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
+        session = db.session()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(
             tenant_id=current_tenant_id,
             rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(
@@ -129,6 +130,6 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
                 permission=DatasetPermissionEnum.ONLY_ME,
                 partial_member_list=None,
             ),
-            session=db.session(),
+            session=session,
         )
-        return dump_response(DatasetDetailResponse, dataset), 201
+        return dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session)), 201

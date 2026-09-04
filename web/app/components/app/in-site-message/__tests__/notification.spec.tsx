@@ -3,12 +3,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import InSiteMessageNotification from '../notification'
 
-const { mockEdition, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
+const { mockEdition, mockLocale, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
   mockEdition: {
     value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
   },
+  mockLocale: { value: 'en-US' },
   mockNotification: vi.fn(),
   mockNotificationDismiss: vi.fn(),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: () => mockLocale.value,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -25,9 +30,9 @@ vi.mock('@/service/client', () => ({
     },
     notification: {
       get: {
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'notification', 'get'],
-          queryFn: (...args: unknown[]) => mockNotification(...args),
+        queryOptions: (options?: { enabled?: boolean; input?: unknown }) => ({
+          queryKey: ['console', 'notification', 'get', options?.input],
+          queryFn: () => mockNotification(options?.input),
           ...options,
         }),
       },
@@ -70,6 +75,7 @@ describe('InSiteMessageNotification', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEdition.value = 'CLOUD'
+    mockLocale.value = 'en-US'
     vi.stubGlobal('open', vi.fn())
   })
 
@@ -96,9 +102,27 @@ describe('InSiteMessageNotification', () => {
       const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
 
       await waitFor(() => {
-        expect(mockNotification).toHaveBeenCalledTimes(1)
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
       })
       expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should refetch notification when the interface language changes', async () => {
+      mockNotification.mockResolvedValue({ notifications: [] })
+      const Wrapper = createWrapper()
+      const { rerender } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
+      })
+
+      mockLocale.value = 'zh-Hans'
+      rerender(<InSiteMessageNotification />)
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'zh-Hans' } })
+      })
+      expect(mockNotification).toHaveBeenCalledTimes(2)
     })
   })
 

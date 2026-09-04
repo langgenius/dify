@@ -51,7 +51,6 @@ from services.account_errors import (
     InvalidEmailRegistrationTokenError,
 )
 from services.entities.account_entities import AccountEmailRegistrationVerification, AccountSessionTokens
-from services.entities.feature_entities import SystemFeatureModel
 
 
 @pytest.fixture(autouse=True)
@@ -68,14 +67,16 @@ def _request(
     payload: dict[str, str],
 ) -> Generator[None, None, None]:
     services = SimpleNamespace(accounts=SimpleNamespace(email_registration=service))
-    features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.CLOUD,
-        enable_email_password_login=True,
-        is_allow_register=True,
-    )
     with (
         patch("controllers.console.auth.email_register.application_services", return_value=services),
-        patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features),
+        patch(
+            "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+            return_value=True,
+        ),
+        patch(
+            "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+            return_value=True,
+        ),
         patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1"),
         app.test_request_context(path, method="POST", json=payload),
     ):
@@ -281,14 +282,18 @@ def test_invalid_password_is_sanitized_by_real_error_handler(caplog: pytest.LogC
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(console_bp)
-    features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.CLOUD,
-        enable_email_password_login=True,
-        is_allow_register=True,
-    )
     password_marker = "SecretMarker"
 
-    with patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features):
+    with (
+        patch(
+            "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+            return_value=True,
+        ),
+        patch(
+            "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+            return_value=True,
+        ),
+    ):
         response = app.test_client().post(
             "/console/api/email-register",
             json={

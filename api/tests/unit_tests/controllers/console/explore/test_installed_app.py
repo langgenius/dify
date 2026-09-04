@@ -133,11 +133,14 @@ def _controller_context(
     role: TenantAccountRole = TenantAccountRole.OWNER,
     auth_enabled: bool = False,
 ) -> Generator[None]:
-    features = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=auth_enabled))
     with (
         patch.object(module.db, "session", database_session),
         patch.object(module.TenantService, "get_user_role", return_value=role),
-        patch.object(service_module.FeatureService, "get_system_features", return_value=features),
+        patch.object(
+            service_module.SystemFeatureService,
+            "is_webapp_auth_enabled",
+            return_value=auth_enabled,
+        ),
     ):
         yield
 

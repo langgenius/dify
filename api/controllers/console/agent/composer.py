@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -527,8 +527,7 @@ class AgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_EDIT)
     @with_current_user_id
     @with_current_tenant_id
     @with_session

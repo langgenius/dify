@@ -27,6 +27,7 @@ import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/client'
 import { ApiKeyTable } from './api-key-table'
 import { CreatedApiKeyDialog } from './created-api-key-dialog'
+import { DatasetScopeDialog } from './dataset-scope-dialog'
 
 type CreatedApiKey = Pick<ApiKeyItem, 'token'>
 type ApiKeyScope =
@@ -46,6 +47,9 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [deleteKeyId, setDeleteKeyId] = useState<string>()
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
+  const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
+  // Bumped on each open so the scope dialog remounts with fresh selection state.
+  const [scopeDialogKey, setScopeDialogKey] = useState(0)
 
   const appApiKeysQuery = useQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
@@ -110,6 +114,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
     if (!nextOpen) {
       setDeleteKeyId(undefined)
       setCreatedApiKey(undefined)
+      setScopeDialogOpen(false)
     }
     onOpenChange(nextOpen)
   }
@@ -125,7 +130,10 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
         )
         break
       case 'dataset':
-        createDatasetApiKey.mutate(undefined, { onSuccess: setCreatedApiKey })
+        // Dataset keys pick a knowledge-base scope before creation; the scope dialog
+        // owns that step and calls handleCreateDatasetKey with the chosen ids.
+        setScopeDialogKey((key) => key + 1)
+        setScopeDialogOpen(true)
         break
       case 'environment':
         createEnvironmentApiKey.mutate(
@@ -134,6 +142,19 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
         )
         break
     }
+  }
+
+  const handleCreateDatasetKey = (datasetIds: string[]) => {
+    if (createDatasetApiKey.isPending) return
+    createDatasetApiKey.mutate(
+      { body: { dataset_ids: datasetIds } },
+      {
+        onSuccess: (apiKey) => {
+          setCreatedApiKey(apiKey)
+          setScopeDialogOpen(false)
+        },
+      },
+    )
   }
 
   const handleDelete = () => {
@@ -194,7 +215,12 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
             </div>
           )}
           {!!apiKeys?.length && (
-            <ApiKeyTable apiKeys={apiKeys} canManage={canManage} onDeleteRequest={setDeleteKeyId} />
+            <ApiKeyTable
+              apiKeys={apiKeys}
+              canManage={canManage}
+              showScope={scope.type === 'dataset'}
+              onDeleteRequest={setDeleteKeyId}
+            />
           )}
           <div className="flex shrink-0 px-6 py-4">
             <Button disabled={createDisabled} loading={isCreating} onClick={handleCreate}>
@@ -236,6 +262,15 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
         }}
         value={createdApiKey?.token ?? ''}
       />
+      {scope.type === 'dataset' && (
+        <DatasetScopeDialog
+          key={scopeDialogKey}
+          open={scopeDialogOpen}
+          isCreating={createDatasetApiKey.isPending}
+          onOpenChange={setScopeDialogOpen}
+          onConfirm={handleCreateDatasetKey}
+        />
+      )}
     </>
   )
 }

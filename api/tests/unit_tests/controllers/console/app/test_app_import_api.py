@@ -13,14 +13,12 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
-from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.engine import db
 from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.entities.feature_entities import SystemFeatureModel, WebAppAuthModel
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -49,11 +47,7 @@ class _Result:
 
 
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        webapp_auth=WebAppAuthModel(enabled=enabled),
-    )
-    monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
+    monkeypatch.setattr(app_import_module.SystemFeatureService, "is_webapp_auth_enabled", lambda: enabled)
 
 
 def _make_account(account_id: str = "u1") -> Account:

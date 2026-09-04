@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from controllers.openapi.auth.conditions import (
     EDITION_CLOUD,
@@ -136,9 +136,7 @@ def test_edition_cloud():
 
 
 def test_webapp_auth_enabled():
-    mock_features = MagicMock()
-    mock_features.webapp_auth.enabled = True
-    with patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=mock_features):
+    with patch("controllers.openapi.auth.conditions.SystemFeatureService.is_webapp_auth_enabled", return_value=True):
         assert WEBAPP_AUTH_ENABLED(_ctx()) is True
 
 

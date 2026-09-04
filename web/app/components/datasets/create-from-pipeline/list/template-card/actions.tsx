@@ -60,7 +60,7 @@ const Actions = ({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
-              <DropdownMenuPopup className="min-w-[160px]">
+              <DropdownMenuPopup className="min-w-40">
                 <Operations
                   openEditModal={openEditModal}
                   onExport={handleExportDSL}

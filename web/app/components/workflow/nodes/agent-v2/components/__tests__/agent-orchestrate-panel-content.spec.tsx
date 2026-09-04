@@ -894,7 +894,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).not.toBeInTheDocument()
 
@@ -910,7 +910,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).not.toBeInTheDocument()
 
@@ -921,13 +921,13 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
       expect(
         screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).toBeInTheDocument()
 
       fireEvent.click(
         await screen.findByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       )
 

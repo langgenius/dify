@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
@@ -38,11 +38,11 @@ const SnippetCreateButton = () => {
         <PopoverContent
           placement="bottom-end"
           sideOffset={6}
-          className="w-[228px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
+          className="w-57 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >
-          <div className="px-2 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">
+          <PopoverTitle className="px-2 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">
             {t(($) => $.createFrom)}
-          </div>
+          </PopoverTitle>
           <button
             type="button"
             className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-2 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"

@@ -7,7 +7,6 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -33,6 +32,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -79,11 +79,9 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
-from services.feature_service import FeatureService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
 
@@ -390,7 +388,7 @@ def _serialize_agent_app_detail(
     """
 
     app_model = AppService().get_app(app_model, session=session)
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
@@ -687,15 +685,6 @@ class AgentAppListApi(Resource):
         )
 
         app = AppService().create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                current_tenant_id,
-                current_user.id,
-                str(app.id),
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
-
         return _serialize_agent_app_detail(session, app, current_user=current_user), 201
 
 
@@ -995,8 +984,7 @@ class AgentApiStatusApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_current_tenant_id
     @with_session
     @model_validate(AgentApiStatusPayload)
@@ -1014,10 +1002,9 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     token_prefix = "app-"
 
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
@@ -1027,8 +1014,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
@@ -1047,8 +1033,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
     @console_ns.response(204, "Agent service API key deleted")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     def delete(
         self,

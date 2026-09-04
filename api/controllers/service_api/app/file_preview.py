@@ -2,7 +2,7 @@ import logging
 from urllib.parse import quote
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy import select
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -86,7 +87,8 @@ class FilePreviewApi(Resource):
     )
     @service_api_ns.response(200, "File retrieved successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, file_id: UUID):
+    @model_validate(FilePreviewQuery)
+    def get(self, args: FilePreviewQuery, app_model: App, end_user: EndUser, file_id: UUID):
         """
         Preview/Download a file that was uploaded via Service API.
 
@@ -94,9 +96,6 @@ class FilePreviewApi(Resource):
         Files can only be accessed if they belong to messages within the requesting app's context.
         """
         file_id_str = str(file_id)
-
-        # Parse query parameters
-        args = FilePreviewQuery.model_validate(request.args.to_dict())
 
         # Validate file ownership and get file objects
         _, upload_file = self._validate_file_ownership(file_id_str, app_model.id)

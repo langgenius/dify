@@ -70,7 +70,6 @@ type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'classNam
 function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
   return (
     <span
-      role="presentation"
       aria-hidden="true"
       className={cn('h-3.5 w-px shrink-0 bg-divider-regular', className)}
       {...props}

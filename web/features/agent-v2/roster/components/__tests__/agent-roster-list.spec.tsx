@@ -127,7 +127,7 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
-  it('exposes each agent card with the agent name', () => {
+  it('exposes each agent card with its name, draft status, and description', () => {
     renderList([createAgent()])
 
     const list = screen.getByRole('list')
@@ -136,7 +136,9 @@ describe('AgentRosterList', () => {
 
     expect(card.parentElement).toBe(list)
     expect(cardLink).toHaveAttribute('href', '/agents/agent-1/configure')
-    expect(cardLink).toHaveAccessibleDescription('Find and summarize market materials.')
+    expect(cardLink).toHaveAccessibleDescription(
+      'agentV2.roster.usageStatus.draft Find and summarize market materials.',
+    )
   })
 
   it('uses the Figma-aligned card title and role typography', () => {

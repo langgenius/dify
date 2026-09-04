@@ -1660,3 +1660,60 @@ class TestChildChunkSessionAccessors:
         assert child_chunk.dataset(session=sqlite_session) is None
         assert child_chunk.document(session=sqlite_session) is None
         assert child_chunk.segment(session=sqlite_session) is None
+
+
+class TestDocumentSegmentNeighborAccessors:
+    """Regression coverage for ``DocumentSegment.previous_segment`` and ``next_segment`` refactored
+    to take a caller-provided session.
+
+    These were ``@property`` accessors reaching for the global ``db.session`` internally; they are now
+    plain methods accepting a ``Session`` explicitly.
+    """
+
+    def test_accessors_resolve_neighboring_segments_via_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
+        document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
+        segments = _make_segments(document, [0, 0, 0])
+        sqlite_session.add_all([dataset, document, *segments])
+        sqlite_session.flush()
+
+        middle_segment = segments[1]
+        assert middle_segment.previous_segment(session=sqlite_session) is segments[0]
+        assert middle_segment.next_segment(session=sqlite_session) is segments[2]
+
+    def test_accessors_return_none_when_neighbors_are_absent(self, sqlite_session: Session):
+        dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
+        document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
+        segment = _make_segments(document, [0])[0]
+        sqlite_session.add_all([dataset, document, segment])
+        sqlite_session.flush()
+
+        assert segment.previous_segment(session=sqlite_session) is None
+        assert segment.next_segment(session=sqlite_session) is None
+
+
+class TestAppDatasetJoinSessionAccessors:
+    """Regression coverage for ``AppDatasetJoin.app`` refactored to take a caller-provided session.
+
+    ``AppDatasetJoin.app`` was an ``@property`` accessor reaching for the global ``db.session`` internally;
+    it is now a plain method accepting a ``Session`` explicitly.
+    """
+
+    def test_app_accessor_resolves_app_via_caller_session(self, sqlite_session: Session):
+        app = _make_app(app_id=str(uuid4()))
+        join = AppDatasetJoin(
+            app_id=app.id,
+            dataset_id=str(uuid4()),
+        )
+        sqlite_session.add_all([app, join])
+        sqlite_session.flush()
+
+        assert join.app(session=sqlite_session) is app
+
+    def test_app_accessor_returns_none_when_app_absent(self, sqlite_session: Session):
+        join = AppDatasetJoin(
+            app_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+        )
+
+        assert join.app(session=sqlite_session) is None

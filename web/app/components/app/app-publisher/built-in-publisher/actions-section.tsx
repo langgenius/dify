@@ -23,7 +23,7 @@ type PublisherActionsSectionProps = Pick<
     | null
     | undefined
   appURL: string
-  canAccessPoint?: boolean
+  canViewAccessPoint: boolean
   disabledFunctionButton: boolean
   disabledFunctionTooltip?: string
   handleOpenRunConfig?: (url: string) => void
@@ -42,7 +42,7 @@ type PublisherActionsSectionProps = Pick<
 export function PublisherActionsSection({
   appDetail,
   appURL,
-  canAccessPoint = false,
+  canViewAccessPoint,
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
@@ -113,10 +113,10 @@ export function PublisherActionsSection({
               {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
             </SuggestedAction>
           </TooltipTrigger>
-          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
+          <TooltipContent>{disabledFunctionTooltip}</TooltipContent>
         </Tooltip>
       )}
-      {canAccessPoint && (
+      {canViewAccessPoint && (
         <SuggestedAction
           disabled={navigationDisabled}
           description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}

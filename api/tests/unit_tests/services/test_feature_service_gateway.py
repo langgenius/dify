@@ -4,11 +4,16 @@ from enums import DeploymentEdition
 from services.entities.feature_entities import FeatureModel, SystemFeatureModel
 from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.system_feature_service import SystemFeatureService
 
 
 def test_public_system_features_delegate_to_existing_service(mocker: MockerFixture) -> None:
     system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
-    get_system_features = mocker.patch.object(FeatureService, "get_system_features", return_value=system_features)
+    get_system_features = mocker.patch.object(
+        SystemFeatureService,
+        "get_public_system_features",
+        return_value=system_features,
+    )
 
     result = FeatureServiceGateway().get_public_system_features()
 
