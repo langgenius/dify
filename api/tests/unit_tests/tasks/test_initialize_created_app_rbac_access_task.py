@@ -51,6 +51,67 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
         assert call.kwargs["payload"].access_policy_ids == [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
 
 
+@pytest.mark.parametrize(
+    ("id_kwarg", "resource_id", "access_class"),
+    [
+        ("app_id", "app-1", "AppAccess"),
+        ("dataset_id", "dataset-1", "DatasetAccess"),
+        ("agent_id", "agent-1", "AgentAccess"),
+    ],
+)
+def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_passed(
+    monkeypatch: pytest.MonkeyPatch, id_kwarg: str, resource_id: str, access_class: str
+):
+    import tasks.initialize_created_app_rbac_access_task as task_module
+
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    monkeypatch.setattr(
+        task_module.TenantService,
+        "iter_member_account_id_batches",
+        lambda tenant_id, batch_size, session: iter([["acct-1"]]),
+    )
+    rbac_service = task_module.enterprise_rbac_service.RBACService
+    access_clients = {
+        "AppAccess": rbac_service.AppAccess,
+        "DatasetAccess": rbac_service.DatasetAccess,
+        "AgentAccess": rbac_service.AgentAccess,
+    }
+    replace_calls = {}
+    for name, client in access_clients.items():
+        replace_calls[name] = MagicMock()
+        monkeypatch.setattr(client, "replace_user_access_policies", replace_calls[name])
+
+    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **{id_kwarg: resource_id})
+
+    for name, mock in replace_calls.items():
+        if name != access_class:
+            mock.assert_not_called()
+
+    called = replace_calls[access_class]
+    called.assert_called_once()
+    assert called.call_args.kwargs[id_kwarg] == resource_id
+    assert called.call_args.kwargs["target_account_id"] is None
+    assert called.call_args.kwargs["payload"].account_ids == ["acct-1"]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"app_id": "app-1", "dataset_id": "dataset-1"},
+        {"app_id": "app-1", "agent_id": "agent-1"},
+        {"app_id": "app-1", "dataset_id": "dataset-1", "agent_id": "agent-1"},
+    ],
+)
+def test_initialize_created_app_rbac_access_task_rejects_anything_but_one_resource_id(
+    monkeypatch: pytest.MonkeyPatch, kwargs: dict[str, str]
+):
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+
+    with pytest.raises(ValueError, match="exactly one of"):
+        initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **kwargs)
+
+
 def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task

@@ -37,6 +37,10 @@ class _WhitelistResourceKind[ItemT]:
     model: type[App] | type[Dataset] | type[Agent]
     build_item: Callable[[str, str], ItemT]
     append_members: Callable[[str, str | None, Sequence[ItemT]], None]
+    replace_user_access_policies: Callable[
+        [str, str, str, enterprise_rbac_service.ReplaceUserAccessPolicies],
+        enterprise_rbac_service.ReplaceUserAccessPoliciesResponse,
+    ]
 
     def iter_id_batches(self, tenant_id: str, batch_size: int) -> Iterator[list[str]]:
         last_id: str | None = None
@@ -75,6 +79,15 @@ _WHITELIST_RESOURCE_KINDS = (
                 tenant_id=tenant_id, account_id=account_id, data=data
             )
         ),
+        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
+            enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                app_id=resource_id,
+                target_account_id=None,
+                payload=payload,
+            )
+        ),
     ),
     _WhitelistResourceKind(
         resource_type=enterprise_rbac_service.RBACResourceType.DATASET,
@@ -87,6 +100,15 @@ _WHITELIST_RESOURCE_KINDS = (
                 tenant_id=tenant_id, account_id=account_id, data=data
             )
         ),
+        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_user_access_policies(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                dataset_id=resource_id,
+                target_account_id=None,
+                payload=payload,
+            )
+        ),
     ),
     _WhitelistResourceKind(
         resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
@@ -97,6 +119,15 @@ _WHITELIST_RESOURCE_KINDS = (
         append_members=lambda tenant_id, account_id, data: (
             enterprise_rbac_service.RBACService.AgentAccess.append_whitelist_members_batch(
                 tenant_id=tenant_id, account_id=account_id, data=data
+            )
+        ),
+        replace_user_access_policies=lambda tenant_id, account_id, resource_id, payload: (
+            enterprise_rbac_service.RBACService.AgentAccess.replace_user_access_policies(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent_id=resource_id,
+                target_account_id=None,
+                payload=payload,
             )
         ),
     ),
@@ -123,16 +154,43 @@ def _chunks[T](items: list[T], chunk_size: int) -> Iterator[list[T]]:
         yield items[index : index + chunk_size]
 
 
+def _resolve_target_resource(
+    resource_ids: dict[enterprise_rbac_service.RBACResourceType, str | None],
+) -> tuple[_WhitelistResourceKind, str]:
+    """Return the resource kind and id for the single id the caller supplied."""
+    provided = [(resource_type, rid) for resource_type, rid in resource_ids.items() if rid is not None]
+    if len(provided) != 1:
+        raise ValueError(
+            "exactly one of app_id, dataset_id, agent_id must be given, got: "
+            + ", ".join(sorted(resource_type.value for resource_type, _ in provided))
+        )
+    resource_type, resource_id = provided[0]
+    return _WHITELIST_RESOURCE_KIND_BY_TYPE[resource_type], resource_id
+
+
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
 def initialize_created_app_rbac_access_task(
-    self, tenant_id: str, account_id: str, app_id: str | None = None, dataset_id: str | None = None
+    self,
+    tenant_id: str,
+    account_id: str,
+    app_id: str | None = None,
+    dataset_id: str | None = None,
+    agent_id: str | None = None,
 ) -> None:
-    """Grant the default app policy to current workspace members.
+    """Grant the default access policy on one resource to current workspace members.
 
-    App scope is persisted synchronously before this task is queued. Replacing
+    The resource scope is persisted synchronously before this task is queued. Replacing
     member policies is idempotent, so retrying the whole synchronization is safe
     when the enterprise RBAC service is temporarily unavailable.
     """
+    kind, resource_id = _resolve_target_resource(
+        {
+            enterprise_rbac_service.RBACResourceType.APP: app_id,
+            enterprise_rbac_service.RBACResourceType.DATASET: dataset_id,
+            enterprise_rbac_service.RBACResourceType.AGENT: agent_id,
+        }
+    )
+
     if not dify_config.RBAC_ENABLED:
         return
 
@@ -142,33 +200,21 @@ def initialize_created_app_rbac_access_task(
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
             session=db.session(),
         ):
-            if app_id is not None:
-                enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    app_id=app_id,
-                    target_account_id=None,
-                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                        account_ids=account_ids,
-                    ),
-                )
-            elif dataset_id is not None:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_user_access_policies(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    dataset_id=dataset_id,
-                    target_account_id=None,
-                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                        account_ids=account_ids,
-                    ),
-                )
+            kind.replace_user_access_policies(
+                tenant_id,
+                account_id,
+                resource_id,
+                enterprise_rbac_service.ReplaceUserAccessPolicies(
+                    access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
+                    account_ids=account_ids,
+                ),
+            )
     except Exception as exc:
         logger.exception(
-            "Failed to initialize app RBAC access; retrying: tenant_id=%s app_id=%s attempt=%s",
+            "Failed to initialize RBAC access; retrying: tenant_id=%s resource_type=%s resource_id=%s attempt=%s",
             tenant_id,
-            app_id,
+            kind.resource_type.value,
+            resource_id,
             self.request.retries + 1,
         )
         raise self.retry(exc=exc)
