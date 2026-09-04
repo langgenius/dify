@@ -195,7 +195,7 @@ export const useWorkflowInit = () => {
   const handleFetchPreloadData = useCallback(async () => {
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
       fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
-      queryClient.fetchQuery(appWorkflowQueryOptions(appDetail.id)),
+      queryClient.query(appWorkflowQueryOptions(appDetail.id)),
     ])
 
     if (nodesDefaultConfigsResult.status === 'fulfilled') {

@@ -839,6 +839,7 @@ def test_credential_validation_error_maps_to_credential_invalid():
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_credential_invalid"
+    assert "credential validation failed" in str(exc_info.value)
 
 
 def test_generic_value_error_maps_to_config_invalid():

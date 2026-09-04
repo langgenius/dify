@@ -275,7 +275,6 @@ export function DocumentsEmpty({
       <Button
         className="mt-4"
         variant="primary"
-        aria-busy={uploading}
         disabled={!canEdit}
         loading={uploading}
         aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -454,7 +453,6 @@ export function DocumentsList({
         </Button>
         <Button
           variant="primary"
-          aria-busy={uploading}
           disabled={!canEdit}
           loading={uploading}
           aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -593,7 +591,6 @@ export function DocumentsList({
           <Button
             ref={loadMoreButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-            aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -610,7 +607,6 @@ export function DocumentsList({
         <div className="mt-5 flex justify-center">
           <Button
             ref={loadMoreButtonRef}
-            aria-busy={isFetchingNextPage}
             loading={isFetchingNextPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -659,7 +655,6 @@ export function DocumentBulkActions({
       >
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-          aria-busy={reindexing}
           className="shrink-0"
           disabled={disabled}
           loading={reindexing}

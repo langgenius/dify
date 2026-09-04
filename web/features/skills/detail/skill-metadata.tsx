@@ -15,6 +15,7 @@ import {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxTrigger,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,6 +34,8 @@ import {
   runSkillFileMutation,
   SKILL_TAG_CREATE_OPTION_PREFIX,
 } from './shared'
+
+const getSkillTagOptionId = (tag: string) => `skill-tag:${tag.trim().toLocaleLowerCase()}`
 
 export function SkillTagsEditor({
   detail,
@@ -69,7 +72,7 @@ export function SkillTagsEditor({
 
       seenTags.add(tagKey)
       options.push({
-        id: `skill-tag:${tagKey}`,
+        id: getSkillTagOptionId(normalizedTag),
         name: normalizedTag,
         type: 'skill',
         binding_count: '0',
@@ -94,6 +97,16 @@ export function SkillTagsEditor({
 
     return options
   }, [draftTags, normalizedTagSearch, tags, tagsQuery.data?.data])
+  const tagOptionById = useMemo(() => new Map(tagOptions.map((tag) => [tag.id, tag])), [tagOptions])
+  const tagItems = useMemo(
+    () =>
+      createComboboxItems(tagOptions, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [tagOptions],
+  )
+  const draftTagIds = useMemo(() => draftTags.map(getSkillTagOptionId), [draftTags])
 
   const saveTags = (nextTags: string[]) => {
     if (!detail || metadataMutation.isPending) return
@@ -149,7 +162,7 @@ export function SkillTagsEditor({
   const renderTagBadge = (tag: string) => (
     <span
       key={tag}
-      className="group/tag relative flex max-w-full min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary"
+      className="group/tag relative flex max-w-full min-w-4.5 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary"
     >
       <span className="min-w-0 truncate">{tag}</span>
       {!readonly && (
@@ -170,39 +183,44 @@ export function SkillTagsEditor({
       <div className="mt-3 flex flex-wrap items-center gap-1">
         {tags.map(renderTagBadge)}
         {!readonly && (
-          <Combobox<TagComboboxItem, true>
-            items={tagOptions}
+          <Combobox<string, true, TagComboboxItem>
+            items={tagItems}
             multiple
             open={addOpen}
             onOpenChange={handleOpenChange}
-            value={tagOptions.filter(
-              (tag) => !isCreateTagOption(tag) && draftTags.includes(tag.name),
-            )}
-            onValueChange={(nextTags) => {
-              const createOption = nextTags.find(isCreateTagOption)
-              if (createOption) {
+            value={draftTagIds}
+            onValueChange={(nextTagIds) => {
+              const createOptionId = nextTagIds.find((tagId) => {
+                const tag = tagOptionById.get(tagId)
+                return tag ? isCreateTagOption(tag) : false
+              })
+              const createOption = createOptionId ? tagOptionById.get(createOptionId) : undefined
+              if (createOption && isCreateTagOption(createOption)) {
                 setDraftTags((currentTags) => [...currentTags, createOption.name])
                 setTagSearch('')
                 return
               }
 
-              setDraftTags(nextTags.filter((tag) => !isCreateTagOption(tag)).map((tag) => tag.name))
+              setDraftTags(
+                nextTagIds.flatMap((tagId) => {
+                  const tag = tagOptionById.get(tagId)
+                  return tag && !isCreateTagOption(tag) ? [tag.name] : []
+                }),
+              )
             }}
             inputValue={tagSearch}
             onInputValueChange={setTagSearch}
             filter={(tag, query) =>
               tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
             }
-            itemToStringLabel={(tag) => tag.name}
-            isItemEqualToValue={(item, value) => item.id === value.id}
           >
             <ComboboxTrigger
               icon={false}
               disabled={!detail}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
-                'h-[18px] w-auto min-w-[18px] rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
-                tags.length === 0 && 'border-dashed px-[5px]',
+                'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
+                tags.length === 0 && 'border-dashed px-1.25',
               )}
             >
               <span className="flex items-center justify-center gap-0.5 system-2xs-medium-uppercase">
@@ -363,9 +381,9 @@ export function SkillReferencesList({
         compact
           ? cn(
               'flex flex-col gap-px',
-              !embedded && 'rounded-xl border border-divider-subtle p-[3px]',
+              !embedded && 'rounded-xl border border-divider-subtle p-0.75',
             )
-          : 'w-max max-w-[480px] space-y-0.5 py-1',
+          : 'w-max max-w-120 space-y-0.5 py-1',
         isScrollable && `${maxHeight} overflow-y-auto`,
       )}
     >
@@ -448,7 +466,7 @@ export function SkillPublishConfirmPanel({
         />
       </div>
       <div className="flex items-center justify-end gap-2 px-4 pt-2 pb-4">
-        <Button className="h-8 min-w-[72px] rounded-lg px-3" disabled={loading} onClick={onCancel}>
+        <Button className="h-8 min-w-18 rounded-lg px-3" disabled={loading} onClick={onCancel}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button
@@ -488,9 +506,7 @@ function SkillReferenceItem({
         rel="noreferrer"
         className={cn(
           'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          compact
-            ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
-            : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+          compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
         )}
       >
         <span aria-hidden className="shrink-0">
@@ -510,7 +526,7 @@ function SkillReferenceItem({
         <span
           className={cn(
             'min-w-0 truncate system-sm-regular text-text-secondary',
-            compact ? 'flex-1' : 'max-w-[252px]',
+            compact ? 'flex-1' : 'max-w-63',
           )}
         >
           {title}
@@ -548,7 +564,7 @@ function SkillReferenceItem({
           }
         />
       </span>
-      <span className="max-w-[252px] min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+      <span className="max-w-63 min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
         {workflowName}
       </span>
       <span
@@ -569,9 +585,7 @@ function SkillReferenceItem({
         rel="noreferrer"
         className={cn(
           'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          compact
-            ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
-            : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+          compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
         )}
       >
         {workflowContent}
@@ -583,9 +597,7 @@ function SkillReferenceItem({
     <div
       className={cn(
         'group/reference flex min-w-0 items-center gap-2 hover:bg-state-base-hover',
-        compact
-          ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
-          : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+        compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
       )}
     >
       {workflowContent}

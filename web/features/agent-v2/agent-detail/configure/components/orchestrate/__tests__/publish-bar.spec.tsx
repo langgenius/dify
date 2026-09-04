@@ -594,6 +594,35 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
+  it('should refresh cached workflow references before publishing', async () => {
+    const { onPublish, queryClient } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const referencesQueryKey = ['agent-referencing-workflows', { params: { agent_id: 'agent-1' } }]
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    queryClient.setQueryDefaults(['agent-referencing-workflows'], { staleTime: Infinity })
+    queryClient.setQueryData(referencesQueryKey, { data: [] })
+    workflowReferences.data = publishedReferences
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    expect(onPublish).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(2)
+  })
+
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
       activeConfigSnapshot,
@@ -709,7 +738,7 @@ describe('AgentConfigurePublishBar', () => {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
     expect(impactDetails).toBeInTheDocument()
-    expect(workflowReferences.fetchCount).toBe(1)
+    expect(workflowReferences.fetchCount).toBe(2)
     expect(
       screen.getAllByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,

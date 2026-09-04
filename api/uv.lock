@@ -1330,8 +1330,8 @@ provides-extras = ["server"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "basedpyright", specifier = ">=1.39.3" },
     { name = "coverage", extras = ["toml"], specifier = ">=7.10.7" },
+    { name = "pyrefly", specifier = ">=1.2.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
     { name = "pytest-mock", specifier = ">=3.14.0" },

@@ -9,7 +9,8 @@ import Loading from '@/app/components/base/loading'
 
 export function SkillPdfPreview({ fileName, url }: { fileName: string; url: string }) {
   return (
-    <div aria-label={fileName} className="relative h-full overflow-hidden bg-background-default">
+    <div className="relative h-full overflow-hidden bg-background-default">
+      <span className="sr-only">{fileName}</span>
       <PdfLoader
         workerSrc="/pdf.worker.min.mjs"
         url={url}

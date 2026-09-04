@@ -6507,7 +6507,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -6520,7 +6520,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -7196,7 +7196,13 @@ Get instruction generation template
 | 302 | Redirect to OAuth callback page |
 
 ### [GET] /notification
-Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Notification language | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -7266,7 +7272,7 @@ Handle OAuth callback and complete login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | OAuth process failed |  |
+| 400 | OAuth process failed | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
@@ -7355,7 +7361,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider |  |
+| 400 | Invalid provider | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
 #### Parameters
@@ -19670,6 +19676,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
 
+#### NotificationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string, <br>**Default:** en-US | Notification language | No |
+
 #### NotificationResponse
 
 | Name | Type | Description | Required |
@@ -19780,6 +19792,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### OAuthErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string | OAuth error message | Yes |
 
 #### OAuthLoginQuery
 
@@ -21313,7 +21331,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Language code for recommended app localization | No |
+| language | string, <br>**Default:** en-US | Language code for recommended app localization | No |
 
 #### RedirectResponse
 

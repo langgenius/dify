@@ -107,9 +107,6 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                   href={`https://github.com/langgenius/${repository}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={t(($) => $[`${prefixCustomize}.way1.step1Operation`], {
-                    ns: 'appOverview',
-                  })}
                   className={buttonVariants()}
                 >
                   <GithubIcon className="text-text-secondary" />
@@ -130,9 +127,6 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                   href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={t(($) => $[`${prefixCustomize}.way1.step2Operation`], {
-                    ns: 'appOverview',
-                  })}
                   className={buttonVariants()}
                 >
                   <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
@@ -173,9 +167,6 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               href={apiDocLink}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t(($) => $[`${prefixCustomize}.way2.operation`], {
-                ns: 'appOverview',
-              })}
               className={cn(buttonVariants(), 'mt-2')}
             >
               <span className="text-sm text-text-secondary">

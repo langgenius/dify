@@ -161,7 +161,6 @@ const ConfigCredential: FC<Props> = ({
                         {!readonly && (
                           <Button
                             loading={isLoading || isSaving}
-                            disabled={isLoading || isSaving}
                             variant="primary"
                             onClick={handleSave}
                           >

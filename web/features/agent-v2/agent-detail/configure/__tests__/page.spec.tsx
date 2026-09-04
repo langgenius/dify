@@ -604,7 +604,7 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Loading state', () => {
-    it('should show the page loading indicator instead of skeleton panels while composer data is pending', () => {
+    it('should load the build draft while keeping the page pending with composer data', () => {
       const queryClient = new QueryClient()
 
       render(
@@ -620,6 +620,13 @@ describe('AgentConfigurePage', () => {
       expect(configureSection).toHaveClass('bg-background-body')
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
+      expect(
+        vi
+          .mocked(useQuery)
+          .mock.calls.find(
+            ([options]) => Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft',
+          )?.[0],
+      ).toMatchObject({ enabled: true })
     })
 
     it('should initialize the composer from the active build draft after its pending check', () => {
@@ -781,6 +788,13 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+      expect(
+        vi
+          .mocked(useQuery)
+          .mock.calls.find(
+            ([options]) => Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft',
+          )?.[0],
+      ).toMatchObject({ enabled: false })
     })
 
     it('should switch modes without confirmation before Build chat starts', async () => {

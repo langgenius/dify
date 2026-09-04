@@ -61,7 +61,7 @@ const meta = {
   decorators: [
     (Story) => (
       <QueryClientProvider client={queryClient}>
-        <div className="relative h-[680px] w-[800px] bg-background-default">
+        <div className="relative h-170 w-200 bg-background-default">
           <SkillPublishBottomActions>
             <Story />
           </SkillPublishBottomActions>
