@@ -101,6 +101,14 @@ class LangfuseTrace(BaseModel):
         description="You can make a trace public to share it via a public link. This allows others to view the trace "
         "without needing to log in or be members of your Langfuse project.",
     )
+    start_time: datetime | None = Field(
+        default=None,
+        description="The time at which the traced execution started. Used as the root observation start time.",
+    )
+    end_time: datetime | None = Field(
+        default=None,
+        description="The time at which the traced execution ended. Used as the root observation end time.",
+    )
 
     @field_validator("input", "output")
     @classmethod
