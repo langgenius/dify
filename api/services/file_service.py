@@ -132,21 +132,32 @@ class FileService:
         file_size: int,
         default_file_size_limit: int | None = None,
     ) -> bool:
+        return file_size <= FileService.file_size_limit(
+            extension=extension,
+            default_file_size_limit=default_file_size_limit,
+        )
+
+    @staticmethod
+    def file_size_limit(
+        *,
+        extension: str,
+        default_file_size_limit: int | None = None,
+    ) -> int:
+        """Return the size an extension is allowed, in bytes."""
+
         if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
         elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
         else:
             # Context-specific uploads may override the default limit without changing media-specific limits.
             file_size_limit = (
-                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
-                * 1024
-                * 1024
+                default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT
             )
 
-        return file_size <= file_size_limit
+        return file_size_limit * 1024 * 1024
 
     def get_file_base64(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:

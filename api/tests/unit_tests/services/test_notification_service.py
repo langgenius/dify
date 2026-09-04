@@ -1,10 +1,4 @@
-from unittest.mock import Mock
-
-import pytest
-
 from machinery.context import RequestContext
-from services.account_ports import AccountRepository
-from services.entities.account_entities import AccountSnapshot
 from services.entities.notification_entities import (
     AccountNotification,
     AccountNotificationBatch,
@@ -13,7 +7,6 @@ from services.entities.notification_entities import (
     NotificationResult,
 )
 from services.notification_service import NotificationService
-from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -39,16 +32,6 @@ class NotificationGatewayStub:
         self.dismissals.append((notification_id, account_id))
 
 
-def _account(language: str | None = "zh-Hans") -> AccountSnapshot:
-    return make_account_snapshot(interface_language=language)
-
-
-def _accounts(account: AccountSnapshot | None) -> Mock:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = account
-    return accounts
-
-
 def _notification(contents: dict[str, NotificationContent]) -> AccountNotification:
     return AccountNotification(
         notification_id="notification-1",
@@ -57,19 +40,18 @@ def _notification(contents: dict[str, NotificationContent]) -> AccountNotificati
     )
 
 
-def test_get_active_localizes_notification_for_account_language() -> None:
+def test_get_active_localizes_notification_for_requested_language() -> None:
     chinese = NotificationContent("zh-Hans", "标题", "副标题", "正文", "zh.png")
     english = NotificationContent("en-US", "Title", "Subtitle", "Body", "en.png")
     gateway = NotificationGatewayStub(
         AccountNotificationBatch(True, (_notification({"zh-Hans": chinese, "en-US": english}),))
     )
-    service = NotificationService(accounts=_accounts(_account()), notifications=gateway)
+    service = NotificationService(notifications=gateway)
 
-    result = service.get_active(_context())
+    result = service.get_active(_context(), "zh-Hans")
 
-    assert result == NotificationResult(
-        should_show=True,
-        notifications=(NotificationItem("notification-1", "once", "zh-Hans", "标题", "副标题", "正文", "zh.png"),),
+    assert result.notifications == (
+        NotificationItem("notification-1", "once", "zh-Hans", "标题", "副标题", "正文", "zh.png"),
     )
     assert gateway.get_account_ids == ["account-1"]
 
@@ -77,47 +59,48 @@ def test_get_active_localizes_notification_for_account_language() -> None:
 def test_get_active_falls_back_to_english() -> None:
     english = NotificationContent("en-US", "Title", "Subtitle", "Body", "en.png")
     gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({"en-US": english}),)))
-    service = NotificationService(accounts=_accounts(_account("fr-FR")), notifications=gateway)
+    service = NotificationService(notifications=gateway)
 
-    result = service.get_active(_context())
+    result = service.get_active(_context(), "fr-FR")
 
     assert result.notifications[0].lang == "en-US"
     assert result.notifications[0].title == "Title"
 
 
-def test_get_active_skips_account_query_when_gateway_says_not_to_show() -> None:
-    accounts = _accounts(None)
-    service = NotificationService(
-        accounts=accounts,
-        notifications=NotificationGatewayStub(AccountNotificationBatch(False, ())),
+def test_get_active_falls_back_to_english_for_unsupported_language() -> None:
+    unsupported = NotificationContent("xx-YY", "Unknown", "Unknown", "Unknown", "unknown.png")
+    english = NotificationContent("en-US", "Title", "Subtitle", "Body", "en.png")
+    gateway = NotificationGatewayStub(
+        AccountNotificationBatch(True, (_notification({"xx-YY": unsupported, "en-US": english}),))
     )
+    service = NotificationService(notifications=gateway)
 
-    result = service.get_active(_context())
+    result = service.get_active(_context(), "xx-YY")
+
+    assert result.notifications[0].lang == "en-US"
+    assert result.notifications[0].title == "Title"
+
+
+def test_get_active_returns_empty_when_gateway_says_not_to_show() -> None:
+    service = NotificationService(notifications=NotificationGatewayStub(AccountNotificationBatch(False, ())))
+
+    result = service.get_active(_context(), "zh-Hans")
 
     assert result == NotificationResult(False, ())
-    accounts.get.assert_not_called()
 
 
 def test_get_active_uses_empty_content_when_notification_has_no_translations() -> None:
     gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({}),)))
-    service = NotificationService(accounts=_accounts(_account(None)), notifications=gateway)
+    service = NotificationService(notifications=gateway)
 
-    result = service.get_active(_context())
+    result = service.get_active(_context(), "")
 
     assert result.notifications == (NotificationItem("notification-1", "once", "en-US", "", "", "", ""),)
 
 
-def test_get_active_rejects_unknown_admitted_account() -> None:
-    gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({}),)))
-    service = NotificationService(accounts=_accounts(None), notifications=gateway)
-
-    with pytest.raises(RuntimeError, match="unknown account"):
-        service.get_active(_context())
-
-
 def test_dismiss_delegates_identifiers_to_gateway() -> None:
     gateway = NotificationGatewayStub(AccountNotificationBatch(False, ()))
-    service = NotificationService(accounts=_accounts(_account()), notifications=gateway)
+    service = NotificationService(notifications=gateway)
 
     service.dismiss(_context(), "notification-1")
 

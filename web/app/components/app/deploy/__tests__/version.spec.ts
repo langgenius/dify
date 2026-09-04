@@ -1,4 +1,4 @@
-import { toDeploymentVersion } from '../version'
+import { toDeploymentVersion } from '../utils/version'
 
 describe('toDeploymentVersion', () => {
   it('maps workflow metadata into the shared deployment version shape', () => {
