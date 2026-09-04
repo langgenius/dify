@@ -194,8 +194,7 @@ export function DocumentUploadForm({
         </Button>
         <Button
           aria-label={t(($) => $.addDocument)}
-          aria-busy={uploading}
-          disabled={!validFiles.length || uploading}
+          disabled={!validFiles.length}
           loading={uploading}
           type="submit"
           variant="primary"

@@ -31,7 +31,7 @@ function Select<Value, Multiple extends boolean | undefined = false>(
 const SelectGroup = BaseSelect.Group
 
 type SelectSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 type SelectValueState<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
   BaseSelect.Value.State,

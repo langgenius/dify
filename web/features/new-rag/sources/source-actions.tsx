@@ -225,7 +225,7 @@ export function SourceActions({
           size="small"
           variant="secondary"
           loading={pendingAction === 'sync'}
-          disabled={Boolean(pendingAction)}
+          disabled={pendingAction !== undefined && pendingAction !== 'sync'}
           onClick={() => void retrySource()}
         >
           {tCommon(($) => $['operation.retry'])}

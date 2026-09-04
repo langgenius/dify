@@ -130,7 +130,6 @@ export function DocumentPermissionRecoveryNotice() {
       <span>{t(($) => $.documentPermissionRestricted)}</span>
       <Button
         ref={permissionRetryRef}
-        disabled={permissionRecoveryBusy}
         loading={permissionRecoveryBusy}
         onClick={() =>
           void retryWritePermission(refreshWritePermission).then((recovered) => {

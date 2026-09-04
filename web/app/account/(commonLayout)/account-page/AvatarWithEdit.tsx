@@ -157,7 +157,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             <Button
               variant="primary"
               className="min-w-0 flex-1"
-              disabled={uploading || !inputImageInfo}
+              disabled={!inputImageInfo}
               loading={uploading}
               onClick={handleSelect}
             >

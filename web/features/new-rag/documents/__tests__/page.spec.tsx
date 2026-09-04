@@ -7501,10 +7501,6 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
     expect(await screen.findByText('knowledgeSpace.taskActionFailed')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toHaveAttribute(
-      'aria-busy',
-      'false',
-    )
     expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
@@ -7607,7 +7603,7 @@ describe('DocumentsPage', () => {
     rendered.unmount()
   })
 
-  it('announces upload and re-index operations as busy', async () => {
+  it('keeps upload and re-index actions focusable and unavailable while pending', async () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -7619,7 +7615,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toHaveAttribute(
-      'aria-busy',
+      'aria-disabled',
       'true',
     )
     emptyPage.unmount()
@@ -7630,7 +7626,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
     expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' })).toHaveAttribute(
-      'aria-busy',
+      'aria-disabled',
       'true',
     )
   })

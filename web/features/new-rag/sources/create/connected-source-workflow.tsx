@@ -1413,7 +1413,6 @@ function ResourceConfiguration({
           variant="primary"
           loading={submitting}
           disabled={
-            submitting ||
             selectionPending ||
             !previewSource ||
             !selected.size ||

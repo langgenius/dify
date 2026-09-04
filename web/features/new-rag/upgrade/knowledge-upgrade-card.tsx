@@ -184,7 +184,6 @@ export function KnowledgeUpgradeCard({
             <Button
               size="small"
               loading={retryMutation.isPending}
-              disabled={retryMutation.isPending}
               onClick={() => retryMutation.mutate(jobInput)}
             >
               {tCommon(($) => $['operation.retry'])}

@@ -229,8 +229,6 @@ export function DocumentTaskRow({
             cancelActionCount > 1 ? `${t(($) => $.interruptTask)} · ${actionTarget}` : undefined
           }
           size="small"
-          aria-busy={pending}
-          disabled={pending}
           loading={pending}
           onClick={() => void performAction('cancel')}
         >
@@ -243,8 +241,6 @@ export function DocumentTaskRow({
             retryActionCount > 1 ? `${t(($) => $.retryTask)} · ${actionTarget}` : undefined
           }
           size="small"
-          aria-busy={pending}
-          disabled={pending}
           loading={pending}
           onClick={() => void performAction('retry')}
         >

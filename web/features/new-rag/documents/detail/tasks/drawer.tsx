@@ -203,7 +203,6 @@ export function DocumentDetailTasksDrawer({
                     <Button
                       ref={taskQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.tasksErrorDescription)}`}
-                      aria-busy={taskQueryFetching}
                       className="mt-3"
                       loading={taskQueryFetching}
                       size="small"
@@ -227,7 +226,6 @@ export function DocumentDetailTasksDrawer({
                     <Button
                       ref={documentQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
-                      aria-busy={documentQueryFetching}
                       className="mt-3"
                       loading={documentQueryFetching}
                       size="small"
@@ -272,7 +270,6 @@ export function DocumentDetailTasksDrawer({
                   <div className="mt-4 flex justify-center">
                     <Button
                       ref={loadMoreButtonRef}
-                      aria-busy={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       onBlur={() => {
                         loadMoreRequestedRef.current = false

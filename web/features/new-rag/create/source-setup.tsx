@@ -596,7 +596,6 @@ function CreateSourceSetupSession({
                   variant="ghost-accent"
                   size="small"
                   className="ml-auto shrink-0"
-                  disabled={stoppingPreview}
                   loading={stoppingPreview}
                   onClick={() => void stopPreview()}
                 >

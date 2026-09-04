@@ -665,7 +665,6 @@ function ActivityDrawer({
                     <div className="flex h-11 items-start justify-center pt-4">
                       {activityQuery.hasNextPage && (
                         <Button
-                          disabled={activityQuery.isFetchingNextPage}
                           loading={activityQuery.isFetchingNextPage}
                           size="small"
                           variant="secondary"

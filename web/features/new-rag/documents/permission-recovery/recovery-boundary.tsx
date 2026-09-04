@@ -138,7 +138,6 @@ export function DocumentReadPermissionRecovery() {
       {canRetryRead && (
         <Button
           aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsPermissionDescription)}`}
-          aria-busy={fetching}
           className="mt-4"
           loading={fetching}
           onBlur={(event) => {

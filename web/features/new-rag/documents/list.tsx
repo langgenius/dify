@@ -354,7 +354,6 @@ export function DocumentsEmpty() {
         <Button
           className="gap-1 pl-3"
           variant="primary"
-          aria-busy={uploading}
           disabled={!canUpload}
           loading={uploading}
           aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
@@ -430,7 +429,6 @@ function DocumentsToolbar() {
       <Button
         className="gap-1 pl-3"
         variant="primary"
-        aria-busy={uploading}
         disabled={!canUpload}
         loading={uploading}
         aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
@@ -619,7 +617,6 @@ function DocumentsTable() {
           <Button
             ref={loadMoreButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
-            aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -636,7 +633,6 @@ function DocumentsTable() {
         <div className="mt-5 flex justify-center">
           <Button
             ref={loadMoreButtonRef}
-            aria-busy={isFetchingNextPage}
             loading={isFetchingNextPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false

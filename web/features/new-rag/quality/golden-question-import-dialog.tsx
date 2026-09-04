@@ -217,7 +217,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               type="button"
               variant="primary"
               loading={mutation.isPending}
-              disabled={rows.length === 0 || mutation.isPending}
+              disabled={rows.length === 0}
               onClick={() => void submit()}
             >
               {t(($) => $['qualityPage.importCsv'])}

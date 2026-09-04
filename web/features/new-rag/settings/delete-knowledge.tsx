@@ -116,7 +116,7 @@ export function DeleteKnowledgeAction() {
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={confirmation !== name || mutation.isPending}
+              disabled={confirmation !== name}
               loading={mutation.isPending}
               onClick={() => void deleteKnowledge()}
             >

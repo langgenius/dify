@@ -408,11 +408,7 @@ export function BadCasesPanel() {
           ))}
           {query.hasNextPage && (
             <div className="flex min-w-202 justify-center border-t border-divider-subtle py-4">
-              <Button
-                loading={query.isFetchingNextPage}
-                disabled={query.isFetchingNextPage}
-                onClick={() => void query.fetchNextPage()}
-              >
+              <Button loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
                 {t(($) => $.loadMore)}
               </Button>
             </div>
@@ -431,7 +427,6 @@ export function BadCasesPanel() {
             <Button
               className="mt-4"
               loading={query.isFetchingNextPage}
-              disabled={query.isFetchingNextPage}
               onClick={() => void query.fetchNextPage()}
             >
               {t(($) => $.loadMore)}

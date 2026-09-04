@@ -120,11 +120,7 @@ export function KnowledgeUpgradeDialog({
           <AlertDialogConfirmButton
             tone="default"
             loading={discoveryQuery.isFetching || startMutation.isPending}
-            disabled={
-              discoveryQuery.isFetching ||
-              discoveryQuery.data?.can_upgrade !== true ||
-              startMutation.isPending
-            }
+            disabled={discoveryQuery.data?.can_upgrade !== true}
             onClick={startUpgrade}
           >
             {t(($) => $['upgrade.start'])}

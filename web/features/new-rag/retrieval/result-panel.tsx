@@ -303,7 +303,6 @@ function RetrievalResultSession() {
         <div className="shrink-0 pl-1">
           <Button
             loading={traceIsFetchingNextPage || researchIsFetchingNextPage}
-            disabled={traceIsFetchingNextPage || researchIsFetchingNextPage}
             onClick={loadMoreEvidence}
           >
             {t(($) => $.loadMore)}

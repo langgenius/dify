@@ -101,7 +101,6 @@ function DocumentQueryRecoveryNotice() {
           id={DOCUMENT_RETRY_BUTTON_ID}
           ref={documentsRetryButtonRef}
           aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
-          aria-busy={documentRecovery.isRefetching}
           loading={documentRecovery.isRefetching}
           size="small"
           onBlur={(event) => {
@@ -168,7 +167,6 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
             id={DEPENDENCY_RETRY_BUTTON_ID}
             ref={retryButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${description}`}
-            aria-busy={retryFetching}
             loading={retryFetching}
             size="small"
             onBlur={(event) => {
@@ -196,7 +194,6 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
             id={DEPENDENCY_RETRY_BUTTON_ID}
             ref={retryButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${description}`}
-            aria-busy={retryFetching}
             className="mt-4"
             loading={retryFetching}
             onBlur={(event) => {
@@ -261,7 +258,6 @@ function DocumentCollectionState() {
           id={DOCUMENT_RETRY_BUTTON_ID}
           ref={retryButtonRef}
           aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
-          aria-busy={recovery.isFetching}
           className="mt-4"
           loading={recovery.isFetching}
           onBlur={(event) => {

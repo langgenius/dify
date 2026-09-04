@@ -438,7 +438,7 @@ function ConnectedSourceConfigurationFields({
             variant="primary"
             className="w-full"
             loading={loading}
-            disabled={disabled || loading || !parametersValid}
+            disabled={disabled || !parametersValid}
             onClick={() => void requestPreview()}
           >
             {t(($) => $.preview)}
