@@ -1,12 +1,12 @@
-"""Console HTTP surface for the Dify Builder (P3c) — SSE session routes.
+"""Console HTTP surface for Dify Builder sessions and command streams.
 
 Flask-RESTX resources under /console/api/dify-builder/*. Auth + CSRF come from
 the console guard stack (CSRF is enforced inside login_required for every
 method); RBAC/authz is enforced here at the
 boundary — the Celery advance task trusts the Actor. The route LOGIC lives in
-undecorated module functions (_create/_restore/_action/_message) so it is unit
-testable without the Flask request stack; the Resource methods are thin
-auth-wrappers.
+undecorated module functions (_create/_get_session/_conversation/_stream/
+_action/_message) so they are unit testable without the Flask request stack;
+the Resource methods are thin auth-wrappers.
 
 Decorator injection contract (verified against controllers/console/wraps.py
 and the multi-decorator precedent in controllers/console/app/workflow_comment.py,
@@ -36,6 +36,7 @@ from flask_restx import Resource
 from pydantic import ValidationError
 
 from controllers.common.schema import (
+    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
     typed_event_stream_response,
@@ -48,6 +49,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.dify_builder.models import Action, Actor
+from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus
 from services.dify_builder.service import resolve_action_kind
@@ -61,12 +63,15 @@ from services.feature_service import FeatureService
 
 from . import console_ns
 from .dify_builder_fields import (
+    DifyBuilderConversationListQuery,
+    DifyBuilderConversationPageResponse,
     DifyBuilderCreateBuildSessionPayload,
     DifyBuilderCreateChecklistFixSessionPayload,
     DifyBuilderCreateEditSessionPayload,
     DifyBuilderCreateFixSessionPayload,
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
+    DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
@@ -77,10 +82,17 @@ logger = logging.getLogger(__name__)
 register_schema_models(
     console_ns,
     DifyBuilderCreateSessionPayload,
+    DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
 )
-register_response_schema_models(console_ns, DifyBuilderStreamEventResponse, DifyBuilderErrorResponse)
+register_response_schema_models(
+    console_ns,
+    DifyBuilderConversationPageResponse,
+    DifyBuilderSessionViewResponse,
+    DifyBuilderStreamEventResponse,
+    DifyBuilderErrorResponse,
+)
 
 
 def dify_builder_required(func: Callable) -> Callable:
@@ -191,7 +203,39 @@ def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]
     )
 
 
-def _restore(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
+def _get_session(session_id: str, actor: Actor) -> dict | tuple[dict, int]:
+    try:
+        view = build_service().get_session_view(session_id, actor)
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderSessionViewResponse, view)
+
+
+def _conversation(session_id: str, query_args, actor: Actor) -> dict | tuple[dict, int]:
+    try:
+        query = DifyBuilderConversationListQuery.model_validate(query_args)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    try:
+        page = build_service().get_conversation_page(
+            session_id,
+            actor,
+            limit=query.limit,
+            before_seq=query.before_seq,
+            after_seq=query.after_seq,
+        )
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderConversationPageResponse, page)
+
+
+def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
     service = build_service()
     try:
         service.authorize_session(session_id, actor)
@@ -201,9 +245,9 @@ def _restore(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
             raise
         return mapped
 
-    # Subscribe before reading the snapshot. This closes the race where an
-    # advance could commit after the snapshot read but before subscription,
-    # leaving the client with an old view and no state event to refresh it.
+    # Subscribe before reading the bounded state. This closes the race where
+    # an advance could settle between the read and subscription. Conversation
+    # rows are recovered independently through the JSON pagination endpoint.
     subscription = progress_bus.subscribe(session_id)
     try:
         view = service.get_session_view(session_id, actor)
@@ -218,7 +262,7 @@ def _restore(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
         stream_advance_frames(
             session_view_to_dict(view),
             subscription,
-            expect_advance=view.run_status == "executing" and not view.interrupted,
+            expect_advance=view.run_status in {"thinking", "executing"} and not view.interrupted,
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,
@@ -259,10 +303,54 @@ class DifyBuilderSessionsApi(Resource):
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>")
 class DifyBuilderSessionApi(Resource):
+    @console_ns.response(
+        200,
+        "Dify Builder session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _get_session(session_id, _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/conversation")
+class DifyBuilderConversationApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DifyBuilderConversationListQuery))
+    @console_ns.response(
+        200,
+        "Dify Builder conversation page",
+        console_ns.models[DifyBuilderConversationPageResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _conversation(
+            session_id,
+            request.args.to_dict(flat=True),
+            _actor(current_user, current_tenant_id),
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/stream")
+class DifyBuilderSessionStreamApi(Resource):
     @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.response(
         200,
-        "Dify Builder restore event stream",
+        "Dify Builder reconnect event stream",
         console_ns.models[DifyBuilderStreamEventResponse.__name__],
     )
     @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
@@ -274,7 +362,7 @@ class DifyBuilderSessionApi(Resource):
     @with_current_tenant_id
     @dify_builder_required
     def get(self, current_tenant_id, current_user, session_id):
-        return _restore(session_id, _actor(current_user, current_tenant_id))
+        return _stream(session_id, _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/actions")

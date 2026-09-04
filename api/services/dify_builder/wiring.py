@@ -33,10 +33,10 @@ __all__ = [
     "stream_advance_frames",
 ]
 
-_MAX_STREAM_SECONDS = 180
 _HEARTBEAT_SECONDS = 15
+_MAX_STREAM_SECONDS = dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HEARTBEAT_SECONDS
 _TERMINAL_KINDS = ("state", "error")
-_PROGRESS_KINDS = frozenset({"node", "canvas", "agent_message", "commit", *_TERMINAL_KINDS})
+_PROGRESS_KINDS = frozenset({"node", "canvas", "agent_message", "progress", "commit", *_TERMINAL_KINDS})
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
@@ -174,9 +174,13 @@ def stream_advance_frames(
     *,
     emit_state_when_settled: bool = False,
 ) -> Iterator[str]:
-    """Snapshot, then (if an advance is in flight) relay progress frames until this
-    advance's terminal frame (`state` or `error`), inclusive, then close. Settle-only
-    calls (no advance) yield just the snapshot. Bounded by _MAX_STREAM_SECONDS.
+    """Emit a bounded command handshake, then relay incremental progress.
+
+    The handshake and terminal state intentionally exclude conversation
+    history. Durable rows arrive through ``commit`` events and can be repaired
+    through the JSON conversation endpoint. Settle-only calls yield just the
+    handshake unless ``emit_state_when_settled`` is requested. The stream is
+    bounded by ``_MAX_STREAM_SECONDS``.
 
     Returns a ``_ClosingFrameStream`` (not a bare generator) so the eagerly
     activated ``subscription`` is closed even when the WSGI server closes the
@@ -184,7 +188,7 @@ def stream_advance_frames(
 
     def _frames() -> Iterator[str]:
         try:
-            yield _event_frame("snapshot", view_dict)
+            yield _event_frame("command_started", {"kind": "command_started", **view_dict})
             if not expect_advance:
                 if emit_state_when_settled:
                     yield _event_frame("state", {"kind": "state", **view_dict})
@@ -204,6 +208,15 @@ def stream_advance_frames(
                 yield _event_frame(kind, data)
                 if kind in _TERMINAL_KINDS:
                     return
+            yield _event_frame(
+                "error",
+                {
+                    "kind": "error",
+                    "error": "Builder operation timed out",
+                    "code": "timeout",
+                    "recoverable": True,
+                },
+            )
         finally:
             if subscription is not None:
                 subscription.close()

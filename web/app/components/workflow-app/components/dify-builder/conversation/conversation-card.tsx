@@ -20,6 +20,7 @@ export const ConversationCard = memo(
   ({
     item,
     busy,
+    interactive,
     changesExpanded,
     invalidated,
     onActionPayloadChange,
@@ -27,6 +28,7 @@ export const ConversationCard = memo(
   }: {
     item: ConversationItem
     busy: boolean
+    interactive: boolean
     changesExpanded: boolean
     invalidated: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
@@ -45,8 +47,15 @@ export const ConversationCard = memo(
     }
 
     if (item.kind === 'assistant_turn') {
-      if (!item.payload.reply_text) return invalidated ? null : <Thinking item={item} />
-      return <AssistantReply text={item.payload.reply_text} />
+      if (!item.payload.reply_text)
+        return invalidated ? null : <Thinking trace={item.payload.trace} />
+      const hasTrace = (item.payload.trace.steps?.length ?? 0) > 0
+      return (
+        <div className="flex flex-col gap-2">
+          {hasTrace ? <Thinking trace={item.payload.trace} /> : null}
+          <AssistantReply text={item.payload.reply_text} />
+        </div>
+      )
     }
 
     if (item.kind === 'notice') {
@@ -62,6 +71,7 @@ export const ConversationCard = memo(
         <FormCard
           item={item}
           busy={busy}
+          interactive={interactive}
           invalidated={invalidated}
           onActionPayloadChange={onActionPayloadChange}
           onActionValidityChange={onActionValidityChange}
@@ -74,6 +84,7 @@ export const ConversationCard = memo(
         <ResourceCard
           item={item}
           busy={busy}
+          interactive={interactive}
           invalidated={invalidated}
           onActionPayloadChange={onActionPayloadChange}
         />
@@ -165,7 +176,13 @@ export const ConversationCard = memo(
       return (
         <DifyBuilderCardShell
           invalidated={invalidated}
-          tone={item.payload.tone === 'success' ? 'success' : 'neutral'}
+          tone={
+            item.payload.tone === 'success'
+              ? 'success'
+              : item.payload.tone === 'error'
+                ? 'error'
+                : 'neutral'
+          }
         >
           <div className="system-xs-semibold text-text-primary">{item.payload.title}</div>
           <div className="mt-1 system-xs-regular text-text-tertiary">{item.payload.subtitle}</div>

@@ -440,12 +440,12 @@ def test_waiting_session_projects_executing_while_worker_lock_is_held(
     assert token is not None
 
     locked_view = service.get_session_view(session.id, _actor())
-    assert locked_view.run_status == "executing"
+    assert locked_view.run_status == "thinking"
     assert locked_view.canvas_read_only is True
 
     lock.release(session.id, token)
     settled_view = service.get_session_view(session.id, _actor())
-    assert settled_view.run_status == "waiting_input"
+    assert settled_view.run_status == "waiting_confirmation"
     assert settled_view.canvas_read_only is False
 
 
@@ -476,6 +476,7 @@ def test_app_revision_is_projected_and_guards_workflow_dependent_actions(
     view = svc.get_session_view(session.id, _actor())
     assert view.app_revision is not None
     assert view.app_revision.conflicted is True
+    assert [action.id for action in view.actions] == ["check_recovery"]
 
     with pytest.raises(BadRequestError, match="base_app_revision is required"):
         svc.submit_action(session.id, _actor(), Action(kind="run_verify", base_version=2))
@@ -486,10 +487,24 @@ def test_app_revision_is_projected_and_guards_workflow_dependent_actions(
             Action(kind="run_verify", base_version=2, base_app_revision="hash-1"),
         )
 
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        svc.submit_action(
+            session.id,
+            _actor(),
+            Action(kind="run_verify", base_version=2, base_app_revision="hash-2"),
+        )
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        svc.submit_message(session.id, _actor(), "What changed?", base_version=2, client_turn_id="turn-1")
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        svc.submit_action(
+            session.id,
+            _actor(),
+            Action(kind="update_model", payload={"model_config": {"name": "test"}}, base_version=2),
+        )
     svc.submit_action(
         session.id,
         _actor(),
-        Action(kind="run_verify", base_version=2, base_app_revision="hash-2"),
+        Action(kind="check_recovery", base_version=2, base_app_revision="hash-2"),
     )
     assert len(enqueued) == 1
 
@@ -505,6 +520,37 @@ def test_submit_message_wraps_submit_action(
     # through submit_action -> dispatch like a plain action.
     with pytest.raises(BusyError):
         service.submit_message(session.id, actor, "hello", base_version=1, client_turn_id="turn-1")
+
+
+def test_paused_session_can_resume_before_classifying_external_draft_changes(
+    repo: SqlDifyBuilderRepository,
+    lock: FakeSessionLock,
+) -> None:
+    current_revision = "hash-2"
+    service = DifyBuilderService(
+        repo,
+        lock,
+        lambda *_args: None,
+        get_app_revision_fn=lambda _app_id, _actor: current_revision,
+    )
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    stored, context = repo.get_session(session.id)
+    context.last_snapshot_hash = "hash-1"
+    context.paused = True
+    repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+
+    view = service.get_session_view(session.id, _actor())
+    assert view.run_status == "paused"
+    assert view.app_revision is not None
+    assert view.app_revision.conflicted is True
+    assert [action.id for action in view.actions] == ["resume"]
+
+    _view, expect_advance = service._prepare_action(
+        session.id,
+        _actor(),
+        Action(kind="resume", base_version=2, base_app_revision=current_revision),
+    )
+    assert expect_advance is True
 
 
 def _seed_free_session(repo: SqlDifyBuilderRepository) -> Session:
@@ -681,10 +727,22 @@ def test_stop_resume_and_recovery_actions_require_current_context(
     repo.compare_and_advance(session.id, 1, PcState.BUILD_REVIEW, context, [])
 
     svc._prepare_action(session.id, _actor(), Action(kind="resume", base_version=2))
-    svc._prepare_action(session.id, _actor(), Action(kind="recovery_continue", base_version=2))
-    svc._prepare_action(session.id, _actor(), Action(kind="recovery_restart", base_version=2))
-    with pytest.raises(BadRequestError, match="not allowed"):
-        svc._prepare_action(session.id, _actor(), Action(kind="stop", base_version=2))
+    for kind in ("recovery_continue", "recovery_restart", "stop"):
+        with pytest.raises(BadRequestError, match="not allowed"):
+            svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=2))
+
+    context.paused = False
+    repo.compare_and_advance(session.id, 2, PcState.BUILD_REVIEW, context, [])
+    for kind, payload in (
+        ("message", {"text": "context", "client_turn_id": "turn-1"}),
+        ("update_model", {}),
+        ("check_recovery", {}),
+        ("stop", {}),
+    ):
+        with pytest.raises(BadRequestError, match="not allowed"):
+            svc._prepare_action(session.id, _actor(), Action(kind=kind, payload=payload, base_version=3))
+    svc._prepare_action(session.id, _actor(), Action(kind="recovery_continue", base_version=3))
+    svc._prepare_action(session.id, _actor(), Action(kind="recovery_restart", base_version=3))
 
 
 def test_get_session_view_actions_for_fix_await_decision(
@@ -697,8 +755,11 @@ def test_get_session_view_actions_for_fix_await_decision(
 
     assert [(a.id, a.kind) for a in view.actions] == [
         ("publish_fix", ActionKind.PRIMARY),
+        ("keep_draft", ActionKind.SECONDARY),
+        ("continue_adjusting", ActionKind.SECONDARY),
         ("view_changes", ActionKind.SECONDARY),
         ("revert", ActionKind.DESTRUCTIVE),
+        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -713,10 +774,11 @@ def test_get_session_view_actions_for_fix_await_verify(
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_validation", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
+        ("pause", ActionKind.SECONDARY),
     ]
 
 
-def test_get_session_view_actions_empty_for_working_state(
+def test_get_session_view_offers_restart_for_interrupted_working_state(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
     s = _seed_session_at(repo, PcState.FIX_DIAGNOSE)
@@ -724,7 +786,8 @@ def test_get_session_view_actions_empty_for_working_state(
 
     view = service.get_session_view(s.id, actor)
 
-    assert view.actions == []
+    assert view.interrupted is True
+    assert [action.id for action in view.actions] == ["restart"]
 
 
 def test_get_session_view_actions_empty_for_terminal_state(
@@ -743,7 +806,9 @@ def test_resolve_action_kind_maps_new_ids_to_handler_kinds() -> None:
     assert resolve_action_kind("publish_fix") == "publish"
     assert resolve_action_kind("approve_plan") == "approve_repair"
     assert resolve_action_kind("continue_adjusting") == "re_fix"
+    assert resolve_action_kind("pause") == "stop"
     assert resolve_action_kind("revert") == "undo"
+    assert resolve_action_kind("restart") == "recovery_restart"
     assert resolve_action_kind("retry_after_revert") == "re_fix"
 
 
@@ -772,13 +837,23 @@ def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
         PcState.FIX_AWAIT_VERIFY: {"run_verify", "undo"},
         PcState.FIX_AWAIT_TESTDATA: {"provide_testdata"},
         # excludes the client-only view_changes, which never reaches the handler.
-        PcState.FIX_AWAIT_DECISION: {"publish", "undo"},
-        PcState.CHECKLIST_AWAIT_RECHECK: {"recheck"},
+        PcState.FIX_AWAIT_DECISION: {"publish", "keep_draft", "re_fix", "undo"},
+        PcState.CHECKLIST_AWAIT_RECHECK: {"recheck", "undo"},
     }
     for state, handled in handled_kinds.items():
         actions = service_module._ACTIONS_FOR[state]
         resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
         assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
+
+
+def test_every_backend_waiting_action_has_a_ui_path() -> None:
+    for state, backend_kinds in service_module._BACKEND_ACTIONS_FOR.items():
+        surfaced_kinds = {
+            resolve_action_kind(action.id)
+            for action in service_module._ACTIONS_FOR.get(state, [])
+            if action.id not in service_module._CLIENT_ONLY_ACTIONS
+        }
+        assert backend_kinds <= surfaced_kinds, f"{state}: hidden backend actions {backend_kinds - surfaced_kinds}"
 
 
 def test_submit_action_view_changes_is_a_noop_not_keep_draft(
@@ -837,7 +912,7 @@ def test_submit_action_update_model_persists_without_dispatch(
     assert view.model.name == "gpt-4o"
     assert view.model.mode == "chat"
     assert view.model.completion_params == {"temperature": 0.2}
-    assert view.conversation[-1].payload["text"] == "Model changed to gpt-4o"
+    assert repo.list_conversation(s.id)[-1].payload["text"] == "Model changed to gpt-4o"
     assert enqueued == []
 
 
@@ -870,7 +945,7 @@ def test_submit_action_stream_update_model_emits_terminal_state_frame(
     action = Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version)
     frames = list(service.submit_action_stream(s.id, _actor(), action))
 
-    assert _business_event(frames[0]) == "snapshot"
+    assert _business_event(frames[0]) == "command_started"
     state_frames = [f for f in frames if _business_event(f) == "state"]
     assert state_frames, "update_model must emit a terminal state frame with the new version"
 
@@ -902,7 +977,7 @@ def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDi
     frames = list(gen)
 
     assert order == ["subscribe", "enqueue"]  # subscribe strictly before dispatch
-    assert _business_event(frames[0]) == "snapshot"
+    assert _business_event(frames[0]) == "command_started"
     assert any(_business_event(frame) == "state" for frame in frames)
 
 
@@ -933,7 +1008,7 @@ def test_create_fix_session_stream_subscribes_before_dispatch(inmemory_service_f
     frames = list(gen)
 
     assert order == ["subscribe", "enqueue"]
-    assert _business_event(frames[0]) == "snapshot"
+    assert _business_event(frames[0]) == "command_started"
 
 
 def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service_factory_raw) -> None:
@@ -947,7 +1022,7 @@ def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service
     frames = list(gen)
 
     assert order == ["subscribe", "enqueue"]
-    assert _business_event(frames[0]) == "snapshot"
+    assert _business_event(frames[0]) == "command_started"
 
 
 def test_invalid_create_streams_raise_before_subscribe(inmemory_service_factory_raw) -> None:
@@ -992,7 +1067,7 @@ def test_create_edit_session_stream_subscribes_before_initial_goal_dispatch(inme
     assert captured_actions == [
         Action(kind="send_edit_goal", payload={"text": "Tighten risk handling"}, base_version=1)
     ]
-    assert _business_event(frames[0]) == "snapshot"
+    assert _business_event(frames[0]) == "command_started"
     assert any(_business_event(frame) == "state" for frame in frames)
 
 
@@ -1004,7 +1079,7 @@ def test_create_edit_session_stream_subscribes_before_initial_goal_dispatch(inme
         ("create_edit_session_stream", {"goal_text": "Edit it"}),
     ],
 )
-def test_create_stream_closes_subscription_when_snapshot_serialization_fails(
+def test_create_stream_closes_subscription_when_state_serialization_fails(
     inmemory_service_factory_raw,
     monkeypatch: pytest.MonkeyPatch,
     method_name: str,
@@ -1026,7 +1101,7 @@ def test_create_stream_closes_subscription_when_snapshot_serialization_fails(
     assert subscription.closed is True
 
 
-def test_create_stream_closes_subscription_when_snapshot_projection_fails(
+def test_create_stream_closes_subscription_when_state_projection_fails(
     inmemory_service_factory_raw, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class _TrackingSub:
@@ -1089,6 +1164,43 @@ def test_submit_message_constructs_message_action(repo: SqlDifyBuilderRepository
     assert action.base_version == 1
 
 
+def test_settled_message_retry_uses_targeted_turn_lookup(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _seed_free_session(repo)
+    stored, context = repo.get_session(session.id)
+    context.next_seq = 3
+    repo.compare_and_advance(
+        session.id,
+        stored.version,
+        stored.current_state,
+        context,
+        [
+            ConversationItem(seq=1, kind="user", payload={"text": "hello", "turn_id": "turn-1"}),
+            ConversationItem(seq=2, kind="assistant_turn", payload={"reply_text": "hi", "turn_id": "turn-1"}),
+        ],
+    )
+
+    def reject_full_history(_session_id: str):
+        raise AssertionError("message preparation must not load the full conversation")
+
+    monkeypatch.setattr(repo, "list_conversation", reject_full_history)
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
+
+    view, expect_advance = service._prepare_action(
+        session.id,
+        _actor(),
+        Action(
+            kind="message",
+            payload={"text": "hello", "client_turn_id": "turn-1"},
+            base_version=1,
+        ),
+    )
+
+    assert expect_advance is False
+    assert view.version == 2
+
+
 def test_submit_message_rejects_blank_text(service: DifyBuilderService) -> None:
     with pytest.raises(BadRequestError, match="message text is required"):
         service.submit_message("session-1", _actor(), "   ", base_version=1, client_turn_id="turn-1")
@@ -1148,12 +1260,54 @@ def _seed_build_at(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
 def test_build_execution_actions_and_run_status(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
     s = _seed_build_at(repo, PcState.BUILD_EXECUTION)
     view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "waiting_input"
+    assert view.run_status == "waiting_confirmation"
     assert view.phase == "modify"
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_test", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
+        ("pause", ActionKind.SECONDARY),
     ]
+
+
+def test_session_view_exposes_only_the_current_interactive_card(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+    )
+    items = [
+        ConversationItem(
+            seq=0,
+            kind="form",
+            payload={"variant": "build_requirements", "fields": [], "values": {"audience": "ops"}},
+        ),
+        ConversationItem(
+            seq=1,
+            kind="assistant_turn",
+            payload={"cards": ["form"], "turn_id": "turn-1", "trace": {"status": "completed"}},
+        ),
+        ConversationItem(seq=2, kind="notice", payload={"text": "A later chat turn"}),
+    ]
+    repo.create_session(s, DifyBuilderContext(goal_text="Build it"), items)
+
+    view = service.get_session_view(s.id, _actor())
+
+    assert view.conversation_last_seq == 2
+    assert view.active_interaction is not None
+    assert view.active_interaction.action_id == "submit_requirements"
+    assert view.active_interaction.card.seq == 0
+    assert view.active_interaction.valid_at_version == view.version
+
+
+def test_conversation_page_requires_session_owner(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
+    s = _seed_build_at(repo, PcState.BUILD_GOAL_ANALYSIS)
+
+    with pytest.raises(NotFoundError):
+        service.get_conversation_page(s.id, _actor(OTHER_ACCOUNT_ID), limit=20)
 
 
 def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
@@ -1165,6 +1319,7 @@ def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderR
         "continue_adjusting",
         "view_changes",
         "revert",
+        "pause",
     ]
 
 
@@ -1252,8 +1407,9 @@ def test_create_edit_session_seeds_and_dispatches_opening_goal(
 
     assert view.state == "edit.capability_check"
     assert view.entry_mode == EntryMode.EDIT
-    assert [(item.kind, item.payload["text"]) for item in view.conversation] == [("user", "Tighten risk handling")]
-    assert isinstance(view.conversation[0].payload["turn_id"], str)
+    conversation = repo.list_conversation(view.session_id)
+    assert [(item.kind, item.payload["text"]) for item in conversation] == [("user", "Tighten risk handling")]
+    assert isinstance(conversation[0].payload["turn_id"], str)
     _session, context = repo.get_session(view.session_id)
     assert context.goal_text == "Tighten risk handling"
     assert len(enqueued) == 1
@@ -1266,11 +1422,12 @@ def test_create_edit_session_seeds_and_dispatches_opening_goal(
 def test_edit_apply_changes_actions_and_run_status(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
     s = _seed_edit_at(repo, PcState.EDIT_APPLY_CHANGES)
     view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "waiting_input"
+    assert view.run_status == "waiting_confirmation"
     assert view.phase == "modify"
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_affected_tests", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
+        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -1283,11 +1440,12 @@ def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRe
         "continue_adjusting",
         "view_changes",
         "revert",
+        "pause",
     ]
 
 
-def test_edit_publish_is_terminal_with_no_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_edit_at(repo, PcState.EDIT_PUBLISH)
+def test_edit_complete_is_terminal_with_no_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
+    s = _seed_edit_at(repo, PcState.EDIT_COMPLETE)
     view = service.get_session_view(s.id, _actor())
     assert view.run_status == "complete"
     assert view.actions == []
@@ -1355,6 +1513,7 @@ def test_get_session_view_run_status_paused(service: DifyBuilderService, repo: S
     view = service.get_session_view(s.id, _actor())
     assert view.run_status == "paused"
     assert view.canvas_read_only is False  # editable while paused
+    assert [action.id for action in view.actions] == ["resume"]
 
 
 def test_recovery_ref_for():

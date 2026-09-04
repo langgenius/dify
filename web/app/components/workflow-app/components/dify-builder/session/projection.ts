@@ -1,10 +1,9 @@
 import type { DifyBuilderCommitEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
 
-export const isTerminalView = (view: SessionView) =>
-  view.run_status === 'complete' || view.run_status === 'failed'
+export const isCompletedView = (view: SessionView) => view.run_status === 'complete'
 
-const mergeConversation = (
+export const mergeConversation = (
   current: ConversationItem[],
   committed: ConversationItem[],
 ): ConversationItem[] => {
@@ -25,7 +24,12 @@ export const projectCommit = (
   current: SessionView | null,
   commit: DifyBuilderCommitEventData,
 ): SessionView | null => {
-  if (!current || current.session_id !== commit.session_id || commit.version <= current.version)
+  if (
+    !current ||
+    current.session_id !== commit.session_id ||
+    commit.at_version !== commit.version ||
+    commit.version <= current.version
+  )
     return null
 
   return {
@@ -34,6 +38,5 @@ export const projectCommit = (
     state: commit.state,
     canvas_read_only: true,
     run_status: 'executing',
-    conversation: mergeConversation(current.conversation, commit.items),
   }
 }

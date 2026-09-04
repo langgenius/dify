@@ -36,12 +36,10 @@ _RECOVERY_MESSAGE: dict[RecoveryClass, str] = {
     RecoveryClass.UNCHANGED: "No changes since you last left — resuming where you were.",
     RecoveryClass.CONFIG_ONLY: "Only node settings changed since you left — continue or restart.",
     RecoveryClass.STRUCTURAL_COMPATIBLE: (
-        "The workflow structure changed, but the nodes this task targets are still present — "
-        "continue or restart."
+        "The workflow structure changed, but the nodes this task targets are still present — continue or restart."
     ),
     RecoveryClass.STRUCTURAL_INVALIDATING: (
-        "The nodes this task was working on are no longer in the workflow — restart to work "
-        "from the current draft."
+        "The nodes this task was working on are no longer in the workflow — restart to work from the current draft."
     ),
 }
 
@@ -127,6 +125,7 @@ def _reset_working_fields(fc: DifyBuilderContext) -> None:
     fc.edit_target_node_ids = []
     fc.last_snapshot_hash = ""
     fc.last_structure_fingerprint = ""
+    fc.paused = False
 
 
 def apply_recovery_action(
@@ -144,10 +143,16 @@ def apply_recovery_action(
         fc.recovery_class = str(cls)
         return s.current_state, [_append_notice(fc, _RECOVERY_MESSAGE[cls])]
     if kind == "recovery_continue":
+        graph, cur_hash = dify.read_graph(s.app_id, turn.actor)
+        fc.last_snapshot_hash = cur_hash
+        fc.last_structure_fingerprint = dify.structural_fingerprint(graph)
         fc.recovery_class = ""
         return s.current_state, [_append_notice(fc, "Continuing on the current plan.")]
     if kind == "recovery_restart":
         fc.recovery_class = ""
         _reset_working_fields(fc)
+        graph, cur_hash = dify.read_graph(s.app_id, turn.actor)
+        fc.last_snapshot_hash = cur_hash
+        fc.last_structure_fingerprint = dify.structural_fingerprint(graph)
         return entry_state_for(s.entry_mode), [_append_notice(fc, "Restarted from the current draft.")]
     return s.current_state, []  # defensive: unreachable given the runner's guard

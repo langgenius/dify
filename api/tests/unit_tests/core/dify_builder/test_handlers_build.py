@@ -143,16 +143,12 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
         ),
         actor=_actor(),
     )
-    res = handle_goal_analysis(
-        env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1]
-    )
+    res = handle_goal_analysis(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.requirements["currency"] == "EUR"  # payload overrides
     assert res.context.requirements["audience"] == "board"  # new listed key merged
-    assert (
-        res.context.requirements["metrics"] == "revenue"
-    )  # untouched key survives (not blind-overwrite)
+    assert res.context.requirements["metrics"] == "revenue"  # untouched key survives (not blind-overwrite)
     assert "junk" not in res.context.requirements  # non-listed key excluded
     assert res.context.plan_version_tag == "v1"
     assert res.context.plan_items
@@ -173,9 +169,7 @@ def test_initial_plan_find_resources_advances_to_resource_recommendation():
         plan_version_tag="v1",
     )
     turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
-    res = handle_initial_plan(
-        env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1]
-    )
+    res = handle_initial_plan(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
     assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     rs = next(i for i in res.items if i.kind == "resource_select")
@@ -243,7 +237,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     change_set = next(i for i in res.items if i.kind == "change_set")
     assert change_set.payload["scope"] == "structure"
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert len(assistant.payload["trace"]["steps"]) == 4
+    assert len(assistant.payload["trace"]["steps"]) == 3
 
 
 def test_plan_approval_ignores_non_approve_action():
@@ -536,7 +530,7 @@ def test_test_and_repair_input_failure_routes_to_testdata_gate():
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["tone"] == "error"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["stage_id"] == "build.await_testdata"
+    assert assistant.payload["stage_id"] == "build.test_and_repair"
 
 
 def test_test_and_repair_config_failure_still_routes_to_repair_gate():

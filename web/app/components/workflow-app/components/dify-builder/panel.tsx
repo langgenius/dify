@@ -9,15 +9,22 @@ import DifyBuilderComposer from './composer'
 import { DifyBuilderConversation } from './conversation'
 import { getDefaultActionPayload, isClientOnlyAction } from './interactions/action-payload'
 import {
+  difyBuilderConversationAtom,
+  difyBuilderConversationHasMoreAtom,
+  difyBuilderConversationLoadingAtom,
+} from './session/state'
+import {
   difyBuilderActionsAtom,
+  difyBuilderActiveInteractionAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
-  difyBuilderConversationAtom,
   difyBuilderErrorAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInterruptedAtom,
+  difyBuilderLoadOlderConversationAtom,
   difyBuilderRecheckReadyAtom,
+  difyBuilderRecoveryAtom,
   difyBuilderResetAtom,
   difyBuilderRetryCanvasRefreshAtom,
   difyBuilderSubmitActionAtom,
@@ -26,6 +33,11 @@ import {
 
 const FORM_ACTION_IDS = new Set(['provide_testdata', 'submit_edit_rules', 'submit_requirements'])
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
+const EMPTY_ACTION_INTERACTION_STATE = {
+  key: '',
+  payloads: {} as Record<string, Record<string, unknown>>,
+  validity: {} as Record<string, boolean>,
+}
 
 const DifyBuilderPanelBackground = memo(() => {
   return (
@@ -89,24 +101,39 @@ const DifyBuilderPanel = () => {
   const { t } = useTranslation()
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const actions = useAtomValue(difyBuilderActionsAtom)
+  const activeInteraction = useAtomValue(difyBuilderActiveInteractionAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const conversation = useAtomValue(difyBuilderConversationAtom)
+  const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)
+  const conversationLoading = useAtomValue(difyBuilderConversationLoadingAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
+  const recovery = useAtomValue(difyBuilderRecoveryAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
+  const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
-  const [actionPayloads, setActionPayloads] = useState<Record<string, Record<string, unknown>>>({})
-  const [actionValidity, setActionValidity] = useState<Record<string, boolean>>({})
+  const [actionInteractionState, setActionInteractionState] = useState(
+    EMPTY_ACTION_INTERACTION_STATE,
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedToBottomRef = useRef(true)
+  const activeInteractionKey = activeInteraction
+    ? `${activeInteraction.action_id}:${activeInteraction.card.seq}`
+    : ''
+  const currentActionInteractionState =
+    actionInteractionState.key === activeInteractionKey
+      ? actionInteractionState
+      : EMPTY_ACTION_INTERACTION_STATE
+  const actionPayloads = currentActionInteractionState.payloads
+  const actionValidity = currentActionInteractionState.validity
 
   const scrollToBottomIfPinned = useCallback(() => {
     const scrollContainer = scrollRef.current
@@ -128,14 +155,41 @@ const DifyBuilderPanel = () => {
 
   const handleActionPayloadChange = useCallback(
     (actionId: string, payload: Record<string, unknown>) => {
-      setActionPayloads((current) => ({ ...current, [actionId]: payload }))
+      setActionInteractionState((current) => ({
+        key: activeInteractionKey,
+        payloads: {
+          ...(current.key === activeInteractionKey ? current.payloads : {}),
+          [actionId]: payload,
+        },
+        validity: current.key === activeInteractionKey ? current.validity : {},
+      }))
     },
-    [],
+    [activeInteractionKey],
   )
 
-  const handleActionValidityChange = useCallback((actionId: string, valid: boolean) => {
-    setActionValidity((current) => ({ ...current, [actionId]: valid }))
-  }, [])
+  const handleActionValidityChange = useCallback(
+    (actionId: string, valid: boolean) => {
+      setActionInteractionState((current) => ({
+        key: activeInteractionKey,
+        payloads: current.key === activeInteractionKey ? current.payloads : {},
+        validity: {
+          ...(current.key === activeInteractionKey ? current.validity : {}),
+          [actionId]: valid,
+        },
+      }))
+    },
+    [activeInteractionKey],
+  )
+
+  const handleLoadOlderConversation = useCallback(async () => {
+    const scrollContainer = scrollRef.current
+    const previousScrollHeight = scrollContainer?.scrollHeight ?? 0
+    const loaded = await loadOlderConversation()
+    if (!loaded || !scrollContainer) return
+    requestAnimationFrame(() => {
+      scrollContainer.scrollTop += scrollContainer.scrollHeight - previousScrollHeight
+    })
+  }, [loadOlderConversation])
 
   const handleAction = useCallback(
     async (action: Action) => {
@@ -148,25 +202,31 @@ const DifyBuilderPanel = () => {
       setPendingActionId(action.id)
       try {
         const payload =
-          actionPayloads[action.id] ?? getDefaultActionPayload(action.id, conversation)
+          actionPayloads[action.id] ?? getDefaultActionPayload(action.id, activeInteraction)
         const submitted = await submitAction(action.id, payload)
         if (submitted) {
-          setActionPayloads((current) => {
-            const next = { ...current }
-            delete next[action.id]
-            return next
-          })
-          setActionValidity((current) => {
-            const next = { ...current }
-            delete next[action.id]
-            return next
+          setActionInteractionState((current) => {
+            if (current.key !== activeInteractionKey) return current
+            const payloads = { ...current.payloads }
+            const validity = { ...current.validity }
+            delete payloads[action.id]
+            delete validity[action.id]
+            return { ...current, payloads, validity }
           })
         }
       } finally {
         setPendingActionId(null)
       }
     },
-    [actionPayloads, actionValidity, conversation, interactionBusy, pendingActionId, submitAction],
+    [
+      actionPayloads,
+      actionValidity,
+      activeInteraction,
+      activeInteractionKey,
+      interactionBusy,
+      pendingActionId,
+      submitAction,
+    ],
   )
 
   const handleReset = () => {
@@ -174,8 +234,7 @@ const DifyBuilderPanel = () => {
     pinnedToBottomRef.current = true
     setPendingActionId(null)
     setChangesExpanded(false)
-    setActionPayloads({})
-    setActionValidity({})
+    setActionInteractionState(EMPTY_ACTION_INTERACTION_STATE)
   }
 
   return (
@@ -222,15 +281,31 @@ const DifyBuilderPanel = () => {
           onScroll={handleScroll}
         >
           {hasSession ? (
-            <DifyBuilderConversation
-              items={conversation}
-              busy={interactionBusy}
-              changesExpanded={changesExpanded}
-              interrupted={interrupted}
-              onActionPayloadChange={handleActionPayloadChange}
-              onActionValidityChange={handleActionValidityChange}
-              onStreamingContentChange={scrollToBottomIfPinned}
-            />
+            <>
+              {conversationHasMore && (
+                <div className="flex justify-center px-4 pt-3">
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    loading={conversationLoading}
+                    disabled={conversationLoading}
+                    onClick={() => void handleLoadOlderConversation()}
+                  >
+                    {t(($) => $['operation.more'], { ns: 'common' })}
+                  </Button>
+                </div>
+              )}
+              <DifyBuilderConversation
+                activeInteraction={activeInteraction}
+                items={conversation}
+                busy={interactionBusy}
+                changesExpanded={changesExpanded}
+                interrupted={interrupted}
+                onActionPayloadChange={handleActionPayloadChange}
+                onActionValidityChange={handleActionValidityChange}
+                onStreamingContentChange={scrollToBottomIfPinned}
+              />
+            </>
           ) : (
             <div className="flex min-h-full flex-col items-center justify-center px-8 pb-8 text-center">
               <span aria-hidden className="mb-3 i-custom-public-app-builder-builder-mark size-8" />
@@ -245,6 +320,14 @@ const DifyBuilderPanel = () => {
         </div>
 
         <footer className="relative z-10 shrink-0 pb-2">
+          {recovery?.message && (
+            <div
+              role="alert"
+              className="mx-4 mb-2 rounded-lg bg-state-warning-hover px-2 py-1.5 system-xs-regular text-text-warning"
+            >
+              {recovery.message}
+            </div>
+          )}
           {error && (
             <div
               role="alert"
