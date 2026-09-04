@@ -45,6 +45,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
+from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
@@ -151,6 +152,8 @@ from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
+from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
     RecommendedAppCatalogRouter,
@@ -244,6 +247,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    plugin_file_uploads: PluginFileUploadService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -615,6 +619,10 @@ def build_application_services(
         ),
         file_grants=_build_file_grant_service(database_client=database_client),
         files=file_service,
+        plugin_file_uploads=PluginFileUploadService(
+            owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
+            files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 from collections.abc import Callable
 from typing import Literal
 from urllib.parse import parse_qs, urlparse
@@ -297,6 +300,26 @@ def test_verify_plugin_file_signature_rejects_invalid_signatures(
             timestamp=query["timestamp"][0],
             nonce=query["nonce"][0],
             sign=query["sign"][0],
+        )
+        is False
+    )
+
+
+def test_verify_plugin_file_signature_rejects_malformed_signed_timestamp() -> None:
+    timestamp = "not-a-timestamp"
+    nonce = "nonce"
+    payload = f"upload|report.pdf|application/pdf|tenant-id|user-id||{timestamp}|{nonce}"
+    sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
+
+    assert (
+        verify_plugin_file_signature(
+            filename="report.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            timestamp=timestamp,
+            nonce=nonce,
+            sign=sign,
         )
         is False
     )
