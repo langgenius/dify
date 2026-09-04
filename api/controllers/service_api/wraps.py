@@ -12,7 +12,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
@@ -23,12 +23,14 @@ from controllers.service_api.schema import (
     USER_REQUIRED_ATTR,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
@@ -64,6 +66,12 @@ APP_TOKEN_FORBIDDEN_RESPONSE = {
 DATASET_TOKEN_AUTH_RESPONSES = {
     401: "Unauthorized - invalid API token",
     403: "Forbidden - dataset API access or workspace access denied",
+}
+VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
+    503: (
+        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
+        "plan only; retry the request later."
+    ),
 }
 
 
@@ -183,13 +191,14 @@ def cloud_edition_billing_resource_check[**P, R](
     api_token_type: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
+        @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             if resource == "vector_space":
                 if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
-                vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                vector_space = application_services().feature_queries.get_workspace_vector_space(api_token.tenant_id)
                 if vector_space.usage_unknown:
                     features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
                     if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
@@ -218,6 +227,11 @@ def cloud_edition_billing_resource_check[**P, R](
 
             return view(*args, **kwargs)
 
+        if resource == "vector_space":
+            cast(_RestxDocumentedView, decorated).__apidoc__ = cast(
+                dict[str, object],
+                merge(decorated.__dict__.get("__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
+            )
         return decorated
 
     return interceptor
@@ -311,6 +325,18 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                     dataset_id = str_id
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
+
+        # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
+        #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
+        #   N rows   -> the key is limited to exactly those datasets
+        # A bound key may only call endpoints carrying one of its dataset ids; endpoints
+        # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
+        # per request (not cached) so scope changes take effect immediately.
+        # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
+        # typed helper accepts it (runtime proxies every Session method through unchanged).
+        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
+        if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
+            raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:
             dataset_id = str(dataset_id)

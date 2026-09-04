@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -10,7 +11,6 @@ from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -45,17 +45,17 @@ def _make_valid_email_config():
     )
 
 
-def test_build_form_link():
-    with patch.object(dify_config, "APP_WEB_URL", "http://example.com/"):
-        assert _build_form_link("token123") == "http://example.com/form/token123"
+def test_build_form_link(config_overrides: Callable[..., None]):
+    config_overrides(APP_WEB_URL="http://example.com/")
+    assert _build_form_link("token123") == "http://example.com/form/token123"
 
-    with patch.object(dify_config, "APP_WEB_URL", "http://example.com"):
-        assert _build_form_link("token123") == "http://example.com/form/token123"
+    config_overrides(APP_WEB_URL="http://example.com")
+    assert _build_form_link("token123") == "http://example.com/form/token123"
 
     assert _build_form_link(None) is None
 
-    with patch.object(dify_config, "APP_WEB_URL", None):
-        assert _build_form_link("token123") is None
+    config_overrides(APP_WEB_URL=None)
+    assert _build_form_link("token123") is None
 
 
 class TestDeliveryTestRegistry:
@@ -320,7 +320,8 @@ class TestEmailDeliveryTestHandler:
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         assert handler._query_workspace_member_emails(tenant_id="t1", user_ids=[]) == {}
 
-    def test_build_substitutions(self):
+    def test_build_substitutions(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_WEB_URL="http://example.com")
         context = DeliveryTestContext(
             tenant_id="t1",
             app_id="a1",
@@ -331,8 +332,7 @@ class TestEmailDeliveryTestHandler:
             recipients=[DeliveryTestEmailRecipient(email="test@example.com", form_token="token123")],
         )
 
-        with patch.object(dify_config, "APP_WEB_URL", "http://example.com"):
-            subs = EmailDeliveryTestHandler._build_substitutions(context=context, recipient_email="test@example.com")
+        subs = EmailDeliveryTestHandler._build_substitutions(context=context, recipient_email="test@example.com")
 
         assert subs["node_title"] == "title"
         assert subs["form_content"] == "content"

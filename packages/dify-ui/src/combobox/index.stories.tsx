@@ -403,7 +403,7 @@ const VirtualizedModelList = ({
   }, [virtualizer, virtualizerRef])
 
   return (
-    <ScrollArea className="relative overflow-hidden">
+    <ScrollArea className="overflow-hidden">
       <ScrollAreaViewport
         ref={scrollRef}
         role="region"

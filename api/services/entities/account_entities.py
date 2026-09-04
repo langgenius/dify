@@ -58,6 +58,32 @@ class AccountPasswordDigest:
 
 
 @dataclass(frozen=True, slots=True)
+class ForgotPasswordVerificationToken:
+    email: str
+    code: str
+    account_id: str | None = None
+
+    def promote(self) -> ForgotPasswordResetToken:
+        return ForgotPasswordResetToken(email=self.email, code=self.code, account_id=self.account_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordResetToken:
+    email: str
+    code: str
+    account_id: str | None = None
+
+
+type ForgotPasswordToken = ForgotPasswordVerificationToken | ForgotPasswordResetToken
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordVerification:
+    email: str
+    token: str
+
+
+@dataclass(frozen=True, slots=True)
 class AccountIntegrationSnapshot:
     provider: str
     created_at: datetime
@@ -114,6 +140,30 @@ class AccountEmailResetStatus(StrEnum):
 class AccountEmailResetResult:
     status: AccountEmailResetStatus
     account: AccountSnapshot | None = None
+
+
+class AccountEmailRegistrationPhase(StrEnum):
+    REGISTER = "register"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEmailRegistrationToken:
+    email: str
+    code: str
+    phase: AccountEmailRegistrationPhase | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEmailRegistrationVerification:
+    email: str
+    token: str
+
+
+@dataclass(frozen=True, slots=True)
+class AccountSessionTokens:
+    access_token: str
+    refresh_token: str
+    csrf_token: str
 
 
 class AccountChangeEmailPhase(StrEnum):

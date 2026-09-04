@@ -1,12 +1,12 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -30,6 +30,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
   const { data } = useQuery(externalKnowledgeApiQueryOptions)
   const externalKnowledgeApiList = data?.data ?? []
+  const externalKnowledgeIdInputId = useId()
   const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
 
@@ -94,14 +95,18 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
       </div>
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">
+          <label
+            htmlFor={externalKnowledgeIdInputId}
+            className="system-sm-semibold text-text-secondary"
+          >
             {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
           </label>
         </div>
         <Input
+          id={externalKnowledgeIdInputId}
           value={external_knowledge_id}
-          onChange={(e) =>
-            onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })
+          onValueChange={(value) =>
+            onChange({ external_knowledge_id: value, external_knowledge_api_id })
           }
           placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
         />

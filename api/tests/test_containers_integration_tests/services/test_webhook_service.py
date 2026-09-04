@@ -8,14 +8,12 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
-from services.entities.feature_entities import SystemFeatureModel
 from services.trigger.webhook_service import WebhookService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -38,16 +36,12 @@ def test_data(
     """Persist the webhook graph with account and workspace creation enabled."""
 
     fake = Faker()
-    system_features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        is_allow_register=True,
+    monkeypatch.setattr(
+        "services.account_service.SystemFeatureService.is_registration_allowed",
+        lambda: True,
     )
     monkeypatch.setattr(
-        "services.account_service.FeatureService.get_system_features",
-        lambda: system_features,
-    )
-    monkeypatch.setattr(
-        "services.account_service.FeatureService.is_workspace_creation_allowed",
+        "services.account_service.SystemFeatureService.is_workspace_creation_allowed",
         lambda: True,
     )
     account = AccountService.create_account(

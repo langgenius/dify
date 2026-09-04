@@ -202,8 +202,11 @@ describe('BasicInfoSection', () => {
 
     it('should render name input with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       expect(nameInput)!.toBeInTheDocument()
+      expect(nameInput).toHaveValue('Test Dataset')
     })
 
     it('should render description textarea with correct value', () => {
@@ -225,7 +228,9 @@ describe('BasicInfoSection', () => {
       const setName = vi.fn()
       render(<BasicInfoSection {...defaultProps} setName={setName} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
       expect(setName).toHaveBeenCalledWith('New Name')
@@ -457,8 +462,7 @@ describe('BasicInfoSection', () => {
     it('should have accessible name input', () => {
       render(<BasicInfoSection {...defaultProps} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput.tagName.toLowerCase()).toBe('input')
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeInTheDocument()
     })
 
     it('should have accessible description textarea', () => {

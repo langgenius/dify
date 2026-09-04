@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import Mock
 
 import pytest
@@ -21,18 +22,17 @@ from services.feature_service import FeatureService
 )
 def test_get_knowledge_file_size_limit(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     deployment_edition: DeploymentEdition,
     tenant_id: str | None,
     billing_feature_enabled: bool,
     plan: CloudPlan,
     expected: int,
 ) -> None:
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
-    monkeypatch.setattr(feature_service_module.dify_config, "UPLOAD_FILE_SIZE_LIMIT", 15)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN",
-        50,
+    config_overrides(
+        DEPLOYMENT_EDITION=deployment_edition,
+        UPLOAD_FILE_SIZE_LIMIT=15,
+        KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=50,
     )
     get_info = Mock(
         return_value={
@@ -50,13 +50,13 @@ def test_get_knowledge_file_size_limit(
         get_info.assert_not_called()
 
 
-def test_paid_knowledge_file_size_limit_never_reduces_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(feature_service_module.dify_config, "UPLOAD_FILE_SIZE_LIMIT", 100)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN",
-        50,
+def test_paid_knowledge_file_size_limit_never_reduces_default(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        UPLOAD_FILE_SIZE_LIMIT=100,
+        KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=50,
     )
     monkeypatch.setattr(
         feature_service_module.BillingService,

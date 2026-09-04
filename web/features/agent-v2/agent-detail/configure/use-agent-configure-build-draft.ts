@@ -451,7 +451,7 @@ export function useAgentConfigureBuildDraftActions({
       await exitBuildDraftMode(true)
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+      // Each failed request already surfaces its backend error through the console client.
     } finally {
       setIsApplyingBuildDraftWorkflow(false)
     }

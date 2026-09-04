@@ -96,6 +96,7 @@ describe('SnippetCreateButton', () => {
     render(<SnippetCreateButton />)
 
     fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    expect(screen.getByRole('dialog', { name: 'snippet.createFrom' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
     expect(screen.getByText('workflow.snippet.createDialogTitle')).toBeInTheDocument()
 
@@ -152,9 +153,9 @@ describe('SnippetCreateButton', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
     fireEvent.click(screen.getByRole('button', { name: 'snippet.importDSLFile' }))
-    expect(screen.getByText('snippet.importDialogTitle')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     fireEvent.change(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), {
       target: { value: 'https://example.com/snippet.yml' },
     })

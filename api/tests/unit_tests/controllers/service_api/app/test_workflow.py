@@ -16,6 +16,7 @@ Focus on:
 import json
 import sys
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -618,10 +619,14 @@ class TestWorkflowRunApi:
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
 
     def test_sandbox_billing_does_not_gate_default_workflow_run(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
@@ -673,10 +678,14 @@ class TestWorkflowRunByIdApi:
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
 
     def test_rejects_sandbox_plan_with_upgrade_error(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
@@ -727,9 +736,9 @@ class TestWorkflowRunByIdApi:
         billing_enabled: bool,
         plan: CloudPlan,
         sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+        config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
         billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
@@ -757,9 +766,15 @@ class TestWorkflowRunByIdApi:
             billing_get_info.assert_not_called()
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    def test_not_found(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -776,9 +791,15 @@ class TestWorkflowRunByIdApi:
                 handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    def test_draft_workflow(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",

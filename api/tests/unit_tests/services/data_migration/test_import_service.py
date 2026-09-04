@@ -28,6 +28,7 @@ from services.data_migration.entities import (
 )
 from services.data_migration.import_service import ImportRequest, ImportTargetResolver, MigrationImportService
 from services.entities.dsl_entities import ImportStatus
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @dataclass(frozen=True)
@@ -347,7 +348,7 @@ def test_workflow_app_import_closes_read_transaction_before_dsl_overwrite(
             return Import(id="import-id", status=ImportStatus.COMPLETED, app_id="imported-app-id")
 
     monkeypatch.setattr(import_service, "AppDslService", StubAppDslService)
-    monkeypatch.setattr(import_service.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     existing_app = _persist_app(database.session, app_id="11111111-1111-4111-8111-111111111111")
     database.session.begin()
 

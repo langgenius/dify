@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} credite",
   "mainNav.workspace.creditsUnit": "credite",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Nu s-au găsit spații de lucru",
   "mainNav.workspace.openMenu": "Deschide meniul spațiului de lucru",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

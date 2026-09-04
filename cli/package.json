@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "0.2.0-alpha",
+  "version": "1.17.0",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [
@@ -32,7 +32,8 @@
     "ci": "pnpm tree:check && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "bun scripts/print-buildinfo.ts",
-    "build:bin": "scripts/release-build.sh"
+    "build:bin": "scripts/release-build.sh",
+    "build:bin:local": "DIFYCTL_CHANNEL=dev scripts/release-build.sh"
   },
   "dependencies": {
     "@dify/contracts": "workspace:*",
@@ -65,10 +66,10 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   },
   "difyctl": {
-    "channel": "alpha",
+    "channel": "stable",
     "compat": {
       "minDify": "1.16.0",
       "maxDify": "1.17.0"

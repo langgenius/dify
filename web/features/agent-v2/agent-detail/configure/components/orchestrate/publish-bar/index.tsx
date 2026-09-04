@@ -134,7 +134,7 @@ export function AgentConfigurePublishBar({
       },
       enabled: publishIsAvailable && !selectedVersionSnapshot,
     })
-  const workflowReferencesQuery = useQuery(workflowReferencesQueryOptions)
+  useQuery(workflowReferencesQueryOptions)
   const restoreVersionMutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions(),
   )
@@ -203,12 +203,10 @@ export function AgentConfigurePublishBar({
 
     let referencesResponse: AgentReferencingWorkflowsResponse | undefined
     try {
-      referencesResponse =
-        queryClient.getQueryData<AgentReferencingWorkflowsResponse>(
-          workflowReferencesQueryOptions.queryKey,
-        ) ??
-        workflowReferencesQuery.data ??
-        (await queryClient.ensureQueryData(workflowReferencesQueryOptions))
+      referencesResponse = await queryClient.query({
+        ...workflowReferencesQueryOptions,
+        staleTime: 0,
+      })
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
       return
@@ -471,7 +469,7 @@ function AgentVersionRestoreBar({
       <Button
         type="button"
         variant="secondary"
-        className="h-8 rounded-lg px-3 text-text-accent"
+        className="h-8 shrink-0 rounded-lg px-3 text-text-accent"
         onClick={onExitVersions}
       >
         <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />

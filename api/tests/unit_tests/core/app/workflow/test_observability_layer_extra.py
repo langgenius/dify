@@ -6,12 +6,13 @@ import pytest
 
 from core.app.workflow.layers.observability import ObservabilityLayer
 from graphon.enums import BuiltinNodeTypes
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestObservabilityLayerExtras:
     def test_init_tracer_enabled_sets_tracer(self, monkeypatch: pytest.MonkeyPatch):
         tracer = object()
-        monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
+        apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
         monkeypatch.setattr("core.app.workflow.layers.observability.get_tracer", lambda _: tracer)
 
@@ -23,7 +24,7 @@ class TestObservabilityLayerExtras:
     def test_init_tracer_disables_when_get_tracer_fails(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
-        monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
+        apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
 
         def _raise(*_args, **_kwargs):
@@ -38,7 +39,7 @@ class TestObservabilityLayerExtras:
         assert "Failed to get OpenTelemetry tracer" in caplog.text
 
     def test_init_tracer_disables_when_otel_disabled(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", False)
+        apply_config_overrides(monkeypatch, ENABLE_OTEL=False)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
 
         layer = ObservabilityLayer()

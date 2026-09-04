@@ -3,7 +3,6 @@
 from typing import Protocol
 
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.account_errors import AccountNotFoundError, EducationRateLimitExceededError
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
@@ -72,8 +71,6 @@ class AccountEducationService:
         account = self._accounts.get(context.account_id)
         if account is None:
             raise AccountNotFoundError
-        if context.active_workspace_id is None:
-            raise ActiveWorkspaceRequiredError
         if self._activation_rate_limiter.is_rate_limited(account.email):
             raise EducationRateLimitExceededError
         self._activation_rate_limiter.increment_rate_limit(account.email)

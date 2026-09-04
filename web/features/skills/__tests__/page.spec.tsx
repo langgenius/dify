@@ -9,7 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -237,14 +237,13 @@ function createAgentReference(
   }
 }
 
-function renderSkillsPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
+}
 
+function renderSkillsPage(queryClient = createTestQueryClient()) {
   return render(
     <QueryClientProvider client={queryClient}>
       <SkillsPage />
@@ -310,12 +309,97 @@ describe('SkillsPage', () => {
     })
   })
 
+  it('exposes loading as a status without presenting skeletons as skill items', () => {
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skills-pending', options],
+      queryFn: () => new Promise(() => {}),
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
+
+    renderSkillsPage()
+
+    const skillRegion = screen.getByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    expect(skillRegion).toHaveAttribute('aria-busy', 'true')
+    expect(within(skillRegion).getByRole('status')).toHaveTextContent('common.loading')
+    expect(within(skillRegion).queryByRole('list')).not.toBeInTheDocument()
+    expect(within(skillRegion).queryByRole('listitem')).not.toBeInTheDocument()
+  })
+
+  it('exposes a failed skill request as an alert without a stale list', async () => {
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skills-error', options],
+      queryFn: () => Promise.reject(new Error('skills request failed')),
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
+
+    renderSkillsPage()
+
+    const skillRegion = screen.getByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    expect(await within(skillRegion).findByRole('alert')).toHaveTextContent(
+      'skill.skillManagement.loadingError',
+    )
+    expect(
+      within(skillRegion).getByRole('button', { name: 'common.operation.retry' }),
+    ).toBeInTheDocument()
+    expect(within(skillRegion).queryByRole('list')).not.toBeInTheDocument()
+  })
+
+  it('replaces a cached empty state with a retryable error when refetch fails', async () => {
+    const user = userEvent.setup()
+    const queryKey = ['skills-cached-empty-refetch-error']
+    let requestCount = 0
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey,
+      queryFn: () => {
+        requestCount += 1
+        return Promise.reject(new Error('skills refetch failed'))
+      },
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(queryKey, {
+      pages: [{ data: [], has_more: false, page: 1, total: 0 }],
+      pageParams: [1],
+    })
+
+    renderSkillsPage(queryClient)
+
+    const skillRegion = screen.getByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    const error = await within(skillRegion).findByRole('alert')
+    expect(error).toHaveTextContent('skill.skillManagement.loadingError')
+    expect(within(skillRegion).queryByText('skill.skillManagement.empty')).not.toBeInTheDocument()
+    expect(
+      within(skillRegion).queryByRole('button', {
+        name: 'skill.skillManagement.emptyAction.createTitle',
+      }),
+    ).not.toBeInTheDocument()
+    expect(within(skillRegion).queryByRole('list')).not.toBeInTheDocument()
+
+    await user.click(within(error).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => {
+      expect(requestCount).toBe(2)
+    })
+  })
+
   it('renders skills with tags, reference count, and detail links', async () => {
     renderSkillsPage()
 
     const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
-    expect(screen.getByRole('article', { name: 'Refund approval' })).toBeInTheDocument()
+    const skillList = screen.getByRole('list')
+    expect(screen.getByRole('listitem', { name: 'Refund approval' })).toBeInTheDocument()
+    expect(skillList).toContainElement(skillLink)
     expect(skillLink).toHaveAttribute('href', '/skills/skill-1')
+    expect(skillLink).toHaveAccessibleDescription('Handle refund requests.')
+    expect(within(skillLink).queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
@@ -350,8 +434,12 @@ describe('SkillsPage', () => {
 
     renderSkillsPage()
 
+    const skillLink = await screen.findByRole('link', { name: 'Refund approval' })
+    expect(skillLink).toHaveAccessibleDescription(
+      'skill.skillManagement.draft Handle refund requests.',
+    )
     expect(
-      await screen.findByText('skill.skillManagement.editedAt:{"time":"2 hours ago"}'),
+      screen.getByText('skill.skillManagement.editedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
   })
 
@@ -424,8 +512,28 @@ describe('SkillsPage', () => {
       name: 'skill-21',
       display_name: 'Skill 21',
     })
-    mocks.skills = firstPageSkills
-    mocks.skillPages = [firstPageSkills, [nextPageSkill]]
+    let resolveNextPage:
+      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | undefined
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skills-deferred-next-page', options],
+      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
+        if (Number(pageParam) === 1) {
+          return {
+            data: firstPageSkills,
+            has_more: true,
+            page: 1,
+            total: 21,
+          }
+        }
+
+        return new Promise((resolve) => {
+          resolveNextPage = resolve
+        })
+      },
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
 
     renderSkillsPage()
 
@@ -433,7 +541,7 @@ describe('SkillsPage', () => {
       name: 'skill.skillManagement.listLabel',
     })
     await screen.findByRole('heading', { name: 'Skill 1' })
-    expect(within(skillList).getAllByRole('article')).toHaveLength(20)
+    expect(within(skillList).getAllByRole('listitem')).toHaveLength(20)
 
     const scrollViewport = skillList.parentElement?.parentElement
     expect(scrollViewport).not.toBeNull()
@@ -444,14 +552,184 @@ describe('SkillsPage', () => {
     })
     fireEvent.scroll(scrollViewport!)
 
+    const paginationLoading = await within(skillList).findByRole('status')
+    expect(paginationLoading).toHaveTextContent('common.loading')
+    expect(paginationLoading).toBeVisible()
+    expect(within(skillList).getAllByRole('listitem')).toHaveLength(20)
+
+    resolveNextPage?.({
+      data: [nextPageSkill],
+      has_more: false,
+      page: 2,
+      total: 21,
+    })
     expect(await screen.findByRole('heading', { name: 'Skill 21' })).toBeInTheDocument()
-    expect(within(skillList).getAllByRole('article')).toHaveLength(21)
+    expect(within(skillList).getAllByRole('listitem')).toHaveLength(21)
     expect(mocks.skillsQueryOptions.mock.lastCall?.[0].input(2)).toEqual({
       query: {
         limit: 20,
         page: 2,
       },
     })
+  })
+
+  it('waits for a cached first page to refetch before auto-loading the next page', async () => {
+    const queryKey = ['skills-cached-refetch']
+    const staleFirstPage = Array.from({ length: 20 }, (_, index) =>
+      createSkill({
+        id: `stale-skill-${index + 1}`,
+        name: `stale-skill-${index + 1}`,
+        display_name: `Stale Skill ${index + 1}`,
+      }),
+    )
+    const freshFirstPage = staleFirstPage.map((skill, index) =>
+      createSkill({
+        ...skill,
+        display_name: `Fresh Skill ${index + 1}`,
+      }),
+    )
+    let resolveFirstPageRefetch:
+      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | undefined
+    let nextPageRequestCount = 0
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey,
+      queryFn: ({ pageParam }: { pageParam: unknown }) => {
+        if (Number(pageParam) === 1) {
+          return new Promise((resolve) => {
+            resolveFirstPageRefetch = resolve
+          })
+        }
+
+        nextPageRequestCount += 1
+        return Promise.resolve({
+          data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Fresh Skill 21' })],
+          has_more: false,
+          page: 2,
+          total: 21,
+        })
+      },
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(queryKey, {
+      pages: [
+        {
+          data: staleFirstPage,
+          has_more: true,
+          page: 1,
+          total: 21,
+        },
+      ],
+      pageParams: [1],
+    })
+
+    renderSkillsPage(queryClient)
+
+    const skillRegion = screen.getByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    expect(await screen.findByRole('heading', { name: 'Stale Skill 1' })).toBeInTheDocument()
+    const scrollViewport = skillRegion.parentElement?.parentElement
+    expect(scrollViewport).not.toBeNull()
+    Object.defineProperties(scrollViewport!, {
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 1200 },
+      scrollTop: { configurable: true, value: 560 },
+    })
+    fireEvent.scroll(scrollViewport!)
+
+    expect(nextPageRequestCount).toBe(0)
+    expect(screen.getByRole('heading', { name: 'Stale Skill 1' })).toBeInTheDocument()
+
+    resolveFirstPageRefetch?.({
+      data: freshFirstPage,
+      has_more: true,
+      page: 1,
+      total: 21,
+    })
+    expect(await screen.findByRole('heading', { name: 'Fresh Skill 1' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fresh Skill 21' })).toBeInTheDocument()
+    expect(nextPageRequestCount).toBe(1)
+  })
+
+  it('keeps loaded skills visible when the next page fails and exposes retry', async () => {
+    const user = userEvent.setup()
+    const firstPageSkills = Array.from({ length: 20 }, (_, index) =>
+      createSkill({
+        id: `skill-${index + 1}`,
+        name: `skill-${index + 1}`,
+        display_name: `Skill ${index + 1}`,
+      }),
+    )
+    let nextPageRequestCount = 0
+    let resolveRetry:
+      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | undefined
+    mocks.skillsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skills-next-page-error', options],
+      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
+        if (Number(pageParam) === 1) {
+          return {
+            data: firstPageSkills,
+            has_more: true,
+            page: 1,
+            total: 21,
+          }
+        }
+
+        nextPageRequestCount += 1
+        if (nextPageRequestCount === 1) throw new Error('next skill page failed')
+
+        return new Promise((resolve) => {
+          resolveRetry = resolve
+        })
+      },
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
+    }))
+
+    renderSkillsPage()
+
+    const skillRegion = await screen.findByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    await screen.findByRole('heading', { name: 'Skill 1' })
+    const scrollViewport = skillRegion.parentElement?.parentElement
+    expect(scrollViewport).not.toBeNull()
+    Object.defineProperties(scrollViewport!, {
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 600 },
+      scrollTop: { configurable: true, value: 0 },
+    })
+    fireEvent.scroll(scrollViewport!)
+
+    const paginationError = await within(skillRegion).findByRole('alert')
+    expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(20)
+    expect(paginationError).toHaveTextContent('skill.skillManagement.loadingError')
+    expect(nextPageRequestCount).toBe(1)
+
+    const retryButton = within(paginationError).getByRole('button', {
+      name: 'common.operation.retry',
+    })
+    await user.click(retryButton)
+    await waitFor(() => {
+      expect(nextPageRequestCount).toBe(2)
+    })
+    expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+    expect(retryButton).toHaveFocus()
+    expect(within(skillRegion).queryByRole('status')).not.toBeInTheDocument()
+    expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(20)
+
+    resolveRetry?.({
+      data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Recovered Skill 21' })],
+      has_more: false,
+      page: 2,
+      total: 21,
+    })
+    expect(await screen.findByRole('heading', { name: 'Recovered Skill 21' })).toBeInTheDocument()
+    expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(21)
   })
 
   it('creates a placeholder skill and navigates to its detail page', async () => {
@@ -825,7 +1103,13 @@ describe('SkillsPage', () => {
 
     renderSkillsPage()
 
-    expect(await screen.findByText('skill.skillManagement.emptySearch')).toBeInTheDocument()
+    const skillRegion = screen.getByRole('region', {
+      name: 'skill.skillManagement.listLabel',
+    })
+    const emptySearchTitle = await within(skillRegion).findByText(
+      'skill.skillManagement.emptySearch',
+    )
+    expect(emptySearchTitle.closest('[role="status"]')).toBeInTheDocument()
     expect(
       screen.queryByText('skill.skillManagement.emptyAction.createTitle'),
     ).not.toBeInTheDocument()

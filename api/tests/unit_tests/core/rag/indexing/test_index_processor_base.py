@@ -16,6 +16,7 @@ from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _persist_upload(session: Session, *, upload_id: str, name: str) -> UploadFile:
@@ -115,9 +116,7 @@ class TestBaseIndexProcessor:
             processor.format_preview([])
 
     def test_get_splitter_validates_custom_length(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        with patch(
-            "core.rag.index_processor.index_processor_base.dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH", 1000
-        ):
+        with config_overrides_context(INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH=1000):
             with pytest.raises(ValueError, match="between 50 and 1000"):
                 processor._get_splitter("custom", 49, 0, "", None)
             with pytest.raises(ValueError, match="between 50 and 1000"):

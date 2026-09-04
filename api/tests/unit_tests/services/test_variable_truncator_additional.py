@@ -7,13 +7,17 @@ from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegm
 from graphon.variables.types import SegmentType
 from services import variable_truncator as truncator_module
 from services.variable_truncator import VariableTruncator
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestVariableTruncatorAdditionalBehavior:
     def test_default_should_use_dify_config_limits(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 111)
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH", 7)
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 33)
+        apply_config_overrides(
+            monkeypatch,
+            WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=111,
+            WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH=7,
+            WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH=33,
+        )
 
         truncator = VariableTruncator.default()
 

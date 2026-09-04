@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} kreditov",
   "mainNav.workspace.creditsUnit": "krediti",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Ni najdenih delovnih prostorov",
   "mainNav.workspace.openMenu": "Odpri meni delovnega prostora",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

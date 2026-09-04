@@ -37,7 +37,7 @@ from libs.oauth_bearer import (
 )
 from models.account import TenantAccountRole
 from services.entities.feature_entities import LicenseStatus
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class AuthPipeline:
@@ -265,8 +265,11 @@ def _subject_type_str(identity: Any) -> str | None:
 
 
 def _check_license() -> None:
-    settings = FeatureService.get_system_features()
-    if settings.license.status in {LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST}:
+    if SystemFeatureService.get_license_status() in {
+        LicenseStatus.INACTIVE,
+        LicenseStatus.EXPIRED,
+        LicenseStatus.LOST,
+    }:
         raise Forbidden("license_invalid")
 
 

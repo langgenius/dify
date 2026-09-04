@@ -20,15 +20,15 @@ class TestOpsService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         with (
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
         ):
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
             mock_model_instance = mock_model_manager.return_value
             mock_model_instance.get_default_model_instance.return_value = None
             mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")

@@ -4,6 +4,8 @@ from types import FunctionType
 import pytest
 
 from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi

@@ -9,7 +9,7 @@ export const zAnnotation = z.object({
   answer: z.string().nullish(),
   created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   question: z.string().nullish(),
 })
 
@@ -26,16 +26,16 @@ export const zAnnotationCreatePayload = z.object({
  */
 export const zAnnotationJobStatusDetailResponse = z.object({
   error_msg: z.string().optional().default(''),
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
@@ -71,15 +71,15 @@ export const zAnnotationReplyActionPayload = z.object({
  * AppFeedbackResponse
  */
 export const zAppFeedbackResponse = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   content: z.string().nullish(),
-  conversation_id: z.string(),
+  conversation_id: z.uuid(),
   created_at: z.string(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
+  from_account_id: z.uuid().nullish(),
+  from_end_user_id: z.uuid().nullish(),
   from_source: z.string(),
-  id: z.string(),
-  message_id: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
   rating: z.string(),
   updated_at: z.string(),
 })
@@ -100,13 +100,6 @@ export const zAppInfoResponse = z.object({
   mode: z.string(),
   name: z.string(),
   tags: z.array(z.string()),
-})
-
-/**
- * AppMetaResponse
- */
-export const zAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.unknown()).optional(),
 })
 
 /**
@@ -131,11 +124,75 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 )
 
 /**
+ * BlockingRetrieverResourceResponse
+ */
+export const zBlockingRetrieverResourceResponse = z.object({
+  content: z.string().nullish(),
+  created_at: z.int().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.uuid().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.uuid().nullish(),
+  index_node_hash: z.string().nullish(),
+  message_id: z.uuid().nullish(),
+  position: z.int(),
+  score: z.number().nullish(),
+  segment_id: z.uuid().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * BlockingUsageResponse
+ */
+export const zBlockingUsageResponse = z.object({
+  completion_price: z.string().nullish(),
+  completion_price_unit: z.string().nullish(),
+  completion_tokens: z.int().nullish(),
+  completion_unit_price: z.string().nullish(),
+  currency: z.string().nullish(),
+  latency: z.number().nullish(),
+  prompt_price: z.string().nullish(),
+  prompt_price_unit: z.string().nullish(),
+  prompt_tokens: z.int().nullish(),
+  prompt_unit_price: z.string().nullish(),
+  total_price: z.string().nullish(),
+  total_tokens: z.int().nullish(),
+})
+
+/**
+ * BlockingMetadataResponse
+ */
+export const zBlockingMetadataResponse = z.object({
+  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
+  usage: zBlockingUsageResponse.nullish(),
+})
+
+/**
  * ButtonStyle
  *
  * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * ChatMessageBlockingResponse
+ */
+export const zChatMessageBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  event: z.literal('message'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
 
 /**
  * ChatRequestPayload
@@ -145,12 +202,36 @@ export const zChatRequestPayload = z.object({
   conversation_id: z.string().nullish(),
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -167,12 +248,36 @@ export const zChatRequestPayloadWithUser = z.object({
   conversation_id: z.string().nullish(),
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -238,17 +343,55 @@ export const zChildChunkUpdatePayload = z.object({
 })
 
 /**
+ * CompletionBlockingResponse
+ */
+export const zCompletionBlockingResponse = z.object({
+  answer: z.string(),
+  created_at: z.int(),
+  event: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
+
+/**
  * CompletionRequestPayload
  */
 export const zCompletionRequestPayload = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -262,12 +405,36 @@ export const zCompletionRequestPayload = z.object({
 export const zCompletionRequestPayloadWithUser = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -361,7 +528,7 @@ export const zConversationRenamePayloadWithUser = z.intersection(
 export const zConversationVariableResponse = z.object({
   created_at: z.int().nullish(),
   description: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   updated_at: z.int().nullish(),
   value: z.string().nullish(),
@@ -816,8 +983,8 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -902,14 +1069,14 @@ export const zDocumentStatusListResponse = z.object({
  * `is_anonymous` from `_is_anonymous` to return the stored value.
  */
 export const zEndUserDetail = z.object({
-  app_id: z.string().nullish(),
+  app_id: z.uuid().nullish(),
   created_at: z.iso.datetime(),
   external_user_id: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   is_anonymous: z.boolean(),
   name: z.string().nullish(),
   session_id: z.string(),
-  tenant_id: z.string(),
+  tenant_id: z.uuid(),
   type: z.string(),
   updated_at: z.iso.datetime(),
 })
@@ -950,12 +1117,12 @@ export const zFilePreviewQuery = z.object({
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -963,8 +1130,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -1095,17 +1262,6 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
-})
-
-/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
@@ -1131,16 +1287,75 @@ export const zIndexInfoResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+/**
+ * ChatPauseReasonResponse
+ *
+ * Public pause reason emitted by a blocking Chatflow execution.
+ */
+export const zChatPauseReasonResponse = z.object({
+  TYPE: z.string(),
+  actions: z.array(zJsonObject).optional(),
+  approval_channels: z.array(z.string()).optional(),
+  display_in_ui: z.boolean().nullish(),
+  expiration_time: z.int().nullish(),
+  form_content: z.string().nullish(),
+  form_id: z.uuid().nullish(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zJsonObject).optional(),
+  message: z.string().nullish(),
+  node_id: z.string().nullish(),
+  node_title: z.string().nullish(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * ChatPausedBlockingDataResponse
+ */
+export const zChatPausedBlockingDataResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  elapsed_time: z.number(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  paused_nodes: z.array(z.string()),
+  reasons: z.array(zChatPauseReasonResponse),
+  status: z.literal('paused'),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatPausedBlockingResponse
+ */
+export const zChatPausedBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  data: zChatPausedBlockingDataResponse,
+  event: z.literal('workflow_paused'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatBlockingResponse
+ *
+ * Blocking chat response for a completed message or paused Chatflow.
+ */
+export const zChatBlockingResponse = z.discriminatedUnion('event', [
+  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
+  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+])
+
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -1159,11 +1374,6 @@ export const zAgentThought = z.object({
   tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 export const zJsonValueType = z.unknown()
 
@@ -1236,12 +1446,12 @@ export const zMessageFeedbackPayloadWithUser = z.object({
 export const zMessageFile = z.object({
   belongs_to: z.string().nullish(),
   filename: z.string(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
+  upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
 })
 
@@ -1386,6 +1596,30 @@ export const zOptionalServiceApiUserPayload = z.object({
 export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
 
 /**
+ * PipelineDataset
+ */
+export const zPipelineDataset = z.object({
+  chunk_structure: z.string(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * PipelineDocument
+ */
+export const zPipelineDocument = z.object({
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
+  data_source_type: z.string(),
+  enabled: z.boolean(),
+  error: z.string().nullish(),
+  id: z.string(),
+  indexing_status: z.string(),
+  name: z.string(),
+  position: z.int(),
+})
+
+/**
  * PipelineRunApiEntity
  */
 export const zPipelineRunApiEntity = z.object({
@@ -1492,10 +1726,12 @@ export const zProviderWithModelsListResponse = z.object({
 })
 
 /**
- * ServiceApiUserPayload
+ * PublishedPipelineRunResponse
  */
-export const zRequiredServiceApiUserPayload = z.object({
-  user: z.string(),
+export const zPublishedPipelineRunResponse = z.object({
+  batch: z.string(),
+  dataset: zPipelineDataset,
+  documents: z.array(zPipelineDocument),
 })
 
 /**
@@ -1530,20 +1766,27 @@ export const zRetrieverResource = z.object({
   content: z.string().nullish(),
   created_at: z.int().nullish(),
   data_source_type: z.string().nullish(),
-  dataset_id: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
-  document_id: z.string().nullish(),
+  document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
   hit_count: z.int().nullish(),
-  id: z.string().optional(),
+  id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
-  message_id: z.string().optional(),
+  message_id: z.uuid().optional(),
   position: z.int(),
   score: z.number().nullish(),
-  segment_id: z.string().nullish(),
+  segment_id: z.uuid().nullish(),
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
   word_count: z.int().nullish(),
+})
+
+/**
+ * ServiceApiUserPayload
+ */
+export const zScopedTaskStopPayload = z.object({
+  user: z.string(),
 })
 
 /**
@@ -1707,7 +1950,7 @@ export const zSimpleAccountResponse = z.object({
  */
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
@@ -1792,25 +2035,349 @@ export const zSystemParameters = z.object({
  * Parameters
  */
 export const zParameters = z.object({
-  annotation_reply: zJsonObject,
-  file_upload: zJsonObject,
-  more_like_this: zJsonObject,
+  annotation_reply: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  file_upload: z.object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z
+      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
+      .optional(),
+    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
+    enabled: z.boolean().optional(),
+    image: z
+      .object({
+        detail: z.string().optional(),
+        enabled: z.boolean().optional(),
+        number_limits: z.int().optional(),
+        transfer_methods: z.array(z.string()).optional(),
+      })
+      .optional(),
+    number_limits: z.int().optional(),
+  }),
+  more_like_this: z.object({
+    enabled: z.boolean().optional(),
+  }),
   opening_statement: z.string().nullish(),
-  retriever_resource: zJsonObject,
-  sensitive_word_avoidance: zJsonObject,
-  speech_to_text: zJsonObject,
+  retriever_resource: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  sensitive_word_avoidance: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  speech_to_text: z.object({
+    enabled: z.boolean().optional(),
+  }),
   suggested_questions: z.array(z.string()),
-  suggested_questions_after_answer: zJsonObject,
+  suggested_questions_after_answer: z.object({
+    enabled: z.boolean().optional(),
+  }),
   system_parameters: zSystemParameters,
-  text_to_speech: zJsonObject,
-  user_input_form: z.array(zJsonObject),
+  text_to_speech: z.object({
+    autoPlay: z.string().optional(),
+    enabled: z.boolean().optional(),
+    language: z.string().optional(),
+    voice: z.string().optional(),
+  }),
+  user_input_form: z.array(
+    z.union([
+      z
+        .object({
+          'text-input': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          select: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          paragraph: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          number: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          external_data_tool: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          file: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          'file-list': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          checkbox: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          json_object: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+    ]),
+  ),
 })
 
 /**
  * TagBindingPayload
  */
 export const zTagBindingPayload = z.object({
-  tag_ids: z.array(z.string()),
+  tag_ids: z.array(z.string()).min(1),
   target_id: z.string(),
 })
 
@@ -1840,7 +2407,7 @@ export const zTagUnbindingPayload = z.union([
     target_id: z.string(),
   }),
   z.object({
-    tag_id: z.string().optional(),
+    tag_id: z.string().nullish(),
     tag_ids: z.array(z.string()).min(1),
     target_id: z.string(),
   }),
@@ -1876,6 +2443,21 @@ export const zTextToAudioPayloadWithUser = z.object({
 })
 
 /**
+ * ToolIcon
+ */
+export const zToolIcon = z.object({
+  background: z.string(),
+  content: z.string(),
+})
+
+/**
+ * AppMetaResponse
+ */
+export const zAppMetaResponse = z.object({
+  tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
+})
+
+/**
  * UrlResponse
  */
 export const zUrlResponse = z.object({
@@ -1889,7 +2471,10 @@ export const zUrlResponse = z.object({
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -1976,23 +2561,34 @@ export const zHumanInputContent = z.object({
 })
 
 /**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zUserActionConfig),
+})
+
+/**
  * MessageListItem
  */
 export const zMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  conversation_id: z.string(),
+  conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  parent_message_id: z.string().nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2189,6 +2785,31 @@ export const zWorkflowEventsQuery = z.object({
 })
 
 /**
+ * WorkflowFinishedBlockingDataResponse
+ */
+export const zWorkflowFinishedBlockingDataResponse = z.object({
+  created_at: z.int(),
+  elapsed_time: z.number(),
+  error: z.string().nullable(),
+  finished_at: z.int().nullable(),
+  id: z.uuid(),
+  outputs: z.record(z.string(), z.unknown()).nullable(),
+  status: z.enum(['failed', 'partial-succeeded', 'stopped', 'succeeded']),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * WorkflowFinishedBlockingResponse
+ */
+export const zWorkflowFinishedBlockingResponse = z.object({
+  data: zWorkflowFinishedBlockingDataResponse,
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
  * WorkflowLogQuery
  */
 export const zWorkflowLogQuery = z.object({
@@ -2203,6 +2824,74 @@ export const zWorkflowLogQuery = z.object({
 })
 
 /**
+ * WorkflowPauseReasonResponse
+ *
+ * Public pause reason emitted by a blocking Workflow execution.
+ */
+export const zWorkflowPauseReasonResponse = z.object({
+  TYPE: z.string(),
+  actions: z.array(zJsonObject).optional(),
+  approval_channels: z.array(z.string()).optional(),
+  display_in_ui: z.boolean().nullish(),
+  expiration_time: z.int().nullish(),
+  form_content: z.string().nullish(),
+  form_id: z.uuid().nullish(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zJsonObject).optional(),
+  message: z.string().nullish(),
+  node_id: z.string().nullish(),
+  node_title: z.string().nullish(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * WorkflowPausedBlockingDataResponse
+ */
+export const zWorkflowPausedBlockingDataResponse = z.object({
+  created_at: z.int(),
+  elapsed_time: z.number(),
+  error: z.string().nullable(),
+  finished_at: z.int().nullable(),
+  id: z.uuid(),
+  outputs: z.record(z.string(), z.unknown()).nullable(),
+  paused_nodes: z.array(z.string()),
+  reasons: z.array(zWorkflowPauseReasonResponse),
+  status: z.literal('paused'),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * WorkflowPausedBlockingResponse
+ */
+export const zWorkflowPausedBlockingResponse = z.object({
+  data: zWorkflowPausedBlockingDataResponse,
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * WorkflowBlockingResponse
+ *
+ * Blocking workflow response for a finished or paused execution.
+ */
+export const zWorkflowBlockingResponse = z.union([
+  zWorkflowFinishedBlockingResponse,
+  zWorkflowPausedBlockingResponse,
+])
+
+/**
+ * PipelineRunJsonResponse
+ *
+ * JSON result for published runs and draft runs using `response_mode: blocking`.
+ */
+export const zPipelineRunJsonResponse = z.union([
+  zPublishedPipelineRunResponse,
+  zWorkflowBlockingResponse,
+])
+
+/**
  * WorkflowRunForLogResponse
  */
 export const zWorkflowRunForLogResponse = z.object({
@@ -2211,7 +2900,7 @@ export const zWorkflowRunForLogResponse = z.object({
   error: z.string().nullish(),
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   status: z.string().nullish(),
   total_steps: z.int().nullish(),
   total_tokens: z.int().nullish(),
@@ -2238,7 +2927,7 @@ export const zWorkflowAppLogPartialResponse = z.object({
       z.boolean(),
     ])
     .nullish(),
-  id: z.string(),
+  id: z.uuid(),
   workflow_run: zWorkflowRunForLogResponse.nullish(),
 })
 
@@ -2259,12 +2948,36 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 export const zWorkflowRunPayload = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -2277,12 +2990,36 @@ export const zWorkflowRunPayload = z.object({
 export const zWorkflowRunPayloadWithUser = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -2298,7 +3035,7 @@ export const zWorkflowRunResponse = z.object({
   elapsed_time: z.union([z.number(), z.int()]).nullish(),
   error: z.string().nullish(),
   finished_at: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z
     .union([
       z.record(z.string(), z.unknown()),
@@ -2313,13 +3050,15 @@ export const zWorkflowRunResponse = z.object({
   status: z.string(),
   total_steps: z.int().nullish(),
   total_tokens: z.int().nullish(),
-  workflow_id: z.string(),
+  workflow_id: z.uuid(),
 })
 
 /**
- * GeneratedAppResponse
+ * ServiceApiUserPayload
  */
-export const zGeneratedAppResponseWritable = zJsonValue
+export const zWorkflowTaskStopPayload = z.object({
+  user: z.string(),
+})
 
 /**
  * HumanInputFormSubmitResponse
@@ -2333,17 +3072,17 @@ export const zMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  conversation_id: z.string(),
+  conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  parent_message_id: z.string().nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2476,9 +3215,9 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostChatMessagesResponse = z.union([zChatBlockingResponse, z.string()])
 
-export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostChatMessagesByTaskIdStopBody = zScopedTaskStopPayload
 
 export const zPostChatMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -2497,9 +3236,9 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostCompletionMessagesResponse = z.union([zCompletionBlockingResponse, z.string()])
 
-export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostCompletionMessagesByTaskIdStopBody = zScopedTaskStopPayload
 
 export const zPostCompletionMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -2525,33 +3264,33 @@ export const zGetConversationsQuery = z.object({
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
-export const zDeleteConversationsByCIdBody = zOptionalServiceApiUserPayload
+export const zDeleteConversationsByConversationIdBody = zOptionalServiceApiUserPayload
 
-export const zDeleteConversationsByCIdPath = z.object({
-  c_id: z.uuid(),
+export const zDeleteConversationsByConversationIdPath = z.object({
+  conversation_id: z.uuid(),
 })
 
 /**
  * Conversation deleted successfully.
  */
-export const zDeleteConversationsByCIdResponse = z.void()
+export const zDeleteConversationsByConversationIdResponse = z.void()
 
-export const zPostConversationsByCIdNameBody = zConversationRenamePayloadWithUser
+export const zPostConversationsByConversationIdNameBody = zConversationRenamePayloadWithUser
 
-export const zPostConversationsByCIdNamePath = z.object({
-  c_id: z.uuid(),
+export const zPostConversationsByConversationIdNamePath = z.object({
+  conversation_id: z.uuid(),
 })
 
 /**
  * Conversation renamed successfully.
  */
-export const zPostConversationsByCIdNameResponse = zSimpleConversation
+export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 
-export const zGetConversationsByCIdVariablesPath = z.object({
-  c_id: z.uuid(),
+export const zGetConversationsByConversationIdVariablesPath = z.object({
+  conversation_id: z.uuid(),
 })
 
-export const zGetConversationsByCIdVariablesQuery = z.object({
+export const zGetConversationsByConversationIdVariablesQuery = z.object({
   last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   user: z.string().optional(),
@@ -2561,21 +3300,22 @@ export const zGetConversationsByCIdVariablesQuery = z.object({
 /**
  * Successfully retrieved conversation variables.
  */
-export const zGetConversationsByCIdVariablesResponse =
+export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse
 
-export const zPutConversationsByCIdVariablesByVariableIdBody =
+export const zPutConversationsByConversationIdVariablesByVariableIdBody =
   zConversationVariableUpdatePayloadWithUser
 
-export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
-  c_id: z.uuid(),
+export const zPutConversationsByConversationIdVariablesByVariableIdPath = z.object({
+  conversation_id: z.uuid(),
   variable_id: z.uuid(),
 })
 
 /**
  * Variable updated successfully.
  */
-export const zPutConversationsByCIdVariablesByVariableIdResponse = zConversationVariableResponse
+export const zPutConversationsByConversationIdVariablesByVariableIdResponse =
+  zConversationVariableResponse
 
 export const zGetDatasetsQuery = z.object({
   include_all: z.boolean().optional().default(false),
@@ -3130,10 +3870,7 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 /**
  * Streaming response with node execution events.
  */
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.string()
 
 export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
 
@@ -3142,9 +3879,12 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 })
 
 /**
- * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
+ * Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode.
  */
-export const zPostDatasetsByDatasetIdPipelineRunResponse = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineRunResponse = z.union([
+  zPipelineRunJsonResponse,
+  z.string(),
+])
 
 export const zPostDatasetsByDatasetIdRetrieveBody = zHitTestingPayload
 
@@ -3286,11 +4026,11 @@ export const zPostTextToAudioResponse = z.custom<Blob | File>(
   (value) => value instanceof Blob || value instanceof File,
 )
 
-export const zGetWorkflowByTaskIdEventsPath = z.object({
-  task_id: z.string(),
+export const zGetWorkflowByWorkflowRunIdEventsPath = z.object({
+  workflow_run_id: z.string(),
 })
 
-export const zGetWorkflowByTaskIdEventsQuery = z.object({
+export const zGetWorkflowByWorkflowRunIdEventsQuery = z.object({
   continue_on_pause: z.boolean().optional().default(false),
   include_state_snapshot: z.boolean().optional().default(false),
   user: z.string(),
@@ -3299,7 +4039,7 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 /**
  * Server-Sent Events stream. Each event is delivered as `data: {JSON}\n\n`. Event payloads follow the same schemas as the original streaming response.
  */
-export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
+export const zGetWorkflowByWorkflowRunIdEventsResponse = z.string()
 
 export const zGetWorkflowsLogsQuery = z.object({
   created_at__after: z.iso.datetime().optional(),
@@ -3325,7 +4065,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsRunResponse = z.union([zWorkflowBlockingResponse, z.string()])
 
 export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
   workflow_run_id: z.string(),
@@ -3336,7 +4076,7 @@ export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
  */
 export const zGetWorkflowsRunByWorkflowRunIdResponse = zWorkflowRunResponse
 
-export const zPostWorkflowsTasksByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostWorkflowsTasksByTaskIdStopBody = zWorkflowTaskStopPayload
 
 export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -3359,7 +4099,10 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsByWorkflowIdRunResponse = z.union([
+  zWorkflowBlockingResponse,
+  z.string(),
+])
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),

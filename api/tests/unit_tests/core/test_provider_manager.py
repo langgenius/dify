@@ -36,6 +36,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -302,7 +303,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
     paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
 
     with (
-        patch.object(provider_manager_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         patch(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
             {provider_entity.provider: _build_hosting_provider()},
@@ -1143,8 +1144,8 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
 
     assert version_bumped is True
     assert fake_redis.store[version_key] == "1"
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
     assert result["openai"][0].credential_name == "primary"
 
 

@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} เครดิต",
   "mainNav.workspace.creditsUnit": "เครดิต",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "ไม่พบพื้นที่ทำงาน",
   "mainNav.workspace.openMenu": "เปิดเมนูพื้นที่ทำงาน",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

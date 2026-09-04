@@ -233,12 +233,10 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                         href={fullContent?.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({
-                          variant: 'ghost',
-                          size: 'small',
-                          className:
-                            'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        })}
+                        className={cn(
+                          buttonVariants({ variant: 'ghost', size: 'small' }),
+                          'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                        )}
                       >
                         <span aria-hidden className="i-ri-file-download-fill size-4" />
                       </a>

@@ -22,7 +22,12 @@ from .plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
-from .rbac import migrate_dataset_permissions_to_rbac, migrate_member_roles_to_rbac
+from .rbac import (
+    migrate_dataset_permissions_to_rbac,
+    migrate_member_roles_to_rbac,
+    migrate_only_me_resource_whitelist_scopes_to_automatic_include,
+    migrate_resource_whitelist_scopes_to_automatic_include,
+)
 from .retention import (
     archive_workflow_runs,
     archive_workflow_runs_plan,
@@ -81,7 +86,9 @@ __all__ = [
     "migrate_dataset_permissions_to_rbac",
     "migrate_knowledge_vector_database",
     "migrate_member_roles_to_rbac",
+    "migrate_only_me_resource_whitelist_scopes_to_automatic_include",
     "migrate_oss",
+    "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
     "old_metadata_migration",
     "remove_orphaned_files_on_storage",

@@ -18,7 +18,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound scroll container built on Base UI Scroll Area. ScrollArea is the structural root; ScrollAreaViewport is the actual scroll and focus owner, so place scroll refs, events, role, accessible-name attributes, and overscroll behavior on the viewport. Add role="region" only when the content is important enough to be a landmark, preferring aria-labelledby when a visible heading exists. Base UI sets Viewport overflow and Content min-width inline: use style={{ overflowX: "hidden" }} for an axis override and style={{ minWidth: 0 }} for vertical content that should truncate; regular overflow-x-hidden and min-w-0 utilities cannot override those inline defaults. This is a targeted override contract for those Base UI defaults, not a general preference for inline styles over className.',
+          'Compound scroll container built on Base UI Scroll Area. ScrollAreaViewport is the actual scroll and focus owner, while ScrollArea reflects its focus-visible state as a root-owned overlay border above the isolated viewport contents. Place scroll refs, events, role, accessible-name attributes, and overscroll behavior on the viewport. Add role="region" only when the content is important enough to be a landmark, preferring aria-labelledby when a visible heading exists. Base UI sets Viewport overflow and Content min-width inline: use style={{ overflowX: "hidden" }} for an axis override and style={{ minWidth: 0 }} for vertical content that should truncate; regular overflow-x-hidden and min-w-0 utilities cannot override those inline defaults. This is a targeted override contract for those Base UI defaults, not a general preference for inline styles over className.',
       },
     },
   },
@@ -109,11 +109,11 @@ export const Anatomy: Story = {
       titleId="scroll-area-anatomy-title"
       description="The baseline story uses ScrollArea as the structural root, with Viewport, Content, Scrollbar, and Thumb composed explicitly. Keyboard focus and accessible naming belong to the viewport."
     >
-      <ScrollArea className="relative h-75 w-full max-w-105 min-w-0">
+      <ScrollArea className="h-75 w-full max-w-105 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-labelledby="scroll-area-anatomy-title"
           role="region"
-          className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-4 py-2 pr-5 pl-3 system-sm-regular leading-6 text-text-secondary">
             {articleParagraphs.map((paragraph) => (
@@ -134,13 +134,13 @@ export const Vertical: Story = {
     <StorySection
       eyebrow="Vertical"
       title="Long form content"
-      description="Vertical overflow keeps the official viewport focus pattern while constraining content width so text never leaks outside the frame."
+      description="Vertical overflow keeps focus on the viewport while the root paints the visible indicator above scrolling content."
     >
-      <ScrollArea className="relative h-90 w-full max-w-130 min-w-0">
+      <ScrollArea className="h-90 w-full max-w-130 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-label="Long form content"
           role="region"
-          className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-4 p-4 pr-6 system-sm-regular leading-6 text-text-secondary">
             <div className="space-y-1">
@@ -169,11 +169,11 @@ export const VerticalTruncation: Story = {
       title="Constrained content width"
       description="Pass style={{ minWidth: 0 }} to ScrollAreaContent when a vertical-only list should truncate long labels instead of creating horizontal scroll. A regular min-w-0 utility cannot override Base UI's inline fit-content default."
     >
-      <ScrollArea className="relative h-48 w-full max-w-80 min-w-0">
+      <ScrollArea className="h-48 w-full max-w-80 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-label="Vertical file list"
           role="region"
-          className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-0.5 p-2">
             {fileRows.map((file) => (
@@ -202,19 +202,14 @@ export const ScrollFade: Story = {
     <StorySection
       eyebrow="Fade"
       title="Viewport mask with root focus"
-      description="This mirrors the Base UI scroll-fade example: the viewport owns the mask and the root owns the focus outline so the indicator is never clipped."
+      description="The viewport owns the mask and semantic focus while the shared root indicator stays outside the masked paint layer."
     >
-      <ScrollArea
-        className={cn(
-          'relative h-90 w-full max-w-130 min-w-0',
-          'has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid',
-        )}
-      >
+      <ScrollArea className="h-90 w-full max-w-130 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-label="Scroll fade article"
           role="region"
           className={cn(
-            'h-full max-h-full max-w-full rounded-xl bg-components-panel-bg outline-none focus-visible:outline-none',
+            'bg-components-panel-bg',
             'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%-min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
@@ -239,14 +234,14 @@ export const Horizontal: Story = {
     <StorySection
       eyebrow="Horizontal"
       title="Single axis row"
-      description="Horizontal overflow keeps Base UI's content sizing behavior and uses the same viewport focus treatment on the scrollable element."
+      description="Horizontal overflow keeps Base UI's content sizing behavior and the same root-owned visible focus treatment."
       className="mx-auto max-w-190"
     >
-      <ScrollArea className="relative h-46 w-full max-w-130 min-w-0">
+      <ScrollArea className="h-46 w-full max-w-130 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-label="Horizontal numbered row"
           role="region"
-          className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <ScrollAreaContent className="min-h-full min-w-max p-4 pb-6">
             <div className="grid grid-cols-[repeat(18,6.25rem)] gap-3">
@@ -276,11 +271,11 @@ export const BothAxes: Story = {
       title="Numbered grid"
       description="This follows the official two-axis example: both scrollbars are rendered and Corner reserves the intersection."
     >
-      <ScrollArea className="relative h-85 w-full max-w-140 min-w-0">
+      <ScrollArea className="h-85 w-full max-w-140 min-w-0 rounded-xl">
         <ScrollAreaViewport
           aria-label="Numbered grid"
           role="region"
-          className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
             <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">

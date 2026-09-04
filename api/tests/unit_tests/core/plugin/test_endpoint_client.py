@@ -8,6 +8,7 @@ This test module covers the endpoint client operations including:
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -42,13 +43,9 @@ class TestPluginEndpointClientDelete:
         return PluginEndpointClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides: Callable[..., None]):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-api-key"),
-        ):
-            yield
+        config_overrides(PLUGIN_DAEMON_URL="http://127.0.0.1:5002", PLUGIN_DAEMON_KEY="test-api-key")
 
     def test_delete_endpoint_success(self, endpoint_client, mock_config):
         """Test successful endpoint deletion.

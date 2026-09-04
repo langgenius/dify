@@ -15,6 +15,7 @@ import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -39,6 +40,7 @@ export function MainNav({ className }: MainNavProps) {
   })
   const agentV2Enabled = isAgentV2Enabled()
   const canManageAgents = useCanManageAgents()
+  const canViewSkills = useCanViewSkills()
   const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
   const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
@@ -49,6 +51,7 @@ export function MainNav({ className }: MainNavProps) {
         isMainNavRouteVisible(route, {
           agentV2Enabled,
           canManageAgents,
+          canViewSkills,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
           skillEnabled: enableSkill,
@@ -63,6 +66,7 @@ export function MainNav({ className }: MainNavProps) {
     [
       agentV2Enabled,
       canManageAgents,
+      canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,

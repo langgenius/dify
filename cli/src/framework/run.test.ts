@@ -486,6 +486,39 @@ describe('run() help routing', () => {
     expect(result.exit).toBeUndefined()
   })
 
+  it('routes `--compact` to the site map instead of the full tree', async () => {
+    const result = await captureRun(tree, ['help', '-o', 'json', '--compact'])
+    const obj = JSON.parse(result.stdout) as { bin?: unknown; contract?: unknown }
+    expect(result.exit).toBeUndefined()
+    expect(obj.bin).toBeUndefined()
+    expect(obj.contract).toBeUndefined()
+  })
+
+  it('accepts every boolean spelling of `--compact`', async () => {
+    const canonical = await captureRun(tree, ['help', '-o', 'json', '--compact'])
+    for (const flag of ['--compact=true', '--compact=1']) {
+      const result = await captureRun(tree, ['help', '-o', 'json', flag])
+      expect(result.stdout, flag).toBe(canonical.stdout)
+    }
+  })
+
+  it('rejects `--compact` without a structured format', async () => {
+    const result = await captureRun(tree, ['help', '--compact'])
+    expect(result.exit).toBe(ExitCode.Usage)
+    expect(result.stderr).toContain('--compact requires -o json or -o yaml')
+  })
+
+  it('rejects `--compact` on per-command help', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app', '-o', 'json', '--compact'])
+    expect(result.exit).toBe(ExitCode.Usage)
+    expect(JSON.parse(result.stderr)).toEqual({
+      error: {
+        code: 'usage_invalid_flag',
+        message: '--compact is only valid on top-level help',
+      },
+    })
+  })
+
   it('emits a JSON descriptor for `help <cmd> -o json`', async () => {
     const result = await captureRun(tree, ['help', 'get', 'app', '-o', 'json'])
     const obj = JSON.parse(result.stdout)

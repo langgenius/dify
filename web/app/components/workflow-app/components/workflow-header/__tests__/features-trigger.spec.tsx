@@ -149,6 +149,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
         data-has-trigger-node={String(Boolean(props.hasTriggerNode))}
         data-inputs={JSON.stringify(inputs)}
+        data-outputs={JSON.stringify(props.outputs ?? [])}
       >
         <button
           type="button"
@@ -181,6 +182,23 @@ vi.mock('@/app/components/app/app-publisher', () => ({
           }}
         >
           publisher-publish
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(
+              (
+                props.onPublish as
+                  | ((
+                      params?: unknown,
+                      options?: { showSuccessToast?: boolean },
+                    ) => Promise<unknown> | unknown)
+                  | undefined
+              )?.(undefined, { showSuccessToast: false }),
+            ).catch(() => undefined)
+          }}
+        >
+          publisher-publish-silently
         </button>
         <button
           type="button"
@@ -387,6 +405,39 @@ describe('FeaturesTrigger', () => {
 
   // Verifies derived props passed into AppPublisher (variables, limits, and triggers).
   describe('Computed Props', () => {
+    it('should pass outputs from every end node to AppPublisher', () => {
+      const aaa = {
+        variable: 'aaa',
+        value_type: 'string',
+        value_selector: ['source-1', 'value'],
+      }
+      const bbb = {
+        variable: 'bbb',
+        value_type: 'number',
+        value_selector: ['source-2', 'value'],
+      }
+      mockUseNodes.mockReturnValue([
+        { id: 'end-1', data: { type: BlockEnum.End, title: 'Success End', outputs: [aaa] } },
+        { id: 'end-2', data: { type: BlockEnum.End, title: 'Fallback End', outputs: [bbb] } },
+      ])
+
+      renderWithToast(<FeaturesTrigger />)
+
+      const outputs = JSON.parse(
+        screen.getByTestId('app-publisher').getAttribute('data-outputs') ?? '[]',
+      )
+      expect(outputs).toEqual([
+        {
+          ...aaa,
+          source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
+        },
+        {
+          ...bbb,
+          source: { nodeId: 'end-2', nodeTitle: 'Fallback End', outputIndex: 0 },
+        },
+      ])
+    })
+
     it('should append image input when file image upload is enabled', () => {
       // Arrange
       mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
@@ -580,6 +631,21 @@ describe('FeaturesTrigger', () => {
             name: 'Updated App',
           }),
         )
+      })
+    })
+
+    it('should not show a success toast when the publisher requests a silent publish', async () => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-silently' }))
+
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
       })
     })
 

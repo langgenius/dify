@@ -1,7 +1,10 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
-import { DeploymentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
+import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -35,8 +38,11 @@ export function PublisherEnvironmentSummarySection({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version
-  const isDeploying = deploymentState?.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING
-  const deployingVersion = deploymentState?.latest_operation?.target_version
+  const latestOperation = deploymentState?.latest_operation
+  const isDeploying =
+    latestOperation?.type === DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY &&
+    latestOperation.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS
+  const deployingVersion = latestOperation?.target_version
   const deployingVersionName = deployingVersion
     ? getWorkflowVersionName(
         deployingVersion,

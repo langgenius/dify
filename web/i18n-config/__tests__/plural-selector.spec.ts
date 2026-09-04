@@ -1,6 +1,6 @@
 import type { SelectorParam } from 'i18next'
 import { createInstance } from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import agentV2 from '../../i18n/en-US/agent-v-2.json'
 import skill from '../../i18n/en-US/skill.json'
 import { getInitOptions } from '../settings'

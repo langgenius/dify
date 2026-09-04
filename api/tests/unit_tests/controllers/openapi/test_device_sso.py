@@ -1,7 +1,7 @@
 """SSO-branch device-flow endpoints under /openapi/v1/oauth/device/."""
 
 import builtins
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -145,12 +145,10 @@ def test_device_error_redirect_drops_malformed_user_code():
 def _ee_features():
     from services.entities.feature_entities import LicenseStatus
 
-    m = MagicMock()
-    m.license.status = LicenseStatus.ACTIVE
-    return m
+    return LicenseStatus.ACTIVE
 
 
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_relays_inbound_sso_error(ee_feat, openapi_app):
     ee_feat.return_value = _ee_features()
     client = openapi_app.test_client()
@@ -165,7 +163,7 @@ def test_sso_complete_relays_inbound_sso_error(ee_feat, openapi_app):
     assert "user_code=ABCD-1234" in loc
 
 
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_missing_assertion_redirects_generic(ee_feat, openapi_app):
     ee_feat.return_value = _ee_features()
     client = openapi_app.test_client()

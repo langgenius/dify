@@ -6,7 +6,7 @@ This is a [Next.js] application with [vinext] as the default local development s
 
 ### Run by source code
 
-The required Node.js and pnpm versions are pinned by the repository root `.nvmrc` and `packageManager` field. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
+The required Node.js and pnpm versions are pinned by the repository root `devEngines.runtime` and `packageManager` fields. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
 
 - [Node.js]
 - [pnpm]
@@ -20,7 +20,7 @@ pnpm install
 ```
 
 > [!NOTE]
-> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.nvmrc`.
+> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`.
 > Install dependencies and run the commands below from the repository root.
 
 Then, configure the environment variables.

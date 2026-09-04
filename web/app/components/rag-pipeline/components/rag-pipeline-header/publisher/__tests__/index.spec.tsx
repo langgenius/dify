@@ -37,18 +37,12 @@ const triggerHotkey = (hotkey: string) => {
   })
 }
 
-const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -433,17 +427,6 @@ describe('publisher', () => {
         expect(addDocumentsButton).toBeDisabled()
       })
 
-      it('should enable action buttons when published', () => {
-        mockPublishedAt.mockReturnValue(1700000000)
-
-        renderWithQueryClient(<Popup />)
-
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        expect(addDocumentsButton).not.toBeDisabled()
-      })
-
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
@@ -506,18 +489,13 @@ describe('publisher', () => {
     })
 
     describe('User Interactions', () => {
-      it('should navigate to add documents when go to add documents is clicked', async () => {
+      it('should link to add documents when the pipeline is published', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        fireEvent.click(addDocumentsButton!)
-
-        expect(mockPush).toHaveBeenCalledWith(
-          '/datasets/test-dataset-id/documents/create-from-pipeline',
-        )
+        expect(
+          screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+        ).toHaveAttribute('href', '/datasets/test-dataset-id/documents/create-from-pipeline')
       })
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
@@ -913,9 +891,12 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const apiLink = screen.getByRole('link')
+        const apiLink = screen.getByRole('link', {
+          name: 'workflow.common.accessAPIReference',
+        })
         expect(apiLink).toHaveAttribute('href', 'https://api.dify.ai/v1/datasets/test-dataset-id')
         expect(apiLink).toHaveAttribute('target', '_blank')
+        expect(apiLink).toHaveAttribute('rel', 'noopener noreferrer')
       })
     })
 

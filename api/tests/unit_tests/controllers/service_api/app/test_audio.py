@@ -13,7 +13,7 @@ from inspect import unwrap
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
@@ -285,7 +285,8 @@ class TestTextApi:
             method="POST",
             json={"text": "hello", "voice": "v"},
         ):
-            response = handler(api, app_model=app_model, end_user=end_user)
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
+            response = handler(api, payload, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
 
@@ -308,7 +309,8 @@ class TestTextApi:
             method="POST",
             json={"text": "hello", "message_id": "message-1"},
         ):
-            response = handler(api, app_model=app_model, end_user=end_user)
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
+            response = handler(api, payload, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
         assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
@@ -324,5 +326,6 @@ class TestTextApi:
         end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
             with pytest.raises(ProviderQuotaExceededError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, payload, app_model=app_model, end_user=end_user)

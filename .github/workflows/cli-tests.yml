@@ -44,7 +44,7 @@ jobs:
 
       - name: Validate release manifest
         if: matrix.os == 'depot-ubuntu-24.04'
-        run: scripts/release-validate-manifest.sh
+        run: node scripts/release-naming.mjs validate
 
       - name: CI pipeline (tree, coverage, build)
         run: pnpm run ci

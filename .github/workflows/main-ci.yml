@@ -48,6 +48,7 @@ jobs:
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
+      dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -81,7 +82,6 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'lint.config.ts'
               - '.npmrc'
-              - '.nvmrc'
               - '.github/workflows/cli-tests.yml'
               - '.github/actions/setup-web/**'
             web:
@@ -90,7 +90,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.nvmrc'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
@@ -104,7 +103,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.nvmrc'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
@@ -138,6 +136,9 @@ jobs:
             sandbox-runtime:
               - 'dify-agent-runtime/**'
               - '.github/workflows/sandbox-runtime-tests.yml'
+            dify-agent:
+              - 'dify-agent/**'
+              - '.github/workflows/dify-agent-tests.yml'
             migration:
               - 'api/migrations/**'
               - 'api/.env.example'
@@ -577,4 +578,64 @@ jobs:
           fi
 
           echo "Sandbox runtime tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  dify-agent-tests-run:
+    name: Run Dify Agent Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.dify-agent-changed == 'true'
+    uses: ./.github/workflows/dify-agent-tests.yml
+    secrets: inherit
+
+  dify-agent-tests-skip:
+    name: Skip Dify Agent Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.dify-agent-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped dify agent tests
+        run: echo "No dify-agent-related changes detected; skipping dify agent tests."
+
+  dify-agent-tests:
+    name: Dify Agent Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - dify-agent-tests-run
+      - dify-agent-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Dify Agent Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.dify-agent-changed }}
+          RUN_RESULT: ${{ needs.dify-agent-tests-run.result }}
+          SKIP_RESULT: ${{ needs.dify-agent-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Dify agent tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Dify agent tests ran successfully."
+              exit 0
+            fi
+
+            echo "Dify agent tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Dify agent tests were skipped because no dify-agent-related files changed."
+            exit 0
+          fi
+
+          echo "Dify agent tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1

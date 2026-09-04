@@ -57,10 +57,10 @@ export function matchAction(query: string, actions: Record<string, ActionItem>) 
         if (command.mode === 'direct') return false
 
         const commandPattern = `/${command.name}`
-        return query === commandPattern || query.startsWith(`${commandPattern} `)
+        return query.startsWith(`${commandPattern} `)
       })
     }
 
-    return new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`).test(query)
+    return new RegExp(`^(${action.key}|${action.shortcut})\\s`).test(query)
   })
 }

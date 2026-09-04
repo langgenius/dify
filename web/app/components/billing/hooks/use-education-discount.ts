@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/client'
 
-export const useEducationDiscount = () => {
+export function useEducationDiscount() {
   const { t } = useTranslation()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
@@ -21,10 +21,10 @@ export const useEducationDiscount = () => {
 
     setIsEducationDiscountLoading(true)
     try {
-      const res = await consoleClient.billing.subscription.get({
+      const { url } = await consoleClient.billing.subscription.get({
         query: { plan: 'professional', interval: 'year' },
       })
-      window.location.href = res.url
+      window.location.href = url
     } finally {
       setIsEducationDiscountLoading(false)
     }

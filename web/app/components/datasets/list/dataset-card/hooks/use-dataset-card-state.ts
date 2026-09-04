@@ -89,7 +89,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   // Delete flow handlers
   const detectIsUsedByApp = useCallback(async () => {
     try {
-      const { is_using: isUsedByApp } = await queryClient.fetchQuery(
+      const { is_using: isUsedByApp } = await queryClient.query(
         consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
           input: {
             params: {

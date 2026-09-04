@@ -1,6 +1,8 @@
 import type { PluginDetail } from '../../types'
+import type { PluginPageSelection } from '../context'
 import type { Collection } from '@/app/components/tools/types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
@@ -15,14 +17,18 @@ const mockState = vi.hoisted(() => ({
     tags: [] as string[],
     searchQuery: '',
   },
-  currentPluginID: undefined as string | undefined,
+  selectedItem: undefined as PluginPageSelection | undefined,
 }))
+const mockContextSubscribers = vi.hoisted(() => new Set<() => void>())
 const mockSystemFeatures = vi.hoisted(() => ({
   enableMarketplace: true,
 }))
 
 const mockSetFilters = vi.fn()
-const mockSetCurrentPluginID = vi.fn()
+const mockSetSelectedItem = vi.fn((item?: PluginPageSelection) => {
+  mockState.selectedItem = item
+  mockContextSubscribers.forEach((subscriber) => subscriber())
+})
 const mockLoadNextPage = vi.fn()
 const mockInvalidateInstalledPluginList = vi.fn()
 const mockRemoveFilteredInstalledPluginPageOnUnmount = vi.fn()
@@ -55,22 +61,40 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('../context', () => ({
-  usePluginPageContext: (
-    selector: (value: {
-      filters: typeof mockState.filters
-      setFilters: typeof mockSetFilters
-      currentPluginID: string | undefined
-      setCurrentPluginID: typeof mockSetCurrentPluginID
-    }) => unknown,
-  ) =>
-    selector({
-      filters: mockState.filters,
-      setFilters: mockSetFilters,
-      currentPluginID: mockState.currentPluginID,
-      setCurrentPluginID: mockSetCurrentPluginID,
-    }),
-}))
+vi.mock('../context', async () => {
+  const { useSyncExternalStore } = await import('react')
+
+  return {
+    usePluginPageContext: (
+      selector: (value: {
+        filters: typeof mockState.filters
+        setFilters: typeof mockSetFilters
+        selectedItem: PluginPageSelection | undefined
+        setSelectedItem: typeof mockSetSelectedItem
+      }) => unknown,
+    ) =>
+      useSyncExternalStore(
+        (subscriber) => {
+          mockContextSubscribers.add(subscriber)
+          return () => mockContextSubscribers.delete(subscriber)
+        },
+        () =>
+          selector({
+            filters: mockState.filters,
+            setFilters: mockSetFilters,
+            selectedItem: mockState.selectedItem,
+            setSelectedItem: mockSetSelectedItem,
+          }),
+        () =>
+          selector({
+            filters: mockState.filters,
+            setFilters: mockSetFilters,
+            selectedItem: mockState.selectedItem,
+            setSelectedItem: mockSetSelectedItem,
+          }),
+      ),
+  }
+})
 
 vi.mock('../filter-management', () => ({
   default: ({
@@ -140,13 +164,19 @@ vi.mock('../list', () => ({
   }) => (
     <div data-testid="plugin-list">
       {pluginList.map((plugin, index) => (
-        <div
+        <button
+          type="button"
           key={plugin.plugin_id}
+          aria-pressed={
+            mockState.selectedItem?.type === 'plugin' &&
+            mockState.selectedItem.id === plugin.plugin_id
+          }
           data-step-by-step-tour-target={index === 0 ? firstPluginTarget : undefined}
           data-testid="plugin-list-item"
+          onClick={() => mockSetSelectedItem({ type: 'plugin', id: plugin.plugin_id })}
         >
           {plugin.plugin_id}
-        </div>
+        </button>
       ))}
       {children}
     </div>
@@ -250,13 +280,14 @@ vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
     detail?: PluginDetail
     onHide: () => void
     onUpdate: () => void
-  }) => (
-    <div data-testid="plugin-detail-panel">
-      <span>{detail?.plugin_id ?? 'none'}</span>
-      <button onClick={onHide}>hide detail</button>
-      <button onClick={onUpdate}>refresh detail</button>
-    </div>
-  ),
+  }) =>
+    detail ? (
+      <div data-testid="plugin-detail-panel">
+        <span>{detail.plugin_id}</span>
+        <button onClick={onHide}>hide detail</button>
+        <button onClick={onUpdate}>refresh detail</button>
+      </div>
+    ) : null,
 }))
 
 const createPlugin = (
@@ -324,7 +355,7 @@ describe('PluginsPanel', () => {
       },
     )
     mockState.filters = { categories: [], tags: [], searchQuery: '' }
-    mockState.currentPluginID = undefined
+    mockState.selectedItem = undefined
     mockUseInstalledPluginList.mockReturnValue({
       data: { plugins: [] },
       isLoading: false,
@@ -541,6 +572,43 @@ describe('PluginsPanel', () => {
 
     fireEvent.click(screen.getByText('hide builtin detail'))
 
+    expect(screen.queryByTestId('builtin-tool-detail')).not.toBeInTheDocument()
+  })
+
+  it('replaces the builtin tool detail when an installed plugin is selected', async () => {
+    vi.useRealTimers()
+    const user = userEvent.setup()
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('tool-plugin', 'Tool Plugin', [], PluginCategoryEnum.tool),
+    ])
+    mockUseInstalledPluginList.mockReturnValue({
+      data: {
+        plugins: [],
+        builtin_tools: [createBuiltinTool('builtin-tool', 'Builtin Tool')],
+      },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    const builtinToolCard = screen.getByRole('button', { name: 'builtin-tool' })
+    const pluginCard = screen.getByRole('button', { name: 'tool-plugin' })
+
+    await user.click(builtinToolCard)
+
+    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'true')
+    expect(pluginCard).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('builtin-tool-detail')).toHaveTextContent('builtin-tool')
+    expect(screen.queryByTestId('plugin-detail-panel')).not.toBeInTheDocument()
+
+    await user.click(pluginCard)
+
+    expect(pluginCard).toHaveAttribute('aria-pressed', 'true')
+    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('plugin-detail-panel')).toHaveTextContent('tool-plugin')
     expect(screen.queryByTestId('builtin-tool-detail')).not.toBeInTheDocument()
   })
 
@@ -898,7 +966,7 @@ describe('PluginsPanel', () => {
   })
 
   it('renders the empty state and keeps the current plugin detail in sync', () => {
-    mockState.currentPluginID = 'beta-tool'
+    mockState.selectedItem = { type: 'plugin', id: 'beta-tool' }
     mockState.filters.searchQuery = 'missing'
     mockPluginListWithLatestVersion.mockReturnValue([createPlugin('beta-tool', 'Beta Tool')])
 
@@ -907,10 +975,10 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('empty-state')).toBeInTheDocument()
     expect(screen.getByTestId('plugin-detail-panel')).toHaveTextContent('beta-tool')
 
-    fireEvent.click(screen.getByText('hide detail'))
     fireEvent.click(screen.getByText('refresh detail'))
+    fireEvent.click(screen.getByText('hide detail'))
 
-    expect(mockSetCurrentPluginID).toHaveBeenCalledWith(undefined)
+    expect(mockSetSelectedItem).toHaveBeenCalledWith(undefined)
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
   })
 })
