@@ -9,7 +9,7 @@ describe('getQueryClient', () => {
     const queryPromise = new Promise<string>((resolve) => {
       resolveQuery = resolve
     })
-    const prefetchPromise = queryClient.prefetchQuery({
+    const queryExecution = queryClient.query({
       queryKey,
       queryFn: () => queryPromise,
     })
@@ -24,7 +24,7 @@ describe('getQueryClient', () => {
     )
 
     resolveQuery('ready')
-    await prefetchPromise
+    await queryExecution
     queryClient.removeQueries({ queryKey })
   })
 })

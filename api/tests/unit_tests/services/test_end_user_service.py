@@ -120,6 +120,32 @@ def test_get_or_create_upgrades_legacy_type() -> None:
     assert repository.updated_types == [("legacy", EndUserType.SERVICE_API.value)]
 
 
+def test_get_or_create_never_retypes_an_app_deploy_end_user() -> None:
+    repository = RecordingEndUserRepository(
+        session_candidates=[_stored(id="app-deploy", type=EndUserType.APP_DEPLOY, value="app-deploy")]
+    )
+
+    result = _service(repository).get_or_create_end_user_by_type(
+        EndUserType.SERVICE_API,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+    )
+
+    assert result == "created"
+    assert repository.updated_types == []
+    assert repository.created == [
+        NewAppScopedEndUser(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            type=EndUserType.SERVICE_API.value,
+            is_anonymous=False,
+            session_id="user-1",
+            external_user_id="user-1",
+        )
+    ]
+
+
 def test_get_or_create_builds_anonymous_creation_command() -> None:
     repository = RecordingEndUserRepository()
 

@@ -19,6 +19,7 @@ from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
+from services.web_passport_gateways import resolve_web_app_auth_type
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -133,6 +134,14 @@ def _validate_user_accessibility(
         if not webapp_settings:
             raise WebAppAuthRequiredError("Web app settings not found.")
 
+        auth_type = decoded.get("auth_type")
+        if not auth_type:
+            raise WebAppAuthRequiredError("Missing auth_type in the token.")
+
+        expected_auth_type = resolve_web_app_auth_type(webapp_settings.access_mode)
+        if auth_type != expected_auth_type:
+            raise WebAppAuthRequiredError()
+
         if WebAppAuthService.is_app_require_permission_check(
             access_mode=webapp_settings.access_mode, session=db.session()
         ):
@@ -140,10 +149,7 @@ def _validate_user_accessibility(
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 
-        auth_type = decoded.get("auth_type")
         granted_at = decoded.get("granted_at")
-        if not auth_type:
-            raise WebAppAuthAccessDeniedError("Missing auth_type in the token.")
         if not granted_at:
             raise WebAppAuthAccessDeniedError("Missing granted_at in the token.")
         # check if sso has been updated

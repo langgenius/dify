@@ -65,6 +65,9 @@ class AppScopedEndUserService[T]:
             app_id=app_id,
             user_id=normalized_user_id,
         )
+        # An AppDeploy row is never a legacy row this service may upgrade. FileGrantService
+        # reads those rows by type, so retyping one would hide it and strand its files.
+        candidates = [candidate for candidate in candidates if candidate.type != EndUserType.APP_DEPLOY.value]
         end_user = next((candidate for candidate in candidates if candidate.type == type.value), None)
         end_user = end_user or next(iter(candidates), None)
 
