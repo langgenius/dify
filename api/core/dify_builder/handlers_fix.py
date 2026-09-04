@@ -117,12 +117,12 @@ def append_card(fc: DifyBuilderContext, card) -> list[ConversationItem]:
     return [item]
 
 
-_FORM_FIELD_TYPES = {"text", "textarea", "select", "bool"}
+_FORM_FIELD_TYPES = {"bool", "json", "json_object", "number", "select", "text", "textarea"}
 
 
 def build_form_fields(specs: list[dict]) -> list[FormField]:
     """Build FormField cards from agent-provided field specs, whitelisting
-    keys and clamping type to the 4 supported kinds (unknown -> text)."""
+    keys and clamping type to the supported scalar/JSON kinds (unknown -> text)."""
     fields: list[FormField] = []
     for spec in specs:
         if not isinstance(spec, dict) or not spec.get("key"):
