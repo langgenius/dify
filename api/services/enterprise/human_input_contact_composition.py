@@ -6,6 +6,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
     SQLAlchemyContactIMBindingRepository,
     SQLAlchemyContactRepository,
 )
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import DeploymentIMChannelReader
 from services.human_input_v2.contact_service import ContactManagementService
 
 from .human_input_contact_service import EnterpriseContactManagementService, EnterpriseOrganizationContactReader
@@ -13,7 +14,8 @@ from .human_input_contact_service import EnterpriseContactManagementService, Ent
 
 def build_enterprise_contact_management_service(session: Session) -> EnterpriseContactManagementService:
     repository = SQLAlchemyContactRepository(session)
-    contact_queries = ContactManagementService(repository, SQLAlchemyContactIMBindingRepository(session))
+    channel = DeploymentIMChannelReader(session).get()
+    contact_queries = ContactManagementService(repository, SQLAlchemyContactIMBindingRepository(session, channel))
     return EnterpriseContactManagementService(repository, repository, contact_queries)
 
 

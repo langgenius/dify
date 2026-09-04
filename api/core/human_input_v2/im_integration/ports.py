@@ -21,12 +21,15 @@ from core.human_input_v2.shared import (
     IntegrationId,
 )
 
-from .integration import (
-    IntegrationRevisionToken,
-    StaleRevision,
-)
 from .sync_reconciliation import ReconciliationReasonCode
-from .sync_records import IMSyncRun, SynchronizedIMIdentityPage, SyncResultFact, SyncResultPage
+from .sync_records import (
+    IMChannelRevision,
+    IMSyncRun,
+    StaleRevision,
+    SynchronizedIMIdentityPage,
+    SyncResultFact,
+    SyncResultPage,
+)
 
 
 class ActiveRunDecisionKind(StrEnum):
@@ -96,7 +99,7 @@ class IMSyncRepository(Protocol):
 
     def create_or_get_active_run(
         self,
-        integration_revision: IntegrationRevisionToken,
+        channel_revision: IMChannelRevision,
         *,
         organization_scope: DirectoryScope,
         sync_run_id: IMSyncRunId,

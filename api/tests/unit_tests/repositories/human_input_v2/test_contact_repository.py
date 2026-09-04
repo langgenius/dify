@@ -17,8 +17,17 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
-from repositories.human_input_v2.contact import ContactQuery, ContactType
-from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
+from repositories.human_input_v2.contact import (
+    ContactError,
+    ContactErrorCode,
+    ContactQuery,
+    ContactType,
+    ExternalContact,
+)
+from repositories.human_input_v2.sqlalchemy_contact_repository import (
+    SQLAlchemyContactIMBindingRepository,
+    SQLAlchemyContactRepository,
+)
 
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")
@@ -526,3 +535,80 @@ def test_organization_candidate_list_rejects_non_positive_page_boundaries(
         repository = SQLAlchemyContactRepository(session)
         with pytest.raises(ValueError, match="must be positive"):
             repository.list_organization_candidates(page=page, limit=limit)
+
+
+def test_account_contact_provisioning_is_idempotent_and_compensatable(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    missing_account_id = AccountId("00000000-0000-0000-0000-000000000998")
+    with contact_repository_context.sessions.begin() as session:
+        repository = SQLAlchemyContactRepository(session)
+        with pytest.raises(ContactError) as missing:
+            repository.provision_account_backed_contact(missing_account_id)
+        assert missing.value.code is ContactErrorCode.ACCOUNT_NOT_FOUND
+
+        contact_id = repository.provision_account_backed_contact(_ADMIN_ACCOUNT)
+        assert repository.provision_account_backed_contact(_ADMIN_ACCOUNT) == contact_id
+        repository.delete_account_identity_after_failed_creation(_ADMIN_ACCOUNT)
+        assert repository.get_contacts_by_id(_TENANT_A, contact_id) is None
+
+
+def test_external_contact_lifecycle_is_tenant_owned_and_conflict_safe(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    contact_id = ContactId("00000000-0000-0000-0000-000000000399")
+    original = ExternalContact(contact_id, "New External", "new@example.com", None, _NOW)
+    updated = ExternalContact(contact_id, "Updated External", "updated@example.com", None, _NOW)
+
+    with contact_repository_context.sessions.begin() as session:
+        repository = SQLAlchemyContactRepository(session)
+        assert repository.query_contacts_by_email(_TENANT_A, ()) == ()
+        assert repository.get_contacts_by_ids(_TENANT_A, ()) == ()
+        created = repository.save_external_contact(_TENANT_A, original)
+        assert (created.id, created.name, created.email) == (contact_id, "New External", "new@example.com")
+        stored = repository.save_external_contact(_TENANT_A, updated)
+        assert (stored.id, stored.name, stored.email) == (contact_id, "Updated External", "updated@example.com")
+        repository.delete_external_contact(_TENANT_A, updated)
+        with pytest.raises(ContactError) as missing:
+            repository.delete_external_contact(_TENANT_A, updated)
+        assert missing.value.code is ContactErrorCode.NOT_FOUND
+
+        invalid_owner = ExternalContact(
+            contact_repository_context.contact_ids.workspace_shared,
+            "Invalid",
+            "invalid@example.com",
+            None,
+            _NOW,
+        )
+        with pytest.raises(ContactError) as invalid:
+            repository.save_external_contact(_TENANT_A, invalid_owner)
+        assert invalid.value.code is ContactErrorCode.INVALID_OWNER
+
+    duplicate_id = ContactId("00000000-0000-0000-0000-000000000398")
+    duplicate = ExternalContact(duplicate_id, "Duplicate", "foxtrot@example.com", None, _NOW)
+    with contact_repository_context.sessions() as session:
+        with pytest.raises(ContactError) as conflict:
+            SQLAlchemyContactRepository(session).save_external_contact(_TENANT_A, duplicate)
+        assert conflict.value.code is ContactErrorCode.CONFLICT
+
+
+def test_platform_entry_deletion_and_missing_candidate_are_explicit(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    contact_id = contact_repository_context.contact_ids.platform_beta
+    with contact_repository_context.sessions.begin() as session:
+        repository = SQLAlchemyContactRepository(session)
+        repository.delete_platform_entry(_TENANT_A, contact_id)
+        assert repository.get_contacts_by_id(_TENANT_A, contact_id) is None
+        with pytest.raises(ContactError) as missing:
+            repository.create_platform_entry(_TENANT_A, _MISSING_CONTACT, _ADMIN_ACCOUNT)
+        assert missing.value.code is ContactErrorCode.NOT_FOUND
+
+
+def test_contact_binding_projection_short_circuits_without_a_channel_or_contacts(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    with contact_repository_context.sessions() as session:
+        repository = SQLAlchemyContactIMBindingRepository(session, None)
+        assert repository.get_im_bindings(_TENANT_A, ()) == ()
+        assert repository.get_im_bindings(_TENANT_A, (contact_repository_context.contact_ids.workspace_shared,)) == ()

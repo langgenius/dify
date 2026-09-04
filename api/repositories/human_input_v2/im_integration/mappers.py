@@ -4,16 +4,14 @@ from datetime import datetime
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
+from core.human_input_v2.entities import IMSyncRemovalReason
 from core.human_input_v2.im_integration import (
-    IMBinding,
     IMBindingChangeSnapshot,
-    IMIdentity,
+    IMChannelRevision,
     IMIdentityChangeSnapshot,
     IMReconciliationChange,
     IMReconciliationSubjectKind,
     IMSyncRun,
-    IntegrationRevisionToken,
     OpaqueProviderPayload,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
@@ -33,13 +31,10 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
-    HumanInputIMBinding,
-    HumanInputIMIdentity,
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
     IMBindingReconciliationSnapshot,
-    IMIdentityRawPayload,
     IMIdentityReconciliationSnapshot,
     IMSyncContactSnapshot,
     IMSyncDirectoryEntryPayload,
@@ -53,94 +48,12 @@ def _timestamp(value: datetime) -> NaiveDatetime:
     return ensure_naive_utc(value)
 
 
-def identity_from_record(record: HumanInputIMIdentity) -> IMIdentity:
-    """Map one current provider identity record into a domain value."""
-
-    return IMIdentity(
-        id=IMIdentityId(record.id),
-        integration_id=IntegrationId(record.integration_id),
-        provider=record.provider,
-        provider_user_id=record.provider_user_id,
-        display_name=record.display_name,
-        normalized_name=record.normalized_name,
-        email=record.email,
-        normalized_email=NormalizedEmail(record.normalized_email) if record.normalized_email is not None else None,
-        raw_payload=OpaqueProviderPayload.from_mapping(record.raw_payload.root),
-        last_seen_sync_run_id=(
-            IMSyncRunId(record.last_seen_sync_run_id) if record.last_seen_sync_run_id is not None else None
-        ),
-        last_seen_at=_timestamp(record.last_seen_at) if record.last_seen_at is not None else None,
-        created_at=_timestamp(record.created_at),
-        updated_at=_timestamp(record.updated_at),
-    )
-
-
-def identity_to_record(identity: IMIdentity) -> HumanInputIMIdentity:
-    """Map one current provider identity into a detached record."""
-
-    record = HumanInputIMIdentity(
-        integration_id=str(identity.integration_id),
-        provider=identity.provider,
-        provider_user_id=identity.provider_user_id,
-        display_name=identity.display_name,
-        normalized_name=identity.normalized_name,
-        email=identity.email,
-        normalized_email=str(identity.normalized_email) if identity.normalized_email is not None else None,
-        raw_payload=IMIdentityRawPayload(identity.raw_payload.to_mapping()),
-        last_seen_sync_run_id=(
-            str(identity.last_seen_sync_run_id) if identity.last_seen_sync_run_id is not None else None
-        ),
-        last_seen_at=identity.last_seen_at if identity.last_seen_at is not None else None,
-    )
-    record.id = str(identity.id)
-    record.created_at = identity.created_at
-    record.updated_at = identity.updated_at
-    return record
-
-
-def binding_from_record(record: HumanInputIMBinding) -> IMBinding:
-    """Map one current binding record into a domain value."""
-
-    return IMBinding(
-        id=IMBindingId(record.id),
-        integration_id=IntegrationId(record.integration_id),
-        scope=IMBindingScope(record.scope),
-        scope_id=record.scope_id,
-        contact_id=ContactId(record.contact_id),
-        identity_id=IMIdentityId(record.im_identity_id),
-        provider=record.provider,
-        bound_by_account_id=AccountId(record.bound_by_account_id) if record.bound_by_account_id is not None else None,
-        created_at=_timestamp(record.created_at),
-        updated_at=_timestamp(record.updated_at),
-    )
-
-
-def binding_to_record(binding: IMBinding) -> HumanInputIMBinding:
-    """Map one current binding into a detached record."""
-
-    record = HumanInputIMBinding(
-        integration_id=str(binding.integration_id),
-        scope=binding.scope,
-        scope_id=binding.scope_id,
-        contact_id=str(binding.contact_id),
-        im_identity_id=str(binding.identity_id),
-        provider=binding.provider,
-        bound_by_account_id=str(binding.bound_by_account_id) if binding.bound_by_account_id is not None else None,
-    )
-    record.id = str(binding.id)
-    record.created_at = binding.created_at
-    record.updated_at = binding.updated_at
-    return record
-
-
 def sync_run_from_record(record: HumanInputIMSyncRun) -> IMSyncRun:
     """Map one sync run record into its independent aggregate."""
 
     return IMSyncRun(
         id=IMSyncRunId(record.id),
-        integration_revision=IntegrationRevisionToken(
-            IntegrationId(record.integration_id), record.integration_config_version
-        ),
+        channel_revision=IMChannelRevision(record.integration_id, record.integration_config_version),
         provider=record.provider,
         status=record.status,
         added_count=record.added_count,
@@ -164,8 +77,8 @@ def sync_run_to_record(run: IMSyncRun) -> HumanInputIMSyncRun:
     """Map one sync aggregate into a detached record."""
 
     record = HumanInputIMSyncRun(
-        integration_id=str(run.integration_revision.integration_id),
-        integration_config_version=run.integration_revision.config_version,
+        integration_id=run.channel_revision.channel_id,
+        integration_config_version=run.channel_revision.config_version,
         provider=run.provider,
         status=run.status,
         added_count=run.added_count,

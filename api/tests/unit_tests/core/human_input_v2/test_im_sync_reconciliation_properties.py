@@ -29,8 +29,8 @@ from core.human_input_v2.im_integration import (
     CurrentIMIdentityState,
     DeleteIMBinding,
     ExistingIMIdentityRef,
+    IMChannelRevision,
     IMIdentityUpsertKind,
-    IntegrationRevisionToken,
     NewIMIdentityRef,
     PlannedSyncResult,
     ReconciliationBlockCode,
@@ -46,13 +46,12 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
 
 _RUN = ReconciliationRunRef(
     sync_run_id=IMSyncRunId("property-run"),
-    integration_revision=IntegrationRevisionToken(IntegrationId("property-integration"), 7),
+    channel_revision=IMChannelRevision("property-channel", 7),
     provider=IMProvider.FEISHU,
 )
 
@@ -1006,7 +1005,7 @@ def _project_plan(reconciliation_input: ReconciliationInput, plan: Reconciliatio
 def _next_input(reconciliation_input: ReconciliationInput, projected: _ProjectedState) -> ReconciliationInput:
     next_run = ReconciliationRunRef(
         sync_run_id=IMSyncRunId(f"{reconciliation_input.run.sync_run_id}:next"),
-        integration_revision=reconciliation_input.run.integration_revision,
+        channel_revision=reconciliation_input.run.channel_revision,
         provider=reconciliation_input.run.provider,
     )
     return ReconciliationInput(

@@ -1,51 +1,59 @@
-## 1. Freeze Reference Contracts
+## 1. Retire Reference Scaffolding
 
-- [ ] 1.1 Review `domain.py`, `schema.py`, and `repository.py` against both capability specs and resolve any field, naming, signature, or lifecycle mismatch before production edits.
-- [ ] 1.2 Add behavioral contract tests for owner-free `IMIdentity`, `IMIdentityObservation`, `IMBinding`, `IMBindingAssignment`, and `IMBindingKind` values without asserting module or symbol placement.
-- [ ] 1.3 Add import-linter boundaries that keep Repository contracts independent from ORM models and prevent core, services, and controllers from declaring compatibility copies.
+- [x] 1.1 Verify that `domain.py`, `schema.py`, and `repository.py` contain no contract absent from production code or the capability specs, then delete the three mirrors and remove their remaining references.
+- [x] 1.2 Restore the durable IM Channel service and Identity/Binding port import boundaries; keep the temporary no-composition guard removed.
 
 ## 2. Replace The Unpublished Identity Schema
 
-- [ ] 2.1 Replace `HumanInputIMIdentity.integration_id` and denormalized Provider with non-null logical `channel_id` and `UNIQUE(channel_id, provider_user_id)` in the unpublished migration and ORM.
-- [ ] 2.2 Make latest sync run ID and observation timestamp non-null for current Identity rows while preserving opaque raw payload and standard timestamps.
-- [ ] 2.3 Define `IMIdentityRawPayload` directly as the frozen, strict, default-validating JSON-object `RootModel`; do not reuse the existing `_ImmutableJSONObject` base.
-- [ ] 2.4 Add Channel-prefixed search/last-seen indexes and Repository mapping tests for canonical source/normalized pairs without database pair check constraints.
-- [ ] 2.5 Add schema and supported-dialect tests for Identity uniqueness, nullability, index/constraint behavior, and absence of database foreign-key cascade assumptions.
+- [x] 2.1 Replace `HumanInputIMIdentity.integration_id` and denormalized Provider with non-null logical `channel_id` and `UNIQUE(channel_id, provider_user_id)` in the unpublished migration and ORM.
+- [x] 2.2 Make latest sync run ID and observation timestamp non-null for current Identity rows while preserving opaque raw payload and standard timestamps.
+- [x] 2.3 Define `IMIdentityRawPayload` directly as the frozen, strict, default-validating JSON-object `RootModel`; do not reuse the existing `_ImmutableJSONObject` base.
+- [x] 2.4 Remove the unused Channel/last-seen-run index and retain only Channel-prefixed search indexes.
 
 ## 3. Split Default Bindings And Workspace Overrides
 
-- [ ] 3.1 Replace the polymorphic `HumanInputIMBinding` schema with default `HumanInputIMBinding` fields `channel_id/contact_id/im_identity_id/bound_by_account_id`.
-- [ ] 3.2 Add `HumanInputIMBindingWorkspaceOverride` with non-null `channel_id/tenant_id/contact_id/im_identity_id` and optional actor metadata.
-- [ ] 3.3 Remove `integration_id`, `scope`, `scope_id`, and denormalized Provider from current Binding persistence.
-- [ ] 3.4 Add portable unique constraints for default Contact/Identity endpoints and target-workspace Contact/Identity endpoints.
-- [ ] 3.5 Add schema and supported-dialect tests proving same-table conflicts, cross-kind Identity reuse, cross-workspace Identity reuse, and rollback after constraint failure.
+- [x] 3.1 Replace the polymorphic `HumanInputIMBinding` schema with default `HumanInputIMBinding` fields `channel_id/contact_id/im_identity_id/bound_by_account_id`.
+- [x] 3.2 Add `HumanInputIMBindingWorkspaceOverride` with non-null `channel_id/tenant_id/contact_id/im_identity_id` and optional actor metadata.
+- [x] 3.3 Remove `integration_id`, `scope`, `scope_id`, and denormalized Provider from current Binding persistence.
+- [x] 3.4 Add portable unique constraints for default Contact/Identity endpoints and target-workspace Contact/Identity endpoints.
+- [x] 3.5 Remove `hiimb_contact_idx` and `hiimb_identity_idx` from the ORM and unpublished migration; all allowed default-Binding queries must use the Channel-prefixed unique indexes.
 
 ## 4. Add Owner-Free Domain Values
 
-- [ ] 4.1 Add current `IMIdentity`, `IMIdentityObservation`, `OpaqueProviderPayload`, and `IMIdentityPage` values with no persistence owner fields or construction-time validation.
-- [ ] 4.2 Add `IMBindingKind.DEFAULT/WORKSPACE_OVERRIDE`, current `IMBinding`, and `IMBindingAssignment` values without Channel, target tenant, actor, Provider, scope, or ORM state.
-- [ ] 4.3 Add mapper examples/tests that produce identical current values from workspace-owned and deployment-owned Channels and derive `IMBindingKind` only from the persisted table read.
+- [x] 4.1 Add current `IMIdentity`, `IMIdentityObservation`, and `IMIdentityPage` values with no persistence owner fields or construction-time validation, and define `OpaqueProviderPayload` directly as a frozen, strict, default-validating JSON-object `RootModel`.
+- [x] 4.2 Keep `IMBindingKind.DEFAULT/WORKSPACE_OVERRIDE`, `IMBinding`, and `IMBindingAssignment` owner-free, and remove caller-supplied `new_binding_id` from `IMBindingAssignment`.
 
-## 5. Add Repository Ports
+## 5. Refine Repository Ports
 
-- [ ] 5.1 Add one `IMIdentityRepository` Protocol with observation-based create/update and bound-Channel read/search/delete signatures.
-- [ ] 5.2 Add direct-`Exception` Identity root and narrow already-exists, not-found, in-use, and stale-write errors.
-- [ ] 5.3 Add one `IMBindingRepository` Protocol covering default Binding, workspace override, and effective-read operations without owner or infrastructure arguments.
-- [ ] 5.4 Add direct-`Exception` Binding root and narrow endpoint-conflict, Identity-not-found, and stale-write errors.
-- [ ] 5.5 Add behavioral test doubles for the two Repository contracts without recreating a combined IM control-plane repository.
+- [x] 5.1 Retain `IMIdentityRepository.list_all` for reconciliation and make Identity delete an idempotent `None`-returning command.
+- [x] 5.2 Keep the direct-`Exception` Identity root and narrow already-exists, update-not-found, and in-use errors.
+- [x] 5.3 Retain `IMBindingRepository.list_all` for reconciliation, make default delete idempotent, and return no Binding when exact replace no longer matches current state.
+- [x] 5.4 Remove `StaleIMBindingWriteError`; keep only the direct-`Exception` Binding root, endpoint-conflict error, and Identity-not-found error.
 
-## 6. Add SQLAlchemy Adapter Stubs
+## 6. Implement SQLAlchemy Adapters
 
-- [ ] 6.1 Add `SQLAlchemyIMIdentityRepository(Session, IMChannelId)` constructor and method stubs without persistence SQL.
-- [ ] 6.2 Add `SQLAlchemyIMBindingRepository(Session, IMChannelId)` constructor and default/override/effective method stubs without persistence SQL.
-- [ ] 6.3 Keep target `TenantId` and optional `bound_by_account_id` as method arguments only; prove one Binding Repository instance supports different operation values without reconstruction.
-- [ ] 6.4 Add import/composition guards proving stubs receive trusted Channel IDs only after owner-bound Channel reads and are not wired into production callers before their SQL behavior is implemented.
-- [ ] 6.5 Document in each stub that the caller owns Session transaction, external locking, Provider I/O ordering, commit, rollback, and task dispatch.
+- [x] 6.1 Implement `SQLAlchemyIMIdentityRepository.get/get_by_provider_user_id/list_all/search` with constructor-bound Channel predicates and owner-free mapping.
+- [x] 6.2 Implement Identity observation create/update, duplicate and update-not-found error translation, in-use delete protection, idempotent missing delete, and flush-before-return behavior.
+- [x] 6.3 Implement default Binding `get/list_all/create/replace/delete`; generate IDs on insert, preserve idempotent create, return no Binding for stale replace, and make delete idempotent.
+- [x] 6.4 Implement workspace `set/reset` and override-first `get_effective/get_effective_many`; generate IDs only on insert and preserve an existing override's ID and creation timestamp.
+- [x] 6.5 Keep target `TenantId` and optional `bound_by_account_id` as operation arguments; prove one Binding Repository instance supports different operation values without reconstruction.
+- [x] 6.6 Preserve unrelated SQLAlchemy, mapping, validation, and integrity failures instead of translating them to domain conflicts.
+- [x] 6.7 Verify both adapters query, mutate, and flush through the supplied Session without creating a Session, committing, rolling back, opening a nested transaction, acquiring external locks, performing Provider I/O, or dispatching work.
+- [x] 6.8 Remove the temporary no-composition guard and construct the real adapters only after an owner-bound Channel Reader returns the trusted Channel ID.
+- [x] 6.9 Add focused tests for the implemented adapters covering canonical Identity mapping, Channel-local uniqueness, owner-free mapping, endpoint conflicts, cross-kind and cross-workspace reuse, effective precedence, and rollback without partial state.
 
-## 7. Verify Scope And Follow-up Boundary
+## 7. Migrate Reachable Current Consumers
 
-- [ ] 7.1 Run focused Domain, ORM schema, migration, import-boundary, and supported-dialect constraint tests through `uv run --project api`.
-- [ ] 7.2 Run backend formatter, lint, and type checks for the changed models and Repository contracts.
-- [ ] 7.3 Search this change for Organization entities, another parent abstraction, `integration_id`, `scope`, `scope_id`, duplicated Provider fields, raw owner keys, and workspace/deployment Domain unions; none may remain except explicit removal/history statements in artifacts.
-- [ ] 7.4 Confirm synchronization, reconciliation, Contact-facing reads, controllers, runtime authorization, historical models, and Celery payloads remain unchanged and list their migrations as follow-up changes.
-- [ ] 7.5 Run `openspec validate refactor-human-input-im-identity-binding-domain --strict` and resolve every validation error.
+- [x] 7.1 Migrate synchronization and reconciliation current Identity reads and writes from Integration-scoped ORM access to `SQLAlchemyIMIdentityRepository`; use `list_all` for each bound Channel snapshot.
+- [x] 7.2 Migrate reconciliation current Binding reads and writes to `SQLAlchemyIMBindingRepository` while preserving existing decisions, locking, and caller-owned transaction boundaries.
+- [x] 7.3 Migrate Contact-facing Binding reads to `get_effective/get_effective_many` after owner-bound Channel resolution while preserving public Contact DTOs.
+- [x] 7.4 Remove obsolete Integration-scoped current `IMIdentity`/`IMBinding` values, mappers, Repository methods, and direct reads of removed ORM fields; preserve historical sync-run, result, and snapshot values.
+- [x] 7.5 Add focused behavior tests for the migrated synchronization, reconciliation, and Contact-facing paths.
+
+## 8. Verify Scope And Contracts
+
+- [x] 8.1 Run focused Domain, SQLAlchemy Repository, transaction, constraint, migrated-consumer, and import-boundary tests through `uv run --project api`.
+- [x] 8.2 Run backend formatter, lint, and type checks for changed models, Repository contracts, SQLAlchemy implementations, and migrated consumers.
+- [x] 8.3 Verify no current production path references removed `integration_id`, `scope`, `scope_id`, Provider columns, obsolete current values, reference mirrors, or `NotImplementedError` placeholders.
+- [x] 8.4 Confirm controller behavior, public DTOs, runtime authorization, historical models and snapshots, Provider adapters, credentials, IM Channel management, and Celery payloads remain unchanged.
+- [x] 8.5 Run `openspec validate refactor-human-input-im-identity-binding-domain --strict` and resolve every validation error.

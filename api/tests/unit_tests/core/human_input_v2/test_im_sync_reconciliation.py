@@ -15,9 +15,9 @@ from core.human_input_v2.im_integration import (
     CurrentIMIdentityState,
     DeleteIMBinding,
     ExistingIMIdentityRef,
+    IMChannelRevision,
     IMIdentityUpsertKind,
     IMSyncRun,
-    IntegrationRevisionToken,
     NewIMIdentityRef,
     ReconciliationBlockCode,
     ReconciliationInput,
@@ -34,14 +34,13 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
 _RUN = ReconciliationRunRef(
     sync_run_id=IMSyncRunId("run-1"),
-    integration_revision=IntegrationRevisionToken(IntegrationId("integration-1"), 3),
+    channel_revision=IMChannelRevision("channel-1", 3),
     provider=IMProvider.FEISHU,
 )
 
@@ -110,16 +109,16 @@ def _plan(reconciliation_input: ReconciliationInput) -> ReconciliationPlan:
     return generated
 
 
-def test_sync_run_captures_complete_integration_revision() -> None:
+def test_sync_run_captures_complete_channel_revision() -> None:
     run = IMSyncRun.create(
         sync_run_id=IMSyncRunId("run-1"),
-        integration_revision=_RUN.integration_revision,
+        channel_revision=_RUN.channel_revision,
         provider=IMProvider.FEISHU,
         started_by_account_id=AccountId("account-1"),
         now=_NOW,
     )
 
-    assert run.integration_revision == _RUN.integration_revision
+    assert run.channel_revision == _RUN.channel_revision
     assert run.status is IMSyncRunStatus.QUEUED
     assert run.is_active is True
     assert run.start(_NOW).start(_NOW).status is IMSyncRunStatus.RUNNING
@@ -181,11 +180,12 @@ def test_absent_identity_deletes_all_referencing_bindings_before_identity() -> N
         )
     )
 
-    assert [mutation.before.binding_id for mutation in plan.binding_mutations] == [
+    delete_mutations = tuple(mutation for mutation in plan.binding_mutations if isinstance(mutation, DeleteIMBinding))
+    assert len(delete_mutations) == len(plan.binding_mutations)
+    assert [mutation.before.binding_id for mutation in delete_mutations] == [
         organization_binding.binding_id,
         workspace_override.binding_id,
     ]
-    assert all(isinstance(mutation, DeleteIMBinding) for mutation in plan.binding_mutations)
     assert plan.identity_deletions[0].before == identity
     assert [item.result_type for item in plan.sync_results] == [IMSyncResultType.REMOVED, IMSyncResultType.REMOVED]
 

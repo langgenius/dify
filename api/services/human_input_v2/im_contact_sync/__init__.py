@@ -2,9 +2,9 @@
 
 from .binding_service import ContactIMBindingService
 from .composition import IMContactSyncApplication, build_im_contact_sync_application
-from .coordinator import IMContactSyncCoordinator, IMSyncRetryableError
+from .coordinator import IMChannelReconciliationService, IMSyncRetryableError
 from .service import (
-    IMIntegrationNotConfiguredError,
+    IMChannelNotConfiguredError,
     IMSyncRevisionChangedError,
     IMSyncRunDispatcher,
     IMSyncRunNotFoundError,
@@ -14,10 +14,10 @@ from .worker import IMContactSyncWorker
 
 __all__ = [
     "ContactIMBindingService",
+    "IMChannelNotConfiguredError",
+    "IMChannelReconciliationService",
     "IMContactSyncApplication",
-    "IMContactSyncCoordinator",
     "IMContactSyncWorker",
-    "IMIntegrationNotConfiguredError",
     "IMSyncRetryableError",
     "IMSyncRevisionChangedError",
     "IMSyncRunDispatcher",

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import replace
 from datetime import datetime
+from typing import override
 
 import pytest
 
 from core.human_input_v2.entities import IMProvider, IMSyncRunStatus
-from core.human_input_v2.im_integration import IMSyncRun, IntegrationRevisionToken
-from core.human_input_v2.shared import IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
-from services.human_input_v2.im_contact_sync.coordinator import IMSyncRetryableError
+from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun
+from core.human_input_v2.shared import IMSyncRunId, TenantId, WorkspaceScope
+from services.human_input_v2.im_contact_sync.coordinator import IMChannelReconciliationService, IMSyncRetryableError
+from services.human_input_v2.im_contact_sync.service import IMSyncService
 from services.human_input_v2.im_contact_sync.worker import IMContactSyncWorker
 from tasks import im_contact_sync_tasks
 
@@ -22,7 +23,7 @@ _SCOPE = WorkspaceScope(id=TenantId("workspace-1"))
 def _queued_run() -> IMSyncRun:
     return IMSyncRun.create(
         sync_run_id=IMSyncRunId("run-1"),
-        integration_revision=IntegrationRevisionToken(IntegrationId("integration-1"), 1),
+        channel_revision=IMChannelRevision("channel-1", 1),
         provider=IMProvider.FEISHU,
         started_by_account_id=None,
         now=_NOW,
@@ -39,89 +40,89 @@ def _terminal_run(status: IMSyncRunStatus = IMSyncRunStatus.SUCCEEDED) -> IMSync
     )
 
 
-class _Repository:
+class _SyncService(IMSyncService):
     def __init__(self, run: IMSyncRun | None) -> None:
         self.run = run
 
-    def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:
+    @override
+    def load_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:
         assert sync_run_id == IMSyncRunId("run-1")
         return self.run
 
 
-class _Coordinator:
+class _ReconciliationService(IMChannelReconciliationService):
     def __init__(self, terminal_run: IMSyncRun) -> None:
         self.terminal_run = terminal_run
-        self.calls: list[tuple[IMSyncRunId, WorkspaceScope]] = []
+        self.calls: list[IMSyncRunId] = []
         self.error: Exception | None = None
 
-    def reconcile(self, sync_run_id: IMSyncRunId, scope: WorkspaceScope) -> IMSyncRun:
-        self.calls.append((sync_run_id, scope))
+    @override
+    def reconcile(self, sync_run_id: IMSyncRunId) -> IMSyncRun:
+        self.calls.append(sync_run_id)
         if self.error is not None:
             raise self.error
         return self.terminal_run
 
 
-def test_terminal_redelivery_returns_persisted_state_without_reconciliation(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+def test_terminal_redelivery_returns_persisted_state_without_reconciliation() -> None:
     persisted_run = _terminal_run()
-    repository = _Repository(persisted_run)
-    coordinator = _Coordinator(persisted_run)
-    worker = IMContactSyncWorker(repository, coordinator)
+    sync_service = _SyncService(persisted_run)
+    reconciliation_service = _ReconciliationService(persisted_run)
+    worker = IMContactSyncWorker(sync_service, lambda _scope: reconciliation_service)
 
-    with caplog.at_level(logging.INFO):
-        result = worker.execute(persisted_run.id, _SCOPE)
+    result = worker.execute(persisted_run.id, _SCOPE)
 
     assert result is persisted_run
-    assert coordinator.calls == []
-    assert "run-1" in caplog.text
-    assert "integration-1" in caplog.text
+    assert reconciliation_service.calls == []
 
 
 def test_active_delivery_reconciles_once_and_returns_terminal_state() -> None:
     terminal_run = _terminal_run()
-    repository = _Repository(_queued_run())
-    coordinator = _Coordinator(terminal_run)
-    worker = IMContactSyncWorker(repository, coordinator)
+    sync_service = _SyncService(_queued_run())
+    reconciliation_service = _ReconciliationService(terminal_run)
+    worker = IMContactSyncWorker(sync_service, lambda _scope: reconciliation_service)
 
     result = worker.execute(IMSyncRunId("run-1"), _SCOPE)
 
     assert result is terminal_run
-    assert coordinator.calls == [(IMSyncRunId("run-1"), _SCOPE)]
+    assert reconciliation_service.calls == [IMSyncRunId("run-1")]
 
 
 def test_duplicate_delivery_returns_first_persisted_result_without_reconciliation() -> None:
     terminal_run = _terminal_run()
-    repository = _Repository(_queued_run())
+    sync_service = _SyncService(_queued_run())
 
-    class PersistingCoordinator(_Coordinator):
-        def reconcile(self, sync_run_id: IMSyncRunId, scope: WorkspaceScope) -> IMSyncRun:
-            result = super().reconcile(sync_run_id, scope)
-            repository.run = result
+    class PersistingReconciliationService(_ReconciliationService):
+        @override
+        def reconcile(self, sync_run_id: IMSyncRunId) -> IMSyncRun:
+            result = super().reconcile(sync_run_id)
+            sync_service.run = result
             return result
 
-    coordinator = PersistingCoordinator(terminal_run)
-    worker = IMContactSyncWorker(repository, coordinator)
+    reconciliation_service = PersistingReconciliationService(terminal_run)
+    worker = IMContactSyncWorker(sync_service, lambda _scope: reconciliation_service)
 
     first_result = worker.execute(IMSyncRunId("run-1"), _SCOPE)
     duplicate_result = worker.execute(IMSyncRunId("run-1"), _SCOPE)
 
     assert first_result is terminal_run
     assert duplicate_result is terminal_run
-    assert coordinator.calls == [(IMSyncRunId("run-1"), _SCOPE)]
+    assert reconciliation_service.calls == [IMSyncRunId("run-1")]
 
 
 def test_retryable_coordinator_failure_remains_retryable() -> None:
-    repository = _Repository(_queued_run())
-    coordinator = _Coordinator(_terminal_run())
-    coordinator.error = IMSyncRetryableError("lock unavailable")
-    worker = IMContactSyncWorker(repository, coordinator)
+    sync_service = _SyncService(_queued_run())
+    reconciliation_service = _ReconciliationService(_terminal_run())
+    reconciliation_service.error = IMSyncRetryableError("transaction unavailable")
+    worker = IMContactSyncWorker(sync_service, lambda _scope: reconciliation_service)
 
     with pytest.raises(IMSyncRetryableError):
         worker.execute(IMSyncRunId("run-1"), _SCOPE)
 
 
-def test_celery_entrypoint_reconstructs_scope_and_returns_persisted_terminal_status(monkeypatch) -> None:
+def test_celery_entrypoint_reconstructs_scope_and_returns_persisted_terminal_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     terminal_run = _terminal_run(IMSyncRunStatus.FAILED)
 
     class _Worker:

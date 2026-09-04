@@ -11,18 +11,20 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMProvider, IMSyncRunStatus
-from core.human_input_v2.im_integration import (
-    IMIntegration,
-    ProviderTenantIdentity,
-)
 from core.human_input_v2.im_integration.adapters import SlackCredentials
-from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
+from core.human_input_v2.shared import AccountId, IMSyncRunId, TenantId, WorkspaceScope
 from extensions.ext_key_provider import key_provider_manager
 from libs.datetime_utils import naive_utc_now
 from libs.rsa import generate_key_pair
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputIMIdentity, HumanInputIMSyncResult
-from repositories.human_input_v2.im_integration.mappers import integration_to_record
+from repositories.human_input_v2.im_channel_repository import (
+    IMChannel,
+    IMChannelId,
+    IMChannelStatus,
+    WebhookId,
+)
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_worker
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
@@ -51,7 +53,7 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     tenant.encrypt_public_key = generate_key_pair(tenant.id)
     db_session_with_containers.commit()
-    integration = _persist_live_slack_integration(
+    channel = _persist_live_slack_channel(
         db_session_with_containers,
         tenant_id=TenantId(tenant.id),
         actor_id=AccountId(account.id),
@@ -125,7 +127,7 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
         select(func.count(HumanInputIMSyncResult.id)).where(HumanInputIMSyncResult.sync_run_id == str(sync_run_id))
     )
     persisted_identity_count = db_session_with_containers.scalar(
-        select(func.count(HumanInputIMIdentity.id)).where(HumanInputIMIdentity.integration_id == str(integration.id))
+        select(func.count(HumanInputIMIdentity.id)).where(HumanInputIMIdentity.channel_id == str(channel.id))
     )
     assert persisted_result_count == sum(result_counts.values())
     assert persisted_identity_count == persisted_result_count
@@ -138,14 +140,14 @@ def _live_slack_credentials() -> dict[str, str]:
     return {name: os.environ[name] for name in _REQUIRED_SLACK_ENVIRONMENT}
 
 
-def _persist_live_slack_integration(
+def _persist_live_slack_channel(
     session: Session,
     *,
     tenant_id: TenantId,
     actor_id: AccountId,
     credentials: dict[str, str],
     now: datetime,
-) -> IMIntegration:
+) -> IMChannel:
     plaintext_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id=credentials["SLACK_CLIENT_ID"],
@@ -157,16 +159,18 @@ def _persist_live_slack_integration(
     protected = IMCredentialCodec(TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))).seal(
         plaintext_credentials
     )
-    integration = IMIntegration.create(
-        integration_id=IntegrationId(str(uuidv7())),
-        tenant_id=tenant_id,
-        provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "live-slack-workspace"),
+    channel = IMChannel(
+        id=IMChannelId(str(uuidv7())),
+        created_at=now,
+        updated_at=now,
+        provider=IMProvider.SLACK,
+        provider_tenant_id="live-slack-workspace",
         encrypted_credentials=protected,
         app_identifier=plaintext_credentials.client_id,
-        configured_by_account_id=actor_id,
-        callback_url=None,
-        now=now,
+        webhook_id=WebhookId(uuidv7().hex),
+        config_version=1,
+        status=IMChannelStatus.CONNECTED,
     )
-    session.add(integration_to_record(integration))
+    WorkspaceIMChannelWriter(session, tenant_id, actor_id).create(channel)
     session.commit()
-    return integration
+    return channel
