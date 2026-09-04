@@ -7,12 +7,26 @@ import type {
 import type { FormValidationError } from './form-values'
 import type { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { MAX_FILE_UPLOAD_LIMIT } from '@/app/components/base/file-uploader/constants'
 import { useStore } from '@/app/components/workflow/store'
-import { DifyBuilderCardShell } from '../cards/card-shell'
+import { DifyBuilderCard } from '../cards/card-shell'
 import {
   DEFAULT_ALLOWED_FILE_EXTENSIONS,
   DEFAULT_ALLOWED_FILE_TYPES,
@@ -31,12 +45,14 @@ export const FormCard = memo(
   ({
     item,
     busy,
+    interactive,
     invalidated,
     onActionPayloadChange,
     onActionValidityChange,
   }: {
     item: Extract<ConversationItem, { kind: 'form' }>
     busy: boolean
+    interactive: boolean
     invalidated: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
@@ -54,7 +70,7 @@ export const FormCard = memo(
         : item.payload.variant === 'edit_rules'
           ? 'submit_edit_rules'
           : 'provide_testdata'
-    const frozen = busy || invalidated || item.payload.frozen === true
+    const frozen = busy || !interactive || invalidated || item.payload.frozen === true
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
     const actionPayloadChangeRef = useRef(onActionPayloadChange)
     const actionValidityChangeRef = useRef(onActionValidityChange)
@@ -68,7 +84,7 @@ export const FormCard = memo(
     }, [onActionValidityChange])
 
     useEffect(() => {
-      if (invalidated || item.payload.frozen === true) return
+      if (!interactive || invalidated || item.payload.frozen === true) return
 
       actionPayloadChangeRef.current(
         actionId,
@@ -77,7 +93,7 @@ export const FormCard = memo(
           : prepared.preparedValues,
       )
       actionValidityChangeRef.current?.(actionId, prepared.valid)
-    }, [actionId, invalidated, item.payload.frozen, prepared])
+    }, [actionId, interactive, invalidated, item.payload.frozen, prepared])
 
     const updateValues = (key: string, value: unknown) => {
       setValues((current) => ({ ...current, [key]: value }))
@@ -100,30 +116,48 @@ export const FormCard = memo(
     }
 
     return (
-      <DifyBuilderCardShell invalidated={invalidated}>
+      <DifyBuilderCard
+        category={t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })}
+        invalidated={invalidated}
+      >
         <div className="flex flex-col gap-3">
           {fields.map((field, index) => {
             const validationError = prepared.errors[field.key]
             const fieldErrorId = `${errorId}-${index}-error`
+            const labelContent = (
+              <>
+                {field.label}
+                {field.type === 'number' && field.unit ? ` (${field.unit})` : null}
+                {field.required && <span aria-hidden> *</span>}
+              </>
+            )
             if (field.type === 'bool' || field.type === 'checkbox') {
               return (
-                <label
+                <Field
                   key={field.key}
-                  className="flex items-center gap-2 py-1 system-xs-regular text-text-secondary"
+                  name={field.key}
+                  disabled={frozen}
+                  invalid={Boolean(validationError)}
                 >
-                  <input
-                    name={field.key}
-                    type="checkbox"
-                    checked={values[field.key] === true}
-                    disabled={frozen}
-                    aria-required={field.required || undefined}
-                    onChange={(event) => updateValues(field.key, event.target.checked)}
-                  />
-                  <span>
-                    {field.label}
-                    {field.required && <span aria-hidden> *</span>}
-                  </span>
-                </label>
+                  <FieldLabel className="flex items-center gap-2">
+                    <Checkbox
+                      name={field.key}
+                      checked={values[field.key] === true}
+                      disabled={frozen}
+                      required={field.required}
+                      onCheckedChange={(checked) => updateValues(field.key, checked)}
+                    />
+                    <span>{labelContent}</span>
+                  </FieldLabel>
+                  {validationError && (
+                    <FieldError id={fieldErrorId} role="alert" match>
+                      {validationMessage(field, validationError)}
+                    </FieldError>
+                  )}
+                  {field.hint && !validationError && (
+                    <FieldDescription>{field.hint}</FieldDescription>
+                  )}
+                </Field>
               )
             }
 
@@ -201,38 +235,68 @@ export const FormCard = memo(
                 : rawValue == null
                   ? ''
                   : JSON.stringify(rawValue)
-            return (
-              <label
-                key={field.key}
-                className="flex flex-col gap-1 system-xs-medium text-text-secondary"
-              >
-                <span>
-                  {field.label}
-                  {field.type === 'number' && field.unit ? ` (${field.unit})` : null}
-                  {field.required && <span aria-hidden> *</span>}
-                </span>
-                {field.type === 'select' ? (
-                  <select
+
+            if (field.type === 'select') {
+              const emptyOptionLabel =
+                field.placeholder ?? t(($) => $['operation.clear'], { ns: 'common' })
+              return (
+                <Field
+                  key={field.key}
+                  name={field.key}
+                  disabled={frozen}
+                  invalid={Boolean(validationError)}
+                >
+                  <Select<string>
                     name={field.key}
-                    value={value}
+                    value={value === '' ? null : value}
                     disabled={frozen}
                     required={field.required}
-                    aria-invalid={validationError ? true : undefined}
-                    aria-describedby={validationError ? fieldErrorId : undefined}
-                    className="h-8 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-                    onChange={(event) => updateValues(field.key, event.target.value)}
+                    onValueChange={(nextValue) => updateValues(field.key, nextValue ?? '')}
                   >
-                    {!(field.options ?? []).includes('') && (
-                      <option value="">{field.placeholder ?? ''}</option>
-                    )}
-                    {(field.options ?? []).map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : ['textarea', 'paragraph', 'json', 'json_object'].includes(field.type) ? (
-                  <textarea
+                    <SelectLabel>{labelContent}</SelectLabel>
+                    <SelectTrigger
+                      aria-invalid={validationError ? true : undefined}
+                      aria-describedby={validationError ? fieldErrorId : undefined}
+                    >
+                      <SelectValue placeholder={field.placeholder ?? ''} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!(field.options ?? []).includes('') && (
+                        <SelectItem value="">
+                          <SelectItemText>{emptyOptionLabel}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      )}
+                      {(field.options ?? []).map((option) => (
+                        <SelectItem key={option} value={option}>
+                          <SelectItemText>{option || emptyOptionLabel}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {validationError && (
+                    <FieldError id={fieldErrorId} role="alert" match>
+                      {validationMessage(field, validationError)}
+                    </FieldError>
+                  )}
+                  {field.hint && !validationError && (
+                    <FieldDescription>{field.hint}</FieldDescription>
+                  )}
+                </Field>
+              )
+            }
+
+            return (
+              <Field
+                key={field.key}
+                name={field.key}
+                disabled={frozen}
+                invalid={Boolean(validationError)}
+              >
+                <FieldLabel>{labelContent}</FieldLabel>
+                {['textarea', 'paragraph', 'json', 'json_object'].includes(field.type) ? (
+                  <Textarea
                     name={field.key}
                     value={value}
                     disabled={frozen}
@@ -241,11 +305,11 @@ export const FormCard = memo(
                     placeholder={field.placeholder ?? undefined}
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
-                    className="min-h-18 resize-y rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-2 system-xs-regular text-text-primary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-                    onChange={(event) => updateValues(field.key, event.target.value)}
+                    className="min-h-18 resize-y"
+                    onValueChange={(nextValue) => updateValues(field.key, nextValue)}
                   />
                 ) : (
-                  <input
+                  <Input
                     name={field.key}
                     type={field.type === 'number' || field.type === 'url' ? field.type : 'text'}
                     value={value}
@@ -255,34 +319,27 @@ export const FormCard = memo(
                     placeholder={field.placeholder ?? undefined}
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
-                    className="h-8 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-                    onChange={(event) =>
+                    onValueChange={(nextValue) =>
                       updateValues(
                         field.key,
-                        field.type === 'number' && event.target.value !== ''
-                          ? event.target.valueAsNumber
-                          : event.target.value,
+                        field.type === 'number' && nextValue !== '' ? Number(nextValue) : nextValue,
                       )
                     }
                   />
                 )}
                 {validationError && (
-                  <span
-                    id={fieldErrorId}
-                    role="alert"
-                    className="system-xs-regular text-text-destructive"
-                  >
+                  <FieldError id={fieldErrorId} role="alert" match>
                     {validationMessage(field, validationError)}
-                  </span>
+                  </FieldError>
                 )}
                 {field.hint && !validationError && (
-                  <span className="system-2xs-regular text-text-tertiary">{field.hint}</span>
+                  <FieldDescription>{field.hint}</FieldDescription>
                 )}
-              </label>
+              </Field>
             )
           })}
         </div>
-      </DifyBuilderCardShell>
+      </DifyBuilderCard>
     )
   },
 )

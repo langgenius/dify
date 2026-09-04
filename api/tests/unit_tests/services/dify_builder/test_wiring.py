@@ -24,7 +24,7 @@ def test_session_view_to_dict_round_trips_fields():
         canvas_read_only=False,
         run_status="waiting-input",
         interrupted=False,
-        conversation=[],
+        conversation_last_seq=7,
     )
     d = wiring.session_view_to_dict(view)
     assert d == {
@@ -35,10 +35,11 @@ def test_session_view_to_dict_round_trips_fields():
         "canvas_read_only": False,
         "run_status": "waiting-input",
         "interrupted": False,
-        "conversation": [],
+        "conversation_last_seq": 7,
         "entry_mode": "fix",
         "phase": "understand",
         "actions": [],
+        "active_interaction": None,
         "checkpoint": None,
         "recovery": None,
         "model": None,

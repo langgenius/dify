@@ -5,6 +5,7 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 (handlers land in Task 6/7).
 """
 
+from collections.abc import Callable
 from datetime import datetime
 
 import pytest
@@ -194,7 +195,8 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
             {
                 "turn_id": "turn-1",
                 "stage_id": "fix.await_approval",
-                "trace": {"status": "completed", "steps": []},
+                "execution": {"status": "completed", "activities": []},
+                "reasoning_text": None,
                 "reply_text": "reply 1: Make the change smaller",
                 "cards": [],
                 "card_state": None,
@@ -206,15 +208,59 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
         (2, PcState.FIX_AWAIT_APPROVAL, False),
         (3, PcState.FIX_AWAIT_APPROVAL, True),
     ]
+    assert commits[0].operation_id != commits[1].operation_id
     assert commits[0].items == items[:1]
     assert commits[1].items == items[1:]
     assert len(messages) == 1
     assert messages[0].session_id == s.id
+    assert messages[0].operation_id == commits[-1].operation_id
     assert messages[0].id == "turn-1"
     assert messages[0].answer == "reply 1: Make the change smaller"
     assert messages[0].seq == 1
     assert messages[0].at_version == 3
+    assert messages[0].revision == 1
     assert messages[0].stage_id == "fix.await_approval"
+
+
+def test_message_streams_and_persists_reasoning_independently_from_answer():
+    class ReasoningAgent(StubAgent):
+        def __init__(self) -> None:
+            super().__init__()
+            self.reasoning_callback: Callable[[str, str], None] | None = None
+
+        def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None:
+            self.reasoning_callback = callback
+
+        def respond_to_message(self, *args, **kwargs):
+            assert self.reasoning_callback is not None
+            self.reasoning_callback("respond-to-message", "Check the current approval gate.")
+            return super().respond_to_message(*args, **kwargs)
+
+    env, repo = _new_env()
+    env.agent = ReasoningAgent()
+    reasoning_events = []
+    env.emit_reasoning = reasoning_events.append
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    Runner(env, {}).advance(
+        session.id,
+        Turn(
+            action=Action(
+                kind="message",
+                payload={"text": "Explain", "client_turn_id": "turn-reasoning"},
+                base_version=1,
+            ),
+            actor=_actor(),
+        ),
+    )
+
+    assistant = repo.list_conversation(session.id)[-1]
+    assert assistant.payload["reasoning_text"] == "Check the current approval gate."
+    assert assistant.payload["reply_text"] == "reply 1: Explain"
+    assert reasoning_events[0].delta == "Check the current approval gate."
+    assert reasoning_events[0].span_id == "respond-to-message"
+    assert reasoning_events[0].session_id == session.id
 
 
 def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent():
@@ -260,6 +306,39 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
     assert len(commits) == commit_count_before_retry
 
 
+def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest.MonkeyPatch):
+    env, repo = _new_env()
+    s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    history = [ConversationItem(seq=seq, kind="notice", payload={"text": f"History {seq}"}) for seq in range(40)]
+    repo.create_session(s, DifyBuilderContext(next_seq=40), history)
+    received_history: list[ConversationItem] = []
+
+    def respond(_state, _context, recent, _graph, _text, _on_delta=None):
+        received_history.extend(recent)
+        return "Bounded reply"
+
+    def reject_full_history(_session_id: str):
+        raise AssertionError("message handling must not load the full conversation")
+
+    env.agent.respond_to_message = respond  # type: ignore[method-assign]
+    monkeypatch.setattr(repo, "list_conversation", reject_full_history)
+
+    Runner(env, {}).advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="message",
+                payload={"text": "Latest", "client_turn_id": "turn-latest"},
+                base_version=1,
+            ),
+            actor=_actor(),
+        ),
+    )
+
+    assert len(received_history) == 24
+    assert [item.seq for item in received_history] == list(range(17, 41))
+
+
 def test_message_retry_resumes_after_user_half_committed():
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
@@ -290,6 +369,39 @@ def test_message_retry_resumes_after_user_half_committed():
     assert items[-1].payload["reply_text"] == "Recovered reply"
 
 
+def test_fail_after_message_user_half_commits_against_the_new_head():
+    env, repo = _new_env()
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    def fail_reply(*_args):
+        raise RuntimeError("model unavailable")
+
+    env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
+    runner = Runner(env, {})
+    with pytest.raises(RuntimeError, match="model unavailable"):
+        runner.advance(
+            session.id,
+            Turn(
+                action=Action(
+                    kind="message",
+                    payload={"text": "Persist me", "client_turn_id": "turn-fail"},
+                    base_version=1,
+                ),
+                actor=_actor(),
+            ),
+        )
+
+    failed = runner.fail(session.id)
+
+    assert failed.version == 3
+    assert failed.current_state == PcState.FAILED
+    assert [(item.kind, item.at_version) for item in repo.list_conversation(session.id)] == [
+        ("user", 2),
+        ("error", 3),
+    ]
+
+
 def test_advance_emits_each_successful_cas_as_an_ordered_commit():
     env, repo = _new_env()
     commits: list[CommittedTransition] = []
@@ -315,6 +427,10 @@ def test_advance_emits_each_successful_cas_as_an_ordered_commit():
         (3, PcState.FIX_AWAIT_APPROVAL, True),
     ]
     assert [[item.seq for item in commit.items] for commit in commits] == [[0], [1]]
+    assert [[item.at_version for item in commit.items] for commit in commits] == [[2], [3]]
+    assert [commit.at_version for commit in commits] == [2, 3]
+    assert commits[0].operation_id != commits[1].operation_id
+    assert [commit.stage_id for commit in commits] == ["fix.diagnose", "fix.propose"]
     assert [item.seq for item in repo.list_conversation(s.id)] == [0, 1]
 
 
@@ -334,6 +450,45 @@ def test_stop_and_resume_each_emit_a_settled_commit_without_items():
         (2, PcState.FIX_DIAGNOSE, True, []),
         (3, PcState.FIX_DIAGNOSE, True, []),
     ]
+
+
+def test_fail_persists_terminal_error_card_and_commit():
+    env, repo = _new_env()
+    commits: list[CommittedTransition] = []
+    env.emit_commit = commits.append
+    session = _session(current_state=PcState.FIX_PROPOSE)
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    failed = Runner(env, {}).fail(session.id)
+
+    assert failed.current_state == PcState.FAILED
+    assert failed.version == 2
+    assert [(item.kind, item.at_version) for item in repo.list_conversation(session.id)] == [("error", 2)]
+    assert [(commit.state, commit.settled) for commit in commits] == [(PcState.FAILED, True)]
+
+
+def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
+    env, repo = _new_env()
+    session = _session(current_state=PcState.FIX_PROPOSE)
+    repo.create_session(session, DifyBuilderContext(), [])
+    env.begin_operation(session)
+
+    latest, context = repo.get_session(session.id)
+    repo.compare_and_advance(
+        session.id,
+        latest.version,
+        PcState.FIX_AWAIT_APPROVAL,
+        context,
+        [],
+    )
+
+    with pytest.raises(ConflictError, match="refusing stale failure"):
+        Runner(env, {}).fail(session.id)
+
+    stored, _context = repo.get_session(session.id)
+    assert stored.version == 2
+    assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert repo.list_conversation(session.id) == []
 
 
 def test_recovery_short_path_emits_its_items_as_a_settled_commit(monkeypatch: pytest.MonkeyPatch):

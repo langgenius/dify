@@ -1,13 +1,13 @@
 'use client'
 
-import type { AgentMessageEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
-import type { DifyBuilderStreamingTurn } from '../types'
+import type { ReasoningEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { DifyBuilderReasoning } from '../types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   difyBuilderActiveSessionIdAtom,
+  difyBuilderReasoningAtom,
   difyBuilderSessionViewAtom,
-  difyBuilderStreamingTurnAtom,
 } from './state'
 
 type ScheduledFrame =
@@ -21,7 +21,6 @@ const scheduleFrame = (callback: () => void): ScheduledFrame => {
       kind: 'animation-frame',
     }
   }
-
   return {
     id: globalThis.setTimeout(callback, 16),
     kind: 'timeout',
@@ -30,44 +29,37 @@ const scheduleFrame = (callback: () => void): ScheduledFrame => {
 
 const cancelFrame = (frame: ScheduledFrame) => {
   if (frame.kind === 'animation-frame') {
-    if (typeof globalThis.cancelAnimationFrame === 'function')
-      globalThis.cancelAnimationFrame(frame.id)
+    globalThis.cancelAnimationFrame?.(frame.id)
     return
   }
   globalThis.clearTimeout(frame.id)
 }
 
-const toStreamingTurn = (message: AgentMessageEventData): DifyBuilderStreamingTurn => ({
-  sessionId: message.session_id,
-  operationId: message.operation_id,
-  turnId: message.id,
-  sequence: message.seq,
-  atVersion: message.at_version,
-  revision: message.revision,
-  stageId: message.stage_id,
-  replyText: message.answer,
+const toReasoning = (event: ReasoningEventData): DifyBuilderReasoning => ({
+  sessionId: event.session_id,
+  operationId: event.operation_id,
+  stageId: event.stage_id,
+  atVersion: event.at_version,
+  revision: event.revision,
+  text: event.delta,
 })
 
-const isSameTurn = (left: DifyBuilderStreamingTurn, right: DifyBuilderStreamingTurn) =>
+const isSameReasoning = (left: DifyBuilderReasoning, right: DifyBuilderReasoning) =>
   left.sessionId === right.sessionId &&
   left.operationId === right.operationId &&
-  left.turnId === right.turnId &&
   left.atVersion === right.atVersion
 
-/**
- * Keeps token-frequency updates out of SessionView. Deltas are buffered in a
- * ref and published to one small atom at most once per animation frame.
- */
-export const useDifyBuilderStreamingTurnBuffer = () => {
+/** Buffers token-frequency reasoning deltas into a small, isolated atom. */
+export const useDifyBuilderReasoningBuffer = () => {
   const store = useStore()
-  const setStreamingTurn = useSetAtom(difyBuilderStreamingTurnAtom)
-  const pendingTurnRef = useRef<DifyBuilderStreamingTurn | null>(null)
+  const setReasoning = useSetAtom(difyBuilderReasoningAtom)
+  const pendingReasoningRef = useRef<DifyBuilderReasoning | null>(null)
   const scheduledFrameRef = useRef<ScheduledFrame | null>(null)
 
   const flush = useCallback(() => {
     scheduledFrameRef.current = null
-    const pending = pendingTurnRef.current
-    pendingTurnRef.current = null
+    const pending = pendingReasoningRef.current
+    pendingReasoningRef.current = null
     if (!pending) return
 
     const view = store.get(difyBuilderSessionViewAtom)
@@ -78,16 +70,16 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
     )
       return
 
-    setStreamingTurn((current) => {
-      if (!current || !isSameTurn(current, pending))
+    setReasoning((current) => {
+      if (!current || !isSameReasoning(current, pending))
         return current && current.atVersion > pending.atVersion ? current : pending
       if (current.revision >= pending.revision) return current
       return {
         ...pending,
-        replyText: `${current.replyText}${pending.replyText}`,
+        text: `${current.text}${pending.text}`,
       }
     })
-  }, [setStreamingTurn, store])
+  }, [setReasoning, store])
 
   const cancelPendingFrame = useCallback(() => {
     if (!scheduledFrameRef.current) return
@@ -97,45 +89,43 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
 
   const clear = useCallback(() => {
     cancelPendingFrame()
-    pendingTurnRef.current = null
-    setStreamingTurn(null)
-  }, [cancelPendingFrame, setStreamingTurn])
+    pendingReasoningRef.current = null
+    setReasoning(null)
+  }, [cancelPendingFrame, setReasoning])
 
   const clearThroughVersion = useCallback(
     (sessionId: string, version: number) => {
-      const pending = pendingTurnRef.current
+      const pending = pendingReasoningRef.current
       if (pending?.sessionId === sessionId && pending.atVersion <= version) {
         cancelPendingFrame()
-        pendingTurnRef.current = null
+        pendingReasoningRef.current = null
       }
-      setStreamingTurn((current) => {
-        if (current?.sessionId === sessionId && current.atVersion <= version) return null
-        return current
-      })
+      setReasoning((current) =>
+        current?.sessionId === sessionId && current.atVersion <= version ? null : current,
+      )
     },
-    [cancelPendingFrame, setStreamingTurn],
+    [cancelPendingFrame, setReasoning],
   )
 
   const enqueue = useCallback(
-    (message: AgentMessageEventData) => {
-      if (!message.answer) return
+    (event: ReasoningEventData) => {
+      if (!event.delta) return
       const view = store.get(difyBuilderSessionViewAtom)
       if (
-        store.get(difyBuilderActiveSessionIdAtom) !== message.session_id ||
-        view?.session_id !== message.session_id ||
-        view.version >= message.at_version
+        store.get(difyBuilderActiveSessionIdAtom) !== event.session_id ||
+        view?.session_id !== event.session_id ||
+        view.version >= event.at_version
       )
         return
 
-      const next = toStreamingTurn(message)
-      const pending = pendingTurnRef.current
-      if (pending && isSameTurn(pending, next) && pending.revision >= next.revision) return
-      if (pending && !isSameTurn(pending, next) && pending.atVersion > next.atVersion) return
-      pendingTurnRef.current =
-        pending && isSameTurn(pending, next)
-          ? { ...next, replyText: `${pending.replyText}${next.replyText}` }
+      const next = toReasoning(event)
+      const pending = pendingReasoningRef.current
+      if (pending && isSameReasoning(pending, next) && pending.revision >= next.revision) return
+      if (pending && !isSameReasoning(pending, next) && pending.atVersion > next.atVersion) return
+      pendingReasoningRef.current =
+        pending && isSameReasoning(pending, next)
+          ? { ...next, text: `${pending.text}${next.text}` }
           : next
-
       if (!scheduledFrameRef.current) scheduledFrameRef.current = scheduleFrame(flush)
     },
     [flush, store],

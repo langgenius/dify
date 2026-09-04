@@ -18,11 +18,12 @@ from core.dify_builder import recovery
 from core.dify_builder.contract import Action as UiAction
 from core.dify_builder.contract import (
     ActionKind,
+    ActiveInteraction,
     AppRevision,
     CheckpointRef,
+    ConversationPage,
     NoticeItem,
     Phase,
-    RecoveryRef,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -70,6 +71,14 @@ class SessionLock(Protocol):
     def exists(self, session_id: str) -> bool: ...
 
 
+class _SessionSubscription(Protocol):
+    """The subscription surface used by command streams."""
+
+    def receive(self, timeout: float | None = 0.1) -> bytes | None: ...
+
+    def close(self) -> None: ...
+
+
 _PHASE_FOR: dict[PcState, Phase] = {
     # Fix.
     PcState.FIX_DIAGNOSE: Phase.UNDERSTAND,
@@ -114,6 +123,7 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.EDIT_AWAIT_REPAIR: Phase.TEST,
     PcState.EDIT_REVIEW: Phase.REVIEW,
     PcState.EDIT_PUBLISH: Phase.PUBLISH,
+    PcState.EDIT_COMPLETE: Phase.COMPLETE,
     PcState.EDIT_REVERTED: Phase.PLAN,
 }
 
@@ -138,11 +148,17 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     PcState.FIX_AWAIT_DECISION: [
         UiAction(id="publish_fix", label="Publish fix", kind=ActionKind.PRIMARY),
+        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY),
+        UiAction(id="continue_adjusting", label="Fix again", kind=ActionKind.SECONDARY),
         UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
         UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.CHECKLIST_AWAIT_RECHECK: [
         UiAction(id="recheck", label="Re-check", kind=ActionKind.PRIMARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+    ],
+    PcState.FAILED: [
+        UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY),
     ],
     # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
     PcState.BUILD_CAPABILITY_CHECK: [
@@ -314,7 +330,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="keep_draft",
             label="Keep draft",
             kind=ActionKind.SECONDARY,
-            next_state="edit.publish",
+            next_state="edit.complete",
             canvas_event="cancel_publish",
         ),
         UiAction(
@@ -339,8 +355,40 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
 }
 
 
-def _actions_for(state: PcState) -> list[UiAction]:
-    return list(_ACTIONS_FOR.get(state, []))  # copy; non-waiting/working/terminal states → []
+def _actions_for(
+    state: PcState,
+    fc: DifyBuilderContext | None = None,
+    *,
+    interrupted: bool = False,
+    app_revision_conflicted: bool = False,
+) -> list[UiAction]:
+    """Return only actions legal for the projected lifecycle condition."""
+    if interrupted:
+        # Crash mid auto-advance (lock released, nothing durably failed): Retry
+        # re-runs the interrupted working handler in place; Start over resets and
+        # re-enters the flow's entry state from the current draft.
+        return [
+            UiAction(id="recovery_continue", label="Retry", kind=ActionKind.PRIMARY),
+            UiAction(id="restart", label="Restart from current draft", kind=ActionKind.SECONDARY),
+        ]
+    if state == PcState.FAILED:
+        # A durable, deterministic failure -- re-running the same handler would
+        # just fail again, so only offer a restart from the current draft.
+        return [UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY)]
+    if fc is not None and fc.paused:
+        return []
+    recovery_ref = recovery.recovery_ref_for(fc.recovery_class) if fc is not None else None
+    if recovery_ref is not None:
+        actions: list[UiAction] = []
+        if recovery_ref.can_continue:
+            actions.append(UiAction(id="recovery_continue", label="Continue", kind=ActionKind.PRIMARY))
+        if recovery_ref.can_restart:
+            actions.append(UiAction(id="restart", label="Restart from current draft", kind=ActionKind.SECONDARY))
+        return actions
+    if app_revision_conflicted:
+        return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
+
+    return list(_ACTIONS_FOR.get(state, []))
 
 
 _ACTION_ID_TO_KIND: dict[str, str] = {
@@ -348,13 +396,22 @@ _ACTION_ID_TO_KIND: dict[str, str] = {
     "run_validation": "run_verify",
     "publish_fix": "publish",
     "continue_adjusting": "re_fix",
+    "pause": "stop",
     "revert": "undo",
+    "restart": "recovery_restart",
     "retry_after_revert": "re_fix",
     # provide_testdata / recheck / keep_draft already match handler kinds → passthrough
 }
 
 
 _CLIENT_ONLY_ACTIONS = frozenset({"view_changes"})
+
+_ACTIVE_INTERACTION_CARD_FOR_ACTION: dict[str, tuple[str, str | None]] = {
+    "submit_requirements": ("form", "build_requirements"),
+    "submit_edit_rules": ("form", "edit_rules"),
+    "provide_testdata": ("form", "testdata"),
+    "confirm_resources": ("resource_select", None),
+}
 
 # Handler-facing kinds accepted at each state. This is deliberately explicit:
 # several handlers historically treated every unknown kind as a default branch
@@ -405,10 +462,8 @@ _REPAIR_THEN_RETEST_STATES = frozenset({PcState.BUILD_AWAIT_REPAIR, PcState.EDIT
 # privileged op: publish (RELEASE) or a draft test run (TEST_AND_RUN). A Retry
 # re-invokes the state's handler, so it must be gated at that op's tier, not the
 # base EDIT the recovery actions otherwise carry.
-_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH})
-_TEST_WORKING_STATES = frozenset(
-    {PcState.BUILD_TEST_AND_REPAIR, PcState.FIX_VERIFY, PcState.EDIT_TEST_AFFECTED_PATHS}
-)
+_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH, PcState.EDIT_PUBLISH})
+_TEST_WORKING_STATES = frozenset({PcState.BUILD_TEST_AND_REPAIR, PcState.FIX_VERIFY, PcState.EDIT_TEST_AFFECTED_PATHS})
 
 
 def _app_access_for_action(state: PcState, kind: str) -> AppAccess:
@@ -435,12 +490,26 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     transitions must change the current pause flag, and recovery choices must
     be present in the current RecoveryRef.
     """
-    # Interrupted working step: allow Retry/Start over via the existing recovery
-    # actions. (The lock is handled downstream -- recovery_continue's dispatch
-    # acquires the advance lock and raises BusyError if one is already held.)
-    if is_working(state) and kind in ("recovery_continue", "recovery_restart"):
-        return True
+    if state == PcState.FAILED:
+        # Durable, deterministic failure -- only a restart is meaningful.
+        return kind == "recovery_restart"
+    if is_working(state):
+        # A working state without its advance lock is projected as interrupted
+        # (crash mid-step). Retry (recovery_continue) re-runs the handler; Start
+        # over (recovery_restart) resets and re-enters the entry state. Lock
+        # acquisition downstream still protects a live worker from a concurrent
+        # recovery (recovery_continue's dispatch raises BusyError if one is held).
+        return kind in ("recovery_continue", "recovery_restart")
     if not is_waiting(state):
+        return False
+    if fc.paused:
+        return kind == "resume"
+    recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
+    if recovery_ref is not None:
+        if kind == "recovery_continue":
+            return recovery_ref.can_continue
+        if kind == "recovery_restart":
+            return recovery_ref.can_restart
         return False
     if kind in {"check_recovery", "message", "update_model"}:
         return True
@@ -448,11 +517,6 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
         return not fc.paused
     if kind == "resume":
         return fc.paused
-    recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
-    if kind == "recovery_continue":
-        return recovery_ref is not None and recovery_ref.can_continue
-    if kind == "recovery_restart":
-        return recovery_ref is not None and recovery_ref.can_restart
     return False
 
 
@@ -470,17 +534,30 @@ def resolve_action_kind(raw: str) -> str:
     return _ACTION_ID_TO_KIND.get(raw, raw)
 
 
+_WAITING_INPUT_STATES = frozenset(
+    {
+        PcState.FIX_AWAIT_TESTDATA,
+        PcState.BUILD_CAPABILITY_CHECK,
+        PcState.BUILD_GOAL_ANALYSIS,
+        PcState.BUILD_AWAIT_TESTDATA,
+        PcState.EDIT_CAPABILITY_CHECK,
+        PcState.EDIT_IMPACT_ANALYSIS,
+        PcState.EDIT_AWAIT_TESTDATA,
+    }
+)
+
+
 def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     """Port of Go ``runStatusFor``, widened to the ``RunStatus`` enum (spec
     §2). Deliberate wire-value change from the old string: ``waiting-input``
     (hyphen) -> ``RunStatus.WAITING_INPUT`` = ``"waiting_input"``
-    (underscore); the FE only displays ``run_status``, never branches on it.
+    (underscore).
 
     Terminal check comes before waiting/working: ``PcState.BUILD_COMPLETE``
-    and ``PcState.EDIT_PUBLISH`` are terminal (spec §7.1/§7.2, ``run_status:
+    and ``PcState.EDIT_COMPLETE`` are terminal (spec §7.1/§7.2, ``run_status:
     complete``) but are not in ``_WORKING``/``_WAITING`` and are not
     ``SUCCESS``/``FAILED`` -- without this ordering they'd wrongly fall
-    through to EXECUTING.
+    through to PROCESSING.
 
     ``paused`` (Task 7, ``fc.paused``) only applies at a waiting state -- the
     canvas stays editable while paused -- and never overrides a terminal
@@ -488,15 +565,17 @@ def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     """
     if state == PcState.FAILED:
         return RunStatus.FAILED
-    if is_terminal(state):  # SUCCESS, BUILD_COMPLETE, EDIT_PUBLISH
+    if is_terminal(state):  # SUCCESS, BUILD_COMPLETE, EDIT_COMPLETE
         return RunStatus.COMPLETE
     if paused and is_waiting(state):
         return RunStatus.PAUSED
-    if is_waiting(state):
+    if state in _WAITING_INPUT_STATES:
         return RunStatus.WAITING_INPUT
+    if is_waiting(state):
+        return RunStatus.WAITING_CONFIRMATION
     if is_working(state):
-        return RunStatus.EXECUTING
-    return RunStatus.EXECUTING  # defensive; unreachable for classified states
+        return RunStatus.PROCESSING
+    return RunStatus.PROCESSING  # defensive; unreachable for classified states
 
 
 class DifyBuilderService:
@@ -510,7 +589,7 @@ class DifyBuilderService:
         repo: Repository,
         session_lock: SessionLock,
         enqueue_fn: Callable[[str, Action, Actor, str], None],
-        subscribe_fn: Callable[[str], object] | None = None,
+        subscribe_fn: Callable[[str], _SessionSubscription | None] | None = None,
         authorize_app_fn: Callable[[Actor, str, AppAccess], None] | None = None,
         get_app_revision_fn: Callable[[str, Actor], str] | None = None,
     ) -> None:
@@ -544,8 +623,8 @@ class DifyBuilderService:
         """Authorize a session before opening an SSE subscription.
 
         The stream route calls this once before subscribing, then reads the
-        snapshot after subscription through ``get_session_view`` to preserve
-        the no-lost-state-event ordering.
+        bounded state after subscription through ``get_session_view`` to
+        preserve the no-lost-state-event ordering.
         """
         self._get_authorized_session(session_id, actor)
 
@@ -857,52 +936,90 @@ class DifyBuilderService:
         return stream_advance_frames(view_dict, subscription, expect_advance=True)
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
-        """Port of Go ``GetSessionView``."""
+        """Return the bounded session projection; history has its own API."""
         s, fc = self._get_authorized_session(session_id, actor)
         return self._build_session_view(s, fc)
 
+    def get_conversation_page(
+        self,
+        session_id: str,
+        actor: Actor,
+        *,
+        limit: int,
+        before_seq: int | None = None,
+        after_seq: int | None = None,
+    ) -> ConversationPage:
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise BadRequestError("limit must be between 1 and 100")
+        if before_seq is not None and (type(before_seq) is not int or before_seq < 0):
+            raise BadRequestError("before_seq must be a non-negative integer")
+        if after_seq is not None and (type(after_seq) is not int or after_seq < -1):
+            raise BadRequestError("after_seq must be an integer greater than or equal to -1")
+        if before_seq is not None and after_seq is not None:
+            raise BadRequestError("before_seq and after_seq are mutually exclusive")
+        self._get_authorized_session(session_id, actor)
+        return self._repo.list_conversation_page(
+            session_id,
+            limit=limit,
+            before_seq=before_seq,
+            after_seq=after_seq,
+        )
+
+    def _active_interaction_for(
+        self, session_id: str, version: int, actions: list[UiAction]
+    ) -> ActiveInteraction | None:
+        for action in actions:
+            card_contract = _ACTIVE_INTERACTION_CARD_FOR_ACTION.get(action.id)
+            if card_contract is None:
+                continue
+            card_kind, expected_variant = card_contract
+            card = self._repo.get_latest_conversation_item(session_id, frozenset({card_kind}))
+            if card is None:
+                return None
+            if expected_variant is not None and card.payload.get("variant") != expected_variant:
+                return None
+            return ActiveInteraction(action_id=action.id, card=card, valid_at_version=version)
+        return None
+
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
-        items = self._repo.list_conversation(s.id)
         st = s.current_state
         lock_held = self._session_lock.exists(s.id)
         current_app_revision = self._get_app_revision(
             s.app_id,
             Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
         )
+        app_revision_conflicted = bool(
+            fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
+        )
+        interrupted = is_working(st) and not lock_held
+        actions = _actions_for(
+            st,
+            fc,
+            interrupted=interrupted,
+            app_revision_conflicted=app_revision_conflicted,
+        )
         checkpoint = (
             CheckpointRef(checkpoint_id=fc.checkpoint_id, label="Restore point", created_at="")
             if fc.checkpoint_id
             else None
         )
+        # The interrupted-step offer (Retry / Start over) is projected as concrete
+        # actions by ``_actions_for(interrupted=...)`` above. The ``recovery`` field
+        # carries only the drift-recovery class set at a waiting gate.
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
-        # Interrupted working step (crash mid auto-advance, lock released): offer
-        # Retry (recovery_continue) / Start over (recovery_restart). Built directly
-        # with recovery_class="" so recovery_ref_for/classify never see a fabricated
-        # drift class. Retry re-runs the working handler (recovery_continue returns
-        # the working state -> non-settled -> runner re-drives it); Start over resets
-        # + re-enters the flow's entry state. This overrides any stale drift class a
-        # user left set at an earlier waiting gate -- once a step has crashed, the
-        # interrupted-step recovery is what matters (drift recovery only applies at a
-        # waiting gate, where is_working is False and this branch never fires).
-        if is_working(st) and not lock_held:
-            recovery_ref = RecoveryRef(
-                recovery_class="",
-                can_continue=True,
-                can_restart=True,
-                message="The last step didn't finish. Retry it, or start over.",
-            )
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,
             version=s.version,
             state=str(st),
             canvas_read_only=lock_held or canvas_read_only(st),
-            run_status=RunStatus.EXECUTING if lock_held else _run_status(st, paused=fc.paused),
-            interrupted=is_working(st) and not lock_held,
-            conversation=items,
+            run_status=RunStatus.PROCESSING if lock_held else _run_status(st, paused=fc.paused),
+            interrupted=interrupted,
+            conversation_last_seq=fc.next_seq - 1,
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
-            actions=_actions_for(st),
+            actions=actions,
+            active_interaction=self._active_interaction_for(s.id, s.version, actions),
             checkpoint=checkpoint,
             recovery=recovery_ref,
             model=(
@@ -918,9 +1035,7 @@ class DifyBuilderService:
             app_revision=AppRevision(
                 observed=fc.last_snapshot_hash,
                 current=current_app_revision,
-                conflicted=bool(
-                    fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
-                ),
+                conflicted=app_revision_conflicted,
             ),
         )
 
@@ -954,19 +1069,21 @@ class DifyBuilderService:
         s, fc = self._get_authorized_session(session_id, actor)
         if action.kind == "message":
             client_turn_id = action.payload["client_turn_id"]
-            conversation = self._repo.list_conversation(session_id)
-            if any(
-                item.kind == "assistant_turn" and item.payload.get("turn_id") == client_turn_id for item in conversation
-            ):
+            turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
+            if "assistant_turn" in turn_kinds:
                 return self._build_session_view(s, fc), False
-            if any(item.kind == "user" and item.payload.get("turn_id") == client_turn_id for item in conversation):
+            if "user" in turn_kinds:
                 action.base_version = s.version
         surfaced_client_actions = {ui_action.id for ui_action in _ACTIONS_FOR.get(s.current_state, [])}
+        lifecycle_limited = bool(
+            fc.paused or fc.recovery_class or is_working(s.current_state) or is_terminal(s.current_state)
+        )
+        internal_allowed = _internal_action_allowed(s.current_state, fc, action.kind)
         if action.kind in _CLIENT_ONLY_ACTIONS:
             if action.kind not in surfaced_client_actions:
                 raise BadRequestError(f"action {action.kind} is not allowed in state {s.current_state}")
-        elif not _internal_action_allowed(s.current_state, fc, action.kind) and action.kind not in (
-            _BACKEND_ACTIONS_FOR.get(s.current_state, frozenset())
+        elif not internal_allowed and (
+            lifecycle_limited or action.kind not in _BACKEND_ACTIONS_FOR.get(s.current_state, frozenset())
         ):
             raise BadRequestError(f"action {action.kind} is not allowed in state {s.current_state}")
 
@@ -975,12 +1092,21 @@ class DifyBuilderService:
             self._authorize_app(s.app_id, actor, access)
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
+        current_app_revision = self._get_app_revision(s.app_id, actor)
+        app_revision_conflicted = bool(
+            fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
+        )
         if action.kind not in {"message", "update_model"}:
-            current_app_revision = self._get_app_revision(s.app_id, actor)
             if current_app_revision and not action.base_app_revision:
                 raise BadRequestError("base_app_revision is required")
             if action.base_app_revision and action.base_app_revision != current_app_revision:
                 raise ConflictError(f"stale app revision for app {s.app_id}")
+        if (
+            app_revision_conflicted
+            and not fc.recovery_class
+            and action.kind not in {"check_recovery", "recovery_restart", "resume"}
+        ):
+            raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
         if action.kind in _CLIENT_ONLY_ACTIONS:
             # Client-side-only actions (e.g. view_changes toggles a card locally) never
             # reach the engine — dispatching would hit handle_await_decision's keep_draft

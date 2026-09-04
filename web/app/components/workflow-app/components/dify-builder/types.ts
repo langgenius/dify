@@ -3,9 +3,11 @@
 // aliases and owns client-only values.
 import type {
   DifyBuilderChecklistErrorPayload,
+  DifyBuilderConversationPageResponse,
   DifyBuilderSessionViewResponse,
   Action as GeneratedAction,
   CanvasEventData as GeneratedCanvasEventData,
+  ExecutionProgress as GeneratedExecutionProgress,
   FormField as GeneratedFormField,
   SessionModel as GeneratedSessionModel,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
@@ -13,18 +15,39 @@ import type {
 export type Action = GeneratedAction
 export type CanvasEventData = GeneratedCanvasEventData
 export type ChecklistErrorPayload = DifyBuilderChecklistErrorPayload
-export type ConversationItem = DifyBuilderSessionViewResponse['conversation'][number]
+export type ConversationItem = DifyBuilderConversationPageResponse['data'][number]
+export type ConversationPage = DifyBuilderConversationPageResponse
 export type FormField = GeneratedFormField
 export type SessionModel = GeneratedSessionModel
 export type SessionView = DifyBuilderSessionViewResponse
 
 export type DifyBuilderStreamingTurn = {
   sessionId: string
+  operationId: string
   turnId: string
   sequence: number
   atVersion: number
+  revision: number
   stageId: string
   replyText: string
+}
+
+export type DifyBuilderExecutionProgress = {
+  sessionId: string
+  operationId: string
+  stageId: string
+  atVersion: number
+  revision: number
+  execution: GeneratedExecutionProgress
+}
+
+export type DifyBuilderReasoning = {
+  sessionId: string
+  operationId: string
+  stageId: string
+  atVersion: number
+  revision: number
+  text: string
 }
 
 export type DifyBuilderSessionController = {
@@ -36,6 +59,7 @@ export type DifyBuilderSessionController = {
   ) => Promise<boolean>
   startBuild: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
   startEdit: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
+  loadOlderConversation: () => Promise<boolean>
   refresh: () => Promise<boolean>
   restore: (sessionId: string) => Promise<boolean>
   runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>

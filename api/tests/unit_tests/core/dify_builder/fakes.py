@@ -35,6 +35,7 @@ import threading
 import uuid
 from collections.abc import Callable
 
+from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
     Actor,
@@ -108,6 +109,8 @@ class InMemoryRepository:
             if not session.id:
                 session.id = str(uuid.uuid4())
             session.version = 1
+            for item in items:
+                item.at_version = 1
 
             seqs = {item.seq for item in items}
             if len(seqs) != len(items):
@@ -225,6 +228,59 @@ class InMemoryRepository:
         with self._lock:
             return copy.deepcopy(self._items.get(session_id, []))
 
+    def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]:
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        with self._lock:
+            return copy.deepcopy(self._items.get(session_id, [])[-limit:])
+
+    def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]:
+        with self._lock:
+            return frozenset(
+                item.kind
+                for item in self._items.get(session_id, [])
+                if item.kind in {"user", "assistant_turn"} and item.payload.get("turn_id") == turn_id
+            )
+
+    def list_conversation_page(
+        self,
+        session_id: str,
+        *,
+        limit: int,
+        before_seq: int | None = None,
+        after_seq: int | None = None,
+    ) -> ConversationPage:
+        # The production repository streams bounded SQL rows. This in-memory
+        # fake favors a small, exact implementation for engine/service tests.
+        from services.dify_builder.repository import _conversation_groups_forward
+
+        with self._lock:
+            items = copy.deepcopy(self._items.get(session_id, []))
+        if before_seq is not None:
+            items = [item for item in items if item.seq < before_seq]
+        if after_seq is not None:
+            items = [item for item in items if item.seq > after_seq]
+        groups = list(_conversation_groups_forward(items))
+        if after_seq is not None:
+            selected = groups[:limit]
+            has_more = len(groups) > limit
+        else:
+            selected = groups[-limit:]
+            has_more = len(groups) > limit
+        page_items = [item for group in selected for item in group]
+        return ConversationPage(
+            data=page_items,
+            has_more=has_more,
+            first_seq=page_items[0].seq if page_items else None,
+            last_seq=page_items[-1].seq if page_items else None,
+        )
+
+    def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None:
+        with self._lock:
+            items = self._items.get(session_id, [])
+            item = next((item for item in reversed(items) if item.kind in kinds), None)
+            return copy.deepcopy(item)
+
     def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
         with self._lock:
             for item in self._items.get(session_id, []):
@@ -321,9 +377,8 @@ class FakeDifyPort:
 class StubAgent:
     """A minimal canned ``DifyBuilderAgent`` for handler/runner tests.
 
-    Distinct from the production ``PlaceholderAgent`` (Task 8): this is a
-    deliberately dumb fixture whose values are chosen to make handler
-    tests easy to assert against, not a candidate implementation.
+    Its values are chosen to make handler tests easy to assert against; it is
+    not a candidate runtime implementation.
     """
 
     def __init__(self, risk_level: str = "low") -> None:

@@ -44,6 +44,29 @@ export const zDifyBuilderErrorResponse = z.object({
 })
 
 /**
+ * AppRevision
+ */
+export const zAppRevision = z.object({
+  conflicted: z.boolean(),
+  current: z.string(),
+  observed: z.string(),
+})
+
+/**
+ * CheckpointRef
+ */
+export const zCheckpointRef = z.object({
+  checkpoint_id: z.string(),
+  created_at: z.string(),
+  label: z.string(),
+})
+
+/**
+ * EntryMode
+ */
+export const zEntryMode = z.enum(['build', 'edit', 'fix', 'fix_checklist'])
+
+/**
  * SessionModel
  */
 export const zSessionModel = z.object({
@@ -84,6 +107,51 @@ export const zDifyBuilderCreateFixSessionPayload = z.object({
 })
 
 /**
+ * Phase
+ *
+ * Coarse UX phase shown in the panel header (spec §2).
+ */
+export const zPhase = z.enum([
+  'clarify',
+  'complete',
+  'modify',
+  'plan',
+  'publish',
+  'resources',
+  'review',
+  'test',
+  'understand',
+])
+
+/**
+ * RecoveryRef
+ */
+export const zRecoveryRef = z.object({
+  can_continue: z.boolean(),
+  can_restart: z.boolean(),
+  message: z.string(),
+  recovery_class: z.string(),
+})
+
+/**
+ * RunStatus
+ *
+ * Widened run-status vocabulary (spec §2).
+ *
+ * ``processing`` => ``canvas_read_only = true`` (WORKING).
+ * ``waiting_*``/``paused`` => editable (WAITING).
+ * ``complete``/``failed`` => terminal.
+ */
+export const zRunStatus = z.enum([
+  'complete',
+  'failed',
+  'paused',
+  'processing',
+  'waiting_confirmation',
+  'waiting_input',
+])
+
+/**
  * DifyBuilderChecklistErrorPayload
  */
 export const zDifyBuilderChecklistErrorPayload = z.object({
@@ -122,9 +190,14 @@ export const zDifyBuilderCreateSessionPayload = z.union([
  * NodeEventData
  */
 export const zNodeEventData = z.object({
+  at_version: z.int(),
   error: z.string(),
   kind: z.literal('node').optional().default('node'),
   node_id: z.string(),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+  stage_id: z.string(),
   status: z.string(),
   title: z.string(),
 })
@@ -145,6 +218,8 @@ export const zAgentMessageEventData = z.object({
   at_version: z.int(),
   id: z.string(),
   kind: z.literal('agent_message').optional().default('agent_message'),
+  operation_id: z.string(),
+  revision: z.int(),
   seq: z.int(),
   session_id: z.string(),
   stage_id: z.string(),
@@ -156,6 +231,28 @@ export const zAgentMessageEventData = z.object({
 export const zDifyBuilderAgentMessageEventResponse = z.object({
   data: zAgentMessageEventData,
   event: z.literal('agent_message'),
+})
+
+/**
+ * ReasoningEventData
+ */
+export const zReasoningEventData = z.object({
+  at_version: z.int(),
+  delta: z.string(),
+  kind: z.literal('reasoning').optional().default('reasoning'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+  span_id: z.string(),
+  stage_id: z.string(),
+})
+
+/**
+ * DifyBuilderReasoningEventResponse
+ */
+export const zDifyBuilderReasoningEventResponse = z.object({
+  data: zReasoningEventData,
+  event: z.literal('reasoning'),
 })
 
 /**
@@ -175,135 +272,6 @@ export const zErrorEventData = z.object({
 export const zDifyBuilderErrorEventResponse = z.object({
   data: zErrorEventData,
   event: z.literal('error'),
-})
-
-/**
- * AppRevision
- */
-export const zAppRevision = z.object({
-  conflicted: z.boolean(),
-  current: z.string(),
-  observed: z.string(),
-})
-
-/**
- * CheckpointRef
- */
-export const zCheckpointRef = z.object({
-  checkpoint_id: z.string(),
-  created_at: z.string(),
-  label: z.string(),
-})
-
-/**
- * EntryMode
- */
-export const zEntryMode = z.enum(['build', 'edit', 'fix', 'fix_checklist'])
-
-/**
- * Phase
- *
- * Coarse UX phase shown in the panel header (spec §2).
- */
-export const zPhase = z.enum([
-  'clarify',
-  'complete',
-  'modify',
-  'plan',
-  'publish',
-  'resources',
-  'review',
-  'test',
-  'understand',
-])
-
-/**
- * RecoveryRef
- */
-export const zRecoveryRef = z.object({
-  can_continue: z.boolean(),
-  can_restart: z.boolean(),
-  message: z.string(),
-  recovery_class: z.string(),
-})
-
-/**
- * RunStatus
- *
- * Widened run-status vocabulary (spec §2).
- *
- * ``thinking``/``executing`` => ``canvas_read_only = true`` (WORKING).
- * ``waiting_*``/``paused`` => editable (WAITING).
- * ``complete``/``failed`` => terminal.
- */
-export const zRunStatus = z.enum([
-  'complete',
-  'executing',
-  'failed',
-  'paused',
-  'thinking',
-  'waiting_confirmation',
-  'waiting_input',
-])
-
-/**
- * CanvasEdge
- */
-export const zCanvasEdge = z.object({
-  source: z.string(),
-  target: z.string(),
-})
-
-/**
- * CanvasEvent
- *
- * Granular canvas-mutation signals (spec §6).
- *
- * Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent``
- * union. Presentation of committed backend state: replaying these from a
- * snapshot must reconstruct the same canvas.
- */
-export const zCanvasEvent = z.enum([
-  'add_knowledge_node',
-  'add_llm_node',
-  'add_output_node',
-  'add_start_node',
-  'apply_edit_plan',
-  'apply_error_fix',
-  'apply_preflight_fix',
-  'cancel_publish',
-  'create_checkpoint',
-  'focus_checklist_node',
-  'focus_error_node',
-  'focus_workflow',
-  'highlight_edit_target',
-  'mark_repair_applied',
-  'mark_review_ready',
-  'mark_test_error',
-  'mark_test_success',
-  'publish_workflow',
-  'reset_build_canvas',
-  'revert_checkpoint',
-  'start_retest',
-  'start_test_run',
-])
-
-/**
- * CanvasEventData
- */
-export const zCanvasEventData = z.object({
-  edge: zCanvasEdge.nullish(),
-  event: zCanvasEvent,
-  kind: z.literal('canvas').optional().default('canvas'),
-  node_id: z.string().nullish(),
-})
-
-/**
- * DifyBuilderCanvasEventResponse
- */
-export const zDifyBuilderCanvasEventResponse = z.object({
-  data: zCanvasEventData,
-  event: z.literal('canvas'),
 })
 
 /**
@@ -537,6 +505,71 @@ export const zDifyBuilderBuildLearningConversationItemResponse = z.object({
 })
 
 /**
+ * CanvasEdge
+ */
+export const zCanvasEdge = z.object({
+  source: z.string(),
+  target: z.string(),
+})
+
+/**
+ * CanvasEvent
+ *
+ * Granular canvas-mutation signals (spec §6).
+ *
+ * Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent``
+ * union. Presentation of committed backend state: replaying these from a
+ * snapshot must reconstruct the same canvas.
+ */
+export const zCanvasEvent = z.enum([
+  'add_knowledge_node',
+  'add_llm_node',
+  'add_output_node',
+  'add_start_node',
+  'apply_edit_plan',
+  'apply_error_fix',
+  'apply_preflight_fix',
+  'cancel_publish',
+  'create_checkpoint',
+  'focus_checklist_node',
+  'focus_error_node',
+  'focus_workflow',
+  'highlight_edit_target',
+  'mark_repair_applied',
+  'mark_review_ready',
+  'mark_test_error',
+  'mark_test_success',
+  'publish_workflow',
+  'reset_build_canvas',
+  'revert_checkpoint',
+  'start_retest',
+  'start_test_run',
+])
+
+/**
+ * CanvasEventData
+ */
+export const zCanvasEventData = z.object({
+  at_version: z.int(),
+  edge: zCanvasEdge.nullish(),
+  event: zCanvasEvent,
+  kind: z.literal('canvas').optional().default('canvas'),
+  node_id: z.string().nullish(),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+  stage_id: z.string(),
+})
+
+/**
+ * DifyBuilderCanvasEventResponse
+ */
+export const zDifyBuilderCanvasEventResponse = z.object({
+  data: zCanvasEventData,
+  event: z.literal('canvas'),
+})
+
+/**
  * PreflightIssue
  */
 export const zPreflightIssue = z.object({
@@ -701,22 +734,43 @@ export const zDifyBuilderSummaryConversationItemResponse = z.object({
 })
 
 /**
- * TraceStep
+ * ExecutionActivity
  */
-export const zTraceStep = z.object({
-  canvas_event: z.string().nullish(),
+export const zExecutionActivity = z.object({
   id: z.string(),
+  kind: z.enum(['node', 'stage']).optional().default('stage'),
   label: z.string(),
-  state: z.string(),
-  tone: z.string().optional().default('neutral'),
+  parent_id: z.string().nullish(),
+  state: z.enum(['active', 'done', 'failed', 'stopped']),
 })
 
 /**
- * Trace
+ * ExecutionProgress
  */
-export const zTrace = z.object({
-  status: z.string(),
-  steps: z.array(zTraceStep).optional(),
+export const zExecutionProgress = z.object({
+  activities: z.array(zExecutionActivity).optional(),
+  status: z.enum(['completed', 'error', 'running', 'stopped']),
+})
+
+/**
+ * ProgressEventData
+ */
+export const zProgressEventData = z.object({
+  at_version: z.int(),
+  execution: zExecutionProgress,
+  kind: z.literal('progress').optional().default('progress'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+  stage_id: z.string(),
+})
+
+/**
+ * DifyBuilderProgressEventResponse
+ */
+export const zDifyBuilderProgressEventResponse = z.object({
+  data: zProgressEventData,
+  event: z.literal('progress'),
 })
 
 /**
@@ -725,9 +779,10 @@ export const zTrace = z.object({
 export const zAssistantTurnItem = z.object({
   card_state: z.string().nullish(),
   cards: z.array(z.string()).optional(),
+  execution: zExecutionProgress,
+  reasoning_text: z.string().nullish(),
   reply_text: z.string().nullish(),
   stage_id: z.string(),
-  trace: zTrace,
   turn_id: z.string(),
 })
 
@@ -742,15 +797,10 @@ export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
 })
 
 /**
- * DifyBuilderSessionViewResponse
+ * DifyBuilderConversationPageResponse
  */
-export const zDifyBuilderSessionViewResponse = z.object({
-  actions: z.array(zAction).optional(),
-  app_id: z.string(),
-  app_revision: zAppRevision.nullish(),
-  canvas_read_only: z.boolean(),
-  checkpoint: zCheckpointRef.nullish(),
-  conversation: z.array(
+export const zDifyBuilderConversationPageResponse = z.object({
+  data: z.array(
     z.union([
       z
         .object({
@@ -839,6 +889,53 @@ export const zDifyBuilderSessionViewResponse = z.object({
         .and(zDifyBuilderBuildLearningConversationItemResponse),
     ]),
   ),
+  first_seq: z.int().nullable(),
+  has_more: z.boolean(),
+  last_seq: z.int().nullable(),
+})
+
+/**
+ * DifyBuilderActiveInteractionResponse
+ */
+export const zDifyBuilderActiveInteractionResponse = z.object({
+  action_id: z.string(),
+  card: z.discriminatedUnion('kind', [
+    zDifyBuilderUserConversationItemResponse.extend({ kind: z.literal('user') }),
+    zDifyBuilderDecisionConversationItemResponse.extend({ kind: z.literal('decision') }),
+    zDifyBuilderNoticeConversationItemResponse.extend({ kind: z.literal('notice') }),
+    zDifyBuilderRunContextConversationItemResponse.extend({ kind: z.literal('run_context') }),
+    zDifyBuilderPreflightContextConversationItemResponse.extend({
+      kind: z.literal('preflight_context'),
+    }),
+    zDifyBuilderAssistantTurnConversationItemResponse.extend({ kind: z.literal('assistant_turn') }),
+    zDifyBuilderPlanConversationItemResponse.extend({ kind: z.literal('plan') }),
+    zDifyBuilderFormConversationItemResponse.extend({ kind: z.literal('form') }),
+    zDifyBuilderChallengeConversationItemResponse.extend({ kind: z.literal('challenge') }),
+    zDifyBuilderResourceSelectConversationItemResponse.extend({
+      kind: z.literal('resource_select'),
+    }),
+    zDifyBuilderCheckpointConversationItemResponse.extend({ kind: z.literal('checkpoint') }),
+    zDifyBuilderChangeSetConversationItemResponse.extend({ kind: z.literal('change_set') }),
+    zDifyBuilderTestResultConversationItemResponse.extend({ kind: z.literal('test_result') }),
+    zDifyBuilderErrorConversationItemResponse.extend({ kind: z.literal('error') }),
+    zDifyBuilderSummaryConversationItemResponse.extend({ kind: z.literal('summary') }),
+    zDifyBuilderPublishConversationItemResponse.extend({ kind: z.literal('publish') }),
+    zDifyBuilderBuildLearningConversationItemResponse.extend({ kind: z.literal('build_learning') }),
+  ]),
+  valid_at_version: z.int(),
+})
+
+/**
+ * DifyBuilderSessionViewResponse
+ */
+export const zDifyBuilderSessionViewResponse = z.object({
+  actions: z.array(zAction).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_id: z.string(),
+  app_revision: zAppRevision.nullish(),
+  canvas_read_only: z.boolean(),
+  checkpoint: zCheckpointRef.nullish(),
+  conversation_last_seq: z.int(),
   entry_mode: zEntryMode.optional().default('fix'),
   interrupted: z.boolean(),
   model: zSessionModel.nullish(),
@@ -851,17 +948,41 @@ export const zDifyBuilderSessionViewResponse = z.object({
 })
 
 /**
- * DifyBuilderSnapshotEventResponse
+ * DifyBuilderCommandStartedEventData
  */
-export const zDifyBuilderSnapshotEventResponse = z.object({
-  data: zDifyBuilderSessionViewResponse,
-  event: z.literal('snapshot'),
+export const zDifyBuilderCommandStartedEventData = z.object({
+  actions: z.array(zAction).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_id: z.string(),
+  app_revision: zAppRevision.nullish(),
+  canvas_read_only: z.boolean(),
+  checkpoint: zCheckpointRef.nullish(),
+  conversation_last_seq: z.int(),
+  entry_mode: zEntryMode.optional().default('fix'),
+  interrupted: z.boolean(),
+  kind: z.literal('command_started').optional().default('command_started'),
+  model: zSessionModel.nullish(),
+  phase: zPhase.optional().default('understand'),
+  recovery: zRecoveryRef.nullish(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  state: z.string(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCommandStartedEventResponse
+ */
+export const zDifyBuilderCommandStartedEventResponse = z.object({
+  data: zDifyBuilderCommandStartedEventData,
+  event: z.literal('command_started'),
 })
 
 /**
  * DifyBuilderCommitEventData
  */
 export const zDifyBuilderCommitEventData = z.object({
+  at_version: z.int(),
   items: z.array(
     z.union([
       z
@@ -952,8 +1073,10 @@ export const zDifyBuilderCommitEventData = z.object({
     ]),
   ),
   kind: z.literal('commit').optional().default('commit'),
+  operation_id: z.string(),
   session_id: z.string(),
   settled: z.boolean(),
+  stage_id: z.string(),
   state: z.string(),
   version: z.int(),
 })
@@ -971,99 +1094,12 @@ export const zDifyBuilderCommitEventResponse = z.object({
  */
 export const zDifyBuilderStateEventData = z.object({
   actions: z.array(zAction).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
   app_id: z.string(),
   app_revision: zAppRevision.nullish(),
   canvas_read_only: z.boolean(),
   checkpoint: zCheckpointRef.nullish(),
-  conversation: z.array(
-    z.union([
-      z
-        .object({
-          kind: z.literal('user'),
-        })
-        .and(zDifyBuilderUserConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('decision'),
-        })
-        .and(zDifyBuilderDecisionConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('notice'),
-        })
-        .and(zDifyBuilderNoticeConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('run_context'),
-        })
-        .and(zDifyBuilderRunContextConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('preflight_context'),
-        })
-        .and(zDifyBuilderPreflightContextConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('assistant_turn'),
-        })
-        .and(zDifyBuilderAssistantTurnConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('plan'),
-        })
-        .and(zDifyBuilderPlanConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('form'),
-        })
-        .and(zDifyBuilderFormConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('challenge'),
-        })
-        .and(zDifyBuilderChallengeConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('resource_select'),
-        })
-        .and(zDifyBuilderResourceSelectConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('checkpoint'),
-        })
-        .and(zDifyBuilderCheckpointConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('change_set'),
-        })
-        .and(zDifyBuilderChangeSetConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('test_result'),
-        })
-        .and(zDifyBuilderTestResultConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('error'),
-        })
-        .and(zDifyBuilderErrorConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('summary'),
-        })
-        .and(zDifyBuilderSummaryConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('publish'),
-        })
-        .and(zDifyBuilderPublishConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('build_learning'),
-        })
-        .and(zDifyBuilderBuildLearningConversationItemResponse),
-    ]),
-  ),
+  conversation_last_seq: z.int(),
   entry_mode: zEntryMode.optional().default('fix'),
   interrupted: z.boolean(),
   kind: z.literal('state').optional().default('state'),
@@ -1090,10 +1126,12 @@ export const zDifyBuilderStateEventResponse = z.object({
  * One JSON object carried by an SSE ``data:`` frame.
  */
 export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
-  zDifyBuilderSnapshotEventResponse.extend({ event: z.literal('snapshot') }),
+  zDifyBuilderCommandStartedEventResponse.extend({ event: z.literal('command_started') }),
   zDifyBuilderNodeEventResponse.extend({ event: z.literal('node') }),
   zDifyBuilderCanvasEventResponse.extend({ event: z.literal('canvas') }),
   zDifyBuilderAgentMessageEventResponse.extend({ event: z.literal('agent_message') }),
+  zDifyBuilderReasoningEventResponse.extend({ event: z.literal('reasoning') }),
+  zDifyBuilderProgressEventResponse.extend({ event: z.literal('progress') }),
   zDifyBuilderCommitEventResponse.extend({ event: z.literal('commit') }),
   zDifyBuilderStateEventResponse.extend({ event: z.literal('state') }),
   zDifyBuilderErrorEventResponse.extend({ event: z.literal('error') }),
@@ -1116,9 +1154,9 @@ export const zGetDifyBuilderSessionsBySessionIdPath = z.object({
 })
 
 /**
- * Dify Builder restore event stream
+ * Dify Builder session state
  */
-export const zGetDifyBuilderSessionsBySessionIdResponse = zDifyBuilderStreamEventResponse
+export const zGetDifyBuilderSessionsBySessionIdResponse = zDifyBuilderSessionViewResponse
 
 export const zPostDifyBuilderSessionsBySessionIdActionsBody = zDifyBuilderSubmitActionPayload
 
@@ -1131,6 +1169,22 @@ export const zPostDifyBuilderSessionsBySessionIdActionsPath = z.object({
  */
 export const zPostDifyBuilderSessionsBySessionIdActionsResponse = zDifyBuilderStreamEventResponse
 
+export const zGetDifyBuilderSessionsBySessionIdConversationPath = z.object({
+  session_id: z.string(),
+})
+
+export const zGetDifyBuilderSessionsBySessionIdConversationQuery = z.object({
+  after_seq: z.int().gte(-1).optional(),
+  before_seq: z.int().gte(0).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Dify Builder conversation page
+ */
+export const zGetDifyBuilderSessionsBySessionIdConversationResponse =
+  zDifyBuilderConversationPageResponse
+
 export const zPostDifyBuilderSessionsBySessionIdMessagesBody = zDifyBuilderSubmitMessagePayload
 
 export const zPostDifyBuilderSessionsBySessionIdMessagesPath = z.object({
@@ -1141,3 +1195,12 @@ export const zPostDifyBuilderSessionsBySessionIdMessagesPath = z.object({
  * Dify Builder event stream
  */
 export const zPostDifyBuilderSessionsBySessionIdMessagesResponse = zDifyBuilderStreamEventResponse
+
+export const zGetDifyBuilderSessionsBySessionIdStreamPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Dify Builder reconnect event stream
+ */
+export const zGetDifyBuilderSessionsBySessionIdStreamResponse = zDifyBuilderStreamEventResponse

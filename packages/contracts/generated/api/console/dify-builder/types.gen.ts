@@ -12,8 +12,8 @@ export type DifyBuilderCreateSessionPayload =
 
 export type DifyBuilderStreamEventResponse =
   | ({
-      event: 'snapshot'
-    } & DifyBuilderSnapshotEventResponse)
+      event: 'command_started'
+    } & DifyBuilderCommandStartedEventResponse)
   | ({
       event: 'node'
     } & DifyBuilderNodeEventResponse)
@@ -23,6 +23,12 @@ export type DifyBuilderStreamEventResponse =
   | ({
       event: 'agent_message'
     } & DifyBuilderAgentMessageEventResponse)
+  | ({
+      event: 'reasoning'
+    } & DifyBuilderReasoningEventResponse)
+  | ({
+      event: 'progress'
+    } & DifyBuilderProgressEventResponse)
   | ({
       event: 'commit'
     } & DifyBuilderCommitEventResponse)
@@ -39,6 +45,25 @@ export type DifyBuilderErrorResponse = {
   recoverable?: boolean | null
 }
 
+export type DifyBuilderSessionViewResponse = {
+  actions?: Array<Action>
+  active_interaction?: DifyBuilderActiveInteractionResponse | null
+  app_id: string
+  app_revision?: AppRevision | null
+  canvas_read_only: boolean
+  checkpoint?: CheckpointRef | null
+  conversation_last_seq: number
+  entry_mode?: EntryMode
+  interrupted: boolean
+  model?: SessionModel | null
+  phase?: Phase
+  recovery?: RecoveryRef | null
+  run_status: RunStatus
+  session_id: string
+  state: string
+  version: number
+}
+
 export type DifyBuilderSubmitActionPayload = {
   action_id: string
   base_app_revision: string
@@ -46,6 +71,65 @@ export type DifyBuilderSubmitActionPayload = {
   payload?: {
     [key: string]: unknown
   }
+}
+
+export type DifyBuilderConversationPageResponse = {
+  data: Array<
+    | ({
+        kind: 'user'
+      } & DifyBuilderUserConversationItemResponse)
+    | ({
+        kind: 'decision'
+      } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'notice'
+      } & DifyBuilderNoticeConversationItemResponse)
+    | ({
+        kind: 'run_context'
+      } & DifyBuilderRunContextConversationItemResponse)
+    | ({
+        kind: 'preflight_context'
+      } & DifyBuilderPreflightContextConversationItemResponse)
+    | ({
+        kind: 'assistant_turn'
+      } & DifyBuilderAssistantTurnConversationItemResponse)
+    | ({
+        kind: 'plan'
+      } & DifyBuilderPlanConversationItemResponse)
+    | ({
+        kind: 'form'
+      } & DifyBuilderFormConversationItemResponse)
+    | ({
+        kind: 'challenge'
+      } & DifyBuilderChallengeConversationItemResponse)
+    | ({
+        kind: 'resource_select'
+      } & DifyBuilderResourceSelectConversationItemResponse)
+    | ({
+        kind: 'checkpoint'
+      } & DifyBuilderCheckpointConversationItemResponse)
+    | ({
+        kind: 'change_set'
+      } & DifyBuilderChangeSetConversationItemResponse)
+    | ({
+        kind: 'test_result'
+      } & DifyBuilderTestResultConversationItemResponse)
+    | ({
+        kind: 'error'
+      } & DifyBuilderErrorConversationItemResponse)
+    | ({
+        kind: 'summary'
+      } & DifyBuilderSummaryConversationItemResponse)
+    | ({
+        kind: 'publish'
+      } & DifyBuilderPublishConversationItemResponse)
+    | ({
+        kind: 'build_learning'
+      } & DifyBuilderBuildLearningConversationItemResponse)
+  >
+  first_seq: number | null
+  has_more: boolean
+  last_seq: number | null
 }
 
 export type DifyBuilderSubmitMessagePayload = {
@@ -83,9 +167,9 @@ export type DifyBuilderCreateChecklistFixSessionPayload = {
   scenario: 'fix'
 }
 
-export type DifyBuilderSnapshotEventResponse = {
-  data: DifyBuilderSessionViewResponse
-  event: 'snapshot'
+export type DifyBuilderCommandStartedEventResponse = {
+  data: DifyBuilderCommandStartedEventData
+  event: 'command_started'
 }
 
 export type DifyBuilderNodeEventResponse = {
@@ -101,6 +185,16 @@ export type DifyBuilderCanvasEventResponse = {
 export type DifyBuilderAgentMessageEventResponse = {
   data: AgentMessageEventData
   event: 'agent_message'
+}
+
+export type DifyBuilderReasoningEventResponse = {
+  data: ReasoningEventData
+  event: 'reasoning'
+}
+
+export type DifyBuilderProgressEventResponse = {
+  data: ProgressEventData
+  event: 'progress'
 }
 
 export type DifyBuilderCommitEventResponse = {
@@ -125,265 +219,69 @@ export type BuilderErrorCode =
   | 'not_found'
   | 'session_busy'
 
-export type SessionModel = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode?: string
-  name: string
-  provider: string
-}
-
-export type DifyBuilderChecklistErrorPayload = {
-  messages: Array<string>
-  node_id: string
-  node_type: string
-  plugin_missing: boolean
-  title: string
-  unconnected: boolean
-}
-
-export type DifyBuilderSessionViewResponse = {
-  actions?: Array<Action>
-  app_id: string
-  app_revision?: AppRevision | null
-  canvas_read_only: boolean
-  checkpoint?: CheckpointRef | null
-  conversation: Array<
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
-  >
-  entry_mode?: EntryMode
-  interrupted: boolean
-  model?: SessionModel | null
-  phase?: Phase
-  recovery?: RecoveryRef | null
-  run_status: RunStatus
-  session_id: string
-  state: string
-  version: number
-}
-
-export type NodeEventData = {
-  error: string
-  kind?: 'node'
-  node_id: string
-  status: string
-  title: string
-}
-
-export type CanvasEventData = {
-  edge?: CanvasEdge | null
-  event: CanvasEvent
-  kind?: 'canvas'
-  node_id?: string | null
-}
-
-export type AgentMessageEventData = {
-  answer: string
-  at_version: number
-  id: string
-  kind?: 'agent_message'
-  seq: number
-  session_id: string
-  stage_id: string
-}
-
-export type DifyBuilderCommitEventData = {
-  items: Array<
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
-  >
-  kind?: 'commit'
-  session_id: string
-  settled: boolean
-  state: string
-  version: number
-}
-
-export type DifyBuilderStateEventData = {
-  actions?: Array<Action>
-  app_id: string
-  app_revision?: AppRevision | null
-  canvas_read_only: boolean
-  checkpoint?: CheckpointRef | null
-  conversation: Array<
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'challenge'
-      } & DifyBuilderChallengeConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'checkpoint'
-      } & DifyBuilderCheckpointConversationItemResponse)
-    | ({
-        kind: 'change_set'
-      } & DifyBuilderChangeSetConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
-    | ({
-        kind: 'error'
-      } & DifyBuilderErrorConversationItemResponse)
-    | ({
-        kind: 'summary'
-      } & DifyBuilderSummaryConversationItemResponse)
-    | ({
-        kind: 'publish'
-      } & DifyBuilderPublishConversationItemResponse)
-    | ({
-        kind: 'build_learning'
-      } & DifyBuilderBuildLearningConversationItemResponse)
-  >
-  entry_mode?: EntryMode
-  interrupted: boolean
-  kind?: 'state'
-  model?: SessionModel | null
-  phase?: Phase
-  recovery?: RecoveryRef | null
-  run_status: RunStatus
-  session_id: string
-  state: string
-  version: number
-}
-
-export type ErrorEventData = {
-  code?: string | null
-  error: string
-  kind?: 'error'
-  message?: string | null
-  recoverable?: boolean | null
-}
-
 export type Action = {
   canvas_event?: string | null
   id: string
   kind: ActionKind
   label: string
   next_state?: string | null
+}
+
+export type DifyBuilderActiveInteractionResponse = {
+  action_id: string
+  card:
+    | ({
+        kind: 'user'
+      } & DifyBuilderUserConversationItemResponse)
+    | ({
+        kind: 'decision'
+      } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'notice'
+      } & DifyBuilderNoticeConversationItemResponse)
+    | ({
+        kind: 'run_context'
+      } & DifyBuilderRunContextConversationItemResponse)
+    | ({
+        kind: 'preflight_context'
+      } & DifyBuilderPreflightContextConversationItemResponse)
+    | ({
+        kind: 'assistant_turn'
+      } & DifyBuilderAssistantTurnConversationItemResponse)
+    | ({
+        kind: 'plan'
+      } & DifyBuilderPlanConversationItemResponse)
+    | ({
+        kind: 'form'
+      } & DifyBuilderFormConversationItemResponse)
+    | ({
+        kind: 'challenge'
+      } & DifyBuilderChallengeConversationItemResponse)
+    | ({
+        kind: 'resource_select'
+      } & DifyBuilderResourceSelectConversationItemResponse)
+    | ({
+        kind: 'checkpoint'
+      } & DifyBuilderCheckpointConversationItemResponse)
+    | ({
+        kind: 'change_set'
+      } & DifyBuilderChangeSetConversationItemResponse)
+    | ({
+        kind: 'test_result'
+      } & DifyBuilderTestResultConversationItemResponse)
+    | ({
+        kind: 'error'
+      } & DifyBuilderErrorConversationItemResponse)
+    | ({
+        kind: 'summary'
+      } & DifyBuilderSummaryConversationItemResponse)
+    | ({
+        kind: 'publish'
+      } & DifyBuilderPublishConversationItemResponse)
+    | ({
+        kind: 'build_learning'
+      } & DifyBuilderBuildLearningConversationItemResponse)
+  valid_at_version: number
 }
 
 export type AppRevision = {
@@ -397,6 +295,43 @@ export type CheckpointRef = {
   created_at: string
   label: string
 }
+
+export type EntryMode = 'build' | 'edit' | 'fix' | 'fix_checklist'
+
+export type SessionModel = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode?: string
+  name: string
+  provider: string
+}
+
+export type Phase =
+  | 'clarify'
+  | 'complete'
+  | 'modify'
+  | 'plan'
+  | 'publish'
+  | 'resources'
+  | 'review'
+  | 'test'
+  | 'understand'
+
+export type RecoveryRef = {
+  can_continue: boolean
+  can_restart: boolean
+  message: string
+  recovery_class: string
+}
+
+export type RunStatus =
+  | 'complete'
+  | 'failed'
+  | 'paused'
+  | 'processing'
+  | 'waiting_confirmation'
+  | 'waiting_input'
 
 export type DifyBuilderUserConversationItemResponse = {
   at_version: number
@@ -517,63 +452,184 @@ export type DifyBuilderBuildLearningConversationItemResponse = {
   seq: number
 }
 
-export type EntryMode = 'build' | 'edit' | 'fix' | 'fix_checklist'
-
-export type Phase =
-  | 'clarify'
-  | 'complete'
-  | 'modify'
-  | 'plan'
-  | 'publish'
-  | 'resources'
-  | 'review'
-  | 'test'
-  | 'understand'
-
-export type RecoveryRef = {
-  can_continue: boolean
-  can_restart: boolean
-  message: string
-  recovery_class: string
+export type DifyBuilderChecklistErrorPayload = {
+  messages: Array<string>
+  node_id: string
+  node_type: string
+  plugin_missing: boolean
+  title: string
+  unconnected: boolean
 }
 
-export type RunStatus =
-  | 'complete'
-  | 'executing'
-  | 'failed'
-  | 'paused'
-  | 'thinking'
-  | 'waiting_confirmation'
-  | 'waiting_input'
-
-export type CanvasEdge = {
-  source: string
-  target: string
+export type DifyBuilderCommandStartedEventData = {
+  actions?: Array<Action>
+  active_interaction?: DifyBuilderActiveInteractionResponse | null
+  app_id: string
+  app_revision?: AppRevision | null
+  canvas_read_only: boolean
+  checkpoint?: CheckpointRef | null
+  conversation_last_seq: number
+  entry_mode?: EntryMode
+  interrupted: boolean
+  kind?: 'command_started'
+  model?: SessionModel | null
+  phase?: Phase
+  recovery?: RecoveryRef | null
+  run_status: RunStatus
+  session_id: string
+  state: string
+  version: number
 }
 
-export type CanvasEvent =
-  | 'add_knowledge_node'
-  | 'add_llm_node'
-  | 'add_output_node'
-  | 'add_start_node'
-  | 'apply_edit_plan'
-  | 'apply_error_fix'
-  | 'apply_preflight_fix'
-  | 'cancel_publish'
-  | 'create_checkpoint'
-  | 'focus_checklist_node'
-  | 'focus_error_node'
-  | 'focus_workflow'
-  | 'highlight_edit_target'
-  | 'mark_repair_applied'
-  | 'mark_review_ready'
-  | 'mark_test_error'
-  | 'mark_test_success'
-  | 'publish_workflow'
-  | 'reset_build_canvas'
-  | 'revert_checkpoint'
-  | 'start_retest'
-  | 'start_test_run'
+export type NodeEventData = {
+  at_version: number
+  error: string
+  kind?: 'node'
+  node_id: string
+  operation_id: string
+  revision: number
+  session_id: string
+  stage_id: string
+  status: string
+  title: string
+}
+
+export type CanvasEventData = {
+  at_version: number
+  edge?: CanvasEdge | null
+  event: CanvasEvent
+  kind?: 'canvas'
+  node_id?: string | null
+  operation_id: string
+  revision: number
+  session_id: string
+  stage_id: string
+}
+
+export type AgentMessageEventData = {
+  answer: string
+  at_version: number
+  id: string
+  kind?: 'agent_message'
+  operation_id: string
+  revision: number
+  seq: number
+  session_id: string
+  stage_id: string
+}
+
+export type ReasoningEventData = {
+  at_version: number
+  delta: string
+  kind?: 'reasoning'
+  operation_id: string
+  revision: number
+  session_id: string
+  span_id: string
+  stage_id: string
+}
+
+export type ProgressEventData = {
+  at_version: number
+  execution: ExecutionProgress
+  kind?: 'progress'
+  operation_id: string
+  revision: number
+  session_id: string
+  stage_id: string
+}
+
+export type DifyBuilderCommitEventData = {
+  at_version: number
+  items: Array<
+    | ({
+        kind: 'user'
+      } & DifyBuilderUserConversationItemResponse)
+    | ({
+        kind: 'decision'
+      } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'notice'
+      } & DifyBuilderNoticeConversationItemResponse)
+    | ({
+        kind: 'run_context'
+      } & DifyBuilderRunContextConversationItemResponse)
+    | ({
+        kind: 'preflight_context'
+      } & DifyBuilderPreflightContextConversationItemResponse)
+    | ({
+        kind: 'assistant_turn'
+      } & DifyBuilderAssistantTurnConversationItemResponse)
+    | ({
+        kind: 'plan'
+      } & DifyBuilderPlanConversationItemResponse)
+    | ({
+        kind: 'form'
+      } & DifyBuilderFormConversationItemResponse)
+    | ({
+        kind: 'challenge'
+      } & DifyBuilderChallengeConversationItemResponse)
+    | ({
+        kind: 'resource_select'
+      } & DifyBuilderResourceSelectConversationItemResponse)
+    | ({
+        kind: 'checkpoint'
+      } & DifyBuilderCheckpointConversationItemResponse)
+    | ({
+        kind: 'change_set'
+      } & DifyBuilderChangeSetConversationItemResponse)
+    | ({
+        kind: 'test_result'
+      } & DifyBuilderTestResultConversationItemResponse)
+    | ({
+        kind: 'error'
+      } & DifyBuilderErrorConversationItemResponse)
+    | ({
+        kind: 'summary'
+      } & DifyBuilderSummaryConversationItemResponse)
+    | ({
+        kind: 'publish'
+      } & DifyBuilderPublishConversationItemResponse)
+    | ({
+        kind: 'build_learning'
+      } & DifyBuilderBuildLearningConversationItemResponse)
+  >
+  kind?: 'commit'
+  operation_id: string
+  session_id: string
+  settled: boolean
+  stage_id: string
+  state: string
+  version: number
+}
+
+export type DifyBuilderStateEventData = {
+  actions?: Array<Action>
+  active_interaction?: DifyBuilderActiveInteractionResponse | null
+  app_id: string
+  app_revision?: AppRevision | null
+  canvas_read_only: boolean
+  checkpoint?: CheckpointRef | null
+  conversation_last_seq: number
+  entry_mode?: EntryMode
+  interrupted: boolean
+  kind?: 'state'
+  model?: SessionModel | null
+  phase?: Phase
+  recovery?: RecoveryRef | null
+  run_status: RunStatus
+  session_id: string
+  state: string
+  version: number
+}
+
+export type ErrorEventData = {
+  code?: string | null
+  error: string
+  kind?: 'error'
+  message?: string | null
+  recoverable?: boolean | null
+}
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
 
@@ -608,9 +664,10 @@ export type PreflightContextCard = {
 export type AssistantTurnItem = {
   card_state?: string | null
   cards?: Array<string>
+  execution: ExecutionProgress
+  reasoning_text?: string | null
   reply_text?: string | null
   stage_id: string
-  trace: Trace
   turn_id: string
 }
 
@@ -686,15 +743,44 @@ export type BuildLearningCard = {
   state: string
 }
 
+export type CanvasEdge = {
+  source: string
+  target: string
+}
+
+export type CanvasEvent =
+  | 'add_knowledge_node'
+  | 'add_llm_node'
+  | 'add_output_node'
+  | 'add_start_node'
+  | 'apply_edit_plan'
+  | 'apply_error_fix'
+  | 'apply_preflight_fix'
+  | 'cancel_publish'
+  | 'create_checkpoint'
+  | 'focus_checklist_node'
+  | 'focus_error_node'
+  | 'focus_workflow'
+  | 'highlight_edit_target'
+  | 'mark_repair_applied'
+  | 'mark_review_ready'
+  | 'mark_test_error'
+  | 'mark_test_success'
+  | 'publish_workflow'
+  | 'reset_build_canvas'
+  | 'revert_checkpoint'
+  | 'start_retest'
+  | 'start_test_run'
+
+export type ExecutionProgress = {
+  activities?: Array<ExecutionActivity>
+  status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
 export type PreflightIssue = {
   kind: string
   label: string
   node_id: string
-}
-
-export type Trace = {
-  status: string
-  steps?: Array<TraceStep>
 }
 
 export type FormField = {
@@ -744,12 +830,12 @@ export type SummaryRow = {
   value: string
 }
 
-export type TraceStep = {
-  canvas_event?: string | null
+export type ExecutionActivity = {
   id: string
+  kind?: 'node' | 'stage'
   label: string
-  state: string
-  tone?: string
+  parent_id?: string | null
+  state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
 export type PostDifyBuilderAgentPingData = {
@@ -806,7 +892,7 @@ export type GetDifyBuilderSessionsBySessionIdError =
   GetDifyBuilderSessionsBySessionIdErrors[keyof GetDifyBuilderSessionsBySessionIdErrors]
 
 export type GetDifyBuilderSessionsBySessionIdResponses = {
-  200: DifyBuilderStreamEventResponse
+  200: DifyBuilderSessionViewResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdResponse =
@@ -837,6 +923,34 @@ export type PostDifyBuilderSessionsBySessionIdActionsResponses = {
 export type PostDifyBuilderSessionsBySessionIdActionsResponse =
   PostDifyBuilderSessionsBySessionIdActionsResponses[keyof PostDifyBuilderSessionsBySessionIdActionsResponses]
 
+export type GetDifyBuilderSessionsBySessionIdConversationData = {
+  body?: never
+  path: {
+    session_id: string
+  }
+  query?: {
+    after_seq?: number
+    before_seq?: number
+    limit?: number
+  }
+  url: '/dify-builder/sessions/{session_id}/conversation'
+}
+
+export type GetDifyBuilderSessionsBySessionIdConversationErrors = {
+  400: DifyBuilderErrorResponse
+  404: DifyBuilderErrorResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdConversationError =
+  GetDifyBuilderSessionsBySessionIdConversationErrors[keyof GetDifyBuilderSessionsBySessionIdConversationErrors]
+
+export type GetDifyBuilderSessionsBySessionIdConversationResponses = {
+  200: DifyBuilderConversationPageResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdConversationResponse =
+  GetDifyBuilderSessionsBySessionIdConversationResponses[keyof GetDifyBuilderSessionsBySessionIdConversationResponses]
+
 export type PostDifyBuilderSessionsBySessionIdMessagesData = {
   body: DifyBuilderSubmitMessagePayload
   path: {
@@ -861,3 +975,26 @@ export type PostDifyBuilderSessionsBySessionIdMessagesResponses = {
 
 export type PostDifyBuilderSessionsBySessionIdMessagesResponse =
   PostDifyBuilderSessionsBySessionIdMessagesResponses[keyof PostDifyBuilderSessionsBySessionIdMessagesResponses]
+
+export type GetDifyBuilderSessionsBySessionIdStreamData = {
+  body?: never
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/stream'
+}
+
+export type GetDifyBuilderSessionsBySessionIdStreamErrors = {
+  404: DifyBuilderErrorResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdStreamError =
+  GetDifyBuilderSessionsBySessionIdStreamErrors[keyof GetDifyBuilderSessionsBySessionIdStreamErrors]
+
+export type GetDifyBuilderSessionsBySessionIdStreamResponses = {
+  200: DifyBuilderStreamEventResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdStreamResponse =
+  GetDifyBuilderSessionsBySessionIdStreamResponses[keyof GetDifyBuilderSessionsBySessionIdStreamResponses]

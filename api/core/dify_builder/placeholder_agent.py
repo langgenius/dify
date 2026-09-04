@@ -1,12 +1,10 @@
-"""The canned production placeholder ``DifyBuilderAgent``.
+"""Legacy deterministic ``DifyBuilderAgent`` used by isolated domain tests.
 
 Port of dify-enterprise/server/pkg/enterprise/biz/dify_builder/placeholder_agent.go.
 
-``PlaceholderAgent`` is the canned cognition for the Fix slice until the real
-agent lands (a future spec). Its diagnosis/repair assume the common "Code
-node raises at runtime" failure. It satisfies ``DifyBuilderAgent`` structurally
-(via ``@runtime_checkable``) — there is no explicit ``NewPlaceholderAgent()``
-constructor to port; plain instantiation (``PlaceholderAgent()``) replaces it.
+It is not selectable by production configuration; runtime Builder cognition is
+always provided by ``LlmBuilderAgent``. The deterministic implementation stays
+as a compact fixture for state-machine tests that do not exercise model calls.
 """
 
 from collections.abc import Callable
@@ -50,7 +48,7 @@ BUILD_END_ID = "end"
 
 
 class PlaceholderAgent:
-    """Canned ``DifyBuilderAgent`` cognition; see module docstring."""
+    """Deterministic test cognition; see module docstring."""
 
     def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
         culprit = "output"
@@ -262,7 +260,7 @@ class PlaceholderAgent:
         text: str,
         on_delta: Callable[[str], None] | None = None,
     ) -> str:
-        """Deterministic fallback used when Builder LLM mode is disabled."""
+        """Return a deterministic reply for isolated state-machine tests."""
         del context, history, graph
         reply = (
             f'I understand your note: "{text}". The Builder is currently at {state}. '

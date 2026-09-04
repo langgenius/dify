@@ -8,8 +8,7 @@ token-forwarding (the P1 port plan's Global Constraints / ADR drop
 and the pure Task 1-3 helpers in this package (``graph_ops``, ``run_mapping``,
 ``identity``) to ``WorkflowService`` / ``AppGenerateService`` / the node-
 execution repository. It satisfies ``DifyPort`` structurally (the Protocol is
-``@runtime_checkable``) -- there is no explicit inheritance, matching
-``PlaceholderAgent``'s relationship to ``DifyBuilderAgent``.
+``@runtime_checkable``) -- there is no explicit inheritance.
 
 Each method opens its own ``Session`` via
 ``sessionmaker(bind=db.engine, expire_on_commit=False)`` and resolves

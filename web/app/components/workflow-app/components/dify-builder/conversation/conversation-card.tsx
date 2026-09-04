@@ -5,7 +5,8 @@ import type {
 } from '../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DifyBuilderCardShell } from '../cards/card-shell'
+import { DifyBuilderCard } from '../cards/card-shell'
+import { ExecutionProgress } from './execution-progress'
 import { FormCard } from './form-card'
 import { ResourceCard } from './resource-card'
 import { Thinking } from './thinking'
@@ -20,19 +21,23 @@ export const ConversationCard = memo(
   ({
     item,
     busy,
-    changesExpanded,
+    interactive,
     invalidated,
     onActionPayloadChange,
     onActionValidityChange,
   }: {
     item: ConversationItem
     busy: boolean
+    interactive: boolean
     changesExpanded: boolean
     invalidated: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
   }) => {
     const { t } = useTranslation()
+
+    if (item.kind === 'challenge' || item.kind === 'change_set' || item.kind === 'checkpoint')
+      return null
 
     if (item.kind === 'user' || item.kind === 'decision') {
       return (
@@ -45,8 +50,17 @@ export const ConversationCard = memo(
     }
 
     if (item.kind === 'assistant_turn') {
-      if (!item.payload.reply_text) return invalidated ? null : <Thinking item={item} />
-      return <AssistantReply text={item.payload.reply_text} />
+      const hasExecution = (item.payload.execution.activities?.length ?? 0) > 0
+      const hasReasoning = Boolean(item.payload.reasoning_text?.trim())
+      const hasReply = Boolean(item.payload.reply_text)
+      if (!hasExecution && !hasReasoning && !hasReply) return null
+      return (
+        <div className="flex flex-col gap-2">
+          {hasExecution ? <ExecutionProgress execution={item.payload.execution} /> : null}
+          <Thinking text={item.payload.reasoning_text} />
+          {item.payload.reply_text ? <AssistantReply text={item.payload.reply_text} /> : null}
+        </div>
+      )
     }
 
     if (item.kind === 'notice') {
@@ -62,6 +76,7 @@ export const ConversationCard = memo(
         <FormCard
           item={item}
           busy={busy}
+          interactive={interactive}
           invalidated={invalidated}
           onActionPayloadChange={onActionPayloadChange}
           onActionValidityChange={onActionValidityChange}
@@ -74,6 +89,7 @@ export const ConversationCard = memo(
         <ResourceCard
           item={item}
           busy={busy}
+          interactive={interactive}
           invalidated={invalidated}
           onActionPayloadChange={onActionPayloadChange}
         />
@@ -82,145 +98,183 @@ export const ConversationCard = memo(
 
     if (item.kind === 'run_context') {
       return (
-        <DifyBuilderCardShell invalidated={invalidated} tone="error">
-          <div className="system-xs-semibold text-text-primary">
-            {item.payload.title || t(($) => $['difyBuilder.failedRun'], { ns: 'workflow' })}
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.run'], { ns: 'workflow' })}
+          headline={item.payload.title || t(($) => $['difyBuilder.failedRun'], { ns: 'workflow' })}
+          invalidated={invalidated}
+          meta={item.payload.error_code}
+          status={{ state: 'failed' }}
+        >
+          <div className="flex flex-col gap-1">
+            {!!item.payload.message && (
+              <div className="system-xs-regular text-text-secondary">{item.payload.message}</div>
+            )}
+            <div className="truncate font-mono text-[11px] text-text-tertiary">
+              {item.payload.run_id}
+            </div>
           </div>
-          {!!item.payload.message && (
-            <div className="mt-1 system-xs-regular text-text-secondary">{item.payload.message}</div>
-          )}
-          <div className="mt-1 truncate font-mono text-[11px] text-text-tertiary">
-            {item.payload.run_id}
-          </div>
-        </DifyBuilderCardShell>
+        </DifyBuilderCard>
       )
     }
 
     if (item.kind === 'preflight_context') {
+      const issues = item.payload.issues ?? []
       return (
-        <DifyBuilderCardShell invalidated={invalidated} tone="warning">
-          <div className="system-xs-semibold text-text-primary">
-            {t(($) => $['difyBuilder.checklistIssues'], { ns: 'workflow' })}
-          </div>
-          {(item.payload.issues ?? []).map((issue) => (
-            <div
-              key={`${issue.node_id}-${issue.label}`}
-              className="mt-1 system-xs-regular text-text-secondary"
-            >
-              {issue.label}
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.checks'], { ns: 'workflow' })}
+          headline={t(($) => $['difyBuilder.checklistIssues'], { ns: 'workflow' })}
+          invalidated={invalidated}
+          meta={String(item.payload.issue_count)}
+          status={item.payload.issue_count > 0 ? { state: 'blocked' } : undefined}
+        >
+          {issues.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {issues.map((issue) => (
+                <div
+                  key={`${issue.node_id}-${issue.label}`}
+                  className="system-xs-regular text-text-secondary"
+                >
+                  {issue.label}
+                </div>
+              ))}
             </div>
-          ))}
-        </DifyBuilderCardShell>
+          ) : undefined}
+        </DifyBuilderCard>
       )
     }
 
     if (item.kind === 'plan') {
+      const items = item.payload.items ?? []
       return (
-        <DifyBuilderCardShell invalidated={invalidated}>
-          <div className="system-sm-semibold text-text-primary">{item.payload.title}</div>
-          <ol className="mt-2 list-decimal space-y-1 pl-4 system-xs-regular text-text-secondary">
-            {(item.payload.items ?? []).map((text) => (
-              <li key={text}>{text}</li>
-            ))}
-          </ol>
-        </DifyBuilderCardShell>
-      )
-    }
-
-    if (item.kind === 'challenge' || item.kind === 'error') {
-      return (
-        <DifyBuilderCardShell
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.plan'], { ns: 'workflow' })}
+          headline={item.payload.title}
           invalidated={invalidated}
-          tone={item.kind === 'error' ? 'error' : 'warning'}
+          meta={item.payload.version_tag}
+          subheadline={item.payload.subtitle}
         >
-          <div className="system-xs-semibold text-text-primary">{item.payload.title}</div>
-          <div className="mt-1 system-xs-regular text-text-secondary">{item.payload.body}</div>
-        </DifyBuilderCardShell>
+          {items.length > 0 ? (
+            <ol className="flex flex-col py-1">
+              {items.map((text, index) => (
+                <li key={text} className="flex items-start gap-4 py-1">
+                  <span
+                    aria-hidden
+                    className="flex size-4 shrink-0 items-center justify-center rounded-md bg-components-badge-bg-gray-soft system-2xs-semibold-uppercase text-text-tertiary"
+                  >
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 system-sm-regular wrap-break-word text-text-primary">
+                    {text}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : undefined}
+        </DifyBuilderCard>
       )
     }
 
-    if (item.kind === 'change_set') {
+    if (item.kind === 'error') {
       return (
-        <DifyBuilderCardShell invalidated={invalidated}>
-          <div className="flex items-center justify-between">
-            <span className="system-xs-semibold text-text-primary">
-              {item.payload.scope || t(($) => $['difyBuilder.changes'], { ns: 'workflow' })}
-            </span>
-            <span className="bg-components-badge-gray-bg rounded-md px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
-              {item.payload.count}
-            </span>
-          </div>
-          {(changesExpanded || item.payload.full_diff_open) && (
-            <ul className="mt-2 list-disc space-y-1 pl-4 system-xs-regular text-text-secondary">
-              {item.payload.changes.map((change) => (
-                <li key={change}>{change}</li>
-              ))}
-            </ul>
-          )}
-        </DifyBuilderCardShell>
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.error'], { ns: 'workflow' })}
+          headline={item.payload.title}
+          invalidated={invalidated}
+          status={{ state: 'failed' }}
+          subheadline={item.payload.body}
+        />
       )
     }
 
     if (item.kind === 'test_result') {
+      const stats = item.payload.stats ?? []
       return (
-        <DifyBuilderCardShell
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.test'], { ns: 'workflow' })}
+          headline={item.payload.title}
           invalidated={invalidated}
-          tone={item.payload.tone === 'success' ? 'success' : 'neutral'}
+          status={
+            item.payload.tone === 'success'
+              ? { state: 'done' }
+              : item.payload.tone === 'error'
+                ? { state: 'failed' }
+                : undefined
+          }
+          subheadline={item.payload.subtitle}
         >
-          <div className="system-xs-semibold text-text-primary">{item.payload.title}</div>
-          <div className="mt-1 system-xs-regular text-text-tertiary">{item.payload.subtitle}</div>
-          {!!item.payload.stats?.length && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {item.payload.stats.map((stat) => (
+          {stats.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {stats.map((stat) => (
                 <div key={`${stat.label}-${stat.value}`}>
                   <div className="system-sm-semibold text-text-primary">{stat.value}</div>
                   <div className="system-2xs-regular text-text-tertiary">{stat.label}</div>
                 </div>
               ))}
             </div>
-          )}
-        </DifyBuilderCardShell>
+          ) : undefined}
+        </DifyBuilderCard>
       )
     }
 
     if (item.kind === 'summary') {
+      const items = item.payload.items ?? []
+      const rows = item.payload.rows ?? []
       return (
-        <DifyBuilderCardShell invalidated={invalidated}>
-          {!!item.payload.title && (
-            <div className="system-xs-semibold text-text-primary">{item.payload.title}</div>
-          )}
-          {(item.payload.items ?? []).map((text) => (
-            <div key={text} className="mt-1 system-xs-regular text-text-secondary">
-              {text}
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.summary'], { ns: 'workflow' })}
+          headline={item.payload.title}
+          invalidated={invalidated}
+          status={item.payload.variant === 'completion' ? { state: 'done' } : undefined}
+        >
+          {items.length > 0 || rows.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {items.map((text) => (
+                <div key={text} className="system-xs-regular text-text-secondary">
+                  {text}
+                </div>
+              ))}
+              {rows.map((row) => (
+                <div
+                  key={`${row.label}-${row.value}`}
+                  className="flex justify-between gap-3 system-xs-regular"
+                >
+                  <span className="text-text-tertiary">{row.label}</span>
+                  <span className="text-right text-text-secondary">{row.value}</span>
+                </div>
+              ))}
             </div>
-          ))}
-          {(item.payload.rows ?? []).map((row) => (
-            <div
-              key={`${row.label}-${row.value}`}
-              className="mt-1 flex justify-between gap-3 system-xs-regular"
-            >
-              <span className="text-text-tertiary">{row.label}</span>
-              <span className="text-right text-text-secondary">{row.value}</span>
-            </div>
-          ))}
-        </DifyBuilderCardShell>
+          ) : undefined}
+        </DifyBuilderCard>
       )
     }
 
-    if (item.kind === 'checkpoint' || item.kind === 'publish' || item.kind === 'build_learning') {
-      const label =
-        item.kind === 'checkpoint'
-          ? item.payload.label
-          : item.kind === 'publish'
-            ? item.payload.version
-            : item.payload.state
+    if (item.kind === 'publish') {
       return (
-        <DifyBuilderCardShell
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.publish'], { ns: 'workflow' })}
           invalidated={invalidated}
-          tone={item.kind === 'publish' ? 'success' : 'info'}
-        >
-          <div className="system-xs-medium text-text-secondary">{label}</div>
-        </DifyBuilderCardShell>
+          meta={item.payload.version}
+          status={{ label: item.payload.badge, state: 'done' }}
+        />
+      )
+    }
+
+    if (item.kind === 'build_learning') {
+      const statusState =
+        item.payload.state === 'accepted'
+          ? ('done' as const)
+          : item.payload.state === 'skipped'
+            ? ('skipped' as const)
+            : item.payload.state === 'pending'
+              ? ('waiting' as const)
+              : undefined
+      return (
+        <DifyBuilderCard
+          category={t(($) => $['difyBuilder.cardCategory.learning'], { ns: 'workflow' })}
+          invalidated={invalidated}
+          meta={item.payload.policy}
+          status={{ label: item.payload.state, state: statusState }}
+        />
       )
     }
 

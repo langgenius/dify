@@ -22,7 +22,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
-from core.dify_builder.contract import ResourceOption
+from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -54,6 +54,7 @@ __all__ = [
     "DifyPort",
     "MutationIntent",
     "NodeEvent",
+    "ReasoningStreamingAgent",
     "Repository",
     "Risk",
 ]
@@ -71,7 +72,7 @@ class DifyBuilderAgent(Protocol):
 
     def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs: ...
 
-    # -- Build cognition (Slice 2; canned in PlaceholderAgent) --
+    # -- Build cognition --
 
     def analyze_goal(self, goal_text: str) -> dict[str, Any]: ...
 
@@ -91,7 +92,7 @@ class DifyBuilderAgent(Protocol):
         built_node_ids: list[str],
     ) -> str: ...
 
-    # -- Edit cognition (Slice 3; canned in PlaceholderAgent) --
+    # -- Edit cognition --
 
     def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, Any]: ...
 
@@ -108,6 +109,13 @@ class DifyBuilderAgent(Protocol):
         text: str,
         on_delta: Callable[[str], None] | None = None,
     ) -> str: ...
+
+
+@runtime_checkable
+class ReasoningStreamingAgent(Protocol):
+    """Optional capability for agents that expose model-provided reasoning."""
+
+    def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None: ...
 
 
 @runtime_checkable
@@ -195,5 +203,20 @@ class Repository(Protocol):
     def get_test_input(self, id: str) -> TestInput: ...
 
     def list_conversation(self, session_id: str) -> list[ConversationItem]: ...
+
+    def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]: ...
+
+    def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]: ...
+
+    def list_conversation_page(
+        self,
+        session_id: str,
+        *,
+        limit: int,
+        before_seq: int | None = None,
+        after_seq: int | None = None,
+    ) -> ConversationPage: ...
+
+    def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None: ...
 
     def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None: ...

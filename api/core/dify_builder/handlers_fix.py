@@ -32,12 +32,12 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
     DecisionItem,
+    ExecutionProgress,
     FormCard,
     FormField,
     NoticeItem,
     SummaryCard,
     TestResultCard,
-    Trace,
 )
 from core.dify_builder.models import (
     ApplyResult,
@@ -47,6 +47,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     Graph,
+    NodeEvent,
     NodeOutput,
     Run,
     Session,
@@ -55,6 +56,7 @@ from core.dify_builder.models import (
     TestInput,
     Turn,
 )
+from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
@@ -108,19 +110,19 @@ def append_item(fc: DifyBuilderContext, kind: str, payload: dict[str, Any]) -> l
 
 def append_card(fc: DifyBuilderContext, card) -> list[ConversationItem]:
     """Stamp a typed card into the conversation at the next seq (mirrors
-    append_item's seq authority; at_version preserved as the prior code's 0).
+    append_item's seq authority). The runner stamps the winning CAS version.
     """
     item = card.to_item(seq=fc.next_seq, at_version=0)
     fc.next_seq += 1
     return [item]
 
 
-_FORM_FIELD_TYPES = {"text", "textarea", "select", "bool"}
+_FORM_FIELD_TYPES = {"bool", "json", "json_object", "number", "select", "text", "textarea"}
 
 
 def build_form_fields(specs: list[dict]) -> list[FormField]:
     """Build FormField cards from agent-provided field specs, whitelisting
-    keys and clamping type to the 4 supported kinds (unknown -> text)."""
+    keys and clamping type to the supported scalar/JSON kinds (unknown -> text)."""
     fields: list[FormField] = []
     for spec in specs:
         if not isinstance(spec, dict) or not spec.get("key"):
@@ -337,10 +339,24 @@ def _mode_or_default(mode: str) -> str:
 def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working) Read the failed run's node outputs, diagnose, capture the
     pre-repair checkpoint. Port of ``handlers_fix.go:38``."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("fix-load-failure", "Load the failed run"),
+            ("fix-inspect-workflow", "Inspect the workflow and node outputs"),
+            ("fix-diagnose-cause", "Diagnose the root cause"),
+        ],
+    )
+    progress.activate("fix-load-failure")
     fc.checkpoint_seq = fc.next_seq
     failed = env.repo.get_run(fc.failed_run_id)
+    progress.activate("fix-inspect-workflow")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     outputs = env.dify.node_outputs(s.app_id, turn.actor, failed.dify_run_id)
+    progress.activate("fix-diagnose-cause")
     diagnosis = env.agent.diagnose(failed, graph, outputs)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
@@ -358,6 +374,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
             ],
         ),
     )
+    progress.finish()
     return StepResult(
         next=PcState.FIX_PROPOSE,
         context=fc,
@@ -370,11 +387,25 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     """(working) Ask the agent for repair intents + risk, stage them, branch
     on risk. Port of ``handlers_fix.go:97``. Also serves as
     ``checklist.propose`` (Task 7 reuses this handler, as Go does)."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("fix-prepare-context", "Prepare repair context"),
+            ("fix-propose-repair", "Propose a safe repair"),
+            ("fix-assess-risk", "Assess repair risk"),
+        ],
+    )
+    progress.activate("fix-prepare-context")
     graph, _ = env.dify.read_graph(s.app_id, turn.actor)
+    progress.activate("fix-propose-repair")
     intents, risk = env.agent.propose_repair(fc.diagnosis, graph)
     fc.staged_repair = intents
     fc.risk = risk
 
+    progress.activate("fix-assess-risk")
     next_state = PcState.FIX_APPLY
     if risk.level == "high" or risk.has_external_side_effect:
         next_state = PcState.FIX_AWAIT_APPROVAL
@@ -384,12 +415,13 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         if intents
         else "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
     )
+    execution = progress.finish()
     items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="fix.propose",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            execution=execution,
             reply_text=reply_text,
             cards=[],
         ),
@@ -416,9 +448,21 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     branches on ``fc.source``: the run-fix path always lands at
     ``fix.await_verify``; the checklist-fix path lands at
     ``checklist.await_recheck``. Port of ``handlers_fix.go:146``."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("fix-apply-repair", "Apply the repair to the canvas"),
+            ("fix-summarize-changes", "Summarize the applied changes"),
+        ],
+    )
+    progress.activate("fix-apply-repair")
     result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
+    progress.activate("fix-summarize-changes")
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
     items = append_card(
         fc,
@@ -433,6 +477,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     next_state = PcState.FIX_AWAIT_VERIFY
     if fc.source == "checklist":
         next_state = PcState.CHECKLIST_AWAIT_RECHECK
+    progress.finish()
     return StepResult(next=next_state, context=fc, items=items)
 
 
@@ -459,8 +504,8 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             fc,
             AssistantTurnItem(
                 turn_id=str(uuid.uuid4()),
-                stage_id="fix.await_testdata",
-                trace=Trace(status="completed", steps=[]),
+                stage_id=str(s.current_state),
+                execution=ExecutionProgress(status="completed"),
                 reply_text="Provide test inputs (or use mock data) to run validation.",
                 cards=["form"],
             ),
@@ -479,8 +524,17 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     mode, _ = action_string(turn, "mode")
     inputs: dict[str, Any] = {}
     if mode == "mock":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("fix-generate-test-inputs", "Generate validation inputs")],
+        )
+        progress.activate("fix-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        progress.finish()
     else:
         # upload / reuse: payload carries the inputs directly for the slice.
         if turn.action is not None:
@@ -498,13 +552,36 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     """(working) Run the repaired draft, mint a NEW immutable Run. Advances
     to ``fix.await_decision`` on both pass and fail; never touches the
     original failed run. Port of ``handlers_fix.go:206``."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("fix-prepare-validation", "Prepare validation inputs"),
+            ("fix-run-validation", "Run the repaired workflow"),
+            ("fix-evaluate-validation", "Evaluate validation results"),
+        ],
+    )
+    progress.activate("fix-prepare-validation")
     inputs: dict[str, Any] = {}
     if fc.test_input_ref != "":
         ti = env.repo.get_test_input(fc.test_input_ref)
         inputs = ti.inputs
 
-    emit = env.emit if env.emit is not None else (lambda _event: None)
+    progress.activate("fix-run-validation")
+
+    def emit(event: NodeEvent) -> None:
+        progress.observe_node("fix-run-validation", event)
+        if env.emit is not None:
+            env.emit(event)
+
     result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
+    if result.status == "succeeded":
+        progress.complete("fix-run-validation")
+    else:
+        progress.fail_step("fix-run-validation")
+    progress.activate("fix-evaluate-validation")
 
     # Python has no equivalent to Go's `runIDSink: &fc.VerifyRunID` pointer
     # aliasing (see runner.py's module docstring), so this handler mints the
@@ -535,6 +612,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             run_ids=[run.id],
         ),
     )
+    progress.finish()
     return StepResult(
         next=PcState.FIX_AWAIT_DECISION,
         context=fc,
@@ -569,8 +647,17 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
 def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working) Publish the repaired workflow. Port of
     ``handlers_fix.go:316``."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[("fix-publish-workflow", "Publish the repaired workflow")],
+    )
+    progress.activate("fix-publish-workflow")
     env.dify.publish(s.app_id, turn.actor)
     items = append_card(fc, DecisionItem(text="Published the fix"))
+    progress.finish()
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -582,8 +669,20 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
     pre-publish checklist's config errors instead of a failed run's node
     outputs — there is no ``fc.failed_run_id`` on this path, so no run
     lookup. Port of ``handlers_fix.go:72``."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("checklist-inspect-workflow", "Inspect checklist findings"),
+            ("checklist-diagnose-cause", "Diagnose the configuration issue"),
+        ],
+    )
+    progress.activate("checklist-inspect-workflow")
     fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
+    progress.activate("checklist-diagnose-cause")
     diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
@@ -601,6 +700,7 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
             ],
         ),
     )
+    progress.finish()
     return StepResult(
         next=PcState.CHECKLIST_PROPOSE,
         context=fc,

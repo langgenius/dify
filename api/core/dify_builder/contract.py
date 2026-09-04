@@ -35,13 +35,12 @@ class Phase(StrEnum):
 class RunStatus(StrEnum):
     """Widened run-status vocabulary (spec §2).
 
-    ``thinking``/``executing`` => ``canvas_read_only = true`` (WORKING).
+    ``processing`` => ``canvas_read_only = true`` (WORKING).
     ``waiting_*``/``paused`` => editable (WAITING).
     ``complete``/``failed`` => terminal.
     """
 
-    THINKING = "thinking"
-    EXECUTING = "executing"
+    PROCESSING = "processing"
     WAITING_INPUT = "waiting_input"
     WAITING_CONFIRMATION = "waiting_confirmation"
     PAUSED = "paused"
@@ -273,8 +272,42 @@ class AppRevision:
 
 
 @dataclass
+class ActiveInteraction:
+    """The one persisted card that may accept input at the current version.
+
+    Historical cards remain renderable, but the client must only enable this
+    card. ``valid_at_version`` is an explicit fence in addition to the normal
+    action ``base_version`` check.
+    """
+
+    action_id: str
+    card: ConversationItem
+    valid_at_version: int
+
+
+@dataclass
+class ConversationPage:
+    """A group-safe page of durable conversation items.
+
+    ``limit`` at the HTTP boundary counts rendered conversation groups rather
+    than raw rows, so a card bundle is never split from its assistant turn.
+    Items inside the page stay in ascending ``seq`` order.
+    """
+
+    data: list[ConversationItem]
+    has_more: bool
+    first_seq: int | None
+    last_seq: int | None
+
+
+@dataclass
 class SessionView:
-    """Read model returned by the Builder session-facing routes."""
+    """Bounded read model returned by Builder session-facing routes.
+
+    Conversation history deliberately lives behind ``ConversationPage``. This
+    object is safe to send at command start/end without payload growth as a
+    session gets older.
+    """
 
     session_id: str
     app_id: str
@@ -283,10 +316,11 @@ class SessionView:
     canvas_read_only: bool
     run_status: RunStatus
     interrupted: bool
-    conversation: list[ConversationItem]
+    conversation_last_seq: int
     entry_mode: EntryMode = EntryMode.FIX
     phase: Phase = Phase.UNDERSTAND
     actions: list[Action] = field(default_factory=list)
+    active_interaction: ActiveInteraction | None = None
     checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None
@@ -314,30 +348,32 @@ class PreflightIssue:
     kind: str
 
 
-@dataclass
-class TraceStep:
-    """One step of an ``assistant_turn``'s trace (spec §4.2).
+ExecutionActivityState = Literal["active", "done", "failed", "stopped"]
+ExecutionActivityKind = Literal["stage", "node"]
+ExecutionProgressStatus = Literal["running", "completed", "error", "stopped"]
 
-    ``state`` in pending|active|done|stopped; ``tone`` in
-    neutral|success|error; ``canvas_event`` fires as the step activates.
+
+@dataclass
+class ExecutionActivity:
+    """One observable action that has started during a Builder operation.
+
+    Planned future work is intentionally absent. Node activities use
+    ``parent_id`` to sit under the stage that owns the workflow run.
     """
 
     id: str
     label: str
-    state: str
-    tone: str = "neutral"
-    canvas_event: str | None = None
+    state: ExecutionActivityState
+    kind: ExecutionActivityKind = "stage"
+    parent_id: str | None = None
 
 
 @dataclass
-class Trace:
-    """The streamable trace nested in an ``assistant_turn`` (spec §4.2).
+class ExecutionProgress:
+    """A snapshot containing only execution activities observed so far."""
 
-    ``status`` in running|completed|error|stopped.
-    """
-
-    status: str
-    steps: list[TraceStep] = field(default_factory=list)
+    status: ExecutionProgressStatus
+    activities: list[ExecutionActivity] = field(default_factory=list)
 
 
 @dataclass
@@ -441,7 +477,8 @@ class AssistantTurnItem(_Card):
 
     turn_id: str
     stage_id: str
-    trace: Trace
+    execution: ExecutionProgress
+    reasoning_text: str | None = None
     reply_text: str | None = None
     cards: list[str] = field(default_factory=list)
     card_state: str | None = None
@@ -682,14 +719,23 @@ class _SseEventData:
 
 
 @dataclass
-class SnapshotEventData(SessionView, _SseEventData):
-    sse_event: ClassVar[str] = "snapshot"
+class CommandStartedEventData(SessionView, _SseEventData):
+    """Bounded command/reconnect handshake; never contains conversation history."""
+
+    sse_event: ClassVar[str] = "command_started"
+
+    kind: Literal["command_started"] = "command_started"
 
 
 @dataclass
 class NodeEventData(_SseEventData):
     sse_event: ClassVar[str] = "node"
 
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
     node_id: str
     title: str
     status: str
@@ -707,6 +753,11 @@ class CanvasEdge:
 class CanvasEventData(_SseEventData):
     sse_event: ClassVar[str] = "canvas"
 
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
     event: CanvasEvent
     kind: Literal["canvas"] = "canvas"
     node_id: str | None = None
@@ -726,12 +777,57 @@ class AgentMessageEventData(_SseEventData):
     sse_event: ClassVar[str] = "agent_message"
 
     session_id: str
+    operation_id: str
     id: str
     answer: str
     seq: int
     at_version: int
+    revision: int
     stage_id: str
     kind: Literal["agent_message"] = "agent_message"
+
+
+@dataclass
+class ReasoningEventData(_SseEventData):
+    """One model-provided reasoning delta for the current operation.
+
+    Reasoning is independent from curated execution progress. ``span_id``
+    identifies the cognitive call within an operation so clients can preserve
+    stable rendering while deltas arrive.
+    """
+
+    sse_event: ClassVar[str] = "reasoning"
+
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
+    span_id: str
+    delta: str
+    kind: Literal["reasoning"] = "reasoning"
+
+
+@dataclass
+class ProgressEventData(_SseEventData):
+    """A replaceable execution snapshot for an in-flight operation.
+
+    ``revision`` is monotonic within ``operation_id``. ``at_version`` points
+    at the next durable transition that supersedes this snapshot, allowing a
+    client to discard delayed progress after it has already applied a commit.
+    The payload contains observable actions only. Model-provided reasoning is
+    delivered separately through ``ReasoningEventData``.
+    """
+
+    sse_event: ClassVar[str] = "progress"
+
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
+    execution: ExecutionProgress
+    kind: Literal["progress"] = "progress"
 
 
 @dataclass
@@ -741,6 +837,9 @@ class CommitEventData(_SseEventData):
     sse_event: ClassVar[str] = "commit"
 
     session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
     version: int
     state: str
     settled: bool

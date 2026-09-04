@@ -44,8 +44,13 @@ def test_in_memory_invalidate_flips_assistant_turns_from_seq():
     from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
 
     repo = InMemoryRepository()
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+    )
     items = [
         ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "t0"}),
         ConversationItem(seq=1, kind="decision", payload={"text": "x"}),
@@ -57,8 +62,8 @@ def test_in_memory_invalidate_flips_assistant_turns_from_seq():
     repo.invalidate_conversation_items(s.id, from_seq=2)
 
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
-    assert "card_state" not in by_seq[0].payload          # before boundary: untouched
-    assert by_seq[1].payload.get("card_state") is None      # non-assistant_turn: untouched
+    assert "card_state" not in by_seq[0].payload  # before boundary: untouched
+    assert by_seq[1].payload.get("card_state") is None  # non-assistant_turn: untouched
     assert by_seq[2].payload["card_state"] == "invalidated"  # >= boundary, assistant_turn
     assert by_seq[3].payload["card_state"] == "invalidated"
 
@@ -81,8 +86,14 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates():
     # seed a session at await_decision with a minted checkpoint (pre-fix snapshot)
     # and an approval assistant_turn at seq 1 (checkpoint_seq boundary = 1).
     from core.dify_builder.models import Checkpoint, Snapshot
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.FIX, current_state=PcState.FIX_AWAIT_DECISION)
+
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_DECISION,
+    )
     fc = DifyBuilderContext(checkpoint_seq=1)
     items = [
         ConversationItem(seq=0, kind="run_context", payload={}),
@@ -123,15 +134,25 @@ def test_perform_revert_without_checkpoint_is_graceful_noop():
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "keep"}]}
     events: list[dict] = []
-    env = Env(dify=dify, agent=PlaceholderAgent(), repo=InMemoryRepository(),
-              now=lambda: datetime.min, emit_canvas=events.append)
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.FIX, current_state=PcState.FIX_AWAIT_DECISION)
+    env = Env(
+        dify=dify,
+        agent=PlaceholderAgent(),
+        repo=InMemoryRepository(),
+        now=lambda: datetime.min,
+        emit_canvas=events.append,
+    )
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_DECISION,
+    )
     fc = DifyBuilderContext()  # no checkpoint_id
 
     perform_revert(env, Turn(action=None, actor=_actor()), s, fc)
 
-    assert {"event": "revert_checkpoint"} in events   # signal still fires
+    assert {"event": "revert_checkpoint"} in events  # signal still fires
     assert dify.read_graph("app", _actor())[0] == {"nodes": [{"id": "keep"}]}  # no restore
 
 
@@ -159,8 +180,13 @@ def test_build_review_undo_restores_pre_build_graph():
     events: list[dict] = []
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
 
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+    )
     fc = DifyBuilderContext(checkpoint_seq=0, built_node_ids=["start", "llm", "end"])
     repo.create_session(s, fc, [ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "approve"})])
     cp = Checkpoint(session_id=s.id, state=PcState.BUILD_PLAN_APPROVAL)
@@ -206,8 +232,13 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
     events: list[dict] = []
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
 
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_APPLY_CHANGES)
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_APPLY_CHANGES,
+    )
     fc = DifyBuilderContext(checkpoint_seq=0, edit_target_node_ids=["llm"])
     repo.create_session(s, fc, [ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "approve"})])
     pre_edit = {"nodes": [{"id": "llm", "data": {}}], "edges": []}
@@ -238,14 +269,19 @@ def test_runner_stop_sets_paused_same_state_and_bumps_version():
 
     repo = InMemoryRepository()
     env = Env(dify=FakeDifyPort(), agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min)
-    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    s = Session(
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="a",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+    )
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
     runner = Runner(env, {})  # empty registry: stop must not need a handler
 
     out = runner.advance(s.id, Turn(action=Action(kind="stop", base_version=1), actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW  # unchanged
-    assert out.version == 2                            # committed
+    assert out.version == 2  # committed
     _s, fc = repo.get_session(s.id)
     assert fc.paused is True
 
@@ -261,6 +297,6 @@ def test_run_status_paused_when_flag_set():
     from services.dify_builder.service import _run_status
 
     assert _run_status(PcState.BUILD_REVIEW, paused=True) == RunStatus.PAUSED
-    assert _run_status(PcState.BUILD_REVIEW, paused=False) == RunStatus.WAITING_INPUT
+    assert _run_status(PcState.BUILD_REVIEW, paused=False) == RunStatus.WAITING_CONFIRMATION
     # paused never overrides terminal/failed
     assert _run_status(PcState.BUILD_COMPLETE, paused=True) == RunStatus.COMPLETE

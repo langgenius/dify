@@ -21,11 +21,14 @@ exception.
 """
 
 import dataclasses
+from collections.abc import Iterable, Iterator
+from itertools import islice
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
     Checkpoint,
@@ -53,6 +56,99 @@ from models.dify_builder import (
 from services.dify_builder.serde import context_from_dict, context_to_dict
 
 __all__ = ["SqlDifyBuilderRepository"]
+
+_STANDALONE_CONVERSATION_KINDS = frozenset({"user", "decision", "notice"})
+
+
+def _attached_card_kinds(item: ConversationItem) -> list[str]:
+    cards = item.payload.get("cards") if item.kind == "assistant_turn" else None
+    if not isinstance(cards, list) or not all(isinstance(kind, str) for kind in cards):
+        return []
+    return cards
+
+
+def _conversation_groups_forward(items: Iterable[ConversationItem]) -> Iterator[list[ConversationItem]]:
+    """Match the frontend's card-suffix grouping while reading oldest first."""
+    pending: list[ConversationItem] = []
+    for item in items:
+        if item.kind == "assistant_turn":
+            attached_kinds = _attached_card_kinds(item)
+            offset = len(pending) - len(attached_kinds)
+            matches = (
+                bool(attached_kinds)
+                and offset >= 0
+                and all(pending[offset + index].kind == kind for index, kind in enumerate(attached_kinds))
+            )
+            if matches:
+                for pending_item in pending[:offset]:
+                    yield [pending_item]
+                yield [*pending[offset:], item]
+            else:
+                for pending_item in pending:
+                    yield [pending_item]
+                yield [item]
+            pending = []
+            continue
+
+        if item.kind in _STANDALONE_CONVERSATION_KINDS:
+            for pending_item in pending:
+                yield [pending_item]
+            pending = []
+            yield [item]
+            continue
+
+        pending.append(item)
+
+    for pending_item in pending:
+        yield [pending_item]
+
+
+def _conversation_groups_backward(items: Iterator[ConversationItem]) -> Iterator[list[ConversationItem]]:
+    """Read newest first without splitting cards from their assistant turn."""
+    pushback: list[ConversationItem] = []
+
+    def next_item() -> ConversationItem:
+        if pushback:
+            return pushback.pop()
+        return next(items)
+
+    while True:
+        try:
+            item = next_item()
+        except StopIteration:
+            return
+
+        if item.kind != "assistant_turn":
+            yield [item]
+            continue
+
+        attached_kinds = _attached_card_kinds(item)
+        if not attached_kinds:
+            yield [item]
+            continue
+
+        candidates: list[ConversationItem] = []
+        matches = True
+        for expected_kind in reversed(attached_kinds):
+            try:
+                candidate = next_item()
+            except StopIteration:
+                matches = False
+                break
+            candidates.append(candidate)
+            if candidate.kind != expected_kind:
+                matches = False
+                break
+
+        if matches:
+            yield [*reversed(candidates), item]
+            continue
+
+        # A malformed/mismatched suffix makes the assistant turn standalone in
+        # the forward grouping contract. Replay every inspected row on the next
+        # iteration so none disappears from history.
+        pushback.extend(reversed(candidates))
+        yield [item]
 
 
 class SqlDifyBuilderRepository:
@@ -88,6 +184,8 @@ class SqlDifyBuilderRepository:
             session.id = self._add(db_session, row, session.id)
             session.version = 1
 
+            for item in items:
+                item.at_version = 1
             db_session.add_all(self._to_conversation_row(row.id, item) for item in items)
 
             # Mutate next_seq before serializing the commit's context so the
@@ -257,6 +355,102 @@ class SqlDifyBuilderRepository:
             )
             rows = db_session.execute(stmt).scalars().all()
             return [self._to_domain_conversation_item(row) for row in rows]
+
+    def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]:
+        """Return a bounded conversation tail in chronological order."""
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        with self._session_factory() as db_session, db_session.begin():
+            stmt = (
+                select(DifyBuilderConversationItem)
+                .where(DifyBuilderConversationItem.session_id == session_id)
+                .order_by(DifyBuilderConversationItem.seq.desc())
+                .limit(limit)
+            )
+            rows = list(db_session.scalars(stmt))
+            rows.reverse()
+            return [self._to_domain_conversation_item(row) for row in rows]
+
+    def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]:
+        """Find the durable halves of one chat turn without loading history."""
+        if not turn_id:
+            return frozenset()
+        with self._session_factory() as db_session, db_session.begin():
+            stmt = (
+                select(DifyBuilderConversationItem.kind)
+                .where(
+                    DifyBuilderConversationItem.session_id == session_id,
+                    DifyBuilderConversationItem.kind.in_(("user", "assistant_turn")),
+                    DifyBuilderConversationItem.payload["turn_id"].as_string() == turn_id,
+                )
+                .distinct()
+                .limit(2)
+            )
+            return frozenset(db_session.scalars(stmt))
+
+    def list_conversation_page(
+        self,
+        session_id: str,
+        *,
+        limit: int,
+        before_seq: int | None = None,
+        after_seq: int | None = None,
+    ) -> ConversationPage:
+        """Read a bounded page without cutting an assistant turn's card bundle.
+
+        The default and ``before_seq`` paths walk newest-first and return the
+        selected groups in display order. ``after_seq`` walks oldest-first for
+        SSE gap repair. Cursors are expected to point at group boundaries; all
+        cursors returned by this method have that property.
+        """
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        if before_seq is not None and after_seq is not None:
+            raise ValueError("before_seq and after_seq are mutually exclusive")
+
+        descending = after_seq is None
+        with self._session_factory() as db_session, db_session.begin():
+            stmt = select(DifyBuilderConversationItem).where(DifyBuilderConversationItem.session_id == session_id)
+            if before_seq is not None:
+                stmt = stmt.where(DifyBuilderConversationItem.seq < before_seq)
+            if after_seq is not None:
+                stmt = stmt.where(DifyBuilderConversationItem.seq > after_seq)
+            stmt = stmt.order_by(
+                DifyBuilderConversationItem.seq.desc() if descending else DifyBuilderConversationItem.seq.asc()
+            ).execution_options(yield_per=max(100, limit * 4))
+
+            rows = db_session.scalars(stmt)
+            items = (self._to_domain_conversation_item(row) for row in rows)
+            groups = _conversation_groups_backward(iter(items)) if descending else _conversation_groups_forward(items)
+            selected = list(islice(groups, limit + 1))
+
+        has_more = len(selected) > limit
+        selected = selected[:limit]
+        if descending:
+            selected.reverse()
+        page_items = [item for group in selected for item in group]
+        return ConversationPage(
+            data=page_items,
+            has_more=has_more,
+            first_seq=page_items[0].seq if page_items else None,
+            last_seq=page_items[-1].seq if page_items else None,
+        )
+
+    def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None:
+        if not kinds:
+            return None
+        with self._session_factory() as db_session, db_session.begin():
+            stmt = (
+                select(DifyBuilderConversationItem)
+                .where(
+                    DifyBuilderConversationItem.session_id == session_id,
+                    DifyBuilderConversationItem.kind.in_(kinds),
+                )
+                .order_by(DifyBuilderConversationItem.seq.desc())
+                .limit(1)
+            )
+            row = db_session.scalars(stmt).first()
+            return self._to_domain_conversation_item(row) if row is not None else None
 
     def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
         """Flip card_state='invalidated' on assistant_turn items at/after

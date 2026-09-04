@@ -36,7 +36,7 @@ from models.base import Base
 from services.dify_builder import session_lock
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, StubAgent
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -93,6 +93,7 @@ def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderServi
     monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
     monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
     monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
 
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(task_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
@@ -187,10 +188,10 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo
     assert reacquired is not None, "release must actually free the lock"
 
 
-# ---- Test 3: terminal state frame carries the full SessionView -------------
+# ---- Test 3: terminal state frame stays bounded ----------------------------
 
 
-def test_terminal_state_frame_carries_full_session_view(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
+def test_terminal_state_frame_excludes_conversation_history(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
     repo.save_run(
         "00000000-0000-0000-0000-000000000000",
         Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
@@ -206,7 +207,8 @@ def test_terminal_state_frame_carries_full_session_view(monkeypatch, repo: SqlDi
     state_frames = [ev for _sid, ev in events if ev.get("kind") == "state"]
     assert len(state_frames) >= 1
     terminal = state_frames[-1]
-    assert "conversation" in terminal  # full view, not the trimmed subset
+    assert "conversation" not in terminal
+    assert terminal["conversation_last_seq"] >= 0
     assert "version" in terminal
     assert "actions" in terminal
     assert "session_id" in terminal  # a SessionView-only field, proves it's the whole view
