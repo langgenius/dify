@@ -1195,8 +1195,13 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         params,
         candidateGrants,
       );
-      params.push("sync");
-      const kindPlaceholder = p(database, params.length);
+      params.push("sync", "crawl-import", "online-document-import", "online-drive-import");
+      const syncKindPlaceholder = p(database, params.length - 3);
+      const importKindPlaceholders = [
+        p(database, params.length - 2),
+        p(database, params.length - 1),
+        p(database, params.length),
+      ].join(", ");
       const placeholders = ids
         .map((id) => {
           params.push(id);
@@ -1209,7 +1214,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         maxRows: ids.length,
         operation: "select",
         params,
-        sql: `SELECT * FROM (SELECT ${q(database, runTable)}.*, ROW_NUMBER() OVER (PARTITION BY ${q(database, "source_id")} ORDER BY CASE WHEN ${q(database, "active_slot")} = 1 THEN 1 ELSE 0 END DESC, ${q(database, "created_at")} DESC, ${q(database, "updated_at")} DESC, ${q(database, "id")} DESC) AS ${q(database, rankColumn)} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopePredicate} AND ${q(database, "kind")} = ${kindPlaceholder} AND ${q(database, "source_id")} IN (${placeholders})) ${q(database, rankedRuns)} WHERE ${q(database, rankColumn)} = 1;`,
+        sql: `SELECT * FROM (SELECT ${q(database, runTable)}.*, ROW_NUMBER() OVER (PARTITION BY ${q(database, "source_id")} ORDER BY CASE WHEN ${q(database, "active_slot")} = 1 THEN 1 ELSE 0 END DESC, ${q(database, "created_at")} DESC, ${q(database, "updated_at")} DESC, ${q(database, "id")} DESC) AS ${q(database, rankColumn)} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopePredicate} AND (${q(database, "kind")} = ${syncKindPlaceholder} OR (${q(database, "kind")} IN (${importKindPlaceholders}) AND ${q(database, "active_slot")} = 1)) AND ${q(database, "source_id")} IN (${placeholders})) ${q(database, rankedRuns)} WHERE ${q(database, rankColumn)} = 1;`,
         tableName: runTable,
       });
       return result.rows.map(mapRun);

@@ -1996,13 +1996,25 @@ describe("database source-product workflow repository edge coverage", () => {
     expect(calls[0]).toMatchObject({
       maxRows: 2,
       operation: "select",
-      params: [tenantId, knowledgeSpaceId, '["team:reader"]', "sync", sourceId, "source-b"],
+      params: [
+        tenantId,
+        knowledgeSpaceId,
+        '["team:reader"]',
+        "sync",
+        "crawl-import",
+        "online-document-import",
+        "online-drive-import",
+        sourceId,
+        "source-b",
+      ],
       tableName: "source_workflow_runs",
     });
     expect(calls[0]?.sql).toContain("ROW_NUMBER() OVER");
     expect(calls[0]?.sql).toContain('CASE WHEN "active_slot" = 1 THEN 1 ELSE 0 END DESC');
     expect(calls[0]?.sql).toContain('"source_run_rank" = 1');
-    expect(calls[0]?.sql).toContain('"source_id" IN ($5, $6)');
+    expect(calls[0]?.sql).toContain('"source_id" IN ($8, $9)');
+    expect(calls[0]?.sql).toContain('"kind" IN ($5, $6, $7)');
+    expect(calls[0]?.sql).toContain('"active_slot" = 1');
     expect(calls[0]?.sql).toContain('"required_permission_scope"');
     expect(calls[0]?.sql).toContain('"capability_grants"');
     await expect(
@@ -2040,6 +2052,9 @@ describe("database source-product workflow repository edge coverage", () => {
       '["team:reader"]',
       '["team:reader"]',
       "sync",
+      "crawl-import",
+      "online-document-import",
+      "online-drive-import",
       sourceId,
     ]);
     const call = calls[0];

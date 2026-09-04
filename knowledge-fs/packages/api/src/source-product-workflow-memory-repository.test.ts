@@ -1226,6 +1226,16 @@ describe("in-memory source product workflow repository", () => {
     });
     await repository.start(runRecord("active-sync"));
     await repository.start(
+      runRecord("active-import", {
+        kind: "crawl-import",
+        sourceId: "source-import",
+      }),
+    );
+    await terminalRun(repository, "completed-import", "completed", {
+      kind: "online-document-import",
+      sourceId: "source-completed-import",
+    });
+    await repository.start(
       runRecord("other-source", {
         sourceId: "source-other",
       }),
@@ -1256,6 +1266,8 @@ describe("in-memory source product workflow repository", () => {
         sourceIds: [
           "source-memory",
           "source-other",
+          "source-import",
+          "source-completed-import",
           "source-private",
           "source-capability-private",
           "source-memory",
@@ -1264,6 +1276,7 @@ describe("in-memory source product workflow repository", () => {
       }),
     ).resolves.toEqual([
       expect.objectContaining({ id: "active-sync", sourceId: "source-memory" }),
+      expect.objectContaining({ id: "active-import", sourceId: "source-import" }),
       expect.objectContaining({ id: "other-source", sourceId: "source-other" }),
     ]);
     await expect(

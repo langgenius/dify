@@ -694,7 +694,13 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
           run.tenantId !== tenantId ||
           run.knowledgeSpaceId !== knowledgeSpaceId ||
           !runPermissionScopeAllows(run, candidateGrants) ||
-          run.kind !== "sync" ||
+          (run.kind !== "sync" &&
+            !(
+              run.activeSlot === 1 &&
+              (run.kind === "crawl-import" ||
+                run.kind === "online-document-import" ||
+                run.kind === "online-drive-import")
+            )) ||
           !run.sourceId ||
           !requestedSourceIds.has(run.sourceId)
         ) {
