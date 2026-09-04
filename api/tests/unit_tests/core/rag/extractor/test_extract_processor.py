@@ -9,28 +9,23 @@ import core.rag.extractor.extract_processor as processor_module
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
-from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _upload_file(*, key: str, file_id: str = "upload-file-1") -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id=file_id,
         key=key,
         name=Path(key).name,
         size=1,
         extension=Path(key).suffix.lstrip("."),
         mime_type="application/octet-stream",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime(2025, 1, 1),
         used=True,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 class _ExtractorFactory:

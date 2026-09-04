@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, Message, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
-from models.account import Tenant
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import AppMode
 from services import workflow_run_service as service_module
 from services.workflow_run_service import WorkflowRunService
+from tests.unit_tests.model_factories import make_account, make_end_user, make_message, make_tenant
 
 
 @pytest.fixture
@@ -42,20 +42,15 @@ def _app_model(*, app_id: str = "app-1", tenant_id: str = "tenant-1") -> App:
 
 
 def _account(*, account_id: str = "account-1", current_tenant_id: str | None = "tenant-1") -> Account:
-    account = Account(name="Workflow User", email=f"{account_id}@example.com")
-    account.id = account_id
-    if current_tenant_id is not None:
-        tenant = Tenant(name="Workflow Tenant")
-        tenant.id = current_tenant_id
-        account._current_tenant = tenant
-    return account
+    tenant = make_tenant(tenant_id=current_tenant_id, name="Workflow Tenant") if current_tenant_id else None
+    return make_account(account_id=account_id, name="Workflow User", email=f"{account_id}@example.com", tenant=tenant)
 
 
 def _end_user(*, end_user_id: str = "end-user-1", tenant_id: str = "tenant-1") -> EndUser:
-    return EndUser(
-        id=end_user_id,
+    return make_end_user(
+        end_user_id=end_user_id,
         tenant_id=tenant_id,
-        type=EndUserType.SERVICE_API,
+        end_user_type=EndUserType.SERVICE_API,
         session_id=f"session-{end_user_id}",
     )
 
@@ -80,9 +75,10 @@ def _workflow_run(
 
 
 def _message(*, message_id: str, workflow_run_id: str, conversation_id: str) -> Message:
-    message = Message(
-        app_id="app-1",
+    return make_message(
+        message_id=message_id,
         conversation_id=conversation_id,
+        inputs={},
         query="query",
         message={"role": "user", "content": "query"},
         answer="answer",
@@ -90,11 +86,8 @@ def _message(*, message_id: str, workflow_run_id: str, conversation_id: str) -> 
         answer_unit_price=Decimal("0.0001"),
         currency="USD",
         from_source=ConversationFromSource.API,
+        workflow_run_id=workflow_run_id,
     )
-    message.id = message_id
-    message._inputs = {}
-    message.workflow_run_id = workflow_run_id
-    return message
 
 
 class TestWorkflowRunServiceInitialization:

@@ -12,12 +12,11 @@ from werkzeug.exceptions import BadRequest
 from controllers.console.app import statistic as statistic_module
 from models.account import Account
 from models.model import App
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Statistics Tester", email="statistics-tester@example.com", timezone="UTC")
-    account.id = "account-1"
-    return account
+    return make_account(name="Statistics Tester", email="statistics-tester@example.com", timezone="UTC")
 
 
 def _app_model() -> App:

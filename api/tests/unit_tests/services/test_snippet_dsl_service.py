@@ -7,9 +7,9 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from graphon.nodes import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.snippet_dsl_service import (
     ImportMode,
     ImportStatus,
@@ -17,6 +17,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -32,12 +33,12 @@ def service(sqlite_session: Session) -> SnippetDslService:
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="Snippet author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="Snippet workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Snippet author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Snippet workspace"),
+    )
 
 
 def _snippet(
@@ -63,16 +64,7 @@ def _snippet(
 
 
 def _workflow(*, graph: dict | None = None) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", graph=graph)
 
 
 @pytest.mark.parametrize(

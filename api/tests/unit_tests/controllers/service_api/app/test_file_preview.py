@@ -21,11 +21,11 @@ from sqlalchemy.orm import Session
 
 from controllers.service_api.app.error import FileAccessDeniedError, FileNotFoundError
 from controllers.service_api.app.file_preview import FilePreviewApi
-from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message, MessageFile, UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 class _FilePreviewLogRecord(Protocol):
@@ -68,22 +68,18 @@ def file_preview_api() -> FilePreviewApi:
 
 
 def _upload_file(*, tenant_id: str, file_id: str | None = None) -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id=tenant_id,
-        storage_type=StorageType.LOCAL,
         key="storage/key/test_file.jpg",
         name="test_file.jpg",
         size=1024,
         extension="jpg",
         mime_type="image/jpeg",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid4()),
         created_at=datetime(2026, 1, 1),
         used=True,
     )
-    if file_id is not None:
-        upload_file.id = file_id
-    return upload_file
 
 
 def _persist_preview_records(

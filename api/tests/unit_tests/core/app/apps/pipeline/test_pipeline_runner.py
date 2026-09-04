@@ -26,9 +26,10 @@ from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.graph_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
-from models.enums import DataSourceType, DocumentCreatedFrom, EndUserType
+from models.enums import DocumentCreatedFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -39,10 +40,9 @@ def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeli
 
 
 def _dataset(*, tenant_id: str = "tenant", dataset_id: str = "ds", pipeline_id: str = "pipe") -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
-        name="Dataset",
         description="",
         created_by="user",
         pipeline_id=pipeline_id,
@@ -50,40 +50,26 @@ def _dataset(*, tenant_id: str = "tenant", dataset_id: str = "ds", pipeline_id: 
 
 
 def _workflow(*, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: dict | None = None) -> Workflow:
-    return Workflow.new(
+    return make_workflow(
         tenant_id=tenant_id,
         app_id=pipeline_id,
-        type=WorkflowType.RAG_PIPELINE.value,
+        workflow_type=WorkflowType.RAG_PIPELINE,
         version="v1",
-        graph=json.dumps(graph if graph is not None else {"nodes": [], "edges": []}),
-        features="{}",
+        graph=graph,
         created_by="user",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="user",
-        tenant_id="tenant",
-        app_id="pipe",
-        type=EndUserType.BROWSER,
-        name="User",
-        session_id="sess",
-    )
+    return make_end_user(end_user_id="user", tenant_id="tenant", app_id="pipe", name="User", session_id="sess")
 
 
 def _document(*, document_id: str = "doc", dataset_id: str = "ds", tenant_id: str = "tenant") -> Document:
-    return Document(
-        id=document_id,
+    return make_document(
+        document_id=document_id,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
         batch="batch",
-        name="Document",
         created_from=DocumentCreatedFrom.API,
         created_by="user",
     )

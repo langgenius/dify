@@ -28,6 +28,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import PipelineT
 from services.errors.account import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account
 
 
 def _template_item() -> dict[str, object]:
@@ -62,9 +63,7 @@ def _payload() -> dict[str, object]:
 
 
 def _account() -> Account:
-    account = Account(name="Test User", email="test@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="Test User", email="test@example.com")
 
 
 def _pipeline() -> Pipeline:

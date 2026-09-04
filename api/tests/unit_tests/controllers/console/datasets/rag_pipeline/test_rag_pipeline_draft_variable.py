@@ -30,6 +30,7 @@ from graphon.variables import IntegerVariable, StringVariable
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
+from tests.unit_tests.model_factories import make_workflow
 
 
 @pytest.fixture
@@ -46,17 +47,12 @@ def _pipeline(*, pipeline_id: str = "p1", tenant_id: str = "t1") -> Pipeline:
 
 
 def _workflow(pipeline: Pipeline, environment_variables=()) -> Workflow:
-    return Workflow.new(
+    return make_workflow(
         tenant_id=pipeline.tenant_id,
         app_id=pipeline.id,
-        type=WorkflowType.RAG_PIPELINE,
-        version=Workflow.VERSION_DRAFT,
+        workflow_type=WorkflowType.RAG_PIPELINE,
         graph="{}",
-        features="{}",
-        created_by="account-1",
         environment_variables=environment_variables,
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 

@@ -8,12 +8,11 @@ from controllers.console.workspace.agent_providers import (
     AgentProviderListApi,
 )
 from models.account import Account
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Agent Provider Tester", email="agent-provider@example.com")
-    account.id = "user1"
-    return account
+    return make_account(account_id="user1", name="Agent Provider Tester", email="agent-provider@example.com")
 
 
 class TestAgentProviderListApi:

@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
@@ -23,15 +22,11 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, 
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        graph=json.dumps(graph),
-    )
+    return make_workflow(workflow_id="workflow-1", graph=graph)
 
 
 def _binding(node_job: WorkflowNodeJobConfig) -> WorkflowAgentNodeBinding:

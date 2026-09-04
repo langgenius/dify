@@ -15,11 +15,11 @@ from controllers.web.error import (
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _workflow_app() -> App:
@@ -31,12 +31,7 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 # ---------------------------------------------------------------------------

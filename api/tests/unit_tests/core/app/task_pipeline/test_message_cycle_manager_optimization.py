@@ -20,7 +20,8 @@ from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
+from models.model import App, Conversation, MessageAnnotation, MessageFile
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 @dataclass(frozen=True)
@@ -46,29 +47,18 @@ def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
 
 
 def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Test App",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, icon_type=None, max_active_requests=0)
 
 
 def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        mode=AppMode.CHAT,
         name="",
         status="normal",
         from_source=ConversationFromSource.API,
         inputs={},
     )
-    conversation.id = conversation_id
-    return conversation
 
 
 def _message_file(

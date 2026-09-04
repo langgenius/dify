@@ -13,23 +13,12 @@ from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
     parameters_payload,
 )
 from controllers.service_api.app.error import AppUnavailableError
-from models.model import App, AppMode, IconType
+from models.model import App, AppMode
+from tests.unit_tests.model_factories import make_app
 
 
 def _app(*, mode: AppMode = AppMode.CHAT) -> App:
-    return App(
-        id="app1",
-        tenant_id="tenant-1",
-        name="X",
-        description="d",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=False,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id="app1", name="X", description="d", mode=mode, enable_site=False, max_active_requests=0)
 
 
 def test_parameters_payload_raises_app_unavailable_when_no_config(unbound_session: Session):

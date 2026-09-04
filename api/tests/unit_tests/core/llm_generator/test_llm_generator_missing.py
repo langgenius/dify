@@ -15,6 +15,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from models.dataset import Dataset
 from services.workflow_service import WorkflowService
+from tests.unit_tests.model_factories import make_dataset
 
 
 @pytest.fixture
@@ -45,8 +46,8 @@ def _model_manager() -> tuple[MagicMock, MagicMock]:
 
 
 def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
         name=name,
         created_by="account-id",

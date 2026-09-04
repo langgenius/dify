@@ -26,6 +26,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, Message, Me
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app
 
 
 class DummyConfig:
@@ -182,20 +183,7 @@ def encryption_functions(
 
 
 def _app(session: Session, *, app_id: str = "app-id", tracing: str | None = None) -> App:
-    app = App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="App",
-        description="description",
-        mode=AppMode.CHAT,
-        icon_type=None,
-        icon=None,
-        icon_background=None,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-        tracing=tracing,
-    )
+    app = make_app(app_id=app_id, name="App", description="description", icon_type=None, tracing=tracing)
     session.add(app)
     session.commit()
     return app

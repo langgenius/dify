@@ -37,6 +37,7 @@ from models.workflow import (
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
+from tests.unit_tests.model_factories import make_account
 
 
 def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
@@ -70,9 +71,7 @@ def _snippet(**overrides) -> CustomizedSnippet:
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Test User", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
 
 
 def test_create_snippet_allows_duplicate_names(
