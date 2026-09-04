@@ -48,7 +48,7 @@ const sessionConversation: ConversationItem[] = [
     payload: {
       turn_id: 'turn-1',
       stage_id: 'fix.plan',
-      trace: { status: 'completed' },
+      execution: { status: 'completed' },
       reply_text: 'I found the failing configuration.',
     },
   },
@@ -389,7 +389,7 @@ describe('DifyBuilderPanel', () => {
       actions: [],
       canvas_read_only: true,
       interrupted: true,
-      run_status: 'executing',
+      run_status: 'processing',
       state: 'build.publish',
     })
 
@@ -407,7 +407,7 @@ describe('DifyBuilderPanel', () => {
   it('shows durable recovery guidance and keeps a paused composer disabled', () => {
     renderPanel({
       ...sessionView,
-      actions: [{ id: 'resume', label: 'Resume', kind: 'primary' }],
+      actions: [],
       recovery: {
         can_continue: false,
         can_restart: true,
@@ -420,7 +420,7 @@ describe('DifyBuilderPanel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The draft changed while Builder was paused.',
     )
-    expect(screen.getByRole('button', { name: 'Resume' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
     ).toBeDisabled()

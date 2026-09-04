@@ -24,6 +24,9 @@ export type DifyBuilderStreamEventResponse =
       event: 'agent_message'
     } & DifyBuilderAgentMessageEventResponse)
   | ({
+      event: 'reasoning'
+    } & DifyBuilderReasoningEventResponse)
+  | ({
       event: 'progress'
     } & DifyBuilderProgressEventResponse)
   | ({
@@ -184,6 +187,11 @@ export type DifyBuilderAgentMessageEventResponse = {
   event: 'agent_message'
 }
 
+export type DifyBuilderReasoningEventResponse = {
+  data: ReasoningEventData
+  event: 'reasoning'
+}
+
 export type DifyBuilderProgressEventResponse = {
   data: ProgressEventData
   event: 'progress'
@@ -319,10 +327,9 @@ export type RecoveryRef = {
 
 export type RunStatus =
   | 'complete'
-  | 'executing'
   | 'failed'
   | 'paused'
-  | 'thinking'
+  | 'processing'
   | 'waiting_confirmation'
   | 'waiting_input'
 
@@ -511,14 +518,25 @@ export type AgentMessageEventData = {
   stage_id: string
 }
 
+export type ReasoningEventData = {
+  at_version: number
+  delta: string
+  kind?: 'reasoning'
+  operation_id: string
+  revision: number
+  session_id: string
+  span_id: string
+  stage_id: string
+}
+
 export type ProgressEventData = {
   at_version: number
+  execution: ExecutionProgress
   kind?: 'progress'
   operation_id: string
   revision: number
   session_id: string
   stage_id: string
-  trace: Trace
 }
 
 export type DifyBuilderCommitEventData = {
@@ -646,9 +664,10 @@ export type PreflightContextCard = {
 export type AssistantTurnItem = {
   card_state?: string | null
   cards?: Array<string>
+  execution: ExecutionProgress
+  reasoning_text?: string | null
   reply_text?: string | null
   stage_id: string
-  trace: Trace
   turn_id: string
 }
 
@@ -753,9 +772,9 @@ export type CanvasEvent =
   | 'start_retest'
   | 'start_test_run'
 
-export type Trace = {
-  status: string
-  steps?: Array<TraceStep>
+export type ExecutionProgress = {
+  activities?: Array<ExecutionActivity>
+  status: 'completed' | 'error' | 'running' | 'stopped'
 }
 
 export type PreflightIssue = {
@@ -811,12 +830,12 @@ export type SummaryRow = {
   value: string
 }
 
-export type TraceStep = {
-  canvas_event?: string | null
+export type ExecutionActivity = {
   id: string
+  kind?: 'node' | 'stage'
   label: string
-  state: string
-  tone?: string
+  parent_id?: string | null
+  state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
 export type PostDifyBuilderAgentPingData = {

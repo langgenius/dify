@@ -40,6 +40,7 @@ def respond(
     graph: Graph,
     text: str,
     on_delta: Callable[[str], None] | None = None,
+    on_reasoning: Callable[[str], None] | None = None,
 ) -> str:
     fallback = (
         f'I understand your note: "{text}". The Builder is currently at {state}. '
@@ -83,6 +84,7 @@ def respond(
             user=user,
             model_parameters=params,
             stop=stop,
+            on_reasoning=on_reasoning,
         ):
             chunks.append(delta)
             if on_delta is not None:

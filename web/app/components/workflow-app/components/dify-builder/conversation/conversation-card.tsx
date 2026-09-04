@@ -6,6 +6,7 @@ import type {
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DifyBuilderCardShell } from '../cards/card-shell'
+import { ExecutionProgress } from './execution-progress'
 import { FormCard } from './form-card'
 import { ResourceCard } from './resource-card'
 import { Thinking } from './thinking'
@@ -47,13 +48,15 @@ export const ConversationCard = memo(
     }
 
     if (item.kind === 'assistant_turn') {
-      if (!item.payload.reply_text)
-        return invalidated ? null : <Thinking trace={item.payload.trace} />
-      const hasTrace = (item.payload.trace.steps?.length ?? 0) > 0
+      const hasExecution = (item.payload.execution.activities?.length ?? 0) > 0
+      const hasReasoning = Boolean(item.payload.reasoning_text?.trim())
+      const hasReply = Boolean(item.payload.reply_text)
+      if (!hasExecution && !hasReasoning && !hasReply) return null
       return (
         <div className="flex flex-col gap-2">
-          {hasTrace ? <Thinking trace={item.payload.trace} /> : null}
-          <AssistantReply text={item.payload.reply_text} />
+          {hasExecution ? <ExecutionProgress execution={item.payload.execution} /> : null}
+          <Thinking text={item.payload.reasoning_text} />
+          {item.payload.reply_text ? <AssistantReply text={item.payload.reply_text} /> : null}
         </div>
       )
     }

@@ -138,16 +138,15 @@ export const zRecoveryRef = z.object({
  *
  * Widened run-status vocabulary (spec §2).
  *
- * ``thinking``/``executing`` => ``canvas_read_only = true`` (WORKING).
+ * ``processing`` => ``canvas_read_only = true`` (WORKING).
  * ``waiting_*``/``paused`` => editable (WAITING).
  * ``complete``/``failed`` => terminal.
  */
 export const zRunStatus = z.enum([
   'complete',
-  'executing',
   'failed',
   'paused',
-  'thinking',
+  'processing',
   'waiting_confirmation',
   'waiting_input',
 ])
@@ -232,6 +231,28 @@ export const zAgentMessageEventData = z.object({
 export const zDifyBuilderAgentMessageEventResponse = z.object({
   data: zAgentMessageEventData,
   event: z.literal('agent_message'),
+})
+
+/**
+ * ReasoningEventData
+ */
+export const zReasoningEventData = z.object({
+  at_version: z.int(),
+  delta: z.string(),
+  kind: z.literal('reasoning').optional().default('reasoning'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+  span_id: z.string(),
+  stage_id: z.string(),
+})
+
+/**
+ * DifyBuilderReasoningEventResponse
+ */
+export const zDifyBuilderReasoningEventResponse = z.object({
+  data: zReasoningEventData,
+  event: z.literal('reasoning'),
 })
 
 /**
@@ -713,22 +734,22 @@ export const zDifyBuilderSummaryConversationItemResponse = z.object({
 })
 
 /**
- * TraceStep
+ * ExecutionActivity
  */
-export const zTraceStep = z.object({
-  canvas_event: z.string().nullish(),
+export const zExecutionActivity = z.object({
   id: z.string(),
+  kind: z.enum(['node', 'stage']).optional().default('stage'),
   label: z.string(),
-  state: z.string(),
-  tone: z.string().optional().default('neutral'),
+  parent_id: z.string().nullish(),
+  state: z.enum(['active', 'done', 'failed', 'stopped']),
 })
 
 /**
- * Trace
+ * ExecutionProgress
  */
-export const zTrace = z.object({
-  status: z.string(),
-  steps: z.array(zTraceStep).optional(),
+export const zExecutionProgress = z.object({
+  activities: z.array(zExecutionActivity).optional(),
+  status: z.enum(['completed', 'error', 'running', 'stopped']),
 })
 
 /**
@@ -736,12 +757,12 @@ export const zTrace = z.object({
  */
 export const zProgressEventData = z.object({
   at_version: z.int(),
+  execution: zExecutionProgress,
   kind: z.literal('progress').optional().default('progress'),
   operation_id: z.string(),
   revision: z.int(),
   session_id: z.string(),
   stage_id: z.string(),
-  trace: zTrace,
 })
 
 /**
@@ -758,9 +779,10 @@ export const zDifyBuilderProgressEventResponse = z.object({
 export const zAssistantTurnItem = z.object({
   card_state: z.string().nullish(),
   cards: z.array(z.string()).optional(),
+  execution: zExecutionProgress,
+  reasoning_text: z.string().nullish(),
   reply_text: z.string().nullish(),
   stage_id: z.string(),
-  trace: zTrace,
   turn_id: z.string(),
 })
 
@@ -1108,6 +1130,7 @@ export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
   zDifyBuilderNodeEventResponse.extend({ event: z.literal('node') }),
   zDifyBuilderCanvasEventResponse.extend({ event: z.literal('canvas') }),
   zDifyBuilderAgentMessageEventResponse.extend({ event: z.literal('agent_message') }),
+  zDifyBuilderReasoningEventResponse.extend({ event: z.literal('reasoning') }),
   zDifyBuilderProgressEventResponse.extend({ event: z.literal('progress') }),
   zDifyBuilderCommitEventResponse.extend({ event: z.literal('commit') }),
   zDifyBuilderStateEventResponse.extend({ event: z.literal('state') }),

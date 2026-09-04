@@ -32,12 +32,12 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
     DecisionItem,
+    ExecutionProgress,
     FormCard,
     FormField,
     NoticeItem,
     SummaryCard,
     TestResultCard,
-    Trace,
 )
 from core.dify_builder.models import (
     ApplyResult,
@@ -47,6 +47,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     Graph,
+    NodeEvent,
     NodeOutput,
     Run,
     Session,
@@ -414,13 +415,13 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         if intents
         else "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
     )
-    trace = progress.finish()
+    execution = progress.finish()
     items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text=reply_text,
             cards=[],
         ),
@@ -504,7 +505,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             AssistantTurnItem(
                 turn_id=str(uuid.uuid4()),
                 stage_id=str(s.current_state),
-                trace=Trace(status="completed", steps=[]),
+                execution=ExecutionProgress(status="completed"),
                 reply_text="Provide test inputs (or use mock data) to run validation.",
                 cards=["form"],
             ),
@@ -568,8 +569,13 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         ti = env.repo.get_test_input(fc.test_input_ref)
         inputs = ti.inputs
 
-    emit = env.emit if env.emit is not None else (lambda _event: None)
     progress.activate("fix-run-validation")
+
+    def emit(event: NodeEvent) -> None:
+        progress.observe_node("fix-run-validation", event)
+        if env.emit is not None:
+            env.emit(event)
+
     result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
     if result.status == "succeeded":
         progress.complete("fix-run-validation")

@@ -141,7 +141,7 @@ def test_create_fix_session_dispatches_request_fix_and_holds_lock(
 
     assert view.state == "fix.diagnose"
     assert view.canvas_read_only is True
-    assert view.run_status == "executing"
+    assert view.run_status == "processing"
     assert view.app_id == APP_ID
     assert view.version == 1
 
@@ -440,7 +440,7 @@ def test_waiting_session_projects_executing_while_worker_lock_is_held(
     assert token is not None
 
     locked_view = service.get_session_view(session.id, _actor())
-    assert locked_view.run_status == "thinking"
+    assert locked_view.run_status == "processing"
     assert locked_view.canvas_read_only is True
 
     lock.release(session.id, token)
@@ -543,7 +543,7 @@ def test_paused_session_can_resume_before_classifying_external_draft_changes(
     assert view.run_status == "paused"
     assert view.app_revision is not None
     assert view.app_revision.conflicted is True
-    assert [action.id for action in view.actions] == ["resume"]
+    assert view.actions == []
 
     _view, expect_advance = service._prepare_action(
         session.id,
@@ -759,7 +759,6 @@ def test_get_session_view_actions_for_fix_await_decision(
         ("continue_adjusting", ActionKind.SECONDARY),
         ("view_changes", ActionKind.SECONDARY),
         ("revert", ActionKind.DESTRUCTIVE),
-        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -774,7 +773,6 @@ def test_get_session_view_actions_for_fix_await_verify(
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_validation", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
-        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -1265,7 +1263,6 @@ def test_build_execution_actions_and_run_status(service: DifyBuilderService, rep
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_test", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
-        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -1288,7 +1285,11 @@ def test_session_view_exposes_only_the_current_interactive_card(
         ConversationItem(
             seq=1,
             kind="assistant_turn",
-            payload={"cards": ["form"], "turn_id": "turn-1", "trace": {"status": "completed"}},
+            payload={
+                "cards": ["form"],
+                "turn_id": "turn-1",
+                "execution": {"status": "completed"},
+            },
         ),
         ConversationItem(seq=2, kind="notice", payload={"text": "A later chat turn"}),
     ]
@@ -1319,7 +1320,6 @@ def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderR
         "continue_adjusting",
         "view_changes",
         "revert",
-        "pause",
     ]
 
 
@@ -1427,7 +1427,6 @@ def test_edit_apply_changes_actions_and_run_status(service: DifyBuilderService, 
     assert [(a.id, a.kind) for a in view.actions] == [
         ("run_affected_tests", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
-        ("pause", ActionKind.SECONDARY),
     ]
 
 
@@ -1440,7 +1439,6 @@ def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRe
         "continue_adjusting",
         "view_changes",
         "revert",
-        "pause",
     ]
 
 
@@ -1513,7 +1511,7 @@ def test_get_session_view_run_status_paused(service: DifyBuilderService, repo: S
     view = service.get_session_view(s.id, _actor())
     assert view.run_status == "paused"
     assert view.canvas_read_only is False  # editable while paused
-    assert [action.id for action in view.actions] == ["resume"]
+    assert view.actions == []
 
 
 def test_recovery_ref_for():

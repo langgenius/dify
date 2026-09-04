@@ -1,7 +1,8 @@
 import type {
   CanvasEventData,
   ConversationItem,
-  DifyBuilderLiveProgress,
+  DifyBuilderExecutionProgress,
+  DifyBuilderReasoning,
   DifyBuilderStreamingTurn,
   SessionView,
 } from '../types'
@@ -17,7 +18,8 @@ export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
 export const difyBuilderSessionLastErrorAtom = atom('')
-export const difyBuilderLiveProgressAtom = atom<DifyBuilderLiveProgress | null>(null)
+export const difyBuilderExecutionProgressAtom = atom<DifyBuilderExecutionProgress | null>(null)
+export const difyBuilderReasoningAtom = atom<DifyBuilderReasoning | null>(null)
 export const difyBuilderStreamingTurnAtom = atom<DifyBuilderStreamingTurn | null>(null)
 export const difyBuilderSessionLastCanvasEventAtom = atom<{
   id: number
@@ -32,7 +34,8 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastErrorAtom,
-  difyBuilderLiveProgressAtom,
+  difyBuilderExecutionProgressAtom,
+  difyBuilderReasoningAtom,
   difyBuilderStreamingTurnAtom,
   difyBuilderSessionLastCanvasEventAtom,
 ] as const

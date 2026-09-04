@@ -28,7 +28,7 @@ def _event(frame: str) -> dict:
     return json.loads(lines[1].removeprefix("data: "))
 
 
-def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
+def test_stream_relays_canvas_execution_reasoning_and_agent_message_as_typed_events():
     view = {"session_id": "s1", "state": "build.execution", "phase": "modify", "actions": []}
     canvas = {
         "kind": "canvas",
@@ -50,6 +50,16 @@ def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
         "revision": 1,
         "stage_id": "build.execution",
     }
+    reasoning = {
+        "kind": "reasoning",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "stage_id": "build.execution",
+        "at_version": 2,
+        "revision": 2,
+        "span_id": "build-nodes",
+        "delta": "I need a start, LLM, and end node.",
+    }
     progress = {
         "kind": "progress",
         "session_id": "s1",
@@ -57,9 +67,9 @@ def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
         "stage_id": "build.execution",
         "at_version": 2,
         "revision": 1,
-        "trace": {
+        "execution": {
             "status": "running",
-            "steps": [
+            "activities": [
                 {
                     "id": "build-generate-graph",
                     "label": "Generate the workflow graph",
@@ -73,6 +83,7 @@ def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
         [
             json.dumps(canvas).encode(),
             json.dumps(progress).encode(),
+            json.dumps(reasoning).encode(),
             json.dumps(message).encode(),
             json.dumps(state).encode(),
         ]
@@ -84,6 +95,7 @@ def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
         {"event": "command_started", "data": {"kind": "command_started", **view}},
         {"event": "canvas", "data": canvas},
         {"event": "progress", "data": progress},
+        {"event": "reasoning", "data": reasoning},
         {"event": "agent_message", "data": message},
         {"event": "state", "data": state},
     ]

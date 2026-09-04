@@ -42,12 +42,12 @@ import {
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from './state'
-import { useDifyBuilderLiveProgress } from './use-live-progress'
+import { useDifyBuilderExecutionProgress } from './use-execution-progress'
+import { useDifyBuilderReasoningBuffer } from './use-reasoning-buffer'
 import { useDifyBuilderStreamingTurnBuffer } from './use-streaming-turn-buffer'
 
 const MAX_RECONCILE_ATTEMPTS = 3
-const isActiveRunStatus = (status: SessionView['run_status']) =>
-  status === 'thinking' || status === 'executing'
+const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
 const isActiveView = (view: SessionView) => isActiveRunStatus(view.run_status) && !view.interrupted
 
 /**
@@ -66,7 +66,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
   const setLastError = useSetAtom(difyBuilderSessionLastErrorAtom)
   const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
   const setIsBusy = useSetAtom(difyBuilderSessionBusyAtom)
-  const liveProgress = useDifyBuilderLiveProgress()
+  const executionProgress = useDifyBuilderExecutionProgress()
+  const reasoningBuffer = useDifyBuilderReasoningBuffer()
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
   const canvasEventIdRef = useRef(0)
@@ -184,11 +185,12 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         canvasCursorRef.current.at_version <= commit.version
       )
         canvasCursorRef.current = undefined
-      liveProgress.clearThroughVersion(commit.session_id, commit.version)
+      executionProgress.clearThroughVersion(commit.session_id, commit.version)
+      reasoningBuffer.clearThroughVersion(commit.session_id, commit.version)
       streamingTurnBuffer.clearThroughVersion(commit.session_id, commit.version)
       return hasConversationGap ? newSequences.at(-1) : undefined
     },
-    [liveProgress, setConversation, setView, store, streamingTurnBuffer],
+    [executionProgress, reasoningBuffer, setConversation, setView, store, streamingTurnBuffer],
   )
 
   const clearSession = useCallback(
@@ -197,11 +199,13 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setView((current) => (current?.session_id === sessionId ? null : current))
       setConversation([])
       setConversationHasMore(false)
-      liveProgress.clear()
+      executionProgress.clear()
+      reasoningBuffer.clear()
       streamingTurnBuffer.clear()
     },
     [
-      liveProgress,
+      executionProgress,
+      reasoningBuffer,
       setActiveSessionId,
       setConversation,
       setConversationHasMore,
@@ -231,7 +235,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
           const { kind: _kind, ...stateView } = event.data
           const stateApplied = applySessionView(stateView)
           if (stateApplied) {
-            liveProgress.clear()
+            executionProgress.clear()
+            reasoningBuffer.clear()
             streamingTurnBuffer.clear()
           }
           const historyApplied = await syncConversation(
@@ -271,13 +276,18 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         }
 
         if (event.event === 'node') {
-          liveProgress.enqueueNode(event.data)
+          return false
+        }
+
+        if (event.event === 'reasoning') {
+          outcome.sessionId = event.data.session_id
+          reasoningBuffer.enqueue(event.data)
           return false
         }
 
         if (event.event === 'progress') {
           outcome.sessionId = event.data.session_id
-          liveProgress.enqueue(event.data)
+          executionProgress.enqueue(event.data)
           return false
         }
 
@@ -310,7 +320,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
           outcome.terminalRunStatus = stateView.run_status
           const stateApplied = applySessionView(stateView)
           if (stateApplied) {
-            liveProgress.clear()
+            executionProgress.clear()
+            reasoningBuffer.clear()
             streamingTurnBuffer.clear()
           }
           const historyApplied = await syncConversation(
@@ -325,7 +336,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         if (event.event === 'error') {
           outcome.terminalEvent = 'error'
           outcome.terminalError = streamErrorMessage(event.data)
-          liveProgress.clear()
+          executionProgress.clear()
+          reasoningBuffer.clear()
           streamingTurnBuffer.clear()
           setLastError(outcome.terminalError)
           return true
@@ -349,7 +361,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     [
       applyCommit,
       applySessionView,
-      liveProgress,
+      executionProgress,
+      reasoningBuffer,
       setLastCanvasEvent,
       setLastError,
       store,
@@ -418,7 +431,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
           ? startingView.version
           : undefined
       abortRef.current?.abort()
-      liveProgress.clear()
+      executionProgress.clear()
+      reasoningBuffer.clear()
       streamingTurnBuffer.clear()
       const controller = new AbortController()
       abortRef.current = controller
@@ -464,7 +478,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         }
 
         if (outcome.transportError) {
-          liveProgress.clear()
+          executionProgress.clear()
+          reasoningBuffer.clear()
           streamingTurnBuffer.clear()
           setLastError(outcome.transportError)
           const reconciled = sessionId ? await reconcileSession(sessionId, controller) : undefined
@@ -489,7 +504,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         }
 
         if (expectTerminalEvent) {
-          liveProgress.clear()
+          executionProgress.clear()
+          reasoningBuffer.clear()
           streamingTurnBuffer.clear()
           setLastError(UNEXPECTED_EOF_ERROR)
           const reconciled = sessionId ? await reconcileSession(sessionId, controller) : undefined
@@ -508,7 +524,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         return true
       } catch (error) {
         if (controller.signal.aborted) return false
-        liveProgress.clear()
+        executionProgress.clear()
+        reasoningBuffer.clear()
         streamingTurnBuffer.clear()
         const message = requestErrorMessage(error)
         setLastError(message)
@@ -524,7 +541,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     },
     [
       consumeStream,
-      liveProgress,
+      executionProgress,
+      reasoningBuffer,
       reconcileSession,
       setActiveSessionId,
       setConversation,
@@ -584,7 +602,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       if (!normalizedSessionId || store.get(difyBuilderSessionBusyAtom)) return false
 
       abortRef.current?.abort()
-      liveProgress.clear()
+      executionProgress.clear()
+      reasoningBuffer.clear()
       streamingTurnBuffer.clear()
       setConversationLoading(false)
       const controller = new AbortController()
@@ -620,7 +639,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     },
     [
       clearSession,
-      liveProgress,
+      executionProgress,
+      reasoningBuffer,
       reconcileSession,
       setActiveSessionId,
       setIsBusy,
@@ -734,7 +754,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
   const reset = useCallback(() => {
     abortRef.current?.abort()
     abortRef.current = null
-    liveProgress.clear()
+    executionProgress.clear()
+    reasoningBuffer.clear()
     streamingTurnBuffer.clear()
     pendingMessageRef.current = null
     setActiveSessionId(null)
@@ -747,7 +768,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     canvasCursorRef.current = undefined
     setIsBusy(false)
   }, [
-    liveProgress,
+    executionProgress,
+    reasoningBuffer,
     setActiveSessionId,
     setConversation,
     setConversationHasMore,

@@ -6,6 +6,7 @@ rather than crashing the advance. build_nodes lives in the same module
 (added in Task A6)."""
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
@@ -20,7 +21,11 @@ from services.workflow_generator_service import WorkflowGeneratorService
 logger = logging.getLogger(__name__)
 
 
-def analyze_goal(model, goal_text: str) -> dict[str, Any]:
+def analyze_goal(
+    model,
+    goal_text: str,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
     if model is None:
         return _degraded_form(goal_text)
     system = (
@@ -30,7 +35,7 @@ def analyze_goal(model, goal_text: str) -> dict[str, Any]:
         '"type": "text|textarea|select|bool", "options": ["..."]}], "values": {"<key>": <default>}}.'
     )
     try:
-        data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}")
+        data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
     except Exception:
         return _degraded_form(goal_text)
     fields = data.get("fields")
@@ -41,11 +46,17 @@ def analyze_goal(model, goal_text: str) -> dict[str, Any]:
 
 
 def _degraded_form(goal_text: str) -> dict[str, Any]:
-    return {"fields": [{"key": "goal", "label": "Goal", "type": "textarea", "options": []}],
-            "values": {"goal": goal_text}}
+    return {
+        "fields": [{"key": "goal", "label": "Goal", "type": "textarea", "options": []}],
+        "values": {"goal": goal_text},
+    }
 
 
-def propose_plan_v1(model, requirements: dict[str, Any]) -> list[str]:
+def propose_plan_v1(
+    model,
+    requirements: dict[str, Any],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> list[str]:
     if model is None:
         return _degraded_plan()
     system = (
@@ -53,7 +64,12 @@ def propose_plan_v1(model, requirements: dict[str, Any]) -> list[str]:
         'concise build steps. Reply with ONLY JSON: {"plan": ["step", ...]}.'
     )
     try:
-        data = llm.invoke_json(model, system=system, user=f"REQUIREMENTS:\n{requirements}")
+        data = llm.invoke_json(
+            model,
+            system=system,
+            user=f"REQUIREMENTS:\n{requirements}",
+            on_reasoning=on_reasoning,
+        )
     except Exception:
         return _degraded_plan()
     plan = data.get("plan")
@@ -64,7 +80,12 @@ def _degraded_plan() -> list[str]:
     return ["Ingest the input", "Process with an LLM", "Emit the result"]
 
 
-def discover_resources(model, tenant_id: str, plan_items: list[str]) -> list[ResourceOption]:
+def discover_resources(
+    model,
+    tenant_id: str,
+    plan_items: list[str],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> list[ResourceOption]:
     inv = resources.list_tenant_resources(tenant_id)
     catalog = {r.id: ("knowledge", r) for r in inv.datasets}
     catalog.update({r.id: ("plugin", r) for r in inv.tools})
@@ -81,15 +102,20 @@ def discover_resources(model, tenant_id: str, plan_items: list[str]) -> list[Res
         listing = "\n".join(f"- {rid} ({kind}): {ref.label}" for rid, (kind, ref) in catalog.items())
         user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
         try:
-            data = llm.invoke_json(model, system=system, user=user)
+            data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
             picked = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
             if picked:
                 chosen_ids = picked
         except Exception:
             chosen_ids = list(catalog.keys())  # explicit reset: degrade to full inventory
     return [
-        ResourceOption(id=rid, label=catalog[rid][1].label, meta=catalog[rid][1].meta,
-                       kind=catalog[rid][0], readiness=catalog[rid][1].readiness)
+        ResourceOption(
+            id=rid,
+            label=catalog[rid][1].label,
+            meta=catalog[rid][1].meta,
+            kind=catalog[rid][0],
+            readiness=catalog[rid][1].readiness,
+        )
         for rid in chosen_ids
     ]
 
@@ -113,15 +139,27 @@ def bind_resources(
 
 
 def learn_from_build(
-    model, goal_text: str, requirements: dict[str, Any], plan_items: list[str],
-    built_node_ids: list[str]
+    model,
+    goal_text: str,
+    requirements: dict[str, Any],
+    plan_items: list[str],
+    built_node_ids: list[str],
+    on_reasoning: Callable[[str], None] | None = None,
 ) -> str:
     fallback = f"Reusable skill: a {len(built_node_ids)}-node workflow for: {goal_text[:80]}"
     if model is None:
         return fallback
     system = "Summarize this built workflow as a one-line reusable skill descriptor. Reply with plain text."
     try:
-        return llm.invoke_text(model, system=system, user=f"GOAL: {goal_text}\nPLAN: {plan_items}") or fallback
+        return (
+            llm.invoke_text(
+                model,
+                system=system,
+                user=f"GOAL: {goal_text}\nPLAN: {plan_items}",
+                on_reasoning=on_reasoning,
+            )
+            or fallback
+        )
     except Exception:
         return fallback
 
@@ -131,16 +169,23 @@ _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 
 def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> ModelConfig:
     if model_config:
-        return ModelConfig.model_validate({
-            "provider": model_config.get("provider", ""),
-            "name": model_config.get("name", ""),
-            "mode": model_config.get("mode", "chat"),
-            "completion_params": model_config.get("completion_params", {}),
-        })
+        return ModelConfig.model_validate(
+            {
+                "provider": model_config.get("provider", ""),
+                "name": model_config.get("name", ""),
+                "mode": model_config.get("mode", "chat"),
+                "completion_params": model_config.get("completion_params", {}),
+            }
+        )
     inst = resolve_model_instance(tenant_id, None)  # tenant default; read real provider/name off it
-    return ModelConfig.model_validate({
-        "provider": inst.provider, "name": inst.model_name, "mode": "chat", "completion_params": {},
-    })
+    return ModelConfig.model_validate(
+        {
+            "provider": inst.provider,
+            "name": inst.model_name,
+            "mode": "chat",
+            "completion_params": {},
+        }
+    )
 
 
 # Prepended to the generator instruction so the LLM emits a WORKFLOW-shaped graph
