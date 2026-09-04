@@ -2963,35 +2963,13 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
  * AgentEnvVariableConfig
  */
 export const zAgentEnvVariableConfig = z.object({
-  default: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
+  default: zJsonValue2.optional(),
   env_name: z.string().max(255).nullish(),
   key: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   required: z.boolean().optional().default(false),
   type: z.string().max(64).nullish(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
+  value: zJsonValue2.optional(),
   variable: z.string().max(255).nullish(),
 })
 
@@ -3532,23 +3510,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
   provider_type: zToolProviderType,
-  runtime_parameters: z
-    .record(
-      z.string(),
-      z
-        .union([
-          z.string(),
-          z.int(),
-          z.number(),
-          z.boolean(),
-          z.array(z.string()),
-          z.array(z.int()),
-          z.array(z.number()),
-          z.array(z.boolean()),
-        ])
-        .nullable(),
-    )
-    .optional(),
+  runtime_parameters: z.record(z.string(), zJsonValue2).optional(),
   tool_name: z.string().min(1).max(255).nullish(),
 })
 

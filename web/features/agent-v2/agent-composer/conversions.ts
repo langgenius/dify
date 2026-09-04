@@ -167,9 +167,9 @@ const toKnowledgeConfig = (
   sets: toKnowledgeSets(knowledgeRetrievals),
 })
 
-const isToolRuntimeParameterValue = (
-  value: unknown,
-): value is AgentSoulToolRuntimeParameterValue => {
+const SELECTOR_UI_TYPES = new Set(['model-selector', 'app-selector'])
+
+const isJsonRuntimeParameterValue = (value: unknown): boolean => {
   if (
     value === null ||
     typeof value === 'string' ||
@@ -178,20 +178,39 @@ const isToolRuntimeParameterValue = (
   )
     return true
 
-  if (!Array.isArray(value)) return false
+  if (Array.isArray(value)) return value.every(isJsonRuntimeParameterValue)
 
-  return (
-    value.every((item) => typeof item === 'string') ||
-    value.every((item) => typeof item === 'number') ||
-    value.every((item) => typeof item === 'boolean')
-  )
+  if (typeof value !== 'object') return false
+
+  return Object.values(value as Record<string, unknown>).every(isJsonRuntimeParameterValue)
+}
+
+const normalizeRuntimeParameterValue = (value: unknown): unknown => {
+  if (value === undefined || value === '') return undefined
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
+
+  const record = { ...(value as Record<string, unknown>) }
+  if (typeof record.type === 'string' && SELECTOR_UI_TYPES.has(record.type)) delete record.type
+
+  return Object.keys(record).length === 0 ? undefined : record
+}
+
+const isToolRuntimeParameterValue = (
+  value: unknown,
+): value is AgentSoulToolRuntimeParameterValue => {
+  if (value === undefined) return false
+
+  return isJsonRuntimeParameterValue(value)
 }
 
 const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) => {
   const runtimeParameters: Record<string, AgentSoulToolRuntimeParameterValue> = {}
 
   Object.entries(settings ?? {}).forEach(([key, value]) => {
-    if (isToolRuntimeParameterValue(value)) runtimeParameters[key] = value
+    const normalized = normalizeRuntimeParameterValue(value)
+    if (isToolRuntimeParameterValue(normalized))
+      runtimeParameters[key] = normalized as AgentSoulToolRuntimeParameterValue
   })
 
   return runtimeParameters

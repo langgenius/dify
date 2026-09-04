@@ -150,7 +150,19 @@ const SettingBuiltInTool: FC<Props> = ({
       )}
     </div>
   )
-  const infoUI = renderSchemaDetails(infoSchemas)
+  const infoUI = readonly ? (
+    renderSchemaDetails(infoSchemas)
+  ) : (
+    <Form
+      value={tempSetting}
+      onChange={setTempSetting}
+      formSchemas={infoSchemas}
+      isEditMode={false}
+      showOnVariableMap={{}}
+      validating={false}
+      readonly={readonly}
+    />
+  )
   const settingDetailsUI = renderSchemaDetails(settingSchemas)
 
   const settingUI = (
@@ -268,7 +280,7 @@ const SettingBuiltInTool: FC<Props> = ({
                         {isInfoActive && infoUI}
                         {!isInfoActive && showSettingAsDetails && settingDetailsUI}
                         {!isInfoActive && !showSettingAsDetails && settingUI}
-                        {!readonly && !isInfoActive && (
+                        {!readonly && (hasSetting || infoSchemas.length > 0) && (
                           <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
                             <Button
                               className="flex h-8 items-center px-3! text-[13px]! font-medium"

@@ -1153,6 +1153,14 @@ class ToolManager:
                             continue
                     value = parameter.init_frontend_parameter(parameter_value)
                     runtime_parameters[parameter.name] = value
+            elif parameter.form == ToolParameter.ToolParameterForm.LLM and not variable_pool:
+                # Agent Soul can pin LLM-form parameters (for example Text to SQL
+                # ``tables``) as constants. Forward those values so the plugin
+                # does not require the model to fill them again.
+                parameter_value = tool_configurations.get(parameter.name)
+                if parameter_value in (None, ""):
+                    continue
+                runtime_parameters[parameter.name] = parameter.init_frontend_parameter(parameter_value)
         return runtime_parameters
 
     @classmethod
