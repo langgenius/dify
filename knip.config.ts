@@ -15,6 +15,10 @@ const config: KnipConfig = {
         'tsslint.config.ts',
         'dev-proxy.config.ts',
         'plugins/eslint/index.js',
+        // Public surface consumed by the standalone Marketplace host.
+        // The `!` suffix keeps these entries in `knip --production`.
+        'app/components/plugins/marketplace/standalone/server.ts!',
+        'app/components/plugins/marketplace/standalone/client.ts!',
       ],
       project: [
         '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',

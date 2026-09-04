@@ -2,7 +2,7 @@ import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -10,8 +10,8 @@ import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
-  getSystemFeaturesQueryClient,
-  prefetchSystemFeatures,
+  dehydrateSystemFeatures,
+  getOptionalSystemFeatures,
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const systemFeatures = await prefetchSystemFeatures()
+  const systemFeatures = await getOptionalSystemFeatures()
   const branding = systemFeatures?.branding
   const applicationTitle = getApplicationTitle(branding)
   const brandedFavicon = branding?.enabled ? branding.favicon : undefined
@@ -54,9 +54,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    prefetchSystemFeatures(),
+    getOptionalSystemFeatures(),
   ])
-  const dehydratedState = dehydrate(getSystemFeaturesQueryClient())
+  const dehydratedState = dehydrateSystemFeatures()
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
     attribute: 'data-theme',

@@ -62,7 +62,7 @@ export function CopyMembersConfirmDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={isActionDisabled}
+            disabled={isLoadingMemberCount}
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >

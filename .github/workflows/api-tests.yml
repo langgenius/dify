@@ -71,10 +71,10 @@ jobs:
           retention-days: 1
 
   api-integration:
-    name: API Integration Tests
-    runs-on: depot-ubuntu-24.04
+    name: API Integration Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    runs-on: depot-ubuntu-24.04-4
     env:
-      COVERAGE_FILE: coverage-integration
+      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /tmp/dify-storage
@@ -82,9 +82,17 @@ jobs:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - '3.12'
+        shardIndex:
+          - 1
+          - 2
+          - 3
+          - 4
+        shardTotal:
+          - 4
 
     steps:
       - name: Checkout code
@@ -112,6 +120,8 @@ jobs:
             -p no:benchmark \
             --start-middleware \
             -n auto \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
@@ -120,8 +130,9 @@ jobs:
       - name: Upload integration coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-integration
-          path: coverage-integration
+          name: api-coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
           retention-days: 1
 
   api-coverage:
@@ -171,12 +182,15 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           unit_coverage="$(find coverage-data -type f -name coverage-unit -print -quit)"
-          integration_coverage="$(find coverage-data -type f -name coverage-integration -print -quit)"
+          mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
           : "${unit_coverage:?coverage-unit artifact not found}"
-          : "${integration_coverage:?coverage-integration artifact not found}"
+          if [[ "${#integration_coverage[@]}" -ne 4 ]]; then
+            echo "expected 4 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
+            exit 1
+          fi
 
           report_file="$(mktemp)"
-          uv run --project api coverage combine "$unit_coverage" "$integration_coverage"
+          uv run --project api coverage combine "$unit_coverage" "${integration_coverage[@]}"
           uv run --project api coverage report --show-missing | tee "$report_file"
           echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
           {

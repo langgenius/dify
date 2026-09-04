@@ -22,9 +22,21 @@ Flag:
 - Fake fallback IDs or placeholder inputs used to force a query to run.
 - Query results copied into local state for rendering.
 - Shared query behavior such as invalidation, stale defaults, or retry rules reimplemented at call sites.
-- `prefetchQuery` treated as a hard gate or as returning data/errors to the caller.
+- Deprecated imperative reads such as `fetchQuery`, `prefetchQuery`, `ensureQueryData`, or their infinite variants when
+  the current `query` or `infiniteQuery` contract applies.
 
 Use `useQuery(consoleQuery.xxx.queryOptions(...))` or `useQuery(marketplaceQuery.xxx.queryOptions(...))` directly unless a feature hook performs real orchestration.
+
+For imperative access, treat the choices as independent dimensions:
+
+- `query` or `infiniteQuery` resolves the generated query and returns its data.
+- `staleTime` decides whether cached data satisfies this call: `0` treats it as stale, a finite value accepts a freshness
+  window, `Infinity` accepts it until invalidation, and `'static'` accepts available data even after invalidation.
+- `select` projects the resolved value without replacing cached query-function data. An imperative query defaults to no
+  retries when `retry` is not configured; `enabled` is observer-only, so guard before a conditional call.
+- `await` blocks the current flow, `return` transfers the Promise to the caller, and `void` discards the result without
+  handling rejection. Handle rejection before discarding a potentially rejecting Promise; use `.catch(noop)` only for
+  intentional silence or feedback owned elsewhere, and preserve rejection for hard gates.
 
 ## Mutations
 
@@ -44,12 +56,18 @@ Flag:
 
 - Request-time auth, setup, workspace role, or tenant decisions moved into static `next.config redirects()`.
 - Dynamic role gates depending on `workspaces.current` implemented as static path redirects.
-- Authorization logic depending on soft `prefetchQuery`.
+- Authorization logic depending on an imperative query whose rejection is swallowed.
 - Removing a client fallback before server API unavailable behavior is defined.
 - Global placeholder query contracts introduced to solve a route-local Suspense issue.
 - Branding-sensitive UI reading placeholder defaults without checking pending/placeholder state.
+- A Server Component rendering or passing an imperative query result that the browser can independently revalidate,
+  leaving server and client output with different owners.
+- A non-blocking Server Component query without pending-query dehydration, Next-compatible error redaction, a
+  `HydrationBoundary` covering the same-key client consumer, or an explicit Suspense and SSR-content decision.
 
-Separate hard gates from soft prefetches. `fetchQuery` can be a server decision boundary; `prefetchQuery` is cache warmup.
+Hard gates await `query` or `infiniteQuery` and preserve rejection; soft prefetches handle failure at the fallback owner.
+Treat Server Components as prefetch-and-dehydrate owners by default, rendering returned data only under exclusive server
+ownership or a freshness contract that prevents server/client drift.
 
 ## Workspace And Tenant
 

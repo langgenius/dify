@@ -1,6 +1,6 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -207,7 +207,7 @@ describe('CheckCode', () => {
     expect(navigationMocks.back).toHaveBeenCalledOnce()
   })
 
-  it('rejects verification codes that are not exactly six digits', async () => {
+  it('associates one localized error with an incomplete verification code', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
     render(
@@ -216,11 +216,14 @@ describe('CheckCode', () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText('login.checkCode.verificationCode'), {
-      target: { value: '1234567' },
-    })
-    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    const codeInput = screen.getByLabelText('login.checkCode.verificationCode')
+    await user.type(codeInput, '12345{Enter}')
 
+    const errors = await screen.findAllByText('login.checkCode.invalidCode')
+    expect(errors).toHaveLength(1)
+    expect(codeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
+    expect(codeInput).toHaveFocus()
     expect(emailLoginWithCode).not.toHaveBeenCalled()
   })
 
@@ -532,7 +535,7 @@ describe('CheckCode', () => {
       serviceBaseMocks.get
         .mockRejectedValueOnce(new Response(null, { status: 401 }))
         .mockReturnValueOnce(profileResponse)
-      await queryClient.prefetchQuery(profileQueryOptions)
+      await queryClient.query(profileQueryOptions).catch(noop)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')
 
       render(

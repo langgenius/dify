@@ -7,6 +7,7 @@ import { useLocale, useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
+import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
 import SearchBoxWrapper from '../search-box/search-box-wrapper'
 
@@ -27,7 +28,7 @@ const EXPANDED_TABS_MARGIN_TOP = 32
 const Description = ({
   isMarketplacePlatform = false,
   marketplaceNav,
-  scrollContainerId = 'marketplace-container',
+  scrollContainerId = MARKETPLACE_CONTAINER_ID,
 }: DescriptionProps) => {
   const { t } = useTranslation('plugin')
   const { t: tCommon } = useTranslation('common')

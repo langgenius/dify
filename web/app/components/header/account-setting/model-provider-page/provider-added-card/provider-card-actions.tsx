@@ -120,7 +120,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
   const loadDetail = async (action: DetailAction) => {
     setLoadingAction(action)
     try {
-      const response = await queryClient.fetchQuery(
+      const response = await queryClient.query(
         consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
           input: { body: { plugin_ids: [summary.plugin_id] } },
         }),
@@ -269,7 +269,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

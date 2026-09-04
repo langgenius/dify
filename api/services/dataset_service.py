@@ -64,6 +64,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services import dataset_api_key_service
 from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
@@ -1359,6 +1360,10 @@ class DatasetService:
         DatasetService.check_dataset_permission(dataset, user, session)
 
         dataset_was_deleted.send(dataset)
+
+        # Remove any dataset API key scoped only to this knowledge base, so it cannot
+        # silently degrade to unrestricted (access-all) once its last binding is gone.
+        dataset_api_key_service.delete_keys_scoped_only_to(session, str(dataset.id))
 
         session.delete(dataset)
         session.commit()
@@ -3845,7 +3850,8 @@ class SegmentService:
                                     logger.exception("Failed to regenerate summary for segment %s", segment.id)
                                     # Don't fail the entire update if summary regeneration fails
             # update multimodel vector index
-            VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset, session=session)
+            if args.attachment_ids is not None:
+                VectorService.update_multimodel_vector(segment, args.attachment_ids, dataset, session=session)
         except Exception as e:
             logger.exception("update segment index failed")
             segment.enabled = False

@@ -81,11 +81,11 @@ const MemberRow = ({
         <span className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
           {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
         </span>
-        <span className="flex min-w-0 grow items-center gap-2 px-3" role="presentation">
+        <span className="flex min-w-0 grow items-center gap-2 px-3">
           <RoleBadges className="grow" roleNames={roleNames} />
         </span>
       </button>
-      <div className="absolute inset-y-0 right-0 flex items-center px-3" role="presentation">
+      <div className="absolute inset-y-0 right-0 flex items-center px-3">
         {canManage && (
           <MemberMenu
             member={member}

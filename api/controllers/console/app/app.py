@@ -13,7 +13,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from configs import dify_config
 from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
-from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -39,6 +38,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from core.file.remote_file_metadata import FileInfo
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod

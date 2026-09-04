@@ -70,7 +70,14 @@ describe('MailAndPasswordAuth', () => {
     await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
-      expect(webAppLoginMock).toHaveBeenCalledTimes(1)
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'user@example.com',
+          password: expect.any(String),
+          remember_me: true,
+        },
+      })
     })
   })
 

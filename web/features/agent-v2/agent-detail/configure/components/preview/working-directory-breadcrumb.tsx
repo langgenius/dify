@@ -154,7 +154,7 @@ export function AgentWorkingDirectoryBreadcrumb({
                     <DropdownMenuContent
                       placement="bottom-start"
                       sideOffset={4}
-                      className="w-[136px] p-1"
+                      className="w-34 p-1"
                     >
                       {hiddenItems.map((hiddenItem) => (
                         <DropdownMenuItem
