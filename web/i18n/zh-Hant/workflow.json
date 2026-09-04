@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "此 App Builder 工作階段已無法使用。",
   "difyBuilder.error.sessionBusy": "App Builder 仍在處理上一個操作。",
   "difyBuilder.error.streamUnavailable": "App Builder 連線無法使用。",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "失敗的執行",
   "difyBuilder.fixChecklistPrompt_one": "修復 {{count}} 個設定問題",
   "difyBuilder.fixChecklistPrompt_other": "修復 {{count}} 個設定問題",

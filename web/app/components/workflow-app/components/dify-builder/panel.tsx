@@ -7,6 +7,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
 import DifyBuilderComposer from './composer'
 import { DifyBuilderConversation } from './conversation'
+import DebugLogExport from './debug-log-export'
 import { getDefaultActionPayload, isClientOnlyAction } from './interactions/action-payload'
 import {
   difyBuilderConversationAtom,
@@ -254,6 +255,7 @@ const DifyBuilderPanel = () => {
             <h2>{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h2>
           </div>
           <div className="flex items-center gap-2.5">
+            <DebugLogExport />
             <button
               type="button"
               disabled={!hasSession || interactionBusy}

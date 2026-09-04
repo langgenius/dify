@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "เซสชัน App Builder นี้ไม่พร้อมใช้งานอีกต่อไป",
   "difyBuilder.error.sessionBusy": "App Builder ยังคงประมวลผลการดำเนินการก่อนหน้า",
   "difyBuilder.error.streamUnavailable": "ไม่สามารถเชื่อมต่อกับ App Builder ได้",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "การเรียกใช้ล้มเหลว",
   "difyBuilder.fixChecklistPrompt_one": "แก้ไขปัญหาการกำหนดค่า {{count}} รายการ",
   "difyBuilder.fixChecklistPrompt_other": "แก้ไขปัญหาการกำหนดค่า {{count}} รายการ",

@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Bu App Builder oturumu artık kullanılamıyor.",
   "difyBuilder.error.sessionBusy": "App Builder hâlâ önceki eylemi işliyor.",
   "difyBuilder.error.streamUnavailable": "App Builder bağlantısı kullanılamıyor.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Başarısız çalıştırma",
   "difyBuilder.fixChecklistPrompt_one": "{{count}} yapılandırma sorununu düzelt",
   "difyBuilder.fixChecklistPrompt_other": "{{count}} yapılandırma sorununu düzelt",

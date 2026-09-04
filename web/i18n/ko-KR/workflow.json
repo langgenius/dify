@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "이 App Builder 세션은 더 이상 사용할 수 없습니다.",
   "difyBuilder.error.sessionBusy": "App Builder가 이전 작업을 처리하고 있습니다.",
   "difyBuilder.error.streamUnavailable": "App Builder 연결을 사용할 수 없습니다.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "실패한 실행",
   "difyBuilder.fixChecklistPrompt_one": "구성 문제 {{count}}개 수정",
   "difyBuilder.fixChecklistPrompt_other": "구성 문제 {{count}}개 수정",

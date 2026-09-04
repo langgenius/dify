@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "Sesi App Builder ini tidak lagi tersedia.",
   "difyBuilder.error.sessionBusy": "App Builder masih memproses tindakan sebelumnya.",
   "difyBuilder.error.streamUnavailable": "Koneksi App Builder tidak tersedia.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "Eksekusi gagal",
   "difyBuilder.fixChecklistPrompt_one": "Perbaiki {{count}} masalah konfigurasi",
   "difyBuilder.fixChecklistPrompt_other": "Perbaiki {{count}} masalah konfigurasi",

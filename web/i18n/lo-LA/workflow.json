@@ -330,6 +330,7 @@
   "difyBuilder.error.notFound": "ເຊດຊັນ App Builder ນີ້ບໍ່ສາມາດໃຊ້ໄດ້ອີກ.",
   "difyBuilder.error.sessionBusy": "App Builder ຍັງກຳລັງປະມວນຜົນຄຳສັ່ງກ່ອນໜ້າ.",
   "difyBuilder.error.streamUnavailable": "ການເຊື່ອມຕໍ່ App Builder ບໍ່ສາມາດໃຊ້ໄດ້.",
+  "difyBuilder.exportDebugLog": "Export debug log",
   "difyBuilder.failedRun": "ການເຮັດວຽກລົ້ມເຫຼວ",
   "difyBuilder.fixChecklistPrompt_one": "ແກ້ໄຂບັນຫາການຕັ້ງຄ່າ {{count}} ລາຍການ",
   "difyBuilder.fixChecklistPrompt_other": "ແກ້ໄຂບັນຫາການຕັ້ງຄ່າ {{count}} ລາຍການ",
