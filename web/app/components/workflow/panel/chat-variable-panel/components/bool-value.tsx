@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const BoolValue: FC<Props> = ({ value, onChange }) => {
-  const booleanValue = value
+  const booleanValue = typeof value === 'string' ? value === 'true' : !!value
   const handleChange = useCallback(
     (newValue: boolean) => {
       return () => {
