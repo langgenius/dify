@@ -6,6 +6,7 @@ valid repair) they DEGRADE to an honest, surface-to-human result rather than
 crashing the advance or applying a canned guess.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.models import (
@@ -105,7 +106,13 @@ def _degraded_checklist(errors: list[ChecklistError]) -> Diagnosis:
     return Diagnosis(culprit_node_id="", root_cause="Checklist error", severity="medium")
 
 
-def diagnose(model: ModelInstance | None, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
+def diagnose(
+    model: ModelInstance | None,
+    failed_run: Run,
+    graph: Graph,
+    node_outputs: list[NodeOutput],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> Diagnosis:
     failed = _failed_nodes(node_outputs)
     if model is None:
         return _degraded_diagnosis(failed)
@@ -125,14 +132,19 @@ def diagnose(model: ModelInstance | None, failed_run: Run, graph: Graph, node_ou
     )
     user = f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}"
     try:
-        data = llm.invoke_json(model, system=system, user=user)
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
         return _degraded_diagnosis(failed)
     fallback = failed[0].node_id if failed else ""
     return _diagnosis_from_json(data, graph, fallback_node=fallback)
 
 
-def diagnose_checklist(model: ModelInstance | None, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
+def diagnose_checklist(
+    model: ModelInstance | None,
+    errors: list[ChecklistError],
+    graph: Graph,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> Diagnosis:
     if model is None:
         return _degraded_checklist(errors)
     system = (
@@ -151,7 +163,7 @@ def diagnose_checklist(model: ModelInstance | None, errors: list[ChecklistError]
     )
     user = f"CHECKLIST ERRORS:\n{errs}\n\nGRAPH:\n{_graph_context(graph)}"
     try:
-        data = llm.invoke_json(model, system=system, user=user)
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # degrade to a surfaced result, never crash the advance
         return _degraded_checklist(errors)
     fallback = next((e.node_id for e in errors if e.node_id), "")
@@ -222,16 +234,24 @@ def _shape_risk(intents: list[MutationIntent], graph: Graph, llm_risk: Risk) -> 
     )
 
 
-def _invoke_repair(model: ModelInstance, system: str, user: str) -> tuple[list[MutationIntent] | None, Risk]:
+def _invoke_repair(
+    model: ModelInstance,
+    system: str,
+    user: str,
+    on_reasoning: Callable[[str], None] | None,
+) -> tuple[list[MutationIntent] | None, Risk]:
     try:
-        data = llm.invoke_json(model, system=system, user=user)
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # degrade to a surfaced result, never crash the advance
         return None, _no_fix()[1]
     return _parse_repair(data)
 
 
 def propose_repair(
-    model: ModelInstance | None, diagnosis: Diagnosis, graph: Graph
+    model: ModelInstance | None,
+    diagnosis: Diagnosis,
+    graph: Graph,
+    on_reasoning: Callable[[str], None] | None = None,
 ) -> tuple[list[MutationIntent], Risk]:
     if model is None:
         return _no_fix()
@@ -251,14 +271,14 @@ def propose_repair(
         f" severity={diagnosis.severity}\n\nCULPRIT NODE CONFIG:\n{_culprit_config(diagnosis.culprit_node_id, graph)}"
         f"\n\nGRAPH:\n{_graph_context(graph)}"
     )
-    intents, risk = _invoke_repair(model, system, user)
+    intents, risk = _invoke_repair(model, system, user, on_reasoning)
     if intents is None:
         return _no_fix()
     applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
     if rejected:
         reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents, risk = _invoke_repair(model, system, retry_user)
+        intents, risk = _invoke_repair(model, system, retry_user, on_reasoning)
         if intents is None:
             return _no_fix()
         applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)

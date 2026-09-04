@@ -4,6 +4,7 @@ Given the start node's StartSchema, produce plausible run inputs keyed by each
 declared variable. LLM-assisted, degrading to deterministic type-based defaults
 on model-None / provider-error / parse-fail (never raises)."""
 
+from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.models import Inputs, StartSchema
@@ -34,7 +35,12 @@ def _deterministic(vars_: list[dict[str, Any]]) -> Inputs:
     return {str(v["variable"]): _default_value(v) for v in vars_}
 
 
-def generate(model, schema: StartSchema, prior_failed: Inputs) -> Inputs:
+def generate(
+    model,
+    schema: StartSchema,
+    prior_failed: Inputs,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> Inputs:
     vars_ = _variables(schema)
     if not vars_:
         return {}
@@ -48,7 +54,7 @@ def generate(model, schema: StartSchema, prior_failed: Inputs) -> Inputs:
     listing = "\n".join(f"- {v['variable']} (type={v.get('type', '?')}) options={v.get('options')}" for v in vars_)
     user = f"VARIABLES:\n{listing}\n\nPREVIOUSLY-FAILING (avoid): {prior_failed}"
     try:
-        data = llm.invoke_json(model, system=system, user=user)
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         produced = data.get("inputs")
         if not isinstance(produced, dict):
             return _deterministic(vars_)

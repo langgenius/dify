@@ -88,9 +88,9 @@ describe('WorkflowHeader', () => {
     renderHeader(true, {
       app_id: 'app-1',
       canvas_read_only: true,
-      conversation: [],
+      conversation_last_seq: -1,
       interrupted: true,
-      run_status: 'executing',
+      run_status: 'processing',
       session_id: 'session-1',
       state: 'build.publish',
       version: 1,

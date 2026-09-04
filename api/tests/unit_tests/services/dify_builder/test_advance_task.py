@@ -118,7 +118,7 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     assert last_state_event["conversation_last_seq"] >= 0
     # Task 5a: actions are now data-driven per PcState; fix.await_verify's
     # table entries are run_validation (primary) + revert (destructive).
-    assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert", "pause"]
+    assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert"]
 
     commit_events = [ev for _sid, ev in events if ev["kind"] == "commit"]
     assert commit_events, "each successful CAS must be observable before the terminal state"
@@ -137,12 +137,12 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
 
     progress_events = [ev for _sid, ev in events if ev["kind"] == "progress"]
     assert progress_events, "structured cognition and workflow work must publish visible phase progress"
-    assert progress_events[0]["trace"]["steps"][0] == {
+    assert progress_events[0]["execution"]["activities"][0] == {
         "id": "fix-load-failure",
         "label": "Load the failed run",
         "state": "active",
-        "tone": "neutral",
-        "canvas_event": None,
+        "kind": "stage",
+        "parent_id": None,
     }
     assert all("prompt" not in str(event).lower() for event in progress_events)
 
@@ -341,7 +341,7 @@ def test_advance_session_generic_exception_publishes_generic_error_and_releases_
         assert all("boom" not in str(ev) for _sid, ev in events)
         stored, _context = repo.get_session(s.id)
         assert stored.current_state == PcState.FAILED
-        assert any(ev["kind"] == "progress" and ev["trace"]["status"] == "error" for _sid, ev in events)
+        assert any(ev["kind"] == "progress" and ev["execution"]["status"] == "error" for _sid, ev in events)
         assert any(ev["kind"] == "commit" and ev["state"] == "failed" for _sid, ev in events)
 
         assert (s.id, "tok-y") in released

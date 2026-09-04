@@ -262,7 +262,7 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
         stream_advance_frames(
             session_view_to_dict(view),
             subscription,
-            expect_advance=view.run_status in {"thinking", "executing"} and not view.interrupted,
+            expect_advance=view.run_status == "processing" and not view.interrupted,
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,

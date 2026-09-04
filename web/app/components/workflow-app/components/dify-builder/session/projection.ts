@@ -37,6 +37,6 @@ export const projectCommit = (
     version: commit.version,
     state: commit.state,
     canvas_read_only: true,
-    run_status: 'executing',
+    run_status: 'processing',
   }
 }

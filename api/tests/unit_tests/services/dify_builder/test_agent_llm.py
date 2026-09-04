@@ -1,6 +1,6 @@
 import pytest
 
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from services.dify_builder.agent import llm
 
@@ -55,6 +55,61 @@ def test_invoke_text_stream_yields_model_deltas():
         "hello ",
         "world",
     ]
+
+
+def test_invoke_text_stream_routes_split_think_tags_to_reasoning_callback():
+    chunks = [
+        LLMResultChunk(
+            model="model",
+            prompt_messages=[],
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=delta),
+            ),
+        )
+        for delta in ("<thi", "nk>plan ", "carefully</think>answer")
+    ]
+
+    class _StreamingInstance:
+        def invoke_llm(self, **_kwargs):
+            return iter(chunks)
+
+    reasoning: list[str] = []
+    answer = "".join(
+        llm.invoke_text_stream(
+            _StreamingInstance(),
+            system="s",
+            user="u",
+            on_reasoning=reasoning.append,
+        )
+    )
+
+    assert answer == "answer"
+    assert "".join(reasoning) == "plan carefully"
+
+
+def test_invoke_text_routes_native_reasoning_separately_from_answer():
+    result = LLMResult(
+        model="model",
+        message=AssistantPromptMessage(content="answer"),
+        usage=LLMUsage.empty_usage(),
+        reasoning_content="consider the workflow",
+    )
+
+    class _NativeReasoningInstance:
+        def invoke_llm(self, **_kwargs):
+            return result
+
+    reasoning: list[str] = []
+    answer = llm.invoke_text(
+        _NativeReasoningInstance(),
+        system="s",
+        user="u",
+        on_reasoning=reasoning.append,
+    )
+
+    assert answer == "answer"
+    assert reasoning == ["consider the workflow"]
 
 
 def test_invoke_json_clean():

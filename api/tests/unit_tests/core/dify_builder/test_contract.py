@@ -13,6 +13,8 @@ from core.dify_builder.contract import (
     CanvasEvent,
     CardKind,
     ChangeSetCard,
+    ExecutionActivity,
+    ExecutionProgress,
     FormCard,
     FormField,
     Phase,
@@ -25,8 +27,6 @@ from core.dify_builder.contract import (
     SummaryCard,
     TestResultCard,
     TestStat,
-    Trace,
-    TraceStep,
 )
 from core.dify_builder.models import EntryMode
 from core.dify_builder.state import PcState
@@ -72,8 +72,7 @@ def test_enums_match_spec():
         "complete",
     ]
     assert [r.value for r in RunStatus] == [
-        "thinking",
-        "executing",
+        "processing",
         "waiting_input",
         "waiting_confirmation",
         "paused",
@@ -96,7 +95,7 @@ def test_sessionview_has_new_fields():
         version=1,
         state="fix.diagnose",
         canvas_read_only=True,
-        run_status=RunStatus.EXECUTING,
+        run_status=RunStatus.PROCESSING,
         interrupted=False,
         conversation_last_seq=-1,
     )
@@ -112,13 +111,13 @@ def test_run_status_terminal_states():
     PcState.EDIT_COMPLETE are terminal (spec §7.1/§7.2, run_status: complete)
     but are absent from both _WORKING and _WAITING and aren't SUCCESS/FAILED
     -- _run_status must special-case is_terminal() before the waiting/working
-    checks, or these fall through to EXECUTING."""
+    checks, or these fall through to PROCESSING."""
     assert _run_status(PcState.SUCCESS) == RunStatus.COMPLETE
     assert _run_status(PcState.FAILED) == RunStatus.FAILED
     assert _run_status(PcState.BUILD_COMPLETE) == RunStatus.COMPLETE
-    assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.EXECUTING
+    assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.PROCESSING
     assert _run_status(PcState.EDIT_COMPLETE) == RunStatus.COMPLETE
-    assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.EXECUTING  # working
+    assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.PROCESSING  # working
     assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_CONFIRMATION
 
 
@@ -226,14 +225,15 @@ def test_card_shapes_round_trip():
     pub_item = pub.to_item(seq=7, at_version=4)
     assert pub_item.payload == {"version": "v1.0", "badge": "live"}
 
-    # assistant_turn -- trace.steps[*] carries state/tone/canvas_event.
+    # assistant_turn keeps model reasoning separate from observable execution.
     turn = AssistantTurnItem(
         turn_id="t1",
         stage_id="build.goal_analysis",
-        trace=Trace(
+        execution=ExecutionProgress(
             status="running",
-            steps=[TraceStep(id="s1", label="Reading goal", state="active", tone="neutral", canvas_event=None)],
+            activities=[ExecutionActivity(id="s1", label="Reading goal", state="active")],
         ),
+        reasoning_text="I should clarify the requested output.",
         reply_text="Looking at your goal...",
         cards=["plan"],
     )
@@ -241,10 +241,15 @@ def test_card_shapes_round_trip():
     assert "kind" not in asdict(turn)
     turn_item = turn.to_item(seq=8, at_version=4)
     assert turn_item.kind == "assistant_turn"
-    step_payload = turn_item.payload["trace"]["steps"][0]
-    assert step_payload["state"] == "active"
-    assert step_payload["tone"] == "neutral"
-    assert step_payload["canvas_event"] is None
+    activity_payload = turn_item.payload["execution"]["activities"][0]
+    assert activity_payload == {
+        "id": "s1",
+        "label": "Reading goal",
+        "state": "active",
+        "kind": "stage",
+        "parent_id": None,
+    }
+    assert turn_item.payload["reasoning_text"] == "I should clarify the requested output."
 
     # typed submit payload -- not a card: no kind, no to_item.
     req = RequirementsPayload(
@@ -367,7 +372,7 @@ def test_transport_json_schema_contains_request_and_sse_unions():
     assert len(create_schema["anyOf"]) == 4
     assert "response_mode" not in str(create_schema)
     assert stream_schema["discriminator"]["propertyName"] == "event"
-    assert len(stream_schema["oneOf"]) == 8
+    assert len(stream_schema["oneOf"]) == 9
 
 
 def test_sse_union_accepts_current_payloads():
@@ -428,6 +433,19 @@ def test_sse_union_accepts_current_payloads():
             },
         },
         {
+            "event": "reasoning",
+            "data": {
+                "kind": "reasoning",
+                "session_id": "s1",
+                "operation_id": "operation-1",
+                "stage_id": "edit.impact_analysis",
+                "at_version": 3,
+                "revision": 4,
+                "span_id": "analyze-impact",
+                "delta": "The requested change touches the LLM node.",
+            },
+        },
+        {
             "event": "progress",
             "data": {
                 "kind": "progress",
@@ -436,14 +454,13 @@ def test_sse_union_accepts_current_payloads():
                 "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 1,
-                "trace": {
+                "execution": {
                     "status": "running",
-                    "steps": [
+                    "activities": [
                         {
                             "id": "edit-analyze-impact",
                             "label": "Analyze the requested change",
                             "state": "active",
-                            "tone": "neutral",
                         }
                     ],
                 },

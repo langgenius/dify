@@ -5,6 +5,7 @@ Fix pattern: the LLM proposes targeted intents which are dry-run-validated
 through graph_ops.filter_applicable before they can reach apply_repair.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
+from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.models import MutationIntent
@@ -40,11 +41,19 @@ def _graph_context(graph: dict) -> str:
 
 
 def _degraded_impact(goal_text: str) -> dict[str, Any]:
-    return {"fields": [{"key": "change", "label": "Change", "type": "textarea", "options": []}],
-            "values": {"change": goal_text}, "target_node_ids": []}
+    return {
+        "fields": [{"key": "change", "label": "Change", "type": "textarea", "options": []}],
+        "values": {"change": goal_text},
+        "target_node_ids": [],
+    }
 
 
-def analyze_impact(model, goal_text: str, graph: dict) -> dict[str, Any]:
+def analyze_impact(
+    model,
+    goal_text: str,
+    graph: dict,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
     if model is None:
         return _degraded_impact(goal_text)
     system = (
@@ -54,7 +63,12 @@ def analyze_impact(model, goal_text: str, graph: dict) -> dict[str, Any]:
         '"values": {...}, "target_node_ids": ["<existing id>", ...]}.'
     )
     try:
-        data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}\n\nGRAPH:\n{_graph_context(graph)}")
+        data = llm.invoke_json(
+            model,
+            system=system,
+            user=f"GOAL:\n{goal_text}\n\nGRAPH:\n{_graph_context(graph)}",
+            on_reasoning=on_reasoning,
+        )
     except Exception:
         return _degraded_impact(goal_text)
     ids = _node_ids(graph)
@@ -65,13 +79,21 @@ def analyze_impact(model, goal_text: str, graph: dict) -> dict[str, Any]:
     return {"fields": fields, "values": values, "target_node_ids": targets}
 
 
-def propose_edit_plan(model, edit_rules: dict[str, Any], graph: dict) -> list[str]:
+def propose_edit_plan(
+    model,
+    edit_rules: dict[str, Any],
+    graph: dict,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> list[str]:
     if model is None:
         return ["Apply the requested edit"]
     system = 'You are a Dify workflow edit planner. Reply with ONLY JSON: {"plan": ["step", ...]}.'
     try:
         data = llm.invoke_json(
-            model, system=system, user=f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}"
+            model,
+            system=system,
+            user=f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}",
+            on_reasoning=on_reasoning,
         )
     except Exception:
         return ["Apply the requested edit"]
@@ -79,17 +101,25 @@ def propose_edit_plan(model, edit_rules: dict[str, Any], graph: dict) -> list[st
     return [str(p) for p in plan] if isinstance(plan, list) and plan else ["Apply the requested edit"]
 
 
-def build_edit_intents(model, edit_rules: dict[str, Any], graph: dict) -> list[MutationIntent]:
+def build_edit_intents(
+    model,
+    edit_rules: dict[str, Any],
+    graph: dict,
+    on_reasoning: Callable[[str], None] | None = None,
+) -> list[MutationIntent]:
     if model is None:
         return []
     system = (
         "You are a Dify workflow editor. Propose the minimal mutations that apply the edit rules to "
         "EXISTING nodes. Reference only node ids that exist and use only the listed node types. "
-        'Reply with ONLY JSON: {"intents": [{"op": ..., "args": {...}}]}.\n' + _OP_SCHEMA
-        + "Allowed node types: " + ", ".join(sorted(_ALLOWED_NODE_TYPES)) + ".\n"
+        'Reply with ONLY JSON: {"intents": [{"op": ..., "args": {...}}]}.\n'
+        + _OP_SCHEMA
+        + "Allowed node types: "
+        + ", ".join(sorted(_ALLOWED_NODE_TYPES))
+        + ".\n"
     )
     user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}"
-    intents = _invoke_intents(model, system, user)
+    intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
     applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
@@ -98,16 +128,21 @@ def build_edit_intents(model, edit_rules: dict[str, Any], graph: dict) -> list[M
     if not applicable and rejected:
         reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents = _invoke_intents(model, system, retry_user)
+        intents = _invoke_intents(model, system, retry_user, on_reasoning)
         if intents is None:
             return []
         applicable, _rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
     return applicable
 
 
-def _invoke_intents(model, system: str, user: str) -> list[MutationIntent] | None:
+def _invoke_intents(
+    model,
+    system: str,
+    user: str,
+    on_reasoning: Callable[[str], None] | None,
+) -> list[MutationIntent] | None:
     try:
-        data = llm.invoke_json(model, system=system, user=user)
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:
         return None
     raw = data.get("intents")

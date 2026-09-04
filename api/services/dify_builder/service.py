@@ -366,7 +366,7 @@ def _actions_for(
     if interrupted or state == PcState.FAILED:
         return [UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY)]
     if fc is not None and fc.paused:
-        return [UiAction(id="resume", label="Resume", kind=ActionKind.PRIMARY)]
+        return []
     recovery_ref = recovery.recovery_ref_for(fc.recovery_class) if fc is not None else None
     if recovery_ref is not None:
         actions: list[UiAction] = []
@@ -378,10 +378,7 @@ def _actions_for(
     if app_revision_conflicted:
         return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
 
-    actions = list(_ACTIONS_FOR.get(state, []))
-    if fc is not None and is_waiting(state):
-        actions.append(UiAction(id="pause", label="Pause", kind=ActionKind.SECONDARY))
-    return actions
+    return list(_ACTIONS_FOR.get(state, []))
 
 
 _ACTION_ID_TO_KIND: dict[str, str] = {
@@ -532,7 +529,7 @@ def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     and ``PcState.EDIT_COMPLETE`` are terminal (spec §7.1/§7.2, ``run_status:
     complete``) but are not in ``_WORKING``/``_WAITING`` and are not
     ``SUCCESS``/``FAILED`` -- without this ordering they'd wrongly fall
-    through to EXECUTING.
+    through to PROCESSING.
 
     ``paused`` (Task 7, ``fc.paused``) only applies at a waiting state -- the
     canvas stays editable while paused -- and never overrides a terminal
@@ -549,8 +546,8 @@ def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     if is_waiting(state):
         return RunStatus.WAITING_CONFIRMATION
     if is_working(state):
-        return RunStatus.EXECUTING
-    return RunStatus.EXECUTING  # defensive; unreachable for classified states
+        return RunStatus.PROCESSING
+    return RunStatus.PROCESSING  # defensive; unreachable for classified states
 
 
 class DifyBuilderService:
@@ -985,13 +982,7 @@ class DifyBuilderService:
             version=s.version,
             state=str(st),
             canvas_read_only=lock_held or canvas_read_only(st),
-            run_status=(
-                RunStatus.THINKING
-                if lock_held and is_waiting(st)
-                else RunStatus.EXECUTING
-                if lock_held
-                else _run_status(st, paused=fc.paused)
-            ),
+            run_status=RunStatus.PROCESSING if lock_held else _run_status(st, paused=fc.paused),
             interrupted=interrupted,
             conversation_last_seq=fc.next_seq - 1,
             entry_mode=s.entry_mode,

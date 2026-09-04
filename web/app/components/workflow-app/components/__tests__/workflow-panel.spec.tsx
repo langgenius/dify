@@ -167,6 +167,7 @@ const createDifyBuilderRuntime = (enabled: boolean, canEdit: boolean): DifyBuild
   getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
   onSyncDraft: mockSyncDraft,
   session: {
+    loadOlderConversation: vi.fn(async () => true),
     refresh: vi.fn(async () => true),
     restore: vi.fn(async () => true),
     reset: vi.fn(),

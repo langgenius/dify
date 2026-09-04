@@ -21,6 +21,7 @@ from core.dify_builder.contract import (
     ConflictPolicyOption,
     DecisionItem,
     ErrorCard,
+    ExecutionProgress,
     FormCard,
     NoticeItem,
     PlanCard,
@@ -30,7 +31,6 @@ from core.dify_builder.contract import (
     SummaryRow,
     TestResultCard,
     TestStat,
-    Trace,
 )
 from core.dify_builder.handlers_fix import (
     action_kind,
@@ -51,6 +51,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     MutationIntent,
+    NodeEvent,
     Run,
     Session,
     TestInput,
@@ -135,13 +136,13 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
             tone="warning",
         ),
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Let's clarify the requirements.",
             cards=["form", "challenge"],
         ),
@@ -188,13 +189,13 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             items=list(fc.plan_items),
         ),
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Here's the initial plan.",
             cards=["plan"],
         ),
@@ -236,13 +237,13 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         ),
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Recommended resources.",
             cards=["resource_select"],
         ),
@@ -298,13 +299,13 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-build checkpoint", created_at="")
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Plan v2 ready for approval.",
             cards=["plan", "checkpoint"],
         ),
@@ -320,7 +321,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
     (node-by-node canvas reveal via env.emit_canvas), emit the change_set +
-    plan v2.x + assistant_turn(with Trace.steps), transition to build.execution.
+    plan v2.x + assistant_turn(with execution activities), transition to build.execution.
 
     Idempotent by construction (final-review fix, Important #1): a loop-back
     from build.review/build.reverted (continue_adjusting/revert/retry_after_
@@ -379,13 +380,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             ),
         )
         progress.fail_step("build-generate-graph")
-        trace = progress.finish(status="error")
+        execution = progress.finish(status="error")
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text=(
                     "I couldn't build a valid workflow graph -- see the error above. Adjust the plan and approve again."
                 ),
@@ -451,13 +452,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     )
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2.1", items=list(fc.plan_items)))
     decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Workflow built on the canvas.",
             cards=["change_set", "plan"],
         ),
@@ -497,7 +498,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 AssistantTurnItem(
                     turn_id=str(uuid.uuid4()),
                     stage_id=str(s.current_state),
-                    trace=Trace(status="completed", steps=[]),
+                    execution=ExecutionProgress(status="completed"),
                     reply_text="Provide test inputs (or use mock data) to run the test.",
                     cards=["form"],
                 ),
@@ -562,8 +563,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
 
-    emit = env.emit if env.emit is not None else (lambda _e: None)
     progress.activate("build-run-test")
+
+    def emit(event: NodeEvent) -> None:
+        progress.observe_node("build-run-test", event)
+        if env.emit is not None:
+            env.emit(event)
+
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
         status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
@@ -607,13 +613,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 items=[f"Workflow built ({len(fc.built_node_ids)} nodes)", "Tests passing"],
             ),
         )
-        trace = progress.finish()
+        execution = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text="Tests passed; ready for review.",
                 cards=["test_result", "summary"],
             ),
@@ -657,13 +663,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 frozen=False,
             ),
         )
-        trace = progress.finish()
+        execution = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text="The run failed on its inputs — provide test data and retry.",
                 cards=["test_result", "form"],
             ),
@@ -717,13 +723,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         if intents
         else []
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text=(
                 "Test failed — here's a proposed fix to review."
                 if intents
@@ -811,13 +817,13 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
-        trace = progress.finish()
+        execution = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text="Revised plan.",
                 cards=["plan"],
             ),
@@ -929,13 +935,13 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Restarting the plan.",
             cards=["plan"],
         ),

@@ -29,8 +29,9 @@ from core.dify_builder.contract import (
     AgentMessageEventData,
     AssistantTurnItem,
     ErrorCard,
+    ExecutionProgress,
     ProgressEventData,
-    Trace,
+    ReasoningEventData,
     UserItem,
 )
 from core.dify_builder.errors import ConflictError
@@ -44,12 +45,13 @@ from core.dify_builder.models import (
     Snapshot,
     Turn,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
+from core.dify_builder.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
 from core.dify_builder.state import PcState, is_terminal, is_waiting
 
 __all__ = ["CommittedTransition", "Env", "Handler", "Runner", "StepResult"]
 
 _MESSAGE_HISTORY_LIMIT = 24
+_MAX_REASONING_CHARS = 64_000
 
 
 @dataclass(frozen=True)
@@ -97,26 +99,57 @@ class Env:
     # is committed. The accumulated reply becomes authoritative in the
     # CAS-backed commit below.
     emit_message: Callable[[AgentMessageEventData], None] | None = None
-    # Called for low-frequency, curated trace snapshots while a handler is
+    # Called for low-frequency, curated execution snapshots while a handler is
     # doing structured cognition or external work. These events are transient;
     # the next CAS-backed commit remains authoritative.
     emit_progress: Callable[[ProgressEventData], None] | None = None
+    # Called for model-provided reasoning deltas. Reasoning is accumulated on
+    # the current operation and persisted with its assistant turn, independent
+    # from observable execution progress.
+    emit_reasoning: Callable[[ReasoningEventData], None] | None = None
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
+    session_id: str = ""
     operation_id: str = ""
     stage_id: str = ""
     at_version: int = 0
     event_revision: int = 0
+    reasoning_text: str = ""
 
     def begin_operation(self, session: Session) -> None:
+        self.session_id = session.id
         self.operation_id = str(uuid.uuid4())
         self.stage_id = str(session.current_state)
         self.at_version = session.version + 1
         self.event_revision = 0
+        self.reasoning_text = ""
+        if isinstance(self.agent, ReasoningStreamingAgent):
+            self.agent.set_reasoning_callback(self.record_reasoning)
 
     def next_event_revision(self) -> int:
         self.event_revision += 1
         return self.event_revision
+
+    def record_reasoning(self, span_id: str, delta: str) -> None:
+        if not delta:
+            return
+        remaining = _MAX_REASONING_CHARS - len(self.reasoning_text)
+        if remaining <= 0:
+            return
+        accepted = delta[:remaining]
+        self.reasoning_text += accepted
+        if self.emit_reasoning is not None:
+            self.emit_reasoning(
+                ReasoningEventData(
+                    session_id=self.session_id,
+                    operation_id=self.operation_id,
+                    stage_id=self.stage_id,
+                    at_version=self.at_version,
+                    revision=self.next_event_revision(),
+                    span_id=span_id,
+                    delta=accepted,
+                )
+            )
 
 
 @dataclass
@@ -153,6 +186,8 @@ class Runner:
             # durable. Stamp every item here so cards can never remain at the
             # placeholder version used while a step is being assembled.
             item.at_version = at_version
+            if item.kind == "assistant_turn" and self._env.reasoning_text:
+                item.payload["reasoning_text"] = self._env.reasoning_text
         new_version = self._env.repo.compare_and_advance(
             session.id,
             session.version,
@@ -324,7 +359,7 @@ class Runner:
             assistant_item = AssistantTurnItem(
                 turn_id=turn_id,
                 stage_id=str(s.current_state),
-                trace=Trace(status="completed"),
+                execution=ExecutionProgress(status="completed"),
                 reply_text=reply,
             ).to_item(seq=assistant_seq, at_version=assistant_version)
             fc.next_seq += 1

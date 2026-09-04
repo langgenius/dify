@@ -488,18 +488,19 @@ describe('consoleQuery transport context', () => {
   })
 
   it('should expose Dify Builder restore as a typed streamed query', async () => {
-    const snapshot = {
+    const started = {
       app_id: 'app-1',
       canvas_read_only: true,
-      conversation: [],
+      conversation_last_seq: -1,
       interrupted: false,
-      run_status: 'executing',
+      kind: 'command_started' as const,
+      run_status: 'processing',
       session_id: 'session-1',
       state: 'fix.diagnose',
       version: 1,
     } as const
     const terminal = {
-      ...snapshot,
+      ...started,
       canvas_read_only: false,
       kind: 'state' as const,
       run_status: 'waiting_input' as const,
@@ -510,7 +511,7 @@ describe('consoleQuery transport context', () => {
       new Response(
         [
           'event: message',
-          `data: ${JSON.stringify({ event: 'snapshot', data: snapshot })}`,
+          `data: ${JSON.stringify({ event: 'command_started', data: started })}`,
           '',
           'event: message',
           `data: ${JSON.stringify({ event: 'state', data: terminal })}`,
@@ -525,7 +526,7 @@ describe('consoleQuery transport context', () => {
     )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const queryOptions =
-      consoleQuery.difyBuilder.sessions.bySessionId.get.experimental_streamedOptions({
+      consoleQuery.difyBuilder.sessions.bySessionId.stream.get.experimental_streamedOptions({
         input: { params: { session_id: 'session-1' } },
       })
 
@@ -536,11 +537,11 @@ describe('consoleQuery transport context', () => {
 
     expectTypeOf(events[0]!).toMatchTypeOf<DifyBuilderStreamEventResponse>()
     expect(events).toEqual([
-      { event: 'snapshot', data: snapshot },
+      { event: 'command_started', data: started },
       { event: 'state', data: terminal },
     ])
     expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/dify-builder/sessions/session-1'),
+      expect.stringContaining('/dify-builder/sessions/session-1/stream'),
       expect.any(Object),
       expect.objectContaining({ fetchCompat: true }),
     )
