@@ -316,8 +316,11 @@ class LegacyAgentRoleMigration(_RBACModel):
     skipped: str = ""
 
 
-class _LegacyAgentRoleMigrationReport(_RBACModel):
+class LegacyAgentMigrationReport(_RBACModel):
+    """Outcome of the RBAC service's agent.manage migration: tenant roles plus global role templates."""
+
     roles: list[LegacyAgentRoleMigration] = Field(default_factory=list)
+    role_templates: list[LegacyAgentRoleMigration] = Field(default_factory=list)
 
 
 class ResourceWhitelistResources(_RBACModel):
@@ -2341,14 +2344,14 @@ class RBACService:
 
     class Migrations:
         @staticmethod
-        def migrate_agent_manage_roles(tenant_id: str, *, apply: bool) -> list[LegacyAgentRoleMigration]:
+        def migrate_agent_manage_roles(tenant_id: str, *, apply: bool) -> LegacyAgentMigrationReport:
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/migrations/agent-manage-roles",
                 tenant_id=tenant_id,
                 json={"apply": apply},
             )
-            return _LegacyAgentRoleMigrationReport.model_validate(data or {}).roles
+            return LegacyAgentMigrationReport.model_validate(data or {})
 
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""

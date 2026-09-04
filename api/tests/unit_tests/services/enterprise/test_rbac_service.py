@@ -1169,11 +1169,40 @@ class TestMigrations:
         assert call.endpoint == f"{svc._INNER_PREFIX}/migrations/agent-manage-roles"
         assert call.tenant_id == "tenant-1"
         assert call.json == {"apply": True}
-        assert [entry.role_id for entry in report] == ["r1", "r2"]
-        assert report[0].bound_policies == ["agent.full_access"]
-        assert report[1].skipped == "policy row missing"
+        assert [entry.role_id for entry in report.roles] == ["r1", "r2"]
+        assert report.roles[0].bound_policies == ["agent.full_access"]
+        assert report.roles[1].skipped == "policy row missing"
+        assert report.role_templates == []
 
     def test_migrate_agent_manage_roles_tolerates_missing_roles_key(self, mock_send: MagicMock):
         mock_send.return_value = {}
 
-        assert svc.RBACService.Migrations.migrate_agent_manage_roles("tenant-1", apply=False) == []
+        report = svc.RBACService.Migrations.migrate_agent_manage_roles("tenant-1", apply=False)
+
+        assert report.roles == []
+        assert report.role_templates == []
+
+    def test_migrate_agent_manage_roles_parses_role_templates(self, mock_send: MagicMock) -> None:
+        mock_send.return_value = {
+            "role_templates": [
+                {
+                    "role_id": "tmpl-1",
+                    "role_name": "Agent Manager Template",
+                    "added_keys": ["agent.create"],
+                    "removed_keys": ["agent.manage"],
+                    "bound_policies": ["agent.full_access"],
+                    "skipped": "",
+                },
+                {
+                    "role_id": "tmpl-2",
+                    "role_name": "stuck template",
+                    "skipped": "policy row missing",
+                },
+            ],
+        }
+
+        report = svc.RBACService.Migrations.migrate_agent_manage_roles("tenant-1", apply=False)
+
+        assert [entry.role_id for entry in report.role_templates] == ["tmpl-1", "tmpl-2"]
+        assert report.role_templates[0].bound_policies == ["agent.full_access"]
+        assert report.role_templates[1].skipped == "policy row missing"

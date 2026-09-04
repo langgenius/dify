@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 
 import click
 from sqlalchemy import select
@@ -100,16 +101,37 @@ def _emit_agent_migration_event(payload: dict[str, object]) -> None:
     click.echo(json.dumps(payload, sort_keys=True))
 
 
-def _agent_manage_role_event(tenant_id: str, entry: LegacyAgentRoleMigration, *, apply: bool) -> dict[str, object]:
+@dataclass(frozen=True)
+class _AgentMigrationEventKind:
+    """Names the event family for one migration pass (tenant roles vs. global role templates)."""
+
+    event_stem: str
+    include_tenant_id: bool
+
+
+_AGENT_ROLE_MIGRATION_EVENT_KIND = _AgentMigrationEventKind(event_stem="agent_manage_role", include_tenant_id=True)
+_AGENT_ROLE_TEMPLATE_MIGRATION_EVENT_KIND = _AgentMigrationEventKind(
+    event_stem="agent_manage_role_template", include_tenant_id=False
+)
+
+
+def _agent_manage_role_event(
+    tenant_id: str | None,
+    entry: LegacyAgentRoleMigration,
+    *,
+    apply: bool,
+    kind: _AgentMigrationEventKind,
+) -> dict[str, object]:
     base: dict[str, object] = {
         "dry_run": not apply,
-        "tenant_id": tenant_id,
         "role_id": entry.role_id,
         "role_name": entry.role_name,
     }
+    if kind.include_tenant_id:
+        base["tenant_id"] = tenant_id
     if entry.skipped:
-        return {**base, "event": "agent_manage_role_migration_skipped", "reason": entry.skipped}
-    event = "agent_manage_role_migration_applied" if apply else "agent_manage_role_migration_proposed_change"
+        return {**base, "event": f"{kind.event_stem}_migration_skipped", "reason": entry.skipped}
+    event = f"{kind.event_stem}_migration_applied" if apply else f"{kind.event_stem}_migration_proposed_change"
     return {
         **base,
         "event": event,
@@ -1082,18 +1104,33 @@ def migrate_agent_permissions_to_rbac(tenant_id: str | None, batch_size: int, ap
     tenant_count = 0
     role_count = 0
     skipped_count = 0
+    seen_template_ids: set[str] = set()
+    template_count = 0
     for workspace_id in _iter_tenant_ids(tenant_id, batch_size=batch_size):
         tenant_count += 1
         try:
             report = RBACService.Migrations.migrate_agent_manage_roles(workspace_id, apply=apply)
         except Exception as exc:
             raise click.ClickException(f"tenant {workspace_id}: {exc}") from exc
-        for entry in report:
+        for entry in report.roles:
             role_count += 1
             if entry.skipped:
                 skipped_count += 1
-            _emit_agent_migration_event(_agent_manage_role_event(workspace_id, entry, apply=apply))
+            _emit_agent_migration_event(
+                _agent_manage_role_event(workspace_id, entry, apply=apply, kind=_AGENT_ROLE_MIGRATION_EVENT_KIND)
+            )
+        for template in report.role_templates:
+            if template.role_id in seen_template_ids:
+                continue
+            seen_template_ids.add(template.role_id)
+            template_count += 1
+            _emit_agent_migration_event(
+                _agent_manage_role_event(None, template, apply=apply, kind=_AGENT_ROLE_TEMPLATE_MIGRATION_EVENT_KIND)
+            )
     role_state = _AGENT_MIGRATION_ROLE_STATE_LABEL[apply]
-    click.echo(f"{tenant_count} tenant(s), {role_count} role(s) {role_state}, {skipped_count} skipped")
+    click.echo(
+        f"{tenant_count} tenant(s), {role_count} role(s) {role_state}, {skipped_count} skipped, "
+        f"{template_count} template(s) {role_state}"
+    )
     if not apply:
         click.echo(click.style("Dry run: no changes written. Re-run with --apply.", fg="yellow"))
