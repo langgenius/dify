@@ -232,9 +232,7 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[49]).toContain(
       "-- Migration id: 0050_deletion_job_capability_provenance\n",
     );
-    expect(migrationSql[50]).toContain(
-      "-- Migration id: 0051_failed_query_trace_outcome_index\n",
-    );
+    expect(migrationSql[50]).toContain("-- Migration id: 0051_failed_query_trace_outcome_index\n");
     expect(closed).toBe(true);
   });
 
