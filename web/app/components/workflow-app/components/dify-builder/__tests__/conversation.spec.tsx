@@ -156,21 +156,24 @@ describe('DifyBuilderConversation test data form', () => {
       },
     ])
     const query = screen.getByRole('textbox', { name: /Query/ })
+    const locale = screen.getByRole('combobox', { name: /Locale/ })
 
     expect(query).toBeRequired()
     expect(query).toHaveAttribute('maxlength', '5')
     expect(query).toHaveAttribute('placeholder', 'Ask')
-    expect(screen.getByRole('combobox', { name: /Locale/ })).toHaveValue('en')
+    expect(locale).toHaveTextContent('en')
     await waitFor(() => {
       expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', false)
     })
 
+    await user.click(locale)
+    await user.click(screen.getByRole('option', { name: 'zh' }))
     await user.type(query, 'hello')
 
     await waitFor(() => {
       expect(onActionPayloadChange).toHaveBeenLastCalledWith('provide_testdata', {
         mode: 'provide',
-        inputs: { locale: 'en', query: 'hello' },
+        inputs: { locale: 'zh', query: 'hello' },
       })
       expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', true)
     })
@@ -616,7 +619,40 @@ describe('DifyBuilderConversation test data form', () => {
     expect(progressDetails).toHaveAttribute('open')
   })
 
-  it('renders failed test results with the destructive card tone', () => {
+  it('renders known plan metadata without inferring a status', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'plan',
+            payload: {
+              title: 'Build a support workflow',
+              subtitle: 'Three steps',
+              version_tag: 'v2',
+              items: ['Collect the question', 'Generate an answer'],
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    const heading = screen.getByRole('heading', { level: 3, name: 'Build a support workflow' })
+    const card = heading.closest('article')
+    expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.plan')
+    expect(card).toHaveTextContent('Three steps')
+    expect(card).toHaveTextContent('v2')
+    expect(card).toHaveTextContent('Collect the question')
+    expect(card?.querySelector('[data-card-status]')).not.toBeInTheDocument()
+  })
+
+  it('renders failed test result content in the card framework', () => {
     render(
       <DifyBuilderConversation
         busy={false}
@@ -639,8 +675,10 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    expect(screen.getByText('Validation failed').closest('[data-card-state]')).toHaveClass(
-      'border-state-destructive-border',
-    )
+    const heading = screen.getByRole('heading', { level: 3, name: 'Validation failed' })
+    const card = heading.closest('article')
+    expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.test')
+    expect(card).toHaveTextContent('One node returned an error.')
+    expect(card?.querySelector('[data-card-status="failed"]')).toBeInTheDocument()
   })
 })
