@@ -111,9 +111,7 @@ class Account(UserMixin, TypeBase):
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    status: Mapped[AccountStatus] = mapped_column(
-        EnumText(AccountStatus, length=16), default=AccountStatus.ACTIVE
-    )
+    status: Mapped[AccountStatus] = mapped_column(EnumText(AccountStatus, length=16), default=AccountStatus.ACTIVE)
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -260,9 +258,7 @@ class Tenant(TypeBase):
     name: Mapped[str] = mapped_column(String(255))
     encrypt_public_key: Mapped[str | None] = mapped_column(LongText, default=None)
     plan: Mapped[str] = mapped_column(String(255), default="basic")
-    status: Mapped[TenantStatus] = mapped_column(
-        EnumText(TenantStatus, length=255), default=TenantStatus.NORMAL
-    )
+    status: Mapped[TenantStatus] = mapped_column(EnumText(TenantStatus, length=255), default=TenantStatus.NORMAL)
     custom_config: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
