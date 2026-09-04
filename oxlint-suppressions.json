@@ -2573,7 +2573,7 @@
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 3
     },
     "no-restricted-imports": {
       "count": 1
@@ -2581,7 +2581,7 @@
   },
   "web/app/components/plugins/marketplace/query.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/authorized/index.tsx": {

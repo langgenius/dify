@@ -86,6 +86,6 @@ describe('TemplateCard', () => {
     expect(mockPush).toHaveBeenCalledWith('/apps?template-id=template%2Fone')
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByText('1.2k')).toBeInTheDocument()
-    expect(screen.getByLabelText('Verified by a Dify partner')).toBeInTheDocument()
+    expect(screen.getByText('Verified by a Dify partner')).toBeInTheDocument()
   })
 })

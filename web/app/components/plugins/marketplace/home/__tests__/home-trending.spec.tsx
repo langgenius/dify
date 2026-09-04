@@ -787,12 +787,15 @@ describe('HomeTrending', () => {
       auto_batch_id: '11111111-1111-4111-8111-111111111111',
     })
     expect(mockTrackEvent).not.toHaveBeenCalledWith('marketplace_banner_click', expect.anything())
-    expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith('marketplace_banner_click', expect.objectContaining({
-      click_target: 'recommendation',
-      item_id: 'langgenius/dropbox',
-      item_type: 'plugin',
-      item_name: 'Dropbox',
-    }))
+    expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
+      'marketplace_banner_click',
+      expect.objectContaining({
+        click_target: 'recommendation',
+        item_id: 'langgenius/dropbox',
+        item_type: 'plugin',
+        item_name: 'Dropbox',
+      }),
+    )
   })
 
   it('tracks whole-slide blog and event links as frame clicks', async () => {

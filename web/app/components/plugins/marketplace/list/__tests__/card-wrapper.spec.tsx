@@ -1,11 +1,11 @@
 import type { ComponentProps } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import CardWrapper from '../card-wrapper'
 
 vi.mock('@/app/components/plugins/hooks', () => ({

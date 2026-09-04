@@ -13,7 +13,10 @@ const THEME_TYPE_BY_BANNER = {
   partner: 'partner',
 } as const
 
-export type MarketplaceBannerCardClick = Pick<BannerRecommendCard, 'item_id' | 'item_type' | 'display_name'> & {
+export type MarketplaceBannerCardClick = Pick<
+  BannerRecommendCard,
+  'item_id' | 'item_type' | 'display_name'
+> & {
   link: string
 }
 

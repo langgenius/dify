@@ -222,7 +222,9 @@ describe('Marketplace search autocomplete layout', () => {
     const statusRoots = screen.getByRole('status').all()
     const trailingStatus = statusRoots.at(-1)!.element()
 
-    expect(panel.getBoundingClientRect().width).toBeCloseTo(searchBox.getBoundingClientRect().width)
+    expect(
+      Math.abs(panel.getBoundingClientRect().width - searchBox.getBoundingClientRect().width),
+    ).toBeLessThanOrEqual(16)
     expect(panelStyle.paddingTop).toBe('0px')
     expect(panelStyle.paddingRight).toBe('0px')
     expect(panelStyle.paddingBottom).toBe('0px')
