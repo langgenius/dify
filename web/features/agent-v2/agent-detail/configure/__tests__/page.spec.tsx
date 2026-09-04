@@ -1905,6 +1905,7 @@ describe('AgentConfigurePage', () => {
       }
 
       expect(buildDraftQueryOptions).toMatchObject({
+        context: { silent: true },
         refetchOnReconnect: false,
         refetchOnWindowFocus: false,
       })
