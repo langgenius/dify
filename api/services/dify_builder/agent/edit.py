@@ -11,7 +11,7 @@ from typing import Any
 from core.dify_builder.models import MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
-from services.dify_builder.agent import llm
+from services.dify_builder.agent import form_schema, llm
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 
@@ -59,7 +59,8 @@ def analyze_impact(
     system = (
         "You are a Dify workflow edit-impact analyst. Given an edit goal and the current graph, "
         "propose 2-5 goal-shaped edit-rule fields, sensible values, and which EXISTING node ids the "
-        'change touches. Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
+        f"change touches. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        'Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
         '"values": {...}, "target_node_ids": ["<existing id>", ...]}.'
     )
     try:
@@ -76,7 +77,11 @@ def analyze_impact(
     targets = [str(t) for t in raw_targets if str(t) in ids] if isinstance(raw_targets, list) else []
     fields = data.get("fields") if isinstance(data.get("fields"), list) else []
     values = data.get("values") if isinstance(data.get("values"), dict) else {}
-    return {"fields": fields, "values": values, "target_node_ids": targets}
+    return {
+        "fields": form_schema.reconcile_form_fields(fields, values),
+        "values": values,
+        "target_node_ids": targets,
+    }
 
 
 def propose_edit_plan(
