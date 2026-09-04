@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -12,6 +13,7 @@ from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -29,6 +31,9 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -168,6 +173,8 @@ def _ctx(
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
     session_snapshot: CompositorSessionSnapshot | None = None,
+    files: tuple[File, ...] = (),
+    image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -188,6 +195,8 @@ def _ctx(
         backend_binding_ref="binding-ref-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
         session_snapshot=session_snapshot,
+        files=files,
+        image_detail_config=image_detail_config,
     )
 
 
@@ -201,6 +210,32 @@ def _soul_with_model() -> AgentSoulConfig:
             },
             "prompt": {"system_prompt": "You are Iris."},
         }
+    )
+
+
+def _image_file() -> File:
+    return File(
+        file_id="file-1",
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="upload-file-1",
+        filename="earth.png",
+        extension=".png",
+        mime_type="image/png",
+        size=12,
+    )
+
+
+def _document_file() -> File:
+    return File(
+        file_id="file-2",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="upload-document-1",
+        filename="brief.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=24,
     )
 
 
@@ -250,6 +285,137 @@ class TestAgentAppRuntimeRequestBuilder:
         # LLM credentials are resolved by API and never enter the Agent request.
         assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
         assert result.metadata["conversation_id"] == "conv-1"
+
+    def test_build_sends_images_directly_to_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        prompt_content_calls: list[tuple[File, ImagePromptMessageContent.DETAIL | None]] = []
+
+        def to_prompt_message_content(
+            file: File,
+            *,
+            image_detail_config: ImagePromptMessageContent.DETAIL | None,
+        ) -> ImagePromptMessageContent:
+            prompt_content_calls.append((file, image_detail_config))
+            return ImagePromptMessageContent(
+                format="png",
+                url="https://files.example.com/earth.png?sign=secret",
+                mime_type="image/png",
+                filename="earth.png",
+                detail=image_detail_config or ImagePromptMessageContent.DETAIL.LOW,
+            )
+
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            to_prompt_message_content,
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(
+            _ctx(
+                _soul_with_model(),
+                query="Describe this image.",
+                files=(_image_file(),),
+                image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+            )
+        )
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.text == "Describe this image."
+        assert config.files[0].url == "https://files.example.com/earth.png?sign=secret"
+        assert config.files[0].detail == "high"
+        assert "dify-agent file download" not in config.text
+        assert prompt_content_calls == [(_image_file(), ImagePromptMessageContent.DETAIL.HIGH)]
+
+    def test_build_keeps_image_locator_for_non_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: False,
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(_ctx(_soul_with_model(), query="Inspect the attachment.", files=(_image_file(),)))
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.files == []
+        assert config.text == (
+            "Inspect the attachment.\n"
+            "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+            "to get the files and investigate them\n"
+            + json.dumps(
+                [
+                    {
+                        "transfer_method": "local_file",
+                        "reference": build_file_reference(record_id="upload-file-1"),
+                    }
+                ],
+                separators=(",", ":"),
+            )
+        )
+
+    def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            lambda *_args, **_kwargs: ImagePromptMessageContent(
+                format="png",
+                base64_data="aW1hZ2UtYnl0ZXM=",
+                mime_type="image/png",
+                filename="earth.png",
+                detail="low",
+            ),
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(_ctx(_soul_with_model(), query="Describe this image.", files=(_image_file(),)))
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.files[0].url is None
+        assert config.files[0].base64_data == "aW1hZ2UtYnl0ZXM="
+
+    def test_build_keeps_non_image_locator_when_vision_image_is_direct(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            lambda *_args, **_kwargs: ImagePromptMessageContent(
+                format="png",
+                url="https://files.example.com/earth.png",
+                mime_type="image/png",
+                filename="earth.png",
+                detail="low",
+            ),
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(
+            _ctx(_soul_with_model(), files=(_image_file(), _document_file()), query="Compare the attachments.")
+        )
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert [file.filename for file in config.files] == ["earth.png"]
+        assert config.text.endswith(
+            json.dumps(
+                [
+                    {
+                        "transfer_method": "local_file",
+                        "reference": build_file_reference(record_id="upload-document-1"),
+                    }
+                ],
+                separators=(",", ":"),
+            )
+        )
 
     @pytest.mark.parametrize(
         ("previous_prompt", "current_prompt"),

@@ -5,10 +5,15 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.llm import model_access
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 
 
-def _stub_model_factory(monkeypatch: pytest.MonkeyPatch, context_window: object) -> dict[str, object]:
+def _stub_model_factory(
+    monkeypatch: pytest.MonkeyPatch,
+    context_window: object,
+    *,
+    features: list[ModelFeature] | None = None,
+) -> dict[str, object]:
     calls: dict[str, object] = {}
 
     class FakeModelFactory:
@@ -18,7 +23,10 @@ def _stub_model_factory(monkeypatch: pytest.MonkeyPatch, context_window: object)
         def init_model_instance(self, provider_name: str, model_name: str) -> object:
             calls["provider_name"] = provider_name
             calls["model_name"] = model_name
-            schema = SimpleNamespace(model_properties={ModelPropertyKey.CONTEXT_SIZE: context_window})
+            schema = SimpleNamespace(
+                model_properties={ModelPropertyKey.CONTEXT_SIZE: context_window},
+                features=features,
+            )
             return SimpleNamespace(get_model_schema=lambda: schema)
 
     monkeypatch.setattr(model_access, "DifyModelFactory", FakeModelFactory)
@@ -57,4 +65,25 @@ def test_resolve_model_context_window_ignores_invalid_schema_values(
             model_name="gpt-4o",
         )
         is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("features", "expected"),
+    [([ModelFeature.VISION], True), ([], False), (None, False)],
+)
+def test_resolve_model_supports_vision_reads_selected_model_schema(
+    monkeypatch: pytest.MonkeyPatch,
+    features: list[ModelFeature] | None,
+    expected: bool,
+) -> None:
+    _stub_model_factory(monkeypatch, 128_000, features=features)
+
+    assert (
+        model_access.resolve_model_supports_vision(
+            run_context=cast(DifyRunContext, object()),
+            provider_name="openai",
+            model_name="gpt-4o",
+        )
+        is expected
     )

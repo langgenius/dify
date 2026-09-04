@@ -20,6 +20,7 @@ from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYP
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
+from dify_agent.layers.user_prompt import DIFY_USER_PROMPT_LAYER_TYPE_ID, DifyUserPromptFileConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -365,6 +366,55 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
 def test_agent_app_request_builder_omits_shell_layer_by_default():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
+
+
+def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
+    run_input = _agent_app_input()
+    run_input.user_files = [
+        DifyUserPromptFileConfig(
+            filename="earth.png",
+            mime_type="image/png",
+            format="png",
+            url="https://files.example.com/earth.png?sign=secret",
+            detail="high",
+        )
+    ]
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layer = next(layer for layer in request.composition.layers if layer.name == "agent_app_user_prompt")
+
+    assert layer.type == DIFY_USER_PROMPT_LAYER_TYPE_ID
+    assert layer.config.text == "List files."
+    assert layer.config.files == run_input.user_files
+
+
+def test_agent_backend_log_redacts_multimodal_file_transport():
+    run_input = _agent_app_input()
+    run_input.metadata = {"source_url": "https://example.com/docs"}
+    run_input.user_files = [
+        DifyUserPromptFileConfig(
+            filename="earth.png",
+            mime_type="image/png",
+            format="png",
+            url="https://files.example.com/earth.png?sign=secret",
+        ),
+        DifyUserPromptFileConfig(
+            filename="inline.png",
+            mime_type="image/png",
+            format="png",
+            base64_data="aW1hZ2UtYnl0ZXM=",
+        ),
+    ]
+
+    redacted = cast(
+        dict[str, Any],
+        redact_for_agent_backend_log(AgentBackendRunRequestBuilder().build_for_agent_app(run_input)),
+    )
+    layer = next(item for item in redacted["composition"]["layers"] if item["name"] == "agent_app_user_prompt")
+
+    assert layer["config"]["files"][0]["url"] == "[REDACTED]"
+    assert layer["config"]["files"][1]["base64_data"] == "[REDACTED]"
+    assert redacted["metadata"]["source_url"] == "https://example.com/docs"
 
 
 def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank():
