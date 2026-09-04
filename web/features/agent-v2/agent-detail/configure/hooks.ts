@@ -6,7 +6,10 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue } from 'jotai'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ModelFeatureEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
@@ -86,13 +89,17 @@ export function useAgentConfigureModelOptions() {
       }
     : undefined
   const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
+  const { currentModel: resolvedModel, textGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+  const supportsVision = resolvedModel
+    ? (resolvedModel.features?.includes(ModelFeatureEnum.vision) ?? false)
+    : undefined
 
   return {
     currentModel,
     setConfigureModel: setModel,
     textGenerationModelList,
+    supportsVision,
   }
 }
 

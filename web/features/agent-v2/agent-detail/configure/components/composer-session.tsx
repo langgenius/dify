@@ -346,7 +346,7 @@ function AgentConfigurePageComposerContent({
     },
     [rebaseComposerDraft],
   )
-  const { currentModel, setConfigureModel, textGenerationModelList } =
+  const { currentModel, setConfigureModel, supportsVision, textGenerationModelList } =
     useAgentConfigureModelOptions()
   const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
@@ -623,6 +623,7 @@ function AgentConfigurePageComposerContent({
             show={showChatFeatures}
             appFeatures={buildDraft.agentSoulConfig?.app_features}
             disabled={isChatFeaturesReadOnly}
+            supportsVision={supportsVision}
             onClose={() => setShowChatFeatures(false)}
           />
           <AgentConfigureClearSessionConfirmDialog
