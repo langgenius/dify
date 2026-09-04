@@ -34,9 +34,11 @@ describe('EditInConsoleLink', () => {
     expect(button).toHaveAttribute('aria-disabled', 'true')
 
     await user.hover(button)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'workflow.nodes.agent.roster.editInConsoleDisabled',
-    )
+    expect(
+      await screen.findByText('workflow.nodes.agent.roster.editInConsoleDisabled', {
+        selector: '[data-open]',
+      }),
+    ).toBeVisible()
   })
 
   it('includes the Manage Agents permission in the RBAC explanation', async () => {
@@ -46,8 +48,10 @@ describe('EditInConsoleLink', () => {
 
     await user.hover(screen.getByRole('button', { name: /editInConsole/ }))
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'workflow.nodes.agent.roster.editInConsoleDisabledRbac',
-    )
+    expect(
+      await screen.findByText('workflow.nodes.agent.roster.editInConsoleDisabledRbac', {
+        selector: '[data-open]',
+      }),
+    ).toBeVisible()
   })
 })

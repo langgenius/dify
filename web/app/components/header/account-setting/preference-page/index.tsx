@@ -19,7 +19,6 @@ import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
 
 type SelectOption = {
@@ -48,7 +47,7 @@ export default function PreferencePage() {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const updateTimezone = useMutation(consoleQuery.account.timezone.post.mutationOptions())
+  const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -68,11 +67,9 @@ export default function PreferencePage() {
     if (isThemeOption(item.value)) setTheme(item.value)
   }
   const handleSelectLanguage = async (item: SelectOption) => {
-    const url = '/account/interface-language'
-    const bodyKey = 'interface_language'
     setEditing(true)
     try {
-      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      await updateProfile.mutateAsync({ body: { interface_language: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
@@ -85,7 +82,7 @@ export default function PreferencePage() {
   const handleSelectTimezone = async (item: TimezoneOption) => {
     setEditing(true)
     try {
-      await updateTimezone.mutateAsync({ body: { timezone: item.value } })
+      await updateProfile.mutateAsync({ body: { timezone: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     } catch (e) {
       toast.error((e as Error).message)

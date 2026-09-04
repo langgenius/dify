@@ -89,20 +89,14 @@ export function AgentConfigureComposerScope({
     setSoulSourceOverride,
     soulSourceOverride,
   })
-  const sessionController = useAgentConfigureSessionController({
-    buildDraftAgentSoulConfig: buildDraft.buildDraftAgentSoulConfig,
-    hasActiveBuildDraft: buildDraft.hasActiveBuildDraft,
-    isBuildDraftActive: buildDraft.isActive,
-    mode: rightPanelMode,
-    normalAgentSoulConfig: agentSoulConfig,
-    onModeChange: onRightPanelModeChange,
-  })
-
   useEffect(() => {
     if (!buildDraft.isPending) initializedComposerAgentIdRef.current = agentId
   }, [agentId, buildDraft.isPending])
 
-  if (buildDraft.isPending && initializedComposerAgentIdRef.current !== agentId) {
+  if (
+    configureData.isPending ||
+    (buildDraft.isPending && initializedComposerAgentIdRef.current !== agentId)
+  ) {
     return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
@@ -118,8 +112,8 @@ export function AgentConfigureComposerScope({
       isViewingVersion={isViewingVersion}
       previewEnabled={previewEnabled}
       rightPanelMode={rightPanelMode}
-      sessionController={sessionController}
       onComposerRebase={onComposerRebase}
+      onRightPanelModeChange={onRightPanelModeChange}
       onSelectVersion={onSelectVersion}
     />
   )
@@ -133,8 +127,8 @@ function AgentConfigurePageComposerSession({
   isViewingVersion,
   previewEnabled,
   rightPanelMode,
-  sessionController,
   onComposerRebase,
+  onRightPanelModeChange,
   onSelectVersion,
 }: {
   agentId: string
@@ -144,12 +138,20 @@ function AgentConfigurePageComposerSession({
   isViewingVersion: boolean
   previewEnabled: boolean
   rightPanelMode: AgentConfigureRightPanelMode
-  sessionController: ReturnType<typeof useAgentConfigureSessionController>
   onComposerRebase: () => void
+  onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void | Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
-  const { agentQuery } = configureData
+  const { agentQuery, agentSoulConfig } = configureData
   const queryClient = useQueryClient()
+  const sessionController = useAgentConfigureSessionController({
+    buildDraftAgentSoulConfig: buildDraft.buildDraftAgentSoulConfig,
+    hasActiveBuildDraft: buildDraft.hasActiveBuildDraft,
+    isBuildDraftActive: buildDraft.isActive,
+    mode: rightPanelMode,
+    normalAgentSoulConfig: agentSoulConfig,
+    onModeChange: onRightPanelModeChange,
+  })
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({

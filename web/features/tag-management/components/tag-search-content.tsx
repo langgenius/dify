@@ -94,7 +94,7 @@ export const TagSearchContentView = ({
           if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>
-                <ComboboxItem value={tag}>
+                <ComboboxItem<string> value={tag.id}>
                   <ComboboxItemText className="flex items-center gap-x-1 px-0">
                     <span
                       aria-hidden="true"
@@ -112,7 +112,7 @@ export const TagSearchContentView = ({
           }
 
           return (
-            <ComboboxItem key={tag.id} value={tag} disabled={!canChangeBindings}>
+            <ComboboxItem<string> key={tag.id} value={tag.id} disabled={!canChangeBindings}>
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>

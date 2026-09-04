@@ -336,7 +336,7 @@ function ActivityDateRangePicker({
   )
   const renderTrigger =
     (edge: 'start' | 'end'): NonNullable<DatePickerProps['renderTrigger']> =>
-    (props, state, { handleClickTrigger, value }) => (
+    (props, state, { value }) => (
       <div
         {...props}
         role="button"
@@ -347,10 +347,6 @@ function ActivityDateRangePicker({
           props.className,
           state.open && 'bg-state-base-hover',
         )}
-        onClick={(event) => {
-          handleClickTrigger(event)
-          props.onClick?.(event)
-        }}
         onKeyDown={(event) => {
           props.onKeyDown?.(event)
           if (event.defaultPrevented) return

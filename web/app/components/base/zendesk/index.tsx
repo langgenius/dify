@@ -1,13 +1,13 @@
 import { memo } from 'react'
 import { IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
-import { prefetchSystemFeatures } from '@/features/system-features/server'
+import { getOptionalSystemFeatures } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import { ZendeskScript } from './script'
 
 const Zendesk = async () => {
   if (!ZENDESK_WIDGET_KEY) return null
 
-  const systemFeatures = await prefetchSystemFeatures()
+  const systemFeatures = await getOptionalSystemFeatures()
   if (!systemFeatures || systemFeatures.deployment_edition !== 'CLOUD') return null
 
   const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? '') : ''

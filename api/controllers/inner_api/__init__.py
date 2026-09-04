@@ -21,6 +21,7 @@ from .agent import files as _agent_files
 from .agent import llm as _agent_llm
 from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
+from .app import file_grants as _app_file_grants
 from .knowledge import retrieval as _knowledge_retrieval
 from .knowledge_fs import storage as _knowledge_fs_storage
 from .plugin import agent_config as _agent_config
@@ -36,6 +37,7 @@ __all__ = [
     "_agent_llm",
     "_agent_tools",
     "_app_dsl",
+    "_app_file_grants",
     "_knowledge_fs_storage",
     "_knowledge_retrieval",
     "_mail",

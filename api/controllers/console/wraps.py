@@ -356,6 +356,16 @@ def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]
     return decorated
 
 
+def social_oauth_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        if not dify_config.ENABLE_SOCIAL_OAUTH_LOGIN:
+            abort(403)
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
