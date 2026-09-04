@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -119,9 +119,7 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const publishIsAvailable =
-    composerQuery.isSuccess &&
-    !isPublishing &&
-    (publishableState === 'draft' || publishableState === 'unpublished')
+    composerQuery.isSuccess && (publishableState === 'draft' || publishableState === 'unpublished')
   const workflowReferencesQueryOptions =
     consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -132,13 +130,13 @@ export function AgentConfigurePublishBar({
       context: {
         silent: true,
       },
-      enabled: publishIsAvailable && !selectedVersionSnapshot,
+      enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
   useQuery(workflowReferencesQueryOptions)
   const restoreVersionMutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions(),
   )
-  const canPublish = publishIsAvailable
+  const canPublish = publishIsAvailable && !isPublishing
 
   const handleRestoreVersion = (versionId: string) => {
     if (restoreVersionMutation.isPending) return
@@ -328,7 +326,7 @@ export function AgentConfigurePublishBar({
         metaLabel={currentStateMeta.metaLabel}
         showShortcut={currentStateMeta.showShortcut}
         statusLabel={currentStateMeta.statusLabel}
-        canPublish={canPublish}
+        publishIsAvailable={publishIsAvailable}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
         onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={requestPublish}
@@ -345,7 +343,7 @@ function PublishBarActions({
   metaLabel,
   showShortcut,
   statusLabel,
-  canPublish,
+  publishIsAvailable,
   onCancelImpact,
   onOpenVersions,
   onPublishRequest,
@@ -357,12 +355,13 @@ function PublishBarActions({
   metaLabel: string
   showShortcut: boolean
   statusLabel: string
-  canPublish: boolean
+  publishIsAvailable: boolean
   onCancelImpact: () => void
   onOpenVersions: () => void
   onPublishRequest: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const publishButtonLabelId = useId()
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
@@ -402,13 +401,16 @@ function PublishBarActions({
       <Button
         type="button"
         variant="primary"
-        disabled={!canPublish}
+        disabled={!publishIsAvailable}
         loading={isPublishing}
+        aria-labelledby={publishButtonLabelId}
         className="h-8 gap-1 rounded-lg px-3"
         onClick={onPublishRequest}
       >
         {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
-        <span className="shrink-0">{actionLabel}</span>
+        <span id={publishButtonLabelId} className="shrink-0">
+          {actionLabel}
+        </span>
         {showShortcut && <PublishShortcut />}
       </Button>
     </div>

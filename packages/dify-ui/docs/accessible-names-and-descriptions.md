@@ -38,7 +38,7 @@ text is not a label relationship by proximity alone.
 
 | Surface                    | Contract                                                                                                                                           |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Text button or link        | Follow [Button]. Let meaningful child text name the action; do not repeat it in `aria-label`.                                                      |
+| Text button or link        | Let meaningful child text name the action; do not repeat it in `aria-label`. Follow [Button] when a focused loading button changes its label.      |
 | Form control               | Follow [Forms]. Use its label primitive or an associated native `label`, preserving label activation.                                              |
 | Icon-only command          | Follow [IconButton]. Its component-specific contract requires one accessible-name source and a decorative glyph.                                   |
 | Dialog or named region     | Reuse the visible title through the primitive title API or `aria-labelledby`; use `aria-label` only when no suitable visible title exists.         |
@@ -58,9 +58,9 @@ A description is optional when the name is sufficient. For a file action, the na
 the operation and file, while the description explains retention or recovery. Avoid repeating the
 same sentence in both. See the [name and description computation specification][accname].
 
-A name or description attribute is not an announcement mechanism. Keep progress and asynchronous
-updates with their existing feature owner. Follow [Button] for loading behavior and [Forms] for
-field error relationships.
+A name or description attribute is not a general announcement mechanism. Keep progress and
+asynchronous updates with their existing feature owner. Follow [Button] for the narrower case of a
+focused loading button whose visible label changes, and [Forms] for field error relationships.
 
 ## Overrides and References
 

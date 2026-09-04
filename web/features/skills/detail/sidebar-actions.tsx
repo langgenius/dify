@@ -71,10 +71,10 @@ function SkillDetailDeleteDialog({
   })
   const references = referencesQuery.data?.data ?? []
   const referenceCount = Math.max(detail.reference_count ?? 0, references.length)
-  const isDeleteDisabled =
-    deleteMutation.isPending ||
+  const isDeleteUnavailable =
     (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
     (referenceCount > 0 && confirmDeleteInput !== detail.display_name)
+  const isDeleteDisabled = deleteMutation.isPending || isDeleteUnavailable
   const description =
     referenceCount > 0
       ? t(
@@ -186,7 +186,7 @@ function SkillDetailDeleteDialog({
           <AlertDialogConfirmButton
             tone="destructive"
             loading={deleteMutation.isPending}
-            disabled={isDeleteDisabled}
+            disabled={isDeleteUnavailable}
             onClick={handleDelete}
           >
             {tCommon(($) => (referenceCount > 0 ? $['operation.confirm'] : $['operation.delete']))}

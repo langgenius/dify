@@ -283,6 +283,7 @@ function ConnectionForm({
   provider: Provider
 }) {
   const { t } = useTranslation('dataset')
+  const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
@@ -413,10 +414,18 @@ function ConnectionForm({
           {t(($) => $['newKnowledge.connectionFailed'])}
         </p>
       )}
-      <Button type="submit" variant="primary" className="mt-4" disabled={pending}>
-        {pending
-          ? t(($) => $['newKnowledge.connectingProvider'])
-          : t(($) => $['newKnowledge.connectProvider'])}
+      <Button
+        type="submit"
+        variant="primary"
+        className="mt-4"
+        loading={pending}
+        aria-labelledby={connectButtonLabelId}
+      >
+        <span id={connectButtonLabelId}>
+          {pending
+            ? t(($) => $['newKnowledge.connectingProvider'])
+            : t(($) => $['newKnowledge.connectProvider'])}
+        </span>
       </Button>
     </form>
   )
@@ -486,6 +495,7 @@ function ConnectionProblem({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -528,10 +538,17 @@ function ConnectionProblem({
           {t(($) => $['newKnowledge.connectionRefreshFailed'])}
         </p>
       )}
-      <Button className="mt-4" onClick={() => void refresh()} disabled={pending}>
-        {pending
-          ? t(($) => $['newKnowledge.refreshingConnection'])
-          : tCommon(($) => $['operation.retry'])}
+      <Button
+        className="mt-4"
+        onClick={() => void refresh()}
+        loading={pending}
+        aria-labelledby={refreshButtonLabelId}
+      >
+        <span id={refreshButtonLabelId}>
+          {pending
+            ? t(($) => $['newKnowledge.refreshingConnection'])
+            : tCommon(($) => $['operation.retry'])}
+        </span>
       </Button>
     </div>
   )
@@ -570,7 +587,7 @@ function ProvisioningConnection({
           {t(($) => $['newKnowledge.connectionRefreshFailed'])}
         </p>
       )}
-      <Button className="mt-3" loading={pending} onClick={() => void refresh()} disabled={pending}>
+      <Button className="mt-3" loading={pending} onClick={() => void refresh()}>
         {t(($) => $['newKnowledge.refreshConnectionStatus'])}
       </Button>
     </div>

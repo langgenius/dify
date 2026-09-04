@@ -89,7 +89,7 @@ export default function MailAndCodeAuth() {
           <Button
             type="submit"
             loading={loading}
-            disabled={loading || !email}
+            disabled={!email}
             variant="primary"
             className="w-full"
           >

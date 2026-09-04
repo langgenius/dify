@@ -246,7 +246,7 @@ export default function OAuthAuthorize() {
               size="large"
               className="w-full"
               onClick={onAuthorize}
-              disabled={!clientId || !redirectUri || isOAuthError || authorizing}
+              disabled={!clientId || !redirectUri || isOAuthError}
               loading={authorizing}
             >
               {t(($) => $.continue, { ns: 'oauth' })}

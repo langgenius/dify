@@ -1938,7 +1938,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             <Button
               ref={permissionRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-              aria-busy={workspacePermissionKeysFetching}
               loading={workspacePermissionKeysFetching}
               size="small"
               onBlur={(event) => {
@@ -1972,7 +1971,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 <Button
                   ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                  aria-busy={documentsQuery.isRefetching}
                   loading={documentsQuery.isRefetching}
                   size="small"
                   onBlur={(event) => {
@@ -2005,7 +2003,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
-              aria-busy={dependencyRetryFetching}
               loading={dependencyRetryFetching}
               size="small"
               onBlur={(event) => {
@@ -2051,7 +2048,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               <Button
                 ref={documentsRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${documentsRecoveryDescription}`}
-                aria-busy={documentsQuery.isFetching}
                 className="mt-4"
                 loading={documentsQuery.isFetching}
                 onBlur={(event) => {
@@ -2085,7 +2081,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.tasksErrorDescription'])
                   : t(($) => $['newKnowledge.sourcesErrorDescription'])
               }`}
-              aria-busy={blockingDependencyRetryFetching}
               className="mt-4"
               loading={blockingDependencyRetryFetching}
               onBlur={(event) => {
