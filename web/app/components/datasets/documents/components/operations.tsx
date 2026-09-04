@@ -361,12 +361,8 @@ const Operations = ({
   }
 
   return (
-    <div
-      className="flex items-center"
-      role="presentation"
-      onClick={stopPropagation}
-      onKeyDown={stopPropagation}
-    >
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation.
+    <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
       {isListScene && !embeddingAvailable && (
         <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
       )}
