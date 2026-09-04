@@ -105,7 +105,7 @@ const Probe = () => {
             canvas_read_only: true,
             conversation_last_seq: -1,
             interrupted: false,
-            run_status: 'executing',
+            run_status: 'processing',
             session_id: 'session-1',
             state: 'fix.diagnose',
             version: 1,

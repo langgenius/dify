@@ -2,6 +2,7 @@ import type {
   DifyBuilderConversationPageResponse,
   DifyBuilderStreamEventResponse,
   ProgressEventData,
+  ReasoningEventData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
 import type { ConversationItem, SessionView } from '../../types'
@@ -15,7 +16,7 @@ export const createSessionView = (overrides: Partial<SessionView> = {}): Session
   version: 1,
   state: 'fix.diagnose',
   canvas_read_only: true,
-  run_status: 'executing',
+  run_status: 'processing',
   interrupted: false,
   conversation_last_seq: -1,
   active_interaction: null,
@@ -72,17 +73,34 @@ export const progressEvent = (
     stage_id: 'fix.verify',
     at_version: 2,
     revision: 1,
-    trace: {
+    execution: {
       status: 'running',
-      steps: [
+      activities: [
         {
           id: 'fix-run-validation',
           label: 'Run the repaired workflow',
           state: 'active',
-          tone: 'neutral',
         },
       ],
     },
+    ...overrides,
+  },
+})
+
+export const reasoningEvent = (
+  delta: string,
+  overrides: Partial<ReasoningEventData> = {},
+): DifyBuilderStreamEventResponse => ({
+  event: 'reasoning',
+  data: {
+    kind: 'reasoning',
+    session_id: 'session-1',
+    operation_id: 'operation-1',
+    stage_id: 'fix.verify',
+    at_version: 2,
+    revision: 1,
+    span_id: 'diagnose',
+    delta,
     ...overrides,
   },
 })

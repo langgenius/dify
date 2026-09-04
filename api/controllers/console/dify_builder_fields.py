@@ -27,6 +27,7 @@ from core.dify_builder.contract import (
     PreflightContextCard,
     ProgressEventData,
     PublishCard,
+    ReasoningEventData,
     RecoveryRef,
     ResourceSelectCard,
     RunContextCard,
@@ -305,6 +306,11 @@ class DifyBuilderAgentMessageEventResponse(ResponseModel):
     data: AgentMessageEventData
 
 
+class DifyBuilderReasoningEventResponse(ResponseModel):
+    event: Literal["reasoning"]
+    data: ReasoningEventData
+
+
 class DifyBuilderProgressEventResponse(ResponseModel):
     event: Literal["progress"]
     data: ProgressEventData
@@ -332,6 +338,7 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderNodeEventResponse
             | DifyBuilderCanvasEventResponse
             | DifyBuilderAgentMessageEventResponse
+            | DifyBuilderReasoningEventResponse
             | DifyBuilderProgressEventResponse
             | DifyBuilderCommitEventResponse
             | DifyBuilderStateEventResponse

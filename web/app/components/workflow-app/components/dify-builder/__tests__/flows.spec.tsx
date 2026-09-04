@@ -180,7 +180,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
   it('streams a Build command and next action without a session-state GET', async () => {
     const createStarted = createSessionView({
       canvas_read_only: true,
-      run_status: 'executing',
+      run_status: 'processing',
       state: 'build.goal',
     })
     const planItem: ConversationItem = {
@@ -189,7 +189,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       payload: {
         reply_text: 'Plan reconciled from the server.',
         stage_id: 'build.plan',
-        trace: { status: 'completed' },
+        execution: { status: 'completed' },
         turn_id: 'turn-1',
       },
       seq: 1,
@@ -280,7 +280,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
   it('selects Edit for a connected canvas and sends the opening goal', async () => {
     const editStarted = createSessionView({
       entry_mode: 'edit',
-      run_status: 'executing',
+      run_status: 'processing',
       state: 'edit.capability_check',
     })
     const editReply: ConversationItem = {
@@ -289,7 +289,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       payload: {
         reply_text: 'Edit impact analysis is ready.',
         stage_id: 'edit.impact_analysis',
-        trace: { status: 'completed' },
+        execution: { status: 'completed' },
         turn_id: 'turn-edit',
       },
       seq: 1,
@@ -328,7 +328,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     const fixStarted = createSessionView({
       canvas_read_only: true,
       entry_mode: 'fix',
-      run_status: 'executing',
+      run_status: 'processing',
       state: 'fix.diagnose',
     })
     const recoveredNotice: ConversationItem = {

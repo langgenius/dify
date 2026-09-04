@@ -121,14 +121,14 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
 
     store.set(difyBuilderCanvasRefreshingAtom, false)
-    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'executing' }))
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
     expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
   })
 
   it('makes an interrupted execution resettable without releasing its canvas lock', () => {
     const store = createStore()
 
-    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'executing' }))
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
     expect(store.get(difyBuilderInteractionBusyAtom)).toBe(true)
 
     store.set(
@@ -136,7 +136,7 @@ describe('Dify Builder store', () => {
       createSessionView({
         canvas_read_only: true,
         interrupted: true,
-        run_status: 'executing',
+        run_status: 'processing',
       }),
     )
 
@@ -147,7 +147,7 @@ describe('Dify Builder store', () => {
   it('treats thinking as active and only enables chat at conversational gates', () => {
     const store = createStore()
 
-    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'thinking' }))
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
     expect(store.get(difyBuilderRunActiveAtom)).toBe(true)
     expect(store.get(difyBuilderInteractionBusyAtom)).toBe(true)
     expect(store.get(difyBuilderCanComposeAtom)).toBe(false)

@@ -26,7 +26,7 @@ export type DifyBuilderRuntime = {
 const EMPTY_ACTIONS: Action[] = []
 
 const isTerminalStatus = (status?: string) => status === 'complete' || status === 'failed'
-const isActiveStatus = (status?: string) => status === 'thinking' || status === 'executing'
+const isActiveStatus = (status?: string) => status === 'processing'
 const canContinueConversation = (status?: string) =>
   status === 'waiting_input' || status === 'waiting_confirmation'
 

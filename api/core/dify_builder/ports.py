@@ -54,6 +54,7 @@ __all__ = [
     "DifyPort",
     "MutationIntent",
     "NodeEvent",
+    "ReasoningStreamingAgent",
     "Repository",
     "Risk",
 ]
@@ -108,6 +109,13 @@ class DifyBuilderAgent(Protocol):
         text: str,
         on_delta: Callable[[str], None] | None = None,
     ) -> str: ...
+
+
+@runtime_checkable
+class ReasoningStreamingAgent(Protocol):
+    """Optional capability for agents that expose model-provided reasoning."""
+
+    def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None: ...
 
 
 @runtime_checkable
