@@ -86,6 +86,11 @@ expand_env() {
     }' "$1"
 }
 
+# Align Squid timeouts with HTTP Request node limits when SSRF_PROXY_* are unset.
+export SSRF_PROXY_CONNECT_TIMEOUT="${SSRF_PROXY_CONNECT_TIMEOUT:-${HTTP_REQUEST_MAX_CONNECT_TIMEOUT:-30}}"
+export SSRF_PROXY_REQUEST_TIMEOUT="${SSRF_PROXY_REQUEST_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}"
+export SSRF_PROXY_READ_TIMEOUT="${SSRF_PROXY_READ_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}"
+
 # Replace environment variables in the templates and output to squid.conf
 echo "[ENTRYPOINT] replacing environment variables in the templates"
 expand_env /etc/squid/squid.conf.template > /etc/squid/squid.conf
