@@ -107,4 +107,52 @@ describe('useDifyBuilderSessionController trace capture', () => {
     })
     expect(result.current.getTrace()).toEqual({ entries: [], truncated: false })
   })
+
+  it('starts a fresh trace buffer for a new session even without an explicit reset', async () => {
+    clientMocks.create
+      .mockResolvedValueOnce(
+        streamOf(
+          stateEvent(
+            createSessionView({
+              session_id: 'session-1',
+              version: 1,
+              state: 'failed',
+              run_status: 'failed',
+            }),
+          ),
+        ),
+      )
+      .mockResolvedValueOnce(
+        streamOf(
+          stateEvent(
+            createSessionView({
+              session_id: 'session-2',
+              version: 1,
+              state: 'failed',
+              run_status: 'failed',
+            }),
+          ),
+        ),
+      )
+
+    const { result } = renderSessionHook()
+    await act(async () => {
+      await result.current.startBuild('app-1', 'first goal')
+    })
+    expect(result.current.getTrace().entries.length).toBeGreaterThan(0)
+
+    // Second session starts WITHOUT calling reset() in between — this mirrors
+    // the real entry path (difyBuilderStartPromptAtom -> startBuild/startEdit),
+    // which does not call reset() when the prior session already ended.
+    await act(async () => {
+      await result.current.startBuild('app-1', 'second goal')
+    })
+
+    const { entries } = result.current.getTrace()
+    expect(entries).toHaveLength(2)
+    expect(entries[0]).toMatchObject({ dir: 'out', kind: 'session_start', seq: 1 })
+    expect(entries[0].payload).toMatchObject({ goal_text: 'second goal' })
+    expect(entries.some((entry) => JSON.stringify(entry.payload).includes('first goal'))).toBe(false)
+    expect(entries.some((entry) => JSON.stringify(entry.payload).includes('session-1'))).toBe(false)
+  })
 })
