@@ -24,7 +24,6 @@ from core.dify_builder.contract import (
     ConversationPage,
     NoticeItem,
     Phase,
-    RecoveryRef,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -364,7 +363,17 @@ def _actions_for(
     app_revision_conflicted: bool = False,
 ) -> list[UiAction]:
     """Return only actions legal for the projected lifecycle condition."""
-    if interrupted or state == PcState.FAILED:
+    if interrupted:
+        # Crash mid auto-advance (lock released, nothing durably failed): Retry
+        # re-runs the interrupted working handler in place; Start over resets and
+        # re-enters the flow's entry state from the current draft.
+        return [
+            UiAction(id="recovery_continue", label="Retry", kind=ActionKind.PRIMARY),
+            UiAction(id="restart", label="Restart from current draft", kind=ActionKind.SECONDARY),
+        ]
+    if state == PcState.FAILED:
+        # A durable, deterministic failure -- re-running the same handler would
+        # just fail again, so only offer a restart from the current draft.
         return [UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY)]
     if fc is not None and fc.paused:
         return []
@@ -453,7 +462,7 @@ _REPAIR_THEN_RETEST_STATES = frozenset({PcState.BUILD_AWAIT_REPAIR, PcState.EDIT
 # privileged op: publish (RELEASE) or a draft test run (TEST_AND_RUN). A Retry
 # re-invokes the state's handler, so it must be gated at that op's tier, not the
 # base EDIT the recovery actions otherwise carry.
-_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH})
+_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH, PcState.EDIT_PUBLISH})
 _TEST_WORKING_STATES = frozenset({PcState.BUILD_TEST_AND_REPAIR, PcState.FIX_VERIFY, PcState.EDIT_TEST_AFFECTED_PATHS})
 
 
@@ -482,6 +491,7 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     current terminal/interrupted/drift-recovery condition.
     """
     if state == PcState.FAILED:
+        # Durable, deterministic failure -- only a restart is meaningful.
         return kind == "recovery_restart"
     # An interrupted working step may be retried or restarted. A live worker is
     # still protected downstream by dispatch's advance-lock acquisition.
@@ -990,23 +1000,10 @@ class DifyBuilderService:
             if fc.checkpoint_id
             else None
         )
+        # The interrupted-step offer (Retry / Start over) is projected as concrete
+        # actions by ``_actions_for(interrupted=...)`` above. The ``recovery`` field
+        # carries only the drift-recovery class set at a waiting gate.
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
-        # Interrupted working step (crash mid auto-advance, lock released): offer
-        # Retry (recovery_continue) / Start over (recovery_restart). Built directly
-        # with recovery_class="" so recovery_ref_for/classify never see a fabricated
-        # drift class. Retry re-runs the working handler (recovery_continue returns
-        # the working state -> non-settled -> runner re-drives it); Start over resets
-        # + re-enters the flow's entry state. This overrides any stale drift class a
-        # user left set at an earlier waiting gate -- once a step has crashed, the
-        # interrupted-step recovery is what matters (drift recovery only applies at a
-        # waiting gate, where is_working is False and this branch never fires).
-        if is_working(st) and not lock_held:
-            recovery_ref = RecoveryRef(
-                recovery_class="",
-                can_continue=True,
-                can_restart=True,
-                message="The last step didn't finish. Retry it, or start over.",
-            )
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,

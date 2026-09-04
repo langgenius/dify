@@ -785,7 +785,8 @@ def test_get_session_view_offers_restart_for_interrupted_working_state(
     view = service.get_session_view(s.id, actor)
 
     assert view.interrupted is True
-    assert [action.id for action in view.actions] == ["restart"]
+    # Interrupted working step offers Retry (re-run the handler) + Start over.
+    assert [action.id for action in view.actions] == ["recovery_continue", "restart"]
 
 
 def test_get_session_view_actions_empty_for_terminal_state(
@@ -1580,10 +1581,10 @@ def test_interrupted_working_state_surfaces_recovery_offer(
     s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # working state, lock unheld -> interrupted
     view = service.get_session_view(s.id, _actor())
     assert view.interrupted is True
-    assert view.recovery is not None
-    assert view.recovery.can_continue is True  # Retry
-    assert view.recovery.can_restart is True  # Start over
-    assert view.recovery.recovery_class == ""  # not a drift class
+    # The interrupted offer is projected as concrete actions: Retry + Start over.
+    assert [action.id for action in view.actions] == ["recovery_continue", "restart"]
+    # `recovery` carries only a waiting-gate drift class; a fresh interrupt has none.
+    assert view.recovery is None
 
 
 def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
@@ -1597,7 +1598,7 @@ def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
     assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "publish_workflow") is False
 
 
-def test_repeat_failure_persists_restartable_failed_state(
+def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock, monkeypatch
 ) -> None:
     """A Retry whose handler raises again must not wedge the session.
@@ -1633,7 +1634,7 @@ def test_repeat_failure_persists_restartable_failed_state(
     assert [item["id"] for item in state_event["actions"]] == ["restart"]
 
     view = service.get_session_view(s.id, actor)
-    assert view.state == "failed"
+    assert view.state == str(PcState.FAILED)
     assert view.interrupted is False
     assert view.recovery is None
     assert [item.id for item in view.actions] == ["restart"]
@@ -1647,6 +1648,7 @@ def test_recovery_continue_retry_carries_the_working_states_access_tier() -> Non
 
     assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_continue") == AppAccess.RELEASE
     assert _app_access_for_action(PcState.FIX_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.EDIT_PUBLISH, "recovery_continue") == AppAccess.RELEASE
     assert _app_access_for_action(PcState.BUILD_TEST_AND_REPAIR, "recovery_continue") == AppAccess.TEST_AND_RUN
     assert _app_access_for_action(PcState.FIX_VERIFY, "recovery_continue") == AppAccess.TEST_AND_RUN
     assert _app_access_for_action(PcState.EDIT_TEST_AFFECTED_PATHS, "recovery_continue") == AppAccess.TEST_AND_RUN
