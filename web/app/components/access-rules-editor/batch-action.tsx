@@ -46,7 +46,7 @@ export default function AccessRulesBatchAction({
   return (
     <div className={cn('pointer-events-none flex w-full justify-center', className)}>
       <div
-        role="toolbar"
+        role="group"
         aria-label={t(($) => $['operation.selectCount'], {
           ns: 'common',
           count: selectedCount,

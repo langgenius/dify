@@ -312,7 +312,7 @@ describe('SkillDetailPage file mutations', () => {
     })
     renderSkillDetailPage()
 
-    const folder = await waitFor(() => getFileTreeItem('scripts'))
+    const folder = await waitFor(() => getFileTreeButton('scripts'))
     expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
 
     await user.dblClick(folder)

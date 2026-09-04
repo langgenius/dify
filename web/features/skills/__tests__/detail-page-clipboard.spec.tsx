@@ -614,6 +614,7 @@ describe('SkillDetailPage clipboard', () => {
   })
 
   it('expands a collapsed folder after a two-second drag hover', async () => {
+    const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       files: [
         ...createSkillDetail().files!,
@@ -633,7 +634,7 @@ describe('SkillDetailPage clipboard', () => {
     renderSkillDetailPage()
 
     const folder = await waitFor(() => getFileTreeItem('scripts'))
-    fireEvent.doubleClick(folder)
+    await user.dblClick(getFileTreeButton('scripts'))
     expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
 
     vi.useFakeTimers()
