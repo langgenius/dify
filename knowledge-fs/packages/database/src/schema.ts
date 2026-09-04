@@ -6399,6 +6399,47 @@ const tables = [
       timestampColumn("updated_at"),
     ],
   },
+  {
+    name: "namespace_source_preview_jobs",
+    columns: [
+      idColumn(),
+      varcharColumn("tenant_id", 255),
+      varcharColumn("account_id", 255),
+      varcharColumn("status", 32),
+      jsonColumn("provider_config"),
+      varcharColumn("configuration_fingerprint", 128),
+      timestampColumn("expires_at"),
+      timestampColumn("consumed_at", true),
+      timestampColumn("content_cleaned_at", true),
+      idColumn("import_workflow_id", true),
+      varcharColumn("error_code", 128, true),
+      timestampColumn("created_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "namespace_source_preview_pages",
+    primaryKey: ["job_id", "page_id"],
+    foreignKeys: [
+      {
+        columns: ["job_id"],
+        name: "namespace_source_preview_pages_job_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "namespace_source_preview_jobs",
+      },
+    ],
+    columns: [
+      idColumn("job_id"),
+      varcharColumn("page_id", 128),
+      varcharColumn("source_url", 4096),
+      varcharColumn("title", 500, true),
+      textColumn("description", true),
+      varcharColumn("content_hash", 64),
+      varcharColumn("content_object_key", 2048),
+      timestampColumn("created_at"),
+    ],
+  },
 ] as const satisfies readonly TableDefinition[];
 
 const indexes = [
@@ -8474,6 +8515,24 @@ const indexes = [
     name: "upload_sessions_completion_grant_status_idx",
     purpose: "Resume and audit upload publication under its fresh completion Capability grant",
     tableName: "upload_sessions",
+  },
+  {
+    columns: ["status", "expires_at", "created_at"],
+    name: "namespace_source_preview_jobs_claim_idx",
+    purpose: "Claim queued or expired namespace preview jobs without scanning all tenant history",
+    tableName: "namespace_source_preview_jobs",
+  },
+  {
+    columns: ["tenant_id", "account_id", "created_at"],
+    name: "namespace_source_preview_jobs_owner_idx",
+    purpose: "List namespace preview jobs belonging to one tenant account",
+    tableName: "namespace_source_preview_jobs",
+  },
+  {
+    columns: ["status", "content_cleaned_at", "updated_at"],
+    name: "namespace_source_preview_jobs_cleanup_idx",
+    purpose: "Claim terminal namespace preview jobs whose objects still require cleanup",
+    tableName: "namespace_source_preview_jobs",
   },
   {
     columns: ["tenant_id", "knowledge_space_id", "created_at", "id"],

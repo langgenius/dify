@@ -119,6 +119,8 @@ describe("database schema catalog", () => {
       "document_semantic_enrichment_jobs",
       "document_semantic_extraction_checkpoints",
       "bulk_operations",
+      "namespace_source_preview_jobs",
+      "namespace_source_preview_pages",
     ]);
   });
 
@@ -2440,6 +2442,53 @@ describe("database schema catalog", () => {
         table.foreignKeys?.some((foreignKey) => legacyTables.has(foreignKey.referencedTable)),
       ),
     ).toBe(false);
+  });
+});
+
+describe("namespace source preview schema", () => {
+  it("declares the durable job and page tables used by the runtime repository", () => {
+    const schema = getDatabaseSchema();
+    const jobs = findTable(schema, "namespace_source_preview_jobs");
+    const pages = findTable(schema, "namespace_source_preview_pages");
+
+    expect(jobs.columns.map((column) => column.name)).toEqual([
+      "id",
+      "tenant_id",
+      "account_id",
+      "status",
+      "provider_config",
+      "configuration_fingerprint",
+      "expires_at",
+      "consumed_at",
+      "content_cleaned_at",
+      "import_workflow_id",
+      "error_code",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(pages.primaryKey).toEqual(["job_id", "page_id"]);
+    expect(pages.foreignKeys).toContainEqual({
+      columns: ["job_id"],
+      name: "namespace_source_preview_pages_job_fk",
+      onDelete: "CASCADE",
+      referencedColumns: ["id"],
+      referencedTable: "namespace_source_preview_jobs",
+    });
+    expect(findIndex(schema, "namespace_source_preview_jobs_claim_idx").columns).toEqual([
+      "status",
+      "expires_at",
+      "created_at",
+    ]);
+    expect(findIndex(schema, "namespace_source_preview_jobs_owner_idx").columns).toEqual([
+      "tenant_id",
+      "account_id",
+      "created_at",
+    ]);
+    expect(findIndex(schema, "namespace_source_preview_jobs_cleanup_idx").columns).toEqual([
+      "status",
+      "content_cleaned_at",
+      "updated_at",
+    ]);
   });
 });
 
