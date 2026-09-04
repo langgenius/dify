@@ -5,8 +5,9 @@ reference — emitting the Swagger schema AND doing the runtime validation/
 serialisation — so the advertised and enforced contracts can't drift. Validation
 failures map to a single shape: 422.
 
-They must sit BELOW ``@auth_router.guard`` so auth runs before validation and the
-``view.__wrapped__`` unit-test seam unwraps exactly the guard layer.
+They must sit below route admission (or a direct ``@auth_router.guard``) so
+authentication runs before validation and the ``view.__wrapped__`` unit-test
+seam can bypass the outer admission layer.
 """
 
 from __future__ import annotations

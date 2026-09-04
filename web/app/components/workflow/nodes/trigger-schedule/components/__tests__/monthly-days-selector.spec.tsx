@@ -3,6 +3,14 @@ import userEvent from '@testing-library/user-event'
 import MonthlyDaysSelector from '../monthly-days-selector'
 
 describe('trigger-schedule/monthly-days-selector', () => {
+  it('names the monthly day selection group', () => {
+    render(<MonthlyDaysSelector selectedDays={[1]} onChange={vi.fn()} />)
+
+    expect(
+      screen.getByRole('group', { name: 'workflow.nodes.triggerSchedule.days' }),
+    ).toBeInTheDocument()
+  })
+
   it('toggles monthly days and shows the day-31 warning', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

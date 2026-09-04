@@ -29,6 +29,7 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
@@ -38,6 +39,7 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -91,6 +93,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
 const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -252,6 +255,18 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
+              <DropdownMenuLinkItem
+                href={creatorCenterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-0 h-8 gap-1 px-3 py-1.5"
+              >
+                <MenuItemContent
+                  iconClassName="i-ri-user-star-line"
+                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </DropdownMenuLinkItem>
               <DropdownMenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"

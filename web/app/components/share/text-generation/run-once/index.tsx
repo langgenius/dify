@@ -1,4 +1,4 @@
-import type { ChangeEvent, FC, FormEvent } from 'react'
+import type { FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
@@ -6,6 +6,7 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -18,12 +19,11 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -55,6 +55,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   runControl,
 }) => {
   const { t } = useTranslation()
+  const baseId = useId()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const [isInitialized, setIsInitialized] = useState(false)
@@ -133,7 +134,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     <div className="mt-4 w-full" key={item.key}>
                       {item.type !== 'checkbox' && (
                         <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
-                          <div className="truncate">{item.name}</div>
+                          <div id={`${baseId}-${item.key}-label`} className="truncate">
+                            {item.name}
+                          </div>
                           {!item.required && (
                             <span className="system-xs-regular text-text-tertiary">
                               {t(($) => $['panel.optional'], { ns: 'workflow' })}
@@ -150,7 +153,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                               handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
                             }}
                           >
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger
+                              aria-labelledby={`${baseId}-${item.key}-label`}
+                              className="w-full"
+                            >
                               <SelectValue
                                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
                               />
@@ -167,13 +173,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'string' && (
                           <Input
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             type="text"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            onValueChange={(value) => {
                               handleInputsChange({
                                 ...inputsRef.current,
-                                [item.key]: e.target.value,
+                                [item.key]: value,
                               })
                             }}
                             maxLength={item.max_length || undefined}
@@ -181,7 +188,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'paragraph' && (
                           <Textarea
-                            aria-label={item.name}
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             className="h-26 sm:text-xs"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
@@ -192,13 +199,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'number' && (
                           <Input
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             type="number"
                             placeholder={item.name}
                             value={inputs[item.key] as number}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            onValueChange={(value) => {
                               handleInputsChange({
                                 ...inputsRef.current,
-                                [item.key]: e.target.value,
+                                [item.key]: value,
                               })
                             }}
                           />

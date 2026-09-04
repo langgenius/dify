@@ -28,16 +28,20 @@ const Item: FC<ItemProps> = ({
       ref={ref}
       key={item.id}
       className={cn(
-        'group flex cursor-pointer rounded-lg p-1 pl-3 system-sm-medium text-components-menu-item-text hover:bg-state-base-hover',
+        'group flex rounded-lg p-1 pl-3 system-sm-medium text-components-menu-item-text hover:bg-state-base-hover',
         isSelected && 'bg-state-accent-active text-text-accent hover:bg-state-accent-active',
       )}
-      onClick={() => onChangeConversation(item.id)}
     >
-      <div className="grow truncate p-1 pl-0" title={item.name}>
+      <button
+        type="button"
+        className="min-w-0 grow cursor-pointer appearance-none truncate border-0 bg-transparent p-1 pl-0 text-left"
+        title={item.name}
+        onClick={() => onChangeConversation(item.id)}
+      >
         {item.name}
-      </div>
+      </button>
       {item.id !== '' && (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0">
           <Operation
             isActive={isSelected}
             isPinned={!!isPin}

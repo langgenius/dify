@@ -40,6 +40,7 @@ export function DocumentChunkTreePanel({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const treeHeadingId = useId()
+  const loadMoreLabelId = useId()
   const [collapsedChunkIds, setCollapsedChunkIds] = useState<Set<string>>(() => new Set())
   const [focusedChunkId, setFocusedChunkId] = useState<string>()
   const [treeHasFocus, setTreeHasFocus] = useState(false)
@@ -264,13 +265,15 @@ export function DocumentChunkTreePanel({
             </p>
           )}
           <Button
-            disabled={isFetchingNextPage}
             loading={isFetchingNextPage}
+            aria-labelledby={loadMoreLabelId}
             onClick={handleLoadMore}
           >
-            {isFetchNextPageError
-              ? tCommon(($) => $['operation.retry'])
-              : t(($) => $['newKnowledge.loadMore'])}
+            <span id={loadMoreLabelId}>
+              {isFetchNextPageError
+                ? tCommon(($) => $['operation.retry'])
+                : t(($) => $['newKnowledge.loadMore'])}
+            </span>
           </Button>
         </div>
       )}
