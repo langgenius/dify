@@ -15,6 +15,7 @@ streaming; the other cognition methods resolve the model through
 """
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from core.model_manager import ModelInstance
@@ -30,6 +31,16 @@ class LlmBuilderAgent:
         self._model_config = model_config or {}
         self._model_instance: ModelInstance | None = None
         self._resolution_failed = False
+        self._reasoning_callback: Callable[[str, str], None] | None = None
+
+    def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None:
+        self._reasoning_callback = callback
+
+    def _reasoning_for(self, span_id: str) -> Callable[[str], None] | None:
+        callback = self._reasoning_callback
+        if callback is None:
+            return None
+        return lambda delta: callback(span_id, delta)
 
     def _model(self) -> ModelInstance:
         """Lazily resolve + memoize the chosen model. Used by cognition (next slice)."""
@@ -55,26 +66,56 @@ class LlmBuilderAgent:
 
     # -- Fix cognition (delegated) --
     def diagnose(self, failed_run, graph, node_outputs):
-        return fix.diagnose(self._model_or_none(), failed_run, graph, node_outputs)
+        return fix.diagnose(
+            self._model_or_none(),
+            failed_run,
+            graph,
+            node_outputs,
+            self._reasoning_for("diagnose"),
+        )
 
     def diagnose_checklist(self, errors, graph):
-        return fix.diagnose_checklist(self._model_or_none(), errors, graph)
+        return fix.diagnose_checklist(
+            self._model_or_none(),
+            errors,
+            graph,
+            self._reasoning_for("diagnose-checklist"),
+        )
 
     def propose_repair(self, diagnosis, graph):
-        return fix.propose_repair(self._model_or_none(), diagnosis, graph)
+        return fix.propose_repair(
+            self._model_or_none(),
+            diagnosis,
+            graph,
+            self._reasoning_for("propose-repair"),
+        )
 
     def generate_mock_inputs(self, schema, prior_failed):
-        return mock_inputs.generate(self._model_or_none(), schema, prior_failed)
+        return mock_inputs.generate(
+            self._model_or_none(),
+            schema,
+            prior_failed,
+            self._reasoning_for("generate-mock-inputs"),
+        )
 
     # -- Build cognition (real) --
     def analyze_goal(self, goal_text):
-        return build.analyze_goal(self._model_or_none(), goal_text)
+        return build.analyze_goal(self._model_or_none(), goal_text, self._reasoning_for("analyze-goal"))
 
     def propose_plan_v1(self, requirements):
-        return build.propose_plan_v1(self._model_or_none(), requirements)
+        return build.propose_plan_v1(
+            self._model_or_none(),
+            requirements,
+            self._reasoning_for("propose-build-plan"),
+        )
 
     def discover_resources(self, plan_items):
-        return build.discover_resources(self._model_or_none(), self._tenant_id, plan_items)
+        return build.discover_resources(
+            self._model_or_none(),
+            self._tenant_id,
+            plan_items,
+            self._reasoning_for("discover-resources"),
+        )
 
     def bind_resources(self, plan_items, resource_ids, conflict_policy):
         return build.bind_resources(self._model_or_none(), self._tenant_id, plan_items, resource_ids, conflict_policy)
@@ -83,17 +124,39 @@ class LlmBuilderAgent:
         return build.build_nodes(self._tenant_id, self._model_config, plan_items)
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
-        return build.learn_from_build(self._model_or_none(), goal_text, requirements, plan_items, built_node_ids)
+        return build.learn_from_build(
+            self._model_or_none(),
+            goal_text,
+            requirements,
+            plan_items,
+            built_node_ids,
+            self._reasoning_for("learn-from-build"),
+        )
 
     # -- Edit cognition (real) --
     def analyze_impact(self, goal_text, graph):
-        return edit.analyze_impact(self._model_or_none(), goal_text, graph)
+        return edit.analyze_impact(
+            self._model_or_none(),
+            goal_text,
+            graph,
+            self._reasoning_for("analyze-impact"),
+        )
 
     def propose_edit_plan(self, edit_rules, graph):
-        return edit.propose_edit_plan(self._model_or_none(), edit_rules, graph)
+        return edit.propose_edit_plan(
+            self._model_or_none(),
+            edit_rules,
+            graph,
+            self._reasoning_for("propose-edit-plan"),
+        )
 
     def build_edit_intents(self, edit_rules, graph):
-        return edit.build_edit_intents(self._model_or_none(), edit_rules, graph)
+        return edit.build_edit_intents(
+            self._model_or_none(),
+            edit_rules,
+            graph,
+            self._reasoning_for("build-edit-intents"),
+        )
 
     def respond_to_message(self, state, context, history, graph, text, on_delta=None):
         return chat.respond(
@@ -105,4 +168,5 @@ class LlmBuilderAgent:
             graph,
             text,
             on_delta,
+            self._reasoning_for("respond-to-message"),
         )

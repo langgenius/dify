@@ -5,7 +5,11 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { DifyBuilderConversation } from '../conversation'
-import { difyBuilderLiveProgressAtom, difyBuilderStreamingTurnAtom } from '../session/state'
+import {
+  difyBuilderExecutionProgressAtom,
+  difyBuilderReasoningAtom,
+  difyBuilderStreamingTurnAtom,
+} from '../session/state'
 
 const mocks = vi.hoisted(() => ({
   fileUploader: vi.fn(),
@@ -18,6 +22,10 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({
       fileUploadConfig: { workflow_file_upload_limit: 4 },
     }),
+}))
+
+vi.mock('@/app/components/base/markdown', () => ({
+  Markdown: ({ content }: { content: string }) => <p>{content}</p>,
 }))
 
 vi.mock('@/app/components/base/file-uploader', () => ({
@@ -295,23 +303,30 @@ describe('DifyBuilderConversation test data form', () => {
     await user.type(input, 'AI agents')
 
     act(() => {
-      store.set(difyBuilderLiveProgressAtom, {
+      store.set(difyBuilderExecutionProgressAtom, {
         sessionId: 'session-1',
         operationId: 'operation-1',
         stageId: 'build.test',
         atVersion: 2,
         revision: 1,
-        trace: {
+        execution: {
           status: 'running',
-          steps: [
+          activities: [
             {
               id: 'build-check-inputs',
               label: 'Check test inputs',
               state: 'active',
-              tone: 'neutral',
             },
           ],
         },
+      })
+      store.set(difyBuilderReasoningAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        stageId: 'build.test',
+        atVersion: 2,
+        revision: 1,
+        text: 'Inspecting the supplied test data.',
       })
       store.set(difyBuilderStreamingTurnAtom, {
         sessionId: 'session-1',
@@ -327,6 +342,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     expect(input).toHaveValue('AI agents')
     expect(screen.getByRole('status')).toHaveTextContent('Check test inputs')
+    expect(screen.getByText('Inspecting the supplied test data.')).toBeInTheDocument()
     expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
   })
 
@@ -385,7 +401,7 @@ describe('DifyBuilderConversation test data form', () => {
     )
   })
 
-  it('keeps a completed trace available with the committed assistant reply', () => {
+  it('keeps completed execution and reasoning available with the committed reply', () => {
     render(
       <DifyBuilderConversation
         busy={false}
@@ -400,17 +416,17 @@ describe('DifyBuilderConversation test data form', () => {
             payload: {
               turn_id: 'turn-1',
               stage_id: 'build.initial_plan',
-              trace: {
+              execution: {
                 status: 'completed',
-                steps: [
+                activities: [
                   {
                     id: 'build-draft-plan',
                     label: 'Draft the workflow plan',
                     state: 'done',
-                    tone: 'success',
                   },
                 ],
               },
+              reasoning_text: 'The workflow needs one input and one answer node.',
               reply_text: 'The plan is ready.',
             },
           },
@@ -419,8 +435,120 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    expect(screen.getByText('Draft the workflow plan')).toBeInTheDocument()
+    expect(screen.getAllByText('Draft the workflow plan')).toHaveLength(2)
+    expect(
+      screen.getByText('The workflow needs one input and one answer node.'),
+    ).toBeInTheDocument()
     expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
+  })
+
+  it('does not render a Thinking section for execution progress alone', () => {
+    const store = createStore()
+    store.set(difyBuilderExecutionProgressAtom, {
+      sessionId: 'session-1',
+      operationId: 'operation-1',
+      stageId: 'build.test',
+      atVersion: 2,
+      revision: 1,
+      execution: {
+        status: 'running',
+        activities: [
+          {
+            id: 'build-run-test',
+            label: 'Run the workflow',
+            state: 'active',
+          },
+        ],
+      },
+    })
+
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy
+          activeInteraction={null}
+          changesExpanded={false}
+          interrupted={false}
+          items={[]}
+          onActionPayloadChange={vi.fn()}
+        />
+      </Provider>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Run the workflow')
+    expect(screen.queryByText(/Thinking|Thought/)).not.toBeInTheDocument()
+  })
+
+  it('preserves the execution disclosure state while snapshots update', async () => {
+    const user = userEvent.setup()
+    const store = createStore()
+    store.set(difyBuilderExecutionProgressAtom, {
+      sessionId: 'session-1',
+      operationId: 'operation-1',
+      stageId: 'build.test',
+      atVersion: 2,
+      revision: 1,
+      execution: {
+        status: 'running',
+        activities: [
+          {
+            id: 'build-run-test',
+            label: 'Run the workflow',
+            state: 'active',
+          },
+        ],
+      },
+    })
+
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy
+          activeInteraction={null}
+          changesExpanded={false}
+          interrupted={false}
+          items={[]}
+          onActionPayloadChange={vi.fn()}
+        />
+      </Provider>,
+    )
+
+    const progressDetails = screen.getByRole('group', { name: 'Run the workflow' })
+    const progressToggle = progressDetails.querySelector('summary')
+    expect(progressToggle).not.toBeNull()
+    expect(progressDetails).toHaveAttribute('open')
+    await user.click(progressToggle!)
+    expect(progressDetails).not.toHaveAttribute('open')
+
+    act(() => {
+      store.set(difyBuilderExecutionProgressAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        stageId: 'build.test',
+        atVersion: 2,
+        revision: 2,
+        execution: {
+          status: 'running',
+          activities: [
+            {
+              id: 'build-run-test',
+              label: 'Run the workflow',
+              state: 'done',
+            },
+            {
+              id: 'node:answer',
+              label: 'Generate answer',
+              state: 'active',
+              kind: 'node',
+              parent_id: 'build-run-test',
+            },
+          ],
+        },
+      })
+    })
+
+    expect(screen.getByRole('group', { name: 'Generate answer' })).toBe(progressDetails)
+    expect(progressDetails).not.toHaveAttribute('open')
   })
 
   it('renders failed test results with the destructive card tone', () => {

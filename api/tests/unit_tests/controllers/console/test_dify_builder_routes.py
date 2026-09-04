@@ -20,7 +20,7 @@ from core.dify_builder.models import Actor, ConversationItem
 from services.dify_builder.service import SessionView
 
 
-def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.EXECUTING) -> SessionView:
+def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.PROCESSING) -> SessionView:
     return SessionView(
         session_id=session_id,
         app_id="a1",

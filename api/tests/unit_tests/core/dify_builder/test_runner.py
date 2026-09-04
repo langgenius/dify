@@ -5,6 +5,7 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 (handlers land in Task 6/7).
 """
 
+from collections.abc import Callable
 from datetime import datetime
 
 import pytest
@@ -194,7 +195,8 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
             {
                 "turn_id": "turn-1",
                 "stage_id": "fix.await_approval",
-                "trace": {"status": "completed", "steps": []},
+                "execution": {"status": "completed", "activities": []},
+                "reasoning_text": None,
                 "reply_text": "reply 1: Make the change smaller",
                 "cards": [],
                 "card_state": None,
@@ -218,6 +220,47 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
     assert messages[0].at_version == 3
     assert messages[0].revision == 1
     assert messages[0].stage_id == "fix.await_approval"
+
+
+def test_message_streams_and_persists_reasoning_independently_from_answer():
+    class ReasoningAgent(StubAgent):
+        def __init__(self) -> None:
+            super().__init__()
+            self.reasoning_callback: Callable[[str, str], None] | None = None
+
+        def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None:
+            self.reasoning_callback = callback
+
+        def respond_to_message(self, *args, **kwargs):
+            assert self.reasoning_callback is not None
+            self.reasoning_callback("respond-to-message", "Check the current approval gate.")
+            return super().respond_to_message(*args, **kwargs)
+
+    env, repo = _new_env()
+    env.agent = ReasoningAgent()
+    reasoning_events = []
+    env.emit_reasoning = reasoning_events.append
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    Runner(env, {}).advance(
+        session.id,
+        Turn(
+            action=Action(
+                kind="message",
+                payload={"text": "Explain", "client_turn_id": "turn-reasoning"},
+                base_version=1,
+            ),
+            actor=_actor(),
+        ),
+    )
+
+    assistant = repo.list_conversation(session.id)[-1]
+    assert assistant.payload["reasoning_text"] == "Check the current approval gate."
+    assert assistant.payload["reply_text"] == "reply 1: Explain"
+    assert reasoning_events[0].delta == "Check the current approval gate."
+    assert reasoning_events[0].span_id == "respond-to-message"
+    assert reasoning_events[0].session_id == session.id
 
 
 def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent():

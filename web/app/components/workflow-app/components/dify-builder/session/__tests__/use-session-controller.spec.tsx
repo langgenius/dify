@@ -1,3 +1,4 @@
+import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import {
   difyBuilderActiveSessionIdAtom,
@@ -387,7 +388,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   it('keeps a thinking restore stream open until the authoritative state arrives', async () => {
     const thinking = createSessionView({
       session_id: 'session-restored',
-      run_status: 'thinking',
+      run_status: 'processing',
       version: 3,
     })
     const terminal = createSessionView({
@@ -413,7 +414,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   it('retries a restore when an active GET stream ends before a state frame', async () => {
     const executing = createSessionView({
       session_id: 'session-restored',
-      run_status: 'executing',
+      run_status: 'processing',
       version: 3,
     })
     const waiting = createSessionView({
@@ -461,7 +462,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       interrupted: true,
       session_id: 'session-restored',
       state: 'fix.verify',
-      run_status: 'executing',
+      run_status: 'processing',
       version: 3,
     })
     clientMocks.get.mockResolvedValue(interrupted)
@@ -479,7 +480,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   })
 
   it('restores the latest history page and prepends an older complete group', async () => {
-    const olderGroup = [
+    const olderGroup: ConversationItem[] = [
       {
         seq: 0,
         at_version: 1,
@@ -493,7 +494,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         payload: {
           turn_id: 'turn-1',
           stage_id: 'build.await_testdata',
-          trace: { status: 'completed' },
+          execution: { status: 'completed' },
           reply_text: 'Provide test data.',
           cards: ['form'],
         },

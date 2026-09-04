@@ -237,7 +237,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     change_set = next(i for i in res.items if i.kind == "change_set")
     assert change_set.payload["scope"] == "structure"
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert len(assistant.payload["trace"]["steps"]) == 3
+    assert len(assistant.payload["execution"]["activities"]) == 3
 
 
 def test_plan_approval_ignores_non_approve_action():

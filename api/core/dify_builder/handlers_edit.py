@@ -17,6 +17,7 @@ from core.dify_builder.contract import (
     CheckpointCard,
     DecisionItem,
     ErrorCard,
+    ExecutionProgress,
     FormCard,
     PlanCard,
     PublishCard,
@@ -24,8 +25,6 @@ from core.dify_builder.contract import (
     SummaryRow,
     TestResultCard,
     TestStat,
-    Trace,
-    TraceStep,
 )
 from core.dify_builder.handlers_fix import (
     action_kind,
@@ -42,7 +41,7 @@ from core.dify_builder.handlers_fix import (
     start_schema,
     testdata_form_fields,
 )
-from core.dify_builder.models import DifyBuilderContext, Run, Session, TestInput, Turn
+from core.dify_builder.models import DifyBuilderContext, NodeEvent, Run, Session, TestInput, Turn
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
@@ -135,13 +134,13 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
             full_diff_open=False,
         ),
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Here's the impact of your change.",
             cards=["summary", "form", "challenge", "change_set"],
         ),
@@ -193,13 +192,13 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Change plan ready for approval.",
             cards=["plan", "checkpoint"],
         ),
@@ -211,27 +210,10 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
 
-_EDIT_TRACE_STEPS = [
-    TraceStep(
-        id="edit-prepare",
-        label="Prepare canvas changes",
-        state="pending",
-        tone="neutral",
-    ),
-    TraceStep(
-        id="edit-highlight",
-        label="Highlight edit targets",
-        state="pending",
-        tone="neutral",
-        canvas_event="highlight_edit_target",
-    ),
-    TraceStep(
-        id="edit-apply",
-        label="Apply the change plan",
-        state="pending",
-        tone="success",
-        canvas_event="apply_edit_plan",
-    ),
+_EDIT_EXECUTION_STEPS = [
+    ("edit-prepare", "Prepare canvas changes"),
+    ("edit-highlight", "Highlight edit targets"),
+    ("edit-apply", "Apply the change plan"),
 ]
 
 
@@ -250,13 +232,12 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     if kind != "approve_repair":
         return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
 
-    progress = ProgressReporter(
+    progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
-        session_id=s.id,
+        session=s,
         stage_id=str(s.current_state),
-        at_version=s.version + 1,
-        steps=_EDIT_TRACE_STEPS,
+        steps=_EDIT_EXECUTION_STEPS,
     )
     progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
@@ -283,13 +264,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         fc, CheckpointCard(checkpoint_id=fc.checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
     decision_items = append_card(fc, DecisionItem(text="Approved the change plan"))
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Applied the changes to the canvas.",
             cards=["change_set", "checkpoint"],
         ),
@@ -329,7 +310,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 AssistantTurnItem(
                     turn_id=str(uuid.uuid4()),
                     stage_id=str(s.current_state),
-                    trace=Trace(status="completed", steps=[]),
+                    execution=ExecutionProgress(status="completed"),
                     reply_text="Provide test inputs (or use mock data) to run the affected-path test.",
                     cards=["form"],
                 ),
@@ -393,8 +374,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
 
-    emit = env.emit if env.emit is not None else (lambda _e: None)
     progress.activate("edit-run-test")
+
+    def emit(event: NodeEvent) -> None:
+        progress.observe_node("edit-run-test", event)
+        if env.emit is not None:
+            env.emit(event)
+
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
         status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
@@ -438,13 +424,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 items=["Applied the change plan", "Affected paths tested", "Tests passing"],
             ),
         )
-        trace = progress.finish()
+        execution = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text="Tests passed; ready for review.",
                 cards=["test_result", "summary"],
             ),
@@ -488,13 +474,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 frozen=False,
             ),
         )
-        trace = progress.finish()
+        execution = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
                 turn_id=progress.operation_id,
                 stage_id=str(s.current_state),
-                trace=trace,
+                execution=execution,
                 reply_text="The run failed on its inputs — provide test data and retry.",
                 cards=["test_result", "form"],
             ),
@@ -548,13 +534,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         if intents
         else []
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text=(
                 "Test failed — here's a proposed fix to review."
                 if intents
@@ -670,7 +656,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             AssistantTurnItem(
                 turn_id=str(uuid.uuid4()),
                 stage_id=str(s.current_state),
-                trace=Trace(status="completed", steps=[]),
+                execution=ExecutionProgress(status="completed"),
                 reply_text="Let's adjust the change.",
                 cards=["form", "challenge", "change_set"],
             ),
@@ -738,13 +724,13 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
-    trace = progress.finish()
+    execution = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
-            trace=trace,
+            execution=execution,
             reply_text="Re-approve to apply the change.",
             cards=["plan", "checkpoint"],
         ),
