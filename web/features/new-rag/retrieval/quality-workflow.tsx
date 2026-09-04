@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
-import { newKnowledgeQualityPath } from '../routes'
+import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { QualityActions } from './results'
 import { retrievalResultFactsAtom, retrievalRuntimeQueryFactsAtom } from './state/graph'
@@ -89,23 +89,28 @@ export function RetrievalQualityWorkflow() {
         toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return
       }
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
-        body: {
-          reason,
-          tags: ['retrieval-test'],
-          trace_id: selectedTraceId,
-        },
-        params: { control_space_id: knowledgeSpaceId },
+      try {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
+          body: {
+            reason,
+            tags: ['retrieval-test'],
+            trace_id: selectedTraceId,
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      } catch (error) {
+        // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
+        if (!(error instanceof Response && error.status === 409)) throw error
+      }
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+          input: { params: { control_space_id: knowledgeSpaceId } },
+          type: 'infinite',
+        }),
       })
       setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
       void refetchTraces()
-    } catch (error) {
-      // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
-      if (error instanceof Response && error.status === 409) {
-        setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
-        void refetchTraces()
-        return
-      }
+    } catch {
       toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setQualityPendingKey(undefined)
@@ -151,6 +156,9 @@ export function RetrievalQualityWorkflow() {
     !selectedResearchActive &&
     resultKey,
   )
+  const qualityDecision = resultKey
+    ? (qualityDecisions[resultKey] ?? (selectedOpenBadCaseId ? 'bad-case' : undefined))
+    : undefined
 
   return (
     <>
@@ -158,11 +166,15 @@ export function RetrievalQualityWorkflow() {
         <QualityActions
           badCaseAvailable={Boolean(selectedTraceId)}
           noResults={currentEvidence.length === 0}
-          decision={qualityDecisions[resultKey] ?? (selectedOpenBadCaseId ? 'bad-case' : undefined)}
+          decision={qualityDecision}
           onBadCase={saveBadCase}
           onGolden={startGoldenPromotion}
           pending={qualityPendingKey === resultKey}
-          qualityHref={newKnowledgeQualityPath(knowledgeSpaceId)}
+          qualityHref={
+            qualityDecision === 'bad-case'
+              ? newKnowledgeQualityBadCasesPath(knowledgeSpaceId)
+              : newKnowledgeQualityPath(knowledgeSpaceId)
+          }
         />
       )}
       {canEditQuality && goldenPromotion && (

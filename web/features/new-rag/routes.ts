@@ -31,6 +31,9 @@ export const newKnowledgeRetrievalTestPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeQualityPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/quality`
 
+export const newKnowledgeQualityBadCasesPath = (knowledgeSpaceId: string) =>
+  `${newKnowledgeQualityPath(knowledgeSpaceId)}?tab=bad-cases`
+
 export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/settings`
 

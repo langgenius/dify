@@ -317,6 +317,13 @@ vi.mock('@/service/client', () => ({
               key: () => ['quality', 'golden'],
             },
           },
+          quality: {
+            badCases: {
+              get: {
+                key: () => ['quality', 'bad-cases'],
+              },
+            },
+          },
           settings: {
             get: {
               queryOptions: () => ({ queryKey: ['settings'] }),
@@ -2007,7 +2014,8 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-1' })
+    const { queryClient } = renderPage({ searchParams: '?trace=trace-1' })
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     expect(
       screen.queryByRole('link', { name: 'knowledgeSpace.retrievalTest.quality' }),
@@ -2034,10 +2042,15 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+    await waitFor(() =>
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['quality', 'bad-cases'],
+      }),
+    )
     expect(screen.getByText('knowledgeSpace.retrievalTest.savedBadCase')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality?tab=bad-cases')
   })
 
   it('hides quality mutations from viewers of retrieval traces', async () => {
@@ -2148,6 +2161,9 @@ describe('RetrievalTestPage', () => {
       }),
     )
     expect(screen.getByText('knowledgeSpace.retrievalTest.savedGoldenQuestion')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
@@ -2835,7 +2851,7 @@ describe('RetrievalTestPage', () => {
     expect(await screen.findByText('knowledgeSpace.retrievalTest.savedBadCase')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality?tab=bad-cases')
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.makeBadCase' }),
     ).not.toBeInTheDocument()
