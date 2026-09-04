@@ -430,10 +430,11 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
+        effective_limit = min(query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
             query.page,
-            query.limit,
+            effective_limit,
             session,
             tenant_id,
             current_user,
@@ -467,8 +468,8 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": query.page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
             "page": query.page,
         }
@@ -504,10 +505,9 @@ class DatasetListApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id):
+    @model_validate(DatasetCreatePayload)
+    def post(self, payload: DatasetCreatePayload, session: Session, tenant_id):
         """Resource for creating datasets."""
-        payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
-
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:

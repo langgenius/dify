@@ -593,7 +593,7 @@ function GotoAnythingDialog() {
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <div className="px-4 pb-4" role="presentation">
+                          <div className="px-4 pb-4">
                             {commandRows.map((row) => (
                               <AutocompleteRow
                                 key={row.map((option) => option.shortcut).join(':')}

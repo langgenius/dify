@@ -2,6 +2,8 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, cast
 from urllib.parse import unquote
 
@@ -60,6 +62,11 @@ match _plugin_daemon_timeout_config:
     case _:
         plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
+_plugin_daemon_request_timeout_override: ContextVar[httpx.Timeout | None] = ContextVar(
+    "plugin_daemon_request_timeout_override",
+    default=None,
+)
+
 logger = logging.getLogger(__name__)
 
 PLUGIN_DAEMON_MAX_PATH_LENGTH = 4096
@@ -69,6 +76,23 @@ _httpx_client: httpx.Client = get_pooled_http_client(
     "plugin_daemon",
     lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False),
 )
+
+
+@contextmanager
+def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None, None, None]:
+    """Temporarily shorten plugin-daemon requests made in the current context."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be greater than zero")
+
+    token = _plugin_daemon_request_timeout_override.set(httpx.Timeout(timeout_seconds))
+    try:
+        yield
+    finally:
+        _plugin_daemon_request_timeout_override.reset(token)
+
+
+def _get_plugin_daemon_request_timeout() -> httpx.Timeout | None:
+    return _plugin_daemon_request_timeout_override.get() or plugin_daemon_request_timeout
 
 
 def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[object]) -> Any:
@@ -114,7 +138,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": plugin_daemon_request_timeout,
+            "timeout": _get_plugin_daemon_request_timeout(),
         }
         if isinstance(prepared_data, dict):
             request_kwargs["data"] = prepared_data
@@ -215,7 +239,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": plugin_daemon_request_timeout,
+            "timeout": _get_plugin_daemon_request_timeout(),
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data

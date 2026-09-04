@@ -187,6 +187,8 @@ describe('AppDetailSection', () => {
     })
 
     it('should render access point navigation using its app route', () => {
+      mockAppPermissionKeys = [AppACLPermission.AccessPointView]
+
       // Act
       render(<AppDetailSection />)
 
@@ -200,20 +202,31 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render deploy navigation with app deploy ACL regardless of the legacy workspace role', () => {
-      // Arrange
-      mockAppMode = 'workflow'
-      mockAppPermissionKeys = [AppACLPermission.Deploy]
-
-      // Act
+    it('should hide access point navigation without view permission', () => {
       render(<AppDetailSection />)
 
-      // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
-        'href',
-        '/app/app-1/deploy',
-      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.accessPoint' }),
+      ).not.toBeInTheDocument()
     })
+
+    it.each(['workflow', 'advanced-chat'])(
+      'should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role',
+      (mode) => {
+        // Arrange
+        mockAppMode = mode
+        mockAppPermissionKeys = [AppACLPermission.Deploy]
+
+        // Act
+        render(<AppDetailSection />)
+
+        // Assert
+        expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
+          'href',
+          '/app/app-1/deploy',
+        )
+      },
+    )
 
     it.each([
       {

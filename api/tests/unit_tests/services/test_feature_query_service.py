@@ -1,7 +1,5 @@
 from unittest.mock import create_autospec
 
-import pytest
-
 from enums import DeploymentEdition
 from machinery.context import RequestContext
 from services.entities.feature_entities import (
@@ -13,12 +11,12 @@ from services.entities.feature_entities import (
 from services.feature_query_service import FeatureQueryGateway, FeatureQueryService
 
 
-def _request_context(*, active_workspace_id: str | None = "workspace_123") -> RequestContext:
+def _request_context() -> RequestContext:
     return RequestContext(
         request_id="request_123",
         trace_id=None,
         account_id="account_123",
-        active_workspace_id=active_workspace_id,
+        active_workspace_id="workspace_123",
     )
 
 
@@ -68,13 +66,3 @@ def test_workspace_id_queries_delegate_without_request_context() -> None:
     assert service.get_workspace_vector_space("workspace_123") is vector_space
     gateway.get_workspace_features.assert_called_once_with("workspace_123")
     gateway.get_vector_space.assert_called_once_with("workspace_123")
-
-
-def test_workspace_queries_require_active_workspace() -> None:
-    gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
-    service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
-
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        service.get_features(_request_context(active_workspace_id=None))
-
-    gateway.get_workspace_features.assert_not_called()

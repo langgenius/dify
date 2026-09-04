@@ -1,14 +1,21 @@
 'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
 import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
@@ -23,6 +30,11 @@ import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
+
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
@@ -43,76 +55,51 @@ const ChangePasswordForm = () => {
   const token = decodeURIComponent(searchParams.get('token') || '')
   const locale = useLocale()
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
   const { mutateAsync: register, isPending } = useMailRegister()
   const pageTitle = t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const showErrorMessage = useCallback((message: string) => {
-    toast.error(message)
-  }, [])
-
-  const valid = useCallback(() => {
-    if (!password.trim()) {
-      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
-      return false
-    }
-    return true
-  }, [password, confirmPassword, showErrorMessage, t])
-
-  const handleSubmit = useCallback(async () => {
-    if (!valid()) return
-    try {
-      const res = await register({
-        token,
-        new_password: password,
-        password_confirm: confirmPassword,
-        language: locale,
-        timezone: getBrowserTimezone(),
-      })
-      const { result } = res as MailRegisterResponse
-      if (result === 'success') {
-        const utmInfo = parseUtmInfo()
-        rememberCreateAppExternalAttribution({ utmInfo })
-        // Defer the Amplitude event until the user ID is attached. The app context
-        // external sync replays it after setUserId runs once the redirect lands on /apps.
-        // Firing it here would record it under an anonymous Amplitude profile.
-        rememberRegistrationSuccess({ method: 'email', utmInfo })
-
-        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'email',
-          ...utmInfo,
+  const handleSubmit = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isPending) return
+      try {
+        const res = await register({
+          token,
+          new_password: formValues.password,
+          password_confirm: formValues.confirmPassword,
+          language: locale,
+          timezone: getBrowserTimezone(),
         })
-        Cookies.remove('utm_info') // Clean up: remove utm_info cookie
+        const { result } = res as MailRegisterResponse
+        if (result === 'success') {
+          const utmInfo = parseUtmInfo()
+          rememberCreateAppExternalAttribution({ utmInfo })
+          // Defer the Amplitude event until the user ID is attached. The app context
+          // external sync replays it after setUserId runs once the redirect lands on /apps.
+          // Firing it here would record it under an anonymous Amplitude profile.
+          rememberRegistrationSuccess({ method: 'email', utmInfo })
 
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+          sendGAEvent(
+            utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success',
+            {
+              method: 'email',
+              ...utmInfo,
+            },
+          )
+          Cookies.remove('utm_info') // Clean up: remove utm_info cookie
+
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+        }
+      } catch (error) {
+        console.error(error)
       }
-    } catch (error) {
-      console.error(error)
-    }
-  }, [
-    password,
-    token,
-    valid,
-    confirmPassword,
-    register,
-    locale,
-    queryClient,
-    router,
-    searchParams,
-    t,
-  ])
+    },
+    [token, register, locale, queryClient, router, searchParams, t, isPending],
+  )
 
   return (
     <div
@@ -127,42 +114,77 @@ const ChangePasswordForm = () => {
         </div>
 
         <div className="mx-auto mt-6 w-full">
-          <Form onFormSubmit={() => void handleSubmit()}>
-            <Field name="password" className="mb-5">
-              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
-                {t(($) => $['account.newPassword'], { ns: 'common' })}
-              </FieldLabel>
+          <Form<PasswordFormValues>
+            actionsRef={formActionsRef}
+            onFormSubmit={(formValues) => void handleSubmit(formValues)}
+          >
+            <Field
+              name="password"
+              validate={(value) => {
+                const passwordValue = String(value)
+                if (!passwordValue.trim())
+                  return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                return validPassword.test(passwordValue)
+                  ? null
+                  : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
               <Input
                 type="password"
+                required
                 autoComplete="new-password"
                 spellCheck={false}
-                value={password}
-                onValueChange={setPassword}
+                onValueChange={() => {
+                  if (confirmPasswordRef.current?.value)
+                    formActionsRef.current?.validate('confirmPassword')
+                }}
                 placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
               />
-              <FieldDescription className="py-0 text-text-secondary">
-                {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-              </FieldDescription>
+              <FieldValidity>
+                {({ validity }) =>
+                  validity.valid !== false ? (
+                    <FieldDescription>
+                      {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                    </FieldDescription>
+                  ) : null
+                }
+              </FieldValidity>
+              <FieldValidity>
+                {({ validity }) => (
+                  <FieldError>
+                    {t(
+                      ($) =>
+                        $[validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'],
+                      { ns: 'login' },
+                    )}
+                  </FieldError>
+                )}
+              </FieldValidity>
             </Field>
-            <Field name="confirmPassword" className="mb-5">
-              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
-                {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-              </FieldLabel>
+            <Field
+              name="confirmPassword"
+              validate={(value, formValues) => {
+                const confirmationValue = String(value)
+                return !confirmationValue || confirmationValue === formValues.password
+                  ? null
+                  : t(($) => $['account.notEqual'], { ns: 'common' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
               <Input
                 type="password"
+                required
                 autoComplete="new-password"
                 spellCheck={false}
-                value={confirmPassword}
-                onValueChange={setConfirmPassword}
+                ref={confirmPasswordRef}
                 placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
               />
+              <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
             </Field>
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              disabled={isPending || !password || !confirmPassword}
-            >
+            <Button type="submit" variant="primary" className="w-full" loading={isPending}>
               {t(($) => $.changePasswordBtn, { ns: 'login' })}
             </Button>
           </Form>

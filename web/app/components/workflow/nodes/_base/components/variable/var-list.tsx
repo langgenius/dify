@@ -161,7 +161,7 @@ const VarList: FC<Props> = ({
           <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
             <Input
               aria-label={variableNameLabel}
-              className="w-[120px]"
+              className="w-30"
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}

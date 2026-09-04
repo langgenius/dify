@@ -12,7 +12,9 @@ Flag:
 - A page/tab-level section component becoming the data owner without needing a shared snapshot or shared loading/error/empty UI.
 - Feature code promoted to shared only because it appears once or might be reused later.
 
-Accept repeated TanStack Query calls in siblings when each component independently consumes the data. Cache deduplication is not a reason to hoist by itself.
+Accept repeated TanStack Query hooks for the same key and input in Client Component siblings under one QueryClient;
+shared cache is not a reason to hoist. Separate Server Component QueryClients do not share it, so request-level
+deduplication needs an identified request-local cache or verified framework or transport owner.
 
 ## Component Boundaries
 
