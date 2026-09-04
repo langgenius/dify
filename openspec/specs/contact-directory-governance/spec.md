@@ -70,8 +70,8 @@
 - **WHEN** a user tries to search contacts outside the current `Organization`
 - **THEN** 系统 MUST 拒绝该搜索请求，并 MUST NOT 返回任何跨 `Organization` 的联系人结果
 
-### Requirement: IM Integration、Organization binding 与 workspace override 归属
-系统 MUST 将 IM Integration 凭据归属到 Organization。系统 MUST 只允许一个 Organization 级 IM channel 生效。负责管理该 Organization 级 IM channel 的管理员身份 MUST 随部署形态确定：EE 中 MUST 由企业管理员在 EE 后台管理；CE / SaaS 中 MUST 由 workspace owner 或 workspace admin 在 workspace 内管理。Organization binding MUST 表示 Organization 级 Contact 与 IM identity 的默认 IM binding。workspace override MUST 只覆盖当前 workspace 内 Contact 使用的 IM binding 或通知行为，MUST NOT 覆盖 IM Integration 凭据。
+### Requirement: IM Channel、Organization binding 与 workspace override 归属
+系统 MUST 将 IM Channel 凭据归属到 Organization。系统 MUST 只允许一个 Organization 级 IM Channel 生效。负责管理该 Organization 级 IM Channel 的管理员身份 MUST 随部署形态确定：EE 中 MUST 由企业管理员在 EE 后台管理；CE / SaaS 中 MUST 由 workspace owner 或 workspace admin 在 workspace 内管理。Organization binding MUST 表示 Organization 级 Contact 与 IM identity 的默认 IM binding。workspace override MUST 只覆盖当前 workspace 内 Contact 使用的 IM binding 或通知行为，MUST NOT 覆盖 IM Channel 凭据。
 
 #### Scenario: EE 由企业管理员管理 Organization 级 IM channel
 - **WHEN** the deployment shape is EE

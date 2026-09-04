@@ -2,16 +2,16 @@
 
 ### Requirement: Manual IM sync orchestration MUST be transport-neutral and server-authoritative
 
-Manual sync MUST be exposed through a Dify-owned application service that accepts trusted scope and actor facts, validates a current connected IM Integration, and delegates durable run creation/dispatch to the existing sync service. Transport controllers MUST NOT implement eligibility, repository access, Celery dispatch or reconciliation mutation.
+Manual sync MUST be exposed through a Dify-owned application service that accepts trusted scope and actor facts, validates a current connected IM Channel, and delegates durable run creation/dispatch to the existing sync service. Transport controllers MUST NOT implement eligibility, repository access, Celery dispatch or reconciliation mutation.
 
 #### Scenario: A connected IM channel starts synchronization
 
-- **WHEN** an authorized caller requests manual sync for a scope with a current connected IM Integration
+- **WHEN** an authorized caller requests manual sync for a scope with a current connected IM Channel
 - **THEN** the application service MUST create or reuse the authoritative active run and dispatch its stable run ID through the existing sync service
 
 #### Scenario: The current channel is not eligible
 
-- **WHEN** the trusted scope has no current Integration, has a non-IM channel or has an IM Integration whose persisted status is not connected
+- **WHEN** the trusted scope has no current IM Channel or its current IM Channel status is not connected
 - **THEN** the application service MUST return the stable `im_sync_not_allowed` outcome before run creation, dispatch or provider I/O
 
 #### Scenario: Workspace transport triggers synchronization
@@ -83,7 +83,7 @@ Every canonical IM provider completed by `complete-human-input-im-channel-manage
 
 #### Scenario: A managed IM provider is connected
 
-- **WHEN** any canonical managed IM provider has a current connected Integration and manual sync is requested
+- **WHEN** any canonical managed IM provider has a current connected IM Channel and manual sync is requested
 - **THEN** the runtime MUST use the shared manual-sync facade, dedicated queue and provider adapter factory path
 
 #### Scenario: An Email channel is present

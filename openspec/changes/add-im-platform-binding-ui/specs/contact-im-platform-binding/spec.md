@@ -26,7 +26,7 @@
 #### Scenario: 初始读取绑定状态
 
 - **WHEN** 绑定页面初始化
-- **THEN** 前端 MUST 通过 repository 读取 integration、provider definition、permission 和 capability view model
+- **THEN** 前端 MUST 通过 repository 读取 Channel、provider definition、permission 和 capability view model
 
 #### Scenario: 切换验收场景
 
@@ -81,7 +81,7 @@
 
 ### Requirement: 同一 Organization 最多只能有一个 active IM binding
 
-前端 MUST 允许 Email channel 与一个 active IM provider channel 同时存在。active IM binding 指尚未删除的非 Email integration，与其 status 是 `connected`、`invalid_credentials` 或 `connection_failure` 无关。已配置 provider MUST 从可连接列表移至已配置列表；已有 active IM binding 时，前端 MUST NOT 在未确认替换的情况下创建另一个 IM provider binding。
+前端 MUST 允许 Email channel 与一个 active IM provider channel 同时存在。active IM binding 指尚未删除的 IM Channel，与其 status 是 `connected`、`invalid_credentials` 或 `connection_failure` 无关。已配置 provider MUST 从可连接列表移至已配置列表；已有 active IM binding 时，前端 MUST NOT 在未确认替换的情况下创建另一个 IM provider binding。
 
 #### Scenario: 首次选择 provider
 

@@ -94,7 +94,7 @@
 #### Scenario: 同步到达终态
 
 - **WHEN** queued 或 running run 进入任一终态
-- **THEN** 前端 MUST 停止 polling，并刷新 integration summary 和当前 run 详情
+- **THEN** 前端 MUST 停止 polling，并刷新 Channel summary 和当前 run 详情
 
 ### Requirement: 同步摘要必须区分联系人匹配结果
 

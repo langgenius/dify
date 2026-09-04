@@ -4,17 +4,17 @@
 Define durable acceptance, real-ID deduplication, lease-based processing, recovery, and payload-safe observability for authenticated IM events without coupling Provider adapters to persistence or business consumers.
 ## Requirements
 ### Requirement: The inbox sink MUST bind local routing outside AuthenticatedIMEvent
-Dify MUST provide an `IMMessageInboxSink` concrete adapter from `IMEventSink` to one `im_message_inbox` table, bound to one local Integration. Every `accept()` operation MUST use that table through the inbox repository and MUST NOT expose the repository, ORM record or database session to the Provider adapter. The sink MUST capture local Integration routing metadata without adding it to or mutating `AuthenticatedIMEvent`, and MUST reject an event whose Provider or Provider tenant identity conflicts with the bound context.
+Dify MUST provide an `IMMessageInboxSink` concrete adapter from `IMEventSink` to one `im_message_inbox` table, bound to one current IM Channel. Every `accept()` operation MUST use that table through the inbox repository and MUST NOT expose the repository, ORM record or database session to the Provider adapter. The sink MUST capture `IMChannelId`, Provider and Provider tenant outside `AuthenticatedIMEvent`, and MUST reject an event whose Provider identity conflicts with the bound Channel.
 
 #### Scenario: Provider capability receives the inbox adapter
 - **WHEN** composition supplies an event sink to a Webhook or STREAM capability
 - **THEN** it MUST supply `IMMessageInboxSink` through the `IMEventSink` interface while keeping the single inbox table and repository behind that adapter
 
 #### Scenario: Bound sink accepts a matching event
-- **WHEN** an Integration-bound sink receives an `AuthenticatedIMEvent` with the expected Provider and Provider tenant identity
-- **THEN** it MUST persist the local Integration ID as routing metadata while preserving the event contract unchanged
+- **WHEN** a Channel-bound sink receives an `AuthenticatedIMEvent` with the expected Provider and Provider tenant identity
+- **THEN** it MUST persist `channel_id` as routing metadata while preserving the event contract unchanged
 
-#### Scenario: Event identity conflicts with the bound Integration
+#### Scenario: Event identity conflicts with the bound Channel
 - **WHEN** the event Provider or Provider tenant identity differs from the sink's bound context
 - **THEN** the sink MUST NOT create an inbox record and MUST NOT return `ACCEPTED`
 
@@ -38,15 +38,15 @@ The sink MUST return `EventAcceptance.ACCEPTED` only after a new inbox record is
 - **THEN** the sink MUST return `ACCEPTED` without running business processing in the Provider receive path
 
 ### Requirement: The inbox record MUST atomically preserve authenticated event facts
-One `im_message_inbox` record MUST atomically preserve an internal record ID, logical local Integration ID, Provider, stable Provider tenant ID, nullable real Provider event ID, nullable Provider event time, Dify receive time, optional Provider event type, required event ingress kind, `AuthenticatedIMEvent.payload` and serialization version. Event ingress kind MUST be stored in a non-null column and MUST equal the `IMEventIngressKind` carried by the accepted event. The persisted `payload` MUST equal that event's `payload`; inbox persistence MUST NOT normalize Webhook and STREAM representations, unwrap Provider envelopes or create a second canonical payload. Immutable event facts, including ingress kind and payload, MUST NOT change during processing-state transitions. Inbox infrastructure MUST use ingress kind only to reconstruct the original authenticated event and make its payload interpretation available to a consumer; it MUST NOT use ingress kind or payload for deduplication, selection, authorization or routing.
+One `im_message_inbox` record MUST atomically preserve an internal record ID, `channel_id: IMChannelId`, Provider, stable Provider tenant ID, nullable real Provider event ID, nullable Provider event time, Dify receive time, optional Provider event type, required event ingress kind, `AuthenticatedIMEvent.payload` and serialization version. Event ingress kind MUST be stored in a non-null column and MUST equal the `IMEventIngressKind` carried by the accepted event. The persisted `payload` MUST equal that event's `payload`; inbox persistence MUST NOT normalize Webhook and STREAM representations, unwrap Provider envelopes or create a second canonical payload. Immutable event facts, including Channel ID, ingress kind and payload, MUST NOT change during processing-state transitions. Inbox infrastructure MUST use ingress kind only to reconstruct the original authenticated event and make its payload interpretation available to a consumer; it MUST NOT use ingress kind or payload for deduplication, selection, authorization or routing.
 
 #### Scenario: Authenticated event is inserted
 - **WHEN** the sink durably accepts one authenticated Provider event
-- **THEN** all event facts, non-null ingress kind and `payload` MUST be present in the same committed record with no separate payload concept or payload-write state
+- **THEN** Channel ID, all event facts, non-null ingress kind and `payload` MUST be present in the same committed record with no separate payload concept or payload-write state
 
 #### Scenario: Worker reconstructs the event
 - **WHEN** a claimed record is handed to a downstream consumer
-- **THEN** the worker MUST reconstruct the same Provider facts, ingress kind and Provider-native payload without adding persistence or claim state to `AuthenticatedIMEvent`
+- **THEN** `IMInboxDelivery` MUST contain persisted `channel_id` and the reconstructed authenticated event
 
 #### Scenario: Different ingress kinds expose different Provider-native representations
 - **WHEN** Webhook and STREAM events persist different complete payload shapes for the same Provider callback
@@ -54,14 +54,14 @@ One `im_message_inbox` record MUST atomically preserve an internal record ID, lo
 
 #### Scenario: Processing metadata changes
 - **WHEN** a record is claimed, retried or finalized
-- **THEN** only processing metadata MUST change and the persisted authenticated event facts, including ingress kind, MUST remain immutable
+- **THEN** only processing metadata MUST change; Channel ID and persisted authenticated event facts, including ingress kind, MUST remain immutable
 
 #### Scenario: Inbox schema is created without historical records
-- **WHEN** the migration adds ingress kind and aligns inbox payload naming under the confirmed precondition that no historical inbox records exist
-- **THEN** it MUST create ingress kind as non-null and name the persisted event payload `payload` without a legacy value, compatibility alias, nullable transition, server default or data backfill
+- **WHEN** the unpublished inbox schema is created
+- **THEN** it MUST create non-null `channel_id` and ingress kind columns without a compatibility alias, nullable transition, server default or data backfill
 
 ### Requirement: Deduplication MUST use only a real Provider event ID
-For a non-empty Provider event ID, the inbox MUST deduplicate by `(provider, provider_tenant_id, provider_event_id)` and MUST NOT include local Integration ID or `IMEventIngressKind` in that key. When Provider event ID is absent, every authenticated delivery MUST create an independent record. Payload hash, ingress kind, event time, message reference, receive time and transport ACK envelope identifiers MUST NOT be synthesized or substituted as event IDs. Resolving a duplicate MUST preserve the existing record's immutable event facts rather than overwrite them with the later delivery's ingress kind or payload.
+For a non-empty Provider event ID, the inbox MUST deduplicate by `(provider, provider_tenant_id, provider_event_id)` and MUST NOT include Channel ID or `IMEventIngressKind` in that key. When Provider event ID is absent, every authenticated delivery MUST create an independent record. Payload hash, ingress kind, event time, message reference, receive time and transport ACK envelope identifiers MUST NOT be synthesized or substituted as event IDs. Resolving a duplicate MUST preserve the existing record's Channel ID and immutable event facts rather than overwrite them with the later delivery's ingress kind or payload.
 
 #### Scenario: Identified Provider event is redelivered through the same ingress
 - **WHEN** a delivery repeats an existing non-empty Provider event ID for the same Provider tenant and ingress kind
@@ -148,7 +148,7 @@ The inbox MUST emit structured metrics for acceptance, identified duplicates, ac
 
 #### Scenario: Intake or processing fails
 - **WHEN** the sink or worker records a failure
-- **THEN** logs and metrics MUST identify the inbox record or Integration, Provider, attempt and sanitized error classification without including Provider-native payload content
+- **THEN** logs and metrics MUST identify the inbox record or Channel, Provider, attempt and sanitized error classification without including Provider-native payload content
 
 #### Scenario: Recovery backlog grows
 - **WHEN** pending or expired-lease records accumulate

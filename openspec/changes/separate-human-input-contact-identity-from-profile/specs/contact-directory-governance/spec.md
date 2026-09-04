@@ -16,8 +16,8 @@
 **Reason**: Organization/tenant ownership 不属于独立 Contact governance capability。
 **Migration**: Dify core `ContactRepository` 只接受一个 canonical `tenant_id`，不执行跨 tenant search。EE Platform candidate search 与 deployment-wide Organization scope 继续由 EE implementation 和 EE adapter capabilities 定义。
 
-### Requirement: IM Integration、Organization binding 与 workspace override 归属
-**Reason**: IM Integration ownership、binding scope 与 override precedence 属于 IM control plane，而不是 Contact governance。
+### Requirement: IM Channel、Organization binding 与 workspace override 归属
+**Reason**: IM Channel ownership、binding scope 与 override precedence 属于 IM control plane，而不是 Contact governance。
 **Migration**: 迁移到 `human-input-v2-im-control-plane-core`、channel management 与 Contact binding capabilities。
 
 ### Requirement: IM identity 必须基于手动同步结果选择

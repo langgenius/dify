@@ -58,7 +58,7 @@ The shared contract MUST define `UnrecognizedIMEvent`, `IMCardEventDecodeResult`
 - **THEN** the exception MUST NOT contain raw Provider payloads, submitted input values, correlation tokens, Provider profiles, credentials or Provider SDK exceptions
 
 ### Requirement: Card-event decoder MUST be a class-level optional Provider capability
-Every concrete `IMProviderAdapter` class MUST expose `card_event_decoder()` as a class method returning `IMCardEventDecoder | None`. Calling the class method MUST require no adapter instance, credentials, Provider client or integration context and MUST perform no network or persistence I/O. A returned decoder MUST be immutable in observable behavior, thread-safe, credential-free and independent from every root adapter instance lifecycle. Callers MUST NOT rely on decoder object identity across calls.
+Every concrete `IMProviderAdapter` class MUST expose `card_event_decoder()` as a class method returning `IMCardEventDecoder | None`. Calling the class method MUST require no adapter instance, credentials, Provider client or Channel context and MUST perform no network or persistence I/O. A returned decoder MUST be immutable in observable behavior, thread-safe, credential-free and independent from every root adapter instance lifecycle. Callers MUST NOT rely on decoder object identity across calls.
 
 #### Scenario: Decoder capability is inspected without an adapter instance
 - **WHEN** a caller invokes `card_event_decoder()` on a concrete Provider adapter class

@@ -1,22 +1,22 @@
 ## ADDED Requirements
 
-### Requirement: Dify MUST 是 IM integration 与 sync 逻辑的唯一 owner
+### Requirement: Dify MUST 是 IM Channel 与 sync 逻辑的唯一 owner
 
-EE Human Input admin implementation MUST NOT 实现 provider adapter、credential persistence、integration aggregate、CAS repository、sync reconciler、background worker 或 sync-result persistence。所有 integration 与 sync command/query MUST 通过 typed Dify internal client进入 Dify Human Input application service。
+EE Human Input admin implementation MUST NOT 实现 provider adapter、credential persistence、Channel aggregate、CAS repository、sync reconciler、background worker 或 sync-result persistence。所有 Channel 与 sync command/query MUST 通过 typed Dify internal client进入 Dify Human Input application service。
 
 #### Scenario: EE 管理员触发 manual sync
 - **WHEN** `CreateIMSyncRun` 通过 Kratos HTTP service到达 EE backend
 - **THEN** EE MUST 调用 Dify internal Human Input endpoint，并 MUST NOT 在 EE process中拉取 provider directory、创建 worker job或直接写 Human Input tables
 
 #### Scenario: 实现者尝试复用 EE Dify DB client
-- **WHEN** integration、run、identity、binding 或 result需要读取或修改
+- **WHEN** Channel、run、identity、binding 或 result需要读取或修改
 - **THEN** EE adapter MUST 使用 Dify internal HTTP contract，MUST NOT 添加对应 Ent schema、repository或 raw SQL access
 
-### Requirement: Typed Dify client MUST 保持 integration CAS、credential command与read-only deployment transport语义
+### Requirement: Typed Dify client MUST 保持 Channel CAS、credential command与read-only deployment transport语义
 
-EE client MUST 一对一转发 integration get/upsert/delete/test request，包括完整 `integration_id + config_version` CAS token、provider-specific credential shape和replace-or-preserve operation。Upsert/test request MUST NOT携带`DISABLED / WEBHOOK / STREAM` mode；get/test response MAY映射Dify返回的read-only effective deployment mode和safe compatibility/health。EE MUST NOT在本地模拟或覆盖deployment transport policy、transport support、version advancement、provider replacement、credential rotation或identity invalidation。
+EE client MUST 一对一转发 Channel get/upsert/delete/test request，包括完整 `channel_id + config_version` CAS token、provider-specific credential shape和replace-or-preserve operation。Upsert/test request MUST NOT携带`DISABLED / WEBHOOK / STREAM` mode；get/test response MAY映射Dify返回的read-only effective deployment mode和safe compatibility/health。EE MUST NOT在本地模拟或覆盖deployment transport policy、transport support、version advancement、provider replacement、credential rotation或identity invalidation。
 
-#### Scenario: 管理员更新当前 integration
+#### Scenario: 管理员更新当前 Channel
 - **WHEN** request包含 current CAS token 与 credential command
 - **THEN** EE MUST 将 command原样映射到 Dify internal DTO，并 MUST 以 Dify response作为唯一 current-state result
 
@@ -26,7 +26,7 @@ EE client MUST 一对一转发 integration get/upsert/delete/test request，包�
 
 ### Requirement: Manual sync MUST 由 Dify 创建并异步执行
 
-EE `CreateIMSyncRun` MUST 只调用 Dify command endpoint并返回 Dify创建或复用的 active run。Single-active-run、captured integration revision、async scheduling、retry、idempotent apply 与 terminal transition MUST 全部由 Dify保证。EE client MUST NOT 对 timed-out mutation执行 blind retry。
+EE `CreateIMSyncRun` MUST 只调用 Dify command endpoint并返回 Dify创建或复用的 active run。Single-active-run、captured Channel revision、async scheduling、retry、idempotent apply 与 terminal transition MUST 全部由 Dify保证。EE client MUST NOT 对 timed-out mutation执行 blind retry。
 
 #### Scenario: 两个 EE 请求并发触发 sync
 - **WHEN** 两个 administrator request同时到达 EE

@@ -4,7 +4,7 @@
 TBD - created by archiving change define-im-provider-adapter-contracts. Update Purpose after archive.
 ## Requirements
 ### Requirement: Directory MUST be bound to one adapter namespace
-Every initial `IMProviderAdapter` MUST expose an `IMDirectory` bound to the adapter's immutable Provider credentials and namespace. `read_directory()` MUST accept no credentials, Provider clients, cursors or generic integration context and MUST follow the adapter's thread-safety and lifecycle contract.
+Every initial `IMProviderAdapter` MUST expose an `IMDirectory` bound to the adapter's immutable Provider credentials and namespace. `read_directory()` MUST accept no credentials, Provider clients, cursors or Channel context and MUST follow the adapter's thread-safety and lifecycle contract.
 
 #### Scenario: Directory is invoked
 - **WHEN** a caller invokes `read_directory()` through one adapter

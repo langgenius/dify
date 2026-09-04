@@ -2,18 +2,13 @@
 
 ### Requirement: OAuth management MUST extend only the canonical Channels facade
 
-Cloud Slack OAuth authorize, callback, reauthorization, legacy migration and disconnect MUST extend the canonical Human Input Channels management boundary. The duplicate `im-integration` management surface MUST NOT gain equivalent OAuth operations.
+Cloud Slack OAuth authorize, callback, reauthorization, legacy migration and disconnect MUST extend the canonical Human Input Channels management boundary.
 
 #### Scenario: Administrator starts Slack OAuth
 
 - **WHEN** a trusted administrator invokes a supported Slack OAuth operation
 - **THEN** the Channels facade MUST derive workspace, actor and deployment context on the server
 - **AND** it MUST dispatch through the Slack OAuth management port
-
-#### Scenario: OAuth operation is requested on a duplicate route
-
-- **WHEN** a caller addresses a deprecated or duplicate `im-integration` management route
-- **THEN** that route MUST NOT create authorization state or mutate an OAuth installation
 
 #### Scenario: Public OAuth callback completes
 
@@ -35,7 +30,7 @@ Every configured or available channel MUST be represented by a common safe view 
 
 #### Scenario: Configured IM is viewed
 
-- **WHEN** an IM integration is configured
+- **WHEN** an IM Channel is configured
 - **THEN** the common view MUST expose IM kind, provider, effective ownership scope, safe connection status and supported capabilities
 - **AND** it MUST NOT expose credentials, provider raw payloads, identities, bindings or ORM records
 
@@ -47,7 +42,7 @@ Every configured or available channel MUST be represented by a common safe view 
 
 #### Scenario: Legacy Cloud Slack connection is viewed
 
-- **WHEN** an existing Cloud Slack Integration remains `self_managed`
+- **WHEN** an existing Cloud Slack Channel remains `self_managed`
 - **THEN** the view MUST identify it as legacy and advertise migration only when migration is available
 - **AND** it MUST remain represented as the current configured channel until explicit migration or deletion
 
@@ -62,7 +57,7 @@ Every configured or available channel MUST be represented by a common safe view 
 
 - **WHEN** a provider accepts or evaluates candidate settings
 - **THEN** management MUST return a credential-free `ChannelTestResult` describing only that candidate test
-- **AND** it MUST NOT copy configured state, persisted integration identity or configuration revision into the test result
+- **AND** it MUST NOT copy configured state, persisted Channel identity or configuration revision into the test result
 - **AND** it MUST NOT present candidate fields as the current persisted channel view
 
 ### Requirement: Management commands MUST preserve provider-specific configuration types
@@ -77,7 +72,7 @@ Save and test operations MUST use discriminated channel/provider commands rather
 #### Scenario: IM candidate is submitted
 
 - **WHEN** a command carries an IM/provider discriminator in a deployment mode that supports credential candidates
-- **THEN** management MUST validate the matching provider-specific integration command before invoking the IM handler
+- **THEN** management MUST validate the matching provider-specific Channel command before invoking the IM handler
 - **AND** IM secret fields MUST accept only explicit new secret values in this change
 - **AND** management MUST NOT define an existing-secret retention directive for IM candidates
 
@@ -90,7 +85,7 @@ Save and test operations MUST use discriminated channel/provider commands rather
 #### Scenario: Cloud Slack OAuth operation is submitted
 
 - **WHEN** a command carries a Slack OAuth operation discriminator
-- **THEN** management MUST validate only that operation's intent and complete Integration CAS fields
+- **THEN** management MUST validate only that operation's intent and complete Channel CAS fields
 - **AND** it MUST NOT accept deployment App credentials or installation tokens in the command
 
 #### Scenario: Discriminator and payload disagree
@@ -121,7 +116,7 @@ Each channel view MUST advertise the management operations implemented for its p
 
 #### Scenario: Unconfigured Cloud Slack capabilities are returned
 
-- **WHEN** Cloud Slack OAuth is available and no Slack Integration exists
+- **WHEN** Cloud Slack OAuth is available and no Slack Channel exists
 - **THEN** capabilities MUST advertise `authorize`
 - **AND** they MUST NOT advertise credential save, credential test, reauthorize or disconnect
 
@@ -133,7 +128,7 @@ Each channel view MUST advertise the management operations implemented for its p
 
 #### Scenario: Legacy Cloud Slack capabilities are returned
 
-- **WHEN** a Cloud Slack `self_managed` Integration is eligible for migration
+- **WHEN** a Cloud Slack `self_managed` Channel is eligible for migration
 - **THEN** capabilities MUST advertise explicit `migrate_legacy` and the operations safe for the legacy state
 - **AND** they MUST NOT describe the connection as a new OAuth installation
 

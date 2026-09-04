@@ -4,7 +4,7 @@
 TBD - created by archiving change define-im-provider-adapter-contracts. Update Purpose after archive.
 ## Requirements
 ### Requirement: Messaging MUST be exposed as adapter-bound capabilities
-Every initial `IMProviderAdapter` MUST expose Basic Messaging bound to the adapter's immutable Provider credentials and namespace. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release. Messaging operations MUST accept no credentials, Provider clients or generic integration context and MUST follow the adapter's root-context concurrency and lifecycle contract.
+Every initial `IMProviderAdapter` MUST expose Basic Messaging bound to the adapter's immutable Provider credentials and namespace. Only Slack, Feishu/Lark and Microsoft Teams MUST additionally expose Dynamic Card Messaging in this release. Messaging operations MUST accept no credentials, Provider clients or Channel context and MUST follow the adapter's root-context concurrency and lifecycle contract.
 
 #### Scenario: Multiple Messaging operations use one adapter
 - **WHEN** a caller sends multiple messages through the same adapter

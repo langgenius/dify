@@ -36,9 +36,9 @@ One `im_message_inbox` record MUST atomically preserve internal record ID、logi
 - **WHEN** record is claimed、retried or finalized
 - **THEN** only processing metadata MUST change；Channel ID and authenticated event facts MUST remain immutable
 
-#### Scenario: Routing migration has no historical records
-- **WHEN** migration replaces inbox `integration_id` with non-null `channel_id` under confirmed no-historical-data precondition
-- **THEN** it MUST add no legacy alias、nullable transition、server default、dual read/write or backfill
+#### Scenario: Inbox schema is created without historical records
+- **WHEN** the unpublished migration creates the inbox schema
+- **THEN** it MUST create non-null `channel_id` without a compatibility alias、nullable transition、server default、dual read/write or data backfill
 
 ### Requirement: Deduplication MUST use only a real Provider event ID
 

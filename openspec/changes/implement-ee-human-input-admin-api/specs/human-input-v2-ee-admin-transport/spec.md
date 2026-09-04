@@ -14,7 +14,7 @@ EE backend MUST 在 `dify.enterprise.api.enterprise` package 中定义 `Enterpri
 
 ### Requirement: Transport MUST 在调用 Dify client 前完成强类型校验与默认值处理
 
-Protobuf contract MUST 保留 API summary 中的 provider、status、read-only effective deployment `DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Integration upsert/test request MUST 使用独立的provider credential update messages，response MUST 使用只包含allow-listed non-secret identifiers的credential messages；两者不得复用。Integration upsert/test request MUST NOT包含event transport mode或tenant-selectable supported modes。Required enum zero value、ID、CAS version、first-create required secret replacement、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
+Protobuf contract MUST 保留 API summary 中的 provider、status、read-only effective deployment `DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Channel upsert/test request MUST 使用独立的provider credential update messages，response MUST 使用只包含allow-listed non-secret identifiers的credential messages；两者不得复用。Channel upsert/test request MUST NOT包含event transport mode或tenant-selectable supported modes。Required enum zero value、ID、CAS version、first-create required secret replacement、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
 
 #### Scenario: 请求包含非法 enum 或 CAS token
 - **WHEN** 请求包含 unspecified required enum、空 ID、非正 config version 或越界 pagination
@@ -25,7 +25,7 @@ Protobuf contract MUST 保留 API summary 中的 provider、status、read-only e
 - **THEN** EE service MUST 向 Dify client 传递 page `1` 与 limit `20`
 
 #### Scenario: Request attempts to set event transport mode
-- **WHEN** an Integration upsert or test request contains an event transport mode override
+- **WHEN** a Channel upsert or test request contains an event transport mode override
 - **THEN** Kratos validation MUST reject the request before the Human Input use case or Dify internal client is invoked
 
 ### Requirement: Administrator identity MUST 只由EE audit boundary拥有
@@ -37,7 +37,7 @@ Protobuf contract MUST 保留 API summary 中的 provider、status、read-only e
 - **THEN** Kratos middleware/service MUST 返回现有 `401/403` error，且 MUST NOT 调用 Dify internal API
 
 #### Scenario: 已认证管理员执行 mutation
-- **WHEN** 管理员 upsert integration、触发 sync 或修改 binding
+- **WHEN** 管理员 upsert Channel、触发 sync 或修改 binding
 - **THEN** EE use case MUST 在调用Dify前记录actor与operation ID，并在结果明确后记录success或rejected outcome；Dify request MUST 不包含human actor，且EE-originated mutation MUST 不填充Dify Account-specific actor字段
 
 #### Scenario: Mutation发生ambiguous timeout
@@ -60,8 +60,8 @@ EE public Protobuf中的provider credential update message MUST 使用optional p
 - **WHEN** first-create request省略provider-required secret或提供空replacement
 - **THEN** EE MUST在调用Dify前返回稳定的sanitized invalid-request error，且 MUST NOT 将credential内容写入日志
 
-#### Scenario: Integration response返回credential projection
-- **WHEN** Dify返回configured integration及其provider credential projection
+#### Scenario: Channel response返回credential projection
+- **WHEN** Dify返回configured Channel及其provider credential projection
 - **THEN** EE response MUST只包含provider的non-secret identifier字段，并 MUST NOT包含任何secret、masked value、ciphertext或hash-derived value
 
 ### Requirement: EE transport MUST 稳定映射 Dify internal errors

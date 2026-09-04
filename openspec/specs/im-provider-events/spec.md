@@ -53,7 +53,7 @@ After successful authentication and applicable decryption, Webhook handlers and 
 
 #### Scenario: Deployment selects one event transport mode
 - **WHEN** composition selects Webhook or STREAM as the effective deployment transport
-- **THEN** each resulting event MUST record its actual ingress kind without treating `AuthenticatedIMEvent.ingress_kind` as integration configuration
+- **THEN** each resulting event MUST record its actual ingress kind without treating `AuthenticatedIMEvent.ingress_kind` as Channel configuration
 
 ### Requirement: Provider event IDs MUST never be synthesized
 An event transport MUST preserve a Provider event ID only when authoritative Provider semantics confirm that it identifies the event and remains stable across redelivery. It MUST NOT synthesize an event ID from payload, timestamps, message references or transport envelope data.

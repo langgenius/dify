@@ -115,7 +115,7 @@ Functional support in this change MUST target Community and Cloud. One pre-dispa
 - **WHEN** credentials contain a field outside the selected provider DTO
 - **THEN** strict DTO validation MUST reject it before application、provider or persistence work
 
-#### Scenario: Tenant submits Integration-level event transport
+#### Scenario: Tenant submits Channel-level event transport
 
 - **WHEN** IM credentials include `event_transport_mode`
 - **THEN** strict DTO validation MUST reject the field
@@ -177,7 +177,6 @@ Resend save MUST validate the complete candidate without sending Email before pe
 
 - **WHEN** an IM item GET succeeds
 - **THEN** the response MUST contain exactly one `summary` configured-state projection
-- **AND** it MUST NOT serialize a retained controller `IMIntegration` or `IMChannelSummaryResponse`
 
 #### Scenario: IM display identifier is built
 
@@ -200,7 +199,7 @@ Resend save MUST validate the complete candidate without sending Email before pe
 
 - **WHEN** an IM update、replacement or delete supplies the current opaque `expected_config_version`
 - **THEN** the server MUST validate the path identity and the underlying numeric configuration version together
-- **AND** the IM owner MUST retain its complete `integration_id + numeric config_version` CAS invariant
+- **AND** the IM owner MUST retain its complete `channel_id + numeric config_version` CAS invariant
 
 #### Scenario: Configuration version is stale
 
@@ -306,16 +305,6 @@ The API MUST map management categories to stable HTTP statuses and safe bodies w
 - **THEN** the API MUST return a generic channel failure
 - **AND** logs and responses MUST remain credential-free
 
-### Requirement: Canonical v2 routes MUST be the only configuration authority
-
-The v2 Channel controllers MUST be the only public configuration lifecycle for Human Input Email and IM。The obsolete Email provider stub and legacy `/im-integration` management resources MUST NOT remain registered、proxied or implemented as aliases。
-
-#### Scenario: Legacy IM integration path is requested
-
-- **WHEN** a caller requests `/console/api/workspaces/current/human-input/im-integration` or `/console/api/workspaces/current/human-input/im-integration/test`
-- **THEN** HTTP routing MUST return `404`
-- **AND** the request MUST NOT invoke Channel Management or IM Integration application services
-
 ### Requirement: Channel create, update and replacement MUST express distinct resource transitions
 
 `POST /channels/<kind>` MUST create a resource。`PUT /channels/<kind>/<channel_id>` MUST update exactly the addressed resource。IM provider or provider-tenant replacement MUST use `POST /channels/im/<channel_id>/replacement`。The API MUST NOT infer replacement from a provider-addressed URL or ordinary create。Stable conflict codes MUST correspond to distinct client recovery behavior。This change defines only `replacement_required` and `provider_configuration_updated`；the API MUST NOT introduce another stable conflict code without a concrete client recovery requirement。
@@ -329,13 +318,13 @@ The v2 Channel controllers MUST be the only public configuration lifecycle for H
 
 - **WHEN** an active IM Channel exists and an administrator submits another ordinary `POST /channels/im`
 - **THEN** the API MUST return `409` before provider I/O
-- **AND** it MUST NOT create a second Integration or clear existing identities or bindings
+- **AND** it MUST NOT create a second IM Channel or clear existing identities or bindings
 
 #### Scenario: IM credentials rotate
 
 - **WHEN** an administrator calls `PUT /channels/im/<channel_id>` with complete credentials、the current expected version、the same provider and the same provider tenant
 - **THEN** the API MUST update that resource and return `200` with its summary
-- **AND** the IM owner MUST preserve the existing `integration_id`, IM identity records, and Contact bindings
+- **AND** the IM owner MUST preserve the existing `channel_id`, IM identity records, and Contact bindings
 
 #### Scenario: IM update requires replacement
 

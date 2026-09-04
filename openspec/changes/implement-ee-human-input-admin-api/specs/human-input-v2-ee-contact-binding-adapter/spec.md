@@ -33,9 +33,9 @@ EE MUST 通过 Dify internal API列出 current Organization Contact，并 MUST �
 - **WHEN** 同一 Account加入或离开 workspace
 - **THEN** EE MUST 依赖 Dify保持 Contact identity稳定，MUST NOT 从 EE membership table重建或覆盖 Contact ID
 
-### Requirement: Synced IM identity search MUST 由 Dify current integration scope决定
+### Requirement: Synced IM identity search MUST 由 Dify current Channel决定
 
-EE `ListIMIdentities` MUST 调用 Dify internal query，并 MUST 透传 provider、keyword与pagination。Current integration/provider scoping、provider user ID/display name/email matching、stale identity omission与bound/unbound status MUST 由 Dify实现。
+EE `ListIMIdentities` MUST 调用 Dify internal query，并 MUST 透传 provider、keyword与pagination。Current Channel scoping、provider user ID/display name/email matching、stale identity omission与bound/unbound status MUST 由 Dify实现。
 
 #### Scenario: 管理员按 provider user ID搜索
 - **WHEN** keyword命中 current synchronized identity
@@ -47,7 +47,7 @@ EE `ListIMIdentities` MUST 调用 Dify internal query，并 MUST 透传 provider
 
 ### Requirement: Organization binding mutation MUST 委托给 Dify transaction boundary
 
-`CreateIMBinding` 与 `DeleteIMBinding` MUST 通过 Dify internal command执行。Contact availability、identity ownership、current integration/provider、Organization scope、exact retry idempotency、unique conflict与完整 Contact-to-binding owner predicate MUST 由 Dify repository/application service保证。EE MUST 不增加本地 binding cache或补偿性 DB write。
+`CreateIMBinding` 与 `DeleteIMBinding` MUST 通过 Dify internal command执行。Contact availability、identity ownership、current Channel、Organization scope、exact retry idempotency、unique conflict与完整 Contact-to-binding owner predicate MUST 由 Dify repository/application service保证。EE MUST 不增加本地 binding cache或补偿性 DB write。
 
 #### Scenario: 当前 Contact绑定 current identity
 - **WHEN** Dify接受 binding command
@@ -63,7 +63,7 @@ EE `ListIMIdentities` MUST 调用 Dify internal query，并 MUST 透传 provider
 
 ### Requirement: Binding reachability test MUST 调用 Dify-owned provider path
 
-`TestIMBinding` MUST 通过 Dify internal API验证 current binding identity reachability。Stored integration credential解密、provider adapter调用与safe diagnostic生成 MUST 位于 Dify；EE 只映射 `reachable` 与operator-safe message。
+`TestIMBinding` MUST 通过 Dify internal API验证 current binding identity reachability。Stored Channel credential解密、provider adapter调用与safe diagnostic生成 MUST 位于 Dify；EE 只映射 `reachable` 与operator-safe message。
 
 #### Scenario: Bound identity可达
 - **WHEN** Dify provider path返回 reachable result

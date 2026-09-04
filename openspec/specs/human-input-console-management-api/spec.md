@@ -195,11 +195,11 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 
 - **WHEN** workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
 - **THEN** system MUST atomically obtain the current single active run
-- **AND** it MUST create a run with current `integration_id` and `config_version` when no active run exists, or reuse the active run when one exists
+- **AND** it MUST create a run with current `channel_id` and `config_version` when no active run exists, or reuse the active run when one exists
 
-#### Scenario: Sync run references a stale Integration revision
+#### Scenario: Sync run references a stale Channel revision
 
-- **WHEN** IM sync worker is ready to apply results but current Integration ID or config version no longer matches the revision captured by the run
+- **WHEN** IM sync worker is ready to apply results but current Channel ID or config version no longer matches the revision captured by the run
 - **THEN** system MUST terminate the run as stale work
 - **AND** it MUST NOT write current IM identities, Organization bindings or workspace overrides
 

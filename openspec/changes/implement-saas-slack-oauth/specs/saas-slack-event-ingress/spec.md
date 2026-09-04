@@ -29,7 +29,7 @@ The Events endpoint MUST answer Slack `url_verification` only after signature an
 
 - **WHEN** the official App sends a valid signed `url_verification` request
 - **THEN** ingress MUST return the exact challenge required by Slack within the acknowledgement deadline
-- **AND** it MUST NOT create an Integration, workspace claim or business event
+- **AND** it MUST NOT create a Channel, workspace claim or business event
 
 #### Scenario: Invalid URL verification arrives
 
@@ -38,12 +38,12 @@ The Events endpoint MUST answer Slack `url_verification` only after signature an
 
 ### Requirement: Authenticated callbacks MUST route only through an active workspace claim
 
-After authentication, ingress MUST resolve `team_id` through the dedicated workspace claim and verify that the claim, Integration and OAuth installation form the same active ownership chain before dispatching tenant business work.
+After authentication, ingress MUST resolve `team_id` through the dedicated workspace claim and verify that the claim, Channel and OAuth installation form the same active ownership chain before dispatching tenant business work.
 
 #### Scenario: Active claim resolves
 
 - **WHEN** an authenticated envelope contains a `team_id` claimed by an active OAuth installation
-- **THEN** ingress MUST route the envelope to that claim's Integration and tenant
+- **THEN** ingress MUST route the envelope to that claim's Channel and tenant
 - **AND** it MUST NOT accept a tenant identifier from the Slack payload or request URL
 
 #### Scenario: Workspace is unknown
@@ -60,7 +60,7 @@ After authentication, ingress MUST resolve `team_id` through the dedicated works
 
 #### Scenario: Claim chain is inconsistent
 
-- **WHEN** claim, installation and Integration identifiers or Slack workspace identities do not match
+- **WHEN** claim, installation and Channel identifiers or Slack workspace identities do not match
 - **THEN** ingress MUST fail closed and emit a high-signal integrity metric without exposing record details
 
 ### Requirement: Valid callbacks MUST be durably accepted before acknowledgement
@@ -113,7 +113,7 @@ The durable ingress consumer MUST recognize official Slack installation lifecycl
 
 - **WHEN** a durable authenticated `app_uninstalled` event resolves to an active claim
 - **THEN** the lifecycle consumer MUST idempotently transition the installation to `reauthorization_required`
-- **AND** it MUST NOT delete the workspace claim or Integration as if an administrator completed disconnect
+- **AND** it MUST NOT delete the workspace claim or Channel as if an administrator completed disconnect
 
 #### Scenario: Tokens are revoked externally
 

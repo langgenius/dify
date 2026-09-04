@@ -83,7 +83,7 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 
 #### Scenario: IM current rows 删除后 proof 仍可审计
 - **WHEN** an IM identity or binding used by a successful submission is later deleted or replaced
-- **THEN** the authorization AuditEvent MUST retain `provider + platform_tenant_id + platform_user_id` as the external identity key, the historical integration / identity / binding identifiers as internal trace, and the authorization-time display name and email for display; name and email MUST NOT participate in authorization
+- **THEN** the authorization AuditEvent MUST retain `provider + platform_tenant_id + platform_user_id` as the external identity key, the historical Channel / Identity / Binding identifiers as internal trace, and the authorization-time display name and email for display; name and email MUST NOT participate in authorization
 
 #### Scenario: Email OTP 提交
 - **WHEN** an `External contact`、one-time email or Dynamic Email approver submits with a valid OTP

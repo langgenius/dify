@@ -29,46 +29,46 @@ Cloud Slack OAuth MUST use one deployment-owned official Slack App. Its `client_
 
 ### Requirement: Slack OAuth authorization state MUST be single-use and context-bound
 
-The authorize operation MUST create a cryptographically random, short-lived server-side state bound to the trusted workspace, administrator, operation intent, current complete Integration CAS token, expected provider tenant identity and popup correlation. The callback MUST consume that state atomically before accepting an OAuth result.
+The authorize operation MUST create a cryptographically random, short-lived server-side state bound to the trusted workspace, administrator, operation intent, current complete Channel CAS token, expected provider tenant identity and popup correlation. The callback MUST consume that state atomically before accepting an OAuth result.
 
 #### Scenario: Administrator starts a new connection
 
-- **WHEN** an authorized Cloud administrator starts `connect` while no active IM Integration exists
+- **WHEN** an authorized Cloud administrator starts `connect` while no active IM Channel exists
 - **THEN** the system MUST return an official Slack authorization URL containing a new one-time state
 - **AND** the state MUST be bound to the current Dify workspace and `connect` intent
 
 #### Scenario: Administrator starts reauthorization
 
 - **WHEN** an authorized Cloud administrator starts `reauthorize` for an existing OAuth installation
-- **THEN** the state MUST capture the current Integration ID, `config_version`, Slack workspace identity and `reauthorize` intent
+- **THEN** the state MUST capture the current Channel ID, `config_version`, Slack workspace identity and `reauthorize` intent
 
 #### Scenario: State is replayed
 
 - **WHEN** an OAuth callback presents a state that was already consumed or expired
-- **THEN** the callback MUST fail before mutating Integration, installation or workspace claim state
+- **THEN** the callback MUST fail before mutating Channel, installation or workspace claim state
 - **AND** it MUST return only a safe OAuth failure result
 
-#### Scenario: Captured Integration revision is stale
+#### Scenario: Captured Channel revision is stale
 
-- **WHEN** the Integration ID or `config_version` no longer matches the state at callback commit time
+- **WHEN** the Channel ID or `config_version` no longer matches the state at callback commit time
 - **THEN** the callback MUST reject the local write as stale
-- **AND** it MUST NOT retry against the newer Integration without a new administrator authorization
+- **AND** it MUST NOT retry against the newer Channel without a new administrator authorization
 
 ### Requirement: OAuth callback MUST validate and atomically install a standard Slack workspace
 
-The OAuth callback MUST exchange the authorization code with the deployment-owned App, validate the returned App identity, standard workspace identity, token-rotation material and required granted scopes, then atomically persist the Integration configuration, OAuth installation and workspace claim.
+The OAuth callback MUST exchange the authorization code with the deployment-owned App, validate the returned App identity, standard workspace identity, token-rotation material and required granted scopes, then atomically persist the Channel configuration, OAuth installation and workspace claim.
 
 #### Scenario: New workspace installation succeeds
 
 - **WHEN** a valid `connect` callback returns the expected App identity, one standard Slack `team_id`, required scopes, bot token, refresh token and expiry
-- **THEN** one Integration, one OAuth installation and one workspace claim MUST become visible in one database commit
+- **THEN** one Channel, one OAuth installation and one workspace claim MUST become visible in one database commit
 - **AND** the resulting channel MUST identify the installation as `oauth_installation`
 
 #### Scenario: Enterprise Grid org-wide installation is returned
 
 - **WHEN** Slack returns an Enterprise Grid org-wide installation or omits the required standard workspace identity
 - **THEN** the callback MUST reject the installation
-- **AND** it MUST NOT create or replace any local Integration, installation or workspace claim
+- **AND** it MUST NOT create or replace any local Channel, installation or workspace claim
 
 #### Scenario: Required scope is missing
 
@@ -85,7 +85,7 @@ The OAuth callback MUST exchange the authorization code with the deployment-owne
 #### Scenario: Local commit fails after code exchange
 
 - **WHEN** token exchange succeeds but local validation, CAS or persistence fails
-- **THEN** the previous local Integration state MUST remain unchanged
+- **THEN** the previous local Channel state MUST remain unchanged
 - **AND** the service MUST perform best-effort credential compensation and emit a secret-free compensation audit result
 
 ### Requirement: OAuth installation credentials MUST preserve secret ownership boundaries
@@ -116,27 +116,27 @@ Tenant persistence MUST contain only encrypted workspace installation tokens and
 - **THEN** the response MUST contain no plaintext, encrypted, masked or presence-revealing token field
 - **AND** it MUST expose only safe workspace display metadata and lifecycle state
 
-### Requirement: Same-workspace reauthorization and legacy migration MUST preserve Integration identity
+### Requirement: Same-workspace reauthorization and legacy migration MUST preserve Channel identity
 
-Reauthorization and legacy migration MUST update an existing Integration only when Slack confirms the same provider tenant identity. A different Slack workspace MUST require explicit disconnect followed by a new connect.
+Reauthorization and legacy migration MUST update an existing Channel only when Slack confirms the same provider tenant identity. A different Slack workspace MUST require explicit disconnect followed by a new connect.
 
 #### Scenario: OAuth installation is reauthorized for the same workspace
 
-- **WHEN** a valid `reauthorize` callback returns the Integration's current Slack `team_id`
-- **THEN** the system MUST rotate installation credentials and advance the explicit Integration configuration revision exactly once
-- **AND** it MUST preserve the Integration ID, identities and bindings
+- **WHEN** a valid `reauthorize` callback returns the Channel's current Slack `team_id`
+- **THEN** the system MUST rotate installation credentials and advance the Channel configuration version exactly once
+- **AND** it MUST preserve the Channel ID, identities and bindings
 
 #### Scenario: Reauthorization returns another Slack workspace
 
-- **WHEN** a `reauthorize` callback returns a `team_id` different from the captured Integration identity
+- **WHEN** a `reauthorize` callback returns a `team_id` different from the captured Channel identity
 - **THEN** the system MUST reject the update and preserve the current installation
 - **AND** it MUST require explicit disconnect before that other workspace can be connected
 
 #### Scenario: Legacy connection migrates to OAuth for the same workspace
 
-- **WHEN** a valid `migrate_legacy` callback returns the same Slack `team_id` as the legacy `self_managed` Integration and the claim is available
+- **WHEN** a valid `migrate_legacy` callback returns the same Slack `team_id` as the legacy `self_managed` Channel and the claim is available
 - **THEN** the system MUST change the credential mode to `oauth_installation` in one CAS transaction
-- **AND** it MUST preserve the Integration ID, identities and bindings
+- **AND** it MUST preserve the Channel ID, identities and bindings
 
 #### Scenario: Legacy workspace is already claimed
 
@@ -146,7 +146,7 @@ Reauthorization and legacy migration MUST update an existing Integration only wh
 
 ### Requirement: Slack token rotation MUST use leases and credential CAS
 
-The system MUST refresh active OAuth installations before expiry by using a queryable expiry, a finite distributed database lease and the installation's `credential_revision`. Automatic refresh MUST NOT change the Integration `config_version`.
+The system MUST refresh active OAuth installations before expiry by using a queryable expiry, a finite distributed database lease and the installation's `credential_revision`. Automatic refresh MUST NOT change the Channel `config_version`.
 
 #### Scenario: Installation approaches expiry
 
@@ -163,7 +163,7 @@ The system MUST refresh active OAuth installations before expiry by using a quer
 
 - **WHEN** Slack returns a valid rotated access token, refresh token and expiry
 - **THEN** the owner MUST atomically persist the encrypted tokens, expiry and next credential revision and release the lease
-- **AND** the Integration `config_version`, identities, bindings and sync state MUST remain unchanged
+- **AND** the Channel `config_version`, identities, bindings and sync state MUST remain unchanged
 
 #### Scenario: Refresh fails transiently
 
@@ -175,7 +175,7 @@ The system MUST refresh active OAuth installations before expiry by using a quer
 
 - **WHEN** Slack returns `invalid_grant`, the refresh credential is revoked, required scopes disappear, or the access token expires without a valid refresh
 - **THEN** the installation MUST enter `reauthorization_required`
-- **AND** new send, sync and provider business operations MUST fail closed without advancing Integration `config_version`
+- **AND** new send, sync and provider business operations MUST fail closed without advancing Channel `config_version`
 
 #### Scenario: Refresh worker loses its lease
 
@@ -184,18 +184,18 @@ The system MUST refresh active OAuth installations before expiry by using a quer
 
 ### Requirement: OAuth disconnect MUST be compensatable and race-safe
 
-Active disconnect MUST first persist a `disconnecting` transition through complete Integration CAS, then revoke or uninstall remotely, and only then delete local ownership through a transition CAS. Refresh, reauthorization and provider business work MUST reject a disconnecting installation.
+Active disconnect MUST first persist a `disconnecting` transition through complete Channel CAS, then revoke or uninstall remotely, and only then delete local ownership through a transition CAS. Refresh, reauthorization and provider business work MUST reject a disconnecting installation.
 
 #### Scenario: Administrator starts disconnect
 
-- **WHEN** an authorized administrator submits the current Integration ID and `config_version` for an active OAuth installation
+- **WHEN** an authorized administrator submits the current Channel ID and `config_version` for an active OAuth installation
 - **THEN** the system MUST atomically enter `disconnecting`, advance `config_version` exactly once and retain the claim and encrypted credential for compensation
 
 #### Scenario: Remote uninstall succeeds
 
 - **WHEN** Slack confirms uninstall or credential revocation for the current disconnect transition
-- **THEN** the system MUST atomically delete the workspace claim, OAuth installation and Integration
-- **AND** it MUST apply the existing Integration delete invalidation rules to identities and bindings
+- **THEN** the system MUST atomically delete the workspace claim, OAuth installation and Channel
+- **AND** current reads MUST NOT expose identities or bindings owned by the deleted Channel
 
 #### Scenario: Remote uninstall fails
 
@@ -211,18 +211,18 @@ Active disconnect MUST first persist a `disconnecting` transition through comple
 
 #### Scenario: Disconnect request is stale
 
-- **WHEN** a disconnect command carries a stale Integration ID or `config_version`
+- **WHEN** a disconnect command carries a stale Channel ID or `config_version`
 - **THEN** no local lifecycle or remote Slack mutation MUST occur
 
-### Requirement: Invalid external authorization MUST retain a recoverable fail-closed Integration
+### Requirement: Invalid external authorization MUST retain a recoverable fail-closed Channel
 
-External uninstall, token revocation and deterministic authentication failure MUST move the matching active OAuth installation to `reauthorization_required` while preserving its Integration and ownership needed for same-workspace recovery.
+External uninstall, token revocation and deterministic authentication failure MUST move the matching active OAuth installation to `reauthorization_required` while preserving its Channel and ownership needed for same-workspace recovery.
 
 #### Scenario: Slack uninstalls the App externally
 
 - **WHEN** a verified durable lifecycle event confirms `app_uninstalled` for an active claimed workspace
 - **THEN** the installation MUST enter `reauthorization_required`
-- **AND** its Integration, claim, identities and bindings MUST remain available for administrator diagnosis and recovery
+- **AND** its Channel, claim, identities and bindings MUST remain available for administrator diagnosis and recovery
 
 #### Scenario: Runtime sees invalid authorization
 
@@ -235,4 +235,3 @@ External uninstall, token revocation and deterministic authentication failure MU
 - **WHEN** a valid reauthorization returns the retained claim's Slack `team_id`
 - **THEN** the system MUST reactivate the installation with new credentials
 - **AND** it MUST preserve existing identities and bindings
-

@@ -114,7 +114,7 @@ The OAuth popup helper and callback page MUST exchange only schema-validated, cr
 
 ### Requirement: OAuth UI MUST handle concurrent and stale management state safely
 
-The UI MUST serialize one local OAuth attempt per Slack channel and defer concurrency authority to backend state and Integration CAS.
+The UI MUST serialize one local OAuth attempt per Slack channel and defer concurrency authority to backend state and Channel CAS.
 
 #### Scenario: OAuth action is already pending
 
@@ -123,7 +123,7 @@ The UI MUST serialize one local OAuth attempt per Slack channel and defer concur
 
 #### Scenario: Server rejects stale state
 
-- **WHEN** callback or disconnect fails because the captured Integration revision is stale
+- **WHEN** callback or disconnect fails because the captured Channel revision is stale
 - **THEN** the UI MUST refetch the channel before enabling another action
 - **AND** it MUST NOT silently retry with the newer revision
 
@@ -132,4 +132,3 @@ The UI MUST serialize one local OAuth attempt per Slack channel and defer concur
 - **WHEN** the opener reloads or loses its in-memory popup correlation
 - **THEN** an old callback message MUST NOT mutate the new page state
 - **AND** the administrator MUST be able to read the authoritative persisted channel state
-

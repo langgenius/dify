@@ -4,7 +4,7 @@
 TBD - created by archiving change human-input-v2-api-contracts. Update Purpose after archive.
 ## Requirements
 ### Requirement: EE dashboard MUST be a Kratos HTTP façade over the Dify-owned Human Input service
-EE backend MUST 使用 Protobuf、`google.api.http` 与 Kratos HTTP code generation 定义 Human Input admin service methods，并 MUST NOT 为该 capability 注册 gRPC server 或引入 gRPC-Gateway。每个 endpoint MUST 在完成 EE Dashboard authentication 与 enterprise-administrator authorization 后，通过 typed Dify internal HTTP client 调用 Dify Human Input application service。EE MUST 在 EE-owned audit boundary 持久记录 human actor、operation、target、operation ID 与 outcome，并 MUST 只向 Dify 传播 operation / correlation metadata，不得传播 EE User ID 或要求 Dify 保存 external principal。Dify MUST 是 Organization Contact projection、IM integration、provider adapter、manual sync、reconciliation、worker、latest-result read model 与 binding persistence 的唯一业务 owner；EE MUST NOT 实现第二套 repository、provider adapter、sync worker、reconciler、projector 或 Human Input persistence。
+EE backend MUST 使用 Protobuf、`google.api.http` 与 Kratos HTTP code generation 定义 Human Input admin service methods，并 MUST NOT 为该 capability 注册 gRPC server 或引入 gRPC-Gateway。每个 endpoint MUST 在完成 EE Dashboard authentication 与 enterprise-administrator authorization 后，通过 typed Dify internal HTTP client 调用 Dify Human Input application service。EE MUST 在 EE-owned audit boundary 持久记录 human actor、operation、target、operation ID 与 outcome，并 MUST 只向 Dify 传播 operation / correlation metadata，不得传播 EE User ID 或要求 Dify 保存 external principal。Dify MUST 是 Organization Contact projection、IM Channel configuration、provider adapter、manual sync、reconciliation、worker、latest-result read model 与 binding persistence 的唯一业务 owner；EE MUST NOT 实现第二套 repository、provider adapter、sync worker、reconciler、projector 或 Human Input persistence。
 
 #### Scenario: EE 管理员调用 Human Input endpoint
 - **WHEN** an authenticated and authorized EE administrator invokes one Human Input admin endpoint
@@ -18,35 +18,35 @@ EE backend MUST 使用 Protobuf、`google.api.http` 与 Kratos HTTP code generat
 - **WHEN** an EE implementation introduces a Human Input provider client, sync worker, reconciler, distributed lock, Ent repository, or direct Human Input table access
 - **THEN** the implementation MUST be rejected because it creates a second business owner
 
-### Requirement: EE dashboard MUST expose Organization-level IM integration APIs via Protobuf-defined Kratos HTTP
-EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP handler 暴露 Organization 级 IM integration API，覆盖读取配置、保存provider credential/verification material、删除配置和连接测试。该 façade MUST 只允许一个 Organization 级 IM channel 生效，并 MUST 将所有业务 command/query 委托给 Dify。`DISABLED / WEBHOOK / STREAM` MUST remain deployment-owned runtime configuration and MUST NOT be accepted as an administrator write field.
+### Requirement: EE dashboard MUST expose Organization-level IM Channel APIs via Protobuf-defined Kratos HTTP
+EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP handler 暴露 Organization 级 IM Channel API，覆盖读取配置、保存provider credential/verification material、删除配置和连接测试。该 façade MUST 只允许一个 Organization 级 IM Channel 生效，并 MUST 将所有业务 command/query 委托给 Dify。`DISABLED / WEBHOOK / STREAM` MUST remain deployment-owned runtime configuration and MUST NOT be accepted as an administrator write field.
 
-#### Scenario: 读取当前 IM integration
-- **WHEN** an EE admin calls `GetIMIntegration`
-- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、read-only effective deployment event transport mode、适用时的 derived webhook URL、safe operational status、`integration_id` 与 `config_version`；MUST NOT返回tenant-selectable supported modes；如果未配置，MUST 返回 `Not configured`
+#### Scenario: 读取当前 IM Channel
+- **WHEN** an EE admin calls `GetIMChannel`
+- **THEN** 系统 MUST 返回当前唯一 IM Channel 的配置摘要、read-only effective deployment event transport mode、适用时的 derived webhook URL、safe operational status、`channel_id` 与 `config_version`；MUST NOT返回tenant-selectable supported modes；如果未配置，MUST 返回 `Not configured`
 
-#### Scenario: 保存或更新 IM integration
-- **WHEN** an EE admin calls `UpsertIMIntegration`
+#### Scenario: 保存或更新 IM Channel
+- **WHEN** an EE admin calls `UpsertIMChannel`
 - **THEN** EE MUST 将 credentials、provider-specific verification material与CAS command转发给Dify，由Dify按effective deployment mode校验provider transport compatibility、保存新的Organization-level IM channel config，并保持“同一时刻只允许一个channel生效”的约束；EE MUST NOT转发或持久化event transport mode override
 
 #### Scenario: EE admin attempts to override deployment transport
-- **WHEN** an EE admin supplies an Integration-level `event_transport_mode` to `UpsertIMIntegration` or `TestIMIntegration`
+- **WHEN** an EE admin supplies a Channel-level `event_transport_mode` to `UpsertIMChannel` or `TestIMChannel`
 - **THEN** the Protobuf/Kratos boundary MUST reject the field and MUST NOT forward、persist or shadow deployment runtime configuration
 
-#### Scenario: 首次创建 IM integration
-- **WHEN** the deployment has no configured integration and an EE admin calls `UpsertIMIntegration` without an expected integration ID or config version
-- **THEN** 系统 MUST 创建新的 integration，并 MUST 从 `config_version = 1` 开始
+#### Scenario: 首次创建 IM Channel
+- **WHEN** the deployment has no configured IM Channel and an EE admin calls `UpsertIMChannel` without an expected Channel ID or config version
+- **THEN** 系统 MUST 创建新的 Channel，并 MUST 从 `config_version = 1` 开始
 
-#### Scenario: Existing integration update 缺少完整 CAS token
-- **WHEN** an EE admin updates an existing integration without both `integration_id` and `config_version`, or provides only one of them
-- **THEN** 系统 MUST 拒绝请求，并 MUST NOT 修改 integration 或触发 sync
+#### Scenario: Existing Channel update 缺少完整 CAS token
+- **WHEN** an EE admin updates an existing Channel without both `channel_id` and `config_version`, or provides only one of them
+- **THEN** 系统 MUST 拒绝请求，并 MUST NOT 修改 Channel 或触发 sync
 
-#### Scenario: 使用 stale revision 更新 IM integration
-- **WHEN** an EE admin updates an existing integration with a stale or mismatched `integration_id` or `config_version`
-- **THEN** 系统 MUST 返回 `409 Conflict`，MUST NOT 修改 integration、清理 IM bindings / workspace overrides 或触发 manual / automatic sync
+#### Scenario: 使用 stale revision 更新 IM Channel
+- **WHEN** an EE admin updates an existing Channel with a stale or mismatched `channel_id` or `config_version`
+- **THEN** 系统 MUST 返回 `409 Conflict`，MUST NOT 修改 Channel、清理 IM bindings / workspace overrides 或触发 manual / automatic sync
 
 #### Scenario: 替换当前 IM provider
-- **WHEN** an EE admin calls `UpsertIMIntegration` with credentials for a provider different from the current provider
+- **WHEN** an EE admin calls `UpsertIMChannel` with credentials for a provider different from the current provider
 - **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 provider 的 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync 后才能使用新 provider identity
 
 #### Scenario: 同一 platform tenant 内轮换 provider credentials
@@ -57,27 +57,27 @@ EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP h
 - **WHEN** an EE admin updates credentials for the current provider, but `platform_tenant_id` has changed or cannot be confirmed as unchanged
 - **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync
 
-#### Scenario: 测试 IM integration
-- **WHEN** an EE admin calls `TestIMIntegration`
+#### Scenario: 测试 IM Channel
+- **WHEN** an EE admin calls `TestIMChannel`
 - **THEN** 系统 MUST 返回credential、provider tenant、permission与effective deployment event transport compatibility检查结果，并 MUST NOT接受mode override
 
-#### Scenario: 删除 IM integration
-- **WHEN** an EE admin calls `DeleteIMIntegration` with the current `integration_id` and `config_version`
-- **THEN** 系统 MUST 清空当前 IM integration，并使后续读取结果回到 `Not configured`
+#### Scenario: 删除 IM Channel
+- **WHEN** an EE admin calls `DeleteIMChannel` with the current `channel_id` and `config_version`
+- **THEN** 系统 MUST 清空当前 IM Channel，并使后续读取结果回到 `Not configured`
 
-#### Scenario: 使用 stale revision 删除 IM integration
-- **WHEN** an EE admin calls `DeleteIMIntegration` with a stale or mismatched `integration_id` or `config_version`
-- **THEN** 系统 MUST 返回 `409 Conflict`，并 MUST 保留当前 integration、IM identities、bindings 和 workspace overrides
+#### Scenario: 使用 stale revision 删除 IM Channel
+- **WHEN** an EE admin calls `DeleteIMChannel` with a stale or mismatched `channel_id` or `config_version`
+- **THEN** 系统 MUST 返回 `409 Conflict`，并 MUST 保留当前 Channel、IM identities、bindings 和 workspace overrides
 
 ### Requirement: EE dashboard MUST expose manual IM sync latest-run APIs
 EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 manual IM sync API，覆盖触发 sync run、读取最近一次 sync run summary，以及按 result 分页读取最近一次 sync 的结果条目。该 façade MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail endpoint。Sync run 的创建或复用、异步调度、provider fetch、reconciliation、persistence 与 result read MUST 全部由 Dify 完成；EE MUST 只转发 command/query 和映射 response。sync result MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
 
 #### Scenario: 手动触发 sync run
 - **WHEN** an EE admin calls `CreateIMSyncRun`
-- **THEN** EE MUST 调用 Dify manual-sync command；Dify MUST 创建新 run 或复用当前 single active run，确保 run 保存当前 `integration_id` 与 `config_version`，并返回 authoritative run metadata
+- **THEN** EE MUST 调用 Dify manual-sync command；Dify MUST 创建新 run 或复用当前 single active run，确保 run 保存当前 `channel_id` 与 `config_version`，并返回 authoritative run metadata
 
-#### Scenario: Sync run 对应的 integration revision 已过期
-- **WHEN** an IM sync worker is ready to apply reconciliation results, but the current integration ID or config version no longer matches the revision captured by the run
+#### Scenario: Sync run 对应的 Channel revision 已过期
+- **WHEN** an IM sync worker is ready to apply reconciliation results, but the current Channel ID or config version no longer matches the revision captured by the run
 - **THEN** 系统 MUST 将该 run 作为 stale work 终止，MUST NOT 写入 current IM identities、Organization bindings 或 workspace overrides
 
 #### Scenario: 查看最近一次 sync run summary
@@ -132,7 +132,7 @@ EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Con
 - **THEN** `TestIMBinding` MUST test the selected binding's current identity reachability and MUST NOT be implemented as an alias of the Organization-level credentials / deployment-event-transport compatibility / permission test
 
 ### Requirement: EE Human Input admin Protobuf contract MUST stay narrow and avoid duplicating business ownership
-本 change 的 EE Human Input admin Protobuf contract MUST 只承担 Organization 级 IM integration / sync 与 Organization Contact IM binding 的 Kratos HTTP IDL，不得复制 Dify 业务逻辑，也不得增加已有 enterprise member / workspace 基础 CRUD、workspace Contact lifecycle、workspace IM override、node-data migration 或 Email provider configuration。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。
+本 change 的 EE Human Input admin Protobuf contract MUST 只承担 Organization 级 IM Channel / sync 与 Organization Contact IM binding 的 Kratos HTTP IDL，不得复制 Dify 业务逻辑，也不得增加已有 enterprise member / workspace 基础 CRUD、workspace Contact lifecycle、workspace IM override、node-data migration 或 Email provider configuration。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。
 
 #### Scenario: 不新增重复的 member CRUD
 - **WHEN** the EE human-input proto package is reviewed
