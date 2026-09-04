@@ -77,17 +77,16 @@ export function createWorkflowFailedRetrievalCaptureService({
       };
       let failedQuery = await failedQueries.get(lookup);
       let traceCapabilityGrantId = input.capabilityGrantId;
+      let answerTraceId = failedQuery?.answerTraceId ?? input.eventId;
 
       if (!failedQuery) {
-        traceCapabilityGrantId = await ensureWorkflowAnswerTrace(
-          answerTraces,
-          answerTraceRecorder,
-          input,
-        );
+        const trace = await ensureWorkflowAnswerTrace(answerTraces, answerTraceRecorder, input);
+        traceCapabilityGrantId = trace.capabilityGrantId;
+        answerTraceId = trace.id;
       }
       failedQuery = await failedQueries.captureWorkflowFailedRetrieval({
         actorSubjectId: input.actorSubjectId,
-        answerTraceId: input.eventId,
+        answerTraceId,
         candidateGrants: input.candidateGrants,
         capabilityGrantId: input.capabilityGrantId,
         id: input.eventId,
@@ -141,18 +140,36 @@ export function createWorkflowFailedRetrievalCaptureService({
           "Workflow retrieval returned no evidence even though the knowledge base appears to contain relevant answer material.",
         tags: ["workflow", "auto-captured", "retrieval-miss"],
         tenantId: input.tenantId,
-        traceId: input.eventId,
+        traceId: answerTraceId,
       });
       return { badCaseId: badCase.id, failedQueryId: failedQuery.id, verdict };
     },
   };
 }
 
+/**
+ * Resolve the AnswerTrace a failed workflow retrieval belongs to.
+ *
+ * The retrieval-tests route already records one trace per workflow run and returns its id as
+ * `answerTraceId`, which the node forwards as `retrievalTraceId`; attaching the failed query to
+ * that trace keeps one history record per retrieval and lets the overview classify the query as
+ * "no evidence". Older nodes send an opaque transport trace id instead, in which case a minimal
+ * trace keyed by the capture event id is created (or replayed) as before.
+ */
 async function ensureWorkflowAnswerTrace(
   answerTraces: Pick<AnswerTraceRepository, "get">,
   recorder: AnswerTraceRecorder,
   input: CaptureWorkflowFailedRetrievalInput,
-): Promise<string> {
+): Promise<{ readonly capabilityGrantId: string; readonly id: string }> {
+  if (UUID_PATTERN.test(input.retrievalTraceId) && input.retrievalTraceId !== input.eventId) {
+    const retrievalTrace = await answerTraces.get({
+      id: input.retrievalTraceId,
+      knowledgeSpaceId: input.knowledgeSpaceId,
+    });
+    if (retrievalTrace?.capabilityGrantId && retrievalTrace.query === input.query) {
+      return { capabilityGrantId: retrievalTrace.capabilityGrantId, id: retrievalTrace.id };
+    }
+  }
   const existing = await answerTraces.get({
     id: input.eventId,
     knowledgeSpaceId: input.knowledgeSpaceId,
@@ -162,13 +179,14 @@ async function ensureWorkflowAnswerTrace(
     if (!existing.capabilityGrantId) {
       throw new WorkflowFailedRetrievalReplayConflictError(input.eventId);
     }
-    return existing.capabilityGrantId;
+    return { capabilityGrantId: existing.capabilityGrantId, id: existing.id };
   }
   const recorded = await recorder.record({
     capabilityGrantId: input.capabilityGrantId,
     knowledgeSpaceId: input.knowledgeSpaceId,
     mode: input.mode,
     query: input.query,
+    source: "workflow",
     steps: [
       {
         metadata: {
@@ -188,8 +206,10 @@ async function ensureWorkflowAnswerTrace(
   if (!recorded.capabilityGrantId) {
     throw new Error("Workflow failed-retrieval AnswerTrace lost Capability provenance");
   }
-  return recorded.capabilityGrantId;
+  return { capabilityGrantId: recorded.capabilityGrantId, id: recorded.id };
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 function assertWorkflowAnswerTraceReplay(
   existing: AnswerTrace,

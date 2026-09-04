@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { QueryImageMetadataSchema } from "@knowledge/core";
+import { AnswerTraceSourceSchema, QueryImageMetadataSchema } from "@knowledge/core";
 
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
 import { ErrorResponseSchema } from "./gateway-route-schemas";
@@ -28,6 +28,7 @@ export const QualityTraceHistoryQuerySchema = z
     limit: z.coerce.number().int().min(1).max(100).default(50),
     mode: z.enum(["auto", "deep", "fast", "research"]).optional(),
     query: z.string().trim().min(1).max(500).optional(),
+    source: AnswerTraceSourceSchema.optional(),
     status: z.enum(["completed", "failed"]).optional(),
     to: DateTime.optional(),
   })
@@ -58,6 +59,7 @@ export const QualityTraceSummarySchema = z
     queryImages: z.array(QueryImageMetadataSchema).max(4).optional(),
     resultCount: z.number().int().nonnegative(),
     scores: z.object({ final: ScoreSchema, rerank: ScoreSchema, retrieval: ScoreSchema }),
+    source: AnswerTraceSourceSchema,
     stages: z.array(
       z.object({
         candidateCount: z.number().int().nonnegative().optional(),

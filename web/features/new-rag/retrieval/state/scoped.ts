@@ -62,6 +62,9 @@ export const retrievalAdmittedResearchTasksAtom = atom<
   Record<string, KnowledgeFsResearchTaskResponse>
 >({})
 export const retrievalResearchRetryPendingAtom = atom(false)
+/** History filter: every record, only console retrieval tests, or only workflow-node queries. */
+export type RetrievalHistorySourceFilter = 'all' | 'retrieval_test' | 'workflow'
+export const retrievalHistorySourceFilterAtom = atom<RetrievalHistorySourceFilter>('all')
 
 export const retrievalScopedAtoms = [
   retrievalComposerDraftAtom,
@@ -73,5 +76,6 @@ export const retrievalScopedAtoms = [
   retrievalResearchEventsAtom,
   retrievalAdmittedResearchTasksAtom,
   retrievalResearchRetryPendingAtom,
+  retrievalHistorySourceFilterAtom,
   retrievalRuntimeBridgeAtom,
 ] as const

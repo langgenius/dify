@@ -663,6 +663,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| source | query |  | No | string, <br>**Available values:** "agent", "mcp", "retrieval_test", "service_api", "workflow" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -4274,6 +4275,7 @@ Model class for i18n object.
 | mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
 | query | string |  | Yes |
 | query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
 | steps | [ [KnowledgeFSAnswerTraceStepResponse](#knowledgefsanswertracestepresponse) ] |  | Yes |
 
 #### KnowledgeFSAnswerTraceStepResponse
@@ -5223,6 +5225,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
 | result_count | integer |  | Yes |
 | scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
 | stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
 
 #### KnowledgeFSTraceScoresResponse
@@ -5232,6 +5235,12 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | final | number |  | No |
 | rerank | number |  | No |
 | retrieval | number |  | No |
+
+#### KnowledgeFSTraceSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSTraceSource | string |  |  |
 
 #### KnowledgeFSTraceStageResponse
 

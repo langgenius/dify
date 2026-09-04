@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type {
+  AnswerTraceSource,
   AuthSubject,
   KnowledgeSpaceEmbeddingProfile,
   KnowledgeSpaceRetrievalProfile,
@@ -55,6 +56,8 @@ export interface QualityAnswerTraceSummary {
   readonly finalScore?: number | undefined;
   readonly id: string;
   readonly mode: "auto" | "deep" | "fast" | "research";
+  /** Caller that produced the trace; legacy rows without a stored value are retrieval tests. */
+  readonly source: AnswerTraceSource;
   /** The unresolved (open or replaying) bad case already filed for this trace, if any. */
   readonly openBadCaseId?: string | undefined;
   readonly profile: {
@@ -95,6 +98,7 @@ export interface QualityAnswerTraceHistoryInput {
   readonly knowledgeSpaceId: string;
   readonly limit: number;
   readonly mode?: "auto" | "deep" | "fast" | "research" | undefined;
+  readonly source?: AnswerTraceSource | undefined;
   readonly query?: string | undefined;
   readonly status?: "completed" | "failed" | undefined;
   readonly subjectId: string;

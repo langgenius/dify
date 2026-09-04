@@ -498,6 +498,15 @@ class KnowledgeFSCursorQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# Who produced a retrieval trace: the console retrieval test, a KnowledgeFS workflow node, the
+# service API, an agent, or an MCP client. Mirrors KnowledgeFS `AnswerTraceSourceSchema`.
+type KnowledgeFSTraceSource = Literal["retrieval_test", "workflow", "service_api", "agent", "mcp"]
+
+
+class KnowledgeFSTraceListQuery(KnowledgeFSCursorQuery):
+    source: KnowledgeFSTraceSource | None = Field(default=None)
+
+
 type KnowledgeFSConsistencyClass = Literal[
     "path-consistent",
     "snapshot-consistent",
@@ -3133,6 +3142,9 @@ class KnowledgeFSRetrievalTestMetricsResponse(ResponseModel):
 
 
 class KnowledgeFSRetrievalTestResponse(ResponseModel):
+    # AnswerTrace recorded for this run in the space's retrieval history; a failed-retrieval capture
+    # attaches to it so one record stays per retrieval.
+    answer_trace_id: str | None = Field(default=None, validation_alias=AliasChoices("answer_trace_id", "answerTraceId"))
     items: list[KnowledgeFSRetrievalTestItemResponse] = Field(max_length=100)
     metrics: KnowledgeFSRetrievalTestMetricsResponse
     mode: Literal["deep", "fast", "research"]
@@ -3334,6 +3346,7 @@ class KnowledgeFSAnswerTraceResponse(ResponseModel):
         validation_alias=AliasChoices("query_images", "queryImages"),
         exclude_if=lambda value: not value,
     )
+    source: KnowledgeFSTraceSource = "retrieval_test"
     steps: list[KnowledgeFSAnswerTraceStepResponse]
 
 
@@ -3423,6 +3436,7 @@ class KnowledgeFSTraceResponse(ResponseModel):
     )
     result_count: int = Field(ge=0, validation_alias=AliasChoices("result_count", "resultCount"))
     scores: KnowledgeFSTraceScoresResponse
+    source: KnowledgeFSTraceSource = "retrieval_test"
     stages: list[KnowledgeFSTraceStageResponse]
 
 

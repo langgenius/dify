@@ -9,6 +9,7 @@ const SPACE_ID = "10000000-0000-4000-8000-000000000001";
 const EVENT_ID = "10000000-0000-4000-8000-000000000002";
 const FIRST_GRANT_ID = "10000000-0000-4000-8000-000000000003";
 const RETRY_GRANT_ID = "10000000-0000-4000-8000-000000000004";
+const RETRIEVAL_TRACE_ID = "10000000-0000-4000-8000-000000000005";
 
 function baseInput(capabilityGrantId = FIRST_GRANT_ID) {
   return {
@@ -100,4 +101,50 @@ describe("workflow failed-retrieval capture", () => {
       expect(createBadCase).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("workflow failed-retrieval history linkage", () => {
+  it("attaches the capture to the retrieval-test trace the node reports instead of a second record", async () => {
+    const { answerTraces, createBadCase, failedQueries, service } = setup("retrieval-miss");
+    const retrievalTrace = await createAnswerTraceRecorder({
+      now: () => "2026-08-12T00:00:00.000Z",
+      repository: answerTraces,
+    }).record({
+      capabilityGrantId: FIRST_GRANT_ID,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "deep",
+      query: "发票号码在哪里？",
+      source: "workflow",
+      steps: [{ metadata: { resultCount: 0 }, name: "retrieval.test", status: "ok" }],
+      tenantId: "tenant-1",
+      traceId: RETRIEVAL_TRACE_ID,
+    });
+
+    const result = await service.capture({ ...baseInput(), retrievalTraceId: retrievalTrace.id });
+
+    expect(result.verdict).toBe("retrieval-miss");
+    expect(await answerTraces.getById(EVENT_ID)).toBeNull();
+    const failedQuery = await failedQueries.get({
+      candidateGrants: ["tenant:tenant-1"],
+      id: EVENT_ID,
+      knowledgeSpaceId: SPACE_ID,
+      subjectId: "dify-app:workflow-app",
+      tenantId: "tenant-1",
+    });
+    expect(failedQuery?.answerTraceId).toBe(RETRIEVAL_TRACE_ID);
+    expect(createBadCase).toHaveBeenCalledWith(
+      expect.objectContaining({ id: EVENT_ID, traceId: RETRIEVAL_TRACE_ID }),
+    );
+  });
+
+  it("falls back to a workflow-sourced trace keyed by the event when only a transport id is known", async () => {
+    const { answerTraces, service } = setup("coverage-gap");
+
+    await service.capture(baseInput());
+
+    expect(await answerTraces.getById(EVENT_ID)).toMatchObject({
+      id: EVENT_ID,
+      source: "workflow",
+    });
+  });
 });

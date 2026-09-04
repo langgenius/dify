@@ -90,21 +90,28 @@ describe("retrieval test route", () => {
       });
 
       expect(response.status).toBe(200);
+      // The node forwards this id when it captures an empty retrieval, so one record stays per run.
+      expect((await response.json()) as Record<string, unknown>).toMatchObject({
+        answerTraceId: expectedTraceId,
+      });
       expect(overview.appendActivity).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "query.requested",
-          details: expect.objectContaining({ mode: "fast" }),
+          details: expect.objectContaining({ mode: "fast", source: "workflow" }),
           resource: { id: expectedTraceId, type: "query" },
         }),
       );
       expect(answerTraceRecorder.record).toHaveBeenCalledWith(
         expect.objectContaining({
           capabilityGrantId: "10000000-0000-4000-8000-000000000011",
+          source: "workflow",
           traceId: expectedTraceId,
           steps: [
             expect.objectContaining({
               metadata: expect.objectContaining({
                 queryOutcome: expectedOutcome,
+                resultCount: result.items.length,
+                stages: result.stages,
                 workflowQueryId: WORKFLOW_QUERY_ID,
               }),
               name: "query.generate",

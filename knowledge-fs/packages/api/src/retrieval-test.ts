@@ -1,5 +1,6 @@
 import {
   type AuthSubject,
+  type EvidenceBundle,
   type KnowledgeSpaceEmbeddingProfile,
   type KnowledgeSpaceModelSelection,
   type KnowledgeSpaceRetrievalProfile,
@@ -9,6 +10,7 @@ import type { EmbeddingProvider } from "@knowledge/embeddings";
 
 import { runWithAbortSignal } from "./bounded-concurrency";
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
+import { createEvidenceBundleAssembler } from "./evidence-bundle-assembler";
 import {
   type KnowledgeSpaceEmbeddingResolver,
   assertEmbeddingModelMatchesProfile,
@@ -30,6 +32,7 @@ import {
   QUERY_IMAGE_MAX_COUNT,
   QueryImageDegradationReasonSchema,
   type ResolvedQueryImage,
+  queryImageMetadata,
 } from "./query-images";
 import type { RetrievalMetadataFilters } from "./retrieval-candidates";
 import type { RetrievalSource } from "./retrieval-candidates";
@@ -69,6 +72,12 @@ export interface RetrievalTestStage {
 }
 
 export interface RetrievalTestResult {
+  /**
+   * The same EvidenceBundle a query would have produced from this retrieval, so the run can be
+   * recorded as an AnswerTrace with evidence for the retrieval history. Absent when the bundle
+   * could not be assembled; the diagnostics above are unaffected.
+   */
+  readonly evidenceBundle?: EvidenceBundle | undefined;
   readonly items: readonly {
     readonly citation: {
       readonly artifactHash: string;
@@ -294,7 +303,13 @@ export function createRetrievalTestExecutor({
           permissionScope: input.permissionScope,
           profile: input.retrievalProfile,
         });
+        const evidenceBundle = assembleRetrievalTestEvidenceBundle({
+          query: preparedQuery.query || input.query,
+          queryImages: preparedQuery.queryImages,
+          retrieval,
+        });
         return {
+          ...(evidenceBundle ? { evidenceBundle } : {}),
           items: retrieval.items.map((item) =>
             safeRetrievalTestItem(item, input.includeText === true),
           ),
@@ -390,6 +405,37 @@ async function resolveRetrievalTestEmbedding({
   });
   return [...vector];
 }
+
+const retrievalTestEvidenceBundleAssembler = createEvidenceBundleAssembler();
+
+/**
+ * Build the history EvidenceBundle for a retrieval test. Assembly validates every evidence item,
+ * so a retrieval whose items cannot be projected (for example text-less legacy nodes) yields no
+ * bundle rather than failing the diagnostics the caller asked for.
+ */
+function assembleRetrievalTestEvidenceBundle({
+  query,
+  queryImages,
+  retrieval,
+}: {
+  readonly query: string;
+  readonly queryImages: readonly ResolvedQueryImage[];
+  readonly retrieval: Parameters<EvidenceBundleAssemblerAssemble>[0]["retrieval"];
+}): EvidenceBundle | undefined {
+  const images = queryImages.map(queryImageMetadata);
+  if (!query.trim() && images.length === 0) return undefined;
+  try {
+    return retrievalTestEvidenceBundleAssembler.assemble({
+      query,
+      ...(images.length > 0 ? { queryImages: images } : {}),
+      retrieval,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+type EvidenceBundleAssemblerAssemble = ReturnType<typeof createEvidenceBundleAssembler>["assemble"];
 
 async function prepareRetrievalTestQuery({
   input,

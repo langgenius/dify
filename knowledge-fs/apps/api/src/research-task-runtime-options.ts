@@ -7,6 +7,7 @@ import {
   type KnowledgeGatewayOptions,
   type KnowledgeSpaceAccessService,
   type KnowledgeSpaceManifestRepository,
+  type KnowledgeSpaceOverviewRepository,
   type ModelInputModalityResolver,
   type PublishedProjectionReadSnapshotResolver,
   type QueryGenerator,
@@ -46,6 +47,8 @@ export interface CreateApiResearchTaskRuntimeOptions {
         readonly researchTaskJob?: { readonly id: string; readonly stage: string } | undefined;
       }) => void)
     | undefined;
+  /** Overview activity sink so durable Research tasks count as answered/failed queries. */
+  readonly overview?: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly progress: ResearchTaskProgressRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -89,6 +92,7 @@ export function createApiResearchTaskRuntime({
   metrics,
   modelInputModalityResolver,
   onError,
+  overview,
   partials,
   progress,
   projectionSnapshotResolver,
@@ -120,6 +124,7 @@ export function createApiResearchTaskRuntime({
     ...(metrics ? { metrics } : {}),
     ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
     ...(onError ? { onError } : {}),
+    ...(overview ? { overview } : {}),
     repository,
   });
   const runtime = createResearchTaskRuntime({

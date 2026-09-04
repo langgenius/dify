@@ -9053,6 +9053,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| source | query |  | No | string, <br>**Available values:** "agent", "mcp", "retrieval_test", "service_api", "workflow" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -21056,6 +21057,7 @@ Input field definition for snippet parameters.
 | mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
 | query | string |  | Yes |
 | query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
 | steps | [ [KnowledgeFSAnswerTraceStepResponse](#knowledgefsanswertracestepresponse) ] |  | Yes |
 
 #### KnowledgeFSAnswerTraceStepResponse
@@ -21344,10 +21346,20 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSControlSpaceVisibility | string |  |  |
 
+#### KnowledgeFSCrawlImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| sourceUrl | string |  | Yes |
+| title | string |  | No |
+
 #### KnowledgeFSCrawlImportPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSCrawlImportPagePayload](#knowledgefscrawlimportpagepayload) ] |  | No |
 | sourceUrls | [ string ] |  | Yes |
 
 #### KnowledgeFSCrawlPreviewPageListQuery
@@ -21918,6 +21930,7 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
+| page_id | string |  | No |
 | source_url | string |  | Yes |
 | title | string |  | No |
 
@@ -21956,6 +21969,7 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | canonical_url | string |  | No |
+| pageId | string |  | No |
 | source_url | string |  | Yes |
 | title | string |  | No |
 
@@ -21972,6 +21986,7 @@ Input field definition for snippet parameters.
 | parameters | object |  | No |
 | pluginId | string |  | No |
 | previewConfigurationFingerprint | string |  | No |
+| previewJobId | string |  | No |
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | root_url | string |  | Yes |
@@ -22390,9 +22405,17 @@ Input field definition for snippet parameters.
 
 #### KnowledgeFSProductPermission
 
+Product-level capability of a caller on one KnowledgeFS space.
+
+These values are what the console returns as ``permission_keys`` so the web can gate
+its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse
+the legacy knowledge base (``dataset_*``) permission points, and each capability is
+granted when the caller holds the dataset permission it maps to (see
+:data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| KnowledgeFSProductPermission | string |  |  |
+| KnowledgeFSProductPermission | string | Product-level capability of a caller on one KnowledgeFS space.  These values are what the console returns as ``permission_keys`` so the web can gate its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse the legacy knowledge base (``dataset_*``) permission points, and each capability is granted when the caller holds the dataset permission it maps to (see :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`). |  |
 
 #### KnowledgeFSProductRerankProfile
 
@@ -23476,6 +23499,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
 | result_count | integer |  | Yes |
 | scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
 | stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
 
 #### KnowledgeFSTraceScoresResponse
@@ -23485,6 +23509,12 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | final | number |  | No |
 | rerank | number |  | No |
 | retrieval | number |  | No |
+
+#### KnowledgeFSTraceSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSTraceSource | string |  |  |
 
 #### KnowledgeFSTraceStageResponse
 

@@ -503,7 +503,11 @@ const SAFE_ACTIVITY_DETAIL_KEYS = new Set([
   "question",
   "questionTruncated",
   "reasonCode",
+  // Who issued a query (console retrieval test, workflow node, service API, agent, MCP).
+  "source",
   "statusCode",
+  // Distinguishes Research tasks from streamed queries in the query events.
+  "taskKind",
 ]);
 
 export function sanitizeKnowledgeSpaceActivityDetails(

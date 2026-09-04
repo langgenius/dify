@@ -2048,20 +2048,6 @@ export const zKnowledgeFsQueryImageResponse = z.object({
 })
 
 /**
- * KnowledgeFSAnswerTraceResponse
- */
-export const zKnowledgeFsAnswerTraceResponse = z.object({
-  created_at: z.iso.datetime(),
-  evidence_bundle_id: z.string().nullish(),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']),
-  query: z.string(),
-  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
-  steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
-})
-
-/**
  * KnowledgeFSReadinessCapabilities
  */
 export const zKnowledgeFsReadinessCapabilities = z.object({
@@ -2905,6 +2891,29 @@ export const zKnowledgeFsTraceScoresResponse = z.object({
   retrieval: z.number().gte(0).lte(1).nullish(),
 })
 
+export const zKnowledgeFsTraceSource = z.enum([
+  'agent',
+  'mcp',
+  'retrieval_test',
+  'service_api',
+  'workflow',
+])
+
+/**
+ * KnowledgeFSAnswerTraceResponse
+ */
+export const zKnowledgeFsAnswerTraceResponse = z.object({
+  created_at: z.iso.datetime(),
+  evidence_bundle_id: z.string().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
+  steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
+})
+
 /**
  * KnowledgeFSTraceStageResponse
  */
@@ -2932,6 +2941,7 @@ export const zKnowledgeFsTraceResponse = z.object({
   query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   result_count: z.int().gte(0),
   scores: zKnowledgeFsTraceScoresResponse,
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
   stages: z.array(zKnowledgeFsTraceStageResponse),
 })
 
@@ -5958,6 +5968,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  source: z.enum(['agent', 'mcp', 'retrieval_test', 'service_api', 'workflow']).optional(),
 })
 
 /**

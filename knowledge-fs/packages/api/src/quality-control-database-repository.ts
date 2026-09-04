@@ -6,7 +6,12 @@ import type {
   DatabaseQueryValue,
   DatabaseRow,
 } from "@knowledge/core";
-import { QueryImageMetadataSchema } from "@knowledge/core";
+import {
+  type AnswerTraceSource,
+  AnswerTraceSourceSchema,
+  EvidenceBundleSchema,
+  QueryImageMetadataSchema,
+} from "@knowledge/core";
 
 import { answerTraceKnowledgeSpaceVisibilitySql } from "./answer-trace-repository";
 import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
@@ -1080,18 +1085,28 @@ async function listTraces(
   const params: DatabaseQueryValue[] = [input.tenantId, input.knowledgeSpaceId, input.subjectId];
   let authorizationFilter: string;
   let authorizationJoin: string;
+  // A subject sees the traces it produced itself (joined through the grant or permission snapshot
+  // that authorized them) plus every trace another caller kind produced in the space (workflow
+  // nodes, agents, service API, MCP), provided the subject currently holds an authorization for
+  // the space whose content scope admits the caller's candidate grants. Console retrieval tests of
+  // other members stay private to their author, exactly as before.
+  const sharedSourcesSql = SHARED_ANSWER_TRACE_SOURCES.map((source) => `'${source}'`).join(", ");
   if (input.capabilityRequester) {
     params.push(input.capabilityRequester.callerKind, JSON.stringify(input.candidateGrants));
-    authorizationJoin = `INNER JOIN ${q(database, "capability_grants")} capability ON capability.${q(database, "tenant_id")} = ${p(database, 1)} AND capability.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND capability.${q(database, "grant_id")} = trace.${q(database, "capability_grant_id")} AND capability.${q(database, "subject_id")} = ${p(database, 3)} AND capability.${q(database, "caller_kind")} = ${p(database, 4)}`;
-    authorizationFilter = permissionScopeSql(
+    authorizationJoin = `LEFT JOIN ${q(database, "capability_grants")} capability ON capability.${q(database, "tenant_id")} = ${p(database, 1)} AND capability.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND capability.${q(database, "grant_id")} = trace.${q(database, "capability_grant_id")} AND capability.${q(database, "subject_id")} = ${p(database, 3)} AND capability.${q(database, "caller_kind")} = ${p(database, 4)}`;
+    const ownTrace = `capability.${q(database, "grant_id")} IS NOT NULL AND ${permissionScopeSql(
       database,
       `capability.${q(database, "content_scope_ids")}`,
       p(database, 5),
-    );
+    )}`;
+    const sharedTrace = `trace.${q(database, "source")} IN (${sharedSourcesSql}) AND EXISTS (SELECT 1 FROM ${q(database, "capability_grants")} reader WHERE reader.${q(database, "tenant_id")} = ${p(database, 1)} AND reader.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND reader.${q(database, "subject_id")} = ${p(database, 3)} AND reader.${q(database, "caller_kind")} = ${p(database, 4)} AND reader.${q(database, "state")} = 'active' AND ${permissionScopeSql(database, `reader.${q(database, "content_scope_ids")}`, p(database, 5))})`;
+    authorizationFilter = `((${ownTrace}) OR (${sharedTrace}))`;
   } else {
     params.push(JSON.stringify(input.candidateGrants));
-    authorizationJoin = `INNER JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} AND permission.${q(database, "subject_id")} = trace.${q(database, "subject_id")}`;
-    authorizationFilter = `trace.${q(database, "subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 4))}`;
+    authorizationJoin = `LEFT JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} AND permission.${q(database, "subject_id")} = trace.${q(database, "subject_id")}`;
+    const ownTrace = `trace.${q(database, "subject_id")} = ${p(database, 3)} AND permission.${q(database, "id")} IS NOT NULL AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 4))}`;
+    const sharedTrace = `trace.${q(database, "source")} IN (${sharedSourcesSql}) AND EXISTS (SELECT 1 FROM ${q(database, "knowledge_space_permission_snapshots")} reader WHERE reader.${q(database, "tenant_id")} = ${p(database, 1)} AND reader.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND reader.${q(database, "subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `reader.${q(database, "permission_scopes")}`, p(database, 4))})`;
+    authorizationFilter = `((${ownTrace}) OR (${sharedTrace}))`;
   }
   const traceTenantFilter = input.capabilityRequester
     ? `trace.${q(database, "tenant_id")} = ${p(database, 1)} AND `
@@ -1114,6 +1129,14 @@ async function listTraces(
   if (input.mode) {
     params.push(input.mode);
     filters.push(`trace.${q(database, "mode")} = ${p(database, params.length)}`);
+  }
+  if (input.source) {
+    params.push(input.source);
+    filters.push(
+      input.source === "retrieval_test"
+        ? `(trace.${q(database, "source")} IS NULL OR trace.${q(database, "source")} = ${p(database, params.length)})`
+        : `trace.${q(database, "source")} = ${p(database, params.length)}`,
+    );
   }
   if (input.status) {
     filters.push(
@@ -1176,7 +1199,13 @@ function mapTraceSummary(
   row: DatabaseRow,
   steps: readonly DatabaseRow[],
 ): QualityAnswerTraceSummary {
-  const evidenceItems = row.evidence_items == null ? [] : jsonArrayColumn(row, "evidence_items");
+  // Retrieval tests recorded by workflow nodes carry their evidence inside the summary step instead
+  // of a persisted bundle row; read counts and scores from there when no bundle is joined.
+  const embeddedBundle = row.evidence_items == null ? embeddedEvidenceBundle(steps) : undefined;
+  const evidenceItems =
+    row.evidence_items == null
+      ? (embeddedBundle?.items ?? [])
+      : jsonArrayColumn(row, "evidence_items");
   const queryImages =
     row.query_images == null
       ? []
@@ -1218,12 +1247,13 @@ function mapTraceSummary(
     ...(optionalStringColumn(row, "evidence_bundle_id")
       ? { evidenceBundleId: optionalStringColumn(row, "evidence_bundle_id") }
       : {}),
-    ...(optionalStringColumn(row, "evidence_state")
-      ? { evidenceState: optionalStringColumn(row, "evidence_state") }
+    ...((optionalStringColumn(row, "evidence_state") ?? embeddedBundle?.state)
+      ? { evidenceState: optionalStringColumn(row, "evidence_state") ?? embeddedBundle?.state }
       : {}),
     ...(score("final") !== undefined ? { finalScore: score("final") } : {}),
     id: stringColumn(row, "id"),
     mode: stringColumn(row, "mode") as QualityAnswerTraceSummary["mode"],
+    source: traceSourceColumn(row),
     ...(optionalStringColumn(row, "open_bad_case_id")
       ? { openBadCaseId: optionalStringColumn(row, "open_bad_case_id") }
       : {}),
@@ -2225,4 +2255,23 @@ function p(database: DatabaseAdapter, position: number) {
 
 function jsonP(database: DatabaseAdapter, position: number) {
   return jsonInsertPlaceholder(database, position, undefined);
+}
+
+/** Every source except console retrieval tests; visible to any current reader of the space. */
+const SHARED_ANSWER_TRACE_SOURCES: readonly AnswerTraceSource[] =
+  AnswerTraceSourceSchema.options.filter((source) => source !== "retrieval_test");
+
+function traceSourceColumn(row: DatabaseRow): AnswerTraceSource {
+  const parsed = AnswerTraceSourceSchema.safeParse(optionalStringColumn(row, "source"));
+  return parsed.success ? parsed.data : "retrieval_test";
+}
+
+function embeddedEvidenceBundle(steps: readonly DatabaseRow[]) {
+  for (const step of steps) {
+    const candidate = EvidenceBundleSchema.safeParse(
+      jsonObjectColumn(step, "metadata").evidenceBundle,
+    );
+    if (candidate.success) return candidate.data;
+  }
+  return undefined;
 }

@@ -240,6 +240,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSStreamCapabilityResponse,
     KnowledgeFSTraceEntriesQuery,
     KnowledgeFSTraceEntryListResponse,
+    KnowledgeFSTraceListQuery,
     KnowledgeFSTraceListResponse,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionAbortPayload,
@@ -3351,7 +3352,7 @@ class KnowledgeFSSpaceResearchTaskPartialsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces")
 class KnowledgeFSSpaceTracesApi(Resource):
-    @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @console_ns.response(
         HTTPStatus.OK,
         "KnowledgeFS traces",
@@ -3363,12 +3364,13 @@ class KnowledgeFSSpaceTracesApi(Resource):
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
         actor_id, tenant_id = _actor()
-        query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
+        query = KnowledgeFSTraceListQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.list_traces(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             cursor=query.cursor,
+            source=query.source,
         )
         return dump_response(KnowledgeFSTraceListResponse, result)
 

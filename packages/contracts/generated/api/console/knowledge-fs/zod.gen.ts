@@ -2159,6 +2159,14 @@ export const zKnowledgeFsSpaceListResponse = z.object({
   page: z.int(),
 })
 
+export const zKnowledgeFsTraceSource = z.enum([
+  'agent',
+  'mcp',
+  'retrieval_test',
+  'service_api',
+  'workflow',
+])
+
 /**
  * KnowledgeFSAnswerTraceStepResponse
  */
@@ -2181,6 +2189,7 @@ export const zKnowledgeFsAnswerTraceResponse = z.object({
   mode: z.enum(['auto', 'deep', 'fast', 'research']),
   query: z.string(),
   query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
   steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
 })
 
@@ -3060,6 +3069,7 @@ export const zKnowledgeFsTraceResponse = z.object({
   query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
   result_count: z.int().gte(0),
   scores: zKnowledgeFsTraceScoresResponse,
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
   stages: z.array(zKnowledgeFsTraceStageResponse),
 })
 
@@ -4651,6 +4661,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  source: z.enum(['agent', 'mcp', 'retrieval_test', 'service_api', 'workflow']).optional(),
 })
 
 /**

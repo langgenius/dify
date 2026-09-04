@@ -1269,6 +1269,7 @@ export type KnowledgeFsAnswerTraceResponse = {
   mode: 'auto' | 'deep' | 'fast' | 'research'
   query: string
   query_images?: Array<KnowledgeFsQueryImageResponse>
+  source?: KnowledgeFsTraceSource
   steps: Array<KnowledgeFsAnswerTraceStepResponse>
 }
 
@@ -2487,6 +2488,7 @@ export type KnowledgeFsTraceResponse = {
   query_images?: Array<KnowledgeFsQueryImageResponse>
   result_count: number
   scores: KnowledgeFsTraceScoresResponse
+  source?: KnowledgeFsTraceSource
   stages: Array<KnowledgeFsTraceStageResponse>
 }
 
@@ -2495,6 +2497,8 @@ export type KnowledgeFsTraceScoresResponse = {
   rerank?: number | null
   retrieval?: number | null
 }
+
+export type KnowledgeFsTraceSource = 'agent' | 'mcp' | 'retrieval_test' | 'service_api' | 'workflow'
 
 export type KnowledgeFsTraceStageResponse = {
   candidate_count?: number | null
@@ -6048,6 +6052,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   }
   query?: {
     cursor?: string
+    source?: 'agent' | 'mcp' | 'retrieval_test' | 'service_api' | 'workflow'
   }
   url: '/knowledge-fs/spaces/{control_space_id}/traces'
 }

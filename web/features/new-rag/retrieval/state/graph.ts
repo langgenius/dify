@@ -24,6 +24,7 @@ import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
   retrievalComposerImagesAtom,
+  retrievalHistorySourceFilterAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalRecordImagesAtom,
@@ -38,10 +39,17 @@ const tracesQueryAtom = atomWithInfiniteQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.get.infiniteOptions({
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     initialPageParam: null as string | null,
-    input: (pageParam) => ({
-      params: { control_space_id: get(retrievalKnowledgeSpaceIdAtom) },
-      ...(typeof pageParam === 'string' ? { query: { cursor: pageParam } } : {}),
-    }),
+    input: (pageParam) => {
+      const sourceFilter = get(retrievalHistorySourceFilterAtom)
+      const query = {
+        ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        ...(sourceFilter === 'all' ? {} : { source: sourceFilter }),
+      }
+      return {
+        params: { control_space_id: get(retrievalKnowledgeSpaceIdAtom) },
+        ...(Object.keys(query).length > 0 ? { query } : {}),
+      }
+    },
     refetchInterval: get(retrievalLocalRunAtom)?.status === 'running' ? 1000 : false,
   }),
 )
@@ -119,7 +127,14 @@ const retrievalDisplayRecordsAtom = atom((get) => {
     localRun?.traceId &&
     records.some((record) => record.kind === 'trace' && record.id === localRun.traceId),
   )
-  return localRecord && !traceAlreadyListed ? [localRecord, ...records] : records
+  const displayRecords = localRecord && !traceAlreadyListed ? [localRecord, ...records] : records
+  // The server already filters persisted traces by source; local runs and research tasks are
+  // console retrieval tests, so they only belong to the "all" and "retrieval_test" views.
+  const sourceFilter = get(retrievalHistorySourceFilterAtom)
+  if (sourceFilter === 'all') return displayRecords
+  return displayRecords.filter((record) =>
+    record.kind === 'trace' ? record.source === sourceFilter : sourceFilter === 'retrieval_test',
+  )
 })
 
 const requestedSelectionAtom = atom((get) => {
@@ -440,6 +455,7 @@ export const retrievalHistoryFactsAtom = atom((get) => {
     displayRecords,
     hasNextPage: Boolean(tracesQuery.hasNextPage || researchTasksQuery.hasNextPage),
     isFetchingNextPage: tracesQuery.isFetchingNextPage || researchTasksQuery.isFetchingNextPage,
+    sourceFilter: get(retrievalHistorySourceFilterAtom),
   }
 })
 

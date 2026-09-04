@@ -1221,6 +1221,7 @@ export function createKnowledgeGateway({
     createResearchTaskJobStateMachine({
       generateId: generateResearchTaskJobId,
       jobs: adapter.jobs,
+      overview: overviewRepository,
       progress: createResearchTaskProgressPublisher({
         repository: researchTaskProgressEvents,
       }),
@@ -1984,6 +1985,7 @@ export function createKnowledgeGateway({
           }
         : {}),
     now: () => Date.parse(now()),
+    overview: overviewRepository,
     researchTaskJobs,
     researchTaskPartialResults,
     researchTaskProgressEvents,

@@ -204,6 +204,8 @@ export const RetrievalTestMetricsSchema = z
 
 export const RetrievalTestResponseSchema = z
   .object({
+    /** AnswerTrace recorded for this run in the space's retrieval history, when one was written. */
+    answerTraceId: z.string().uuid().optional(),
     capabilityStatus: z
       .object({
         embedding: z.enum(["not-required", "verified"]),

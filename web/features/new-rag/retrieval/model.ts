@@ -2,7 +2,15 @@ import type {
   KnowledgeFsQueryImageResponse,
   KnowledgeFsResearchTaskResponse,
   KnowledgeFsTraceResponse,
+  KnowledgeFsTraceSource,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+
+/** Who produced a persisted trace: the console retrieval test or another caller. */
+export type RetrievalTestSource = KnowledgeFsTraceSource
+
+export function retrievalTestSource(source?: KnowledgeFsTraceSource | null): RetrievalTestSource {
+  return source ?? 'retrieval_test'
+}
 
 export type RetrievalTestMode = 'deep' | 'fast' | 'research'
 
@@ -74,6 +82,8 @@ export type RetrievalTestRecord =
       query: string
       queryImages?: RetrievalQueryImage[]
       resultCount?: number
+      /** Console retrieval test, workflow node, service API, agent, or MCP. */
+      source: RetrievalTestSource
       status: 'completed' | 'failed'
     }
   | {
@@ -398,6 +408,7 @@ export function retrievalTestRecords(
         ...(trace.result_count !== null && trace.result_count !== undefined
           ? { resultCount: trace.result_count }
           : {}),
+        source: retrievalTestSource(trace.source),
         status: trace.completed ? 'completed' : 'failed',
       })),
     ...researchTasks.map((task): RetrievalTestRecord => ({

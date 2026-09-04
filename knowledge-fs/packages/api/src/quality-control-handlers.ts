@@ -108,6 +108,7 @@ export function registerQualityControlHandlers({
         limit: query.limit,
         ...(query.mode ? { mode: query.mode } : {}),
         ...(query.query ? { query: query.query } : {}),
+        ...(query.source ? { source: query.source } : {}),
         ...(query.status ? { status: query.status } : {}),
         subjectId: scope.subject.subjectId,
         tenantId: scope.subject.tenantId,

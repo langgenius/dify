@@ -1009,3 +1009,74 @@ function evidenceBundle(id: string, text: string) {
     state: "partial" as const,
   };
 }
+
+describe("research task overview outcomes", () => {
+  it("reports completion and failure to the space overview as query outcomes", async () => {
+    const appendActivity = vi.fn(async (input: unknown) => input as never);
+    const machine = createResearchTaskJobStateMachine({
+      generateId: (() => {
+        let next = 0;
+        return () => `research-task-job-${++next}`;
+      })(),
+      jobs: new FakeJobQueue(),
+      now: () => 5_000,
+      overview: { appendActivity },
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+
+    const completed = await machine.start(baseStartInput());
+    for (const stage of [
+      "planning",
+      "retrieving",
+      "analyzing",
+      "generating",
+      "completed",
+    ] as const) {
+      await machine.advance(completed.id, stage);
+    }
+    const failed = await machine.start(baseStartInput());
+    await machine.fail(failed.id, "model unavailable");
+    const canceled = await machine.start(baseStartInput());
+    await machine.cancel(canceled.id, "operator");
+
+    expect(appendActivity.mock.calls.map((call) => call[0])).toEqual([
+      expect.objectContaining({
+        action: "query.completed",
+        actor: { type: "system" },
+        knowledgeSpaceId: "space-1",
+        resource: { id: completed.id, type: "query" },
+        result: "success",
+        tenantId: "tenant-1",
+      }),
+      expect.objectContaining({
+        action: "query.failed",
+        details: expect.objectContaining({ reasonCode: "failed", taskKind: "research" }),
+        resource: { id: failed.id, type: "query" },
+        result: "failure",
+      }),
+      expect.objectContaining({
+        action: "query.failed",
+        details: expect.objectContaining({ reasonCode: "canceled", taskKind: "research" }),
+        resource: { id: canceled.id, type: "query" },
+        result: "canceled",
+      }),
+    ]);
+  });
+
+  it("never lets an overview write failure break a terminal transition", async () => {
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => "research-task-job-1",
+      jobs: new FakeJobQueue(),
+      now: () => 5_000,
+      overview: {
+        appendActivity: async () => {
+          throw new Error("activity feed down");
+        },
+      },
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+    const job = await machine.start(baseStartInput());
+
+    await expect(machine.fail(job.id, "boom")).resolves.toMatchObject({ stage: "failed" });
+  });
+});
