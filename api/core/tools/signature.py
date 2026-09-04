@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+from hmac import compare_digest
 import json
 import os
 import time
@@ -82,7 +83,7 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
     # verify signature
-    if sign != recalculated_encoded_sign:
+    if not compare_digest(sign, recalculated_encoded_sign):
         return False
 
     current_time = int(time.time())
@@ -161,7 +162,7 @@ def verify_plugin_file_signature(
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
-    if sign != recalculated_encoded_sign:
+    if not compare_digest(sign, recalculated_encoded_sign):
         return False
 
     current_time = int(time.time())
