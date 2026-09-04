@@ -113,6 +113,47 @@ class TestPluginInvokeTextEmbeddingApi:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_classifies_rate_limit_for_internal_consumers(self, mock_invocation, api_instance):
+        mock_invocation.invoke_text_embedding.side_effect = RuntimeError(
+            "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later."
+        )
+        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+
+        result = raw_post(
+            api_instance,
+            user_model=MagicMock(id="user-id"),
+            tenant_model=MagicMock(id="tenant-id"),
+            payload=MagicMock(),
+        )
+
+        assert result == {
+            "data": None,
+            "error": "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later.",
+            "error_code": "rate_limited",
+            "retryable": True,
+            "status": 429,
+        }
+
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_keeps_unknown_failures_non_retryable(self, mock_invocation, api_instance):
+        mock_invocation.invoke_text_embedding.side_effect = ValueError("invalid model input")
+        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+
+        result = raw_post(
+            api_instance,
+            user_model=MagicMock(id="user-id"),
+            tenant_model=MagicMock(id="tenant-id"),
+            payload=MagicMock(),
+        )
+
+        assert result == {
+            "data": None,
+            "error": "invalid model input",
+            "error_code": "invocation_failed",
+            "retryable": False,
+        }
+
 
 class TestPluginInvokeMultimodalEmbeddingApi:
     @pytest.fixture

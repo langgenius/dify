@@ -264,6 +264,7 @@ describe("Dify model runtime embedding provider", () => {
       client: fakeClient(async () => {
         throw Object.assign(new Error("provider unavailable"), { status: 429 });
       }),
+      maxRetries: 0,
       metrics,
     });
 
@@ -278,6 +279,57 @@ describe("Dify model runtime embedding provider", () => {
       }),
     );
     expect(JSON.stringify(metrics.record.mock.calls)).not.toContain("secret text");
+  });
+
+  it("retries only a retryable failed transport batch and preserves result order", async () => {
+    const attempts = new Map<string, number>();
+    const metrics = { record: vi.fn() };
+    const retryDelay = vi.fn(async () => undefined);
+    const provider = createDifyModelRuntimeEmbeddingProvider({
+      ...BASE,
+      client: fakeClient(async (input) => {
+        const key = input.texts[0] ?? "";
+        const attempt = (attempts.get(key) ?? 0) + 1;
+        attempts.set(key, attempt);
+        if (key === "chunk-2" && attempt === 1) {
+          throw Object.assign(new Error("rate limited"), {
+            retryable: true,
+            status: 429,
+          });
+        }
+        return {
+          embeddings: input.texts.map((text) => [Number(text.slice("chunk-".length)), 1]),
+        };
+      }),
+      maxConcurrentRequests: 2,
+      maxRequestBatchSize: 2,
+      metrics,
+      retryDelay,
+    });
+
+    const result = await provider.embed({
+      model: BASE.model,
+      tenantId: "tenant-abc",
+      texts: ["chunk-0", "chunk-1", "chunk-2", "chunk-3", "chunk-4"],
+    });
+
+    expect(result.dense.map((vector) => vector[0])).toEqual([0, 1, 2, 3, 4]);
+    expect(attempts).toEqual(
+      new Map([
+        ["chunk-0", 1],
+        ["chunk-2", 2],
+        ["chunk-4", 1],
+      ]),
+    );
+    expect(retryDelay).toHaveBeenCalledOnce();
+    expect(metrics.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: "succeeded",
+        providerCalls: 2,
+        retries: 1,
+        textCount: 2,
+      }),
+    );
   });
 
   it("synthesizes a model descriptor and validates constructor options", async () => {
@@ -337,6 +389,13 @@ describe("Dify model runtime embedding provider", () => {
         ...BASE,
         client: fakeClient(async () => ({})),
         maxConcurrentRequests: 0,
+      }),
+    ).toThrow(ProviderInputError);
+    expect(() =>
+      createDifyModelRuntimeEmbeddingProvider({
+        ...BASE,
+        client: fakeClient(async () => ({})),
+        maxRetries: 6,
       }),
     ).toThrow(ProviderInputError);
   });

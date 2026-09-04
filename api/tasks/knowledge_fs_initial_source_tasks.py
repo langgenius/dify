@@ -21,6 +21,7 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
 from services.credential_permission_service import CredentialPermissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
+    KnowledgeFSDeferredSyncPolicyPayload,
     KnowledgeFSInitialOnlineDocumentSourcePayload,
     KnowledgeFSInitialSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
@@ -381,6 +382,22 @@ def _sync_policy_payload(
     raise ValueError(f"Unsupported sync policy: {payload.sync_policy}")
 
 
+def _deferred_sync_policy_payload(payload: KnowledgeFSInitialSourcePayload) -> dict[str, object]:
+    if payload.sync_policy == "manual":
+        policy = KnowledgeFSDeferredSyncPolicyPayload(enabled=False, mode="manual")
+    elif payload.sync_policy == "daily":
+        policy = KnowledgeFSDeferredSyncPolicyPayload(enabled=True, mode="interval")
+    elif payload.sync_policy == "custom":
+        policy = KnowledgeFSDeferredSyncPolicyPayload(
+            customIntervalSeconds=payload.custom_interval_seconds,
+            enabled=True,
+            mode="custom",
+        )
+    else:
+        raise ValueError(f"Unsupported sync policy: {payload.sync_policy}")
+    return policy.model_dump(mode="json", by_alias=True)
+
+
 def start_initial_source_import(
     *,
     tenant_id: str,
@@ -492,6 +509,7 @@ def start_initial_source_import(
                             "errorMessage": failure.message if failure is not None else str(exc),
                             "requestedSourceUrls": [selection.source_url for selection in payload.selection],
                             "state": "failed",
+                            "syncPolicy": _deferred_sync_policy_payload(payload),
                         },
                         "preview": False,
                     },
@@ -525,6 +543,7 @@ def start_initial_source_import(
                     "configurationFingerprint": knowledge_fs_initial_preview_configuration_fingerprint(payload),
                     "requestedSourceUrls": [selection.source_url for selection in payload.selection],
                     "canonicalSourceUrls": [selection.canonical_url for selection in payload.selection],
+                    "syncPolicy": _deferred_sync_policy_payload(payload),
                 }
             )
         if (

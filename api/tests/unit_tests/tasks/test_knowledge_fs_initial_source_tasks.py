@@ -415,6 +415,11 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     assert "parameters" not in source_update_payload.metadata
     assert source_update_payload.metadata["preview"] is False
     assert source_update_payload.metadata["initialImport"]["state"] == "failed"
+    assert source_update_payload.metadata["initialImport"]["syncPolicy"] == {
+        "customIntervalSeconds": None,
+        "enabled": True,
+        "mode": "interval",
+    }
     facade.update_source_sync_policy.assert_not_called()
 
 
@@ -444,6 +449,11 @@ def test_initial_website_source_import_exposes_preview_consume_rejection() -> No
     assert source_update.metadata["preview"] is False
     assert source_update.metadata["initialImport"]["state"] == "failed"
     assert source_update.metadata["initialImport"]["errorCode"] == "SOURCE_WORKFLOW_FAILED"
+    assert source_update.metadata["initialImport"]["syncPolicy"] == {
+        "customIntervalSeconds": None,
+        "enabled": True,
+        "mode": "interval",
+    }
 
 
 @pytest.mark.parametrize(
@@ -718,6 +728,11 @@ def test_initial_website_source_import_exposes_failed_source_without_activating_
     assert initial_import["workflowId"] == "workflow-1"
     assert initial_import["requestedSourceUrls"] == ["https://docs.dify.ai/a", "https://docs.dify.ai/b"]
     assert initial_import["canonicalSourceUrls"] == ["https://docs.dify.ai/a", "https://docs.dify.ai/b"]
+    assert initial_import["syncPolicy"] == {
+        "customIntervalSeconds": None,
+        "enabled": True,
+        "mode": "interval",
+    }
     assert len(initial_import["configurationFingerprint"]) == 64
     facade.update_source_sync_policy.assert_not_called()
 

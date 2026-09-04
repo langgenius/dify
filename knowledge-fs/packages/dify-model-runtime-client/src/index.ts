@@ -127,6 +127,9 @@ const FRAME_MIN_HEADER_LENGTH = 0x0a;
 const EnvelopeSchema = z.object({
   data: z.unknown().nullable().optional(),
   error: z.string().optional().default(""),
+  error_code: z.enum(["invocation_failed", "rate_limited", "timeout", "unavailable"]).optional(),
+  retryable: z.boolean().optional(),
+  status: z.number().int().min(400).max(599).optional(),
 });
 
 const ModelCatalogItemSchema = z
@@ -494,8 +497,24 @@ function concatBytes(chunks: readonly Uint8Array[], total: number): Uint8Array {
 
 function unwrapEnvelope(envelope: z.infer<typeof EnvelopeSchema>): unknown {
   if (envelope.error || envelope.data === undefined || envelope.data === null) {
+    if (envelope.error_code === "timeout") {
+      throw new DifyModelRuntimeError("Dify model runtime invocation timed out", {
+        code: "dify_model_runtime_timeout",
+        retryable: envelope.retryable ?? true,
+        ...(envelope.status === undefined ? {} : { status: envelope.status }),
+      });
+    }
+    if (envelope.error_code && envelope.error_code !== "invocation_failed") {
+      throw new DifyModelRuntimeError("Dify model runtime invocation failed", {
+        code: "dify_model_runtime_request_failed",
+        retryable: envelope.retryable ?? false,
+        ...(envelope.status === undefined ? {} : { status: envelope.status }),
+      });
+    }
     throw new DifyModelRuntimeError("Dify model runtime invocation failed", {
       code: "dify_model_runtime_invocation_failed",
+      retryable: envelope.retryable ?? false,
+      ...(envelope.status === undefined ? {} : { status: envelope.status }),
     });
   }
   return envelope.data;

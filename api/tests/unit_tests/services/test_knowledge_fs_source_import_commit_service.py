@@ -203,6 +203,75 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
     delay.assert_called_once()
 
 
+def test_resume_completed_initial_website_import_repairs_source_state() -> None:
+    facade = MagicMock()
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "initialImport": {
+                "state": "failed",
+                "syncPolicy": {"enabled": True, "mode": "interval"},
+                "workflowId": "import-1",
+            },
+            "preview": False,
+            "providerKind": "website",
+        },
+        status="disabled",
+        version=5,
+    )
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            workflow=SimpleNamespace(id="import-1", source_id="source-1", state="completed"),
+        )
+
+    update = facade.update_source.call_args.kwargs["payload"]
+    assert update.status == "syncing"
+    assert update.metadata["initialImport"] is None
+    assert update.metadata["pendingImport"] == {
+        "kind": "website-crawl-import",
+        "workflowId": "import-1",
+        "syncPolicy": {"enabled": True, "mode": "interval"},
+    }
+    delay.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        source_id="source-1",
+        workflow_id="import-1",
+    )
+
+
+def test_resume_legacy_initial_website_import_falls_back_to_manual_sync() -> None:
+    facade = MagicMock()
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "initialImport": {"state": "failed", "workflowId": "import-1"},
+            "preview": False,
+            "providerKind": "website",
+        },
+        status="disabled",
+        version=5,
+    )
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay"):
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            workflow=SimpleNamespace(id="import-1", source_id="source-1", state="completed"),
+        )
+
+    pending = facade.update_source.call_args.kwargs["payload"].metadata["pendingImport"]
+    assert pending["syncPolicy"] == {"enabled": False, "mode": "manual"}
+
+
 def test_resume_committed_source_import_redispatches_an_existing_pending_marker() -> None:
     facade = MagicMock()
     facade.get_source.return_value = SimpleNamespace(

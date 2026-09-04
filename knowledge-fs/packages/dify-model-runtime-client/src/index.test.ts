@@ -255,6 +255,38 @@ describe("createDifyModelRuntimeClient", () => {
     } satisfies Partial<DifyModelRuntimeError>);
   });
 
+  it("preserves safe retry classification from an inner runtime error", async () => {
+    const client = createDifyModelRuntimeClient({
+      apiKey: "inner-secret",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn(async () =>
+        Response.json({
+          data: null,
+          error: "provider detail",
+          error_code: "rate_limited",
+          retryable: true,
+          status: 429,
+        }),
+      ),
+    });
+
+    await expect(
+      client.invokeTextEmbedding({
+        inputType: "document",
+        model: "embedding",
+        pluginId: "vendor/plugin",
+        provider: "provider",
+        tenantId: "tenant-1",
+        texts: ["hello"],
+      }),
+    ).rejects.toMatchObject({
+      code: "dify_model_runtime_request_failed",
+      message: "Dify model runtime invocation failed",
+      retryable: true,
+      status: 429,
+    } satisfies Partial<DifyModelRuntimeError>);
+  });
+
   it.each([
     [{ baseUrl: "" }, "baseUrl must be an absolute"],
     [{ baseUrl: "api:5001" }, "baseUrl must be an absolute"],

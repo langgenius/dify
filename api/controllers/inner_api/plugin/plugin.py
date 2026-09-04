@@ -1,3 +1,5 @@
+import re
+
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
@@ -38,11 +40,58 @@ from core.plugin.entities.request import (
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+
+
+def _model_invocation_error_response(error: Exception) -> dict[str, object]:
+    """Return a backwards-compatible envelope with safe retry classification."""
+
+    message = str(error)
+    normalized = message.lower()
+    if (
+        isinstance(error, InvokeRateLimitError)
+        or "resource_exhausted" in normalized
+        or "rate limit" in normalized
+        or re.search(r"\b429\b", normalized)
+    ):
+        error_code = "rate_limited"
+        retryable = True
+        status = 429
+    elif "timed out" in normalized or "timeout" in normalized:
+        error_code = "timeout"
+        retryable = True
+        status = 504
+    elif (
+        isinstance(error, InvokeConnectionError | InvokeServerUnavailableError)
+        or "connection error" in normalized
+        or "temporarily unavailable" in normalized
+    ):
+        error_code = "unavailable"
+        retryable = True
+        status = 503
+    else:
+        error_code = "invocation_failed"
+        retryable = False
+        status = None
+
+    response: dict[str, object] = {
+        "data": None,
+        "error": message,
+        "error_code": error_code,
+        "retryable": retryable,
+    }
+    if status is not None:
+        response["status"] = status
+    return response
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -120,7 +169,7 @@ class PluginInvokeTextEmbeddingApi(Resource):
                 )
             )
         except Exception as e:
-            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
+            return _model_invocation_error_response(e)
 
 
 @inner_api_ns.route("/invoke/multimodal-embedding")

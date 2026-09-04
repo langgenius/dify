@@ -25,6 +25,8 @@ _ASYNC_IMPORT_KINDS = {
     "online-drive-import",
 }
 _PENDING_IMPORT_KEY = "pendingImport"
+_INITIAL_IMPORT_KEY = "initialImport"
+_MANUAL_SYNC_POLICY = {"enabled": False, "mode": "manual"}
 
 
 def commit_source_import(
@@ -152,7 +154,12 @@ def resume_committed_source_import(
     )
     last_import = _matching_import_marker(source.metadata.get("lastImport"), workflow.id)
     current_pending_import = _matching_import_marker(source.metadata.get(_PENDING_IMPORT_KEY), workflow.id)
-    import_marker = last_import or current_pending_import
+    initial_import = _matching_initial_website_import_marker(
+        source.metadata.get(_INITIAL_IMPORT_KEY),
+        workflow.id,
+        source.metadata.get("providerKind"),
+    )
+    import_marker = last_import or current_pending_import or initial_import
     if import_marker is None:
         return
     pending_import = {
@@ -178,7 +185,12 @@ def resume_committed_source_import(
                     source_id=source.id,
                     payload=KnowledgeFSSourceUpdatePayload(
                         expectedVersion=source.version,
-                        metadata={"lastImport": None, "preview": False, _PENDING_IMPORT_KEY: pending_import},
+                        metadata={
+                            _INITIAL_IMPORT_KEY: None,
+                            "lastImport": None,
+                            "preview": False,
+                            _PENDING_IMPORT_KEY: pending_import,
+                        },
                         status="syncing",
                     ),
                 )
@@ -248,6 +260,19 @@ def _matching_import_marker(value: object, workflow_id: str) -> dict[str, object
     ):
         return None
     return value
+
+
+def _matching_initial_website_import_marker(
+    value: object, workflow_id: str, provider_kind: object
+) -> dict[str, object] | None:
+    if not isinstance(value, dict) or value.get("workflowId") != workflow_id or provider_kind != "website":
+        return None
+    sync_policy = value.get("syncPolicy")
+    return {
+        "kind": "website-crawl-import",
+        "syncPolicy": sync_policy if isinstance(sync_policy, dict) else _MANUAL_SYNC_POLICY,
+        "workflowId": workflow_id,
+    }
 
 
 __all__ = ["commit_source_import", "resume_committed_source_import", "retry_or_resume_source_workflow"]

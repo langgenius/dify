@@ -408,6 +408,8 @@ export interface DifyModelRuntimeEmbeddingProviderOptions {
   readonly maxConcurrentRequests?: number | undefined;
   /** Bounds each Dify/plugin-daemon response independently of the accepted caller batch. */
   readonly maxRequestBatchSize?: number | undefined;
+  /** Retries one failed transport batch without recomputing successful sibling batches. */
+  readonly maxRetries?: number | undefined;
   readonly maxTextBytes?: number | undefined;
   readonly metrics?: DifyModelRuntimeEmbeddingOperationalMetrics | undefined;
   readonly model: string;
@@ -415,6 +417,7 @@ export interface DifyModelRuntimeEmbeddingProviderOptions {
   readonly pluginId: string;
   readonly provider: string;
   readonly requestGate?: DifyModelRuntimeEmbeddingRequestGate | undefined;
+  readonly retryDelay?: ((attempt: number, signal: AbortSignal) => Promise<void>) | undefined;
   readonly now?: (() => number) | undefined;
 }
 
@@ -451,6 +454,7 @@ const DifyModelRuntimeEmbeddingDataSchema = z.object({
 // below that boundary while still accepting the workspace-wide 128-item provider contract.
 const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE = 16;
 const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_CONCURRENCY = 2;
+const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_RETRIES = 2;
 
 /**
  * EmbeddingProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
@@ -486,6 +490,8 @@ export function createDifyModelRuntimeEmbeddingProvider(
     Math.min(DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE, maxBatchSize);
   const maxConcurrentRequests =
     options.maxConcurrentRequests ?? DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_CONCURRENCY;
+  const maxRetries = options.maxRetries ?? DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_RETRIES;
+  const retryDelay = options.retryDelay ?? defaultEmbeddingRetryDelay;
   const now = options.now ?? Date.now;
   const maxTextBytes = options.maxTextBytes ?? defaultMaxTextBytes;
   if (
@@ -501,6 +507,9 @@ export function createDifyModelRuntimeEmbeddingProvider(
     throw new ProviderInputError(
       "Dify model runtime embedding maxConcurrentRequests must be a positive integer",
     );
+  }
+  if (!Number.isSafeInteger(maxRetries) || maxRetries < 0 || maxRetries > 5) {
+    throw new ProviderInputError("Dify model runtime embedding maxRetries must be between 0 and 5");
   }
   const models = (
     options.models ?? [defaultDifyModelRuntimeEmbeddingModel(options, maxRequestBatchSize)]
@@ -536,8 +545,9 @@ export function createDifyModelRuntimeEmbeddingProvider(
         maxConcurrentRequests,
         async (texts) => {
           const startedAt = now();
+          let providerCalls = 0;
+          let retries = 0;
           try {
-            requestSignal.throwIfAborted();
             const invoke = () =>
               options.client.invokeTextEmbedding({
                 inputType: input.inputType === "search_query" ? "query" : "document",
@@ -548,9 +558,19 @@ export function createDifyModelRuntimeEmbeddingProvider(
                 texts,
                 signal: requestSignal,
               });
-            const data = options.requestGate
-              ? await options.requestGate.run(invoke)
-              : await invoke();
+            let data: unknown;
+            for (;;) {
+              requestSignal.throwIfAborted();
+              providerCalls += 1;
+              try {
+                data = options.requestGate ? await options.requestGate.run(invoke) : await invoke();
+                break;
+              } catch (error) {
+                if (!isRetryableDifyEmbeddingError(error) || retries >= maxRetries) throw error;
+                retries += 1;
+                await retryDelay(retries, requestSignal);
+              }
+            }
             const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
 
             if (!parsed.success) {
@@ -574,8 +594,8 @@ export function createDifyModelRuntimeEmbeddingProvider(
               concurrencyLimit: maxConcurrentRequests,
               durationMs: Math.max(0, now() - startedAt),
               outcome: "succeeded",
-              providerCalls: 1,
-              retries: 0,
+              providerCalls,
+              retries,
               textCount: texts.length,
               ...(result.tokens === undefined ? {} : { totalTokens: result.tokens }),
             });
@@ -587,8 +607,8 @@ export function createDifyModelRuntimeEmbeddingProvider(
               durationMs: Math.max(0, now() - startedAt),
               failureKind: difyEmbeddingFailureKind(error),
               outcome: "failed",
-              providerCalls: 1,
-              retries: 0,
+              providerCalls,
+              retries,
               textCount: texts.length,
             });
             throw error;
@@ -649,6 +669,27 @@ export function createDifyModelRuntimeEmbeddingProvider(
       }));
     },
   };
+}
+
+function isRetryableDifyEmbeddingError(error: unknown): boolean {
+  return Boolean(
+    typeof error === "object" && error !== null && "retryable" in error && error.retryable === true,
+  );
+}
+
+async function defaultEmbeddingRetryDelay(attempt: number, signal: AbortSignal): Promise<void> {
+  const delayMs = Math.min(1_000 * 2 ** (attempt - 1), 4_000);
+  await new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason ?? new Error("Embedding retry was aborted"));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, delayMs);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 function difyEmbeddingFailureKind(
