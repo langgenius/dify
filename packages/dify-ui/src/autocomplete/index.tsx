@@ -38,7 +38,9 @@ function Autocomplete(props: AutocompleteProps<unknown>): React.JSX.Element {
 const AutocompleteValue = BaseAutocomplete.Value
 const AutocompleteRow = BaseAutocomplete.Row
 const useAutocompleteFilter = BaseAutocomplete.useFilter
-const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
+function useAutocompleteFilteredItems<Value>(): readonly Value[] {
+  return BaseAutocomplete.useFilteredItems<Value>()
+}
 
 type AutocompleteValueProps = BaseAutocomplete.Value.Props
 type AutocompleteRowProps = BaseAutocomplete.Row.Props

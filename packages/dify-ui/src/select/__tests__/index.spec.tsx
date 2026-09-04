@@ -18,6 +18,22 @@ import {
   SelectValue,
 } from '../index'
 
+function SelectTypeExamples() {
+  return (
+    <Select<string, true> multiple>
+      <SelectValue<string, true>>
+        {(selectedValue) => {
+          // @ts-expect-error multiple value render state is read-only
+          selectedValue?.push('seattle')
+          return selectedValue?.join(', ') ?? ''
+        }}
+      </SelectValue>
+    </Select>
+  )
+}
+
+void SelectTypeExamples
+
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
