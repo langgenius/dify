@@ -1,7 +1,7 @@
 import type { ConversationItem, DifyBuilderActionPayloadChange } from '../types'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DifyBuilderCardShell } from '../cards/card-shell'
+import { DifyBuilderCard } from '../cards/card-shell'
 
 export const ResourceCard = memo(
   ({
@@ -34,7 +34,10 @@ export const ResourceCard = memo(
     }
 
     return (
-      <DifyBuilderCardShell invalidated={invalidated}>
+      <DifyBuilderCard
+        category={t(($) => $['difyBuilder.cardCategory.resources'], { ns: 'workflow' })}
+        invalidated={invalidated}
+      >
         <div className="flex flex-col gap-2">
           {resources.map((resource) => (
             <div
@@ -83,7 +86,7 @@ export const ResourceCard = memo(
             </label>
           )}
         </div>
-      </DifyBuilderCardShell>
+      </DifyBuilderCard>
     )
   },
 )

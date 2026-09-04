@@ -240,9 +240,9 @@ const DifyBuilderPanel = () => {
   return (
     <aside
       aria-label={t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}
-      className="flex h-full w-90 shrink-0 bg-background-body py-1 pr-1"
+      className="flex h-full w-100 shrink-0 bg-background-body py-1 pr-1"
     >
-      <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-section shadow-xl">
+      <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl bg-background-section shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />
 
         <header className="relative z-10 flex h-11 shrink-0 items-center justify-between bg-gradient-to-b from-background-section to-transparent pr-3 pl-[18px]">
