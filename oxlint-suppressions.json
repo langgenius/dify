@@ -2624,9 +2624,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 8
     }
@@ -3003,9 +3000,6 @@
   },
   "web/app/components/share/text-generation/run-once/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "typescript/no-explicit-any": {
