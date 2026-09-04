@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session, object_session
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -849,7 +850,10 @@ class SkillManagementService:
             context = self._build_assistant_context(skill=skill, files=files)
 
         try:
-            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+            model_instance = ModelManager.for_tenant(
+                tenant_id=tenant_id,
+                request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+            ).get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
             )
@@ -1398,7 +1402,10 @@ class SkillManagementService:
         tenant_id: str,
         model_payload: SkillAssistModelPayload | None,
     ) -> tuple[Any, dict[str, Any]]:
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=tenant_id,
+            request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+        )
         if model_payload is None:
             try:
                 model_instance = model_manager.get_default_model_instance(
@@ -3740,14 +3747,22 @@ class SkillManagementService:
 
     @staticmethod
     def _strip_single_root(paths: list[str]) -> dict[str, str]:
-        if not paths:
-            return {}
-        first_segments = {path.split("/", 1)[0] for path in paths if "/" in path}
-        root = next(iter(first_segments)) if len(first_segments) == 1 else None
-        if root is None or f"{root}/{_SKILL_MD}" not in paths or _SKILL_MD in paths:
+        if not paths or _SKILL_MD in paths:
             return {path: path for path in paths}
-        stripped = {path: path.removeprefix(f"{root}/") for path in paths}
-        return stripped
+        # Identify the root by the unique top-level `<root>/SKILL.md`, rather than
+        # requiring every path to share one first segment: tools like macOS Finder's
+        # "Compress" add a sibling `__MACOSX/` metadata folder that must not defeat
+        # stripping of the real skill folder. Entries outside the detected root
+        # (like `__MACOSX/...`) are dropped rather than passed through, matching
+        # skill_package_service._normalize_members(ignore_outside_selected_root=True).
+        skill_md_roots = {
+            path.split("/", 1)[0] for path in paths if path.count("/") == 1 and path.endswith(f"/{_SKILL_MD}")
+        }
+        if len(skill_md_roots) != 1:
+            return {path: path for path in paths}
+        root = next(iter(skill_md_roots))
+        prefix = f"{root}/"
+        return {path: path.removeprefix(prefix) for path in paths if path == root or path.startswith(prefix)}
 
     def _draft_payload_from_zip(
         self,
@@ -3768,6 +3783,8 @@ class SkillManagementService:
                 skill_md_content = ""
                 for info in infos:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
+                    if raw_path not in path_map:
+                        continue
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
                         items.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))

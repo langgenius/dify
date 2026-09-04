@@ -6,6 +6,30 @@ on:
       base-rev:
         required: true
         type: string
+      classification-succeeded:
+        description: Whether the caller successfully classified the changed files.
+        required: true
+        type: boolean
+      run-python-style:
+        description: Run Python style checks for the changed files.
+        required: true
+        type: boolean
+      run-dify-agent-style:
+        description: Run Dify Agent style checks for the changed files.
+        required: true
+        type: boolean
+      run-web-style:
+        description: Run Web style checks for the changed files.
+        required: true
+        type: boolean
+      run-ts-common-style:
+        description: Run shared TypeScript style checks for the changed files.
+        required: true
+        type: boolean
+      run-superlinter:
+        description: Run SuperLinter for the changed files.
+        required: true
+        type: boolean
       skip-checks:
         description: Create the required check runs without repeating previously successful work.
         required: false
@@ -20,72 +44,72 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    if: ${{ !inputs.skip-checks }}
+    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-python-style || inputs.run-dify-agent-style) }}
     runs-on: depot-ubuntu-24.04
 
     steps:
+      - name: Verify changed-file classification
+        if: ${{ !inputs.classification-succeeded }}
+        run: |
+          echo "Changed-file classification failed; refusing to skip Python style checks." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            api/**
-            scripts/ast_grep_guard.py
-            scripts/check_no_new_getattr.py
-            scripts/check_no_new_controller_sqlalchemy.py
-            scripts/lint_controller_sqlalchemy.py
-            scripts/ast_grep_rules/no_new_getattr.yml
-            scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml
-            .github/workflows/style.yml
-            .github/workflows/main-ci.yml
-
       - name: Setup UV and Python
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
           python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
+          cache-dependency-glob: |
+            api/uv.lock
+            dify-agent/uv.lock
 
       - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv sync --project api --dev
 
       - name: Run Import Linter
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv run --directory api --dev lint-imports
 
       - name: Run Response Contract Linter
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
       - name: Run No New Getattr Guard
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run No New Controller SQLAlchemy Guard
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run Type Checks
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         env:
           PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
 
+      - name: Run Dify Agent Ruff
+        if: inputs.run-dify-agent-style
+        run: make -C dify-agent check
+
+      - name: Run Dify Agent Type Checks
+        if: inputs.run-dify-agent-style
+        run: make -C dify-agent typecheck
+
       - name: Dotenv check
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: inputs.run-python-style
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
   web-style:
     name: Web Style
-    if: ${{ !inputs.skip-checks }}
+    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-web-style) }}
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
@@ -95,128 +119,84 @@ jobs:
       pull-requests: read
 
     steps:
+      - name: Verify changed-file classification
+        if: ${{ !inputs.classification-succeeded }}
+        working-directory: .
+        run: |
+          echo "Changed-file classification failed; refusing to skip Web style checks." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            web/**
-            e2e/**
-            sdks/nodejs-client/**
-            packages/**
-            package.json
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-            knip.config.ts
-            scripts/check-web-production-unused-after-knip-fix.mjs
-            .nvmrc
-            .github/workflows/style.yml
-            .github/actions/setup-web/**
-
       - name: Setup web environment
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
       - name: Web tsslint
-        if: steps.changed-files.outputs.any_changed == 'true'
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: vp run lint:tss
 
       - name: Web dead code check
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: .
         run: vp run knip
 
       - name: Web dead code check production
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: .
         run: vp run knip:production
 
       - name: Web production unused declarations check
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: .
         run: vp run knip:production-unused-check
 
   ts-common-style:
     name: TS Common
-    if: ${{ !inputs.skip-checks }}
+    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-ts-common-style) }}
     runs-on: depot-ubuntu-24.04-4
     permissions:
       checks: write
       pull-requests: read
 
     steps:
+      - name: Verify changed-file classification
+        if: ${{ !inputs.classification-succeeded }}
+        run: |
+          echo "Changed-file classification failed; refusing to skip TypeScript style checks." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            web/**
-            cli/**
-            e2e/**
-            sdks/nodejs-client/**
-            packages/**
-            package.json
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-            .nvmrc
-            vite.config.ts
-            lint.config.ts
-            eslint.config.mjs
-            knip.config.ts
-            scripts/check-web-production-unused-after-knip-fix.mjs
-            oxlint-suppressions.json
-            eslint-suppressions.json
-            .vscode/**
-            .github/**
-
       - name: Setup web environment
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
       - name: Static check
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: pnpm -w check
 
   superlinter:
     name: SuperLinter
-    if: ${{ !inputs.skip-checks }}
+    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-superlinter) }}
     runs-on: depot-ubuntu-24.04
 
     steps:
+      - name: Verify changed-file classification
+        if: ${{ !inputs.classification-succeeded }}
+        run: |
+          echo "Changed-file classification failed; refusing to skip SuperLinter." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            **.sh
-            **.yaml
-            **.yml
-            **Dockerfile
-            dev/**
-            .editorconfig
-            .vite-hooks/**
-
       - name: Super-linter
         uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
-        if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: origin/main

@@ -93,7 +93,18 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByText('Parse failed')).toBeInTheDocument()
+  })
+
+  it('should use the localized fallback when an error has no message', () => {
+    render(
+      <IndexingProgressItem
+        detail={makeDetail({ indexing_status: 'error', error: null })}
+        name="broken.pdf"
+      />,
+    )
+
+    expect(screen.getByText('common.error')).toBeInTheDocument()
   })
 
   it('should show priority label when billing is enabled', () => {

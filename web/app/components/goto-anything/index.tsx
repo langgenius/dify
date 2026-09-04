@@ -40,6 +40,7 @@ import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
@@ -232,8 +233,9 @@ function GotoAnythingDialog() {
   const defaultLocale = useGetLanguage()
   const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const agentsAvailable = isAgentV2Enabled() && canManageAgents
-  const skillsAvailable = !isCurrentWorkspaceDatasetOperator
+  const skillsAvailable = enableSkill && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -549,7 +551,7 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollArea className="relative h-88 min-h-0 overflow-hidden">
+              <ScrollArea className="h-88 min-h-0 overflow-hidden">
                 <ScrollAreaViewport
                   aria-busy={isLoading || undefined}
                   className="scroll-py-1 overscroll-contain"
@@ -591,7 +593,7 @@ function GotoAnythingDialog() {
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <div className="px-4 pb-4" role="presentation">
+                          <div className="px-4 pb-4">
                             {commandRows.map((row) => (
                               <AutocompleteRow
                                 key={row.map((option) => option.shortcut).join(':')}

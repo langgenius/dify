@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { OutputVar } from '../../../code/types'
 import type { VarType } from '@/app/components/workflow/types'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
@@ -104,17 +104,16 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            wrapperClassName="grow"
+            aria-label={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })}
+            placeholder={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })}
+            className="grow"
           />
           <VarTypePicker
             readonly={readonly}
             value={item.variable_type}
             onChange={handleVarTypeChange(index)}
           />
-          <RemoveButton
-            className="bg-gray-100! p-2! hover:bg-gray-200!"
-            onClick={handleVarRemove(index)}
-          />
+          <RemoveButton onClick={handleVarRemove(index)} />
         </div>
       ))}
     </div>

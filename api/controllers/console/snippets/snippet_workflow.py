@@ -19,6 +19,7 @@ from controllers.console.app.workflow import (
     WorkflowPaginationResponse,
     WorkflowPublishResponse,
     WorkflowResponse,
+    WorkflowResponseSource,
     WorkflowRestoreResponse,
 )
 from controllers.console.snippets.payloads import (
@@ -179,9 +180,12 @@ class SnippetDraftWorkflowApi(Resource):
             raise DraftWorkflowNotExist()
 
         workflow.conversation_variables = []
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        session = db.session()
+        response = SnippetWorkflowResponse.model_validate(
+            WorkflowResponseSource(workflow, session=session), from_attributes=True
+        ).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=db.session(),
+            session=session,
             draft_workflow=workflow,
         )
         response["input_fields"] = snippet.input_fields_list
@@ -274,7 +278,9 @@ class SnippetPublishedWorkflowApi(Resource):
         if not workflow:
             return None
 
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(
+            WorkflowResponseSource(workflow, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -365,15 +371,15 @@ class SnippetPublishedAllWorkflowApi(Resource):
                 limit=req_data.limit,
             )
 
-        response = SnippetWorkflowPaginationResponse.model_validate(
-            {
-                "items": workflows,
-                "page": req_data.page,
-                "limit": req_data.limit,
-                "has_more": has_more,
-            },
-            from_attributes=True,
-        ).model_dump(mode="json")
+            response = SnippetWorkflowPaginationResponse.model_validate(
+                {
+                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                    "page": req_data.page,
+                    "limit": req_data.limit,
+                    "has_more": has_more,
+                },
+                from_attributes=True,
+            ).model_dump(mode="json")
         for item in response["items"]:
             item["input_fields"] = snippet.input_fields_list
         return response
@@ -464,9 +470,11 @@ class SnippetWorkflowByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
-        response["input_fields"] = snippet.input_fields_list
-        return response
+            response = SnippetWorkflowResponse.model_validate(
+                WorkflowResponseSource(workflow, session=session), from_attributes=True
+            ).model_dump(mode="json")
+            response["input_fields"] = snippet.input_fields_list
+            return response
 
     @console_ns.doc("delete_snippet_workflow_by_id")
     @console_ns.doc(description="Delete a published snippet workflow version")

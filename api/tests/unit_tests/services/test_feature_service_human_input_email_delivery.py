@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
@@ -80,10 +81,10 @@ CASES = [
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
 def test_resolve_human_input_email_delivery_enabled_matrix(
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     case: HumanInputEmailDeliveryCase,
 ):
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", case.deployment_edition)
+    config_overrides(DEPLOYMENT_EDITION=case.deployment_edition)
     features = FeatureModel()
     features.billing.enabled = case.billing_feature_enabled
     features.billing.subscription.plan = case.plan
@@ -96,8 +97,10 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
     assert result is case.expected
 
 
-def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+def test_get_vector_space_converts_billing_float_size(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
@@ -111,8 +114,10 @@ def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.Monkey
     assert result.usage_unknown is False
 
 
-def test_get_vector_space_preserves_unknown_usage(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+def test_get_vector_space_preserves_unknown_usage(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",

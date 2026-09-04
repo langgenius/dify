@@ -14,6 +14,7 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentCreatedFrom, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestParentChildIndexProcessor:
@@ -206,10 +207,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
             ),
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.dify_config.CHILD_CHUNKS_PREVIEW_NUMBER",
-                2,
-            ),
+            config_overrides_context(CHILD_CHUNKS_PREVIEW_NUMBER=2),
         ):
             result = processor.transform(
                 docs,

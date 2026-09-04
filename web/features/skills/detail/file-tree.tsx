@@ -1180,7 +1180,7 @@ export function FileTree({
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-[5px] h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  'absolute right-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
                   sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
                 )}
               />
@@ -1309,8 +1309,8 @@ export function FileTree({
               skillId={skillId}
             />
           </div>
-          <div className="flex h-[17px] shrink-0 items-center px-3">
-            <div className="h-px w-full bg-gradient-to-r from-divider-subtle to-transparent" />
+          <div className="flex h-4.25 shrink-0 items-center px-3">
+            <div className="h-px w-full bg-linear-to-r from-divider-subtle to-transparent" />
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
             <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
@@ -1361,14 +1361,15 @@ export function FileTree({
               }}
             />
           </div>
-          <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
             <ScrollAreaViewport tabIndex={-1}>
               <ScrollAreaContent
                 className={cn(
-                  'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
+                  'relative flex min-h-full flex-col rounded-lg px-1 pt-1 pb-3',
                   dropTarget?.path === '' &&
                     'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
                 )}
+                style={{ minWidth: 0 }}
                 onDragLeave={handleRootDragLeave}
                 onDragOver={handleRootDragOver}
                 onDrop={handleRootDrop}

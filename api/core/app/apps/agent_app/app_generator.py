@@ -31,7 +31,11 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.apps.agent_app.errors import (
+    AgentAppGeneratorError,
+    AgentAppNotPublishedError,
+    AgentSessionSnapshotIncompatibleError,
+)
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppWorkspaceStore
@@ -531,6 +535,15 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 )
             except GenerateTaskStoppedError:
                 pass
+            except AgentSessionSnapshotIncompatibleError as error:
+                logger.info(
+                    "Agent App session snapshot no longer matches the current composition",
+                    extra={
+                        "agent_id": application_generate_entity.agent_id,
+                        "conversation_id": conversation_id,
+                    },
+                )
+                queue_manager.publish_error(error, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error in Agent App generate worker")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)

@@ -10,6 +10,7 @@ import { genNodeMetaData } from '../../utils'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.Agent,
+  helpLinkUri: 'agent#classic-agent',
 })
 
 const nodeDefault: NodeDefault<AgentNodeType> = {

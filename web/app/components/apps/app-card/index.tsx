@@ -25,7 +25,7 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
-import { AppCardActionBar } from './action-bar'
+import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
 
@@ -120,10 +120,8 @@ export const AppCard = memo(
     const appIconType = zIconType.safeParse(app.icon_type).data ?? null
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
-      'inline-flex h-full w-full touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out',
-      isPreviewOnly
-        ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-        : 'cursor-pointer hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+      'inline-flex h-full w-full touch-manipulation flex-col rounded-xl outline-hidden',
+      isPreviewOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
     )
     const showPreviewOnlyAccessWarning = useCallback(() => {
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
@@ -138,6 +136,7 @@ export const AppCard = memo(
               icon={app.icon ?? undefined}
               background={app.icon_background}
               imageUrl={app.icon_url}
+              decorative
             />
             <AppTypeIcon
               type={app.mode}
@@ -171,8 +170,7 @@ export const AppCard = memo(
             {app.description}
           </div>
         </div>
-        <div className="flex h-6.5 shrink-0 items-start px-3" />
-        <div className="flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
@@ -187,7 +185,13 @@ export const AppCard = memo(
     )
 
     return (
-      <div className="group relative col-span-1 h-41.5">
+      <li
+        className={cn(
+          "group relative isolate col-span-1 h-41.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+          !isPreviewOnly &&
+            'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
+        )}
+      >
         {isPreviewOnly ? (
           <button
             type="button"
@@ -201,33 +205,33 @@ export const AppCard = memo(
             {appCardContent}
           </button>
         ) : (
-          <Link
-            href={appHref}
-            aria-labelledby={appNameId}
-            aria-describedby={app.description ? appDescriptionId : undefined}
-            data-step-by-step-tour-target={stepByStepTourCardTarget}
-            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={appCardClassName}
-          >
-            {appCardContent}
-          </Link>
-        )}
-        {!isPreviewOnly && (
-          <AppCardActionBar
+          <AppCardInteractions
             app={app}
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
-          />
+          >
+            <Link
+              href={appHref}
+              aria-labelledby={appNameId}
+              aria-describedby={app.description ? appDescriptionId : undefined}
+              data-step-by-step-tour-target={stepByStepTourCardTarget}
+              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+              className={appCardClassName}
+            >
+              {appCardContent}
+            </Link>
+          </AppCardInteractions>
         )}
         <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
           <AppCardTags
             appId={app.id}
+            appName={app.name}
             tags={app.tags ?? []}
             canBindOrUnbindTags={canBindOrUnbindTags}
             onOpenTagManagement={onOpenTagManagement}
           />
         </div>
-      </div>
+      </li>
     )
   },
 )

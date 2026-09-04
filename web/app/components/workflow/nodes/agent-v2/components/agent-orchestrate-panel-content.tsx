@@ -65,6 +65,11 @@ import {
   useAgentConfigureBuildDraftData,
 } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
+import {
+  trackAgentBuildModeRun,
+  trackAgentPreviewModeRun,
+  useInlineAgentScope,
+} from '@/features/agent-v2/analytics'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
@@ -294,6 +299,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 }) {
   const { t } = useTranslation('common')
   const { t: tAgent } = useTranslation('agentV2')
+  const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
   const setBuildDraftSoulSourceOverride = buildDraft.setSoulSourceOverride
@@ -779,15 +785,18 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               }}
               onSaveDraftBeforeRun={
                 rightPanelMode === 'build'
-                  ? () => {
-                      return runBuildPreparation({
+                  ? async () => {
+                      const preparedBuildDraft = await runBuildPreparation({
                         generation: buildCallbackGeneration,
                         markBuildChatStarted: true,
                         prepare: prepareInlineBuildDraftBeforeRun,
                       })
+                      trackAgentBuildModeRun(agentScope)
+                      return preparedBuildDraft
                     }
                   : async () => {
                       await saveDraft()
+                      trackAgentPreviewModeRun(agentScope)
                     }
               }
               onSendInterrupted={() => {

@@ -56,7 +56,7 @@ export const hasReservedWorkflowOutputConflict = (
 }
 
 export const getWorkflowOutputParameters = (
-  rawOutputParameters: WorkflowToolProviderOutputParameter[],
+  rawOutputParameters: WorkflowToolProviderOutputParameter[] | undefined,
   outputSchema?: WorkflowToolProviderOutputSchema,
 ) => {
   return buildWorkflowOutputParameters(rawOutputParameters, outputSchema)

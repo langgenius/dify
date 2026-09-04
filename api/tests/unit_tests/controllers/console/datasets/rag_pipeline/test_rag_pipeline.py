@@ -27,6 +27,7 @@ from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.account import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _template_item() -> dict[str, object]:
@@ -376,7 +377,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         dataset = object()
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
             patch.object(module.DatasetService, "check_dataset_permission") as legacy_acl,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
@@ -409,7 +410,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         dataset = object()
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
@@ -425,7 +426,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         payload = _payload()
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(Pipeline, "retrieve_dataset", return_value=object()),
             patch.object(
                 module.RagPipelineService,
@@ -446,7 +447,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         payload = _payload()
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(Pipeline, "retrieve_dataset", return_value=dataset),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
@@ -464,7 +465,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         account.role = TenantAccountRole.NORMAL
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(Pipeline, "retrieve_dataset", return_value=object()),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
@@ -482,7 +483,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         account.role = TenantAccountRole.EDITOR
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(Pipeline, "retrieve_dataset", return_value=object()),
             patch.object(
                 module.DatasetService,
@@ -503,7 +504,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         account.role = TenantAccountRole.EDITOR
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(Pipeline, "retrieve_dataset", return_value=None),
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,

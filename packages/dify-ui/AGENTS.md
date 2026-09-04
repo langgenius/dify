@@ -19,16 +19,18 @@ then read only the guide for the contract being changed.
 
 - Imports, exports, naming, public types, generics, and anatomy: [Public API authoring]
 - Button and icon-only action behavior: [Button contract] and [Icon Button contract]
+- Cross-component accessible-name and description choices: [Accessible names and descriptions]
 - Compound input behavior: [Input Group contract]
-- Form structure and labels: [Forms]
+- Form structure, labels, and value ownership: [Forms]
 - Picker choice and typed values: [Selection]
-- Portals, layering, and floating-surface semantics: [Overlays]
+- Portals, presence, layering, and floating-surface semantics: [Overlays]
 - Tailwind integration and radius mapping: [Styling]
 - Package test ownership and setup: [Testing and development]
 
 A component needs a local README only when it owns a substantial Dify-specific contract that its
 types, stories, and upstream documentation do not express. Do not create one for completeness.
 
+[Accessible names and descriptions]: docs/accessible-names-and-descriptions.md
 [Button contract]: src/button/README.md
 [Forms]: docs/forms.md
 [Icon Button contract]: src/icon-button/README.md

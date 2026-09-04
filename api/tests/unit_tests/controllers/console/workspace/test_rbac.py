@@ -127,6 +127,27 @@ class TestAccessMatrixAccountNames:
 
         assert items[0].account.account_name == "Alice"
 
+    def test_moves_resource_maintainer_to_first_position(self):
+        items = [
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-maintainer"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
+        ]
+
+        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
+
+        assert [item.account.account_id for item in items] == ["acct-maintainer", "acct-2", "acct-3"]
+
+    def test_keeps_resource_user_order_when_maintainer_is_not_on_page(self):
+        items = [
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
+        ]
+
+        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
+
+        assert [item.account.account_id for item in items] == ["acct-2", "acct-3"]
+
 
 class TestPydanticModels:
     """The internal `_…Request` models are the contract between the browser
@@ -165,20 +186,13 @@ class TestPydanticModels:
         with pytest.raises(ValidationError):
             rbac_mod._AccessPolicyCreateRequest.model_validate({"name": "bad", "resource_type": "unknown"})
 
-    def test_resource_access_scope_requires_scope(self):
+    def test_resource_access_scope_requires_automatic_include_workspace_members(self):
         with pytest.raises(ValidationError):
             rbac_mod._ResourceAccessScopeRequest.model_validate({})
 
-    def test_resource_access_scope_defaults_empty_account_ids(self):
-        parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "specific"})
-        assert parsed.scope is rbac_mod.RBACResourceWhitelistScope.SPECIFIC
-
-    def test_resource_access_scope_coerce_null_account_ids(self):
-        rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all"})
-
-    def test_resource_access_scope_rejects_unknown_scope(self):
-        with pytest.raises(ValidationError):
-            rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "team"})
+    def test_resource_access_scope_accepts_automatic_include_workspace_members(self):
+        parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"automatic_include_workspace_members": True})
+        assert parsed.automatic_include_workspace_members is True
 
     def test_replace_bindings_keeps_role_binding_contract(self):
         parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None})
@@ -324,18 +338,18 @@ class TestResourceAccessScopeBindings:
             app.test_request_context(
                 "/workspaces/current/rbac/apps/app-1/whitelist",
                 method="PUT",
-                json={"scope": "all"},
+                json={"automatic_include_workspace_members": True},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
+                return_value=rbac_mod.svc.ResourceWhitelist(automatic_include_workspace_members=True),
             ),
             patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
         ):
             inspect.unwrap(rbac_mod.RBACAppWhitelistApi.put)(rbac_mod.RBACAppWhitelistApi(), "app-1")
 
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
+        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", app_id="app-1")
 
     def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
         # Widening a dataset to the whole workspace only records the scope; without granting the
@@ -344,12 +358,12 @@ class TestResourceAccessScopeBindings:
             app.test_request_context(
                 "/workspaces/current/rbac/datasets/dataset-1/whitelist",
                 method="PUT",
-                json={"scope": "all"},
+                json={"automatic_include_workspace_members": True},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
+                return_value=rbac_mod.svc.ResourceWhitelist(automatic_include_workspace_members=True),
             ),
             patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
         ):
@@ -362,18 +376,54 @@ class TestResourceAccessScopeBindings:
             app.test_request_context(
                 "/workspaces/current/rbac/datasets/dataset-1/whitelist",
                 method="PUT",
-                json={"scope": "specific"},
+                json={"automatic_include_workspace_members": False},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
+                return_value=rbac_mod.svc.ResourceWhitelist(automatic_include_workspace_members=False),
             ),
             patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
         ):
             inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
 
         mock_sync_task.delay.assert_not_called()
+
+    def test_app_whitelist_config_returns_switch_state_only(self, app):
+        result = rbac_mod.svc.ResourceWhitelistConfig(automatic_include_workspace_members=True)
+        with (
+            app.test_request_context("/workspaces/current/rbac/apps/app-1/whitelist_config"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.whitelist_config",
+                return_value=result,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACAppWhitelistConfigApi.get)(
+                rbac_mod.RBACAppWhitelistConfigApi(),
+                "app-1",
+            )
+
+        assert response == {"automatic_include_workspace_members": True}
+        mock_get.assert_called_once_with("tenant-1", "acct-1", "app-1")
+
+    def test_dataset_whitelist_config_returns_switch_state_only(self, app):
+        result = rbac_mod.svc.ResourceWhitelistConfig(automatic_include_workspace_members=False)
+        with (
+            app.test_request_context("/workspaces/current/rbac/datasets/dataset-1/whitelist_config"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.whitelist_config",
+                return_value=result,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACDatasetWhitelistConfigApi.get)(
+                rbac_mod.RBACDatasetWhitelistConfigApi(),
+                "dataset-1",
+            )
+
+        assert response == {"automatic_include_workspace_members": False}
+        mock_get.assert_called_once_with("tenant-1", "acct-1", "dataset-1")
 
     def test_app_user_access_policy_assignment_forwards_ids(self, app):
         with (
@@ -497,6 +547,56 @@ class TestPaginationForwarding:
         options = kwargs["options"]
         assert options.page_number == 5
         assert options.results_per_page == 15
+        assert options.reverse is True
+
+    def test_app_user_access_policies_forwards_outer_pagination_params(self, app):
+        result = rbac_mod.svc.ResourceUserAccessPoliciesResponse()
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/apps/app-1/user-access-policies?page=2&limit=30&reverse=false"
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.user_access_policies",
+                return_value=result,
+            ) as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACAppUserAccessPoliciesApi.get)(
+                rbac_mod.RBACAppUserAccessPoliciesApi(),
+                "app-1",
+            )
+
+        args, kwargs = mock_list.call_args
+        assert args == ("tenant-1", "acct-1", "app-1")
+        options = kwargs["options"]
+        assert options.page_number == 2
+        assert options.results_per_page == 30
+        assert options.reverse is False
+
+    def test_dataset_user_access_policies_forwards_outer_pagination_params(self, app):
+        result = rbac_mod.svc.ResourceUserAccessPoliciesResponse()
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/user-access-policies?page=3&limit=40&reverse=true"
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.user_access_policies",
+                return_value=result,
+            ) as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetUserAccessPoliciesApi.get)(
+                rbac_mod.RBACDatasetUserAccessPoliciesApi(),
+                "dataset-1",
+            )
+
+        args, kwargs = mock_list.call_args
+        assert args == ("tenant-1", "acct-1", "dataset-1")
+        options = kwargs["options"]
+        assert options.page_number == 3
+        assert options.results_per_page == 40
         assert options.reverse is True
 
 

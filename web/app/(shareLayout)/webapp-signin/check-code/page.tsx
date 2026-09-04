@@ -1,12 +1,14 @@
 'use client'
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
+import {
+  navigateAfterWebAppLogin,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -67,7 +69,7 @@ export default function CheckCode() {
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
       console.error(error)
@@ -107,7 +109,10 @@ export default function CheckCode() {
   return (
     <div className="flex w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
+        <span
+          aria-hidden
+          className="i-ri-mail-send-fill size-6 text-2xl text-text-accent-light-mode-only"
+        />
       </div>
       <div className="pt-2 pb-4">
         <h1 className="title-4xl-semi-bold text-text-primary">
@@ -130,8 +135,12 @@ export default function CheckCode() {
         <Input
           ref={codeInputRef}
           id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onValueChange={setCode}
           maxLength={6}
           className="mt-1"
           placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
@@ -156,7 +165,7 @@ export default function CheckCode() {
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         <span className="bg-background-default-dimm inline-block rounded-full p-1">
-          <RiArrowLeftLine aria-hidden size={12} />
+          <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
         <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>

@@ -193,7 +193,7 @@ const Editor: FC<Props> = ({
                       </button>
                     }
                   />
-                  <PopoverContent className="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary">
                     {titleTooltip}
                   </PopoverContent>
                 </Popover>

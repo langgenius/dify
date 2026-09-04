@@ -16,7 +16,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -101,7 +101,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
       const summary = providers.find((item) => item.provider === collection?.id)
       if (!summary) return
       try {
-        const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
+        const response = await queryClient.query({
+          ...modelProviderDetailsQueryOptions(),
+          staleTime: 'static',
+        })
         const provider = response.data.find((item) => item.provider === summary.provider)
         if (!provider) return
         setShowModelModal({
@@ -336,24 +339,20 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     !isDetailLoading &&
                     customCollection && (
                       <>
-                        <Button
-                          nativeButton={false}
-                          variant="primary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
-                          render={
-                            <a
-                              href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
-                              rel="noreferrer"
-                              target="_blank"
-                              aria-label={t(($) => $.openInStudio, { ns: 'tools' })}
-                            />
-                          }
+                        <a
+                          href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
+                          rel="noreferrer"
+                          target="_blank"
+                          className={cn(
+                            buttonVariants({ variant: 'primary' }),
+                            'my-3 h-8 min-w-0 flex-1 rounded-lg py-2',
+                          )}
                         >
                           <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
-                        </Button>
+                        </a>
                         <Button
                           variant="secondary"
                           className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}

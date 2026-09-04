@@ -195,7 +195,7 @@ class ChatMessageBlockingResponse(ResponseModel):
     conversation_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
 
 
@@ -237,7 +237,7 @@ class ChatPausedBlockingDataResponse(ResponseModel):
     message_id: UUIDString
     workflow_run_id: UUIDString
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
     paused_nodes: list[str]
     reasons: list[ChatPauseReasonResponse]
@@ -257,7 +257,7 @@ class ChatPausedBlockingResponse(ResponseModel):
     conversation_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
     workflow_run_id: UUIDString
     data: ChatPausedBlockingDataResponse
@@ -283,7 +283,7 @@ class CompletionBlockingResponse(ResponseModel):
     message_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
 
 
@@ -332,7 +332,7 @@ class WorkflowBlockingResponse(RootModel[WorkflowFinishedBlockingResponse | Work
 
 
 class SimpleResultResponse(ResponseModel):
-    result: str
+    result: str = Field(description="Operation result.")
 
 
 class GeneratedAppResponse(RootModel[JSONValue]):
@@ -478,7 +478,7 @@ class Parameters(BaseModel):
     user_input_form: UserInputFormList
     sensitive_word_avoidance: FeatureToggleObject
     file_upload: FileUploadObject
-    system_parameters: SystemParameters
+    system_parameters: SystemParameters = Field(description="System-level parameter limits.")
 
 
 class Site(BaseModel):

@@ -23,7 +23,7 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -153,7 +153,7 @@ class AgentAppSandboxInfoResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -183,7 +183,7 @@ class AgentAppSandboxListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -214,7 +214,7 @@ class AgentAppSandboxReadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -245,7 +245,7 @@ class AgentAppSandboxDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     @model_validate(AgentSandboxDownloadPayload)

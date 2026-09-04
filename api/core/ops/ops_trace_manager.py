@@ -1573,10 +1573,6 @@ class TraceQueueManager:
         return None
 
     def persist_trace_task(self, task: TraceTask, *, file_id: str | None = None) -> dict[str, str] | None:
-        if not (self._enterprise_telemetry_enabled or self.trace_instance):
-            return None
-
-        task.app_id = self.app_id
         storage_id = self._resolve_storage_id(task)
         if storage_id is None:
             return None

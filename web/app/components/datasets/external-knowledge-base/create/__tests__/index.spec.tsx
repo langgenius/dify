@@ -15,6 +15,14 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/next/link', () => ({
+  default: ({ children, replace, ...props }: React.ComponentProps<'a'> & { replace?: boolean }) => (
+    <a {...props} data-replace={replace || undefined}>
+      {children}
+    </a>
+  ),
+}))
+
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) =>
@@ -117,10 +125,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should render KnowledgeBaseInfo component with correct labels', () => {
       renderComponent()
 
-      // KnowledgeBaseInfo renders these labels
-      // KnowledgeBaseInfo renders these labels
-      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeName' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeDescription' }),
+      ).toBeInTheDocument()
     })
 
     it('should render ExternalApiSelection component', () => {
@@ -361,16 +371,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
 
-    it('should navigate back when cancel button is clicked', async () => {
-      const user = userEvent.setup()
+    it('should link back to the dataset list from cancel', () => {
       renderComponent()
 
-      const cancelButton = screen
-        .getByText('dataset.externalKnowledgeForm.cancel')
-        .closest('button')
-      await user.click(cancelButton!)
-
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      const link = screen.getByRole('link', { name: 'dataset.externalKnowledgeForm.cancel' })
+      expect(link).toHaveAttribute('href', '/datasets')
+      expect(link).toHaveAttribute('data-replace', 'true')
     })
 
     it('should call onConnect with complete form data when connect is clicked', async () => {

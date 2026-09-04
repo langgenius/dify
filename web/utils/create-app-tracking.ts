@@ -1,3 +1,4 @@
+import type { AgentScope } from '@/features/agent-v2/analytics'
 import Cookies from 'js-cookie'
 import { flushEvents, trackEvent } from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
@@ -32,6 +33,7 @@ type CreateAppSource =
 export type TrackCreateAppParams = {
   source: CreateAppSource
   appMode: string
+  agentScope?: AgentScope
   templateId?: string
 }
 
@@ -177,6 +179,7 @@ export const buildCreateAppEventPayload = (
     source,
     app_mode: mapOriginalCreateAppMode(params.appMode),
     time: formatCreateAppTime(currentTime),
+    ...(params.agentScope ? { agent_scope: params.agentScope } : {}),
     ...(params.templateId ? { template_id: params.templateId } : {}),
     ...(externalAttribution
       ? {

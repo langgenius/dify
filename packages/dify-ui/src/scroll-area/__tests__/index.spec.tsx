@@ -87,6 +87,12 @@ describe('scroll area', () => {
       await expect.element(screen.getByTestId('scroll-area-root')).toBeInTheDocument()
       await expect.element(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
       await expect
+        .element(screen.getByTestId('scroll-area-root'))
+        .toHaveAttribute('data-dify-scroll-area')
+      await expect
+        .element(screen.getByTestId('scroll-area-viewport'))
+        .toHaveAttribute('data-dify-scroll-area-viewport')
+      await expect
         .element(screen.getByTestId('scroll-area-content'))
         .toHaveTextContent('Scrollable content')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toBeInTheDocument()
@@ -192,7 +198,7 @@ describe('scroll area', () => {
         .toHaveAttribute('data-orientation', 'vertical')
       await expect
         .element(screen.getByTestId('scroll-area-vertical-scrollbar'))
-        .toHaveAttribute('data-dify-scrollbar')
+        .toHaveAttribute('data-dify-scroll-area-scrollbar')
       await expect
         .element(screen.getByTestId('scroll-area-vertical-thumb'))
         .toHaveAttribute('data-orientation', 'vertical')
@@ -206,7 +212,7 @@ describe('scroll area', () => {
         .toHaveAttribute('data-orientation', 'horizontal')
       await expect
         .element(screen.getByTestId('scroll-area-horizontal-scrollbar'))
-        .toHaveAttribute('data-dify-scrollbar')
+        .toHaveAttribute('data-dify-scroll-area-scrollbar')
       await expect
         .element(screen.getByTestId('scroll-area-horizontal-thumb'))
         .toHaveAttribute('data-orientation', 'horizontal')

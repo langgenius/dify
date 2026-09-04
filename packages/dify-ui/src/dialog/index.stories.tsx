@@ -363,7 +363,9 @@ export const FormDialog: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Configure API extension' }))
 
-    await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    await waitFor(async () => {
+      await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    })
   },
 }
 
@@ -381,7 +383,7 @@ const OutsideScrollingContentDemo = () => {
             <ScrollAreaViewport
               aria-label="Scrollable dialog viewport"
               role="region"
-              className="h-full max-h-full max-w-full overscroll-contain group-data-ending-style/dialog:pointer-events-none"
+              className="overscroll-contain group-data-ending-style/dialog:pointer-events-none"
             >
               <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
                 <DialogPopup
@@ -488,11 +490,11 @@ const InsideScrollingContentDemo = () => {
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
+            <ScrollArea className="flex min-h-0 flex-auto overflow-hidden">
               <ScrollAreaViewport
                 aria-label="Release note improvements"
                 role="region"
-                className="h-full max-h-full max-w-full overscroll-contain"
+                className="overscroll-contain"
               >
                 <ScrollAreaContent>
                   <ReleaseNoteSections />

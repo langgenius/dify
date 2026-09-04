@@ -403,7 +403,7 @@ const VirtualizedModelList = ({
   }, [virtualizer, virtualizerRef])
 
   return (
-    <ScrollArea className="relative overflow-hidden">
+    <ScrollArea className="overflow-hidden">
       <ScrollAreaViewport
         ref={scrollRef}
         role="region"
@@ -832,24 +832,31 @@ const MultipleChipsDemo = () => {
       <FieldLabel>Reviewers</FieldLabel>
       <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
-          <ComboboxChips>
-            <ComboboxValue<Option, true>>
-              {(selectedValue) => (
-                <React.Fragment>
-                  {selectedValue?.map((item) => (
-                    <ComboboxChip key={item.value}>
+          <ComboboxValue<Option, true>>
+            {(selectedValue) => {
+              const selectedReviewers = selectedValue ?? []
+
+              return (
+                <ComboboxChips
+                  aria-label={selectedReviewers.length > 0 ? 'Selected reviewers' : undefined}
+                >
+                  {selectedReviewers.map((item) => (
+                    <ComboboxChip
+                      key={item.value}
+                      aria-description="Press Backspace or Delete to remove"
+                    >
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
                   <ComboboxInput
-                    placeholder={selectedValue?.length ? '' : 'Assign reviewers…'}
+                    placeholder={selectedReviewers.length > 0 ? '' : 'Assign reviewers…'}
                     className="min-w-24 px-1 py-0.5"
                   />
-                </React.Fragment>
-              )}
-            </ComboboxValue>
-          </ComboboxChips>
+                </ComboboxChips>
+              )
+            }}
+          </ComboboxValue>
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -861,6 +868,11 @@ const MultipleChipsDemo = () => {
       </Combobox>
       <FieldDescription>
         Selected reviewers wrap inside the input instead of scrolling horizontally.
+        {value.length > 0 && (
+          <span className="sr-only">
+            {` ${value.length} selected. From the start of the input, press Left Arrow to focus the selected items`}
+          </span>
+        )}
       </FieldDescription>
     </Field>
   )
@@ -871,11 +883,25 @@ export const MultipleChips: Story = {
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText('Maya Chen')).toBeVisible()
     await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    await expect(canvas.getByRole('toolbar', { name: 'Selected reviewers' })).toBeVisible()
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Remove Maya Chen' }))
+    await expect(canvas.getByText('Liam Brooks').parentElement!).toHaveAccessibleDescription(
+      'Press Backspace or Delete to remove',
+    )
 
-    await expect(canvas.queryByText('Maya Chen')).not.toBeInTheDocument()
-    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    const input = canvas.getByRole('combobox', { name: 'Reviewers' })
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 2 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
+
+    input.focus()
+    await userEvent.keyboard('{ArrowLeft}{Delete}')
+
+    await expect(canvas.queryByText('Liam Brooks')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Maya Chen')).toBeVisible()
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 1 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
   },
 }
 

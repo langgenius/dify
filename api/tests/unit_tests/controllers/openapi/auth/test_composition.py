@@ -17,6 +17,7 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def test_account_pipeline_is_auth_pipeline():
@@ -144,7 +145,7 @@ def _selected_webapp_steps(*, scope, app_access_mode):
     Patches the config-backed conditions (edition + webapp_auth) so the gating
     reduces to PATH_HAS_APP_ID, LOADED_APP_IS_PRIVATE, and the request scope.
     """
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import patch
 
     from controllers.openapi.auth.data import AuthData
 
@@ -159,15 +160,10 @@ def _selected_webapp_steps(*, scope, app_access_mode):
         scopes=frozenset({scope}) if scope is not None else frozenset(),
         app_access_mode=app_access_mode,
     )
-    features = MagicMock()
-    features.webapp_auth.enabled = True
     selected = []
     with (
-        patch(
-            "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
-            DeploymentEdition.ENTERPRISE,
-        ),
-        patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=features),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE),
+        patch("controllers.openapi.auth.conditions.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
     ):
         for step in account_pipeline._auth:
             if isinstance(step, When):

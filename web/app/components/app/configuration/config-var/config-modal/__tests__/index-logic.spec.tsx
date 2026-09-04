@@ -176,4 +176,26 @@ describe('ConfigModal logic', () => {
 
     expect(latestFormProps?.modelId).toBe('model-1')
   })
+
+  it('should pass object json_schema to the editor as JSON text', () => {
+    const jsonSchema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+      },
+      required: ['id', 'name'],
+    }
+
+    renderConfigModal(
+      createPayload({
+        type: InputVarType.jsonObject,
+        label: 'dsmworksheet',
+        variable: 'dsmworksheet',
+        json_schema: jsonSchema as InputVar['json_schema'],
+      }),
+    )
+
+    expect(latestFormProps?.jsonSchemaStr).toBe(JSON.stringify(jsonSchema, null, 2))
+  })
 })

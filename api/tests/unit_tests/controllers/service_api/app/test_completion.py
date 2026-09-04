@@ -54,6 +54,7 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -556,7 +557,7 @@ class TestChatApiController:
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
@@ -602,7 +603,7 @@ class TestChatApiController:
         workflow_id: str | None,
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
 
         billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})

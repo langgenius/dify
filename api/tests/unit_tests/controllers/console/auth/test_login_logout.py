@@ -1,724 +1,386 @@
-"""
-Test suite for login and logout authentication flows.
+"""Transport-boundary tests for Console authentication endpoints."""
 
-This module tests the core authentication endpoints including:
-- Email/password login with rate limiting
-- Session management and logout
-- Cookie-based token handling
-- Account status validation
-"""
+from __future__ import annotations
 
 import base64
-import logging
 from collections.abc import Callable
-from unittest.mock import ANY, MagicMock, Mock, patch
+from dataclasses import dataclass, field
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask
-from flask_restx import Api
-from werkzeug.exceptions import Unauthorized
 
+from controllers.console import wraps
+from controllers.console.auth import login
 from controllers.console.auth.error import (
     AuthenticationFailedError,
+    EmailCodeError,
+    EmailCodeLoginRateLimitExceededError,
+    EmailCodeLoginServiceUnavailableError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
+    InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
+    PasswordResetRateLimitExceededError,
+    TurnstileServiceUnavailableError,
+    TurnstileVerificationFailedError,
 )
-from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi, ResetPasswordSendEmailApi
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
+    AccountNotFound,
     EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+    InvalidAccountPasswordRequestError,
+    NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
-from models.account import Account, Tenant
-from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
-from services.entities.auth_entities import LoginFailureReason
-from services.errors.account import (
-    AccountLoginError,
-    AccountPasswordError,
-    AccountRegisterError,
-    SeatsLimitExceededError,
-)
-from services.errors.account import (
-    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+from services import account_errors
+from services.entities.account_login_entities import (
+    AuthTokenPair,
+    EmailCodeLoginCommand,
+    EmailCodeSendCommand,
+    PasswordLoginCommand,
+    PasswordLoginResult,
 )
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
+TOKEN_PAIR = AuthTokenPair(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
+
+
+@dataclass
+class FakeAuthenticationService:
+    error: account_errors.AccountApplicationError | None = None
+    password_commands: list[PasswordLoginCommand] = field(default_factory=list)
+    email_code_send_commands: list[EmailCodeSendCommand] = field(default_factory=list)
+    email_code_login_commands: list[EmailCodeLoginCommand] = field(default_factory=list)
+    reset_arguments: list[tuple[str, str | None, str]] = field(default_factory=list)
+    logout_account_ids: list[str] = field(default_factory=list)
+    refresh_tokens: list[str] = field(default_factory=list)
+    workspace_found: bool = True
+
+    def _raise_if_needed(self) -> None:
+        if self.error is not None:
+            raise self.error
+
+    def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
+        self.password_commands.append(command)
+        self._raise_if_needed()
+        return PasswordLoginResult(
+            token_pair=TOKEN_PAIR if self.workspace_found else None,
+            workspace_found=self.workspace_found,
+        )
+
+    def logout(self, account_id: str) -> None:
+        self.logout_account_ids.append(account_id)
+
+    def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
+        self.reset_arguments.append((email, language, ip_address))
+        self._raise_if_needed()
+        return "reset-token"
+
+    def send_email_code(self, command: EmailCodeSendCommand) -> str:
+        self.email_code_send_commands.append(command)
+        self._raise_if_needed()
+        return "email-code-token"
+
+    def login_with_email_code(self, command: EmailCodeLoginCommand) -> AuthTokenPair:
+        self.email_code_login_commands.append(command)
+        self._raise_if_needed()
+        return TOKEN_PAIR
+
+    def refresh(self, refresh_token: str) -> AuthTokenPair:
+        self.refresh_tokens.append(refresh_token)
+        self._raise_if_needed()
+        return TOKEN_PAIR
 
 
 @pytest.fixture(autouse=True)
-def _login_config(config_overrides: Callable[..., None]) -> None:
+def admit_authentication_requests(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    monkeypatch.setattr(wraps.SystemFeatureService, "is_email_password_login_enabled", lambda: True)
+
+
+@pytest.fixture
+def service(monkeypatch: pytest.MonkeyPatch) -> FakeAuthenticationService:
+    service = FakeAuthenticationService()
+    services = SimpleNamespace(accounts=SimpleNamespace(authentication=service))
+    monkeypatch.setattr(login, "application_services", lambda: services)
+    monkeypatch.setattr(login, "extract_remote_ip", lambda _request: "127.0.0.1")
+    return service
+
+
+def _encode(value: str) -> str:
+    return base64.b64encode(value.encode()).decode()
+
+
+def test_password_login_parses_input_and_serializes_cookies(
+    app: Flask,
+    service: FakeAuthenticationService,
+) -> None:
+    with app.test_request_context(
+        "/login",
+        method="POST",
+        json={
+            "email": "User@Example.com",
+            "password": _encode("password"),
+            "invite_token": "invite-token",
+        },
+    ):
+        response = login.LoginApi().post()
+
+    assert response.json == {"result": "success", "data": None}
+    assert service.password_commands == [
+        PasswordLoginCommand(
+            email="User@Example.com",
+            password="password",
+            invite_token="invite-token",
+            ip_address="127.0.0.1",
+        )
+    ]
+    cookies = response.headers.getlist("Set-Cookie")
+    assert any("access_token=" in cookie for cookie in cookies)
+    assert any("refresh_token=" in cookie for cookie in cookies)
+    assert any("csrf_token=" in cookie for cookie in cookies)
+
+
+def test_password_login_serializes_missing_workspace(
+    app: Flask,
+    service: FakeAuthenticationService,
+) -> None:
+    service.workspace_found = False
+    with app.test_request_context(
+        "/login",
+        method="POST",
+        json={"email": "user@example.com", "password": _encode("password")},
+    ):
+        response = login.LoginApi().post()
+
+    assert response["result"] == "fail"
+    assert "workspace not found" in response["data"]
+
+
+def test_invitation_login_with_empty_password_returns_authentication_failure(
+    app: Flask,
+    service: FakeAuthenticationService,
+) -> None:
+    service.error = account_errors.InvalidLoginCredentialsError()
+    with app.test_request_context(
+        "/login",
+        method="POST",
+        json={"email": "user@example.com", "password": _encode(""), "invite_token": "invite-token"},
+    ):
+        with pytest.raises(AuthenticationFailedError):
+            login.LoginApi().post()
+
+    assert service.password_commands == [
+        PasswordLoginCommand(
+            email="user@example.com",
+            password="",
+            invite_token="invite-token",
+            ip_address="127.0.0.1",
+        )
+    ]
+
+
+def test_invitation_login_with_weak_password_returns_policy_failure(
+    app: Flask,
+    service: FakeAuthenticationService,
+) -> None:
+    service.error = account_errors.InvalidAccountPasswordError("Password must contain letters and numbers")
+    with app.test_request_context(
+        "/login",
+        method="POST",
+        json={"email": "user@example.com", "password": _encode("letters-only"), "invite_token": "invite-token"},
+    ):
+        with pytest.raises(InvalidAccountPasswordRequestError, match="letters and numbers"):
+            login.LoginApi().post()
+
+
+def test_reset_password_delegates_transport_values(app: Flask, service: FakeAuthenticationService) -> None:
+    with app.test_request_context(
+        "/reset-password",
+        method="POST",
+        json={"email": "User@Example.com", "language": "zh-Hans"},
+    ):
+        response = login.ResetPasswordSendEmailApi().post()
+
+    assert response == {"result": "success", "data": "reset-token"}
+    assert service.reset_arguments == [("User@Example.com", "zh-Hans", "127.0.0.1")]
+
+
+def test_email_code_send_delegates_validated_command(app: Flask, service: FakeAuthenticationService) -> None:
+    with app.test_request_context(
+        "/email-code-login",
+        method="POST",
+        json={"email": "user@example.com", "turnstile_token": "challenge"},
+    ):
+        response = login.EmailCodeLoginSendEmailApi().post()
+
+    assert response == {"result": "success", "data": "email-code-token"}
+    assert service.email_code_send_commands == [
+        EmailCodeSendCommand(
+            email="user@example.com",
+            language=None,
+            turnstile_token="challenge",
+            ip_address="127.0.0.1",
+        )
+    ]
+
+
+def test_email_code_login_decodes_code_and_serializes_tokens(
+    app: Flask,
+    service: FakeAuthenticationService,
+) -> None:
+    with app.test_request_context(
+        "/email-code-login/validity",
+        method="POST",
+        json={
+            "email": "User@Example.com",
+            "code": _encode("123456"),
+            "token": TEST_TOKEN,
+            "timezone": "Asia/Singapore",
+        },
+    ):
+        response = login.EmailCodeLoginApi().post()
+
+    assert response.json == {"result": "success"}
+    assert service.email_code_login_commands == [
+        EmailCodeLoginCommand(
+            email="User@Example.com",
+            code="123456",
+            token=TEST_TOKEN,
+            turnstile_token=None,
+            language=None,
+            timezone="Asia/Singapore",
+            ip_address="127.0.0.1",
+        )
+    ]
+
+
+def test_logout_uses_optional_current_account(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logout_calls: list[bool] = []
+    monkeypatch.setattr(login.flask_login, "logout_user", lambda: logout_calls.append(True))
+    monkeypatch.setattr(
+        login,
+        "current_account_with_tenant_optional",
+        lambda: (SimpleNamespace(id="account-1"), "workspace-1"),
+    )
+
+    with app.test_request_context("/logout", method="POST"):
+        response = login.LogoutApi().post()
+
+    assert response.json == {"result": "success"}
+    assert service.logout_account_ids == ["account-1"]
+    assert logout_calls == [True]
+
+
+def test_logout_clears_cookies_without_current_account(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logout_calls: list[bool] = []
+    monkeypatch.setattr(login.flask_login, "logout_user", lambda: logout_calls.append(True))
+    monkeypatch.setattr(login, "current_account_with_tenant_optional", lambda: (None, None))
+
+    with app.test_request_context("/logout", method="POST"):
+        response = login.LogoutApi().post()
+
+    assert response.json == {"result": "success"}
+    assert service.logout_account_ids == []
+    assert logout_calls == []
+    cookies = response.headers.getlist("Set-Cookie")
+    assert any("access_token=" in cookie for cookie in cookies)
+    assert any("refresh_token=" in cookie for cookie in cookies)
+    assert any("csrf_token=" in cookie for cookie in cookies)
+
+
+def test_refresh_maps_invalid_session_to_unauthorized(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service.error = account_errors.InvalidRefreshTokenError("Invalid refresh token")
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "bad-token")
+
+    with app.test_request_context("/refresh-token", method="POST"):
+        response, status = login.RefreshTokenApi().post()
+
+    assert status == 401
+    assert response == {"result": "fail", "message": "Invalid refresh token"}
+
+
+def test_refresh_rejects_missing_cookie(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: None)
+
+    with app.test_request_context("/refresh-token", method="POST"):
+        response, status = login.RefreshTokenApi().post()
+
+    assert status == 401
+    assert response["message"] == "No refresh token provided"
+    assert service.refresh_tokens == []
+
+
+def test_refresh_does_not_require_completed_setup(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-
-
-def encode_password(password: str) -> str:
-    """Helper to encode password as Base64 for testing."""
-    return base64.b64encode(password.encode("utf-8")).decode()
-
-
-def encode_code(code: str) -> str:
-    """Helper to encode verification code as Base64 for testing."""
-    return base64.b64encode(code.encode("utf-8")).decode()
-
-
-from inspect import unwrap
-
-
-class TestLoginApi:
-    """Test cases for the LoginApi endpoint."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def api(self, app: Flask):
-        """Create Flask-RESTX API instance."""
-        return Api(app)
-
-    @pytest.fixture
-    def client(self, app: Flask, api: Api):
-        """Create test client."""
-        api.add_resource(LoginApi, "/login")
-        return app.test_client()
-
-    @pytest.fixture
-    def mock_account(self) -> Account:
-        """Create a real transient account for the service boundary."""
-        account = Account(name="Test User", email="test@example.com")
-        account.id = "test-account-id"
-        return account
-
-    @pytest.fixture
-    def mock_token_pair(self):
-        """Create mock token pair object."""
-        token_pair = MagicMock()
-        token_pair.access_token = "mock_access_token"
-        token_pair.refresh_token = "mock_refresh_token"
-        token_pair.csrf_token = "mock_csrf_token"
-        return token_pair
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.AccountService.login")
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
-    def test_successful_login_without_invitation(
-        self,
-        mock_reset_rate_limit,
-        mock_login,
-        mock_get_tenants,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
-        mock_db,
-        app: Flask,
-        mock_account,
-        mock_token_pair,
-    ):
-        """
-        Test successful login flow without invitation token.
-
-        Verifies that:
-        - Valid credentials authenticate successfully
-        - Tokens are generated and set in cookies
-        - Rate limit is reset after successful login
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = None
-        mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
-        mock_login.return_value = mock_token_pair
-
-        # Act
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "test@example.com", "password": encode_password("ValidPass123!")},
-        ):
-            login_api = LoginApi()
-            response = login_api.post()
-
-        # Assert
-        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", None, session=ANY)
-        mock_login.assert_called_once()
-        mock_reset_rate_limit.assert_called_once_with("test@example.com")
-        assert response.json["result"] == "success"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.AccountService.login")
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
-    def test_successful_login_with_valid_invitation(
-        self,
-        mock_reset_rate_limit: Mock,
-        mock_login,
-        mock_get_tenants,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
-        mock_db,
-        app: Flask,
-        mock_account,
-        mock_token_pair,
-    ):
-        """
-        Test successful login with valid invitation token.
-
-        Verifies that:
-        - Invitation token is validated
-        - Email matches invitation email
-        - Authentication proceeds with invitation token
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
-        mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
-        mock_login.return_value = mock_token_pair
-
-        # Act
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={
-                "email": "test@example.com",
-                "password": encode_password("ValidPass123!"),
-                "invite_token": "valid_token",
-            },
-        ):
-            login_api = LoginApi()
-            response = login_api.post()
-
-        # Assert
-        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", "valid_token", session=ANY)
-        assert response.json["result"] == "success"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_fails_when_rate_limited(
-        self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
-    ):
-        """
-        Test login rejection when rate limit is exceeded.
-
-        Verifies that:
-        - Rate limit check is performed before authentication
-        - EmailPasswordLoginLimitError is raised when limit exceeded
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = True
-        mock_get_invitation.return_value = None
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(EmailPasswordLoginLimitError):
-                login_api.post()
-
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "test@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.LOGIN_RATE_LIMITED
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
-    def test_login_fails_when_account_frozen(
-        self,
-        mock_get_freeze_type,
-        mock_db,
-        app: Flask,
-        caplog: pytest.LogCaptureFixture,
-        config_overrides: Callable[..., None],
-    ):
-        """
-        Test login rejection for frozen accounts.
-
-        Verifies that:
-        - Billing freeze status is checked when billing enabled
-        - AccountInFreezeError is raised for frozen accounts
-        """
-        # Arrange
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        mock_get_freeze_type.return_value = "freeze"
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountInFreezeError):
-                login_api.post()
-
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "frozen@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
-    def test_login_fails_when_email_domain_is_suspended(
-        self,
-        mock_get_freeze_type,
-        mock_db,
-        app: Flask,
-        config_overrides: Callable[..., None],
-    ):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        mock_get_freeze_type.return_value = "email_domain_suspended"
-
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "user@suspended.example", "password": encode_password("password")},
-        ):
-            with pytest.raises(EmailDomainSuspendedError):
-                LoginApi().post()
-
-    @pytest.mark.parametrize(
-        ("service_error", "expected_error"),
-        [
-            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
-            (AccountRegisterError("frozen"), AccountInFreezeError),
-        ],
-    )
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login._get_account_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
-    def test_email_code_login_translates_freeze_errors(
-        self,
-        mock_verify_challenge,
-        mock_get_account,
-        mock_db,
-        app: Flask,
-        service_error,
-        expected_error,
-    ):
-        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
-            status=EmailCodeLoginChallengeStatus.VERIFIED
-        )
-        mock_get_account.side_effect = service_error
-
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
-        ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
-
-    @pytest.mark.parametrize(
-        ("service_error", "expected_error"),
-        [
-            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
-            (AccountRegisterError("frozen"), AccountInFreezeError),
-        ],
-    )
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.db")
-    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
-    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
-    @patch("controllers.console.auth.login._get_account_with_case_fallback")
-    def test_email_code_login_translates_account_creation_freeze_errors(
-        self,
-        mock_get_account,
-        mock_verify_challenge,
-        mock_create_account,
-        mock_login_db,
-        mock_db,
-        app: Flask,
-        service_error,
-        expected_error,
-    ):
-        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
-            status=EmailCodeLoginChallengeStatus.VERIFIED
-        )
-        mock_get_account.return_value = None
-        mock_create_account.side_effect = service_error
-
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
-        ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
-
-    @pytest.mark.parametrize(
-        ("service_error", "expected_error"),
-        [
-            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
-            (AccountRegisterError("frozen"), AccountInFreezeError),
-        ],
-    )
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login._get_account_with_case_fallback")
-    def test_reset_password_translates_freeze_errors(
-        self,
-        mock_get_account,
-        mock_db,
-        app: Flask,
-        service_error,
-        expected_error,
-    ):
-        mock_get_account.side_effect = service_error
-
-        with app.test_request_context(
-            "/reset-password",
-            method="POST",
-            json={"email": "User@Example.com"},
-        ):
-            with pytest.raises(expected_error):
-                ResetPasswordSendEmailApi().post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
-    def test_login_fails_with_invalid_credentials(
-        self,
-        mock_add_rate_limit,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
-        mock_db,
-        app: Flask,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        """
-        Test login failure with invalid credentials.
-
-        Verifies that:
-        - AuthenticationFailedError is raised for wrong password
-        - Login error rate limit counter is incremented
-        - Generic error message prevents user enumeration
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = None
-        mock_authenticate.side_effect = AccountPasswordError("Invalid password")
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "test@example.com", "password": encode_password("WrongPass123!")},
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AuthenticationFailedError):
-                login_api.post()
-
-        mock_add_rate_limit.assert_called_once_with("test@example.com")
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "test@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    def test_login_fails_for_banned_account(
-        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog
-    ):
-        """
-        Test login rejection for banned accounts.
-
-        Verifies that:
-        - AccountBannedError is raised for banned accounts
-        - Login is prevented even with valid credentials
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = None
-        mock_authenticate.side_effect = AccountLoginError("Account is banned")
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "banned@example.com", "password": encode_password("ValidPass123!")},
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountBannedError):
-                login_api.post()
-
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "banned@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_license")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
-    def test_login_fails_when_no_workspace_and_limit_exceeded(
-        self,
-        mock_is_workspace_creation_allowed: MagicMock,
-        mock_get_license: MagicMock,
-        mock_get_tenants: MagicMock,
-        mock_authenticate: MagicMock,
-        mock_get_invitation: MagicMock,
-        mock_is_rate_limit: MagicMock,
-        mock_db: MagicMock,
-        app: Flask,
-        mock_account: MagicMock,
-    ):
-        """
-        Test login failure when user has no workspace and workspace limit exceeded.
-
-        Verifies that:
-        - WorkspacesLimitExceeded is raised when limit reached
-        - User cannot login without an assigned workspace
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = None
-        mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = []  # No tenants
-
-        mock_is_workspace_creation_allowed.return_value = True
-        mock_get_license.return_value.workspaces.is_available.return_value = False
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("ValidPass123!")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(WorkspacesLimitExceeded):
-                login_api.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
-        """
-        Test login failure when invitation email doesn't match login email.
-
-        Verifies that:
-        - InvalidEmailError is raised for email mismatch
-        - Security check prevents invitation token abuse
-        """
-        # Arrange
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = {"data": {"email": "invited@example.com"}}
-
-        # Act & Assert
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={
-                "email": "different@example.com",
-                "password": encode_password("ValidPass123!"),
-                "invite_token": "token",
-            },
-        ):
-            login_api = LoginApi()
-            with pytest.raises(InvalidEmailError):
-                login_api.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.AccountService.login")
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
-    def test_login_retries_with_lowercase_email(
-        self,
-        mock_reset_rate_limit: MagicMock,
-        mock_login_service: MagicMock,
-        mock_get_tenants: MagicMock,
-        mock_add_rate_limit: MagicMock,
-        mock_authenticate: MagicMock,
-        mock_get_invitation: MagicMock,
-        mock_is_rate_limit: MagicMock,
-        mock_db,
-        app: Flask,
-        mock_account,
-        mock_token_pair,
-    ):
-        """Test that login retries with lowercase email when uppercase lookup fails."""
-        mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = None
-        mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
-        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
-        mock_login_service.return_value = mock_token_pair
-
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "Upper@Example.com", "password": encode_password("ValidPass123!")},
-        ):
-            response = LoginApi().post()
-
-        assert response.json["result"] == "success"
-        assert mock_authenticate.call_args_list == [
-            (("Upper@Example.com", "ValidPass123!", None), {"session": ANY}),
-            (("upper@example.com", "ValidPass123!", None), {"session": ANY}),
-        ]
-        mock_add_rate_limit.assert_not_called()
-        mock_reset_rate_limit.assert_called_once_with("upper@example.com")
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
-    @patch("controllers.console.auth.login._get_account_with_case_fallback")
-    def test_email_code_login_logs_banned_account(
-        self,
-        mock_get_account: MagicMock,
-        mock_verify_challenge: MagicMock,
-        mock_db: MagicMock,
-        app: Flask,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
-            status=EmailCodeLoginChallengeStatus.VERIFIED
-        )
-        mock_get_account.side_effect = Unauthorized("Account is banned.")
-
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
-        ):
-            with pytest.raises(AccountBannedError):
-                EmailCodeLoginApi().post()
-
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "user@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.db")
-    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
-    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
-    @patch("controllers.console.auth.login._get_account_with_case_fallback")
-    def test_email_code_login_fails_when_seats_limit_exceeded(
-        self,
-        mock_get_account: MagicMock,
-        mock_verify_challenge: MagicMock,
-        mock_create_account: MagicMock,
-        mock_login_db: MagicMock,
-        mock_db: MagicMock,
-        app: Flask,
-    ):
-        """
-        Test email-code login failure when creating the account would exceed the licensed seats.
-
-        Verifies that:
-        - the new-account path is taken when no account exists for the email
-        - the service-layer SeatsLimitExceededError is translated to the SeatsLimitExceeded HTTP error
-        """
-        # Arrange: valid token, no existing account -> account-creation path
-        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
-            status=EmailCodeLoginChallengeStatus.VERIFIED
-        )
-        mock_get_account.return_value = None
-        mock_create_account.side_effect = SeatsLimitExceededError("licensed seats limit exceeded")
-
-        # Act & Assert
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
-        ):
-            with pytest.raises(SeatsLimitExceeded):
-                EmailCodeLoginApi().post()
-
-        mock_create_account.assert_called_once()
-
-
-class TestLogoutApi:
-    """Test cases for the LogoutApi endpoint."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_account(self) -> Account:
-        """Create a real transient account for the logout service boundary."""
-        account = Account(name="Test User", email="test@example.com")
-        account.id = "test-account-id"
-        return account
-
-    @patch("controllers.console.auth.login.AccountService.logout")
-    @patch("controllers.console.auth.login.flask_login.logout_user")
-    def test_successful_logout(
-        self, mock_logout_user: MagicMock, mock_service_logout: MagicMock, app: Flask, mock_account
-    ):
-        """
-        Test successful logout flow.
-
-        Verifies that:
-        - User session is terminated
-        - AccountService.logout is called
-        - All authentication cookies are cleared
-        - Success response is returned
-        """
-        # Act
-        with app.test_request_context("/logout", method="POST"):
-            logout_api = LogoutApi()
-            response = unwrap(logout_api.post)(logout_api, mock_account)
-
-        # Assert
-        mock_service_logout.assert_called_once_with(account=mock_account)
-        mock_logout_user.assert_called_once()
-        assert response.json["result"] == "success"
-
-    @patch("controllers.console.auth.login.flask_login")
-    def test_logout_anonymous_user(self, mock_flask_login, app: Flask):
-        """
-        Test logout for anonymous (not logged in) user.
-
-        Verifies that:
-        - Anonymous users can call logout endpoint
-        - No errors are raised
-        - Success response is returned
-        """
-        # Arrange
-        # Create a mock anonymous user that will pass isinstance check
-        anonymous_user = MagicMock()
-        mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})
-        anonymous_user.__class__ = mock_flask_login.AnonymousUserMixin
-
-        # Act
-        with app.test_request_context("/logout", method="POST"):
-            logout_api = LogoutApi()
-            response = unwrap(logout_api.post)(logout_api, anonymous_user)
-
-        # Assert
-        assert response.json["result"] == "success"
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: False)
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
+
+    with app.test_request_context("/refresh-token", method="POST"):
+        response = login.RefreshTokenApi().post()
+
+    assert response.json == {"result": "success"}
+    assert service.refresh_tokens == ["old-refresh"]
+
+
+@pytest.mark.parametrize(
+    ("application_error", "request_error"),
+    [
+        (account_errors.AccountEmailDomainSuspendedError(), EmailDomainSuspendedError),
+        (account_errors.AccountEmailFrozenError(), AccountInFreezeError),
+        (account_errors.LoginRateLimitError(), EmailPasswordLoginLimitError),
+        (account_errors.InvalidLoginCredentialsError(), AuthenticationFailedError),
+        (account_errors.InvalidAccountPasswordError("invalid password"), InvalidAccountPasswordRequestError),
+        (account_errors.LoginAccountBannedError(), AccountBannedError),
+        (account_errors.InvalidLoginInvitationEmailError(), InvalidEmailError),
+        (account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+        (account_errors.LoginWorkspaceCreationNotAllowedError(), NotAllowedCreateWorkspace),
+        (account_errors.LoginSeatLimitError(), SeatsLimitExceeded),
+        (account_errors.AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
+        (account_errors.EmailCodeSendIPLimitedError(), EmailSendIpLimitError),
+        (account_errors.EmailCodeSendRateLimitError(5), EmailCodeLoginRateLimitExceededError),
+        (account_errors.HumanVerificationRejectedError(), TurnstileVerificationFailedError),
+        (account_errors.HumanVerificationUnavailableError(), TurnstileServiceUnavailableError),
+        (account_errors.EmailCodeLoginUnavailableError(), EmailCodeLoginServiceUnavailableError),
+        (account_errors.InvalidEmailCodeTokenError(), InvalidTokenError),
+        (account_errors.EmailCodeEmailMismatchError(), InvalidEmailError),
+        (account_errors.InvalidEmailCodeError(), EmailCodeError),
+        (account_errors.AccountNotFoundError(), AccountNotFound),
+        (account_errors.ResetPasswordEmailRateLimitError(1), PasswordResetRateLimitExceededError),
+    ],
+)
+def test_maps_application_errors_to_transport_errors(
+    application_error: account_errors.AccountApplicationError,
+    request_error: type[Exception],
+) -> None:
+    with pytest.raises(request_error):
+        login._raise_request_error(application_error)

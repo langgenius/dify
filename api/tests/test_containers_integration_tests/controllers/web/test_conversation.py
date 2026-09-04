@@ -102,10 +102,8 @@ class TestConversationRenameApi:
                 ConversationRenameApi().post(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.ConversationService.rename")
-    @patch("controllers.web.conversation.web_ns")
-    def test_rename_success(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
+    def test_rename_success(self, mock_rename: MagicMock, app: Flask) -> None:
         c_id = uuid4()
-        mock_ns.payload = {"name": "New Name", "auto_generate": False}
         conv = SimpleNamespace(
             id=str(c_id),
             name="New Name",
@@ -126,10 +124,8 @@ class TestConversationRenameApi:
         "controllers.web.conversation.ConversationService.rename",
         side_effect=ConversationNotExistsError(),
     )
-    @patch("controllers.web.conversation.web_ns")
-    def test_rename_not_found(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
+    def test_rename_not_found(self, mock_rename: MagicMock, app: Flask) -> None:
         c_id = uuid4()
-        mock_ns.payload = {"name": "X", "auto_generate": False}
 
         with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "X"}):
             with pytest.raises(NotFound, match="Conversation Not Exists"):

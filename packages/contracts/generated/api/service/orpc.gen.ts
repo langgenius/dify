@@ -926,6 +926,8 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
 
 /**
+ * Create document by text through the deprecated underscore alias
+ *
  * Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
  *
  * @deprecated
@@ -939,6 +941,7 @@ export const post16 = oc
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
     path: '/datasets/{dataset_id}/document/create_by_text',
+    summary: 'Create document by text through the deprecated underscore alias',
     tags: ['service_api'],
   })
   .input(
@@ -1414,6 +1417,8 @@ export const post24 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
 
 /**
+ * Update document by text through the deprecated underscore alias
+ *
  * Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
  *
  * @deprecated
@@ -1427,6 +1432,7 @@ export const post25 = oc
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_text',
+    summary: 'Update document by text through the deprecated underscore alias',
     tags: ['service_api'],
   })
   .input(

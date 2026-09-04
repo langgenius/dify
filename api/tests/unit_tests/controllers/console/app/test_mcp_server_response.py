@@ -21,6 +21,7 @@ from models import Account
 from models.account import AccountStatus
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer, AppMode, IconType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _app(
@@ -309,7 +310,7 @@ class TestAppMCPServerRefreshController:
         current_user = Account(name="Current user", email="user@example.com", status=AccountStatus.ACTIVE)
         current_user.id = "account-1"
         with (
-            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(current_user, "tenant-1"),

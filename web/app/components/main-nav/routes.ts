@@ -18,6 +18,7 @@ export type MainNavRouteConfig = {
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canManageAgents: boolean
+  canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
   skillEnabled: boolean
@@ -31,7 +32,7 @@ export type DetailSidebarVisibilityOptions = Pick<
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
-  options.skillEnabled && !options.isCurrentWorkspaceDatasetOperator
+  options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -42,7 +43,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
+    active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home-v2',
     activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
@@ -102,7 +103,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
     icon: 'i-custom-vender-main-nav-marketplace-v2',
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,

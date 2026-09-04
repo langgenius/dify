@@ -1,36 +1,16 @@
-import { isCloudAnalyticsPath, isCloudAnalyticsRequest } from '../request-boundary'
+import { isCloudAnalyticsRequest } from '../request-boundary'
 
 const baseRequest = {
   cookieYesSiteKey: 'site-key',
   deploymentEdition: 'CLOUD',
   isProd: true,
-  pathname: '/signin',
   requestHost: 'cloud.dify.ai',
   webPrefix: 'https://cloud.dify.ai',
 } as const
 
 describe('cloud analytics request boundary', () => {
-  it('enables first-party Cloud authentication and console routes', () => {
+  it('enables first-party Cloud requests', () => {
     expect(isCloudAnalyticsRequest(baseRequest)).toBe(true)
-    expect(isCloudAnalyticsPath('/apps')).toBe(true)
-    expect(isCloudAnalyticsPath('/integrations')).toBe(true)
-  })
-
-  it.each([
-    '/agent/token',
-    '/chat/token',
-    '/chatbot/token',
-    '/completion/token',
-    '/workflow/token',
-    '/webapp-signin',
-    '/webapp-reset-password/check-code',
-  ])('excludes published and embeddable path %s', (pathname) => {
-    expect(isCloudAnalyticsPath(pathname)).toBe(false)
-    expect(isCloudAnalyticsRequest({ ...baseRequest, pathname })).toBe(false)
-  })
-
-  it('does not confuse similarly named console routes with share routes', () => {
-    expect(isCloudAnalyticsPath('/workflow-builder')).toBe(true)
   })
 
   it.each([

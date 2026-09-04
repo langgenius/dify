@@ -215,11 +215,13 @@ export function getProviderCredentialVariant(
 ) {
   if (!providerCredentialType) return 'none' as const
 
+  // Team-scoped credentials have no credential reference in the saved agent config,
+  // so the current provider authorization must override a reflected unauthorized state.
+  if (tool.credentialId || provider.is_team_authorization) return 'authorized' as const
+
   if (tool.credentialVariant !== 'none') return tool.credentialVariant
 
-  return tool.credentialId || provider.is_team_authorization
-    ? ('authorized' as const)
-    : ('unauthorized' as const)
+  return 'unauthorized' as const
 }
 
 export type AgentToolPublishIssue = {

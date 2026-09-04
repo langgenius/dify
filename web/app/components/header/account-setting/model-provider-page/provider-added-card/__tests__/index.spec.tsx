@@ -12,7 +12,9 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
+let mockRbacEnabled = false
 let mockWorkspacePermissionKeys: string[] = [
+  'plugin.plugin_preferences',
   'plugin.model_config',
   'credential.use',
   'credential.create',
@@ -140,7 +142,7 @@ const createConsoleQueryClient = () =>
 
 const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, { rbac_enabled: mockRbacEnabled })
   return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
 
@@ -190,7 +192,7 @@ const modelProviderModelsResponse = {
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
-    configurate_methods: ['predefinedModel'],
+    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
     system_configuration: { enabled: true },
     supported_model_types: ['llm'],
   } as unknown as ModelProvider
@@ -198,7 +200,9 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
+    mockRbacEnabled = false
     mockWorkspacePermissionKeys = [
+      'plugin.plugin_preferences',
       'plugin.model_config',
       'credential.use',
       'credential.create',
@@ -210,6 +214,36 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
     expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
     expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
+  })
+
+  it('should hide credential controls from legacy use-only members', () => {
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(
+      <>
+        <ProviderAddedCard provider={mockProvider} />
+        <ExternalExpandControls />
+      </>,
+    )
+
+    expect(screen.queryByTestId('credential-panel')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /modelProvider\.showModels/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('expand-current-provider'))
+
+    expect(mockFetchModelProviderModels).not.toHaveBeenCalled()
+  })
+
+  it('should use credential permissions when RBAC is enabled', () => {
+    mockRbacEnabled = true
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
+
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
   })
 
   it('refreshes provider data and installed plugin details after an update', async () => {

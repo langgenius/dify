@@ -3,10 +3,7 @@
 from datetime import datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.entities.data_source_api_key_auth_entities import (
     DataSourceApiKeyAuthBindingCreate,
@@ -15,12 +12,12 @@ from services.entities.data_source_api_key_auth_entities import (
 )
 
 
-def _context(workspace_id: str | None = "workspace-1") -> RequestContext:
+def _context() -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id=None,
         account_id="account-1",
-        active_workspace_id=workspace_id,
+        active_workspace_id="workspace-1",
     )
 
 
@@ -103,10 +100,3 @@ def test_delete_binding_scopes_to_active_workspace() -> None:
     service.delete_binding(_context(), "binding-1")
 
     bindings.delete.assert_called_once_with("workspace-1", "binding-1")
-
-
-def test_use_cases_require_active_workspace() -> None:
-    service, _bindings, _validator, _encryptor = _service()
-
-    with pytest.raises(ActiveWorkspaceRequiredError, match="active workspace"):
-        service.list_bindings(_context(None))

@@ -37,6 +37,7 @@ describe('SocialAuth', () => {
 
       expect(screen.getByRole('link', { name: 'login.withGitHub' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'login.withGoogle' })).toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 

@@ -58,6 +58,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import BuiltinNodeTypes
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -534,6 +535,17 @@ class WorkflowBasedAppRunner:
                     outputs=node_run_result.outputs,
                 )
                 execution_metadata = node_run_result.metadata
+                if event.node_type == BuiltinNodeTypes.ANSWER and (event.in_iteration_id or event.in_loop_id):
+                    answer = outputs.get("answer")
+                    if isinstance(answer, str) and answer:
+                        self._publish_event(
+                            QueueTextChunkEvent(
+                                text=answer,
+                                from_variable_selector=[event.node_id, "answer"],
+                                in_iteration_id=event.in_iteration_id,
+                                in_loop_id=event.in_loop_id,
+                            )
+                        )
                 self._publish_event(
                     QueueNodeSucceededEvent(
                         node_execution_id=event.id,

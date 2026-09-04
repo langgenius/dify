@@ -18,6 +18,7 @@ from libs import login as login_lib
 from models import Tenant
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import App, AppMode, IconType
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_account(role: TenantAccountRole) -> Account:
@@ -55,9 +56,12 @@ def _patch_console_guards(
     *,
     rbac_enabled: bool = False,
 ) -> None:
-    monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(login_lib.dify_config, "RBAC_ENABLED", rbac_enabled)
-    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(
+        monkeypatch,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=rbac_enabled,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+    )
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))

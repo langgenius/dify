@@ -1,5 +1,6 @@
 """Unit tests for DocumentService behaviors in dataset_service."""
 
+from collections.abc import Callable
 from datetime import datetime
 
 from sqlalchemy import event, select
@@ -1117,13 +1118,18 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         check_quota.assert_not_called()
 
-    def test_save_document_with_dataset_id_enforces_batch_upload_limit(self, account_context, unbound_session: Session):
+    def test_save_document_with_dataset_id_enforces_batch_upload_limit(
+        self,
+        account_context,
+        unbound_session: Session,
+        config_overrides: Callable[..., None],
+    ):
+        config_overrides(BATCH_UPLOAD_LIMIT=1)
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1", "file-2"])
 
         with (
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
-            patch("services.dataset_service.dify_config.BATCH_UPLOAD_LIMIT", 1),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):
@@ -1706,8 +1712,12 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
             yield account
 
     def test_save_document_without_dataset_id_counts_notion_pages_for_quota(
-        self, account_context, sqlite_session: Session
+        self,
+        account_context,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(BATCH_UPLOAD_LIMIT="10")
         knowledge_config = KnowledgeConfig(
             indexing_technique="economy",
             data_source=DataSource(
@@ -1736,7 +1746,6 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
 
         with (
             patch("services.dataset_service.FeatureService.get_features", return_value=features),
-            patch("services.dataset_service.dify_config.BATCH_UPLOAD_LIMIT", "10"),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
             patch.object(
                 DocumentService,
@@ -1755,8 +1764,12 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         assert sqlite_session.get(Dataset, dataset.id) is dataset
 
     def test_save_document_without_dataset_id_enforces_batch_limit_for_website_urls(
-        self, account_context, unbound_session: Session
+        self,
+        account_context,
+        unbound_session: Session,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(BATCH_UPLOAD_LIMIT="1")
         knowledge_config = KnowledgeConfig(
             indexing_technique="economy",
             data_source=DataSource(
@@ -1774,7 +1787,6 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
 
         with (
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
-            patch("services.dataset_service.dify_config.BATCH_UPLOAD_LIMIT", "1"),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):

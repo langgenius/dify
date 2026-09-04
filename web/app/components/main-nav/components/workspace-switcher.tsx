@@ -2,6 +2,7 @@
 
 import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,14 +11,13 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useMemo, useState } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { WorkspaceMenuItemContent } from './workspace-menu-content'
 
-const workspaceSwitchActionButtonClassName =
-  'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
@@ -31,19 +31,20 @@ const getWorkspaceLastOpenedAt = (workspace: TenantListItemResponse) =>
 
 function WorkspaceSwitchControls({
   disabled,
+  labelId,
   searchText,
   sort,
   onSearchTextChange,
   onSortChange,
 }: {
   disabled: boolean
+  labelId: string
   searchText: string
   sort: WorkspaceSort
   onSearchTextChange: (value: string) => void
   onSortChange: (value: WorkspaceSort) => void
 }) {
   const { t } = useTranslation()
-  const [searchVisible, setSearchVisible] = useState(false)
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortMenuLabel = t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu')], {
     ns: 'common',
@@ -64,26 +65,28 @@ function WorkspaceSwitchControls({
   ]
 
   return (
-    <>
+    <Collapsible>
       <div className="flex items-start gap-0.5 py-1 pr-2 pl-3">
         <div className="flex min-w-0 flex-1 items-center justify-center py-1">
-          <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary">
+          <span
+            id={labelId}
+            className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary"
+          >
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
         <DropdownMenu open={sortMenuOpen} onOpenChange={setSortMenuOpen}>
           <DropdownMenuTrigger
-            aria-label={sortMenuLabel}
             disabled={disabled}
-            className={cn(
-              workspaceSwitchActionButtonClassName,
-              'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
-            )}
-          >
-            <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
-              <span className={cn('i-ri-sort-desc', workspaceSwitchActionIconClassName)} />
-            </span>
-          </DropdownMenuTrigger>
+            className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+            render={
+              <IconButton aria-label={sortMenuLabel}>
+                <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
+                  <span className={cn('i-ri-sort-desc', workspaceSwitchActionIconClassName)} />
+                </span>
+              </IconButton>
+            }
+          />
           <DropdownMenuContent
             placement="bottom-end"
             sideOffset={4}
@@ -113,22 +116,19 @@ function WorkspaceSwitchControls({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+        <CollapsibleTrigger
           disabled={disabled}
-          className={cn(
-            workspaceSwitchActionButtonClassName,
-            searchVisible && 'bg-state-base-hover text-text-secondary',
-          )}
-          onClick={() => setSearchVisible((visible) => !visible)}
-        >
-          <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
-            <span className={cn('i-ri-search-line', workspaceSwitchActionIconClassName)} />
-          </span>
-        </button>
+          className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+          render={
+            <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
+              <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
+                <span className={cn('i-ri-search-line', workspaceSwitchActionIconClassName)} />
+              </span>
+            </IconButton>
+          }
+        />
       </div>
-      {searchVisible && (
+      <CollapsiblePanel>
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
@@ -140,8 +140,8 @@ function WorkspaceSwitchControls({
             autoFocus
           />
         </div>
-      )}
-    </>
+      </CollapsiblePanel>
+    </Collapsible>
   )
 }
 
@@ -156,6 +156,8 @@ export function WorkspaceSwitcher({
   isPending,
   onSwitchWorkspace,
 }: WorkspaceSwitcherProps) {
+  const { t } = useTranslation()
+  const workspaceListLabelId = useId()
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')
   const displayedWorkspaces = useMemo(() => {
@@ -183,6 +185,7 @@ export function WorkspaceSwitcher({
     <div className="p-1 pb-2">
       <WorkspaceSwitchControls
         disabled={isPending}
+        labelId={workspaceListLabelId}
         searchText={workspaceSearchText}
         sort={workspaceSort}
         onSearchTextChange={setWorkspaceSearchText}
@@ -190,39 +193,54 @@ export function WorkspaceSwitcher({
       />
       <div aria-busy={isPending} className={workspaceSwitchListClassName}>
         {isPending ? (
-          <div aria-hidden className="flex h-8 items-center justify-center">
-            <span className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none" />
+          <div
+            role="status"
+            aria-label={t(($) => $.loading, { ns: 'common' })}
+            className="flex h-8 items-center justify-center"
+          >
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+          </div>
+        ) : displayedWorkspaces.length === 0 ? (
+          <div
+            role="status"
+            className="flex h-8 items-center px-3 system-xs-regular text-text-tertiary"
+          >
+            {t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.noResults')], {
+              ns: 'common',
+            })}
           </div>
         ) : (
-          displayedWorkspaces.map((workspace) => {
-            const workspaceName = getWorkspaceName(workspace)
+          <ul aria-labelledby={workspaceListLabelId}>
+            {displayedWorkspaces.map((workspace) => {
+              const workspaceName = getWorkspaceName(workspace)
 
-            return (
-              <button
-                type="button"
-                key={workspace.id}
-                aria-current={workspace.current ? 'true' : undefined}
-                title={workspaceName}
-                className={cn(
-                  'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-                  workspace.current && 'bg-state-base-hover',
-                )}
-                onClick={() => {
-                  onSwitchWorkspace(workspace.id)
-                }}
-              >
-                <WorkspaceMenuItemContent
-                  icon={<WorkspaceAvatar name={workspaceName} size="xs" />}
-                  label={workspaceName}
-                  trailing={
-                    workspace.current ? (
-                      <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
-                    ) : undefined
-                  }
-                />
-              </button>
-            )
-          })
+              return (
+                <li key={workspace.id}>
+                  <button
+                    type="button"
+                    aria-current={workspace.current ? 'true' : undefined}
+                    title={workspaceName}
+                    className="group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                    onClick={() => {
+                      onSwitchWorkspace(workspace.id)
+                    }}
+                  >
+                    <WorkspaceMenuItemContent
+                      icon={<WorkspaceAvatar name={workspaceName} size="xs" />}
+                      label={workspaceName}
+                      trailingClassName="hidden group-aria-current:flex"
+                      trailing={
+                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                      }
+                    />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
     </div>

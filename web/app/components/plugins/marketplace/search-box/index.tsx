@@ -14,6 +14,7 @@ type SearchBoxProps = {
   wrapperClassName?: string
   inputClassName?: string
   inputElementClassName?: string
+  searchIconName?: string
   searchIconClassName?: string
   tags: string[]
   onTagsChange: (tags: string[]) => void
@@ -31,6 +32,7 @@ function SearchBox({
   wrapperClassName,
   inputClassName,
   inputElementClassName,
+  searchIconName = 'i-ri-search-line',
   searchIconClassName,
   tags,
   onTagsChange,
@@ -111,7 +113,7 @@ function SearchBox({
               <span
                 aria-hidden
                 className={cn(
-                  'i-ri-search-line',
+                  searchIconName,
                   'size-4 text-components-input-text-placeholder',
                   searchIconClassName,
                 )}

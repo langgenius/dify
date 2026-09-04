@@ -125,7 +125,7 @@ class SystemFeatureApi(Resource):
         Authentication configuration must be available before the authentication flow can be selected.
         Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
-        return dump_response(SystemFeatureModel, application_services().feature_queries.get_system_features())
+        return dump_response(SystemFeatureModel, application_services().feature_queries.get_public_system_features())
 
 
 @console_ns.route("/system-features/license")

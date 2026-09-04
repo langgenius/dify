@@ -63,7 +63,8 @@ describe('OneMoreStep', () => {
         </QueryClientProvider>,
       )
 
-      await user.click(screen.getByRole('button', { name: 'login.go' }))
+      await user.click(screen.getByRole('textbox', { name: 'login.invitationCode' }))
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')

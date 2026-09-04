@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { ExtraProps } from 'streamdown'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { getMarkdownButtonAppearance } from './button-appearance'
@@ -22,16 +22,28 @@ const MarkdownButton = ({ node }: MarkdownButtonProps) => {
   const link = getStringProperty(node?.properties.dataLink)
   const firstChild = node?.children[0]
   const label = firstChild?.type === 'text' ? firstChild.value : ''
+  const validLink = link && isValidUrl(link) ? link : undefined
+
+  const className = 'h-auto! min-h-8 px-3! whitespace-normal select-none'
+
+  if (validLink) {
+    return (
+      <a
+        href={validLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants(appearance), className)}
+      >
+        <span className="text-[13px]">{label}</span>
+      </a>
+    )
+  }
 
   return (
     <Button
       {...appearance}
-      className={cn('h-auto! min-h-8 px-3! whitespace-normal select-none')}
+      className={className}
       onClick={() => {
-        if (link && isValidUrl(link)) {
-          window.open(link, '_blank')
-          return
-        }
         if (!message) return
         onSend?.(message)
       }}

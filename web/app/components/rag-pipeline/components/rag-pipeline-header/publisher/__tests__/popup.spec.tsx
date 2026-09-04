@@ -39,7 +39,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-const mockPush = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
@@ -60,13 +59,10 @@ let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 vi.mock('ahooks', () => ({
@@ -275,18 +271,6 @@ describe('Popup', () => {
       expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
-    it('should render "Go to Add Documents" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('pipeline.common.goToAddDocuments')).toBeInTheDocument()
-    })
-
-    it('should render "API Reference" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('workflow.common.accessAPIReference')).toBeInTheDocument()
-    })
-
     it('should render "Publish As" button', () => {
       const { container } = render(<Popup />)
 
@@ -312,12 +296,21 @@ describe('Popup', () => {
   })
 
   describe('Navigation', () => {
-    it('should navigate to add documents page', () => {
+    it('should link to the add documents page', () => {
       render(<Popup />)
 
-      fireEvent.click(screen.getByText('pipeline.common.goToAddDocuments'))
+      expect(
+        screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+      ).toHaveAttribute('href', '/datasets/ds-123/documents/create-from-pipeline')
+    })
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/ds-123/documents/create-from-pipeline')
+    it('should open the API reference safely in a new tab', () => {
+      render(<Popup />)
+
+      const link = screen.getByRole('link', { name: 'workflow.common.accessAPIReference' })
+      expect(link).toHaveAttribute('href', '/api/datasets/ds-123')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 

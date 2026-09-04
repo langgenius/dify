@@ -6,8 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useInlineAgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDefaultAgentSoul } from './agent-soul-config'
 
 type CreatedInlineAgentBinding = AgentInlineBinding & {
@@ -99,6 +101,7 @@ export function useWorkflowInlineAgentDetail(
 export function useCreateInlineAgentBinding() {
   const { t } = useTranslation('agentV2')
   const configsMap = useHooksStore((state) => state.configsMap)
+  const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const queryClient = useQueryClient()
   const { isPending: isAppComposerPending, mutateAsync: mutateAppComposerAsync } = useMutation(
@@ -187,6 +190,11 @@ export function useCreateInlineAgentBinding() {
             composerState,
           )
         }
+        trackCreateApp({
+          source: 'studio_blank',
+          appMode: 'agent-v2',
+          agentScope,
+        })
         options?.onSuccess?.({
           binding_type: 'inline_agent',
           agent_id: binding.agent_id,
@@ -197,6 +205,7 @@ export function useCreateInlineAgentBinding() {
       }
     },
     [
+      agentScope,
       configsMap?.flowId,
       configsMap?.flowType,
       defaultModel,

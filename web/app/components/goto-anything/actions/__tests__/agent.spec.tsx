@@ -67,6 +67,7 @@ describe('agent search query', () => {
       has_more: false,
       limit: 10,
       page: 1,
+      publication_counts: { drafts: 0, published: 1 },
       total: 1,
     })
 

@@ -53,6 +53,7 @@ type TagSelectorRootProps = Omit<
 export type TagSelectorProps = TagSelectorRootProps &
   Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
+    contextLabel?: string
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
@@ -62,6 +63,7 @@ export type TagSelectorProps = TagSelectorRootProps &
 
 export const TagSelector = ({
   targetId,
+  contextLabel,
   type,
   value,
   canBindOrUnbindTags,
@@ -106,6 +108,7 @@ export const TagSelector = ({
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
   const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
+  const accessibleTriggerLabel = contextLabel ? `${triggerLabel}: ${contextLabel}` : triggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
@@ -251,7 +254,7 @@ export const TagSelector = ({
     >
       <ComboboxTrigger
         disabled={!canManageTags && !canBindOrUnbindTags}
-        aria-label={triggerLabel}
+        aria-label={accessibleTriggerLabel}
         className={cn(
           'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
           className,
@@ -268,7 +271,7 @@ export const TagSelector = ({
       <ComboboxPortal>
         <ComboboxPositioner placement="bottom-start" sideOffset={4}>
           <ComboboxPopup
-            aria-label={triggerLabel}
+            aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
             <TagSearchContent

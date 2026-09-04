@@ -15,6 +15,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _app() -> App:
@@ -372,6 +373,7 @@ class TestAgentChatAppGeneratorWorker:
         self,
         generator,
         mocker: MockerFixture,
+        monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
     ):
         queue_manager = mocker.MagicMock()
@@ -382,7 +384,7 @@ class TestAgentChatAppGeneratorWorker:
         runner.run.side_effect = ValueError("bad")
         mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
 
-        mocker.patch("core.app.apps.agent_chat.app_generator.dify_config", new=mocker.MagicMock(DEBUG=True))
+        apply_config_overrides(monkeypatch, DEBUG=True)
 
         with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
             generator._generate_worker(

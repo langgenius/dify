@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.app import dsl as dsl_module
 from controllers.inner_api.app.dsl import (
@@ -29,6 +30,7 @@ from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _persist_app(session: Session) -> App:
@@ -185,13 +187,12 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "yaml_content": "version: 0.6.0\n",
-                    "creator_email": "user@example.com",
-                }
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {
+            "yaml_content": "version: 0.6.0\n",
+            "creator_email": "user@example.com",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 200
@@ -208,10 +209,11 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+        with app.test_request_context(json=payload):
+            body, status_code = unwrapped(
+                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+            )
 
         assert status_code == 202
         assert body["status"] == "pending"
@@ -225,10 +227,11 @@ class TestEnterpriseAppDSLImport:
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-                body, status_code = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
+        with app.test_request_context(json=payload):
+            body, status_code = unwrapped(
+                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+            )
 
         assert status_code == 400
         assert body["status"] == "failed"
@@ -239,10 +242,9 @@ class TestEnterpriseAppDSLImport:
         mock_get_account.return_value = None
 
         unwrapped = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.app.dsl.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
-                result = unwrapped(api_instance, workspace_id="ws-123")
+        payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
+        with app.test_request_context(json=payload):
+            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
 
         body, status_code = result
         assert status_code == 404
@@ -485,3 +487,22 @@ class TestEnterpriseAppDSLExport:
         body, status_code = result
         assert status_code == 404
         assert "app not found" in body["message"]
+
+
+class TestModelValidateDecorator:
+    """The handler tests above unwrap the view, so this is what covers the decorator."""
+
+    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask) -> None:
+        api_instance = EnterpriseAppDSLImport()
+
+        with (
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
+            app.test_request_context(
+                method="POST",
+                json={},
+                headers={"X-Inner-Api-Key": "inner-api-key"},
+            ),
+            pytest.raises(UnprocessableEntity),
+        ):
+            api_instance.post(workspace_id="ws-123")

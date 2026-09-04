@@ -6,10 +6,9 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import patch
-
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestWorkflowAppRunnerHandler:
@@ -41,7 +40,7 @@ class TestWorkflowAppRunnerHandler:
         for field in required_config_fields:
             assert field in config_fields, f"Handler expects app_config.{field} but field is missing"
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @config_overrides_context(ENABLE_OTEL=True)
     def test_all_span_attributes_set_correctly(
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_workflow_runner
     ):

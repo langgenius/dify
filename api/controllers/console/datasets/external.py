@@ -219,6 +219,16 @@ class ExternalApiTemplateListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
+        # if dify_config.RBAC_ENABLED:
+        #     enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+        #         current_tenant_id,
+        #         current_user.id,
+        #         external_knowledge_api.id,
+        #         enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        #     )
+        #     initialize_created_app_rbac_access_task.delay(
+        #         current_tenant_id, current_user.id, dataset_id=external_knowledge_api.id)
+
         return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 201
 
 

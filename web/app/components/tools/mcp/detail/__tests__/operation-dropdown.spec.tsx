@@ -98,14 +98,6 @@ describe('OperationDropdown', () => {
   })
 
   describe('Styling', () => {
-    it('should have correct dropdown width', () => {
-      render(<OperationDropdown {...defaultProps} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      const dropdown = document.querySelector('.w-\\[160px\\]')
-      expect(dropdown).toBeInTheDocument()
-    })
-
     it('should render dropdown content through the shared popup shell', () => {
       render(<OperationDropdown {...defaultProps} />)
 
