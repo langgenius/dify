@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.rbac.entities import RBACPermission
 from models import App, Dataset, TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
@@ -2088,14 +2089,15 @@ class RBACService:
                 return {}
             if not dify_config.RBAC_ENABLED:
                 _ = session
+                # KnowledgeFS reuses the legacy knowledge base permission points; without
+                # RBAC every caller holds all of them.
                 permissions = [
-                    "knowledge_space_read",
-                    "knowledge_space_create",
-                    "knowledge_space_edit",
-                    "knowledge_space_delete",
-                    "knowledge_space_access_config",
-                    "knowledge_space_document_write",
-                    "knowledge_space_query",
+                    RBACPermission.DATASET_READONLY.value,
+                    RBACPermission.DATASET_CREATE_AND_MANAGEMENT.value,
+                    RBACPermission.DATASET_EDIT.value,
+                    RBACPermission.DATASET_DELETE.value,
+                    RBACPermission.DATASET_ACCESS_CONFIG.value,
+                    RBACPermission.DATASET_RETRIEVAL_RECALL.value,
                 ]
                 return dict.fromkeys(control_space_ids, permissions)
             data = _inner_call(

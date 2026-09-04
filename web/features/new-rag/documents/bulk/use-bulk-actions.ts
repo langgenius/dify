@@ -153,13 +153,12 @@ export function useBulkReindexAction() {
 export function useBulkDownloadAction() {
   const { t } = useTranslation('common')
   const canDownload = useAtomValue(documentCanDownloadAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
   const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('download')
 
   const run = useCallback(async () => {
-    if (!canWrite || !canDownload || !downloadableDocumentIds.length || !begin()) return
+    if (!canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
@@ -178,7 +177,7 @@ export function useBulkDownloadAction() {
     } finally {
       finish()
     }
-  }, [begin, canDownload, canWrite, downloadableDocumentIds, finish, knowledgeSpaceId, t])
+  }, [begin, canDownload, downloadableDocumentIds, finish, knowledgeSpaceId, t])
 
   return { busy, pending, run }
 }

@@ -4,17 +4,23 @@ import { useAtomValue } from 'jotai'
 import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
+import { useKnowledgeSpacePermission } from '../space/context'
 import { RetrievalComposer } from './composer'
 import { RetrievalHistoryPanel } from './history-panel'
 import { RetrievalResultPanel } from './result-panel'
 import { RetrievalRuntimeController } from './runtime-controller'
 import { RetrievalStateBoundary } from './state/boundary'
 import { retrievalComposerModeAtom } from './state/graph'
-import { retrievalKnowledgeSpaceIdAtom, retrievalLocationQuery } from './state/inputs'
+import {
+  retrievalCanQueryAtom,
+  retrievalKnowledgeSpaceIdAtom,
+  retrievalLocationQuery,
+} from './state/inputs'
 
 function RetrievalTestSurface() {
   const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
+  const canQuery = useAtomValue(retrievalCanQueryAtom)
   const mode = useAtomValue(retrievalComposerModeAtom)
 
   return (
@@ -27,11 +33,22 @@ function RetrievalTestSurface() {
           {t(($) => $['retrievalTest.description'])}
         </p>
       </header>
-      <KnowledgeModelReadinessBanner
-        capability={mode === 'deep' ? 'deep' : mode === 'research' ? 'research' : 'query'}
-        className="mt-4"
-        knowledgeSpaceId={knowledgeSpaceId}
-      />
+      {canQuery && (
+        <KnowledgeModelReadinessBanner
+          capability={mode === 'deep' ? 'deep' : mode === 'research' ? 'research' : 'query'}
+          className="mt-4"
+          knowledgeSpaceId={knowledgeSpaceId}
+        />
+      )}
+      {!canQuery && (
+        <p
+          className="mt-4 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+          role="status"
+        >
+          <span aria-hidden className="i-ri-lock-line size-3.5" />
+          {t(($) => $.permissionRestricted)}
+        </p>
+      )}
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
@@ -45,9 +62,11 @@ function RetrievalTestSurface() {
 }
 
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+  const canQuery = useKnowledgeSpacePermission('knowledge_space_query')
+
   return (
     <NuqsJotaiBridge key={`retrieval:${knowledgeSpaceId}`} config={retrievalLocationQuery}>
-      <RetrievalStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
+      <RetrievalStateBoundary canQuery={canQuery} knowledgeSpaceId={knowledgeSpaceId}>
         <RetrievalRuntimeController />
         <RetrievalTestSurface />
       </RetrievalStateBoundary>

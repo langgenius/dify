@@ -160,6 +160,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0049_answer_trace_query_images.tidb.sql",
       "packages/database/migrations/0050_deletion_job_capability_provenance.postgres.sql",
       "packages/database/migrations/0050_deletion_job_capability_provenance.tidb.sql",
+      "packages/database/migrations/0051_failed_query_trace_outcome_index.postgres.sql",
+      "packages/database/migrations/0051_failed_query_trace_outcome_index.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -940,6 +942,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0048_deletion_active_scope_indexes.postgres.sql",
       "packages/database/migrations/0049_answer_trace_query_images.postgres.sql",
       "packages/database/migrations/0050_deletion_job_capability_provenance.postgres.sql",
+      "packages/database/migrations/0051_failed_query_trace_outcome_index.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -994,6 +997,7 @@ describe("migration file rendering", () => {
           "0048_deletion_active_scope_indexes",
           "0049_answer_trace_query_images",
           "0050_deletion_job_capability_provenance",
+          "0051_failed_query_trace_outcome_index",
         ],
         dialect: "postgres",
       }),

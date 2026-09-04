@@ -7897,6 +7897,16 @@ const indexes = [
     tableName: "failed_queries",
   },
   {
+    columns: ["tenant_id", "knowledge_space_id", "answer_trace_id", "trigger"],
+    columnsByDialect: {
+      tidb: ["tenant_id", "knowledge_space_id", "answer_trace_id"],
+    },
+    name: "failed_queries_trace_trigger_idx",
+    purpose: "Resolve durable query outcomes by exact trace without scanning space history",
+    tableName: "failed_queries",
+    where: { postgres: '"answer_trace_id" IS NOT NULL' },
+  },
+  {
     columns: ["tenant_id", "knowledge_space_id", "created_at", "id"],
     name: "golden_questions_space_created_idx",
     purpose: "List golden questions with stable keyset pagination",

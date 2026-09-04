@@ -31,7 +31,7 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
-from controllers.service_api.wraps import validate_and_get_api_token
+from controllers.service_api.wraps import check_knowledge_rate_limit, validate_and_get_api_token
 from core.db.session_factory import session_factory
 from libs.helper import dump_response
 from services.knowledge_fs.product_dto import (
@@ -282,6 +282,8 @@ def _profile(
     api_token = validate_and_get_api_token("dataset")
     if api_token.tenant_id is None:
         raise KnowledgeFSServiceApiAuthorizationError("Dataset API key is not workspace-scoped")
+    # Same per-workspace knowledge request rate limit as every legacy dataset service route.
+    check_knowledge_rate_limit(api_token)
     return runtime.service_api_authorization.authorize(
         api_token_id=str(api_token.id),
         tenant_id=str(api_token.tenant_id),

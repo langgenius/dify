@@ -36,9 +36,8 @@ export function DeleteKnowledgeAction() {
   )
 
   if (!space) return null
-  const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canDelete = space.permission_keys.includes('knowledge_space_delete')
-  if (!canEdit || !canDelete) return null
+  if (!canDelete) return null
   const name = space.technical_summary?.name ?? ''
 
   const deleteKnowledge = async () => {

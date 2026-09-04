@@ -32,7 +32,11 @@ import {
   retrievalSelectedQueryImagesAtom,
   retrievalSelectedResearchTaskAtom,
 } from './state/graph'
-import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './state/inputs'
+import {
+  retrievalCanQueryAtom,
+  retrievalKnowledgeSpaceIdAtom,
+  retrievalLinkedSelectionAtom,
+} from './state/inputs'
 import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
@@ -91,6 +95,7 @@ async function queryFailure(error: unknown) {
 
 export function RetrievalRuntimeController() {
   const { t } = useTranslation('knowledgeSpace')
+  const canQuery = useAtomValue(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
@@ -255,7 +260,7 @@ export function RetrievalRuntimeController() {
     }) => {
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
-      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
       const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
       const requestedMode = input?.mode ?? mode
@@ -364,6 +369,7 @@ export function RetrievalRuntimeController() {
       }
     },
     [
+      canQuery,
       ensureModelReady,
       knowledgeSpaceId,
       mode,
@@ -382,7 +388,7 @@ export function RetrievalRuntimeController() {
     async (input?: { images?: RetrievalComposerImage[]; query: string }) => {
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
-      if ((!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
       const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
       runInFlightRef.current = true
       try {
@@ -432,6 +438,7 @@ export function RetrievalRuntimeController() {
       }
     },
     [
+      canQuery,
       ensureModelReady,
       knowledgeSpaceId,
       query,
@@ -449,6 +456,7 @@ export function RetrievalRuntimeController() {
 
   const cancelResearch = useCallback(
     async (taskId: string) => {
+      if (!canQuery) return
       try {
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete({
           params: { control_space_id: knowledgeSpaceId, task_id: taskId },
@@ -458,17 +466,23 @@ export function RetrievalRuntimeController() {
         toast.error(t(($) => $.taskActionFailed))
       }
     },
-    [knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],
+    [canQuery, knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],
   )
 
   const run = useCallback(() => {
-    if (selectedResearchActive || localRun?.status === 'running') return
+    if (!canQuery || selectedResearchActive || localRun?.status === 'running') return
     if (mode === 'research') void startResearch()
     else void runFastQuery()
-  }, [localRun?.status, mode, runFastQuery, selectedResearchActive, startResearch])
+  }, [canQuery, localRun?.status, mode, runFastQuery, selectedResearchActive, startResearch])
 
   const retry = useCallback(async () => {
-    if (runInFlightRef.current || selectedResearchActive || localRun?.status === 'running') return
+    if (
+      !canQuery ||
+      runInFlightRef.current ||
+      selectedResearchActive ||
+      localRun?.status === 'running'
+    )
+      return
     if (selected?.kind === 'research' && selectedResearchTask) {
       if (!researchTaskCanRetry(selectedResearchTask)) return
       setResearchRetryPending(true)
@@ -484,6 +498,7 @@ export function RetrievalRuntimeController() {
     if (mode === 'research') void startResearch()
     else void runFastQuery()
   }, [
+    canQuery,
     localRun?.status,
     mode,
     runFastQuery,
@@ -505,6 +520,7 @@ export function RetrievalRuntimeController() {
   }, [cancelResearch, retry, run, runFastQuery, setRuntimeBridge])
 
   const runRetest = useEffectEvent((command: { mode: RetrievalTestMode; query: string }) => {
+    if (!canQuery) return
     // A retest replays the linked trace, so it carries that trace's images rather than any
     // draft images the composer may currently hold.
     const images = selectedQueryImages

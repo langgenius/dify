@@ -18,7 +18,7 @@ import {
   retrievalResultFactsAtom,
   retrySelectedRetrievalDataAtom,
 } from './state/graph'
-import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
+import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 import { cancelRetrievalResearchAtom, retryRetrievalAtom } from './state/runtime'
 
 type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
@@ -26,6 +26,7 @@ type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 function RetrievalResultSession() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
+  const canQuery = useAtomValue(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const {
     currentEvidence,
@@ -131,7 +132,7 @@ function RetrievalResultSession() {
         <span className="shrink-0 rounded-md bg-divider-regular px-1.5 py-0.5 text-[11px] leading-4 font-medium text-text-tertiary capitalize">
           {selectedMode ? t(($) => $[`settings.retrievalMode.${selectedMode}`]) : ''}
         </span>
-        {!selectedIsLoading && selectedCreatedAt && (
+        {!selectedIsLoading && selectedCreatedAt !== undefined && (
           <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
             <RecordTime key={selectedCreatedAt} value={selectedCreatedAt} />
           </span>
@@ -183,7 +184,9 @@ function RetrievalResultSession() {
             expanded={selectedResearchExpanded}
             onToggle={toggleSelectedResearchProcess}
             onCancel={
-              selectedResearchActive ? () => cancelResearch(selectedResearchTask.id) : undefined
+              canQuery && selectedResearchActive
+                ? () => cancelResearch(selectedResearchTask.id)
+                : undefined
             }
           />
         )}
@@ -209,7 +212,8 @@ function RetrievalResultSession() {
                 : t(($) => $['retrievalTest.failedDescription']))
             }
             onRetry={
-              selected?.kind !== 'research' || researchTaskCanRetry(selectedResearchTask)
+              canQuery &&
+              (selected?.kind !== 'research' || researchTaskCanRetry(selectedResearchTask))
                 ? retryRetrieval
                 : undefined
             }

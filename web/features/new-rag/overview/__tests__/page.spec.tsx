@@ -166,6 +166,7 @@ const overviewQueryState = vi.hoisted(() => ({
 const permissionState = vi.hoisted(() => ({
   datasetKeys: ['dataset.acl.edit'],
   datasetKeysAtom: Symbol('datasetDefaultPermissionKeysAtom'),
+  spaceKeys: ['knowledge_space_document_write'],
   workspaceKeys: ['dataset.external.connect'],
   workspaceKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
@@ -194,6 +195,11 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@/features/system-features/state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesState.uploadAvailableAtom,
+}))
+
+vi.mock('../../space/context', () => ({
+  useKnowledgeSpacePermission: (permission: string) =>
+    permissionState.spaceKeys.includes(permission),
 }))
 
 vi.mock('jotai', async (importOriginal) => {
@@ -384,6 +390,7 @@ describe('KnowledgeOverviewPage', () => {
       state.isPending = false
     }
     permissionState.datasetKeys = ['dataset.acl.edit']
+    permissionState.spaceKeys = ['knowledge_space_document_write']
     permissionState.workspaceKeys = ['dataset.external.connect']
     systemFeaturesState.uploadAvailable = true
     queryData.attention.data = []
@@ -1015,6 +1022,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
     permissionState.datasetKeys = ['dataset.acl.readonly']
+    permissionState.spaceKeys = ['knowledge_space_read']
     permissionState.workspaceKeys = ['dataset.acl.readonly']
 
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
@@ -1028,10 +1036,11 @@ describe('KnowledgeOverviewPage', () => {
     expect(screen.getByText('knowledgeSpace.overview.readOnlyDescription')).toBeInTheDocument()
   })
 
-  it('gates source connection and upload independently', () => {
+  it('uses the current space document-write permission for both onboarding actions', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
     permissionState.datasetKeys = ['dataset.acl.readonly']
+    permissionState.spaceKeys = ['knowledge_space_document_write']
     permissionState.workspaceKeys = ['dataset.external.connect']
     const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
@@ -1039,19 +1048,20 @@ describe('KnowledgeOverviewPage', () => {
       screen.getByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+    ).toBeInTheDocument()
 
     permissionState.datasetKeys = ['dataset.acl.edit']
-    permissionState.workspaceKeys = []
+    permissionState.spaceKeys = ['knowledge_space_read']
+    permissionState.workspaceKeys = ['dataset.external.connect']
     rendered.rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.queryByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows explicit section errors instead of healthy or zero-value fallbacks', () => {

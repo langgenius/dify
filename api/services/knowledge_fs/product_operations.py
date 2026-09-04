@@ -8,14 +8,25 @@ issuance or external I/O.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from types import MappingProxyType
 from typing import Final, Literal, NamedTuple
 
+from core.rbac.entities import RBACPermission
 from services.knowledge_fs_capability import KNOWLEDGE_FS_CAPABILITY_OPERATIONS
 
 
 class KnowledgeFSProductPermission(StrEnum):
+    """Product-level capability of a caller on one KnowledgeFS space.
+
+    These values are what the console returns as ``permission_keys`` so the web can gate
+    its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse
+    the legacy knowledge base (``dataset_*``) permission points, and each capability is
+    granted when the caller holds the dataset permission it maps to (see
+    :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
+    """
+
     READ = "knowledge_space_read"
     CREATE = "knowledge_space_create"
     EDIT = "knowledge_space_edit"
@@ -23,6 +34,43 @@ class KnowledgeFSProductPermission(StrEnum):
     ACCESS_CONFIG = "knowledge_space_access_config"
     DOCUMENT_WRITE = "knowledge_space_document_write"
     QUERY = "knowledge_space_query"
+
+
+# Legacy knowledge base permission point that grants each KnowledgeFS capability. This is
+# the same mapping the legacy dataset console applies: reads need ``dataset_readonly``,
+# every content or settings write needs ``dataset_edit``, and retrieval tests need
+# ``dataset_retrieval_recall``. The enterprise RBAC service answers KnowledgeFS lookups in
+# this vocabulary, so a workspace role configured for knowledge bases applies to spaces.
+RBAC_PERMISSION_BY_PRODUCT_PERMISSION: Final[Mapping[KnowledgeFSProductPermission, RBACPermission]] = MappingProxyType(
+    {
+        KnowledgeFSProductPermission.READ: RBACPermission.DATASET_READONLY,
+        KnowledgeFSProductPermission.CREATE: RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        KnowledgeFSProductPermission.EDIT: RBACPermission.DATASET_EDIT,
+        KnowledgeFSProductPermission.DELETE: RBACPermission.DATASET_DELETE,
+        KnowledgeFSProductPermission.ACCESS_CONFIG: RBACPermission.DATASET_ACCESS_CONFIG,
+        KnowledgeFSProductPermission.DOCUMENT_WRITE: RBACPermission.DATASET_EDIT,
+        KnowledgeFSProductPermission.QUERY: RBACPermission.DATASET_RETRIEVAL_RECALL,
+    }
+)
+
+# Every dataset permission point KnowledgeFS consults, in a stable order (no duplicates).
+KNOWLEDGE_FS_RBAC_PERMISSION_KEYS: Final[tuple[str, ...]] = tuple(
+    dict.fromkeys(permission.value for permission in RBAC_PERMISSION_BY_PRODUCT_PERMISSION.values())
+)
+
+
+def product_permissions_from_rbac_keys(permission_keys: Iterable[str]) -> frozenset[KnowledgeFSProductPermission]:
+    """Translate enterprise permission keys into the KnowledgeFS capabilities they grant.
+
+    Accepts the ``dataset_*`` vocabulary the enterprise service now returns and, for the
+    transition window, the historical ``knowledge_space_*`` keys. Unknown keys are ignored.
+    """
+    keys = frozenset(str(key) for key in permission_keys)
+    return frozenset(
+        permission
+        for permission, rbac_permission in RBAC_PERMISSION_BY_PRODUCT_PERMISSION.items()
+        if rbac_permission.value in keys or permission.value in keys
+    )
 
 
 class KnowledgeFSProductOperation(NamedTuple):
@@ -34,7 +82,7 @@ class KnowledgeFSProductOperation(NamedTuple):
     resource_resolver: Literal[
         "document", "job", "knowledge_space", "namespace", "query", "research_task", "source", "upload_session"
     ]
-    rbac_permission: KnowledgeFSProductPermission
+    rbac_permission: RBACPermission
     max_request_bytes: int
     max_response_bytes: int
     stream_kind: Literal["buffered-multipart", "json", "sse"]
@@ -68,7 +116,7 @@ def _operation(
         kfs_path=kfs_path,
         transport=transport,
         resource_resolver=resource_resolver,
-        rbac_permission=permission,
+        rbac_permission=RBAC_PERMISSION_BY_PRODUCT_PERMISSION[permission],
         max_request_bytes=max_request_bytes,
         max_response_bytes=max_response_bytes,
         stream_kind=stream_kind,
@@ -1304,7 +1352,7 @@ def is_product_operation_registered(operation_id: str) -> bool:
         and capability.path == operation.kfs_path
         and capability.action
         and capability.resource_type == operation.resource_resolver
-        and operation.permission == operation.rbac_permission
+        and RBAC_PERMISSION_BY_PRODUCT_PERMISSION[operation.permission] == operation.rbac_permission
     )
 
 

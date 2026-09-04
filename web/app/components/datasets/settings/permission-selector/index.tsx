@@ -19,6 +19,7 @@ type PermissionSelectorProps = {
   disabled?: boolean
   disableWhenRbacEnabled?: boolean
   invalid?: boolean
+  permissionChangeDisabled?: boolean
   permission?: DatasetPermission
   value: string[]
   memberList: Member[]
@@ -31,6 +32,7 @@ const PermissionSelector = ({
   disabled,
   disableWhenRbacEnabled = true,
   invalid,
+  permissionChangeDisabled = false,
   permission,
   value,
   memberList,
@@ -175,6 +177,7 @@ const PermissionSelector = ({
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
         <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
+            disabled={permissionChangeDisabled}
             value={permission}
             onValueChange={(nextPermission) => {
               onChange(nextPermission)

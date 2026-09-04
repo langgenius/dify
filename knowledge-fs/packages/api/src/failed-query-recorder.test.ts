@@ -12,6 +12,7 @@ describe("failedQueryTrigger", () => {
     expect(failedQueryTrigger({ finishReason: "no-retrieval-evidence" })).toBe(
       "no-retrieval-evidence",
     );
+    expect(failedQueryTrigger({ finishReason: "no-local-evidence" })).toBe("no-retrieval-evidence");
   });
 
   it("captures low-confidence only when a floor is set and the top score is below it", () => {

@@ -200,11 +200,24 @@ describe.each(["postgres", "tidb"] as const)(
       expect(activitySql).toContain("query.requested");
       expect(activitySql).toContain("query.completed");
       expect(activitySql).toContain("answer_traces");
-      expect(activitySql).toMatch(/answer_trace\.[`"]completed[`"] = TRUE/u);
+      expect(activitySql).toContain("answer_trace_steps");
+      expect(activitySql).toContain("finishReason");
+      expect(activitySql).toContain("queryOutcome");
+      expect(activitySql).toContain("scoreThreshold");
+      expect(activitySql).toContain("topScore");
+      expect(activitySql).toContain("no-local-evidence");
+      expect(activitySql).toMatch(
+        /ORDER BY terminal_step\.[`"]started_at[`"] DESC, terminal_step\.[`"]id[`"] DESC/u,
+      );
+      expect(activitySql).toContain("LIMIT 1");
+      expect(activitySql).not.toContain("UNION ALL");
+      expect(activitySql).not.toContain("evidence_bundles");
+      expect(activitySql).not.toContain("EXISTS (");
+      expect(activitySql).toMatch(/outcome_trace\.[`"]completed[`"] = TRUE/u);
       expect(activitySql).not.toContain("actor_subject_id");
       expect(activitySql).not.toContain("subject_id");
       expect(activitySql).toMatch(
-        /answer_trace\.[`"]created_at[`"] >= event\.[`"]occurred_at[`"]/u,
+        /outcome_trace\.[`"]created_at[`"] >= event\.[`"]occurred_at[`"]/u,
       );
     });
 
@@ -283,7 +296,21 @@ describe.each(["postgres", "tidb"] as const)(
       ]);
       const sql = select?.sql ?? "";
       expect(sql).toContain("answer_traces");
+      expect(sql).toContain("answer_trace_steps");
       expect(sql).toContain("failed_queries");
+      expect(sql).toContain("finishReason");
+      expect(sql).toContain("queryOutcome");
+      expect(sql).toContain("scoreThreshold");
+      expect(sql).toContain("topScore");
+      expect(sql).toContain("no-local-evidence");
+      expect(sql).toMatch(
+        /ORDER BY terminal_step\.[`"]started_at[`"] DESC, terminal_step\.[`"]id[`"] DESC/u,
+      );
+      expect(sql).toContain("LIMIT 1");
+      expect(sql).not.toContain("UNION ALL");
+      expect(sql).not.toContain("evidence_bundles");
+      expect(sql).not.toContain("EXISTS (");
+      expect(sql.match(/failed_queries/gu)).toHaveLength(1);
       expect(sql).toContain("low-confidence");
       expect(sql).toContain("no-retrieval-evidence");
       expect(sql).not.toContain("actor_subject_id");

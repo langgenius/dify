@@ -8,7 +8,7 @@ import type {
 import type { AnswerTraceRecorder } from "./answer-trace-recorder";
 import {
   type FailedQueryRecorder,
-  failedQueryTrigger,
+  classifyQueryOutcome,
   readTopScore,
 } from "./failed-query-recorder";
 import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
@@ -293,6 +293,7 @@ export function createQuerySseResponse({
         await recordAnswerTrace({
           answerTraceRecorder,
           events,
+          failedQueryLowConfidenceScoreFloor,
           input,
           status: "ok",
           traceId,
@@ -337,6 +338,7 @@ export function createQuerySseResponse({
             await recordAnswerTrace({
               answerTraceRecorder,
               events,
+              failedQueryLowConfidenceScoreFloor,
               input,
               status: "error",
               traceId,
@@ -410,12 +412,14 @@ async function nextGenerationEvent(
 async function recordAnswerTrace({
   answerTraceRecorder,
   events,
+  failedQueryLowConfidenceScoreFloor,
   input,
   status,
   traceId,
 }: {
   readonly answerTraceRecorder?: AnswerTraceRecorder | undefined;
   readonly events: readonly QueryGenerationEvent[];
+  readonly failedQueryLowConfidenceScoreFloor?: number | undefined;
   readonly input: QueryGenerationInput;
   readonly status: "error" | "ok";
   readonly traceId: string;
@@ -433,6 +437,13 @@ async function recordAnswerTrace({
     .find((event): event is Extract<QueryGenerationEvent, { readonly type: "done" }> => {
       return event.type === "done";
     });
+  const classification = classifyQueryOutcome({
+    finishReason: doneEvent?.finishReason,
+    ...(doneEvent?.metadata ? { metadata: doneEvent.metadata } : {}),
+    ...(failedQueryLowConfidenceScoreFloor !== undefined
+      ? { lowConfidenceScoreFloor: failedQueryLowConfidenceScoreFloor }
+      : {}),
+  });
 
   // Per-stage steps emitted by the generator (embed / retrieve / answer), followed by the
   // summary step that folds the done-event metadata — the shape earlier consumers rely on.
@@ -468,6 +479,8 @@ async function recordAnswerTrace({
           eventCount: events.length,
           ...(doneEvent?.finishReason ? { finishReason: doneEvent.finishReason } : {}),
           ...(doneEvent?.metadata ? doneEvent.metadata : {}),
+          queryOutcome: classification.outcome,
+          ...(classification.trigger ? { failedQueryTrigger: classification.trigger } : {}),
         },
         name: "query.generate",
         status,
@@ -509,7 +522,7 @@ async function captureFailedQuery({
     .find((event): event is Extract<QueryGenerationEvent, { readonly type: "done" }> => {
       return event.type === "done";
     });
-  const trigger = failedQueryTrigger({
+  const { trigger } = classifyQueryOutcome({
     finishReason: doneEvent?.finishReason,
     ...(doneEvent?.metadata ? { metadata: doneEvent.metadata } : {}),
     ...(failedQueryLowConfidenceScoreFloor !== undefined

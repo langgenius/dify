@@ -8,15 +8,11 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  datasetDefaultPermissionKeysAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
-import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath, newKnowledgeDocumentsPath } from '../routes'
+import { useKnowledgeSpacePermission } from '../space/context'
 import {
   overviewEmptyAtom,
   overviewFailedFirstSourceTaskAtom,
@@ -81,13 +77,11 @@ function IndexingProgress() {
 function EmptyKnowledgeOnboarding() {
   const { t } = useTranslation('knowledgeSpace')
   const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const canManageDocuments = useKnowledgeSpacePermission('knowledge_space_document_write')
   const [pendingAction, setPendingAction] = useState<'source' | 'upload'>()
-  const canConnectSource = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const canUpload =
-    uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
+  const canConnectSource = canManageDocuments
+  const canUpload = uploadAvailable && canManageDocuments
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload

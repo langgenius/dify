@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.rbac.entities import RBACResourceScope
 from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermission,
@@ -19,7 +20,11 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceVisibility,
 )
 from services.enterprise.rbac_service import RBACService
-from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from services.knowledge_fs.product_operations import (
+    RBAC_PERMISSION_BY_PRODUCT_PERMISSION,
+    KnowledgeFSProductPermission,
+    product_permissions_from_rbac_keys,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +63,13 @@ class KnowledgeFSProductRBACPort(Protocol):
 
 
 class DifyKnowledgeFSProductRBACPort:
-    """Use one Enterprise batch request for a page; fail closed if it is unavailable."""
+    """Use one Enterprise batch request for a page; fail closed if it is unavailable.
+
+    KnowledgeFS spaces are authorized with the legacy knowledge base (``dataset_*``)
+    permission points: the enterprise service answers the KnowledgeFS batch lookup in
+    that vocabulary and workspace-level checks send the mapped ``dataset_*`` scene with
+    ``resource_type="dataset"``, exactly like the legacy dataset console.
+    """
 
     def permission_keys_by_control_space(
         self,
@@ -81,11 +92,7 @@ class DifyKnowledgeFSProductRBACPort:
             logger.warning("KnowledgeFS enterprise RBAC batch lookup failed for tenant_id=%s", tenant_id, exc_info=True)
             return {}
         return {
-            control_space_id: frozenset(
-                permission
-                for permission in KnowledgeFSProductPermission
-                if permission.value in permissions.get(control_space_id, ())
-            )
+            control_space_id: product_permissions_from_rbac_keys(permissions.get(control_space_id, ()))
             for control_space_id in control_space_ids
         }
 
@@ -122,8 +129,8 @@ class DifyKnowledgeFSProductRBACPort:
         return RBACService.CheckAccess.check(
             tenant_id,
             account_id,
-            scene=permission.value,
-            resource_type=None,
+            scene=RBAC_PERMISSION_BY_PRODUCT_PERMISSION[permission].value,
+            resource_type=RBACResourceScope.DATASET.value,
             resource_id=None,
         )
 

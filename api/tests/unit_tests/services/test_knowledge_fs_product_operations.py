@@ -7,6 +7,7 @@ import pytest
 
 from services.knowledge_fs.product_operations import (
     KNOWLEDGE_FS_PRODUCT_OPERATIONS,
+    RBAC_PERMISSION_BY_PRODUCT_PERMISSION,
     is_product_operation_ready,
     is_product_operation_registered,
     knowledge_fs_product_operation_gaps,
@@ -146,7 +147,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         assert product_operation.kfs_path == capability_operation.path
         assert product_operation.action == capability_operation.action
         assert product_operation.resource_resolver == capability_operation.resource_type
-        assert product_operation.permission == product_operation.rbac_permission
+        assert product_operation.rbac_permission == RBAC_PERMISSION_BY_PRODUCT_PERMISSION[product_operation.permission]
         assert product_operation.max_request_bytes >= 0
         assert product_operation.max_response_bytes >= 0
         if product_operation.transport == "json":
@@ -212,3 +213,8 @@ def test_unregistered_product_operations_fail_closed() -> None:
     assert is_product_operation_registered("unknown-operation") is False
     with pytest.raises(KeyError, match="unknown-operation"):
         product_operation_action("unknown-operation")
+
+
+def test_every_operation_carries_the_legacy_dataset_permission_of_its_capability() -> None:
+    for operation_id, operation in KNOWLEDGE_FS_PRODUCT_OPERATIONS.items():
+        assert operation.rbac_permission is RBAC_PERMISSION_BY_PRODUCT_PERMISSION[operation.permission], operation_id

@@ -185,12 +185,13 @@ function BulkRemoveAction() {
 
 export function DocumentBulkActionsToolbar() {
   const { t } = useTranslation('knowledgeSpace')
+  const canDownload = useAtomValue(documentCanDownloadAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const clearSelectedDocuments = useSetAtom(clearDocumentSelectionAtom)
   const busy = Boolean(useAtomValue(documentBulkPendingActionAtom))
 
-  if (!canWrite || !selectedDocumentIds.size) return null
+  if ((!canWrite && !canDownload) || !selectedDocumentIds.size) return null
 
   return (
     <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
@@ -205,10 +206,10 @@ export function DocumentBulkActionsToolbar() {
           })}
         </span>
         <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
-        <BulkReindexAction />
-        <BulkDownloadAction />
-        <BulkAvailabilityAction />
-        <BulkRemoveAction />
+        {canWrite && <BulkReindexAction />}
+        {canDownload && <BulkDownloadAction />}
+        {canWrite && <BulkAvailabilityAction />}
+        {canWrite && <BulkRemoveAction />}
         <Button
           variant="ghost"
           size="small"

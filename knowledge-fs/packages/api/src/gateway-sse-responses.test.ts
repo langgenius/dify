@@ -455,6 +455,7 @@ describe("createQuerySseResponse", () => {
               eventCount: 2,
               finishReason: "stop",
               model: "fast-model",
+              queryOutcome: "answered",
             }),
             name: "query.generate",
             status: "ok",
@@ -544,6 +545,62 @@ describe("createQuerySseResponse", () => {
       name: "query.generate",
     });
   });
+
+  it.each([
+    {
+      expectedOutcome: "answered",
+      expectedTrigger: undefined,
+      finishReason: "local-evidence",
+      metadata: { nodeCount: 2 },
+    },
+    {
+      expectedOutcome: "no-evidence",
+      expectedTrigger: "no-retrieval-evidence",
+      finishReason: "no-local-evidence",
+      metadata: { nodeCount: 0 },
+    },
+    {
+      expectedOutcome: "low-confidence",
+      expectedTrigger: "low-confidence",
+      finishReason: "retrieval-evidence",
+      metadata: { topScore: 0.7 },
+    },
+  ] as const)(
+    "persists $expectedOutcome before Capability failed-query capture can be skipped",
+    async ({ expectedOutcome, expectedTrigger, finishReason, metadata }) => {
+      const records: RecordAnswerTraceInput[] = [];
+      const failedQueryRecord = vi.fn();
+      const response = createQuerySseResponse({
+        answerTraceRecorder: {
+          record: async (input) => {
+            records.push(input);
+            return recordedAnswerTrace(input);
+          },
+        },
+        failedQueryLowConfidenceScoreFloor: 0.8,
+        failedQueryRecorder: { record: failedQueryRecord },
+        generator: {
+          stream: async function* () {
+            yield { delta: "answer", type: "delta" as const };
+            yield { finishReason, metadata, type: "done" as const };
+          },
+        },
+        input: {
+          ...queryInput(),
+          capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c98",
+          permissionSnapshot: undefined,
+        },
+        traceId: TRACE_ID,
+      });
+
+      await response.text();
+
+      const summary = records[0]?.steps.at(-1)?.metadata;
+      expect(summary?.queryOutcome).toBe(expectedOutcome);
+      expect(summary?.failedQueryTrigger).toBe(expectedTrigger);
+      expect(failedQueryRecord).not.toHaveBeenCalled();
+    },
+  );
 });
 
 function queryInput() {

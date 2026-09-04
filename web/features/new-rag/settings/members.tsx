@@ -12,6 +12,7 @@ type KnowledgeSettingsMembersProps = {
   ownerAccountId: string
   selectedMemberIds: string[]
   visibility: KnowledgeFsControlSpaceVisibility
+  visibilityDisabled: boolean
   onSelectedMemberIdsChange: (memberIds: string[]) => void
   onVisibilityChange: (visibility: KnowledgeFsControlSpaceVisibility) => void
 }
@@ -25,6 +26,7 @@ export function KnowledgeSettingsMembers({
   ownerAccountId,
   selectedMemberIds,
   visibility,
+  visibilityDisabled,
   onSelectedMemberIdsChange,
   onVisibilityChange,
 }: KnowledgeSettingsMembersProps) {
@@ -39,6 +41,7 @@ export function KnowledgeSettingsMembers({
         invalid={hasError}
         memberList={members}
         permission={visibility}
+        permissionChangeDisabled={visibilityDisabled}
         value={selectedMemberIds}
         onChange={(permission) => {
           if (permission) onVisibilityChange(permission as KnowledgeFsControlSpaceVisibility)
