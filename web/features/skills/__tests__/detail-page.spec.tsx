@@ -491,14 +491,18 @@ function createAgentReference(
   }
 }
 
-function renderSkillDetailPage({ strict = false }: { strict?: boolean } = {}) {
-  const queryClient = new QueryClient({
+function renderSkillDetailPage({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  })
-
+  }),
+  strict = false,
+}: {
+  queryClient?: QueryClient
+  strict?: boolean
+} = {}) {
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -3031,22 +3035,44 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('checks references before publishing when the cached reference count is stale', async () => {
+  it('refreshes a fresh empty references cache before publishing', async () => {
     const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+        mutations: { retry: false },
+      },
+    })
+    const referencesQueryKey = [
+      'skill-references',
+      {
+        params: {
+          skill_id: 'skill-1',
+        },
+      },
+    ]
+    let remoteReferences: SkillReferenceResponse[] = []
+    const referencesQueryFn = vi.fn(async () => ({ data: remoteReferences }))
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
     mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: [
-          createAgentReference({
-            display_name: 'Stale Count Agent',
-            name: 'stale-count-agent',
-          }),
-        ],
-      }),
+      queryKey: ['skill-references', (options as { input: unknown }).input],
+      queryFn: referencesQueryFn,
     }))
+    queryClient.setQueryData(referencesQueryKey, { data: [] })
 
-    renderSkillDetailPage()
+    renderSkillDetailPage({ queryClient })
+
+    await waitFor(() => {
+      expect(referencesQueryFn).toHaveBeenCalled()
+      expect(queryClient.getQueryState(referencesQueryKey)?.fetchStatus).toBe('idle')
+    })
+    remoteReferences = [
+      createAgentReference({
+        display_name: 'Fresh Cache Agent',
+        name: 'fresh-cache-agent',
+      }),
+    ]
+    referencesQueryFn.mockClear()
 
     await user.click(
       await screen.findByRole('button', {
@@ -3054,6 +3080,7 @@ describe('SkillDetailPage', () => {
       }),
     )
 
+    expect(referencesQueryFn).toHaveBeenCalled()
     expect(
       await screen.findByRole('dialog', {
         name: 'skill.skillManagement.detail.publishReferencesTitle',
@@ -3062,8 +3089,51 @@ describe('SkillDetailPage', () => {
     expect(
       screen.getByText('skill.skillManagement.detail.publishReferencesDescription_one:{"count":1}'),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Stale Count Agent')).toBeInTheDocument()
+    expect(await screen.findByText('Fresh Cache Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('does not publish when refreshing references fails', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+        mutations: { retry: false },
+      },
+    })
+    let refreshShouldFail = false
+    const referencesQueryFn = vi.fn(async () => {
+      if (refreshShouldFail) throw new Error('references unavailable')
+      return { data: [] }
+    })
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', (options as { input: unknown }).input],
+      queryFn: referencesQueryFn,
+    }))
+
+    renderSkillDetailPage({ queryClient })
+
+    await waitFor(() => {
+      expect(referencesQueryFn).toHaveBeenCalled()
+      expect(queryClient.isFetching()).toBe(0)
+    })
+    refreshShouldFail = true
+    referencesQueryFn.mockClear()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    await waitFor(() => expect(referencesQueryFn).toHaveBeenCalledOnce())
+    expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'skill.skillManagement.detail.publishReferencesTitle',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
@@ -5211,7 +5281,7 @@ describe('SkillDetailPage', () => {
 
     fireEvent.dragOver(contextRegion, { dataTransfer })
 
-    expect(screen.getByLabelText('Upload to root folder')).toBeInTheDocument()
+    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to root folder$/)
 
     fireEvent.drop(contextRegion, { dataTransfer })
     await confirmUploadReview()
@@ -5341,7 +5411,7 @@ describe('SkillDetailPage', () => {
     fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
 
     expect(folder).toHaveClass('ring-state-accent-solid')
-    expect(screen.getByLabelText('Upload to references')).toBeInTheDocument()
+    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to references$/)
 
     fireEvent.drop(folder.closest('li')!, { dataTransfer })
     await confirmUploadReview()
@@ -5585,7 +5655,7 @@ describe('SkillDetailPage', () => {
     expect(exampleFile).toHaveClass('opacity-30')
 
     fireEvent.dragOver(targetFolder.closest('li')!, { dataTransfer })
-    expect(screen.getByLabelText('Move to references')).toBeInTheDocument()
+    expect(screen.getByText(/^Move to/)).toHaveTextContent(/^Move to references$/)
     fireEvent.drop(targetFolder.closest('li')!, { dataTransfer })
 
     await waitFor(() => {

@@ -208,7 +208,7 @@ export const useMCPServerDetail = (appID: string, enabled = true) => {
 export const useInvalidateMCPServerDetail = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries({
+    return queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
     })
   }
@@ -324,25 +324,10 @@ export const useAppTriggers = (
 export const useInvalidateAppTriggers = () => {
   const queryClient = useQueryClient()
   return (appId: string) => {
-    queryClient.invalidateQueries({
+    return queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'app-triggers', appId],
     })
   }
-}
-
-export const useUpdateTriggerStatus = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-trigger-status'],
-    mutationFn: (payload: { appId: string; triggerId: string; enableTrigger: boolean }) => {
-      const { appId, triggerId, enableTrigger } = payload
-      return post<AppTrigger>(`/apps/${appId}/trigger-enable`, {
-        body: {
-          trigger_id: triggerId,
-          enable_trigger: enableTrigger,
-        },
-      })
-    },
-  })
 }
 
 const workflowToolDetailByAppIDKey = (appId: string) => [

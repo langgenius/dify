@@ -567,9 +567,6 @@ export function AgentEnvEditor() {
                 render={
                   <button
                     type="button"
-                    aria-label={t(
-                      ($) => $['agentDetail.configure.advancedSettings.envEditor.importEnv'],
-                    )}
                     onClick={() => envImportInputRef.current?.click()}
                     className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >

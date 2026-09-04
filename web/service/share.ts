@@ -17,7 +17,8 @@ import {
   ssePost,
   upload,
 } from './base'
-import { getWebAppAccessToken } from './webapp-auth'
+import { resolveWebAppAddress } from './webapp-address'
+import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
 
 export enum AppSourceType {
   webApp = 'webApp',
@@ -411,13 +412,11 @@ export const textToAudioStream = (
   return getAction('post', appSourceType)(url, { body }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async ({
-  userId,
-  appCode,
-}: {
-  userId?: string
-  appCode: string
-}) => {
+type AccessTokenResponse = { access_token: string }
+
+const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>>()
+
+const requestAccessToken = ({ userId, appCode }: { userId?: string; appCode: string }) => {
   const headers = new Headers()
   headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
   const accessToken = getWebAppAccessToken()
@@ -425,7 +424,29 @@ export const fetchAccessToken = async ({
   const params = new URLSearchParams()
   if (userId) params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
-  return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
+  return get<AccessTokenResponse>(url, { headers }) as Promise<AccessTokenResponse>
+}
+
+export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
+  const address = resolveWebAppAddress()
+  if (address?.kind !== 'environment') return requestAccessToken(params)
+
+  const environmentParams = {
+    ...params,
+    userId: params.userId || getOrCreateWebAppSessionId(address),
+  }
+
+  const currentRequest = environmentPassportRequests.get(address.code)
+  if (currentRequest) return currentRequest
+
+  const request = requestAccessToken(environmentParams)
+  environmentPassportRequests.set(address.code, request)
+  const clearRequest = () => {
+    if (environmentPassportRequests.get(address.code) === request)
+      environmentPassportRequests.delete(address.code)
+  }
+  request.then(clearRequest, clearRequest)
+  return request
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
