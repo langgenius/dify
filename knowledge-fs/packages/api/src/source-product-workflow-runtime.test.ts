@@ -1105,9 +1105,12 @@ describe("source-product workflow provider imports", () => {
     });
   });
 
-  it("imports staged preview pages without calling the website provider", async () => {
+  it("imports staged preview object references without calling the website provider", async () => {
     const source = sourceRecord("staged-crawl-import", { type: "web" });
-    const bodies = new Map<string, Uint8Array>();
+    const body = new TextEncoder().encode("preview body");
+    const contentHash = createHash("sha256").update(body).digest("hex");
+    const contentObjectKey = "staged/page";
+    const bodies = new Map<string, Uint8Array>([[contentObjectKey, body]]);
     const crawl = vi.fn();
     const fixture = await createFixture({
       contentStore: {
@@ -1122,9 +1125,12 @@ describe("source-product workflow provider imports", () => {
       inventory: [],
       run: providerRun(source.id, "crawl-import", {
         selectedSourceUrls: ["https://example.test/selected"],
-        stagedPages: [
+        stagedPageReferences: [
           {
-            content: "preview body",
+            contentHash,
+            contentObjectKey,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            pageId: "page-selected",
             sourceUrl: "https://example.test/selected",
             title: "Selected",
           },
@@ -1137,7 +1143,10 @@ describe("source-product workflow provider imports", () => {
     await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
     expect(crawl).not.toHaveBeenCalled();
     await expect(fixture.getRun()).resolves.toMatchObject({
-      payload: { selectedSourceUrls: ["https://example.test/selected"] },
+      payload: {
+        selectedSourceUrls: ["https://example.test/selected"],
+        stagedPageReferences: [expect.objectContaining({ contentHash, contentObjectKey })],
+      },
       progressCompleted: 1,
       state: "completed",
     });

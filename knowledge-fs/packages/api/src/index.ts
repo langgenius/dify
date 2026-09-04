@@ -586,6 +586,7 @@ import { registerLogicalDocumentHandlers } from "./logical-document-handlers";
 import { registerModelCapabilityHandlers } from "./model-capability-handlers";
 import {
   createInMemoryNamespaceSourcePreviewRepository,
+  createNamespaceSourcePreviewRuntime,
   createNamespaceSourcePreviewService,
 } from "./namespace-source-preview";
 import { registerNamespaceSourcePreviewHandlers } from "./namespace-source-preview-handlers";
@@ -1555,6 +1556,7 @@ export function createKnowledgeGateway({
   app.use("/internal/dify-integration/*", authMiddleware);
   app.use("/queries/*", authMiddleware);
   app.use("/jobs/*", authMiddleware);
+  app.use("/namespace/*", authMiddleware);
   app.use("/research-tasks/*", authMiddleware);
   app.use("/upload-sessions/*", authMiddleware);
   app.use("/agent-workspace-snapshots/*", authMiddleware);
@@ -2156,19 +2158,21 @@ export function createKnowledgeGateway({
     if (sourceSync) {
       throw new Error("Legacy source sync scheduler cannot run with durable source workflows");
     }
+    const sourceWorkflowContentStore = createObjectStorageSourceWorkflowContentStore({
+      storage: adapter.objectStorage,
+    });
     sourceProductWorkflows = createSourceProductWorkflowService({
       access: accessService,
       authorization: spaceAuthorization,
       repository: sourceProduct.repository,
+      stagingContentStore: sourceWorkflowContentStore,
       sources: sourceRepository,
     });
     const sourceWorkflowRuntime = createSourceProductWorkflowRuntime({
       access: accessService,
       ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
       bulkRemoval: sourceProduct.bulkRemoval,
-      contentStore: createObjectStorageSourceWorkflowContentStore({
-        storage: adapter.objectStorage,
-      }),
+      contentStore: sourceWorkflowContentStore,
       deletionFence: deletionLifecycleFence,
       logicalInventory: logicalDocuments,
       logicalRevisions: sourceProduct.logicalRevisions,
@@ -2229,8 +2233,19 @@ export function createKnowledgeGateway({
         workflows: sourceProductWorkflows,
       });
       registerNamespaceSourcePreviewHandlers({ app, service: namespacePreviews });
-      const timer = setInterval(() => void namespacePreviews.tick(), 1_000);
-      timer.unref?.();
+      createNamespaceSourcePreviewRuntime({
+        onError: (error) => {
+          process.stderr.write(
+            `${JSON.stringify({
+              errorClass: error instanceof Error ? error.name : typeof error,
+              errorMessage:
+                error instanceof Error ? error.message : "Unknown preview runtime error",
+              event: "knowledge_fs.namespace_source_preview.error",
+            })}\n`,
+          );
+        },
+        service: namespacePreviews,
+      }).start();
     }
   }
   registerBackgroundTaskHandlers({

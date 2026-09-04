@@ -461,6 +461,60 @@ export interface SourceWorkflowPrincipal {
   readonly subject: AuthSubject;
 }
 
+export interface SourceWorkflowContentStagingStore {
+  copy?(input: {
+    readonly contentHash: string;
+    readonly knowledgeSpaceId: string;
+    readonly pageId: string;
+    readonly runId: string;
+    readonly sourceObjectKey: string;
+    readonly tenantId: string;
+  }): Promise<string>;
+  deleteRun(input: {
+    readonly knowledgeSpaceId: string;
+    readonly limit: number;
+    readonly runId: string;
+    readonly tenantId: string;
+  }): Promise<{ readonly deleted: number; readonly hasMore: boolean }>;
+  put(input: {
+    readonly body: Uint8Array;
+    readonly contentHash: string;
+    readonly knowledgeSpaceId: string;
+    readonly pageId: string;
+    readonly runId: string;
+    readonly tenantId: string;
+  }): Promise<string>;
+}
+
+interface StagedCrawlPageReference {
+  readonly [key: string]: JobPayload;
+  readonly contentHash: string;
+  readonly contentObjectKey: string;
+  readonly createdAt: string;
+  readonly description: string | null;
+  readonly pageId: string;
+  readonly sourceUrl: string;
+  readonly title: string | null;
+}
+
+export function sourceWorkflowIdempotencyPayload(
+  payload: Readonly<Record<string, JobPayload>>,
+): Readonly<Record<string, JobPayload>> {
+  const references = payload.stagedPageReferences;
+  if (!Array.isArray(references)) return payload;
+  return {
+    ...payload,
+    stagedPageReferences: references.map((reference) => {
+      if (!reference || typeof reference !== "object" || Array.isArray(reference)) return reference;
+      return Object.fromEntries(
+        Object.entries(reference).filter(
+          ([key]) => key !== "contentObjectKey" && key !== "createdAt",
+        ),
+      );
+    }),
+  };
+}
+
 export class SourceWorkflowError extends Error {
   constructor(
     readonly code: string,
@@ -500,6 +554,13 @@ export interface SourceProductWorkflowService {
     input: SourceWorkflowPrincipal & {
       readonly idempotencyKey: string;
       readonly knowledgeSpaceId: string;
+      readonly pageReferences?: readonly {
+        readonly contentHash: string;
+        readonly contentObjectKey: string;
+        readonly description?: string | null;
+        readonly sourceUrl: string;
+        readonly title?: string | null;
+      }[];
       readonly pages?: readonly {
         readonly content: string;
         readonly description?: string | null;
@@ -579,6 +640,26 @@ export interface SourceProductWorkflowService {
   ): Promise<SourceWorkflowRun>;
 }
 
+async function cleanupStagingRun(
+  store: SourceWorkflowContentStagingStore,
+  run: Pick<SourceWorkflowRun, "id" | "knowledgeSpaceId" | "tenantId">,
+  maxBatches: number,
+): Promise<void> {
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await store.deleteRun({
+      knowledgeSpaceId: run.knowledgeSpaceId,
+      limit: 100,
+      runId: run.id,
+      tenantId: run.tenantId,
+    });
+    if (!result.hasMore) return;
+  }
+  throw new SourceWorkflowError(
+    "SOURCE_WORKFLOW_CLEANUP_INCOMPLETE",
+    "Staged source content cleanup exceeded its bounded batch budget",
+  );
+}
+
 export function createSourceProductWorkflowService(input: {
   readonly access: Pick<
     KnowledgeSpaceAccessService,
@@ -593,6 +674,7 @@ export function createSourceProductWorkflowService(input: {
   readonly now?: (() => string) | undefined;
   readonly permissionSnapshotTtlMs?: number | undefined;
   readonly repository: SourceProductWorkflowRepository;
+  readonly stagingContentStore?: SourceWorkflowContentStagingStore | undefined;
   readonly sources: Pick<SourceRepository, "get">;
 }): SourceProductWorkflowService {
   const generateBulkItemId = input.generateBulkItemId ?? randomUUID;
@@ -780,18 +862,118 @@ export function createSourceProductWorkflowService(input: {
           "Crawl import pages must match source URLs in order",
         );
       }
-      return start(request, {
+      if (
+        request.pageReferences &&
+        (request.pages ||
+          request.pageReferences.length !== sourceUrls.length ||
+          request.pageReferences.some((page, index) => page.sourceUrl !== sourceUrls[index]))
+      ) {
+        throw new SourceWorkflowError(
+          "SOURCE_IMPORT_ITEMS_INVALID",
+          "Crawl import page references must match source URLs in order",
+        );
+      }
+      const workflow = {
         idempotencyKey: request.idempotencyKey,
         knowledgeSpaceId: request.knowledgeSpaceId,
         kind: "crawl-import",
-        payload: {
-          selectedSourceUrls: sourceUrls,
-          ...(request.pages ? { stagedPages: request.pages } : {}),
-        },
+        payload: { selectedSourceUrls: sourceUrls },
         progressTotal: sourceUrls.length,
         requiredPermissionScope: requiredSourceScope(source),
         sourceId: request.sourceId,
-      });
+      } as const;
+      if (!request.pages && !request.pageReferences) return start(request, workflow);
+      if (!input.stagingContentStore) {
+        throw new SourceWorkflowError(
+          "SOURCE_WORKFLOW_CONTENT_STORE_UNAVAILABLE",
+          "Source workflow content store is unavailable",
+        );
+      }
+      if (request.pageReferences && !input.stagingContentStore.copy) {
+        throw new SourceWorkflowError(
+          "SOURCE_WORKFLOW_CONTENT_STORE_UNAVAILABLE",
+          "Source workflow content copy is unavailable",
+        );
+      }
+      const copyStagedContent = input.stagingContentStore.copy;
+      const prepared = await prepare(request, workflow);
+      const references: StagedCrawlPageReference[] = [];
+      try {
+        for (const [index, sourceUrl] of sourceUrls.entries()) {
+          const page = request.pages?.[index];
+          const pageReference = request.pageReferences?.[index];
+          if (!page && !pageReference) {
+            throw new SourceWorkflowError(
+              "SOURCE_IMPORT_ITEMS_INVALID",
+              "Crawl import page content is unavailable",
+            );
+          }
+          const body = page ? new TextEncoder().encode(page.content) : undefined;
+          const contentHash = body
+            ? createHash("sha256").update(body).digest("hex")
+            : pageReference?.contentHash;
+          if (!contentHash || !/^[a-f0-9]{64}$/u.test(contentHash)) {
+            throw new SourceWorkflowError(
+              "SOURCE_IMPORT_ITEMS_INVALID",
+              "Crawl import page content hash is invalid",
+            );
+          }
+          const pageId = createHash("sha256").update(sourceUrl, "utf8").digest("hex");
+          const contentObjectKey = body
+            ? await input.stagingContentStore.put({
+                body,
+                contentHash,
+                knowledgeSpaceId: prepared.knowledgeSpaceId,
+                pageId,
+                runId: prepared.id,
+                tenantId: prepared.tenantId,
+              })
+            : await copyStagedContent?.({
+                contentHash,
+                knowledgeSpaceId: prepared.knowledgeSpaceId,
+                pageId,
+                runId: prepared.id,
+                sourceObjectKey: pageReference?.contentObjectKey ?? "",
+                tenantId: prepared.tenantId,
+              });
+          if (!contentObjectKey) {
+            throw new SourceWorkflowError(
+              "SOURCE_WORKFLOW_CONTENT_STORE_UNAVAILABLE",
+              "Source workflow content copy is unavailable",
+            );
+          }
+          references.push({
+            contentHash,
+            contentObjectKey,
+            createdAt: prepared.createdAt,
+            description: (page?.description ?? pageReference?.description)?.slice(0, 2_000) ?? null,
+            pageId,
+            sourceUrl,
+            title: (page?.title ?? pageReference?.title)?.slice(0, 500) ?? null,
+          });
+        }
+        const run = await input.repository.start({
+          ...prepared,
+          payload: {
+            ...prepared.payload,
+            stagedPageReferences: references,
+          },
+        });
+        if (run.id !== prepared.id)
+          await cleanupStagingRun(
+            input.stagingContentStore,
+            prepared,
+            Math.ceil(maxImportItems / 100) + 1,
+          );
+        return run;
+      } catch (error) {
+        await cleanupStagingRun(
+          input.stagingContentStore,
+          prepared,
+          Math.ceil(maxImportItems / 100) + 1,
+        ).catch(() => undefined);
+        throw error;
+      }
     },
     createImport: async (request) => {
       const { source } = await requireSource(

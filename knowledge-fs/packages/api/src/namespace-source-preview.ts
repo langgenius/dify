@@ -420,6 +420,94 @@ export function createNamespaceSourcePreviewService(input: {
     if (!job) throw new NamespaceSourcePreviewError("PREVIEW_NOT_FOUND", "Preview job not found");
     return job;
   };
+  const processQueuedJob = async (job: NamespaceSourcePreviewJob, timestamp: string) => {
+    const source: Source = {
+      id: randomUUID(),
+      knowledgeSpaceId: "00000000-0000-0000-0000-000000000000",
+      name: "Namespace website preview",
+      type: "web",
+      uri: job.config.rootUrl,
+      status: "disabled",
+      permissionScope: [],
+      version: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      metadata: {
+        credentialId: job.config.credentialId,
+        datasource: job.config.datasource,
+        parameters: job.config.parameters,
+        pluginId: job.config.pluginId,
+        provider: job.config.provider,
+        datasourceParameterMode: "exact",
+      },
+    };
+    const saved: string[] = [];
+    try {
+      const result = await input.websiteCrawl.crawl({
+        source,
+        tenantId: job.tenantId,
+        userId: job.accountId,
+      });
+      const pages: NamespaceSourcePreviewPage[] = [];
+      let totalBytes = 0;
+      for (const page of result.pages) {
+        const body = new TextEncoder().encode(page.content);
+        if (body.byteLength > maxPageBytes)
+          throw new NamespaceSourcePreviewError(
+            "PREVIEW_PAGE_TOO_LARGE",
+            "Preview page exceeds the per-page content limit",
+          );
+        if (totalBytes > maxJobBytes - body.byteLength)
+          throw new NamespaceSourcePreviewError(
+            "PREVIEW_JOB_TOO_LARGE",
+            "Preview job exceeds the total content limit",
+          );
+        totalBytes += body.byteLength;
+        const hash = createHash("sha256").update(body).digest("hex");
+        const pageId = createHash("sha256").update(page.sourceUrl).digest("hex").slice(0, 32);
+        const key = `${objectPrefix(job)}${pageId}-${hash}.bin`;
+        await input.storage.putObject({
+          key,
+          body,
+          contentType: "text/markdown",
+          metadata: { contentHash: hash, lifecycle: "namespace-source-preview", jobId: job.id },
+        });
+        saved.push(key);
+        pages.push({
+          pageId,
+          sourceUrl: page.sourceUrl,
+          contentHash: hash,
+          contentObjectKey: key,
+          ...(page.title ? { title: page.title } : {}),
+          ...(page.description ? { description: page.description } : {}),
+        });
+      }
+      const completed = await input.repository.complete({
+        jobId: job.id,
+        now: now().toISOString(),
+        pages,
+      });
+      if (!completed)
+        throw new NamespaceSourcePreviewError(
+          "PREVIEW_STATE_CONFLICT",
+          "Preview job could not be completed from its current state",
+        );
+    } catch (error) {
+      for (const key of saved) await input.storage.deleteObject(key).catch(() => {});
+      await input.repository.fail({
+        jobId: job.id,
+        now: now().toISOString(),
+        errorCode:
+          error instanceof NamespaceSourcePreviewError ? error.code : "PREVIEW_PROVIDER_FAILED",
+      });
+      const failed = await input.repository.get({
+        tenantId: job.tenantId,
+        accountId: job.accountId,
+        jobId: job.id,
+      });
+      if (failed) await cleanup(failed).catch(() => {});
+    }
+  };
   return {
     create: async (
       subject: AuthSubject,
@@ -464,99 +552,10 @@ export function createNamespaceSourcePreviewService(input: {
       const timestamp = now().toISOString();
       await input.repository.expire(timestamp);
       const cleanupJob = await input.repository.claimCleanup();
-      if (cleanupJob) {
-        await cleanup(cleanupJob).catch(() => {});
-        return true;
-      }
       const job = await input.repository.claim(timestamp);
-      if (!job) return false;
-      const source: Source = {
-        id: randomUUID(),
-        knowledgeSpaceId: "00000000-0000-0000-0000-000000000000",
-        name: "Namespace website preview",
-        type: "web",
-        uri: job.config.rootUrl,
-        status: "disabled",
-        permissionScope: [],
-        version: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        metadata: {
-          credentialId: job.config.credentialId,
-          datasource: job.config.datasource,
-          parameters: job.config.parameters,
-          pluginId: job.config.pluginId,
-          provider: job.config.provider,
-          datasourceParameterMode: "exact",
-        },
-      };
-      const saved: string[] = [];
-      try {
-        const result = await input.websiteCrawl.crawl({
-          source,
-          tenantId: job.tenantId,
-          userId: job.accountId,
-        });
-        const pages: NamespaceSourcePreviewPage[] = [];
-        let totalBytes = 0;
-        for (const page of result.pages) {
-          const body = new TextEncoder().encode(page.content);
-          if (body.byteLength > maxPageBytes)
-            throw new NamespaceSourcePreviewError(
-              "PREVIEW_PAGE_TOO_LARGE",
-              "Preview page exceeds the per-page content limit",
-            );
-          if (totalBytes > maxJobBytes - body.byteLength)
-            throw new NamespaceSourcePreviewError(
-              "PREVIEW_JOB_TOO_LARGE",
-              "Preview job exceeds the total content limit",
-            );
-          totalBytes += body.byteLength;
-          const hash = createHash("sha256").update(body).digest("hex");
-          const pageId = createHash("sha256").update(page.sourceUrl).digest("hex").slice(0, 32);
-          const key = `${objectPrefix(job)}${pageId}-${hash}.bin`;
-          await input.storage.putObject({
-            key,
-            body,
-            contentType: "text/markdown",
-            metadata: { contentHash: hash, lifecycle: "namespace-source-preview", jobId: job.id },
-          });
-          saved.push(key);
-          pages.push({
-            pageId,
-            sourceUrl: page.sourceUrl,
-            contentHash: hash,
-            contentObjectKey: key,
-            ...(page.title ? { title: page.title } : {}),
-            ...(page.description ? { description: page.description } : {}),
-          });
-        }
-        const completed = await input.repository.complete({
-          jobId: job.id,
-          now: now().toISOString(),
-          pages,
-        });
-        if (!completed)
-          throw new NamespaceSourcePreviewError(
-            "PREVIEW_STATE_CONFLICT",
-            "Preview job could not be completed from its current state",
-          );
-      } catch (error) {
-        for (const key of saved) await input.storage.deleteObject(key).catch(() => {});
-        await input.repository.fail({
-          jobId: job.id,
-          now: now().toISOString(),
-          errorCode:
-            error instanceof NamespaceSourcePreviewError ? error.code : "PREVIEW_PROVIDER_FAILED",
-        });
-        const failed = await input.repository.get({
-          tenantId: job.tenantId,
-          accountId: job.accountId,
-          jobId: job.id,
-        });
-        if (failed) await cleanup(failed).catch(() => {});
-      }
-      return true;
+      if (job) await processQueuedJob(job, timestamp);
+      if (cleanupJob) await cleanup(cleanupJob).catch(() => {});
+      return Boolean(job || cleanupJob);
     },
     consume: async (
       subject: AuthSubject,
@@ -607,27 +606,20 @@ export function createNamespaceSourcePreviewService(input: {
           throw new NamespaceSourcePreviewError("PREVIEW_PAGE_NOT_FOUND", "Preview page not found");
         selected.push(page);
       }
-      const pages = await Promise.all(
-        selected.map(async (p) => {
-          const body = await input.storage.getObject(p.contentObjectKey);
-          if (!body)
-            throw new NamespaceSourcePreviewError("PREVIEW_EXPIRED", "Preview content expired");
-          return {
-            sourceUrl: p.sourceUrl,
-            content: new TextDecoder().decode(body),
-            ...(p.title ? { title: p.title } : {}),
-            ...(p.description ? { description: p.description } : {}),
-          };
-        }),
-      );
       const workflow = await input.workflows.createCrawlImport({
         subject,
         callerKind: "interactive",
         knowledgeSpaceId: request.knowledgeSpaceId,
         sourceId: request.sourceId,
         idempotencyKey: request.idempotencyKey,
-        sourceUrls: pages.map((p) => p.sourceUrl),
-        pages,
+        sourceUrls: selected.map((page) => page.sourceUrl),
+        pageReferences: selected.map((page) => ({
+          contentHash: page.contentHash,
+          contentObjectKey: page.contentObjectKey,
+          sourceUrl: page.sourceUrl,
+          ...(page.title ? { title: page.title } : {}),
+          ...(page.description ? { description: page.description } : {}),
+        })),
       });
       await input.repository.consume({
         jobId: job.id,
@@ -638,5 +630,52 @@ export function createNamespaceSourcePreviewService(input: {
       await cleanup(consumed).catch(() => {});
       return workflow.id;
     },
+  };
+}
+
+export function createNamespaceSourcePreviewRuntime(input: {
+  readonly intervalMs?: number;
+  readonly onError?: ((error: unknown) => void) | undefined;
+  readonly service: { tick(): Promise<boolean> };
+}) {
+  const intervalMs = input.intervalMs ?? 1_000;
+  if (!Number.isSafeInteger(intervalMs) || intervalMs < 1)
+    throw new Error("Namespace preview interval must be a positive safe integer");
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let inFlight: Promise<void> | undefined;
+  let stopping = false;
+  const runTick = () => {
+    if (stopping || inFlight) return;
+    const execution = input.service
+      .tick()
+      .then(() => undefined)
+      .catch((error) => {
+        try {
+          input.onError?.(error);
+        } catch {
+          // Observability must never terminate the preview scheduler.
+        }
+      })
+      .finally(() => {
+        if (inFlight === execution) inFlight = undefined;
+      });
+    inFlight = execution;
+  };
+  const stop = async () => {
+    stopping = true;
+    if (timer) clearInterval(timer);
+    timer = undefined;
+    await inFlight;
+  };
+  return {
+    start: () => {
+      if (!timer) {
+        stopping = false;
+        timer = setInterval(runTick, intervalMs);
+        timer.unref?.();
+      }
+      return stop;
+    },
+    stop,
   };
 }

@@ -45,6 +45,7 @@ import {
   type SourceWorkflowState,
   nextSourceWorkflowMaterializationGeneration,
   nextSyncPolicyRunAt,
+  sourceWorkflowIdempotencyPayload,
 } from "./source-product-workflow";
 
 const runTable = "source_workflow_runs";
@@ -105,7 +106,8 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             replay.accessChannel !== record.accessChannel ||
             stableJson(replay.requiredPermissionScope) !==
               stableJson(record.requiredPermissionScope) ||
-            stableJson(replay.payload) !== stableJson(record.payload)
+            stableJson(sourceWorkflowIdempotencyPayload(replay.payload)) !==
+              stableJson(sourceWorkflowIdempotencyPayload(record.payload))
           ) {
             throw new SourceWorkflowError(
               "SOURCE_WORKFLOW_IDEMPOTENCY_CONFLICT",
