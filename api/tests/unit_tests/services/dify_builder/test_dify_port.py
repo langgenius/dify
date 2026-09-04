@@ -431,6 +431,44 @@ def test_apply_repair_skips_on_canvas_when_not_provided(mock_session: MagicMock)
         WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
 
 
+def test_apply_repair_skips_already_present_create_and_connect(mock_session: MagicMock):
+    """A fix.apply Retry re-applies the SAME intents against an already-mutated
+    draft. create_node for a present id and connect for a present edge must be
+    dropped (no duplicate, no ValueError); set_node_config still applies."""
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    # Draft already has node "llm_1" and edge start_1 -> llm_1 (the result of a prior apply).
+    existing_graph = {
+        "nodes": [
+            {"id": "start_1", "data": {"type": "start"}},
+            {"id": "llm_1", "data": {"type": "llm", "title": "old"}},
+        ],
+        "edges": [{"id": "e1", "source": "start_1", "target": "llm_1"}],
+    }
+    workflow = SimpleNamespace(
+        graph_dict=existing_graph,
+        unique_hash="h0",
+        features_dict={},
+        conversation_variables=[],
+    )
+    intents = [
+        MutationIntent(op="create_node", args={"node_type": "llm", "node_id": "llm_1", "config": {"title": "new"}}),
+        MutationIntent(op="connect", args={"from_node": "start_1", "to_node": "llm_1"}),
+    ]
+
+    with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+
+        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+    # Both intents were already present -> filtered -> no changes -> no-op ApplyResult, no ValueError.
+    assert result.changed_nodes == []
+    assert result.new_hash == "h0"
+    mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
+
+
 # ---- run_draft --------------------------------------------------------------
 
 
