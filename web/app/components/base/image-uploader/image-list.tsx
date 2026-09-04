@@ -37,6 +37,15 @@ const ImageList: FC<ImageListProps> = ({
     if (item.type === TransferMethod.remote_url && onImageLinkLoadError)
       onImageLinkLoadError(item._id)
   }
+  const renderImage = (item: ImageFile) => (
+    <img
+      className="block h-16 w-16 rounded-lg border-[0.5px] border-black/5 object-cover"
+      alt={item.progress === 100 ? '' : (item.file?.name ?? '')}
+      onLoad={() => handleImageLinkLoadSuccess(item)}
+      onError={() => handleImageLinkLoadError(item)}
+      src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
+    />
+  )
 
   return (
     <>
@@ -47,7 +56,7 @@ const ImageList: FC<ImageListProps> = ({
         role="list"
         aria-label={t(($) => $['imageUploader.imageList'], { ns: 'common' })}
       >
-        {list.map((item) => (
+        {list.map((item, index) => (
           <li
             key={item._id}
             className="group relative mr-1 rounded-lg border-[0.5px] border-black/5"
@@ -104,24 +113,26 @@ const ImageList: FC<ImageListProps> = ({
                 )}
               </div>
             )}
-            <button
-              type="button"
-              className="block cursor-pointer appearance-none rounded-lg border-0 bg-transparent p-0 leading-none"
-              onClick={() =>
-                item.progress === 100 &&
-                setImagePreviewUrl(
-                  (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string,
-                )
-              }
-            >
-              <img
-                className="h-16 w-16 rounded-lg border-[0.5px] border-black/5 object-cover"
-                alt={item.file?.name}
-                onLoad={() => handleImageLinkLoadSuccess(item)}
-                onError={() => handleImageLinkLoadError(item)}
-                src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
-              />
-            </button>
+            {item.progress === 100 ? (
+              <button
+                type="button"
+                aria-label={t(($) => $['imageGallery.previewImage'], {
+                  ns: 'common',
+                  index: index + 1,
+                  total: list.length,
+                })}
+                className="block cursor-pointer appearance-none rounded-lg border-0 bg-transparent p-0 leading-none"
+                onClick={() =>
+                  setImagePreviewUrl(
+                    (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string,
+                  )
+                }
+              >
+                {renderImage(item)}
+              </button>
+            ) : (
+              renderImage(item)
+            )}
             {!readonly && (
               <button
                 type="button"
