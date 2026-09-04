@@ -228,19 +228,6 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert checkout_step is not None
     assert "fetch-depth: 0" in checkout_step.group("step")
 
-    changed_files_step = re.search(
-        r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",
-        job_text,
-    )
-    assert changed_files_step is not None
-
-    files_block = changed_files_step.group("files")
-    assert "api/**\n" in files_block
-    assert "scripts/check_no_new_getattr.py\n" in files_block
-    assert "scripts/ast_grep_rules/no_new_getattr.yml\n" in files_block
-    assert ".github/workflows/style.yml\n" in files_block
-    assert ".github/workflows/main-ci.yml\n" in files_block
-
     guard_command = 'scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"'
     assert guard_command in job_text
 
@@ -251,6 +238,7 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     )
     assert guard_step is not None
 
+    assert "if: inputs.run-python-style" in guard_step.group("step")
     assert "GITHUB_BASE_SHA" not in guard_step.group("step")
 
 
@@ -266,17 +254,23 @@ def test_main_ci_passes_style_base_rev_input() -> None:
         "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
         in style_job.group("job")
     )
-
-    api_filter = re.search(
-        r"(?ms)^            api:\n(?P<filter>(?:^              - '[^']+'\n)+)",
-        workflow,
+    assert (
+        "run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}"
+        in style_job.group("job")
     )
-    assert api_filter is not None
-    filter_text = api_filter.group("filter")
-    assert "scripts/check_no_new_getattr.py" in filter_text
-    assert "scripts/ast_grep_rules/no_new_getattr.yml" in filter_text
-    assert ".github/workflows/style.yml" in filter_text
-    assert ".github/workflows/main-ci.yml" in filter_text
+
+    for filter_name in ("api", "python-style"):
+        path_filter = re.search(
+            rf"(?ms)^            {re.escape(filter_name)}:\n(?P<filter>(?:^              - '[^']+'\n)+)",
+            workflow,
+        )
+        assert path_filter is not None, filter_name
+        filter_text = path_filter.group("filter")
+        assert "api/**" in filter_text
+        assert "scripts/check_no_new_getattr.py" in filter_text
+        assert "scripts/ast_grep_rules/no_new_getattr.yml" in filter_text
+        assert ".github/workflows/style.yml" in filter_text
+        assert ".github/workflows/main-ci.yml" in filter_text
 
 
 def test_base_rev_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
