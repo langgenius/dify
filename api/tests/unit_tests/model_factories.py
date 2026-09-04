@@ -163,7 +163,7 @@ def make_end_user(
         session_id=session_id,
         external_user_id=external_user_id,
         name=name,
-        is_anonymous=is_anonymous,
+        _is_anonymous=is_anonymous,
     )
 
 
@@ -360,7 +360,7 @@ def make_conversation(
     values: dict[str, object] = {"app_id": app_id, "mode": mode, "name": name}
     optional: dict[str, object | None] = {
         "id": conversation_id,
-        "inputs": inputs,
+        "_inputs": inputs,
         "status": status,
         "from_source": from_source,
         "from_account_id": from_account_id,
@@ -410,7 +410,7 @@ def make_message(
         "id": message_id,
         "app_id": app_id,
         "conversation_id": conversation_id,
-        "inputs": inputs,
+        "_inputs": inputs,
         "query": query,
         "message": message,
         "answer": answer,
@@ -427,11 +427,14 @@ def make_message(
         "answer_tokens": answer_tokens,
         "provider_response_latency": provider_response_latency,
         "workflow_run_id": workflow_run_id,
-        "created_at": created_at,
-        "updated_at": updated_at,
     }
     values.update({key: value for key, value in optional.items() if value is not None})
-    return Message(**values)
+    result = Message(**values)
+    if created_at is not None:
+        result.created_at = created_at
+    if updated_at is not None:
+        result.updated_at = updated_at
+    return result
 
 
 def make_document(
