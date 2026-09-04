@@ -1,14 +1,20 @@
 import logging
+import uuid
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import inspect
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
+from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.file import File
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -611,3 +617,114 @@ class TestBaseAppGeneratorExtras:
         )
 
         assert saver is not None
+
+
+def test_prepare_user_inputs_grants_access_to_account_owned_default_file_list(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+):
+    tenant_id = "tenant-id"
+    account_upload_file_id = str(uuid.uuid4())
+    end_user_id = "end-user-id"
+
+    UploadFile.metadata.create_all(sqlite_engine, tables=[UploadFile.__table__])
+    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
+
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="default_key",
+        name="default.jpg",
+        size=1024,
+        extension="jpg",
+        mime_type="image/jpeg",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-id",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        used=False,
+        source_url="http://example.com/default.jpg",
+    )
+    upload_file.id = account_upload_file_id
+
+    with sqlite_session_maker() as session:
+        session.add(upload_file)
+        session.commit()
+
+    default_mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": account_upload_file_id,
+        "type": "image",
+    }
+    variables = [
+        VariableEntity(
+            variable="attachments",
+            label="attachments",
+            type=VariableEntityType.FILE_LIST,
+            required=False,
+            default=[default_mapping],
+            allowed_file_types=[],
+            allowed_file_extensions=[],
+            allowed_file_upload_methods=[],
+        )
+    ]
+
+    scope = FileAccessScope(
+        tenant_id=tenant_id,
+        user_id=end_user_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    base_app_generator = BaseAppGenerator()
+
+    with bind_file_access_scope(scope):
+        prepared = base_app_generator._prepare_user_inputs(
+            user_inputs={},
+            variables=variables,
+            tenant_id=tenant_id,
+        )
+
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        assert account_upload_file_id in current_scope.granted_upload_file_ids
+        assert len(prepared["attachments"]) == 1
+        assert isinstance(prepared["attachments"][0], File)
+        assert prepared["attachments"][0].filename == "default.jpg"
+
+
+def test_prepare_user_inputs_does_not_grant_access_for_user_provided_file_list(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    grant_access = Mock()
+    monkeypatch.setattr("core.app.apps.base_app_generator.grant_upload_file_access", grant_access)
+    monkeypatch.setattr(
+        "core.app.apps.base_app_generator.file_factory.build_from_mappings",
+        lambda mappings, tenant_id, config, access_controller=None: ["file-object"],
+    )
+
+    variables = [
+        VariableEntity(
+            variable="attachments",
+            label="attachments",
+            type=VariableEntityType.FILE_LIST,
+            required=False,
+            default=[{"transfer_method": "local_file", "upload_file_id": "default-file-id", "type": "image"}],
+            allowed_file_types=[],
+            allowed_file_extensions=[],
+            allowed_file_upload_methods=[],
+        )
+    ]
+
+    user_file_mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": "user-file-id",
+        "type": "image",
+    }
+
+    BaseAppGenerator()._prepare_user_inputs(
+        user_inputs={"attachments": [user_file_mapping]},
+        variables=variables,
+        tenant_id="tenant-id",
+    )
+
+    grant_access.assert_not_called()
