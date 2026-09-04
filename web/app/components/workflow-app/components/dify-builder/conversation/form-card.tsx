@@ -47,15 +47,19 @@ export const FormCard = memo(
     busy,
     interactive,
     invalidated,
+    formId,
     onActionPayloadChange,
     onActionValidityChange,
+    onSubmit,
   }: {
     item: Extract<ConversationItem, { kind: 'form' }>
     busy: boolean
     interactive: boolean
     invalidated: boolean
+    formId?: string
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
+    onSubmit?: () => void
   }) => {
     const { t } = useTranslation()
     const fileUploadConfig = useStore((state) => state.fileUploadConfig)
@@ -71,6 +75,7 @@ export const FormCard = memo(
           ? 'submit_edit_rules'
           : 'provide_testdata'
     const frozen = busy || !interactive || invalidated || item.payload.frozen === true
+    const category = t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
     const actionPayloadChangeRef = useRef(onActionPayloadChange)
     const actionValidityChangeRef = useRef(onActionValidityChange)
@@ -116,11 +121,28 @@ export const FormCard = memo(
     }
 
     return (
-      <DifyBuilderCard
-        category={t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })}
-        invalidated={invalidated}
-      >
-        <div className="flex flex-col gap-3">
+      <DifyBuilderCard category={category} invalidated={invalidated}>
+        <form
+          id={formId}
+          aria-label={category}
+          className="flex flex-col gap-3"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!prepared.valid) {
+              const invalidField =
+                event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')
+              const focusableSelector =
+                'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+              const focusTarget = invalidField?.matches(focusableSelector)
+                ? invalidField
+                : invalidField?.querySelector<HTMLElement>(focusableSelector)
+              focusTarget?.focus()
+              return
+            }
+            onSubmit?.()
+          }}
+        >
           {fields.map((field, index) => {
             const validationError = prepared.errors[field.key]
             const fieldErrorId = `${errorId}-${index}-error`
@@ -145,6 +167,8 @@ export const FormCard = memo(
                       checked={values[field.key] === true}
                       disabled={frozen}
                       required={field.required}
+                      aria-invalid={validationError ? true : undefined}
+                      aria-describedby={validationError ? fieldErrorId : undefined}
                       onCheckedChange={(checked) => updateValues(field.key, checked)}
                     />
                     <span>{labelContent}</span>
@@ -338,7 +362,7 @@ export const FormCard = memo(
               </Field>
             )
           })}
-        </div>
+        </form>
       </DifyBuilderCard>
     )
   },

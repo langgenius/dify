@@ -311,6 +311,87 @@ def test_message_advance_publishes_assistant_delta_before_durable_reply(
     assert released == [(session.id, "tok-message")]
 
 
+def test_message_failure_keeps_the_durable_user_half_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+
+    class FailingAgent(StubAgent):
+        def respond_to_message(self, _state, _context, _history, _graph, _text, _on_delta=None):
+            raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: FailingAgent())
+    events: list[tuple[str, dict]] = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, event: events.append((sid, event)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, token: released.append((sid, token)))
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_APPROVAL,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    mod.advance_session(
+        session.id,
+        _act("message", 1, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-failed",
+    )
+
+    stored, _context = repo.get_session(session.id)
+    items = repo.list_conversation(session.id)
+    assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert stored.version == 2
+    assert [(item.kind, item.payload.get("turn_id")) for item in items] == [("user", "turn-retry")]
+    assert events[-1][1] == {"kind": "error", "error": "step failed", "recoverable": True}
+    assert released == [(session.id, "tok-message-failed")]
+
+    events.clear()
+    monkeypatch.setattr(
+        mod,
+        "build_dify_builder_agent",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("model setup unavailable")),
+    )
+    mod.advance_session(
+        session.id,
+        _act("message", 2, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-setup-failed",
+    )
+
+    still_waiting, _context = repo.get_session(session.id)
+    assert still_waiting.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert still_waiting.version == 2
+    assert [item.kind for item in repo.list_conversation(session.id)] == ["user"]
+    assert events[-1][1] == {"kind": "error", "error": "step failed", "recoverable": True}
+    assert released[-1] == (session.id, "tok-message-setup-failed")
+
+    events.clear()
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+    mod.advance_session(
+        session.id,
+        _act("message", 2, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-retry",
+    )
+
+    retried, _context = repo.get_session(session.id)
+    retried_items = repo.list_conversation(session.id)
+    assert retried.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert [item.kind for item in retried_items] == ["user", "assistant_turn"]
+    assert [item.payload.get("turn_id") for item in retried_items] == [
+        "turn-retry",
+        "turn-retry",
+    ]
+    assert events[-1][1]["kind"] == "state"
+    assert released[-1] == (session.id, "tok-message-retry")
+
+
 def test_advance_session_generic_exception_publishes_generic_error_and_releases_lock(monkeypatch) -> None:
     # A fresh, isolated engine/repo/session so the FakeDifyPort.read_graph
     # monkeypatch below cannot bleed into any other test.
