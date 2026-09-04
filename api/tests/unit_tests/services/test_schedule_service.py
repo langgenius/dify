@@ -609,5 +609,94 @@ def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
         ScheduleService.extract_schedule_config(workflow=workflow)
 
 
+def test_update_schedule_preserves_next_run_at_when_schedule_unchanged() -> None:
+    """Regression for #41782: republishing a workflow whose schedule
+    trigger config is unchanged must NOT reset ``next_run_at`` from
+    "now". Pre-fix, ``update_schedule`` treated any non-None
+    ``cron_expression`` / ``timezone`` as a change and re-derived
+    ``next_run_at`` even when the new value equalled the stored one.
+    """
+    from unittest.mock import MagicMock
+
+    from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
+    from libs.schedule_utils import calculate_next_run_at
+    from services.trigger.schedule_service import ScheduleService
+
+    base_now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    expected_next = calculate_next_run_at("*/10 * * * *", "UTC", base_now)
+    assert expected_next is not None
+
+    schedule = MagicMock()
+    schedule.cron_expression = "*/10 * * * *"
+    schedule.timezone = "UTC"
+    schedule.next_run_at = expected_next
+    # `MagicMock` returns a MagicMock for attribute access; the next two
+    # attributes should be the schedule's pre-update values, returned
+    # verbatim when the new value equals the old one.
+    schedule.cron_expression = "*/10 * * * *"
+    schedule.timezone = "UTC"
+
+    session = MagicMock()
+    session.get.return_value = schedule
+
+    updates = SchedulePlanUpdate(
+        node_id="schedule-1",
+        cron_expression="*/10 * * * *",
+        timezone="UTC",
+    )
+    ScheduleService.update_schedule(
+        schedule_id="schedule-1",
+        updates=updates,
+        session=session,
+    )
+
+    # The pre-existing next_run_at must be preserved when nothing changed.
+    assert schedule.next_run_at == expected_next
+
+
+def test_update_schedule_recomputes_next_run_at_when_cron_changes() -> None:
+    """Companion to #41782: the cron-change path must still recompute
+    ``next_run_at`` so a real schedule change is honored.
+    """
+    from unittest.mock import MagicMock
+
+    from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
+    from libs.schedule_utils import calculate_next_run_at
+    from services.trigger.schedule_service import ScheduleService
+
+    base_now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    expected_next = calculate_next_run_at("0 10 * * *", "UTC", base_now)
+    assert expected_next is not None
+
+    schedule = MagicMock()
+    schedule.cron_expression = "*/10 * * * *"
+    schedule.timezone = "UTC"
+    # Pre-existing next_run_at set to a sentinel value the test will assert
+    # is overwritten with the value computed from the current real time
+    # (calculate_next_run_at does not accept a base_time kwarg in this
+    # service's call path).
+    schedule.next_run_at = "PRE-EXISTING"
+
+    session = MagicMock()
+    session.get.return_value = schedule
+
+    updates = SchedulePlanUpdate(
+        node_id="schedule-1",
+        cron_expression="0 10 * * *",
+        timezone="UTC",
+    )
+    ScheduleService.update_schedule(
+        schedule_id="schedule-1",
+        updates=updates,
+        session=session,
+    )
+
+    assert schedule.cron_expression == "0 10 * * *"
+    # The cron change triggers a recompute; the new value must be a
+    # non-sentinel datetime, not the pre-existing sentinel.
+    assert schedule.next_run_at != "PRE-EXISTING"
+    assert isinstance(schedule.next_run_at, datetime)
+
+
 if __name__ == "__main__":
     unittest.main()
