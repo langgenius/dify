@@ -29,6 +29,21 @@ export const BoundedCursorQuerySchema = z
   })
   .strict();
 
+export const ResolveDocumentReferenceQuerySchema = z
+  .object({
+    documentAssetId: z.string().uuid(),
+    documentAssetVersion: z.coerce.number().int().positive(),
+  })
+  .strict();
+
+export const ResolvedDocumentReferenceSchema = z
+  .object({
+    documentId: z.string().uuid(),
+    revision: z.number().int().positive(),
+  })
+  .strict()
+  .openapi("ResolvedDocumentReference");
+
 export const DocumentChunkListQuerySchema = BoundedCursorQuerySchema.extend({
   query: z.string().min(1).max(512).optional(),
 }).strict();

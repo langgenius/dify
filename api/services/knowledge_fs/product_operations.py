@@ -422,6 +422,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=2 * 1024 * 1024,
             stream_kind="json",
         ),
+        "resolveDocumentReference": _operation(
+            "GET",
+            "resolveDocumentReference",
+            KnowledgeFSProductPermission.READ,
+            "/knowledge-spaces/{id}/document-references/resolve",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=16 * 1024,
+            max_response_bytes=64 * 1024,
+            stream_kind="json",
+        ),
         "getLogicalDocument": _operation(
             "GET",
             "getLogicalDocument",

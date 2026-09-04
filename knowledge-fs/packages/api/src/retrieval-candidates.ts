@@ -1,6 +1,11 @@
 import { type DatabaseRow, type KnowledgeNode, SourceLocationSchema } from "@knowledge/core";
 
-import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
+import {
+  numberColumn,
+  optionalNumberColumn,
+  optionalStringColumn,
+  stringColumn,
+} from "./database-row-utils";
 import {
   cloneJsonObject,
   isPlainObject,
@@ -24,8 +29,12 @@ export type RetrievalSource = "dense" | "fts" | "pageindex" | "visual";
 export interface RetrievalCitation {
   readonly artifactHash: string;
   readonly documentAssetId: string;
+  readonly documentTitle?: string | undefined;
   readonly documentVersion: number;
   readonly endOffset?: number | undefined;
+  readonly knowledgeSpaceName?: string | undefined;
+  readonly logicalDocumentId?: string | undefined;
+  readonly logicalDocumentRevision?: number | undefined;
   readonly pageNumber?: number | undefined;
   readonly sectionPath: string[];
   readonly startOffset?: number | undefined;
@@ -213,8 +222,18 @@ export function cloneRetrievalCitation(citation: RetrievalCitation): RetrievalCi
   return {
     artifactHash: citation.artifactHash,
     documentAssetId: citation.documentAssetId,
+    ...(citation.documentTitle === undefined ? {} : { documentTitle: citation.documentTitle }),
     documentVersion: citation.documentVersion,
     ...(citation.endOffset === undefined ? {} : { endOffset: citation.endOffset }),
+    ...(citation.knowledgeSpaceName === undefined
+      ? {}
+      : { knowledgeSpaceName: citation.knowledgeSpaceName }),
+    ...(citation.logicalDocumentId === undefined
+      ? {}
+      : { logicalDocumentId: citation.logicalDocumentId }),
+    ...(citation.logicalDocumentRevision === undefined
+      ? {}
+      : { logicalDocumentRevision: citation.logicalDocumentRevision }),
     ...(citation.pageNumber === undefined ? {} : { pageNumber: citation.pageNumber }),
     sectionPath: [...citation.sectionPath],
     ...(citation.startOffset === undefined ? {} : { startOffset: citation.startOffset }),
@@ -418,12 +437,20 @@ function mapRetrievalCitation(row: DatabaseRow): RetrievalCitation {
   const sourceLocation = SourceLocationSchema.parse(jsonObjectColumn(row, "source_location"));
   const startOffset = sourceLocation.startOffset ?? numberColumn(row, "start_offset");
   const endOffset = sourceLocation.endOffset ?? numberColumn(row, "end_offset");
+  const documentTitle = optionalStringColumn(row, "document_title");
+  const knowledgeSpaceName = optionalStringColumn(row, "knowledge_space_name");
+  const logicalDocumentId = optionalStringColumn(row, "logical_document_id");
+  const logicalDocumentRevision = optionalNumberColumn(row, "logical_document_revision");
 
   return {
     artifactHash: stringColumn(row, "artifact_hash"),
     documentAssetId: stringColumn(row, "document_asset_id"),
+    ...(documentTitle === undefined ? {} : { documentTitle }),
     documentVersion: numberColumn(row, "document_version"),
     endOffset,
+    ...(knowledgeSpaceName === undefined ? {} : { knowledgeSpaceName }),
+    ...(logicalDocumentId === undefined ? {} : { logicalDocumentId }),
+    ...(logicalDocumentRevision === undefined ? {} : { logicalDocumentRevision }),
     ...(sourceLocation.pageNumber === undefined ? {} : { pageNumber: sourceLocation.pageNumber }),
     sectionPath: [...sourceLocation.sectionPath],
     startOffset,

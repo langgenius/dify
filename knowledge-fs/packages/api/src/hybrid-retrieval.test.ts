@@ -194,6 +194,11 @@ describe("createBasicHybridRetriever projection set filtering", () => {
         expect(call.sql).toContain("sources");
         expect(call.sql).toContain("<> 'deleting'");
         expect(call.sql).toContain("deletion_job_id");
+        expect(call.sql).toContain("retrieval_logical_revision");
+        expect(call.sql).toContain("retrieval_logical_document");
+        expect(call.sql).toContain("retrieval_knowledge_space");
+        expect(call.sql).toContain("logical_document_revision");
+        expect(call.sql).toContain("knowledge_space_name");
         expect(call.sql).toContain(
           kind === "postgres"
             ? 'pm."document_asset_id" = n."document_asset_id"'

@@ -602,7 +602,11 @@ def test_retrieval_test_response_validates_evidence_text_and_metrics() -> None:
                     "citation": {
                         "artifactHash": "a" * 64,
                         "documentAssetId": "document-1",
+                        "documentTitle": "Camera manual.pdf",
                         "documentVersion": 1,
+                        "knowledgeSpaceName": "Manuals",
+                        "logicalDocumentId": "logical-document-1",
+                        "logicalDocumentRevision": 4,
                         "pageNumber": 3,
                         "sectionPath": ["Camera", "Sensor"],
                     },
@@ -620,6 +624,10 @@ def test_retrieval_test_response_validates_evidence_text_and_metrics() -> None:
     )
 
     assert response.items[0].citation.section_path == ["Camera", "Sensor"]
+    assert response.items[0].citation.document_title == "Camera manual.pdf"
+    assert response.items[0].citation.knowledge_space_name == "Manuals"
+    assert response.items[0].citation.logical_document_id == "logical-document-1"
+    assert response.items[0].citation.logical_document_revision == 4
     assert response.items[0].score == 1.2
     assert response.items[0].text == "Camera evidence"
     assert response.metrics.total_ms == 12

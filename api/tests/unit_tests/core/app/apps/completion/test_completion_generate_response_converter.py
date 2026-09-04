@@ -41,6 +41,9 @@ class TestCompletionAppGenerateResponseConverter:
                     "dataset_id": "dataset-1",
                     "dataset_name": "Dataset 1",
                     "document_id": "document-1",
+                    "document_asset_id": "asset-1",
+                    "document_revision": 4,
+                    "document_version": 2,
                     "segment_id": "s",
                     "position": 1,
                     "data_source_type": "file",
@@ -79,6 +82,9 @@ class TestCompletionAppGenerateResponseConverter:
         assert "usage" not in result["metadata"]
         assert result["metadata"]["retriever_resources"][0]["dataset_id"] == "dataset-1"
         assert result["metadata"]["retriever_resources"][0]["document_id"] == "document-1"
+        assert result["metadata"]["retriever_resources"][0]["document_asset_id"] == "asset-1"
+        assert result["metadata"]["retriever_resources"][0]["document_revision"] == 4
+        assert result["metadata"]["retriever_resources"][0]["document_version"] == 2
         assert result["metadata"]["retriever_resources"][0]["segment_id"] == "s"
         assert result["metadata"]["retriever_resources"][0]["data_source_type"] == "file"
         assert result["metadata"]["retriever_resources"][0]["segment_position"] == 3

@@ -194,6 +194,11 @@ export type KnowledgeFsBulkJobResponse = {
   updated_at: string
 }
 
+export type KnowledgeFsResolvedDocumentReferenceResponse = {
+  document_id: string
+  revision: number
+}
+
 export type KnowledgeFsDocumentListResponse = {
   data: Array<KnowledgeFsDocumentResponse>
   next_cursor?: string | null
@@ -2744,6 +2749,25 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses = {
 
 export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
   GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query: {
+    document_asset_id: string
+    document_asset_version: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/document-references/resolve'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses = {
+  200: KnowledgeFsResolvedDocumentReferenceResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
   body?: never

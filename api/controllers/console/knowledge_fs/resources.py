@@ -126,6 +126,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentMultimodalManifest,
     KnowledgeFSDocumentMultimodalManifestResponse,
     KnowledgeFSDocumentOutlineResponse,
+    KnowledgeFSDocumentReferenceQuery,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentResponse,
@@ -196,6 +197,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskResponse,
     KnowledgeFSResearchTaskStreamQuery,
+    KnowledgeFSResolvedDocumentReferenceResponse,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSettingsUpdateResponse,
@@ -287,6 +289,7 @@ register_schema_models(
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSCursorQuery,
+    KnowledgeFSDocumentReferenceQuery,
     KnowledgeFSBulkDocumentAvailabilityPayload,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkLogicalDocumentDeletePayload,
@@ -371,6 +374,7 @@ register_response_schema_models(
     KnowledgeFSDocumentMultimodalManifestResponse,
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentRevisionListResponse,
+    KnowledgeFSResolvedDocumentReferenceResponse,
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
@@ -1590,6 +1594,31 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
             payload=_payload(KnowledgeFSBulkDocumentAvailabilityPayload),
         )
         return dump_response(KnowledgeFSBulkDocumentAvailabilityResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve")
+class KnowledgeFSSpaceDocumentReferenceApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentReferenceQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Resolved KnowledgeFS document reference",
+        console_ns.models[KnowledgeFSResolvedDocumentReferenceResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSDocumentReferenceQuery.model_validate(request.args.to_dict(flat=True))
+        result = _console_services().facade.resolve_document_reference(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_asset_id=query.document_asset_id,
+            document_asset_version=query.document_asset_version,
+        )
+        return dump_response(KnowledgeFSResolvedDocumentReferenceResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/bulk")

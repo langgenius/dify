@@ -58,6 +58,7 @@ import {
   patchDocumentAvailabilityRoute,
   patchDocumentMetadataRoute,
   patchDocumentSettingsRoute,
+  resolveDocumentReferenceRoute,
   retryDocumentProcessingTaskRoute,
   rollbackDocumentRevisionRoute,
   streamDocumentProcessingTaskRoute,
@@ -206,6 +207,26 @@ export function registerLogicalDocumentHandlers({
       return context.json({ error: "Logical document not found" }, 404);
     }
     return context.json(toPublicDocument(document), 200);
+  });
+
+  register(resolveDocumentReferenceRoute, async (context) => {
+    if (!logicalDocuments) return context.json({ error: "Document reference not found" }, 404);
+    const params = context.req.valid("param");
+    const query = context.req.valid("query");
+    if (!(await authorize(context, spaces, authorization, params.id, "read"))) {
+      return context.json({ error: "Document reference not found" }, 404);
+    }
+    const revision = await logicalDocuments.resolveRevisionByAsset({
+      documentAssetId: query.documentAssetId,
+      documentAssetVersion: query.documentAssetVersion,
+      knowledgeSpaceId: params.id,
+      tenantId: context.get("subject").tenantId,
+    });
+    const candidateGrants = candidateGrantsForContext(context, params.id);
+    if (!revision || !(await canReadRevision(assets, revision, candidateGrants))) {
+      return context.json({ error: "Document reference not found" }, 404);
+    }
+    return context.json({ documentId: revision.documentId, revision: revision.revision }, 200);
   });
 
   register(listDocumentRevisionsRoute, async (context) => {

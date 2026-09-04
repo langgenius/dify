@@ -222,7 +222,11 @@ describe("createRetrievalTestExecutor", () => {
         citation: {
           artifactHash: "a".repeat(64),
           documentAssetId: "document-1",
+          documentTitle: "Camera handbook.pdf",
           documentVersion: 1,
+          knowledgeSpaceName: "Camera manuals",
+          logicalDocumentId: "logical-document-1",
+          logicalDocumentRevision: 3,
           sectionPath: ["Sensor"],
         },
         nodeId: "node-1",
@@ -616,7 +620,11 @@ function recordingRetriever(
             citation: {
               artifactHash: "a".repeat(64),
               documentAssetId: "document-1",
+              documentTitle: "Camera handbook.pdf",
               documentVersion: 1,
+              knowledgeSpaceName: "Camera manuals",
+              logicalDocumentId: "logical-document-1",
+              logicalDocumentRevision: 3,
               sectionPath: ["Sensor"],
             },
             metadata: { text: "secret candidate text" },

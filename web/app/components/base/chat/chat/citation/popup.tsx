@@ -1,10 +1,15 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
+import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
+import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/resolve-logical-document-id'
+import { newKnowledgeDocumentDetailPath } from '@/features/new-rag/routes'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
@@ -13,6 +18,89 @@ import Tooltip from './tooltip'
 type PopupProps = {
   data: Resources
   showHitInfo?: boolean
+}
+
+const sourceActionClassName =
+  'hidden h-4.5 items-center rounded-none bg-transparent p-0 text-xs text-text-accent group-hover:flex hover:bg-transparent'
+
+function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][number] }) {
+  const { t } = useTranslation()
+  const router = useRouter()
+  const [isResolving, setIsResolving] = useState(false)
+
+  const handleOpen = async () => {
+    if (isResolving) return
+    setIsResolving(true)
+    try {
+      const citation = await resolveLogicalDocumentCitation({
+        documentAssetId: source.document_asset_id ?? source.document_id,
+        documentVersion: source.document_version ?? undefined,
+        knowledgeSpaceId: source.dataset_id,
+      })
+      if (!citation) {
+        toast.error(t(($) => $.documentNotFoundDescription, { ns: 'knowledgeSpace' }))
+        return
+      }
+      router.push(
+        newKnowledgeDocumentDetailPath(source.dataset_id, citation.documentId, {
+          chunkId: source.segment_id,
+          revision: citation.revision,
+        }),
+      )
+    } catch {
+      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeSpace' }))
+    } finally {
+      setIsResolving(false)
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost-accent"
+      size="small"
+      className={sourceActionClassName}
+      loading={isResolving}
+      onClick={handleOpen}
+    >
+      {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
+      {!isResolving && (
+        <i className="i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+      )}
+    </Button>
+  )
+}
+
+function SourceOpenAction({ source }: { source: Resources['sources'][number] }) {
+  const { t } = useTranslation()
+  const label = t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })
+
+  if (source.data_source_type !== 'knowledge_fs') {
+    return (
+      <Link
+        href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
+        className={sourceActionClassName}
+      >
+        {label}
+        <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+      </Link>
+    )
+  }
+
+  if (typeof source.document_revision !== 'number')
+    return <LegacyKnowledgeFSOpenAction source={source} />
+
+  return (
+    <Link
+      href={newKnowledgeDocumentDetailPath(source.dataset_id, source.document_id, {
+        chunkId: source.segment_id,
+        revision: source.document_revision,
+      })}
+      className={sourceActionClassName}
+    >
+      {label}
+      <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+    </Link>
+  )
 }
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
@@ -86,7 +174,6 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                 const itemKey = source.document_id
                   ? `${source.document_id}-${source.segment_position ?? index}`
                   : (source.index_node_hash ?? `${data.documentId ?? 'doc'}-${index}`)
-
                 return (
                   <Fragment key={itemKey}>
                     <div data-testid="popup-source-item" className="group py-3">
@@ -104,18 +191,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             {source.segment_position || index + 1}
                           </div>
                         </div>
-                        {showHitInfo && (
-                          <Link
-                            href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                            className="hidden h-4.5 items-center text-xs text-text-accent group-hover:flex"
-                          >
-                            {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
-                            <i
-                              className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3"
-                              aria-hidden
-                            />
-                          </Link>
-                        )}
+                        {showHitInfo && <SourceOpenAction source={source} />}
                       </div>
                       <div
                         data-testid="popup-source-content"

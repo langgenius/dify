@@ -16,7 +16,7 @@ const apiMock = vi.hoisted(() => ({
   createResearch: vi.fn(),
   planResearch: vi.fn(),
   readinessRefetch: vi.fn(),
-  listLogicalDocuments: vi.fn(),
+  resolveDocumentReference: vi.fn(),
   routerPush: vi.fn(),
   partials: [] as Array<Record<string, unknown>>,
   queryAdmission: vi.fn(),
@@ -281,7 +281,7 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           queries: { admission: { post: apiMock.queryAdmission } },
-          logicalDocuments: { get: apiMock.listLogicalDocuments },
+          documentReferences: { resolve: { get: apiMock.resolveDocumentReference } },
           goldenQuestions: { post: apiMock.createGolden },
           quality: { badCases: { post: apiMock.createBadCase } },
           researchTasks: {
@@ -460,7 +460,10 @@ describe('RetrievalTestPage', () => {
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
     apiMock.evidence = undefined
     apiMock.getTraceEvidence.mockResolvedValue({ data: [] })
-    apiMock.listLogicalDocuments.mockResolvedValue({ data: [], next_cursor: null })
+    apiMock.resolveDocumentReference.mockResolvedValue({
+      document_id: 'document-1',
+      revision: 1,
+    })
     apiMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
     apiMock.partials = []
     apiMock.traceDetail = undefined
@@ -2255,7 +2258,6 @@ describe('RetrievalTestPage', () => {
             documentName: 'refund-policy.txt',
             documentRevision: 2,
             logicalDocumentId: 'document-1',
-            revision: '2',
             score: 0.0005295,
             text: 'Refunds are available within 30 days.',
           },
@@ -2429,21 +2431,6 @@ describe('RetrievalTestPage', () => {
         },
       ],
     }
-    apiMock.listLogicalDocuments
-      .mockResolvedValueOnce({
-        data: [],
-        next_cursor: 'page-2',
-      })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            active: { document_asset_id: 'asset-1' },
-            id: 'document-1',
-            title: 'Issue Tracking Log',
-          },
-        ],
-        next_cursor: null,
-      })
     const user = userEvent.setup()
 
     renderPage()
@@ -2455,13 +2442,13 @@ describe('RetrievalTestPage', () => {
         '/datasets/new/space-1/documents/document-1?revision=1&chunk=chunk-1',
       ),
     )
-    expect(apiMock.listLogicalDocuments).toHaveBeenNthCalledWith(1, {
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledOnce()
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1' },
-      query: {},
-    })
-    expect(apiMock.listLogicalDocuments).toHaveBeenNthCalledWith(2, {
-      params: { control_space_id: 'space-1' },
-      query: { cursor: 'page-2' },
+      query: {
+        document_asset_id: 'asset-1',
+        document_asset_version: 1,
+      },
     })
   })
 

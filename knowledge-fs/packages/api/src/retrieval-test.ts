@@ -82,8 +82,12 @@ export interface RetrievalTestResult {
     readonly citation: {
       readonly artifactHash: string;
       readonly documentAssetId: string;
+      readonly documentTitle?: string | undefined;
       readonly documentVersion: number;
       readonly endOffset?: number | undefined;
+      readonly knowledgeSpaceName?: string | undefined;
+      readonly logicalDocumentId?: string | undefined;
+      readonly logicalDocumentRevision?: number | undefined;
       readonly pageNumber?: number | undefined;
       readonly sectionPath: readonly string[];
       readonly startOffset?: number | undefined;
@@ -748,8 +752,20 @@ function safeRetrievalTestItem(
     citation: {
       artifactHash: boundedString(item.citation.artifactHash, 128),
       documentAssetId: boundedString(item.citation.documentAssetId, 512),
+      ...(item.citation.documentTitle === undefined
+        ? {}
+        : { documentTitle: boundedUnicodeString(item.citation.documentTitle, 512) }),
       documentVersion: item.citation.documentVersion,
       ...(item.citation.endOffset === undefined ? {} : { endOffset: item.citation.endOffset }),
+      ...(item.citation.knowledgeSpaceName === undefined
+        ? {}
+        : { knowledgeSpaceName: boundedUnicodeString(item.citation.knowledgeSpaceName, 160) }),
+      ...(item.citation.logicalDocumentId === undefined
+        ? {}
+        : { logicalDocumentId: boundedString(item.citation.logicalDocumentId, 512) }),
+      ...(item.citation.logicalDocumentRevision === undefined
+        ? {}
+        : { logicalDocumentRevision: item.citation.logicalDocumentRevision }),
       ...(item.citation.pageNumber === undefined ? {} : { pageNumber: item.citation.pageNumber }),
       sectionPath: item.citation.sectionPath
         .slice(0, 64)

@@ -507,6 +507,13 @@ class KnowledgeFSTraceListQuery(KnowledgeFSCursorQuery):
     source: KnowledgeFSTraceSource | None = Field(default=None)
 
 
+class KnowledgeFSDocumentReferenceQuery(BaseModel):
+    document_asset_id: str = Field(min_length=1, max_length=255)
+    document_asset_version: int = Field(ge=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 type KnowledgeFSConsistencyClass = Literal[
     "path-consistent",
     "snapshot-consistent",
@@ -1668,6 +1675,11 @@ class KnowledgeFSBulkDocumentAvailabilityResponse(ResponseModel):
 class KnowledgeFSDocumentRevisionListResponse(ResponseModel):
     data: list[KnowledgeFSDocumentRevisionResponse] = Field(validation_alias=AliasChoices("data", "items"))
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSResolvedDocumentReferenceResponse(ResponseModel):
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    revision: int = Field(ge=1)
 
 
 class KnowledgeFSDocumentMetadataPayload(BaseModel):
@@ -3093,9 +3105,30 @@ class KnowledgeFSRetrievalCitationResponse(ResponseModel):
         max_length=512,
         validation_alias=AliasChoices("document_asset_id", "documentAssetId"),
     )
+    document_title: str | None = Field(
+        default=None,
+        max_length=512,
+        validation_alias=AliasChoices("document_title", "documentTitle"),
+    )
     document_version: int = Field(
         gt=0,
         validation_alias=AliasChoices("document_version", "documentVersion"),
+    )
+    knowledge_space_name: str | None = Field(
+        default=None,
+        max_length=160,
+        validation_alias=AliasChoices("knowledge_space_name", "knowledgeSpaceName"),
+    )
+    logical_document_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=512,
+        validation_alias=AliasChoices("logical_document_id", "logicalDocumentId"),
+    )
+    logical_document_revision: int | None = Field(
+        default=None,
+        gt=0,
+        validation_alias=AliasChoices("logical_document_revision", "logicalDocumentRevision"),
     )
     section_path: list[str] = Field(
         max_length=64,
@@ -4064,6 +4097,7 @@ __all__ = [
     "KnowledgeFSDocumentMultimodalManifest",
     "KnowledgeFSDocumentMultimodalManifestResponse",
     "KnowledgeFSDocumentOutlineResponse",
+    "KnowledgeFSDocumentReferenceQuery",
     "KnowledgeFSDocumentReindexPayload",
     "KnowledgeFSDocumentReindexResponse",
     "KnowledgeFSDocumentResponse",
@@ -4139,6 +4173,7 @@ __all__ = [
     "KnowledgeFSResearchTaskPlanPayload",
     "KnowledgeFSResearchTaskPlanResponse",
     "KnowledgeFSResearchTaskResponse",
+    "KnowledgeFSResolvedDocumentReferenceResponse",
     "KnowledgeFSRetrievalProfileIntent",
     "KnowledgeFSScoreThresholdIntent",
     "KnowledgeFSSettingsPayload",
