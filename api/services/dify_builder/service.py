@@ -401,12 +401,29 @@ _TEST_AND_RUN_ACTIONS = frozenset(
 _RELEASE_ACTIONS = frozenset({"publish", "publish_workflow"})
 _REPAIR_THEN_RETEST_STATES = frozenset({PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR})
 
+# Working states whose interrupted-step Retry (recovery_continue) re-runs a
+# privileged op: publish (RELEASE) or a draft test run (TEST_AND_RUN). A Retry
+# re-invokes the state's handler, so it must be gated at that op's tier, not the
+# base EDIT the recovery actions otherwise carry.
+_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH})
+_TEST_WORKING_STATES = frozenset(
+    {PcState.BUILD_TEST_AND_REPAIR, PcState.FIX_VERIFY, PcState.EDIT_TEST_AFFECTED_PATHS}
+)
+
 
 def _app_access_for_action(state: PcState, kind: str) -> AppAccess:
     if kind in _RELEASE_ACTIONS:
         return AppAccess.RELEASE
     if kind in _TEST_AND_RUN_ACTIONS or (kind == "approve_repair" and state in _REPAIR_THEN_RETEST_STATES):
         return AppAccess.TEST_AND_RUN
+    # A recovery_continue (Retry) re-runs the interrupted working handler, which
+    # re-invokes the state's privileged op -- enforce that op's tier, not base EDIT.
+    # (recovery_restart only resets + re-enters the entry state, so it stays EDIT.)
+    if kind == "recovery_continue":
+        if state in _PUBLISH_WORKING_STATES:
+            return AppAccess.RELEASE
+        if state in _TEST_WORKING_STATES:
+            return AppAccess.TEST_AND_RUN
     return AppAccess.EDIT
 
 
@@ -863,9 +880,11 @@ class DifyBuilderService:
         # with recovery_class="" so recovery_ref_for/classify never see a fabricated
         # drift class. Retry re-runs the working handler (recovery_continue returns
         # the working state -> non-settled -> runner re-drives it); Start over resets
-        # + re-enters the flow's entry state. A real drift class still wins (only fires
-        # when recovery_ref is None).
-        if recovery_ref is None and is_working(st) and not lock_held:
+        # + re-enters the flow's entry state. This overrides any stale drift class a
+        # user left set at an earlier waiting gate -- once a step has crashed, the
+        # interrupted-step recovery is what matters (drift recovery only applies at a
+        # waiting gate, where is_working is False and this branch never fires).
+        if is_working(st) and not lock_held:
             recovery_ref = RecoveryRef(
                 recovery_class="",
                 can_continue=True,
