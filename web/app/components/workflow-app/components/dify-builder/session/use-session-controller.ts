@@ -229,6 +229,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         terminalEvent: null,
       }
       const handleEvent = async (event: DifyBuilderStreamEventResponse): Promise<boolean> => {
+        // payload is captured shallow-by-reference here; it is only
+        // serialized (deep-cloned/stringified) later, at export time.
         traceRef.current.append({
           dir: 'in',
           kind: event.event,
@@ -456,6 +458,11 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         setLastCanvasEvent(null)
         canvasCursorRef.current = undefined
         pendingMessageRef.current = null
+        // A new session boundary must start with a fresh trace buffer; clear
+        // it here (before the outbound session_start append below) so a
+        // second start*() without an intervening reset() doesn't leave the
+        // previous session's frames mixed into this session's export.
+        traceRef.current.clear()
       }
 
       try {
