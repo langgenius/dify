@@ -1,8 +1,15 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { validateKnowledgeSpaceRetrievalProfileForMode } from "@knowledge/core";
 
+import type { AnswerTraceRecorder } from "./answer-trace-recorder";
 import { currentCandidateGrants } from "./candidate-content-authorization";
+import { classifyQueryOutcome } from "./failed-query-recorder";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import { queryRetrievalProfileMetadata } from "./gateway-sse-responses";
+import {
+  type KnowledgeSpaceOverviewRepository,
+  deterministicKnowledgeSpaceActivityId,
+} from "./knowledge-space-overview";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import {
   ModelCapabilitySnapshotSchema,
@@ -16,6 +23,7 @@ import {
   QueryImageResolutionError,
   type QueryImageResolutionReference,
   type QueryImageResolver,
+  queryImageMetadata,
   queryImageResolutionReferencesFromHeader,
 } from "./query-images";
 import {
@@ -34,9 +42,11 @@ import { RetrievalTestResponseSchema, runRetrievalTestRoute } from "./retrieval-
 const RETRIEVAL_TEST_UNAVAILABLE = "Published retrieval test is unavailable";
 
 export interface RegisterRetrievalTestHandlersOptions {
+  readonly answerTraceRecorder?: AnswerTraceRecorder | undefined;
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly executor?: RetrievalTestExecutor | undefined;
   readonly modelInputModalityResolver?: ModelInputModalityResolver | undefined;
+  readonly overview?: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined;
   readonly queryImageResolver?: QueryImageResolver | undefined;
   readonly retrievalExecutionLeases?: RetrievalExecutionLeaseCoordinator | undefined;
   readonly runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
@@ -44,9 +54,11 @@ export interface RegisterRetrievalTestHandlersOptions {
 }
 
 export function registerRetrievalTestHandlers({
+  answerTraceRecorder,
   app,
   executor,
   modelInputModalityResolver,
+  overview,
   queryImageResolver,
   retrievalExecutionLeases,
   runtimeSnapshotResolver,
@@ -56,6 +68,8 @@ export function registerRetrievalTestHandlers({
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const workflowQueryId = capabilityGrant?.callerKind === "workflow" ? body.queryId : undefined;
     const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
     if (!space) {
       return context.json({ error: "Knowledge space not found" }, 404);
@@ -202,6 +216,39 @@ export function registerRetrievalTestHandlers({
           }
         }
 
+        const workflowAnswerTraceId =
+          workflowQueryId && (body.query || resolvedQueryImages.length > 0)
+            ? deterministicKnowledgeSpaceActivityId(
+                "workflow.answer-trace",
+                subject.tenantId,
+                knowledgeSpaceId,
+                workflowQueryId,
+              )
+            : undefined;
+        if (workflowAnswerTraceId && answerTraceRecorder && overview) {
+          const occurredAt = new Date().toISOString();
+          await overview.appendActivity({
+            action: "query.requested",
+            actor: { id: subject.subjectId, type: "member" },
+            details: {
+              mode,
+              ...(body.query ? { question: body.query } : {}),
+            },
+            id: deterministicKnowledgeSpaceActivityId(
+              "query.requested",
+              subject.tenantId,
+              knowledgeSpaceId,
+              workflowAnswerTraceId,
+            ),
+            knowledgeSpaceId,
+            occurredAt,
+            requiredPermissionScope: [],
+            resource: { id: workflowAnswerTraceId, type: "query" },
+            result: "success",
+            tenantId: subject.tenantId,
+          });
+        }
+
         const result = await executor.execute({
           ...(runtimeSnapshot.embeddingProfile
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
@@ -227,6 +274,52 @@ export function registerRetrievalTestHandlers({
           traceId,
         });
         await executionLease.assertActive();
+        if (workflowAnswerTraceId && capabilityGrant && answerTraceRecorder && overview) {
+          const finishReason =
+            result.items.length > 0 ? "retrieval-evidence" : "no-retrieval-evidence";
+          const outcomeMetadata = {
+            finishReason,
+            ...(result.items[0]?.score !== undefined ? { topScore: result.items[0].score } : {}),
+            metrics: {
+              scoreThresholdFilteredCandidates:
+                result.metrics.scoreThresholdFilteredCandidates ?? 0,
+            },
+            retrievalProfile: queryRetrievalProfileMetadata(runtimeSnapshot.retrievalProfile),
+            source: "workflow",
+            workflowQueryId,
+          };
+          const classification = classifyQueryOutcome({
+            finishReason,
+            metadata: outcomeMetadata,
+            ...(runtimeSnapshot.retrievalProfile.scoreThreshold.enabled
+              ? {
+                  lowConfidenceScoreFloor: runtimeSnapshot.retrievalProfile.scoreThreshold.value,
+                }
+              : {}),
+          });
+          await answerTraceRecorder.record({
+            capabilityGrantId: capabilityGrant.grantId,
+            knowledgeSpaceId,
+            mode,
+            query: body.query,
+            ...(resolvedQueryImages.length > 0
+              ? { queryImages: resolvedQueryImages.map(queryImageMetadata) }
+              : {}),
+            steps: [
+              {
+                metadata: {
+                  ...outcomeMetadata,
+                  queryOutcome: classification.outcome,
+                  ...(classification.trigger ? { failedQueryTrigger: classification.trigger } : {}),
+                },
+                name: "query.generate",
+                status: "ok",
+              },
+            ],
+            tenantId: subject.tenantId,
+            traceId: workflowAnswerTraceId,
+          });
+        }
         const embeddingCapabilityStatus = "verified" as const;
         const rerankCapabilityStatus: "disabled" | "verified" = runtimeSnapshot.retrievalProfile
           .rerank.enabled

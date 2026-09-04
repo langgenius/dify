@@ -107,6 +107,7 @@ export const RetrievalTestRequestSchema = z
     includeText: z.boolean().default(false),
     mode: KnowledgeSpaceRetrievalModeSchema.optional(),
     query: RetrievalQuerySchema.default(""),
+    queryId: z.string().uuid().optional(),
     queryImages: QueryImageReferencesSchema.default([]),
   })
   .strict()

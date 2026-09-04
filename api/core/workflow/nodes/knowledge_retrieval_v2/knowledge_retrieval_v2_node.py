@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import time
+import uuid
 from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -379,6 +380,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         service = self._service()
         payload = KnowledgeFSRetrievalTestPayload(
             query=query,
+            query_id=uuid.uuid4(),
             queryImages=list(query_images),
             mode=self._node_data.mode,
             include_text=True,

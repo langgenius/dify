@@ -3038,6 +3038,11 @@ class KnowledgeFSRetrievalMetadataFilters(BaseModel):
 
 class KnowledgeFSRetrievalTestPayload(BaseModel):
     query: str = Field(default="", max_length=16_000)
+    query_id: UUID | None = Field(
+        default=None,
+        validation_alias=AliasChoices("query_id", "queryId"),
+        serialization_alias="queryId",
+    )
     query_images: list[KnowledgeFSRetrievalQueryImageReference] = Field(
         default_factory=list,
         max_length=4,

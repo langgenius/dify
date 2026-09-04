@@ -1924,9 +1924,11 @@ export function createKnowledgeGateway({
   });
 
   registerRetrievalTestHandlers({
+    answerTraceRecorder,
     app,
     ...(retrievalTestExecutor ? { executor: retrievalTestExecutor } : {}),
     ...(modelInputModalityResolver ? { modelInputModalityResolver } : {}),
+    overview: overviewRepository,
     ...(queryImageResolver ? { queryImageResolver } : {}),
     ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
     ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),

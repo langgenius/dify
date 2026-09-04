@@ -1,10 +1,19 @@
+import { OpenAPIHono } from "@hono/zod-openapi";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import type { KnowledgeSpaceRetrievalProfile } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
+import { type AnswerTraceRecorder, createAnswerTraceRecorder } from "./answer-trace-recorder";
+import { createInMemoryAnswerTraceRepository } from "./answer-trace-repository";
 import { createStaticAuthVerifier } from "./auth";
+import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2-grant";
+import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { QueryGenerator } from "./gateway-sse-responses";
 import { createKnowledgeGateway } from "./index";
+import {
+  type KnowledgeSpaceOverviewRepository,
+  deterministicKnowledgeSpaceActivityId,
+} from "./knowledge-space-overview";
 import { createInMemoryKnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
 import { KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER } from "./query-images";
@@ -14,6 +23,7 @@ import {
   type RetrievalTestResult,
   createRetrievalTestExecutor,
 } from "./retrieval-test";
+import { registerRetrievalTestHandlers } from "./retrieval-test-handlers";
 import {
   RetrievalTestMetricsSchema,
   RetrievalTestRequestSchema,
@@ -21,7 +31,9 @@ import {
 } from "./retrieval-test-routes";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+const SECOND_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
 const TOKEN = "owner-token";
+const WORKFLOW_QUERY_ID = "10000000-0000-4000-8000-000000000010";
 const reasoningSelection = {
   model: "reasoning-1",
   pluginId: "plugin/reasoning",
@@ -47,6 +59,161 @@ const retrievalProfile: KnowledgeSpaceRetrievalProfile = {
 };
 
 describe("retrieval test route", () => {
+  it.each([
+    {
+      expectedOutcome: "answered",
+      result: retrievalResult("fast"),
+    },
+    {
+      expectedOutcome: "low-confidence",
+      result: emptyRetrievalResult({ scoreThresholdFilteredCandidates: 2 }),
+    },
+    {
+      expectedOutcome: "no-evidence",
+      result: emptyRetrievalResult(),
+    },
+  ] as const)(
+    "records workflow retrieval as $expectedOutcome for Overview",
+    async ({ expectedOutcome, result }) => {
+      const { answerTraceRecorder, app, overview } = workflowTelemetryApp(result);
+      const expectedTraceId = deterministicKnowledgeSpaceActivityId(
+        "workflow.answer-trace",
+        "tenant-1",
+        SPACE_ID,
+        WORKFLOW_QUERY_ID,
+      );
+
+      const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+        body: JSON.stringify({ query: "workflow camera query", queryId: WORKFLOW_QUERY_ID }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+
+      expect(response.status).toBe(200);
+      expect(overview.appendActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "query.requested",
+          details: expect.objectContaining({ mode: "fast" }),
+          resource: { id: expectedTraceId, type: "query" },
+        }),
+      );
+      expect(answerTraceRecorder.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          capabilityGrantId: "10000000-0000-4000-8000-000000000011",
+          traceId: expectedTraceId,
+          steps: [
+            expect.objectContaining({
+              metadata: expect.objectContaining({
+                queryOutcome: expectedOutcome,
+                workflowQueryId: WORKFLOW_QUERY_ID,
+              }),
+              name: "query.generate",
+              status: "ok",
+            }),
+          ],
+        }),
+      );
+    },
+  );
+
+  it("keeps interactive retrieval tests out of Overview query traffic", async () => {
+    const { answerTraceRecorder, app, overview } = workflowTelemetryApp(retrievalResult("fast"), {
+      callerKind: "interactive",
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({ query: "manual camera query", queryId: WORKFLOW_QUERY_ID }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(overview.appendActivity).not.toHaveBeenCalled();
+    expect(answerTraceRecorder.record).not.toHaveBeenCalled();
+  });
+
+  it("keeps legacy workflow requests without a business query id out of Overview", async () => {
+    const { answerTraceRecorder, app, overview } = workflowTelemetryApp(retrievalResult("fast"));
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({ query: "legacy workflow camera query" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(overview.appendActivity).not.toHaveBeenCalled();
+    expect(answerTraceRecorder.record).not.toHaveBeenCalled();
+  });
+
+  it("persists one trace per space for a shared workflow query id", async () => {
+    const answerTraces = createInMemoryAnswerTraceRepository({ maxSteps: 10, maxTraces: 10 });
+    const answerTraceRecorder = createAnswerTraceRecorder({
+      now: () => "2026-09-04T08:00:00.000Z",
+      repository: answerTraces,
+    });
+    const overview = {
+      appendActivity: vi.fn(async (input) => input as never),
+    } satisfies Pick<KnowledgeSpaceOverviewRepository, "appendActivity">;
+    const first = workflowTelemetryApp(retrievalResult("fast"), {
+      answerTraceRecorder,
+      overview,
+      spaceId: SPACE_ID,
+    });
+    const second = workflowTelemetryApp(retrievalResult("fast"), {
+      answerTraceRecorder,
+      grantId: "10000000-0000-4000-8000-000000000012",
+      overview,
+      spaceId: SECOND_SPACE_ID,
+    });
+
+    const responses = await Promise.all(
+      [
+        { app: first.app, spaceId: SPACE_ID },
+        { app: second.app, spaceId: SECOND_SPACE_ID },
+      ].map(({ app, spaceId }) =>
+        app.request(`/knowledge-spaces/${spaceId}/retrieval-tests`, {
+          body: JSON.stringify({ query: "shared workflow query", queryId: WORKFLOW_QUERY_ID }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    const traceIds = overview.appendActivity.mock.calls.map(
+      ([activity]) => activity.resource.id as string,
+    );
+    expect(new Set(traceIds).size).toBe(2);
+    const traces = await Promise.all([
+      answerTraces.get({ id: traceIds[0] as string, knowledgeSpaceId: SPACE_ID }),
+      answerTraces.get({ id: traceIds[1] as string, knowledgeSpaceId: SECOND_SPACE_ID }),
+    ]);
+    expect(traces.map((trace) => trace?.knowledgeSpaceId)).toEqual([SPACE_ID, SECOND_SPACE_ID]);
+    for (const trace of traces) {
+      expect(trace?.steps[0]?.metadata).toMatchObject({ workflowQueryId: WORKFLOW_QUERY_ID });
+    }
+  });
+
+  it("keeps pure-image workflow requests on text-only spaces out of Overview", async () => {
+    const { answerTraceRecorder, app, overview } = workflowTelemetryApp(retrievalResult("fast"), {
+      modelInputModalityResolver: { resolve: async () => ["text"] },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({
+        queryId: WORKFLOW_QUERY_ID,
+        queryImages: [{ uploadFileId: "00000000-0000-4000-8000-000000000001" }],
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(overview.appendActivity).not.toHaveBeenCalled();
+    expect(answerTraceRecorder.record).not.toHaveBeenCalled();
+  });
+
   it("resolves workflow-granted images and freezes each space's model modalities", async () => {
     const image = {
       body: new Uint8Array([1, 2, 3]),
@@ -773,6 +940,115 @@ function researchMetrics() {
     researchSupplementalSearches: 0,
     totalMs: 7,
   };
+}
+
+function emptyRetrievalResult(
+  metrics: { readonly scoreThresholdFilteredCandidates?: number } = {},
+): RetrievalTestResult {
+  return {
+    ...retrievalResult("fast"),
+    items: [],
+    metrics: {
+      ...retrievalResult("fast").metrics,
+      ...metrics,
+    },
+  };
+}
+
+function workflowTelemetryApp(
+  result: RetrievalTestResult,
+  options: {
+    readonly answerTraceRecorder?: AnswerTraceRecorder;
+    readonly callerKind?: DifyCapabilityV2SanitizedGrant["callerKind"];
+    readonly grantId?: string;
+    readonly modelInputModalityResolver?: Parameters<
+      typeof registerRetrievalTestHandlers
+    >[0]["modelInputModalityResolver"];
+    readonly overview?: Pick<KnowledgeSpaceOverviewRepository, "appendActivity">;
+    readonly spaceId?: string;
+  } = {},
+) {
+  const spaceId = options.spaceId ?? SPACE_ID;
+  const app = new OpenAPIHono<KnowledgeGatewayEnv>();
+  const overview =
+    options.overview ??
+    ({
+      appendActivity: vi.fn(async (input) => input as never),
+    } satisfies Pick<KnowledgeSpaceOverviewRepository, "appendActivity">);
+  const answerTraceRecorder =
+    options.answerTraceRecorder ??
+    ({
+      record: vi.fn(async (input) => input as never),
+    } satisfies AnswerTraceRecorder);
+  const grant: DifyCapabilityV2SanitizedGrant = {
+    action: "queries.retrieval_test",
+    actor: "dify-app:app-1",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "app-1",
+    callerKind: options.callerKind ?? "workflow",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: [`knowledge-space:${spaceId}`],
+    controlSpaceId: "control-space-1",
+    expiresAt: 9_999_999_999,
+    grantId: options.grantId ?? "10000000-0000-4000-8000-000000000011",
+    issuedAt: 1,
+    jtiHash: "hash",
+    namespaceId: "tenant-1",
+    notBefore: 1,
+    resource: { id: spaceId, parent_id: null, type: "knowledge_space" },
+    subject: "dify-app:app-1",
+    traceId: "workflow-run-1",
+  };
+  app.use("*", async (context, next) => {
+    context.set("subject", {
+      scopes: [],
+      subjectId: "dify-app:app-1",
+      tenantId: "tenant-1",
+    });
+    context.set("capabilityV2Grant", grant);
+    context.set("traceId", "transport-trace-1");
+    await next();
+  });
+  registerRetrievalTestHandlers({
+    answerTraceRecorder,
+    app,
+    executor: { execute: async () => result },
+    ...(options.modelInputModalityResolver
+      ? { modelInputModalityResolver: options.modelInputModalityResolver }
+      : {}),
+    overview,
+    retrievalExecutionLeases: {
+      acquire: async () => ({
+        assertActive: async () => undefined,
+        release: async () => undefined,
+        signal: new AbortController().signal,
+      }),
+    },
+    runtimeSnapshotResolver: {
+      assertReady: async () => undefined,
+      resolve: async () => ({
+        ...runtimeSnapshot(),
+        projectionSnapshot: {
+          ...runtimeSnapshot().projectionSnapshot,
+          knowledgeSpaceId: spaceId,
+        },
+        retrievalProfile: {
+          ...retrievalProfile,
+          scoreThreshold: { enabled: true, stage: "mode-final", value: 0.7 },
+        },
+      }),
+    },
+    spaces: {
+      get: async () => ({ id: spaceId, tenantId: "tenant-1" }) as never,
+    },
+  });
+  return { answerTraceRecorder, app, overview };
 }
 
 function capability(

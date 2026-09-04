@@ -328,6 +328,7 @@ def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operatio
                 "includeText": True,
                 "mode": "fast",
                 "query": "camera",
+                "queryId": "10000000-0000-4000-8000-000000000010",
                 "queryImages": [
                     {
                         "accessGrant": "short-lived-grant",
@@ -347,6 +348,7 @@ def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operatio
         "includeText": True,
         "mode": "fast",
         "query": "camera",
+        "queryId": "10000000-0000-4000-8000-000000000010",
         "queryImages": [{"uploadFileId": "00000000-0000-4000-8000-000000000001"}],
     }
     assert len(request.headers) == 1
