@@ -22,7 +22,6 @@ export const ConversationCard = memo(
     item,
     busy,
     interactive,
-    changesExpanded,
     invalidated,
     onActionPayloadChange,
     onActionValidityChange,
@@ -36,6 +35,9 @@ export const ConversationCard = memo(
     onActionValidityChange?: DifyBuilderActionValidityChange
   }) => {
     const { t } = useTranslation()
+
+    if (item.kind === 'challenge' || item.kind === 'change_set' || item.kind === 'checkpoint')
+      return null
 
     if (item.kind === 'user' || item.kind === 'decision') {
       return (
@@ -141,36 +143,11 @@ export const ConversationCard = memo(
       )
     }
 
-    if (item.kind === 'challenge' || item.kind === 'error') {
+    if (item.kind === 'error') {
       return (
-        <DifyBuilderCardShell
-          invalidated={invalidated}
-          tone={item.kind === 'error' ? 'error' : 'warning'}
-        >
+        <DifyBuilderCardShell invalidated={invalidated} tone="error">
           <div className="system-xs-semibold text-text-primary">{item.payload.title}</div>
           <div className="mt-1 system-xs-regular text-text-secondary">{item.payload.body}</div>
-        </DifyBuilderCardShell>
-      )
-    }
-
-    if (item.kind === 'change_set') {
-      return (
-        <DifyBuilderCardShell invalidated={invalidated}>
-          <div className="flex items-center justify-between">
-            <span className="system-xs-semibold text-text-primary">
-              {item.payload.scope || t(($) => $['difyBuilder.changes'], { ns: 'workflow' })}
-            </span>
-            <span className="bg-components-badge-gray-bg rounded-md px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
-              {item.payload.count}
-            </span>
-          </div>
-          {(changesExpanded || item.payload.full_diff_open) && (
-            <ul className="mt-2 list-disc space-y-1 pl-4 system-xs-regular text-text-secondary">
-              {item.payload.changes.map((change) => (
-                <li key={change}>{change}</li>
-              ))}
-            </ul>
-          )}
         </DifyBuilderCardShell>
       )
     }
@@ -227,13 +204,8 @@ export const ConversationCard = memo(
       )
     }
 
-    if (item.kind === 'checkpoint' || item.kind === 'publish' || item.kind === 'build_learning') {
-      const label =
-        item.kind === 'checkpoint'
-          ? item.payload.label
-          : item.kind === 'publish'
-            ? item.payload.version
-            : item.payload.state
+    if (item.kind === 'publish' || item.kind === 'build_learning') {
+      const label = item.kind === 'publish' ? item.payload.version : item.payload.state
       return (
         <DifyBuilderCardShell
           invalidated={invalidated}
