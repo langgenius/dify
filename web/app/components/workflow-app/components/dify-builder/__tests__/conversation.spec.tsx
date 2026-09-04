@@ -442,6 +442,70 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
   })
 
+  it('hides challenge, change set, and checkpoint cards from the committed conversation', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'challenge',
+            payload: {
+              title: 'High-impact rules',
+              body: 'Review these rules before applying.',
+              tone: 'warning',
+            },
+          },
+          {
+            seq: 1,
+            at_version: 2,
+            kind: 'change_set',
+            payload: {
+              count: 1,
+              changes: ['Update answer configuration'],
+              scope: 'configuration',
+              full_diff_open: true,
+            },
+          },
+          {
+            seq: 2,
+            at_version: 2,
+            kind: 'checkpoint',
+            payload: {
+              checkpoint_id: 'checkpoint-1',
+              label: 'Pre-edit checkpoint',
+              created_at: '2026-09-04T00:00:00Z',
+            },
+          },
+          {
+            seq: 3,
+            at_version: 2,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: 'turn-1',
+              stage_id: 'edit.impact_analysis',
+              execution: { status: 'completed', activities: [] },
+              reply_text: 'The change is ready for review.',
+              cards: ['challenge', 'change_set', 'checkpoint'],
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('The change is ready for review.')).toBeInTheDocument()
+    expect(screen.queryByText('High-impact rules')).not.toBeInTheDocument()
+    expect(screen.queryByText('Review these rules before applying.')).not.toBeInTheDocument()
+    expect(screen.queryByText('configuration')).not.toBeInTheDocument()
+    expect(screen.queryByText('Update answer configuration')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pre-edit checkpoint')).not.toBeInTheDocument()
+  })
+
   it('does not render a Thinking section for execution progress alone', () => {
     const store = createStore()
     store.set(difyBuilderExecutionProgressAtom, {
@@ -479,7 +543,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.queryByText(/Thinking|Thought/)).not.toBeInTheDocument()
   })
 
-  it('preserves the execution disclosure state while snapshots update', async () => {
+  it('keeps execution details collapsed by default and preserves user disclosure while snapshots update', async () => {
     const user = userEvent.setup()
     const store = createStore()
     store.set(difyBuilderExecutionProgressAtom, {
@@ -516,9 +580,10 @@ describe('DifyBuilderConversation test data form', () => {
     const progressDetails = screen.getByRole('group', { name: 'Run the workflow' })
     const progressToggle = progressDetails.querySelector('summary')
     expect(progressToggle).not.toBeNull()
-    expect(progressDetails).toHaveAttribute('open')
-    await user.click(progressToggle!)
     expect(progressDetails).not.toHaveAttribute('open')
+    expect(screen.getByRole('status')).toHaveTextContent('Run the workflow')
+    await user.click(progressToggle!)
+    expect(progressDetails).toHaveAttribute('open')
 
     act(() => {
       store.set(difyBuilderExecutionProgressAtom, {
@@ -548,7 +613,7 @@ describe('DifyBuilderConversation test data form', () => {
     })
 
     expect(screen.getByRole('group', { name: 'Generate answer' })).toBe(progressDetails)
-    expect(progressDetails).not.toHaveAttribute('open')
+    expect(progressDetails).toHaveAttribute('open')
   })
 
   it('renders failed test results with the destructive card tone', () => {

@@ -33,7 +33,7 @@ const ActivityRow = ({ activity }: { activity: ExecutionActivity }) => (
 )
 
 export const ExecutionProgress = ({ execution }: { execution?: ExecutionProgressData | null }) => {
-  const [open, setOpen] = useState(execution?.status === 'running' || execution?.status === 'error')
+  const [open, setOpen] = useState(false)
   const activities = execution?.activities ?? []
   if (!execution || activities.length === 0) return null
 
