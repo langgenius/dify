@@ -1,6 +1,7 @@
 import type { TriggerEventParameter } from '../../plugins/types'
 import type { ToolCredential, ToolParameter } from '../types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -49,6 +50,7 @@ export type ToolFormSchema = {
   default?: string
   tooltip?: TypeWithI18N
   show_on: { variable: string; value: string }[]
+  reset_on_change: string[]
   options?: {
     label: TypeWithI18N
     value: string
@@ -101,6 +103,7 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]): ToolFo
       type: toType(parameter.type),
       _type: parameter.type,
       show_on: [],
+      reset_on_change: parameter.reset_on_change ?? [],
       options: parameter.options?.map((option) => {
         return {
           ...option,
@@ -197,6 +200,19 @@ const correctInitialData = (
   if (type === 'app-selector' || type === 'model-selector') target.value = defaultValue
 
   return target
+}
+
+export const resetToolSettingFieldValue = (schema: {
+  type: string
+  default?: unknown
+}): ResourceVarInputs[string] => {
+  const defaultValue = schema.default
+  const initialValue: FormValueInput = {
+    type: 'constant',
+    value: typeof defaultValue === 'string' ? defaultValue.replace(/\n/g, '\\n') : defaultValue,
+  }
+
+  return correctInitialData(schema.type, initialValue, defaultValue) as ResourceVarInputs[string]
 }
 
 export const generateFormValue = (

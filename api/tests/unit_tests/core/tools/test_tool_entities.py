@@ -49,6 +49,17 @@ def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: Too
     assert parameter.multiple is True
 
 
+def test_tool_parameter_normalizes_duplicate_reset_dependencies():
+    parameter = _make_select_parameter(reset_on_change=["source", "region", "source"])
+
+    assert parameter.reset_on_change == ["source", "region"]
+
+
+def test_tool_parameter_rejects_self_reset_dependency():
+    with pytest.raises(ValidationError, match="cannot reference the parameter itself"):
+        _make_select_parameter(reset_on_change=["choice"])
+
+
 @pytest.mark.parametrize(
     ("value", "message"),
     [

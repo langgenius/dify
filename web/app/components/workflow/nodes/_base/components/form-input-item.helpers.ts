@@ -42,6 +42,26 @@ export type SelectItem = {
   value: string
 }
 
+const stableSerialize = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
+    return `{${entries.join(',')}}`
+  }
+
+  return JSON.stringify(value) ?? String(value)
+}
+
+export const getDynamicOptionsResetKey = (
+  inputs: ResourceVarInputs,
+  resetOnChange: string[] = [],
+) =>
+  resetOnChange
+    .map((variable) => `${variable}:${stableSerialize(inputs[variable] ?? null)}`)
+    .join('\0')
+
 type FormInputState = {
   defaultValue: unknown
   isAppSelector: boolean

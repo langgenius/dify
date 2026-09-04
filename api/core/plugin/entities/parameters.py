@@ -3,7 +3,7 @@ from datetime import date
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
@@ -85,6 +85,10 @@ class PluginParameter(BaseModel):
     max: Union[float, int] | None = None
     precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
+    reset_on_change: list[str] = Field(
+        default_factory=list,
+        description="Reset this parameter to its default value when any listed sibling parameter changes",
+    )
 
     @field_validator("options", mode="before")
     @classmethod
@@ -92,6 +96,14 @@ class PluginParameter(BaseModel):
         if not isinstance(v, list):
             return []
         return v
+
+    @field_validator("reset_on_change")
+    @classmethod
+    def validate_reset_on_change(cls, value: list[str], info: ValidationInfo) -> list[str]:
+        parameter_name = info.data.get("name")
+        if parameter_name in value:
+            raise ValueError("reset_on_change cannot reference the parameter itself")
+        return list(dict.fromkeys(value))
 
 
 def as_normal_type(typ: StrEnum):

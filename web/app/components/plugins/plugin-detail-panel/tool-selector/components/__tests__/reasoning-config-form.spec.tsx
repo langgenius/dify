@@ -564,4 +564,40 @@ describe('ReasoningConfigForm', () => {
       'https://example.com/help',
     )
   })
+
+  it('should reset a dependent reasoning field in the source field change', async () => {
+    const onChange = vi.fn()
+    const schemas = [
+      createSchema({ variable: 'source' }),
+      createSchema({
+        variable: 'dependent',
+        type: FormTypeEnum.textNumber,
+        default: '0.7',
+        reset_on_change: ['source'],
+      }),
+    ]
+    const initialValue = {
+      source: { auto: 0 as const, value: { type: VarKindType.mixed, value: 'first' } },
+      dependent: { auto: 0 as const, value: { type: VarKindType.constant, value: '1' } },
+    }
+    render(
+      <ReasoningConfigForm
+        value={initialValue}
+        onChange={onChange}
+        schemas={schemas}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getAllByTestId('mixed-input')[0]!)
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith({
+      source: { auto: 0, value: { type: VarKindType.mixed, value: 'updated-text' } },
+      dependent: { auto: 0, value: { type: VarKindType.constant, value: 0.7 } },
+    })
+  })
 })
