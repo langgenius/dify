@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, override, runtime_checkable
 
 from flask import g
 from werkzeug.exceptions import NotFound
@@ -135,6 +135,7 @@ class DatasetId(_ParamLocator):
 class DatasetByPipeline(DatasetId):
     default_param = "pipeline_id"
 
+    @override
     def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
         pipeline_id = _required(path_args, self.param)
         dataset_id = RBACResourceService.get_dataset_id_by_pipeline(tenant_id, pipeline_id)

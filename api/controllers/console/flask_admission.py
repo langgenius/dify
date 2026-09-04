@@ -86,7 +86,7 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         if rbac_checks is not None:
-            inject_request_context.rbac_checks = rbac_checks
+            inject_request_context.rbac_checks = rbac_checks  # pyrefly: ignore[missing-attribute]
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
         if require_change_email_enabled:

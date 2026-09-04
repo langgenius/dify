@@ -26,7 +26,7 @@ def rbac_permission_required[**P, R](*checks: RBACCheck) -> Callable[[Callable[P
             )
             return view(*args, **kwargs)
 
-        decorated.rbac_checks = checks
+        decorated.rbac_checks = checks  # pyrefly: ignore[missing-attribute]
         return decorated
 
     return decorator
