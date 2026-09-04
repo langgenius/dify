@@ -1,4 +1,4 @@
-"""Unit tests for the Dify Builder console SSE routes.
+"""Unit tests for the Dify Builder console JSON and SSE routes.
 
 The module-level route functions are deliberately undecorated, so these tests
 exercise request validation, pre-stream error mapping, and stream construction
@@ -14,9 +14,9 @@ from flask import Response
 
 import controllers.console.dify_builder as mod
 from controllers.console import wraps as wraps_mod
-from core.dify_builder.contract import RunStatus
+from core.dify_builder.contract import ConversationPage, RunStatus
 from core.dify_builder.errors import ConflictError, NotFoundError
-from core.dify_builder.models import Actor
+from core.dify_builder.models import Actor, ConversationItem
 from services.dify_builder.service import SessionView
 
 
@@ -29,7 +29,7 @@ def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.E
         canvas_read_only=True,
         run_status=run_status,
         interrupted=False,
-        conversation=[],
+        conversation_last_seq=-1,
     )
 
 
@@ -44,7 +44,7 @@ def _actor() -> Actor:
 
 
 def _frames():
-    yield f"event: message\ndata: {json.dumps({'event': 'snapshot', 'data': {'session_id': 's1'}})}\n\n"
+    yield f"event: message\ndata: {json.dumps({'event': 'command_started', 'data': {'session_id': 's1'}})}\n\n"
 
 
 def _assert_event_stream(result) -> Response:
@@ -60,14 +60,65 @@ def test_actor_builds_from_current_user_and_tenant():
     assert actor == Actor(account_id="acc-1", tenant_id="ten-1")
 
 
-def test_session_get_delegates_to_restore_stream(monkeypatch):
-    restore = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
-    monkeypatch.setattr(mod, "_restore", restore)
+def test_session_get_returns_json_state(monkeypatch):
+    service = MagicMock()
+    service.get_session_view.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
 
     response = unwrap(mod.DifyBuilderSessionApi.get)(object(), "ten-1", _account(), "s1")
 
+    assert response["session_id"] == "s1"
+    assert response["conversation_last_seq"] == -1
+    assert "conversation" not in response
+    service.get_session_view.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+
+
+def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
+    stream = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
+    monkeypatch.setattr(mod, "_stream", stream)
+
+    response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
+
     _assert_event_stream(response)
-    restore.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+    stream.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+
+
+def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):
+    service = MagicMock()
+    service.get_conversation_page.return_value = ConversationPage(
+        data=[ConversationItem(seq=2, kind="notice", payload={"text": "hi"}, at_version=2)],
+        has_more=True,
+        first_seq=2,
+        last_seq=2,
+    )
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    response = mod._conversation("s1", {"before_seq": "3", "limit": "10"}, _actor())
+
+    assert response == {
+        "data": [{"seq": 2, "at_version": 2, "kind": "notice", "payload": {"text": "hi", "tone": "neutral"}}],
+        "has_more": True,
+        "first_seq": 2,
+        "last_seq": 2,
+    }
+    service.get_conversation_page.assert_called_once_with(
+        "s1",
+        _actor(),
+        limit=10,
+        before_seq=3,
+        after_seq=None,
+    )
+
+
+def test_conversation_get_rejects_competing_cursors(monkeypatch):
+    service = MagicMock()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    assert mod._conversation("s1", {"before_seq": "3", "after_seq": "1"}, _actor()) == (
+        {"code": "bad_request"},
+        400,
+    )
+    service.get_conversation_page.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -134,7 +185,7 @@ def test_create_always_calls_streaming_service(monkeypatch, payload, method_name
 
     response = _assert_event_stream(mod._create(payload, actor))
 
-    assert b'"event": "snapshot"' in response.get_data()
+    assert b'"event": "command_started"' in response.get_data()
     called = getattr(service, method_name).call_args
     assert called.kwargs == {**expected_kwargs, "actor": actor}
     service.create_build_session.assert_not_called()
@@ -328,7 +379,7 @@ def test_message_rejects_malformed_or_legacy_payload_before_service(monkeypatch,
     assert not service.mock_calls
 
 
-def test_restore_authorizes_then_subscribes_before_reading_snapshot(monkeypatch):
+def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     calls: list[str] = []
     subscription = MagicMock()
     service = MagicMock()
@@ -345,14 +396,14 @@ def test_restore_authorizes_then_subscribes_before_reading_snapshot(monkeypatch)
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
     monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    response = mod._restore("s1", _actor())
+    response = mod._stream("s1", _actor())
 
     _assert_event_stream(response)
     assert calls == ["authorize", "subscribe", "view"]
     assert stream.call_args.kwargs["expect_advance"] is True
 
 
-def test_restore_settled_snapshot_does_not_watch_for_progress(monkeypatch):
+def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
     service = MagicMock()
     service.get_session_view.return_value = _session_view(run_status=RunStatus.COMPLETE)
     subscription = MagicMock()
@@ -361,39 +412,39 @@ def test_restore_settled_snapshot_does_not_watch_for_progress(monkeypatch):
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
     monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    response = mod._restore("s1", _actor())
+    response = mod._stream("s1", _actor())
 
     _assert_event_stream(response)
     assert stream.call_args.kwargs["expect_advance"] is False
 
 
-def test_restore_closes_subscription_when_snapshot_is_unavailable(monkeypatch):
+def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):
     subscription = MagicMock()
     service = MagicMock()
     service.get_session_view.side_effect = NotFoundError("missing")
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
-    result = mod._restore("s1", _actor())
+    result = mod._stream("s1", _actor())
 
     assert result == ({"code": "not_found"}, 404)
     subscription.close.assert_called_once_with()
 
 
-def test_restore_authorizes_before_opening_subscription(monkeypatch):
+def test_stream_authorizes_before_opening_subscription(monkeypatch):
     service = MagicMock()
     service.authorize_session.side_effect = NotFoundError("missing")
     subscribe = MagicMock()
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
-    assert mod._restore("s1", _actor()) == ({"code": "not_found"}, 404)
+    assert mod._stream("s1", _actor()) == ({"code": "not_found"}, 404)
     subscribe.assert_not_called()
 
 
 def test_stream_response_returns_event_stream_on_success():
     response = _assert_event_stream(mod._stream_response(_frames))
-    assert b'"event": "snapshot"' in response.get_data()
+    assert b'"event": "command_started"' in response.get_data()
 
 
 def test_stream_response_maps_known_error_to_http_tuple():
@@ -470,6 +521,8 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
     [
         mod.DifyBuilderSessionsApi.post,
         mod.DifyBuilderSessionApi.get,
+        mod.DifyBuilderConversationApi.get,
+        mod.DifyBuilderSessionStreamApi.get,
         mod.DifyBuilderActionsApi.post,
         mod.DifyBuilderMessagesApi.post,
     ],

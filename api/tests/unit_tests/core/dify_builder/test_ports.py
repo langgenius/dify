@@ -210,6 +210,19 @@ class _StubRepository:
     def list_conversation(self, _session_id):
         return []
 
+    def list_recent_conversation(self, _session_id, *, limit):
+        _ = limit
+        return []
+
+    def get_conversation_turn_kinds(self, _session_id, _turn_id):
+        return frozenset()
+
+    def list_conversation_page(self, _session_id, *, limit, before_seq=None, after_seq=None):
+        _ = (limit, before_seq, after_seq)
+
+    def get_latest_conversation_item(self, _session_id, _kinds):
+        return None
+
     def invalidate_conversation_items(self, _session_id, _from_seq):
         return None
 

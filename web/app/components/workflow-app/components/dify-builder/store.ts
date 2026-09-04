@@ -1,7 +1,6 @@
 import type {
   Action,
   ChecklistErrorPayload,
-  ConversationItem,
   DifyBuilderSessionController,
   SessionModel,
 } from './types'
@@ -25,11 +24,11 @@ export type DifyBuilderRuntime = {
 }
 
 const EMPTY_ACTIONS: Action[] = []
-const EMPTY_CONVERSATION: ConversationItem[] = []
 
 const isTerminalStatus = (status?: string) => status === 'complete' || status === 'failed'
+const isActiveStatus = (status?: string) => status === 'thinking' || status === 'executing'
 const canContinueConversation = (status?: string) =>
-  status === 'waiting_input' || status === 'paused'
+  status === 'waiting_input' || status === 'waiting_confirmation'
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
 export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
@@ -57,14 +56,19 @@ export const difyBuilderScopedAtoms = [
 
 export const difyBuilderAvailableAtom = atom((get) => get(difyBuilderRuntimeAtom)?.enabled === true)
 export const difyBuilderHasSessionAtom = atom((get) => get(difyBuilderSessionViewAtom) !== null)
-export const difyBuilderConversationAtom = atom(
-  (get) => get(difyBuilderSessionViewAtom)?.conversation ?? EMPTY_CONVERSATION,
-)
+export const difyBuilderActiveInteractionAtom = atom((get) => {
+  const view = get(difyBuilderSessionViewAtom)
+  const interaction = view?.active_interaction
+  return interaction?.valid_at_version === view?.version ? interaction : null
+})
 export const difyBuilderActionsAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.actions ?? EMPTY_ACTIONS,
 )
 export const difyBuilderInterruptedAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.interrupted ?? false,
+)
+export const difyBuilderRecoveryAtom = atom(
+  (get) => get(difyBuilderSessionViewAtom)?.recovery ?? null,
 )
 export const difyBuilderViewVersionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.version ?? 0,
@@ -76,13 +80,13 @@ export const difyBuilderPhaseAtom = atom((get) => get(difyBuilderSessionViewAtom
 export const difyBuilderSessionModelAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.model ?? null,
 )
-export const difyBuilderRunExecutingAtom = atom(
-  (get) => get(difyBuilderSessionViewAtom)?.run_status === 'executing',
+export const difyBuilderRunActiveAtom = atom((get) =>
+  isActiveStatus(get(difyBuilderSessionViewAtom)?.run_status),
 )
 export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
     get(difyBuilderSessionBusyAtom) ||
-    (get(difyBuilderRunExecutingAtom) && !get(difyBuilderInterruptedAtom)) ||
+    (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom)) ||
     get(difyBuilderCanvasRefreshingAtom),
 )
 export const difyBuilderRetryCanvasRefreshAtom = atom(null, (get, set) => {
@@ -95,12 +99,22 @@ export const difyBuilderRetryCanvasRefreshAtom = atom(null, (get, set) => {
 export const difyBuilderCanComposeAtom = atom((get) => {
   if (get(difyBuilderInteractionBusyAtom)) return false
   const view = get(difyBuilderSessionViewAtom)
+  if (view?.recovery || view?.app_revision?.conflicted) return false
   return !view || isTerminalStatus(view.run_status) || canContinueConversation(view.run_status)
 })
 export const difyBuilderCanSendDraftAtom = atom(
   (get) => get(difyBuilderCanComposeAtom) && Boolean(get(difyBuilderDraftAtom).trim()),
 )
-export const difyBuilderModelReadonlyAtom = atom((get) => get(difyBuilderInteractionBusyAtom))
+export const difyBuilderModelReadonlyAtom = atom((get) => {
+  const view = get(difyBuilderSessionViewAtom)
+  return (
+    get(difyBuilderInteractionBusyAtom) ||
+    isActiveStatus(view?.run_status) ||
+    view?.run_status === 'paused' ||
+    !!view?.recovery ||
+    !!view?.app_revision?.conflicted
+  )
+})
 export const difyBuilderCanvasLockedAtom = atom(
   (get) =>
     get(difyBuilderSessionBusyAtom) ||
@@ -219,7 +233,10 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
     !runtime?.enabled ||
     !runtime.canEdit ||
     get(difyBuilderSessionBusyAtom) ||
-    view?.run_status === 'executing'
+    isActiveStatus(view?.run_status) ||
+    view?.run_status === 'paused' ||
+    !!view?.recovery ||
+    !!view?.app_revision?.conflicted
   )
     return false
 
@@ -249,6 +266,12 @@ export const difyBuilderSubmitActionAtom = atom(
     return runtime.session.runAction(actionId, payload)
   },
 )
+
+export const difyBuilderLoadOlderConversationAtom = atom(null, (get) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  if (!runtime?.enabled) return Promise.resolve(false)
+  return runtime.session.loadOlderConversation()
+})
 
 export const difyBuilderRegisterChecklistErrorsAtom = atom(
   null,

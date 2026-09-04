@@ -31,7 +31,6 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestStat,
     Trace,
-    TraceStep,
 )
 from core.dify_builder.handlers_fix import (
     action_kind,
@@ -57,6 +56,7 @@ from core.dify_builder.models import (
     TestInput,
     Turn,
 )
+from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
@@ -100,11 +100,24 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
+
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-understand-goal", "Understand the requested workflow"),
+            ("build-prepare-requirements", "Prepare requirement fields"),
+        ],
+    )
+    progress.activate("build-understand-goal")
     emit_canvas(env, "reset_build_canvas")
     analysis = env.agent.analyze_goal(fc.goal_text)
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
 
+    progress.activate("build-prepare-requirements")
     form_items = append_card(
         fc,
         FormCard(
@@ -122,12 +135,13 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
             tone="warning",
         ),
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.goal_analysis",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Let's clarify the requirements.",
             cards=["form", "challenge"],
         ),
@@ -146,10 +160,22 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-review-requirements", "Review confirmed requirements"),
+            ("build-draft-plan", "Draft the workflow plan"),
+        ],
+    )
+    progress.activate("build-review-requirements")
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
         fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
 
+    progress.activate("build-draft-plan")
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
 
@@ -162,12 +188,13 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             items=list(fc.plan_items),
         ),
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.initial_plan",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Here's the initial plan.",
             cards=["plan"],
         ),
@@ -186,7 +213,19 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     if kind != "find_resources":
         return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-discover-resources", "Find compatible resources"),
+            ("build-prepare-resource-options", "Prepare resource recommendations"),
+        ],
+    )
+    progress.activate("build-discover-resources")
     options = env.agent.discover_resources(list(fc.plan_items))
+    progress.activate("build-prepare-resource-options")
     rs_items = append_card(
         fc,
         ResourceSelectCard(
@@ -197,12 +236,13 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         ),
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.resource_recommendation",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Recommended resources.",
             cards=["resource_select"],
         ),
@@ -223,6 +263,17 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     if kind != "confirm_resources":
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-bind-resources", "Bind selected resources to the plan"),
+            ("build-create-checkpoint", "Create a pre-build checkpoint"),
+        ],
+    )
+    progress.activate("build-bind-resources")
     fc.checkpoint_seq = fc.next_seq
 
     resource_ids: list[str] = []
@@ -238,6 +289,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids, conflict_policy)
     fc.plan_version_tag = "v2"
 
+    progress.activate("build-create-checkpoint")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
@@ -246,12 +298,13 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-build checkpoint", created_at="")
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.plan_approval",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Plan v2 ready for approval.",
             cards=["plan", "checkpoint"],
         ),
@@ -261,20 +314,6 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         context=fc,
         items=[*decision_items, *plan_items, *checkpoint_items, *turn_items],
     )
-
-
-_BUILD_TRACE_STEPS = [
-    TraceStep(id="build-start", label="Create Start node", state="done", tone="success", canvas_event="add_start_node"),
-    TraceStep(
-        id="build-knowledge",
-        label="Create Knowledge Retrieval node",
-        state="done",
-        tone="success",
-        canvas_event="add_knowledge_node",
-    ),
-    TraceStep(id="build-llm", label="Create LLM node", state="done", tone="success", canvas_event="add_llm_node"),
-    TraceStep(id="build-end", label="Create End node", state="done", tone="success", canvas_event="add_output_node"),
-]
 
 
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -306,6 +345,18 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-generate-graph", "Generate the workflow graph"),
+            ("build-validate-graph", "Validate changes against the current canvas"),
+            ("build-apply-graph", "Apply the workflow to the canvas"),
+        ],
+    )
+    progress.activate("build-generate-graph")
     emit_canvas(env, "create_checkpoint")
     intents = env.agent.build_nodes(list(fc.plan_items))
 
@@ -327,15 +378,16 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 ),
             ),
         )
+        progress.fail_step("build-generate-graph")
+        trace = progress.finish(status="error")
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="build.plan_approval",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text=(
-                    "I couldn't build a valid workflow graph -- see the error above. "
-                    "Adjust the plan and approve again."
+                    "I couldn't build a valid workflow graph -- see the error above. Adjust the plan and approve again."
                 ),
                 cards=["error"],
             ),
@@ -346,6 +398,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             items=[*error_items, *turn_items],
         )
 
+    progress.activate("build-validate-graph")
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
     current_nodes = current_graph.get("nodes", [])
     existing_node_ids = {n.get("id") for n in current_nodes}
@@ -382,6 +435,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 
+    progress.activate("build-apply-graph")
     result = env.dify.apply_repair(s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
@@ -397,12 +451,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     )
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2.1", items=list(fc.plan_items)))
     decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.execution",
-            trace=Trace(status="completed", steps=list(_BUILD_TRACE_STEPS)),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Workflow built on the canvas.",
             cards=["change_set", "plan"],
         ),
@@ -441,7 +496,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 fc,
                 AssistantTurnItem(
                     turn_id=str(uuid.uuid4()),
-                    stage_id="build.await_testdata",
+                    stage_id=str(s.current_state),
                     trace=Trace(status="completed", steps=[]),
                     reply_text="Provide test inputs (or use mock data) to run the test.",
                     cards=["form"],
@@ -449,16 +504,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
             )
             return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
-        items = append_card(
-            fc,
-            AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="build.test_and_repair",
-                trace=Trace(status="running", steps=[]),
-                reply_text="Running tests.",
-                cards=[],
-            ),
-        )
+        items = append_card(fc, DecisionItem(text="Run tests"))
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
     return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
 
@@ -469,8 +515,17 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     file refs). Persists a TestInput and advances to build.test_and_repair."""
     mode, _ = action_string(turn, "mode")
     if mode == "mock":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("build-generate-test-inputs", "Generate test inputs")],
+        )
+        progress.activate("build-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        progress.finish()
     else:
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
@@ -485,6 +540,18 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     """(working, auto) Live test: run the built draft with mock inputs. Success
     -> build.review. Failure -> real diagnose + propose_repair, staged for the
     build.await_repair approval gate. No auto-apply (human-gated)."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("build-prepare-test", "Prepare the workflow test"),
+            ("build-run-test", "Run the workflow"),
+            ("build-evaluate-test", "Evaluate the test result"),
+        ],
+    )
+    progress.activate("build-prepare-test")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
 
     if fc.test_input_ref:
@@ -496,11 +563,18 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         fc.test_input_ref = ti.id
 
     emit = env.emit if env.emit is not None else (lambda _e: None)
+    progress.activate("build-run-test")
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
         status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
     except Exception:  # never crash the advance -- surface as a failed run
         status, per_node, dify_run_id = "failed", [], ""
+
+    if status == "succeeded":
+        progress.complete("build-run-test")
+    else:
+        progress.fail_step("build-run-test")
+    progress.activate("build-evaluate-test")
 
     run = Run(
         id=str(uuid.uuid4()),
@@ -533,12 +607,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 items=[f"Workflow built ({len(fc.built_node_ids)} nodes)", "Tests passing"],
             ),
         )
+        trace = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="build.review",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text="Tests passed; ready for review.",
                 cards=["test_result", "summary"],
             ),
@@ -582,12 +657,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 frozen=False,
             ),
         )
+        trace = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="build.await_testdata",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text="The run failed on its inputs — provide test data and retry.",
                 cards=["test_result", "form"],
             ),
@@ -601,7 +677,15 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         )
 
     # config failure: existing diagnose + propose_repair -> BUILD_AWAIT_REPAIR
+    progress.add_steps(
+        [
+            ("build-diagnose-failure", "Diagnose the failed workflow"),
+            ("build-prepare-repair", "Prepare a safe repair"),
+        ]
+    )
+    progress.activate("build-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
+    progress.activate("build-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
     fc.staged_repair = list(intents)
@@ -633,12 +717,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         if intents
         else []
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.await_repair",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text=(
                 "Test failed — here's a proposed fix to review."
                 if intents
@@ -663,17 +748,28 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[
+                ("build-apply-repair", "Apply the approved repair"),
+                ("build-prepare-retest", "Prepare to retest the workflow"),
+            ],
+        )
+        progress.activate("build-apply-repair")
         result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
-        changes, scope, fc.change_set = build_change_set(
-            result, default_scope="configuration", fallback_diff="repair"
-        )
+        changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         cs_items = append_card(
             fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
         )
+        progress.activate("build-prepare-retest")
         decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        progress.finish()
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=[*cs_items, *decision_items])
     if kind == "keep_draft":
         items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
@@ -701,18 +797,27 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
     if kind == "re_fix":  # continue_adjusting
         emit_canvas(env, "cancel_publish")
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("build-revise-plan", "Revise the workflow plan")],
+        )
+        progress.activate("build-revise-plan")
         fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
         fc.plan_version_tag = "v1"
         fc.test_input_ref = ""
         fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
+        trace = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="build.initial_plan",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text="Revised plan.",
                 cards=["plan"],
             ),
@@ -732,9 +837,18 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working, auto) Publish the built workflow, emit the PublishCard, and
     auto-advance to build.governance_feedback."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[("build-publish-workflow", "Publish the new workflow")],
+    )
+    progress.activate("build-publish-workflow")
     env.dify.publish(s.app_id, turn.actor)
     emit_canvas(env, "publish_workflow")
     items = append_card(fc, PublishCard(version="1.0", badge="live"))
+    progress.finish()
     return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
 
 
@@ -745,12 +859,21 @@ def handle_governance_feedback(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     publish and keep_draft (scenario-neutral)."""
     policy = fc.skill_learning_policy or "ask"
     if policy == "automatic":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("build-capture-learning", "Capture reusable build guidance")],
+        )
+        progress.activate("build-capture-learning")
         descriptor = env.agent.learn_from_build(
             fc.goal_text, dict(fc.requirements), list(fc.plan_items), list(fc.built_node_ids)
         )
         items = append_card(fc, BuildLearningCard(policy="automatic", state="accepted"))
         items += append_card(fc, NoticeItem(text=descriptor))
         items += _emit_completion(fc)
+        progress.finish()
         return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
     if policy == "disabled":
         items = append_card(fc, BuildLearningCard(policy="disabled", state="skipped"))
@@ -767,11 +890,20 @@ def handle_await_learning(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     skipped. Either way emit the completion summary and reach build.complete."""
     kind = action_kind(turn)
     if kind == "accept_learning":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("build-capture-learning", "Capture reusable build guidance")],
+        )
+        progress.activate("build-capture-learning")
         descriptor = env.agent.learn_from_build(
             fc.goal_text, dict(fc.requirements), list(fc.plan_items), list(fc.built_node_ids)
         )
         items = append_card(fc, DecisionItem(text="Accepted skill learning"))
         items += append_card(fc, NoticeItem(text=descriptor))
+        progress.finish()
     else:
         items = append_card(fc, DecisionItem(text="Skipped skill learning"))
     items += _emit_completion(fc)
@@ -784,17 +916,26 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.BUILD_REVERTED, context=fc)
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[("build-restart-plan", "Rebuild the workflow plan")],
+    )
+    progress.activate("build-restart-plan")
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="build.initial_plan",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Restarting the plan.",
             cards=["plan"],
         ),

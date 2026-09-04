@@ -49,9 +49,8 @@ class PcState(StrEnum):
     BUILD_COMPLETE = "build.complete"
     BUILD_REVERTED = "build.reverted"
 
-    # Edit (spec §7.2) — 10 states (EDIT_AWAIT_REPAIR added post-spec for the
-    # live-test de-canning slice, mirrors BUILD_AWAIT_REPAIR; EDIT_AWAIT_TESTDATA
-    # added post-spec for the testdata-gate slice).
+    # Edit (spec §7.2). ``edit.publish`` is a working state so the publish
+    # side effect is observable before the terminal ``edit.complete`` commit.
     EDIT_CAPABILITY_CHECK = "edit.capability_check"
     EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
     EDIT_PLAN_APPROVAL = "edit.plan_approval"
@@ -61,6 +60,7 @@ class PcState(StrEnum):
     EDIT_AWAIT_REPAIR = "edit.await_repair"
     EDIT_REVIEW = "edit.review"
     EDIT_PUBLISH = "edit.publish"
+    EDIT_COMPLETE = "edit.complete"
     EDIT_REVERTED = "edit.reverted"
 
 
@@ -78,6 +78,7 @@ _WORKING = frozenset(
         PcState.BUILD_PUBLISH,
         PcState.BUILD_GOVERNANCE_FEEDBACK,
         PcState.EDIT_TEST_AFFECTED_PATHS,
+        PcState.EDIT_PUBLISH,
     }
 )
 
@@ -125,7 +126,7 @@ def is_waiting(s: PcState) -> bool:
 
 def is_terminal(s: PcState) -> bool:
     """Report whether the task is finished."""
-    return s in (PcState.SUCCESS, PcState.FAILED, PcState.BUILD_COMPLETE, PcState.EDIT_PUBLISH)
+    return s in (PcState.SUCCESS, PcState.FAILED, PcState.BUILD_COMPLETE, PcState.EDIT_COMPLETE)
 
 
 def canvas_read_only(s: PcState) -> bool:

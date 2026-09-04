@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints, model_validator
 
 from core.dify_builder.contract import (
     Action,
@@ -25,6 +25,7 @@ from core.dify_builder.contract import (
     Phase,
     PlanCard,
     PreflightContextCard,
+    ProgressEventData,
     PublishCard,
     RecoveryRef,
     ResourceSelectCard,
@@ -106,6 +107,18 @@ class DifyBuilderSubmitMessagePayload(DifyBuilderPayload):
     text: NonEmptyString
     base_version: StrictInt
     client_turn_id: ClientTurnId
+
+
+class DifyBuilderConversationListQuery(DifyBuilderPayload):
+    before_seq: int | None = Field(default=None, ge=0, description="Load groups before this sequence")
+    after_seq: int | None = Field(default=None, ge=-1, description="Load groups after this sequence")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of conversation groups to return")
+
+    @model_validator(mode="after")
+    def validate_cursor(self) -> "DifyBuilderConversationListQuery":
+        if self.before_seq is not None and self.after_seq is not None:
+            raise ValueError("before_seq and after_seq are mutually exclusive")
+        return self
 
 
 class DifyBuilderConversationItemBase(ResponseModel):
@@ -220,6 +233,12 @@ DifyBuilderConversationItem = Annotated[
 ]
 
 
+class DifyBuilderActiveInteractionResponse(ResponseModel):
+    action_id: str
+    card: DifyBuilderConversationItem
+    valid_at_version: int
+
+
 class DifyBuilderSessionViewResponse(ResponseModel):
     session_id: str
     app_id: str
@@ -228,18 +247,29 @@ class DifyBuilderSessionViewResponse(ResponseModel):
     canvas_read_only: bool
     run_status: RunStatus
     interrupted: bool
-    conversation: list[DifyBuilderConversationItem]
+    conversation_last_seq: int
     entry_mode: EntryMode = EntryMode.FIX
     phase: Phase = Phase.UNDERSTAND
     actions: list[Action] = Field(default_factory=list)
+    active_interaction: DifyBuilderActiveInteractionResponse | None = None
     checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None
     app_revision: AppRevision | None = None
 
 
+class DifyBuilderConversationPageResponse(ResponseModel):
+    data: list[DifyBuilderConversationItem]
+    has_more: bool
+    first_seq: int | None
+    last_seq: int | None
+
+
 class DifyBuilderCommitEventData(ResponseModel):
     session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
     version: int
     state: str
     settled: bool
@@ -251,9 +281,13 @@ class DifyBuilderStateEventData(DifyBuilderSessionViewResponse):
     kind: Literal["state"] = "state"
 
 
-class DifyBuilderSnapshotEventResponse(ResponseModel):
-    event: Literal["snapshot"]
-    data: DifyBuilderSessionViewResponse
+class DifyBuilderCommandStartedEventData(DifyBuilderSessionViewResponse):
+    kind: Literal["command_started"] = "command_started"
+
+
+class DifyBuilderCommandStartedEventResponse(ResponseModel):
+    event: Literal["command_started"]
+    data: DifyBuilderCommandStartedEventData
 
 
 class DifyBuilderNodeEventResponse(ResponseModel):
@@ -269,6 +303,11 @@ class DifyBuilderCanvasEventResponse(ResponseModel):
 class DifyBuilderAgentMessageEventResponse(ResponseModel):
     event: Literal["agent_message"]
     data: AgentMessageEventData
+
+
+class DifyBuilderProgressEventResponse(ResponseModel):
+    event: Literal["progress"]
+    data: ProgressEventData
 
 
 class DifyBuilderCommitEventResponse(ResponseModel):
@@ -289,10 +328,11 @@ class DifyBuilderErrorEventResponse(ResponseModel):
 class DifyBuilderStreamEventResponse(
     RootModel[
         Annotated[
-            DifyBuilderSnapshotEventResponse
+            DifyBuilderCommandStartedEventResponse
             | DifyBuilderNodeEventResponse
             | DifyBuilderCanvasEventResponse
             | DifyBuilderAgentMessageEventResponse
+            | DifyBuilderProgressEventResponse
             | DifyBuilderCommitEventResponse
             | DifyBuilderStateEventResponse
             | DifyBuilderErrorEventResponse,

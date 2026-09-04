@@ -7,11 +7,13 @@ export const ResourceCard = memo(
   ({
     item,
     busy,
+    interactive,
     invalidated,
     onActionPayloadChange,
   }: {
     item: Extract<ConversationItem, { kind: 'resource_select' }>
     busy: boolean
+    interactive: boolean
     invalidated: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
   }) => {
@@ -22,7 +24,7 @@ export const ResourceCard = memo(
     const [policy, setPolicy] = useState(
       () => policies.find((option) => option.recommended)?.id ?? 'ask',
     )
-    const frozen = busy || invalidated
+    const frozen = busy || !interactive || invalidated
 
     const emitPayload = (resourceIds: string[], conflictPolicy: string) => {
       onActionPayloadChange('confirm_resources', {

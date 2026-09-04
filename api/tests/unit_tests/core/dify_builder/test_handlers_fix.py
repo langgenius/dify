@@ -318,7 +318,7 @@ def test_run_validation_exposes_testdata_form_for_start_inputs():
     assistant = next(
         item
         for item in reversed(items)
-        if item.kind == "assistant_turn" and item.payload["stage_id"] == "fix.await_testdata"
+        if item.kind == "assistant_turn" and item.payload["stage_id"] == "fix.await_verify"
     )
     assert assistant.payload["cards"] == ["form"]
 

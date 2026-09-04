@@ -1,17 +1,13 @@
-"""Factory for the dify_builder's DifyBuilderAgent.
+"""Factory for the dify_builder's LLM-backed ``DifyBuilderAgent``.
 
-Selection order: an installed override (set_dify_builder_agent_factory, used by
-tests/enterprise) wins; otherwise DIFY_BUILDER_AGENT_MODE picks the OSS agent —
-"llm" -> the real LlmBuilderAgent shell (constructed with the session's model
-choice), else the canned PlaceholderAgent. The Celery advance task calls
-build_dify_builder_agent(tenant_id, model_config) per run.
+An installed override (used by tests or an enterprise extension) wins.
+Production always constructs ``LlmBuilderAgent`` with the session's model
+choice; there is no runtime placeholder mode.
 """
 
 from collections.abc import Callable
 from typing import Any
 
-from configs import dify_config
-from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.ports import DifyBuilderAgent
 
 __all__ = ["build_dify_builder_agent", "set_dify_builder_agent_factory"]
@@ -26,17 +22,11 @@ def set_dify_builder_agent_factory(factory: Callable[[], DifyBuilderAgent] | Non
 
 
 def build_dify_builder_agent(tenant_id: str = "", model_config: dict[str, Any] | None = None) -> DifyBuilderAgent:
-    """Return the agent for one advance.
-
-    tenant_id + model_config are the session's model choice (empty == tenant default);
-    they matter only in "llm" mode. Default mode is "placeholder" (unchanged behavior).
-    """
+    """Return the LLM-backed agent for one advance."""
     if _factory is not None:
         return _factory()
-    if dify_config.DIFY_BUILDER_AGENT_MODE == "llm":
-        # Local import keeps the model-runtime chain out of module load for the
-        # many places that import this factory.
-        from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    # Keep the model-runtime dependency chain lazy for modules that only
+    # install or type the factory override.
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-        return LlmBuilderAgent(tenant_id, model_config)
-    return PlaceholderAgent()
+    return LlmBuilderAgent(tenant_id, model_config)

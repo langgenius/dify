@@ -1,6 +1,9 @@
 """Contract-level checks for typed Dify Builder SSE envelopes."""
 
 import json
+from collections.abc import Iterator
+
+import pytest
 
 from services.dify_builder import wiring
 
@@ -25,32 +28,69 @@ def _event(frame: str) -> dict:
     return json.loads(lines[1].removeprefix("data: "))
 
 
-def test_stream_relays_canvas_and_agent_message_as_typed_events():
+def test_stream_relays_canvas_progress_and_agent_message_as_typed_events():
     view = {"session_id": "s1", "state": "build.execution", "phase": "modify", "actions": []}
-    canvas = {"kind": "canvas", "event": "add_llm_node"}
+    canvas = {
+        "kind": "canvas",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "stage_id": "build.execution",
+        "at_version": 2,
+        "revision": 1,
+        "event": "add_llm_node",
+    }
     message = {
         "kind": "agent_message",
-        "turn_id": "turn-1",
-        "message_id": "message-1",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "id": "message-1",
         "answer": "Working",
+        "seq": 1,
+        "at_version": 2,
+        "revision": 1,
+        "stage_id": "build.execution",
+    }
+    progress = {
+        "kind": "progress",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "stage_id": "build.execution",
+        "at_version": 2,
+        "revision": 1,
+        "trace": {
+            "status": "running",
+            "steps": [
+                {
+                    "id": "build-generate-graph",
+                    "label": "Generate the workflow graph",
+                    "state": "active",
+                }
+            ],
+        },
     }
     state = {"kind": "state", **view, "run_status": "waiting_input"}
     subscription = _FakeSubscription(
-        [json.dumps(canvas).encode(), json.dumps(message).encode(), json.dumps(state).encode()]
+        [
+            json.dumps(canvas).encode(),
+            json.dumps(progress).encode(),
+            json.dumps(message).encode(),
+            json.dumps(state).encode(),
+        ]
     )
 
     frames = list(wiring.stream_advance_frames(view, subscription, expect_advance=True))
 
     assert [_event(frame) for frame in frames] == [
-        {"event": "snapshot", "data": view},
+        {"event": "command_started", "data": {"kind": "command_started", **view}},
         {"event": "canvas", "data": canvas},
+        {"event": "progress", "data": progress},
         {"event": "agent_message", "data": message},
         {"event": "state", "data": state},
     ]
     assert subscription.closed is True
 
 
-def test_snapshot_round_trips_extended_session_view_fields():
+def test_command_handshake_round_trips_bounded_session_view_fields():
     view = {
         "session_id": "s1",
         "app_id": "a1",
@@ -59,7 +99,7 @@ def test_snapshot_round_trips_extended_session_view_fields():
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
-        "conversation": [],
+        "conversation_last_seq": 12,
         "entry_mode": "fix",
         "phase": "test",
         "actions": [{"id": "run_verify", "label": "Run verify", "kind": "primary"}],
@@ -68,4 +108,32 @@ def test_snapshot_round_trips_extended_session_view_fields():
 
     frames = list(wiring.stream_advance_frames(view, None, expect_advance=False))
 
-    assert _event(frames[0]) == {"event": "snapshot", "data": view}
+    assert _event(frames[0]) == {
+        "event": "command_started",
+        "data": {"kind": "command_started", **view},
+    }
+    assert "conversation" not in _event(frames[0])["data"]
+
+
+def test_stream_timeout_emits_recoverable_terminal_error(monkeypatch: pytest.MonkeyPatch):
+    subscription = _FakeSubscription([None])
+    monotonic: Iterator[float] = iter([0, 0, wiring._MAX_STREAM_SECONDS + 1])
+    monkeypatch.setattr(wiring.time, "monotonic", lambda: next(monotonic))
+
+    frames = list(
+        wiring.stream_advance_frames(
+            {"session_id": "s1", "state": "build.execution"},
+            subscription,
+            expect_advance=True,
+        )
+    )
+
+    assert _event(frames[-1]) == {
+        "event": "error",
+        "data": {
+            "kind": "error",
+            "error": "Builder operation timed out",
+            "code": "timeout",
+            "recoverable": True,
+        },
+    }
