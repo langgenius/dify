@@ -88,7 +88,7 @@
   "stepTwo.generalTip": "Genel metin parçalama modu, alınan ve geri çağrılan parçalar aynıdır.",
   "stepTwo.highQualityTip": "Yüksek Kalite modunda yerleştirme işlemi tamamlandıktan sonra, Ekonomik moda geri dönülemez.",
   "stepTwo.indexMode": "Dizin modu",
-  "stepTwo.indexSettingTip": "Dizin yöntemini değiştirmek için, lütfen",
+  "stepTwo.indexSettingTip": "Dizin yöntemini değiştirmek için, lütfen ",
   "stepTwo.maxLength": "Maksimum parça uzunluğu",
   "stepTwo.maxLengthCheck": "Maksimum yığın uzunluğu {{limit}}'den az olmalıdır",
   "stepTwo.nextStep": "Kaydet ve İşle",
