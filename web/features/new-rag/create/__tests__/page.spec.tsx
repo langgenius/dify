@@ -620,10 +620,12 @@ describe('CreateKnowledgePage', () => {
       job_id: 'website-preview-1',
       status: 'completed',
       result: {
+        configuration_fingerprint: 'a'.repeat(64),
         kind: 'website_crawl',
         pages: [
           {
             description: 'Getting started',
+            page_id: 'page-getting-started',
             source_url: 'https://docs.dify.ai/getting-started',
             title: 'Getting started',
           },
@@ -1665,11 +1667,13 @@ describe('CreateKnowledgePage', () => {
           },
           pluginId: 'langgenius/firecrawl_datasource',
           previewJobId: 'website-preview-1',
+          previewConfigurationFingerprint: 'a'.repeat(64),
           provider: 'firecrawl',
           providerDisplayName: 'Firecrawl',
           root_url: 'https://docs.dify.ai/',
           selection: [
             {
+              pageId: 'page-getting-started',
               source_url: 'https://docs.dify.ai/getting-started',
               title: 'Getting started',
             },

@@ -708,6 +708,7 @@ export const zKnowledgeFsInitialSourcePreviewFileResponse = z.object({
  */
 export const zKnowledgeFsInitialSourcePreviewPageResponse = z.object({
   description: z.string().nullish(),
+  page_id: z.string().nullish(),
   source_url: z.string(),
   title: z.string().nullish(),
 })
@@ -792,6 +793,14 @@ export const zKnowledgeFsSpaceCreateResponse = z.object({
 
 /**
  * KnowledgeFSProductPermission
+ *
+ * Product-level capability of a caller on one KnowledgeFS space.
+ *
+ * These values are what the console returns as ``permission_keys`` so the web can gate
+ * its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse
+ * the legacy knowledge base (``dataset_*``) permission points, and each capability is
+ * granted when the caller holds the dataset permission it maps to (see
+ * :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
  */
 export const zKnowledgeFsProductPermission = z.enum([
   'knowledge_space_access_config',
@@ -2276,6 +2285,7 @@ export const zKnowledgeFsInitialWebsiteCrawlOptionsPayload = z.object({
  */
 export const zKnowledgeFsInitialWebsiteSelectionPayload = z.object({
   canonical_url: z.string().min(1).max(4096).nullish(),
+  pageId: z.string().min(1).max(128).nullish(),
   source_url: z.string().min(1).max(4096),
   title: z.string().max(500).nullish(),
 })

@@ -59,6 +59,9 @@ import {
   createInMemoryGoldenQuestionRepository,
 } from "./golden-question-repository";
 export * from "./conflict-detection";
+export * from "./namespace-source-preview";
+export * from "./namespace-source-preview-handlers";
+export * from "./namespace-source-preview-routes";
 export * from "./contextual-enrichment-flow";
 export * from "./core-resource-response-schemas";
 export * from "./cursor-utils";
@@ -581,6 +584,11 @@ import { registerLegacySpacePublicationBootstrapHandlers } from "./legacy-space-
 import { createLocalNodeQueryGenerator } from "./local-node-query-generator";
 import { registerLogicalDocumentHandlers } from "./logical-document-handlers";
 import { registerModelCapabilityHandlers } from "./model-capability-handlers";
+import {
+  createInMemoryNamespaceSourcePreviewRepository,
+  createNamespaceSourcePreviewService,
+} from "./namespace-source-preview";
+import { registerNamespaceSourcePreviewHandlers } from "./namespace-source-preview-handlers";
 import { registerOperationPolicyHandlers } from "./operation-policy-handlers";
 import { registerPageIndexUpgradeBackfillHandlers } from "./page-index-upgrade-backfill-handlers";
 import {
@@ -2207,6 +2215,19 @@ export function createKnowledgeGateway({
       repository: sourceProduct.repository,
       workflows: sourceProductWorkflows,
     });
+    if (websiteCrawlConnector) {
+      const namespacePreviews = createNamespaceSourcePreviewService({
+        repository:
+          sourceProduct.namespacePreviews ?? createInMemoryNamespaceSourcePreviewRepository(),
+        sources: sourceRepository,
+        storage: adapter.objectStorage,
+        websiteCrawl: websiteCrawlConnector,
+        workflows: sourceProductWorkflows,
+      });
+      registerNamespaceSourcePreviewHandlers({ app, service: namespacePreviews });
+      const timer = setInterval(() => void namespacePreviews.tick(), 1_000);
+      timer.unref?.();
+    }
   }
   registerBackgroundTaskHandlers({
     access: accessService,

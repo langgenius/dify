@@ -19,12 +19,12 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
 from services.credential_permission_service import CredentialPermissionService
-from services.knowledge_fs.initial_source_preview_job import KnowledgeFSInitialSourcePreviewJobService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSInitialOnlineDocumentSourcePayload,
     KnowledgeFSInitialSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
+    KnowledgeFSNamespacePreviewConsumePayload,
     KnowledgeFSOnlineDocumentWorkflowImportPayload,
     KnowledgeFSOnlineDriveWorkflowImportPayload,
     KnowledgeFSSourceConnectionCreatePayload,
@@ -281,14 +281,28 @@ def _start_workflow(
     payload: KnowledgeFSInitialSourcePayload,
 ):
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
-        pages = None
         if payload.preview_job_id:
-            pages = KnowledgeFSInitialSourcePreviewJobService.selected_content(
+            if not payload.preview_configuration_fingerprint or any(
+                not selection.page_id for selection in payload.selection
+            ):
+                raise ValueError("Website namespace preview selection requires page IDs and fingerprint")
+            imported = facade.consume_namespace_source_preview(
                 tenant_id=tenant_id,
                 account_id=account_id,
-                job_id=payload.preview_job_id,
-                source_urls=[selection.source_url for selection in payload.selection],
-                configuration_fingerprint=knowledge_fs_initial_preview_configuration_fingerprint(payload),
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=KnowledgeFSNamespacePreviewConsumePayload(
+                    previewJobId=payload.preview_job_id,
+                    pageIds=[selection.page_id for selection in payload.selection],
+                    configurationFingerprint=payload.preview_configuration_fingerprint,
+                ),
+                idempotency_key=f"{request_id}:crawl-import",
+            )
+            return facade.get_source_workflow(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                run_id=imported.workflow_id,
             )
         workflow = facade.import_selected_source_crawl(
             tenant_id=tenant_id,
@@ -297,14 +311,9 @@ def _start_workflow(
             source_id=source_id,
             payload=KnowledgeFSCrawlImportPayload(
                 sourceUrls=[selection.source_url for selection in payload.selection],
-                pages=pages,
             ),
             idempotency_key=f"{request_id}:crawl-import",
         )
-        if payload.preview_job_id:
-            KnowledgeFSInitialSourcePreviewJobService.cleanup_content(
-                tenant_id=tenant_id, account_id=account_id, job_id=payload.preview_job_id
-            )
         return workflow
     if isinstance(payload, KnowledgeFSInitialOnlineDocumentSourcePayload):
         import_payload = KnowledgeFSSourceWorkflowImportPayload(

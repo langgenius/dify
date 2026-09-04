@@ -1308,6 +1308,7 @@ export type KnowledgeFsInitialSourcePreviewFileResponse = {
 
 export type KnowledgeFsInitialSourcePreviewPageResponse = {
   description?: string | null
+  page_id?: string | null
   source_url: string
   title?: string | null
 }
@@ -2222,6 +2223,7 @@ export type KnowledgeFsInitialWebsiteCrawlOptionsPayload = {
 
 export type KnowledgeFsInitialWebsiteSelectionPayload = {
   canonical_url?: string | null
+  pageId?: string | null
   source_url: string
   title?: string | null
 }

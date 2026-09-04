@@ -132,6 +132,49 @@ class KnowledgeFSCapabilityBroker:
             knowledge_space_revision=knowledge_space_revision,
         )
 
+    def issue_namespace_interactive(
+        self, *, tenant_id: str, account_id: str, operation_id: str, trace_id: str | None = None
+    ) -> KnowledgeFSIssuedProductCapability:
+        """Issue a namespace-only capability before a control Space exists.
+
+        Console authentication and datasource credential ownership are established by the caller;
+        the signed resource is restricted to this tenant and operation. Namespace previews never
+        authorize a KnowledgeSpace child resource.
+        """
+        self._cutover_gate.require_capability_v2(tenant_id=tenant_id)
+        _, capability_operation_id = _operation_contract(operation_id)
+        issuer = self._require_issuer()
+        normalized_trace_id = _trace_id(trace_id)
+        operation = KNOWLEDGE_FS_CAPABILITY_OPERATIONS[capability_operation_id]
+        if operation.resource_type != "namespace":
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS operation is not namespace-scoped")
+        request = CapabilityIssueRequest(
+            actor=f"dify-account:{account_id}",
+            authz_revision=CapabilityAuthzRevision(
+                membership_epoch=0, space_acl_epoch=0, external_access_epoch=0, credential_revision=None
+            ),
+            caller_kind="interactive",
+            content_policy_revision=0,
+            control_space_id=f"namespace:{tenant_id}",
+            grant_id=str(
+                uuid.uuid5(uuid.NAMESPACE_URL, f"dify-kfs-namespace:{tenant_id}:{account_id}:{normalized_trace_id}")
+            ),
+            namespace_id=tenant_id,
+            operation_id=capability_operation_id,
+            principal_id=account_id,
+            resource=CapabilityResource(type="namespace", id=tenant_id),
+            trace_id=normalized_trace_id,
+        )
+        issued = issuer.issue(request)
+        return KnowledgeFSIssuedProductCapability(
+            token=issued.token,
+            expires_at=datetime.fromtimestamp(issued.claims.exp, tz=UTC),
+            operation_id=operation_id,
+            knowledge_space_id=tenant_id,
+            knowledge_space_revision=0,
+            trace_id=normalized_trace_id,
+        )
+
     def issue_service(
         self,
         *,

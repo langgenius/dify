@@ -283,7 +283,7 @@ function CreateSourceSetupSession({
         setPreviewPages(
           (response.result.pages ?? []).map((page) => ({
             description: page.description ?? undefined,
-            pageId: page.source_url,
+            pageId: page.page_id ?? page.source_url,
             sourceUrl: page.source_url,
             title: page.title ?? page.source_url,
           })),
@@ -392,7 +392,7 @@ function CreateSourceSetupSession({
       setPreviewPages(
         (response.result.pages ?? []).map((page) => ({
           description: page.description ?? undefined,
-          pageId: page.source_url,
+          pageId: page.page_id ?? page.source_url,
           sourceUrl: page.source_url,
           title: page.title ?? page.source_url,
         })),
@@ -457,6 +457,7 @@ function CreateSourceSetupSession({
         : {}),
       root_url: sourceUri,
       selection: selectedPages.map((page) => ({
+        pageId: page.pageId,
         source_url: page.sourceUrl,
         ...(page.title ? { title: page.title } : {}),
       })),

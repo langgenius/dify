@@ -16,7 +16,7 @@ function argumentValue(name) {
 process.env.NODE_ENV = "test";
 const [
   { createNodePlatformAdapter },
-  { createKnowledgeGateway, registerSourceProductHandlers },
+  { createKnowledgeGateway, registerNamespaceSourcePreviewHandlers, registerSourceProductHandlers },
   { createInMemoryCapabilityGrantProvenanceRepository },
 ] = await Promise.all([
   import("../packages/adapters/src/node.ts"),
@@ -67,6 +67,7 @@ registerSourceProductHandlers({
   repository: unavailableService,
   workflows: unavailableService,
 });
+registerNamespaceSourcePreviewHandlers({ app, service: unavailableService });
 const response = await app.request("/openapi.json");
 if (!response.ok) {
   throw new Error(`OpenAPI export failed with HTTP ${response.status}`);

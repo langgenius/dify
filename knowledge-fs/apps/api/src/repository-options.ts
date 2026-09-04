@@ -20,6 +20,7 @@ import {
   type KnowledgeSpaceProvisioningRepository,
   type KnowledgeSpaceUnpublishedProfileActivationRepository,
   type LegacySpacePublicationBootstrapRepository,
+  type NamespaceSourcePreviewRepository,
   type PageIndexFindabilityRepository,
   type PageIndexUpgradeBackfillRepository,
   type QualityControlRepository,
@@ -73,6 +74,7 @@ import {
   createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository,
   createDatabaseLegacySpacePublicationBootstrapRepository,
   createDatabaseLogicalDocumentRepository,
+  createDatabaseNamespaceSourcePreviewRepository,
   createDatabasePageIndexFindabilityRepository,
   createDatabasePageIndexUpgradeBackfillRepository,
   createDatabaseParseArtifactRepository,
@@ -152,6 +154,7 @@ export interface ApiDatabaseRepositoryBundle {
   readonly sourceCredentialBackfills?: SourceCredentialBackfillRepository | undefined;
   readonly sourceConnections?: SourceConnectionRepository | undefined;
   readonly sourceProductWorkflows?: SourceProductWorkflowRepository | undefined;
+  readonly namespaceSourcePreviews?: NamespaceSourcePreviewRepository | undefined;
   readonly sourceRetiredSecretCleanups?: SourceRetiredSecretCleanupRepository | undefined;
   readonly tidbFtsPostingBackfills?: TidbFtsPostingBackfillRepository | undefined;
   readonly uploadSessions?: UploadSessionRepository | undefined;
@@ -277,6 +280,7 @@ export function createApiDatabaseRepositories({
     maxClaimBatchSize: maxListLimit,
     maxListLimit: 200,
   });
+  const namespaceSourcePreviews = createDatabaseNamespaceSourcePreviewRepository({ database });
   const knowledgeSpaceAccess = createKnowledgeSpaceAccessService({
     repository: createDatabaseKnowledgeSpaceAccessRepository({
       database,
@@ -467,6 +471,7 @@ export function createApiDatabaseRepositories({
     sourceCredentialBackfills,
     sourceConnections,
     sourceProductWorkflows,
+    namespaceSourcePreviews,
     sourceRetiredSecretCleanups,
     ...(tidbFtsPostingBackfills ? { tidbFtsPostingBackfills } : {}),
     uploadSessions,

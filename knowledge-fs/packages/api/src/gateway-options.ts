@@ -82,6 +82,7 @@ import type {
   ModelCapabilityPreflight,
 } from "./model-capability-preflight";
 import type { ModelInputModalityResolver } from "./model-input-modality-resolver";
+import type { NamespaceSourcePreviewRepository } from "./namespace-source-preview";
 import type { OnlineDocumentConnector } from "./online-document-connector";
 import type { OnlineDriveConnector } from "./online-drive-connector";
 import type { PageIndexUpgradeBackfillRepository } from "./page-index-upgrade-backfill";
@@ -348,6 +349,7 @@ export interface KnowledgeGatewayOptions {
     readonly onWorkflowRuntime?: (runtime: SourceProductWorkflowRuntime) => void;
     readonly providers: SourceProviderCatalog;
     readonly repository: SourceProductWorkflowRepository;
+    readonly namespacePreviews?: NamespaceSourcePreviewRepository | undefined;
     readonly workerId: string;
   };
   /**

@@ -147,11 +147,12 @@ def normalize_knowledge_fs_source_url(source_url: str) -> str:
 
 
 class KnowledgeFSInitialWebsiteSelectionPayload(BaseModel):
+    page_id: str | None = Field(default=None, min_length=1, max_length=128, alias="pageId")
     source_url: str = Field(min_length=1, max_length=4_096)
     canonical_url: str | None = Field(default=None, min_length=1, max_length=4_096)
     title: str | None = Field(default=None, max_length=500)
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
     @field_validator("source_url")
     @classmethod
@@ -287,6 +288,7 @@ def knowledge_fs_initial_preview_configuration_fingerprint(
 class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
     content: str | None = Field(default=None, exclude=True)
     description: str | None = None
+    page_id: str | None = Field(default=None, validation_alias=AliasChoices("page_id", "pageId"))
     source_url: str = Field(validation_alias=AliasChoices("source_url", "sourceUrl"))
     title: str | None = None
 
@@ -337,6 +339,49 @@ class KnowledgeFSInitialSourcePreviewJobResponse(ResponseModel):
     job_id: str = Field(validation_alias=AliasChoices("job_id", "jobId"))
     result: KnowledgeFSInitialSourcePreviewResponse | None = None
     status: Literal["pending", "running", "completed", "failed", "canceled"]
+
+
+class KnowledgeFSNamespacePreviewCreatePayload(BaseModel):
+    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
+    datasource: str = Field(min_length=1, max_length=255)
+    plugin_id: str = Field(min_length=1, max_length=1024, alias="pluginId")
+    provider: str = Field(min_length=1, max_length=255)
+    parameters: dict[str, JsonValue] = Field(default_factory=dict)
+    root_url: str = Field(min_length=1, max_length=4096, alias="rootUrl")
+    configuration_fingerprint: str = Field(min_length=64, max_length=64, alias="configurationFingerprint")
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSNamespacePreviewConsumePayload(BaseModel):
+    preview_job_id: str = Field(min_length=1, max_length=255, alias="previewJobId")
+    page_ids: list[str] = Field(min_length=1, max_length=200, alias="pageIds")
+    configuration_fingerprint: str = Field(min_length=64, max_length=64, alias="configurationFingerprint")
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSNamespacePreviewPageResponse(ResponseModel):
+    page_id: str = Field(validation_alias=AliasChoices("page_id", "pageId"))
+    source_url: str = Field(validation_alias=AliasChoices("source_url", "sourceUrl"))
+    title: str | None = None
+    description: str | None = None
+
+
+class KnowledgeFSNamespacePreviewJobResponse(ResponseModel):
+    job_id: str = Field(validation_alias=AliasChoices("job_id", "jobId"))
+    status: Literal["queued", "running", "completed", "failed", "canceled", "consumed"]
+    configuration_fingerprint: str = Field(
+        validation_alias=AliasChoices("configuration_fingerprint", "configurationFingerprint")
+    )
+    expires_at: str = Field(validation_alias=AliasChoices("expires_at", "expiresAt"))
+    error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
+    import_workflow_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("import_workflow_id", "importWorkflowId")
+    )
+    pages: list[KnowledgeFSNamespacePreviewPageResponse] = Field(default_factory=list)
+
+
+class KnowledgeFSNamespacePreviewImportResponse(ResponseModel):
+    workflow_id: str = Field(validation_alias=AliasChoices("workflow_id", "workflowId"))
 
 
 KnowledgeFSInitialSourcePayload = Annotated[

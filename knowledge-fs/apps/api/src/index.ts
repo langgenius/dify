@@ -701,6 +701,9 @@ const sourceProduct =
         logicalRevisions: sourceLogicalRevisions,
         providers: sourceProviderCatalog,
         repository: databaseRepositories.sourceProductWorkflows,
+        ...(databaseRepositories.namespaceSourcePreviews
+          ? { namespacePreviews: databaseRepositories.namespaceSourcePreviews }
+          : {}),
         workerId: `source-product-workflow:${randomUUID()}`,
       }
     : undefined;

@@ -81,6 +81,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSMetadataFieldResponse,
     KnowledgeFSMetadataFieldUpdatePayload,
+    KnowledgeFSNamespacePreviewConsumePayload,
+    KnowledgeFSNamespacePreviewCreatePayload,
+    KnowledgeFSNamespacePreviewImportResponse,
+    KnowledgeFSNamespacePreviewJobResponse,
     KnowledgeFSOverviewActivityListResponse,
     KnowledgeFSOverviewAttentionListResponse,
     KnowledgeFSOverviewBaseStatsResponse,
@@ -1655,6 +1659,65 @@ class KnowledgeFSDataFacade:
         )
         return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
 
+    def create_namespace_source_preview(
+        self, *, tenant_id: str, account_id: str, payload: KnowledgeFSNamespacePreviewCreatePayload
+    ) -> KnowledgeFSNamespacePreviewJobResponse:
+        return KnowledgeFSNamespacePreviewJobResponse.model_validate(
+            self._namespace_interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                operation_id="createNamespaceSourcePreview",
+                payload=payload,
+            )
+        )
+
+    def get_namespace_source_preview(
+        self, *, tenant_id: str, account_id: str, job_id: str
+    ) -> KnowledgeFSNamespacePreviewJobResponse:
+        return KnowledgeFSNamespacePreviewJobResponse.model_validate(
+            self._namespace_interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                operation_id="getNamespaceSourcePreview",
+                path_parameters=(("jobId", job_id),),
+            )
+        )
+
+    def cancel_namespace_source_preview(
+        self, *, tenant_id: str, account_id: str, job_id: str
+    ) -> KnowledgeFSNamespacePreviewJobResponse:
+        return KnowledgeFSNamespacePreviewJobResponse.model_validate(
+            self._namespace_interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                operation_id="cancelNamespaceSourcePreview",
+                path_parameters=(("jobId", job_id),),
+            )
+        )
+
+    def consume_namespace_source_preview(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        payload: KnowledgeFSNamespacePreviewConsumePayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSNamespacePreviewImportResponse:
+        return KnowledgeFSNamespacePreviewImportResponse.model_validate(
+            self._interactive_child(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="consumeNamespaceSourcePreview",
+                resource_id=source_id,
+                path_parameters=(("sourceId", source_id),),
+                payload=payload,
+                headers=(("Idempotency-Key", idempotency_key),),
+            )
+        )
+
     def import_source_workflow(
         self,
         *,
@@ -2473,6 +2536,30 @@ class KnowledgeFSDataFacade:
             resource_id=resource_id,
             path_parameters=path_parameters,
             headers=headers,
+        )
+
+    def _namespace_interactive(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        operation_id: str,
+        payload: BaseModel | None = None,
+        path_parameters: tuple[tuple[str, str], ...] = (),
+    ) -> JsonValue:
+        _assert_json_bff_ready(operation_id)
+        issued = self._broker.issue_namespace_interactive(
+            tenant_id=tenant_id, account_id=account_id, operation_id=operation_id
+        )
+        return self._execute(
+            operation_id=operation_id,
+            namespace_id=tenant_id,
+            knowledge_space_id=tenant_id,
+            knowledge_space_revision=0,
+            capability_token=issued.token,
+            trace_id=issued.trace_id,
+            payload=payload,
+            path_parameters=path_parameters,
         )
 
     def _interactive_child(

@@ -15,7 +15,14 @@ from urllib.parse import quote, urlencode
 from flask import Response, jsonify, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, ServiceUnavailable, UnprocessableEntity
+from werkzeug.exceptions import (
+    BadRequest,
+    Conflict,
+    NotFound,
+    RequestEntityTooLarge,
+    ServiceUnavailable,
+    UnprocessableEntity,
+)
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
@@ -68,8 +75,6 @@ from services.knowledge_fs.download_service import (
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.initial_source_preview_job import (
     KnowledgeFSInitialSourcePreviewJobAlreadyRunningError,
-    KnowledgeFSInitialSourcePreviewJobNotFoundError,
-    KnowledgeFSInitialSourcePreviewJobService,
 )
 from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageError,
@@ -156,6 +161,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSMetadataFieldResponse,
     KnowledgeFSMetadataFieldUpdatePayload,
+    KnowledgeFSNamespacePreviewCreatePayload,
     KnowledgeFSOverviewActivityListQuery,
     KnowledgeFSOverviewActivityListResponse,
     KnowledgeFSOverviewAttentionListQuery,
@@ -240,6 +246,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCreatePayload,
     KnowledgeFSUploadSessionCreateResponse,
     KnowledgeFSUploadSessionMutationResponse,
+    knowledge_fs_initial_preview_configuration_fingerprint,
     normalize_knowledge_fs_source_url,
 )
 from services.knowledge_fs.product_remote import (
@@ -864,12 +871,30 @@ class KnowledgeFSInitialSourcePreviewJobsApi(Resource):
     @_knowledge_fs_errors
     def post(self):
         account, tenant_id = current_account_with_tenant()
-        result = KnowledgeFSInitialSourcePreviewJobService(session_factory.get_session_maker()).start(
-            tenant_id=tenant_id,
-            account=account,
-            payload=_payload(KnowledgeFSInitialWebsiteSourcePreviewPayload),
+        payload = _payload(KnowledgeFSInitialWebsiteSourcePreviewPayload)
+        KnowledgeFSInitialSourcePreviewService(session_factory.get_session_maker()).require_visible_credential(
+            tenant_id=tenant_id, account=account, payload=payload
         )
-        return dump_response(KnowledgeFSInitialSourcePreviewJobCreateResponse, result), HTTPStatus.ACCEPTED
+        root_url = payload.parameters.get("url")
+        if not isinstance(root_url, str) or not root_url.strip():
+            raise BadRequest("Website preview URL is required")
+        result = _console_services().facade.create_namespace_source_preview(
+            tenant_id=tenant_id,
+            account_id=account.id,
+            payload=KnowledgeFSNamespacePreviewCreatePayload(
+                credentialId=payload.credential_id,
+                datasource=payload.datasource,
+                pluginId=payload.plugin_id,
+                provider=payload.provider,
+                parameters=payload.parameters,
+                rootUrl=root_url,
+                configurationFingerprint=knowledge_fs_initial_preview_configuration_fingerprint(payload),
+            ),
+        )
+        return dump_response(
+            KnowledgeFSInitialSourcePreviewJobCreateResponse,
+            KnowledgeFSInitialSourcePreviewJobCreateResponse(jobId=result.job_id),
+        ), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/source-provider-preview/jobs/<string:job_id>")
@@ -886,12 +911,31 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
     def get(self, job_id: str):
         account, tenant_id = current_account_with_tenant()
         try:
-            result = KnowledgeFSInitialSourcePreviewJobService.get(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                job_id=job_id,
+            remote = _console_services().facade.get_namespace_source_preview(
+                tenant_id=tenant_id, account_id=account.id, job_id=job_id
             )
-        except KnowledgeFSInitialSourcePreviewJobNotFoundError as exc:
+            result = KnowledgeFSInitialSourcePreviewJobResponse(
+                jobId=remote.job_id,
+                status={"queued": "pending", "consumed": "completed"}.get(remote.status, remote.status),
+                result=(
+                    KnowledgeFSInitialSourcePreviewResponse(
+                        kind="website_crawl",
+                        configurationFingerprint=remote.configuration_fingerprint,
+                        pages=[
+                            {
+                                "pageId": page.page_id,
+                                "sourceUrl": page.source_url,
+                                "title": page.title,
+                                "description": page.description,
+                            }
+                            for page in remote.pages
+                        ],
+                    )
+                    if remote.status in {"completed", "consumed"}
+                    else None
+                ),
+            )
+        except KnowledgeFSProductResourceNotFoundError as exc:
             raise NotFound() from exc
         return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)
 
@@ -907,12 +951,14 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
     def delete(self, job_id: str):
         account, tenant_id = current_account_with_tenant()
         try:
-            result = KnowledgeFSInitialSourcePreviewJobService.cancel(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                job_id=job_id,
+            remote = _console_services().facade.cancel_namespace_source_preview(
+                tenant_id=tenant_id, account_id=account.id, job_id=job_id
             )
-        except KnowledgeFSInitialSourcePreviewJobNotFoundError as exc:
+            result = KnowledgeFSInitialSourcePreviewJobResponse(
+                jobId=remote.job_id,
+                status={"queued": "pending", "consumed": "completed"}.get(remote.status, remote.status),
+            )
+        except KnowledgeFSProductResourceNotFoundError as exc:
             raise NotFound() from exc
         return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)
 
