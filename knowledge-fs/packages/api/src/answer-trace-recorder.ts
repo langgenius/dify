@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { type AnswerTrace, AnswerTraceSchema } from "@knowledge/core";
+import { type AnswerTrace, AnswerTraceSchema, type AnswerTraceSource } from "@knowledge/core";
 import type { QueryImageMetadata } from "./query-images";
 
 import {
@@ -23,6 +23,8 @@ interface RecordAnswerTraceBaseInput {
   readonly mode: AnswerTrace["mode"];
   readonly query: string;
   readonly queryImages?: readonly QueryImageMetadata[] | undefined;
+  /** Caller that produced the trace; omitted means a console retrieval test. */
+  readonly source?: AnswerTraceSource | undefined;
   readonly steps: readonly RecordAnswerTraceStepInput[];
   readonly traceId?: string | undefined;
 }

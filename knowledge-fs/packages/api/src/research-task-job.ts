@@ -4,6 +4,10 @@ import {
   type JobPayload,
   type JobQueueAdapter,
 } from "@knowledge/core";
+import {
+  type KnowledgeSpaceOverviewRepository,
+  deterministicKnowledgeSpaceActivityId,
+} from "./knowledge-space-overview";
 
 import type {
   CapabilityCallerKind,
@@ -196,6 +200,8 @@ export interface ResearchTaskJobStateMachineOptions {
   readonly maxQueryBytes?: number;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: () => number;
+  /** Reports terminal outcomes to the space overview so Research tasks count as answered/failed queries. */
+  readonly overview?: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined;
   readonly progress?: ResearchTaskProgressPublisher | undefined;
   readonly repository: ResearchTaskJobRepository;
 }
@@ -291,6 +297,7 @@ export function createResearchTaskJobStateMachine({
   maxQueryBytes = defaultMaxQueryBytes,
   metrics,
   now = Date.now,
+  overview,
   progress,
   repository,
 }: ResearchTaskJobStateMachineOptions): ResearchTaskJobStateMachine {
@@ -316,6 +323,7 @@ export function createResearchTaskJobStateMachine({
           outcome: "completed",
           taskKind: "research",
         });
+        await appendResearchTaskOutcome(overview, updated, "query.completed", "success", {});
       }
       await progress?.publish(updated, "research_task.stage_changed", {
         previousStage: job.stage,
@@ -341,6 +349,9 @@ export function createResearchTaskJobStateMachine({
         outcome: "canceled",
         taskKind: "research",
       });
+      await appendResearchTaskOutcome(overview, updated, "query.failed", "canceled", {
+        reasonCode: "canceled",
+      });
       await progress?.publish(updated, "research_task.canceled", reason ? { reason } : {});
       return cloneResearchTaskJob(updated);
     },
@@ -362,6 +373,9 @@ export function createResearchTaskJobStateMachine({
         lifecycle: "terminal",
         outcome: "failed",
         taskKind: "research",
+      });
+      await appendResearchTaskOutcome(overview, updated, "query.failed", "failure", {
+        reasonCode: "failed",
       });
       await progress?.publish(updated, "research_task.failed", { error });
       return cloneResearchTaskJob(updated);
@@ -1134,4 +1148,35 @@ function clonePartialResult(result: ResearchTaskPartialResult): ResearchTaskPart
 
 function cloneEvidenceBundle(bundle: EvidenceBundle): EvidenceBundle {
   return JSON.parse(JSON.stringify(bundle)) as EvidenceBundle;
+}
+
+/**
+ * Mirror a terminal Research outcome into the space overview. The task was counted as a query
+ * when it was created; `query.completed` marks it answered and `query.failed` keeps it in the
+ * unanswered bucket. Best effort: the state transition has already been persisted.
+ */
+async function appendResearchTaskOutcome(
+  overview: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined,
+  job: ResearchTaskJob,
+  action: "query.completed" | "query.failed",
+  result: "canceled" | "failure" | "success",
+  details: Readonly<Record<string, unknown>>,
+): Promise<void> {
+  if (!overview) return;
+  try {
+    await overview.appendActivity({
+      action,
+      actor: { type: "system" },
+      details: { ...details, taskKind: "research" },
+      id: deterministicKnowledgeSpaceActivityId(action, job.tenantId, job.knowledgeSpaceId, job.id),
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      occurredAt: new Date(job.completedAt ?? job.updatedAt).toISOString(),
+      requiredPermissionScope: [],
+      resource: { id: job.id, type: "query" },
+      result,
+      tenantId: job.tenantId,
+    });
+  } catch {
+    // Best effort: see the function comment.
+  }
 }

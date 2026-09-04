@@ -2079,14 +2079,20 @@ class KnowledgeFSDataFacade:
         return tasks
 
     def list_traces(
-        self, *, tenant_id: str, account_id: str, control_space_id: str, cursor: str | None = None
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        source: str | None = None,
     ) -> KnowledgeFSTraceListResponse:
         raw = self._interactive(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             operation_id="listTraces",
-            query=(("cursor", cursor),) if cursor else (),
+            query=_trace_list_query(cursor=cursor, source=source),
         )
         traces = KnowledgeFSTraceListResponse.model_validate(raw)
         self._attach_query_image_previews(
@@ -2738,3 +2744,12 @@ def _assert_sse_bff_ready(operation_id: str) -> None:
 
 
 __all__ = ["KnowledgeFSDataFacade"]
+
+
+def _trace_list_query(*, cursor: str | None, source: str | None) -> tuple[tuple[str, str], ...]:
+    query: list[tuple[str, str]] = []
+    if cursor:
+        query.append(("cursor", cursor))
+    if source:
+        query.append(("source", source))
+    return tuple(query)

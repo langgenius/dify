@@ -1328,3 +1328,22 @@ def test_multi_space_calls_are_concurrent_but_never_exceed_the_bound() -> None:
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert service.max_active == 4
+
+
+def test_quality_capture_prefers_the_recorded_history_trace_over_the_transport_trace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Newer gateways return the AnswerTrace id so the capture attaches to the same history record."""
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        node_module,
+        "enqueue_workflow_failed_retrieval_capture",
+        lambda **kwargs: dispatched.append(kwargs),
+    )
+    recorded = _empty_response(mode="fast", space="a").model_copy(
+        update={"answer_trace_id": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60"}
+    )
+    result = _node(service=RecordingCapabilityService({"space-a": recorded}), spaces=["space-a"])._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [call["retrieval_trace_id"] for call in dispatched] == ["018f0d60-7a49-7cc2-9c1b-5b36f18f2c60"]

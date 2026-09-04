@@ -2,10 +2,14 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { validateKnowledgeSpaceRetrievalProfileForMode } from "@knowledge/core";
 
 import type { AnswerTraceRecorder } from "./answer-trace-recorder";
+import { answerTraceSourceForCaller } from "./answer-trace-source";
 import { currentCandidateGrants } from "./candidate-content-authorization";
 import { classifyQueryOutcome } from "./failed-query-recorder";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
-import { queryRetrievalProfileMetadata } from "./gateway-sse-responses";
+import {
+  queryProjectionSnapshotMetadata,
+  queryRetrievalProfileMetadata,
+} from "./gateway-sse-responses";
 import {
   type KnowledgeSpaceOverviewRepository,
   deterministicKnowledgeSpaceActivityId,
@@ -70,6 +74,10 @@ export function registerRetrievalTestHandlers({
     const body = context.req.valid("json");
     const capabilityGrant = context.get("capabilityV2Grant");
     const workflowQueryId = capabilityGrant?.callerKind === "workflow" ? body.queryId : undefined;
+    const source = answerTraceSourceForCaller({
+      callerKind: context.get("callerKind"),
+      capabilityCallerKind: capabilityGrant?.callerKind,
+    });
     const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
     if (!space) {
       return context.json({ error: "Knowledge space not found" }, 404);
@@ -233,6 +241,7 @@ export function registerRetrievalTestHandlers({
             details: {
               mode,
               ...(body.query ? { question: body.query } : {}),
+              source,
             },
             id: deterministicKnowledgeSpaceActivityId(
               "query.requested",
@@ -274,6 +283,9 @@ export function registerRetrievalTestHandlers({
           traceId,
         });
         await executionLease.assertActive();
+        const recordsTrace = Boolean(
+          workflowAnswerTraceId && capabilityGrant && answerTraceRecorder && overview,
+        );
         if (workflowAnswerTraceId && capabilityGrant && answerTraceRecorder && overview) {
           const finishReason =
             result.items.length > 0 ? "retrieval-evidence" : "no-retrieval-evidence";
@@ -297,6 +309,9 @@ export function registerRetrievalTestHandlers({
                 }
               : {}),
           });
+          // One `query.generate` step carries the outcome classification the overview reads plus
+          // everything the retrieval history needs to show the run like a console retrieval test:
+          // the evidence bundle (counts, scores, evidence view), stages, plan, and publication.
           await answerTraceRecorder.record({
             capabilityGrantId: capabilityGrant.grantId,
             knowledgeSpaceId,
@@ -305,12 +320,20 @@ export function registerRetrievalTestHandlers({
             ...(resolvedQueryImages.length > 0
               ? { queryImages: resolvedQueryImages.map(queryImageMetadata) }
               : {}),
+            source,
             steps: [
               {
                 metadata: {
                   ...outcomeMetadata,
+                  ...(result.evidenceBundle ? { evidenceBundle: result.evidenceBundle } : {}),
+                  plan: result.plan,
+                  projectionSnapshot: queryProjectionSnapshotMetadata(
+                    runtimeSnapshot.projectionSnapshot,
+                  ),
                   queryOutcome: classification.outcome,
                   ...(classification.trigger ? { failedQueryTrigger: classification.trigger } : {}),
+                  resultCount: result.items.length,
+                  stages: result.stages,
                 },
                 name: "query.generate",
                 status: "ok",
@@ -327,6 +350,10 @@ export function registerRetrievalTestHandlers({
           : "disabled";
 
         const response = RetrievalTestResponseSchema.parse({
+          // Lets the caller attach a later failed-retrieval capture to this history record.
+          ...(recordsTrace && workflowAnswerTraceId
+            ? { answerTraceId: workflowAnswerTraceId }
+            : {}),
           capabilityStatus: {
             embedding: embeddingCapabilityStatus,
             reasoning: "verified" as const,

@@ -231,6 +231,9 @@ describe("createRetrievalTestExecutor", () => {
         sources: ["dense", "fts"],
       },
     ]);
+    // This fixture's node/document ids are not UUIDs, so no history bundle can be assembled; the
+    // diagnostics are unaffected. See the dedicated evidence bundle test for the real shape.
+    expect(result.evidenceBundle).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain("secret candidate text");
     expect(stageStatuses(result)).toMatchObject({
       dense: "executed",
@@ -734,3 +737,78 @@ function stageStatuses(
 ) {
   return Object.fromEntries(result.stages.map((stage) => [stage.name, stage.status]));
 }
+
+describe("retrieval test history evidence", () => {
+  it("assembles the same EvidenceBundle a query would produce from the raw retrieval", async () => {
+    const nodeId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c61";
+    const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c62";
+    const embeddings: EmbeddingProvider = {
+      embed: async () => ({
+        dense: [[0.1, 0.2, 0.3]],
+        metadata: { dimension: 3, model: embeddingSelection.model, provider: "dify-model-runtime" },
+        model: embeddingSelection.model,
+      }),
+      kind: "dify-model-runtime",
+      models: async () => [],
+    };
+    const planner = createRetrievalPlanner({ maxTopK: 100 });
+    const retriever: BasicHybridRetriever = {
+      retrieve: async (input) => ({
+        items: [
+          {
+            citation: {
+              artifactHash: "a".repeat(64),
+              documentAssetId,
+              documentVersion: 1,
+              sectionPath: ["Sensor"],
+            },
+            metadata: { text: "camera sensor evidence text" },
+            nodeId,
+            permissionScope: ["tenant:tenant-1"],
+            projectionIds: ["projection-1"],
+            score: 0.8,
+            sources: ["dense", "fts"],
+          },
+        ],
+        metrics: ordinaryMetrics({ rerank: true }),
+        plan: planner.plan({
+          hasQueryImages: false,
+          mode: "fast",
+          query: input.query,
+          topK: input.topK,
+        }),
+      }),
+    };
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings,
+      retriever,
+    });
+
+    const result = await executor.execute({
+      embeddingProfile,
+      // Text is withheld from the diagnostics, but the history bundle still carries evidence.
+      includeText: false,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "fast",
+      permissionScope: ["tenant:tenant-1", "subject:owner-1"],
+      projectionSnapshot,
+      query: "camera sensor evidence",
+      retrievalProfile,
+      subject,
+      traceId: "trace-history",
+    });
+
+    expect(result.items[0]?.text).toBeUndefined();
+    expect(result.evidenceBundle).toMatchObject({
+      query: "camera sensor evidence",
+      state: expect.any(String),
+    });
+    expect(result.evidenceBundle?.items).toHaveLength(1);
+    expect(result.evidenceBundle?.items[0]).toMatchObject({
+      citations: [expect.objectContaining({ documentAssetId })],
+      nodeId,
+      text: "camera sensor evidence text",
+    });
+  });
+});

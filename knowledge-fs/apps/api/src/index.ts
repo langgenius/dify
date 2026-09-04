@@ -943,6 +943,9 @@ const researchTaskRuntime =
             })}\n`,
           );
         },
+        ...(databaseRepositories.gatewayOptions.knowledgeSpaceOverview
+          ? { overview: databaseRepositories.gatewayOptions.knowledgeSpaceOverview }
+          : {}),
         partials: databaseRepositories.researchTaskPartialResults,
         progress: databaseRepositories.researchTaskProgressEvents,
         ...(researchProjectionSnapshotResolver

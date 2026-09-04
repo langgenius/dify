@@ -293,6 +293,7 @@ describe("AnswerTrace repositories", () => {
           true,
           trace.createdAt,
           null,
+          null,
         ],
         tableName: "answer_traces",
       }),
@@ -1219,3 +1220,58 @@ function hasWholeSpaceDeletionFence(
     )
   );
 }
+
+describe("AnswerTrace source column", () => {
+  it.each(["postgres", "tidb"] as const)("round-trips the trace source on %s", async (kind) => {
+    let storedTrace: DatabaseRow | undefined;
+    const inserts: DatabaseExecuteInput[] = [];
+    const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+      if (input.tableName === "knowledge_spaces") {
+        return { rows: [{ id: input.params[0], tenant_id: "tenant-1" }], rowsAffected: 1 };
+      }
+      if (input.tableName === "answer_traces" && input.operation === "select") {
+        return { rows: storedTrace ? [storedTrace] : [], rowsAffected: storedTrace ? 1 : 0 };
+      }
+      if (input.tableName === "answer_traces" && input.operation === "insert") {
+        inserts.push(input);
+        storedTrace = {
+          access_channel: input.params[10],
+          capability_grant_id: input.params[3],
+          completed: input.params[11],
+          created_at: input.params[12],
+          evidence_bundle_id: input.params[4],
+          id: input.params[0],
+          knowledge_space_id: input.params[2],
+          mode: input.params[6],
+          permission_snapshot_id: input.params[8],
+          permission_snapshot_revision: input.params[9],
+          query: input.params[5],
+          query_images: input.params[13],
+          source: input.params[14],
+          subject_id: input.params[7],
+          tenant_id: input.params[1],
+        };
+        return { rows: [], rowsAffected: 1 };
+      }
+      return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
+    };
+    const repository = createDatabaseAnswerTraceRepository({
+      database: createSchemaDatabaseAdapter({
+        executor,
+        kind,
+        transaction: async (callback) => callback({ execute: executor }),
+      }),
+    });
+    const trace = AnswerTraceSchema.parse({ ...databaseTrace(), source: "workflow" });
+
+    await repository.create(trace);
+
+    expect(inserts[0]?.sql).toContain(kind === "postgres" ? '"source"' : "`source`");
+    expect(inserts[0]?.params[14]).toBe("workflow");
+    expect((await repository.getById(trace.id))?.source).toBe("workflow");
+
+    // Rows written before the column existed read back without a source (= retrieval test).
+    storedTrace = { ...storedTrace, source: null };
+    expect((await repository.getById(trace.id))?.source).toBeUndefined();
+  });
+});

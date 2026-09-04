@@ -264,3 +264,35 @@ describe('retrieval test model', () => {
     ).toBe(false)
   })
 })
+
+describe('retrieval record sources', () => {
+  it('keeps the trace source and defaults legacy traces to retrieval tests', () => {
+    const [workflow, legacy] = retrievalTestRecords(
+      [
+        {
+          completed: true,
+          created_at: '2026-09-04T10:00:00.000Z',
+          id: 'trace-workflow',
+          mode: 'fast',
+          query: 'From a workflow node',
+          result_count: 3,
+          source: 'workflow',
+        } as KnowledgeFsTraceResponse,
+        {
+          completed: true,
+          created_at: '2026-09-04T09:00:00.000Z',
+          id: 'trace-legacy',
+          mode: 'fast',
+          query: 'From the console',
+          result_count: 1,
+        } as KnowledgeFsTraceResponse,
+      ],
+      [],
+    )
+
+    expect(workflow).toEqual(expect.objectContaining({ id: 'trace-workflow', source: 'workflow' }))
+    expect(legacy).toEqual(
+      expect.objectContaining({ id: 'trace-legacy', source: 'retrieval_test' }),
+    )
+  })
+})

@@ -575,6 +575,14 @@ export function RecordButton({
               {queryImageCount}
             </span>
           )}
+          {record.kind === 'trace' && record.source !== 'retrieval_test' && (
+            <span
+              className="inline-flex shrink-0 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary"
+              data-testid="retrieval-record-source"
+            >
+              {t(($) => $[`retrievalTest.source.${record.source}`])}
+            </span>
+          )}
         </span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
           <span className={cn('min-w-0 flex-1 truncate', failed && 'text-text-destructive')}>

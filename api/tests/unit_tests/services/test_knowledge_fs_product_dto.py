@@ -62,6 +62,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListItemResponse,
     KnowledgeFSStatResponse,
+    KnowledgeFSTraceListQuery,
     KnowledgeFSTraceResponse,
     KnowledgeFSTreeResponse,
     KnowledgeFSUploadPartPresignPayload,
@@ -1641,3 +1642,38 @@ def test_overview_dtos_accept_the_knowledge_fs_wire_shape() -> None:
     assert KnowledgeFSOverviewWindowQuery().window == "24h"
     with pytest.raises(ValidationError):
         KnowledgeFSOverviewWindowQuery.model_validate({"window": "1h"})
+
+
+def test_trace_responses_carry_the_caller_source_and_default_to_retrieval_tests() -> None:
+    """Workflow-node retrievals share the history with console retrieval tests, distinguished by source."""
+    base = {
+        "completed": True,
+        "created_at": "2026-09-04T10:00:00.000Z",
+        "id": "trace-1",
+        "mode": "fast",
+        "profile": {},
+        "query": "why",
+        "result_count": 2,
+        "scores": {},
+        "stages": [],
+    }
+
+    assert KnowledgeFSTraceResponse.model_validate(base).source == "retrieval_test"
+    assert KnowledgeFSTraceResponse.model_validate({**base, "source": "workflow"}).model_dump(mode="json")[
+        "source"
+    ] == ("workflow")
+    assert KnowledgeFSTraceListQuery.model_validate({"source": "workflow"}).source == "workflow"
+    assert KnowledgeFSTraceListQuery.model_validate({}).source is None
+    with pytest.raises(ValidationError):
+        KnowledgeFSTraceListQuery.model_validate({"source": "console"})
+
+
+def test_retrieval_test_response_exposes_the_recorded_history_trace_id() -> None:
+    base = {"items": [], "metrics": {"degradationFlags": [], "totalMs": 4}, "mode": "fast", "traceId": "trace-a"}
+    assert KnowledgeFSRetrievalTestResponse.model_validate(base).answer_trace_id is None
+    assert (
+        KnowledgeFSRetrievalTestResponse.model_validate(
+            {**base, "answerTraceId": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60"}
+        ).answer_trace_id
+        == "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60"
+    )

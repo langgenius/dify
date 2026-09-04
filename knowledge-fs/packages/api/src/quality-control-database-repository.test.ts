@@ -3008,3 +3008,144 @@ function permissionFenceRow(
     visibility: "all_members",
   };
 }
+
+describe("answer trace history sources", () => {
+  const WORKFLOW_TRACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c70";
+  const evidenceBundle = {
+    createdAt: NOW,
+    id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c71",
+    items: [
+      {
+        citations: [
+          { documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c72", documentVersion: 1 },
+        ],
+        conflicts: [],
+        freshness: { status: "unknown" },
+        metadata: {},
+        nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c73",
+        score: 0.8,
+        scores: { final: 0.8, retrieval: 0.7 },
+        text: "workflow evidence",
+      },
+    ],
+    missingEvidence: [],
+    query: "workflow question",
+    state: "answerable",
+  };
+
+  it.each(["postgres", "tidb"] as const)(
+    "lists workflow-sourced traces for any current reader and reads their embedded evidence on %s",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "answer_traces") {
+          return {
+            rows: [
+              {
+                completed: dialect === "tidb" ? "1" : true,
+                created_at: NOW,
+                evidence_bundle_id: null,
+                evidence_items: null,
+                evidence_state: null,
+                id: WORKFLOW_TRACE_ID,
+                mode: "fast",
+                query: "workflow question",
+                source: "workflow",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "answer_trace_steps") {
+          const metadata = { evidenceBundle, resultCount: 1 };
+          return {
+            rows: [
+              {
+                ended_at: NOW,
+                id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c74",
+                metadata: dialect === "tidb" ? JSON.stringify(metadata) : metadata,
+                name: "retrieval.test",
+                started_at: NOW,
+                status: "ok",
+                trace_id: WORKFLOW_TRACE_ID,
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseQualityControlRepository({ database, maxListLimit: 100 });
+
+      const page = await repository.listTraces({
+        candidateGrants: ["tenant:tenant-1"],
+        capabilityRequester: { callerKind: "interactive", subjectId: "reader-1" },
+        knowledgeSpaceId: SPACE_ID,
+        limit: 10,
+        source: "workflow",
+        subjectId: "reader-1",
+        tenantId: "tenant-1",
+      });
+
+      expect(page.items[0]).toMatchObject({
+        evidenceState: "answerable",
+        id: WORKFLOW_TRACE_ID,
+        resultCount: 1,
+        scores: { final: 0.8, retrieval: 0.7 },
+        source: "workflow",
+      });
+      const call = calls.find((candidate) => candidate.tableName === "answer_traces");
+      // Own traces still join through the requester's grant; shared sources need only a current
+      // reader grant on the space, so the join is no longer an inner join.
+      expect(call?.sql).toContain("LEFT JOIN");
+      expect(call?.sql).toContain("'workflow', 'service_api', 'agent', 'mcp'");
+      expect(call?.sql).toContain("reader");
+      expect(call?.sql).not.toContain("knowledge_space_permission_snapshots");
+      expect(call?.params).toContain("workflow");
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "treats rows without a stored source as retrieval tests when filtering on %s",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "answer_traces") {
+          return {
+            rows: [
+              {
+                completed: dialect === "tidb" ? "1" : true,
+                created_at: NOW,
+                evidence_bundle_id: null,
+                evidence_items: [],
+                evidence_state: null,
+                id: TRACE_ID,
+                mode: "fast",
+                query: "legacy question",
+                source: null,
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseQualityControlRepository({ database, maxListLimit: 100 });
+
+      const page = await repository.listTraces({
+        candidateGrants: ["tenant:tenant-1"],
+        knowledgeSpaceId: SPACE_ID,
+        limit: 10,
+        source: "retrieval_test",
+        subjectId: "editor-1",
+        tenantId: "tenant-1",
+      });
+
+      expect(page.items[0]?.source).toBe("retrieval_test");
+      const call = calls.find((candidate) => candidate.tableName === "answer_traces");
+      expect(call?.sql).toMatch(/IS NULL OR trace\.[`"]source[`"] = /u);
+    },
+  );
+});

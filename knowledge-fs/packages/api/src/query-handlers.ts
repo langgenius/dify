@@ -2,6 +2,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { validateKnowledgeSpaceRetrievalProfileForMode } from "@knowledge/core";
 
 import type { AnswerTraceRecorder } from "./answer-trace-recorder";
+import { answerTraceSourceForCaller } from "./answer-trace-source";
 import {
   type AutoRetrievalModeResolver,
   resolveRetrievalModeRequest,
@@ -500,6 +501,10 @@ export function registerQueryHandlers({
         input: {
           ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
           knowledgeSpaceId: space.id,
+          source: answerTraceSourceForCaller({
+            callerKind: context.get("callerKind"),
+            capabilityCallerKind: capabilityGrant?.callerKind,
+          }),
           ...(runtimeSnapshot?.embeddingProfile
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
             : {}),

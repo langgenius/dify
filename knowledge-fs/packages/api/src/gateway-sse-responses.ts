@@ -1,4 +1,5 @@
 import type {
+  AnswerTraceSource,
   AuthSubject,
   EvidenceBundle,
   KnowledgeSpaceEmbeddingProfile,
@@ -36,6 +37,8 @@ import {
 export type QueryGenerationMode = "deep" | "fast" | "research";
 
 export interface QueryGenerationInput {
+  /** Caller that produced this query; recorded on the AnswerTrace for history filtering. */
+  readonly source?: AnswerTraceSource | undefined;
   readonly capabilityGrantId?: string | undefined;
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly embeddingInputModalities?: readonly ModelInputModality[] | undefined;
@@ -472,6 +475,7 @@ async function recordAnswerTrace({
     mode: input.mode,
     query: input.query,
     ...(input.queryImageMetadata?.length ? { queryImages: input.queryImageMetadata } : {}),
+    ...(input.source ? { source: input.source } : {}),
     steps: [
       ...stageSteps,
       {

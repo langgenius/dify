@@ -84,6 +84,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSTraceEntriesQuery,
     KnowledgeFSTraceEntryListResponse,
+    KnowledgeFSTraceListQuery,
     KnowledgeFSTraceListResponse,
 )
 from services.knowledge_fs.product_operations import product_operation_action
@@ -955,7 +956,7 @@ class KnowledgeFSServiceResearchTaskPartialsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces")
 class KnowledgeFSServiceTracesApi(Resource):
-    @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
+    @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
         "KnowledgeFS traces",
@@ -965,11 +966,11 @@ class KnowledgeFSServiceTracesApi(Resource):
     def get(self, control_space_id: str):
         runtime = _runtime()
         profile = _profile(runtime, operation_id="listTraces", control_space_id=control_space_id)
-        query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
+        query = KnowledgeFSTraceListQuery.model_validate(request.args.to_dict())
         raw = runtime.facade.execute_service(
             profile=profile,
             operation_id="listTraces",
-            query=(("cursor", query.cursor),) if query.cursor else (),
+            query=tuple((name, value) for name, value in (("cursor", query.cursor), ("source", query.source)) if value),
         )
         return dump_response(KnowledgeFSTraceListResponse, raw)
 

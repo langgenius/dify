@@ -1533,6 +1533,25 @@ export const AnswerTraceStepSchema = z.object({
 });
 export type AnswerTraceStep = z.infer<typeof AnswerTraceStepSchema>;
 
+/**
+ * Which caller produced an AnswerTrace. Console retrieval tests, KnowledgeFS workflow nodes,
+ * service API clients, agents, and MCP clients all record traces into the same history, and the
+ * console distinguishes them by this value. Rows written before the column existed are
+ * `retrieval_test`.
+ */
+export const AnswerTraceSourceSchema = z.enum([
+  "retrieval_test",
+  "workflow",
+  "service_api",
+  "agent",
+  "mcp",
+]);
+export type AnswerTraceSource = z.infer<typeof AnswerTraceSourceSchema>;
+
+export function answerTraceSourceOf(trace: { readonly source?: AnswerTraceSource | undefined }) {
+  return trace.source ?? "retrieval_test";
+}
+
 export const AnswerTraceSchema = z.object({
   /** Durable Capability v2 provenance; mutually exclusive with legacy member snapshots. */
   capabilityGrantId: UuidSchema.optional(),
@@ -1550,6 +1569,8 @@ export const AnswerTraceSchema = z.object({
     .optional(),
   query: z.string(),
   queryImages: z.array(QueryImageMetadataSchema).max(4).optional(),
+  /** Absent on legacy rows; read it through `answerTraceSourceOf`. */
+  source: AnswerTraceSourceSchema.optional(),
   /** Authenticated creator. Legacy traces without it are intentionally unreadable via the API. */
   subjectId: z.string().min(1).max(255).optional(),
   steps: z.array(AnswerTraceStepSchema),

@@ -6,7 +6,7 @@ import logging
 import math
 import time
 import uuid
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -409,7 +409,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
 
     @staticmethod
     @contextmanager
-    def _map_space_errors(control_space_id: str, *, action: str) -> Iterator[None]:
+    def _map_space_errors(control_space_id: str, *, action: str) -> Generator[None]:
         try:
             yield
         except KnowledgeFSAppChannelDisabledError as exc:
@@ -807,7 +807,9 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                     control_space_id=control_space_id,
                     query=query,
                     mode=response.mode,
-                    retrieval_trace_id=response.trace_id,
+                    # Prefer the recorded history trace so the capture attaches to it instead of
+                    # creating a second record; older gateways only return the transport trace.
+                    retrieval_trace_id=response.answer_trace_id or response.trace_id,
                 )
             except Exception:
                 # The helper owns broker failures in production. Keep a second boundary here so a

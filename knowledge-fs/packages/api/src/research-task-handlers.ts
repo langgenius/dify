@@ -4,6 +4,7 @@ import {
   validateKnowledgeSpaceRetrievalProfileForMode,
 } from "@knowledge/core";
 
+import { answerTraceSourceForCaller } from "./answer-trace-source";
 import { isAuthenticatedApiKeyBoundToKnowledgeSpace } from "./auth";
 import {
   AUTO_RETRIEVAL_MODE_DECISION_METADATA_KEY,
@@ -31,6 +32,10 @@ import {
   type KnowledgeSpaceAuthorizationGuard,
   type KnowledgeSpaceCallerKind,
 } from "./knowledge-space-authorization";
+import {
+  type KnowledgeSpaceOverviewRepository,
+  deterministicKnowledgeSpaceActivityId,
+} from "./knowledge-space-overview";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import { type LooseOpenApiContext, openApiHandler } from "./openapi-handler-utils";
 import type { PublishedKnowledgeSpaceRuntimeSnapshotResolver } from "./published-knowledge-space-runtime-snapshot";
@@ -88,6 +93,8 @@ export interface RegisterResearchTaskHandlersOptions {
   readonly assets: Pick<DocumentAssetRepository, "get" | "getManyByIds">;
   readonly dryRunResearchPlanner: ResearchTaskDryRunPlanner;
   readonly deletionVisibility?: ResearchTaskDeletionVisibility | undefined;
+  /** Counts each task as a knowledge-space query in the overview, like the query stream does. */
+  readonly overview?: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined;
   readonly researchTaskJobs: ResearchTaskJobStateMachine;
   readonly researchTaskPartialResults: ResearchTaskPartialResultRepository;
   readonly researchTaskProgressEvents: ResearchTaskProgressRepository;
@@ -109,6 +116,7 @@ export function registerResearchTaskHandlers({
   dryRunResearchPlanner,
   deletionVisibility,
   directStream,
+  overview,
   researchTaskJobs,
   researchTaskPartialResults,
   researchTaskProgressEvents,
@@ -389,6 +397,17 @@ export function registerResearchTaskHandlers({
           queryImages: body.queryImages ?? [],
           tenantId: subject.tenantId,
           topK: plan.retrievalPlan.topK,
+        });
+        await appendResearchTaskQueryRequested({
+          job,
+          occurredAt: new Date(now()).toISOString(),
+          overview,
+          query: body.query,
+          source: answerTraceSourceForCaller({
+            callerKind,
+            capabilityCallerKind: capabilityGrant?.callerKind,
+          }),
+          subject,
         });
 
         return context.json(toPublicResearchTaskJob(job), 201);
@@ -925,5 +944,60 @@ async function authorizeJobAccess(input: {
       return { code: error.code, error: error.message };
     }
     throw error;
+  }
+}
+
+/**
+ * Count the Research task as a knowledge-space query. The overview derives query volume from
+ * `query.requested` events and marks the task answered when the job state machine emits
+ * `query.completed` for the same id. Best effort: task creation must not fail because the
+ * activity feed is unavailable.
+ */
+async function appendResearchTaskQueryRequested({
+  job,
+  occurredAt,
+  overview,
+  query,
+  source,
+  subject,
+}: {
+  readonly job: {
+    readonly id: string;
+    readonly knowledgeSpaceId: string;
+    readonly mode?: string | undefined;
+    readonly tenantId: string;
+  };
+  readonly occurredAt: string;
+  readonly overview: Pick<KnowledgeSpaceOverviewRepository, "appendActivity"> | undefined;
+  readonly query: string | undefined;
+  readonly source: string;
+  readonly subject: KnowledgeGatewayEnv["Variables"]["subject"];
+}): Promise<void> {
+  if (!overview) return;
+  try {
+    await overview.appendActivity({
+      action: "query.requested",
+      actor: { id: subject.subjectId, type: "member" },
+      details: {
+        mode: job.mode ?? "research",
+        ...(query ? { question: query } : {}),
+        source,
+        taskKind: "research",
+      },
+      id: deterministicKnowledgeSpaceActivityId(
+        "query.requested",
+        job.tenantId,
+        job.knowledgeSpaceId,
+        job.id,
+      ),
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      occurredAt,
+      requiredPermissionScope: [],
+      resource: { id: job.id, type: "query" },
+      result: "success",
+      tenantId: job.tenantId,
+    });
+  } catch {
+    // Best effort: see the function comment.
   }
 }

@@ -15,6 +15,7 @@ import {
   encodeResearchTaskListCursor,
   researchTaskRuntimeSnapshotFromMetadata,
 } from "./index";
+import { createInMemoryKnowledgeSpaceOverviewRepository } from "./knowledge-space-overview";
 
 describe("research task handlers", () => {
   it("round-trips list cursors and rejects every malformed cursor boundary", () => {
@@ -84,9 +85,14 @@ describe("research task handlers", () => {
       repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
     });
     let deletionActive = false;
+    const overview = createInMemoryKnowledgeSpaceOverviewRepository({
+      maxEvents: 100,
+      maxListLimit: 50,
+    });
     const app = createKnowledgeGateway({
       adapter,
       allowLegacyResearchTaskProfileFallback: true,
+      knowledgeSpaceOverview: overview,
       auth: createStaticAuthVerifier({
         subjectsByToken: {
           "editor-token": {
@@ -129,6 +135,27 @@ describe("research task handlers", () => {
     });
 
     expect(response.status).toBe(201);
+    // Research tasks count as knowledge-space queries in the overview, keyed by the task id.
+    expect(
+      (
+        await overview.listActivity({
+          candidateGrants: ["tenant:tenant-1"],
+          knowledgeSpaceId,
+          limit: 10,
+          tenantId: "tenant-1",
+        })
+      ).items,
+    ).toEqual([
+      expect.objectContaining({
+        action: "query.requested",
+        details: expect.objectContaining({
+          question: "Research semantic retrieval regressions",
+          source: "retrieval_test",
+          taskKind: "research",
+        }),
+        resource: { id: "research-task-job-1", type: "query" },
+      }),
+    ]);
     const responseBody = (await response.json()) as Record<string, unknown>;
     expect(responseBody).toMatchObject({
       id: "research-task-job-1",

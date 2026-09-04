@@ -240,6 +240,7 @@ export function createDatabaseAnswerTraceRepository({
           "completed",
           "created_at",
           "query_images",
+          "source",
         ];
         const traceParams = [
           persistedTrace.id,
@@ -256,6 +257,7 @@ export function createDatabaseAnswerTraceRepository({
           answerTraceCompleted(persistedTrace),
           persistedTrace.createdAt,
           persistedTrace.queryImages?.length ? JSON.stringify(persistedTrace.queryImages) : null,
+          persistedTrace.source ?? null,
         ] satisfies readonly DatabaseQueryValue[];
         const admissionSpaceParameter =
           database.dialect === "postgres"
@@ -605,6 +607,7 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
   );
   const accessChannel = optionalStringColumn(traceRow, "access_channel");
   const tenantId = optionalStringColumn(traceRow, "tenant_id");
+  const source = optionalStringColumn(traceRow, "source");
 
   return parseAnswerTraceProvenance({
     ...(capabilityGrantId === undefined ? {} : { capabilityGrantId }),
@@ -626,6 +629,7 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
     ...(traceRow.query_images == null
       ? {}
       : { queryImages: jsonArrayColumn(traceRow, "query_images") }),
+    ...(source === undefined ? {} : { source }),
     ...(subjectId === undefined ? {} : { subjectId }),
     steps: stepRows.map((row) => ({
       endedAt: stringColumn(row, "ended_at"),
