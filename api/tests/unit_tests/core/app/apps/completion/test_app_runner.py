@@ -197,9 +197,14 @@ class TestCompletionAppRunner:
 
         events = []
         session = sqlite_session
+        original_close = session.close
 
         def record_commit(_session: Session) -> None:
             events.append("commit")
+
+        def record_close() -> None:
+            events.append("close")
+            original_close()
 
         runner.organize_prompt_messages = MagicMock(return_value=([], None))
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
@@ -221,6 +226,7 @@ class TestCompletionAppRunner:
         model_manager = MagicMock()
         model_manager.get_model_instance.return_value = model_instance
         mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
+        mocker.patch.object(session, "close", side_effect=record_close)
 
         event.listen(session, "after_commit", record_commit)
         try:
@@ -228,7 +234,7 @@ class TestCompletionAppRunner:
         finally:
             event.remove(session, "after_commit", record_commit)
 
-        assert events == ["commit", "invoke", "first-chunk"]
+        assert events == ["commit", "close", "invoke", "first-chunk"]
         runner._handle_invoke_result.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,
