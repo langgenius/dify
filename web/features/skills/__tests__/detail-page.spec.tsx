@@ -4532,7 +4532,7 @@ describe('SkillDetailPage', () => {
     })
     renderSkillDetailPage()
 
-    const folder = await waitFor(() => getFileTreeItem('scripts'))
+    const folder = await waitFor(() => getFileTreeButton('scripts'))
     expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
 
     await user.dblClick(folder)
@@ -5613,6 +5613,7 @@ describe('SkillDetailPage', () => {
   })
 
   it('expands a collapsed folder after a two-second drag hover', async () => {
+    const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       files: [
         ...createSkillDetail().files!,
@@ -5632,7 +5633,7 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const folder = await waitFor(() => getFileTreeItem('scripts'))
-    fireEvent.doubleClick(folder)
+    await user.dblClick(getFileTreeButton('scripts'))
     expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
 
     vi.useFakeTimers()
