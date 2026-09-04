@@ -14,7 +14,7 @@ from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
-from services.dify_builder.agent import graph_translate, llm, resources
+from services.dify_builder.agent import form_schema, graph_translate, llm, resources
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.workflow_generator_service import WorkflowGeneratorService
 
@@ -31,8 +31,9 @@ def analyze_goal(
     system = (
         "You are a Dify workflow requirements analyst. Given a build goal, propose 3-6 "
         "clarifying requirement fields SHAPED BY THE GOAL, and a sensible default value per "
-        'field. Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", '
-        '"type": "text|textarea|select|bool", "options": ["..."]}], "values": {"<key>": <default>}}.'
+        f"field. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
+        '"options": ["..."]}], "values": {"<key>": <default>}}.'
     )
     try:
         data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
@@ -42,7 +43,7 @@ def analyze_goal(
     values = data.get("values")
     if not isinstance(fields, list) or not isinstance(values, dict):
         return _degraded_form(goal_text)
-    return {"fields": fields, "values": values}
+    return {"fields": form_schema.reconcile_form_fields(fields, values), "values": values}
 
 
 def _degraded_form(goal_text: str) -> dict[str, Any]:
