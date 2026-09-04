@@ -18,14 +18,34 @@ const EMBEDDABLE_PATH_SEGMENTS = [
   '/workflow',
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
-const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const FRAME_ANCESTORS_NONE = "'none'"
 const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
+
+const getHttpOrigin = (value: string | undefined) => {
+  if (!value) return ''
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : ''
+  } catch {
+    return ''
+  }
+}
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
 
 export const canEmbedPath = (pathname: string) =>
   matchesPathSegment(pathname, EMBEDDABLE_PATH_SEGMENTS)
+
+const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {
+  const existingCsp = response.headers.get('Content-Security-Policy')
+  if (existingCsp?.includes('frame-ancestors')) return
+  response.headers.set(
+    'Content-Security-Policy',
+    `${existingCsp ? `${existingCsp} ` : ''}frame-ancestors ${frameOrigin};`,
+  )
+}
 
 const wrapResponseWithFrameProtection = (response: NextResponse, pathname: string) => {
   // Published app routes are intentionally embeddable; all other routes default to clickjacking protection.
@@ -35,13 +55,7 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 
   if (preventEmbedding) {
     response.headers.set('X-Frame-Options', 'DENY')
-    const contentSecurityPolicy = response.headers.get('Content-Security-Policy')
-    response.headers.set(
-      'Content-Security-Policy',
-      contentSecurityPolicy
-        ? `${contentSecurityPolicy} ${FRAME_ANCESTORS_NONE}`
-        : FRAME_ANCESTORS_NONE,
-    )
+    appendFrameAncestors(response, FRAME_ANCESTORS_NONE)
   }
 
   return response
@@ -80,6 +94,8 @@ export function proxy(request: NextRequest) {
     ? ' https://challenges.cloudflare.com'
     : ''
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
+  const marketplaceFrameOrigin = getHttpOrigin(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX)
+  const marketplaceFrameSrc = marketplaceFrameOrigin ? ` ${marketplaceFrameOrigin}` : ''
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
@@ -92,6 +108,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
+    frame-src 'self' ${scheme_source} ${whiteList}${marketplaceFrameSrc};
     img-src * data: blob:;
     font-src 'self';
     object-src 'none';
