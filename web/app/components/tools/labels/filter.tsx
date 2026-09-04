@@ -72,7 +72,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <div className="relative">
             <div className="p-2">
