@@ -58,7 +58,7 @@ def _conversation(
         app_id=app_id,
         mode=AppMode.AGENT_CHAT,
         name="Agent conversation",
-        _inputs={},
+        inputs={},
         invoke_from=invoke_from,
         from_source=ConversationFromSource.API,
         from_account_id=account_id,
