@@ -9,8 +9,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialOnlineDocumentSourcePayload,
     KnowledgeFSInitialOnlineDriveSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
+    knowledge_fs_initial_preview_configuration_fingerprint,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
+)
 from tasks.knowledge_fs_initial_source_tasks import (
     KnowledgeFSInitialSourceNotReadyError,
     import_initial_source,
@@ -226,6 +231,10 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     assert source_payload.connection_id == "connection-1"
     assert source_payload.metadata["datasourceParameterMode"] == "exact"
     assert source_payload.metadata["preview"] is True
+    assert source_payload.metadata["credentialId"] == "firecrawl-credential-1"
+    assert source_payload.metadata["datasource"] == "crawl"
+    assert source_payload.metadata["pluginId"] == "langgenius/firecrawl_datasource"
+    assert source_payload.metadata["provider"] == "firecrawl"
     assert source_payload.metadata["parameters"] == {
         "limit": 25,
         "url": "https://docs.dify.ai",
@@ -382,6 +391,7 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     existing_source = SimpleNamespace(
         id="existing-source",
         metadata={"clientRequestId": "initial-website-source:operation-1"},
+        version=2,
     )
     facade.list_sources.side_effect = [
         SimpleNamespace(
@@ -406,6 +416,34 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     assert source_update_payload.metadata["preview"] is False
     assert source_update_payload.metadata["initialImport"]["state"] == "failed"
     facade.update_source_sync_policy.assert_not_called()
+
+
+def test_initial_website_source_import_exposes_preview_consume_rejection() -> None:
+    facade = _facade()
+    facade.consume_namespace_source_preview.side_effect = KnowledgeFSProductRequestRejectedError(status_code=409)
+    payload = _payload().model_copy(
+        update={
+            "credential_id": "firecrawl-credential-1",
+            "plugin_id": "langgenius/firecrawl_datasource",
+            "preview_job_id": "preview-job-1",
+            "selection": [
+                selection.model_copy(update={"page_id": f"page-{index}"})
+                for index, selection in enumerate(_payload().selection, start=1)
+            ],
+        }
+    )
+    payload = payload.model_copy(
+        update={"preview_configuration_fingerprint": knowledge_fs_initial_preview_configuration_fingerprint(payload)}
+    )
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError):
+        _start(facade, payload)
+
+    source_update = facade.update_source.call_args.kwargs["payload"]
+    assert source_update.status == "disabled"
+    assert source_update.metadata["preview"] is False
+    assert source_update.metadata["initialImport"]["state"] == "failed"
+    assert source_update.metadata["initialImport"]["errorCode"] == "SOURCE_WORKFLOW_FAILED"
 
 
 @pytest.mark.parametrize(
@@ -799,6 +837,30 @@ def test_initial_source_task_retries_transient_remote_error() -> None:
         )
 
     retry.assert_called_once_with(exc=remote_error)
+
+
+def test_initial_source_task_retries_rate_limited_request() -> None:
+    serialized_payload = _payload().model_dump(mode="json", by_alias=True)
+    rejected = KnowledgeFSProductRequestRejectedError(status_code=429)
+    retry_error = RuntimeError("retry requested")
+    with (
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.start_initial_source_import",
+            side_effect=rejected,
+        ),
+        patch.object(import_initial_source, "retry", side_effect=retry_error) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        import_initial_source.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=serialized_payload,
+            workflow_id=None,
+        )
+
+    retry.assert_called_once_with(exc=rejected)
 
 
 def test_initial_source_task_does_not_retry_authoritative_missing_resource() -> None:

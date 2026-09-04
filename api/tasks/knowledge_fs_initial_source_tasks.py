@@ -34,7 +34,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceWorkflowImportPayload,
     knowledge_fs_initial_preview_configuration_fingerprint,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
+)
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 _LEGACY_WEBSITE_PLUGIN_IDS = {
@@ -232,6 +236,7 @@ def _source_payload(
     *,
     payload: KnowledgeFSInitialSourcePayload,
     binding: _DatasourceBinding,
+    credential_id: str,
     connection_id: str,
     request_id: str,
 ) -> KnowledgeFSSourceCreatePayload:
@@ -246,6 +251,14 @@ def _source_payload(
         metadata["datasourceParameterMode"] = "exact"
         metadata["parameters"] = dict(payload.parameters)
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+        metadata.update(
+            {
+                "credentialId": credential_id,
+                "datasource": binding.datasource,
+                "pluginId": binding.plugin_id,
+                "provider": binding.provider,
+            }
+        )
         metadata["crawlOptions"] = {
             "includeSubpages": payload.crawl_options.include_subpages,
             "limit": payload.crawl_options.limit,
@@ -438,20 +451,54 @@ def start_initial_source_import(
                 payload=_source_payload(
                     payload=payload,
                     binding=binding,
+                    credential_id=credential_id,
                     connection_id=connection.id,
                     request_id=request_id,
                 ),
             )
         source_id = source.id
-        workflow = _start_workflow(
-            facade=facade,
-            tenant_id=tenant_id,
-            account_id=account_id,
-            control_space_id=control_space_id,
-            source_id=source_id,
-            request_id=request_id,
-            payload=payload,
-        )
+        try:
+            workflow = _start_workflow(
+                facade=facade,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                request_id=request_id,
+                payload=payload,
+            )
+        except KnowledgeFSProductRequestRejectedError as exc:
+            if not isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload) or exc.status_code == 429:
+                raise
+            failed_source = facade.get_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+            )
+            failure = exc.failure
+            facade.update_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=KnowledgeFSSourceUpdatePayload(
+                    expectedVersion=failed_source.version,
+                    metadata={
+                        "initialImport": {
+                            "canonicalSourceUrls": [selection.canonical_url for selection in payload.selection],
+                            "configurationFingerprint": knowledge_fs_initial_preview_configuration_fingerprint(payload),
+                            "errorCode": failure.code if failure is not None else "SOURCE_WORKFLOW_FAILED",
+                            "errorMessage": failure.message if failure is not None else str(exc),
+                            "requestedSourceUrls": [selection.source_url for selection in payload.selection],
+                            "state": "failed",
+                        },
+                        "preview": False,
+                    },
+                    status="disabled",
+                ),
+            )
+            raise
 
     if workflow.state in {"queued", "running", "crawling", "importing", "syncing"}:
         raise KnowledgeFSInitialSourceNotReadyError(
@@ -617,6 +664,7 @@ def submit_initial_source_for_upgrade(
             payload=_source_payload(
                 payload=payload,
                 binding=binding,
+                credential_id=credential_id,
                 connection_id=connection.id,
                 request_id=request_id,
             ),
@@ -745,6 +793,10 @@ def _run_initial_source_task(
             )
         raise task.retry(exc=exc)
     except KnowledgeFSProductResourceNotFoundError:
+        raise
+    except KnowledgeFSProductRequestRejectedError as exc:
+        if exc.status_code == 429:
+            raise task.retry(exc=exc)
         raise
     except KnowledgeFSProductRemoteError as exc:
         raise task.retry(exc=exc)
