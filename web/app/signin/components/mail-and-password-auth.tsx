@@ -1,3 +1,4 @@
+import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
@@ -10,7 +11,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -26,21 +26,12 @@ type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
 }
 
-type LoginRequestBody = {
-  email: string
-  password: string
-  language: string
-  remember_me: boolean
-  invite_token?: string
-}
-
 function hasErrorCode(error: unknown, code: string) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -54,10 +45,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
     if (isLoading) return
     try {
       setIsLoading(true)
-      const loginData: LoginRequestBody = {
+      const loginData: LoginPayload = {
         email,
         password: encryptPassword(password),
-        language: locale,
         remember_me: true,
       }
       if (isInvite)
@@ -156,7 +146,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         </InputGroup>
         <Link
           href={`/reset-password?${searchParams.toString()}`}
-          className={`absolute end-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+          className={`absolute inset-e-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
           tabIndex={isEmailSetup ? 0 : -1}
           aria-disabled={!isEmailSetup}
         >

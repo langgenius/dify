@@ -16,7 +16,7 @@ from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi,
 from enums import DeploymentEdition
 from models.account import Account
 from models.model import DifySetup
-from services.entities.auth_entities import LoginFailureReason
+from services.entities.auth_audit_entities import LoginFailureReason
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
 

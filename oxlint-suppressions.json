@@ -368,14 +368,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/debug/chat-user-input.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/debug/debug-with-multiple-model/chat-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -411,14 +403,6 @@
   },
   "web/app/components/app/configuration/debug/types.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -461,11 +445,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -625,9 +604,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -715,9 +691,6 @@
     }
   },
   "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }

@@ -16,8 +16,12 @@ import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
-const render = (ui: React.ReactElement) =>
+const render = (
+  ui: React.ReactElement,
+  queryClient?: ReturnType<typeof createConsoleQueryClient>,
+) =>
   renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -1118,6 +1122,7 @@ describe('AppPublisher', () => {
 
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
     const setPublishedAt = vi.fn()
+    const queryClient = createConsoleQueryClient()
     const workflowStore = {
       getState: () => ({ setPublishedAt }),
     }
@@ -1129,11 +1134,16 @@ describe('AppPublisher', () => {
       created_at: 1_710_000_300,
       hash: 'published-hash',
     })
+    queryClient.setQueryData(['workflow', 'publish', 'app-1'], {
+      created_at: 1_710_000_100,
+      hash: 'stale-published-hash',
+    })
 
     render(
       <WorkflowContext value={workflowStore as any}>
         <AppPublisher publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
+      queryClient,
     )
 
     act(() => {

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type InlineDeleteConfirmProps = {
@@ -24,6 +25,8 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
   variant = 'delete',
 }) => {
   const { t } = useTranslation()
+  const titleId = useId()
+  const descriptionId = useId()
 
   const titleText =
     title || t(($) => $['operation.deleteConfirmTitle'], { ns: 'common', defaultValue: 'Delete?' })
@@ -33,8 +36,9 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
 
   return (
     <div
-      aria-labelledby="inline-delete-confirm-title"
-      aria-describedby="inline-delete-confirm-description"
+      role="group"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
       className={cn(
         'flex w-30 flex-col justify-center gap-1.5',
         'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
@@ -44,18 +48,12 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
         className,
       )}
     >
-      <div id="inline-delete-confirm-title" className="system-xs-semibold text-text-primary">
+      <div id={titleId} className="system-xs-semibold text-text-primary">
         {titleText}
       </div>
 
       <div className="flex w-full items-center justify-center gap-1">
-        <Button
-          size="small"
-          variant="secondary"
-          onClick={onCancel}
-          aria-label={cancelTxt}
-          className="flex-1"
-        >
+        <Button size="small" variant="secondary" onClick={onCancel} className="flex-1">
           {cancelTxt}
         </Button>
         <Button
@@ -63,14 +61,13 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
           variant="primary"
           tone={variant === 'delete' ? 'destructive' : 'default'}
           onClick={onConfirm}
-          aria-label={confirmTxt}
           className="flex-1"
         >
           {confirmTxt}
         </Button>
       </div>
 
-      <span id="inline-delete-confirm-description" className="sr-only">
+      <span id={descriptionId} className="sr-only">
         {t(($) => $['operation.confirmAction'], {
           ns: 'common',
           defaultValue: 'Please confirm your action.',
