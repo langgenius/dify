@@ -395,7 +395,7 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly}
           onValueChange={(value) => value && handleValueChange(value)}
         >
-          <SelectTrigger className="h-8 grow">
+          <SelectTrigger className="h-8 min-w-0 grow">
             {selectedStaticOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
           </SelectTrigger>
           <SelectContent>
@@ -425,7 +425,7 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly || isLoadingOptions}
           onValueChange={(value) => value && handleValueChange(value)}
         >
-          <SelectTrigger className="h-8 grow">
+          <SelectTrigger className="h-8 min-w-0 grow">
             {selectedDynamicOption?.name ??
               (isLoadingOptions ? 'Loading...' : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>

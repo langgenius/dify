@@ -5,7 +5,13 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  noop,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
@@ -269,7 +275,7 @@ export function WorkspaceCard() {
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
-    void queryClient.prefetchQuery(workspacesQueryOptions)
+    void queryClient.query(workspacesQueryOptions).catch(noop)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {

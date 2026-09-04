@@ -1,6 +1,7 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -18,8 +19,10 @@ from constants.languages import languages
 from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
+from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
@@ -39,6 +42,7 @@ from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourc
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -132,10 +136,13 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
+from services.file_grant_service import FileGrantService
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -235,6 +242,7 @@ class ApplicationServices:
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    file_grants: FileGrantService
     files: FileService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
@@ -290,6 +298,37 @@ def _build_oauth_server_service(
         repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
         tokens=RedisOAuthServerTokenRepository(redis=redis),
         access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
+
+
+def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
+    repository = FileGrantRepository(session_factory=database_client)
+    return FileGrantService(
+        repository=repository,
+        files=FileGrantFileGateway(
+            load_end_user=repository.get_end_user,
+            subject_exists=repository.subject_exists,
+            file_service=FileService(session_factory=database_client),
+            tool_files=ToolFileManager(),
+            storage=storage,
+        ),
+        remote_files=FileGrantRemoteFileGateway(),
+        tokens=FileGrantTokenGateway(
+            secret_key=dify_config.SECRET_KEY,
+            external_files_url=dify_config.FILES_URL,
+            internal_files_url=dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL,
+            content_token_ttl_seconds=dify_config.FILES_ACCESS_TIMEOUT,
+            now=lambda: int(time.time()),
+        ),
+        limits=FileGrantLimits(
+            file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            audio_file_size_limit=dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+            video_file_size_limit=dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            workflow_file_upload_limit=dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
+            batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
+        ),
+        now=lambda: int(time.time()),
     )
 
 
@@ -574,6 +613,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        file_grants=_build_file_grant_service(database_client=database_client),
         files=file_service,
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
@@ -582,7 +622,6 @@ def build_application_services(
             expected_password=initialization_password,
         ),
         notifications=NotificationService(
-            accounts=accounts,
             notifications=BillingNotificationGateway(),
         ),
         step_by_step_tour=StepByStepTourService(

@@ -199,7 +199,7 @@ class TriggerOAuthTenantClient(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False, default="{}")
     created_at: Mapped[datetime] = mapped_column(

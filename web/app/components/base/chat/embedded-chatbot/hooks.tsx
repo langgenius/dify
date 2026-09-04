@@ -21,6 +21,7 @@ import {
   useShareConversations,
 } from '@/service/use-share'
 import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
+import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
@@ -119,8 +120,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     setLanguageFromParams()
   }, [appInfo])
   const allowResetChat = !conversationId
+  const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
+  const endUserId = (appInfo as AppData | undefined)?.end_user_id
   const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
-    useConversationSelection({ appId, userId, conversationId })
+    useConversationSelection({
+      scopeId: isTryApp || endUserId ? conversationScopeId : '',
+      userId: isTryApp ? userId : endUserId,
+      conversationId,
+    })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
