@@ -54,14 +54,30 @@ export interface FailedQueryTriggerInput {
   readonly metadata?: Record<string, unknown> | undefined;
 }
 
+export type DurableQueryOutcome = "answered" | "low-confidence" | "no-evidence";
+
+export interface ClassifiedQueryOutcome {
+  readonly outcome: DurableQueryOutcome;
+  readonly trigger: FailedQuery["trigger"] | null;
+}
+
 /**
  * Maps a query generator's done event to a failed-query trigger, or `null` when the query was
  * answered with sufficient evidence. Empty retrieval is always captured; a low-confidence answer
  * (top retrieval score below an opt-in floor) is captured only when the floor is configured.
  */
 export function failedQueryTrigger(input: FailedQueryTriggerInput): FailedQuery["trigger"] | null {
-  if (input.finishReason === "no-retrieval-evidence") {
+  if (
+    input.finishReason === "no-retrieval-evidence" ||
+    input.finishReason === "no-local-evidence" ||
+    input.finishReason === "no-evidence" ||
+    input.finishReason === "missing-evidence"
+  ) {
     return "no-retrieval-evidence";
+  }
+
+  if (input.finishReason === "low-confidence" || input.finishReason === "low-score") {
+    return "low-confidence";
   }
 
   if (input.finishReason === "retrieval-evidence" && input.lowConfidenceScoreFloor !== undefined) {
@@ -73,6 +89,23 @@ export function failedQueryTrigger(input: FailedQueryTriggerInput): FailedQuery[
   }
 
   return null;
+}
+
+/**
+ * Computes the durable query outcome from exactly the same inputs used by failed-query capture.
+ * The outcome is written to AnswerTrace before the best-effort FailedQuery projection runs.
+ */
+export function classifyQueryOutcome(input: FailedQueryTriggerInput): ClassifiedQueryOutcome {
+  const trigger = failedQueryTrigger(input);
+  return {
+    outcome:
+      trigger === "no-retrieval-evidence"
+        ? "no-evidence"
+        : trigger === "low-confidence"
+          ? "low-confidence"
+          : "answered",
+    trigger,
+  };
 }
 
 export function readTopScore(metadata: Record<string, unknown> | undefined): number | undefined {
