@@ -72,7 +72,6 @@ from services.errors.account import (
     CannotOperateSelfError,
     EmailDomainSuspendedError,
     InvalidActionError,
-    LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
     RefreshTokenNotFoundError,
@@ -322,9 +321,9 @@ class AccountService:
     @staticmethod
     def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
-        no ``last_active_at`` write. Use this from read-only identity
-        endpoints (``/openapi/v1/account``) where ``load_user``'s
-        side-effects (current-tenant assignment, commit) are unwanted.
+        no ``last_active_at`` write. Use this from authentication and read
+        paths where ``load_user``'s current-tenant assignment and commit are
+        unwanted.
 
         ``session`` is injected by the caller so this service stays free
         of a Flask-scoped session import.
@@ -513,35 +512,6 @@ class AccountService:
         _try_join_enterprise_default_workspace(str(account.id))
 
         return account
-
-    @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account, *, session: Session):
-        """Link account integrate"""
-        try:
-            # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = session.scalar(
-                select(AccountIntegrate)
-                .where(AccountIntegrate.account_id == account.id, AccountIntegrate.provider == provider)
-                .limit(1)
-            )
-
-            if account_integrate:
-                # If it exists, update the record
-                account_integrate.open_id = open_id
-                account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = naive_utc_now()
-            else:
-                # If it does not exist, create a new record
-                account_integrate = AccountIntegrate(
-                    account_id=account.id, provider=provider, open_id=open_id, encrypted_token=""
-                )
-                session.add(account_integrate)
-
-            session.commit()
-            logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
-        except Exception as e:
-            logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
-            raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
     def update_account_email(account: Account, email: str, session: Session) -> Account:
@@ -1243,35 +1213,11 @@ class TenantService:
         )
 
     @staticmethod
-    def get_account_memberships(account_id: str, *, session: Session) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
-        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
-        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
-        the join row so callers can read ``role``/``current`` alongside the
-        tenant — used by ``/openapi/v1/account`` to render workspace
-        membership + pick the default workspace.
-
-        ``session`` is injected by the caller so this service stays free
-        of a Flask-scoped session import.
-
-        No tenant-status filter: parity with the legacy controller query
-        (the openapi identity endpoint listed all joined tenants).
-        """
-        return (
-            session.query(TenantAccountJoin, Tenant)
-            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
-            .filter(TenantAccountJoin.account_id == account_id)
-            .all()
-        )
-
-    @staticmethod
     def get_workspaces_for_account(account_id: str, *, session: Session) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
         """``(Tenant, TenantAccountJoin)`` rows for every workspace the
         account belongs to, ordered by ``Tenant.created_at`` ASC — the
-        canonical ordering for ``/openapi/v1/workspaces``.
-
-        Distinct from :meth:`get_account_memberships`: tuple order is
-        flipped (tenant first) and rows are sorted, so the workspace
-        listing is stable across requests.
+        canonical ordering for ``/openapi/v1/workspaces``. Rows keep the
+        tenant first so callers can serialize the workspace directly.
         """
         return list(
             session.execute(
@@ -1814,8 +1760,6 @@ class RegisterService:
         email: str,
         name: str,
         password: str | None = None,
-        open_id: str | None = None,
-        provider: str | None = None,
         language: str | None = None,
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
@@ -1843,9 +1787,6 @@ class RegisterService:
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
-
-            if open_id is not None and provider is not None:
-                AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
                 SystemFeatureService.is_workspace_creation_allowed()
@@ -1998,11 +1939,6 @@ class RegisterService:
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
-
-    @classmethod
-    def is_valid_invite_token(cls, token: str) -> bool:
-        data = redis_client.get(cls._get_invitation_token_key(token))
-        return data is not None
 
     @classmethod
     def revoke_token(cls, workspace_id: str | None, email: str | None, token: str):

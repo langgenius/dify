@@ -1,6 +1,6 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -535,7 +535,7 @@ describe('CheckCode', () => {
       serviceBaseMocks.get
         .mockRejectedValueOnce(new Response(null, { status: 401 }))
         .mockReturnValueOnce(profileResponse)
-      await queryClient.prefetchQuery(profileQueryOptions)
+      await queryClient.query(profileQueryOptions).catch(noop)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')
 
       render(

@@ -6,10 +6,8 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AgentConfigureComposerScope } from './components/composer-session'
-import { AgentConfigurePageLoading } from './components/page-loading'
 import { useAgentConfigureData } from './hooks'
 import {
   AGENT_CONFIGURE_RIGHT_PANEL_MODES,
@@ -37,7 +35,6 @@ export function AgentConfigurePage({ agentId }: AgentConfigurePageProps) {
 }
 
 function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
-  const { t } = useTranslation('agentV2')
   const [requestedMode, setRequestedMode] = useQueryState('mode', agentConfigureModeQueryParser)
   const selectedVersionId = useAtomValue(agentConfigureSelectedVersionIdAtom)
   const composerRebaseRevision = useAtomValue(agentConfigureComposerRebaseRevisionAtom)
@@ -58,10 +55,6 @@ function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
     },
     [previewEnabled, setRequestedMode],
   )
-
-  if (configureData.isPending) {
-    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
-  }
 
   return (
     <AgentConfigureComposerScope

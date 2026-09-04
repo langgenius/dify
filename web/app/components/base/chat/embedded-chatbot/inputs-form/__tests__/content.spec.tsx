@@ -165,8 +165,8 @@ describe('InputsFormContent', () => {
 
   it('should handle text input changes', async () => {
     render(<InputsFormContent />)
-    const inputs = screen.getAllByPlaceholderText('Text Label')
-    await user.type(inputs[0]!, 'hello')
+    const input = screen.getByRole('textbox', { name: 'Text Label' })
+    await user.type(input, 'hello')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -174,8 +174,8 @@ describe('InputsFormContent', () => {
 
   it('should handle number input changes', async () => {
     render(<InputsFormContent />)
-    const inputs = screen.getAllByPlaceholderText('Number Label')
-    await user.type(inputs[0]!, '123')
+    const input = screen.getByRole('spinbutton', { name: 'Number Label' })
+    await user.type(input, '123')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -183,8 +183,8 @@ describe('InputsFormContent', () => {
 
   it('should handle paragraph input changes', async () => {
     render(<InputsFormContent />)
-    const inputs = screen.getAllByPlaceholderText('Paragraph Label')
-    await user.type(inputs[0]!, 'long text')
+    const input = screen.getByRole('textbox', { name: 'Paragraph Label' })
+    await user.type(input, 'long text')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()

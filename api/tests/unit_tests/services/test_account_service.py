@@ -1998,59 +1998,6 @@ class TestRegisterService:
 
             mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
-    def test_register_with_oauth(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
-    ) -> None:
-        """Test account registration with OAuth integration."""
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
-        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_license.return_value.workspaces.is_available.return_value = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Mock AccountService.create_account and link_account_integrate
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with (
-            patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch("services.account_service.AccountService.link_account_integrate") as mock_link_account,
-        ):
-            mock_create_account.return_value = mock_account
-
-            # Mock TenantService methods
-            with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
-            ):
-                mock_tenant = Tenant(name="Test User's Workspace")
-                sqlite_session.add(mock_tenant)
-                sqlite_session.flush()
-                mock_create_tenant.return_value = mock_tenant
-                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
-                    TenantAccountJoin(
-                        tenant_id=tenant.id,
-                        account_id=account.id,
-                        role=TenantAccountRole(role),
-                    )
-                )
-
-                # Execute test
-                result = RegisterService.register(
-                    email="test@example.com",
-                    name="Test User",
-                    password=None,
-                    open_id="oauth123",
-                    provider="google",
-                    language="en-US",
-                    session=sqlite_session,
-                )
-
-                # Verify results
-                assert result == mock_account
-                mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
-
     def test_register_with_pending_status(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
@@ -2664,30 +2611,6 @@ class TestRegisterService:
             assert stored_data["role"] == "admin"
             assert stored_data["requires_setup"] is True
 
-    def test_is_valid_invite_token_valid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking valid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = b'{"test": "data"}'
-
-        # Execute test
-        result = RegisterService.is_valid_invite_token("valid-token")
-
-        # Verify results
-        assert result is True
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:valid-token")
-
-    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking invalid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = None
-
-        # Execute test
-        result = RegisterService.is_valid_invite_token("invalid-token")
-
-        # Verify results
-        assert result is False
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:invalid-token")
-
     def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test revoking token with workspace ID and email."""
         # Execute test
@@ -2977,22 +2900,6 @@ class TestSessionInjectedGetters:
 
     def test_account_belongs_to_tenant_false_when_no_join(self, sqlite_session: Session) -> None:
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is False
-
-    def test_get_account_memberships_returns_join_tenant_pairs(self, sqlite_session: Session) -> None:
-        """Returns every ``(TenantAccountJoin, Tenant)`` pair for an account."""
-        tenant = Tenant(name="Joined Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        sqlite_session.add_all([tenant, other_tenant])
-        sqlite_session.flush()
-        join = self._add_tenant_account_join(sqlite_session, tenant, "user-123", TenantAccountRole.NORMAL, current=True)
-        self._add_tenant_account_join(sqlite_session, other_tenant, "other-user", TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        out = TenantService.get_account_memberships("user-123", session=sqlite_session)
-
-        assert len(out) == 1
-        assert out[0][0] is join
-        assert out[0][1] is tenant
 
     def test_get_workspaces_for_account_uses_session_execute(self, sqlite_session: Session) -> None:
         """The list endpoint orders by ``Tenant.created_at``; the helper

@@ -18,7 +18,9 @@ Read this document when a component consumes generated contracts, nullable API v
 - If query input comes from atom state, keep it in `atomWithQuery`; do not unwrap the atom in a component solely to call `useQuery`.
 - For missing required input, branch the whole generated input with `skipToken`. Add `enabled` only for an independent execution condition; do not put `skipToken` inside a placeholder payload or coerce IDs to empty strings.
 - Return generated `queryOptions()`, `infiniteOptions()`, or `mutationOptions()` directly from TanStack Query atoms. Pass supported options into the generated call instead of spreading into a parallel object.
-- Share the exact options between prefetch and render when they represent the same request. Do not extract option helpers merely to reuse input construction.
+- For the same logical request, preserve key, input, operation, and result contracts. Reuse exact options only when
+  transport, context, and cache policy are shared; imperative and observer freshness may differ. Do not extract a helper
+  merely to reuse input construction.
 - Avoid pass-through service hooks that only rename generated options. Keep feature hooks for actual orchestration or shared domain behavior.
 
 ## Mutations And Cache
@@ -31,12 +33,21 @@ Read this document when a component consumes generated contracts, nullable API v
 ## Prefetch And Hidden Surfaces
 
 - Prefetch expensive secondary content from the trigger or menu-open event when it benefits the visible path. Do not mount hidden subscribers solely to warm the cache.
-- `prefetchQuery` is cache warmup, not an authorization or availability gate. Use a hard fetch boundary when the server must decide whether rendering may proceed.
+- Use `query` or `infiniteQuery` for imperative access. `staleTime` defines cache acceptance; `select` projects the return
+  value without replacing cached query-function data. Imperative queries default to no retries when `retry` is not
+  configured, and observer-only `enabled` does not prevent an imperative call.
+- `await` blocks, `return` transfers the Promise, and `void` discards its value without handling rejection. Handle
+  rejection before discarding a potentially rejecting Promise; use `.catch(noop)` only for intentional silence or
+  feedback owned elsewhere. Hard server gates await the query and preserve rejection.
 
 ## SSR, Authentication, And Workspace
 
 - Static configuration owns path-invariant routing. Request-dependent authentication, setup, role, and tenant decisions belong to SSR or runtime decision boundaries.
 - Distinguish soft SSR cache warming from authoritative decisions. Prefetched or placeholder data must not grant access or represent successful availability.
+- Treat Server Components as query prefetch-and-dehydrate owners by default. Do not render or pass an imperative query
+  result when a browser observer can revalidate the same data unless ownership and freshness explicitly prevent drift.
+- Non-blocking RSC streaming requires pending-query dehydration without redacting Next.js server errors, a
+  `HydrationBoundary` around the same-key client consumer, and Suspense when that content must be server-rendered.
 - Never reuse tenant-scoped state after switching workspaces. Discard it at the switch boundary or isolate it by workspace identity.
 - Do not make product or authorization decisions from bootstrap defaults. Wait for authoritative data, or render an explicit loading or error state.
 - Keep loading and Suspense behavior inside the feature that owns the request. Do not add fake global data merely to bypass that boundary.

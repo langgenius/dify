@@ -16,14 +16,10 @@ export function SkillDropDestinationHint({ target }: { target: SkillDropTarget |
 
   const destination = target.path || 'root folder'
   const action = target.operation === 'upload' ? 'Upload' : 'Move'
-  const label = `${action} to ${destination}`
   return (
     <div className="pointer-events-none absolute inset-x-1 bottom-2 z-10 flex justify-center">
       <div className="flex h-7 max-w-full items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
-        <span
-          aria-label={label}
-          className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary"
-        >
+        <span className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary">
           {action} to <strong className="font-medium">{destination}</strong>
         </span>
       </div>
