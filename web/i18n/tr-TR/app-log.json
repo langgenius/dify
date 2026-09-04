@@ -92,7 +92,7 @@
   "table.header.user": "SON KULLANICI VEYA HESAP",
   "table.header.userRate": "Kullanıcı Puanı",
   "title": "Günlükler",
-  "triggerBy.appRun": "WebUygulama",
+  "triggerBy.appRun": "Web Uygulaması",
   "triggerBy.debugging": "Hata ayıklama",
   "triggerBy.plugin": "Entegrasyon",
   "triggerBy.ragPipelineDebugging": "RAG Hata Ayıklama",

@@ -268,13 +268,13 @@
   "typeSelector.advanced": "Sohbet akışı",
   "typeSelector.agent": "Ajan",
   "typeSelector.all": "Tüm Türler",
-  "typeSelector.chatbot": "Chatbot",
+  "typeSelector.chatbot": "Sohbet botu",
   "typeSelector.completion": "Tamamlama",
   "typeSelector.workflow": "İş Akışı",
   "types.advanced": "Sohbet akışı",
   "types.agent": "Ajan",
   "types.all": "Hepsi",
-  "types.chatbot": "Chatbot",
+  "types.chatbot": "Sohbet botu",
   "types.completion": "Tamamlama",
   "types.workflow": "İş Akışı"
 }
