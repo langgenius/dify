@@ -94,7 +94,7 @@ class TencentDataTrace(BaseTraceInstance):
 
             user_id = self._get_user_id(trace_info)
 
-            workflow_spans = TencentSpanBuilder.build_workflow_spans(trace_info, trace_id, str(user_id), links)
+            workflow_spans = TencentSpanBuilder.build_workflow_spans(trace_info, trace_id, user_id, links)
 
             for span in workflow_spans:
                 self.trace_client.add_span(span)
@@ -117,7 +117,7 @@ class TencentDataTrace(BaseTraceInstance):
             if trace_info.trace_id:
                 links.append(TencentTraceUtils.create_link(trace_info.trace_id))
 
-            message_span = TencentSpanBuilder.build_message_span(trace_info, trace_id, str(user_id), links)
+            message_span = TencentSpanBuilder.build_message_span(trace_info, trace_id, user_id, links)
 
             self.trace_client.add_span(message_span)
 
@@ -415,7 +415,7 @@ class TencentDataTrace(BaseTraceInstance):
                 if trace_info.gen_ai_server_time_to_first_token is not None and hasattr(
                     self.trace_client, "record_time_to_first_token"
                 ):
-                    ttft_seconds = float(trace_info.gen_ai_server_time_to_first_token)
+                    ttft_seconds = trace_info.gen_ai_server_time_to_first_token
                     if ttft_seconds > 0:
                         self.trace_client.record_time_to_first_token(
                             ttft_seconds=ttft_seconds, provider=str(model_provider or ""), model=str(model_name or "")
@@ -425,7 +425,7 @@ class TencentDataTrace(BaseTraceInstance):
                 if trace_info.llm_streaming_time_to_generate is not None and hasattr(
                     self.trace_client, "record_time_to_generate"
                 ):
-                    ttg_seconds = float(trace_info.llm_streaming_time_to_generate)
+                    ttg_seconds = trace_info.llm_streaming_time_to_generate
                     if ttg_seconds > 0:
                         self.trace_client.record_time_to_generate(
                             ttg_seconds=ttg_seconds, provider=str(model_provider or ""), model=str(model_name or "")
@@ -433,8 +433,8 @@ class TencentDataTrace(BaseTraceInstance):
 
             # Record token usage
             if hasattr(self.trace_client, "record_token_usage"):
-                input_tokens = int(trace_info.message_tokens or 0)
-                output_tokens = int(trace_info.answer_tokens or 0)
+                input_tokens = trace_info.message_tokens or 0
+                output_tokens = trace_info.answer_tokens or 0
 
                 if input_tokens > 0:
                     self.trace_client.record_token_usage(
