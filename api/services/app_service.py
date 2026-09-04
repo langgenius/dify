@@ -865,6 +865,14 @@ class AppService:
                 raise AgentNameConflictError() from exc
             raise
 
+    @staticmethod
+    def _sync_default_site_title_on_rename(app: App, old_name: str, *, updated_by: str, session: Session) -> None:
+        with session.no_autoflush:
+            site = session.scalar(select(Site).where(Site.app_id == app.id).limit(1))
+        if site is not None and site.title == old_name:
+            site.title = app.name
+            site.updated_by = updated_by
+
     def update_app(self, app: App, args: ArgsDict, *, session: Session) -> App:
         """
         Update app
@@ -873,6 +881,7 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        old_name = app.name
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
@@ -902,6 +911,7 @@ class AppService:
             updated_at=app.updated_at,
             session=session,
         )
+        self._sync_default_site_title_on_rename(app, old_name, updated_by=current_user.id, session=session)
         self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)
@@ -916,6 +926,7 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        old_name = app.name
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -926,6 +937,7 @@ class AppService:
             updated_at=app.updated_at,
             session=session,
         )
+        self._sync_default_site_title_on_rename(app, old_name, updated_by=current_user.id, session=session)
         self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)

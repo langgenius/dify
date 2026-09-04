@@ -23,7 +23,8 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.model import App, AppMode, AppModelConfig, IconType
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
@@ -65,6 +66,19 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     session.add(app)
     session.commit()
     return app
+
+
+def _persist_site(session: Session, *, app_id: str, title: str) -> Site:
+    site = Site(
+        app_id=app_id,
+        title=title,
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        code=f"site-{uuid4()}",
+    )
+    session.add(site)
+    session.commit()
+    return site
 
 
 def _persist_agent_app(
@@ -621,6 +635,98 @@ class TestAgentAppType:
         assert backing_agent.icon_background == "#123456"
         assert backing_agent.updated_by == account_id
         assert backing_agent.updated_at == updated_app.updated_at
+
+    def test_update_app_syncs_default_site_title_on_rename(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()), name="Old App")
+        site = _persist_site(sqlite_session, app_id=app.id, title="Old App")
+        account_id = str(uuid4())
+
+        with (
+            patch("services.app_service.current_user", _account_identity(account_id)),
+            patch("services.app_service.app_was_updated.send"),
+        ):
+            AppService().update_app(
+                app,
+                {
+                    "name": "New App",
+                    "description": "updated",
+                    "icon_type": "emoji",
+                    "icon": "sparkles",
+                    "icon_background": "#123456",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+                session=sqlite_session,
+            )
+
+        sqlite_session.expire_all()
+        refreshed_site = sqlite_session.get(Site, site.id)
+        assert refreshed_site is not None
+        assert refreshed_site.title == "New App"
+        assert refreshed_site.updated_by == account_id
+
+    def test_update_app_preserves_customized_site_title(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()), name="Old App")
+        site = _persist_site(sqlite_session, app_id=app.id, title="Custom Web App Title")
+        account_id = str(uuid4())
+
+        with (
+            patch("services.app_service.current_user", _account_identity(account_id)),
+            patch("services.app_service.app_was_updated.send"),
+        ):
+            AppService().update_app(
+                app,
+                {
+                    "name": "New App",
+                    "description": "updated",
+                    "icon_type": "emoji",
+                    "icon": "sparkles",
+                    "icon_background": "#123456",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+                session=sqlite_session,
+            )
+
+        sqlite_session.expire_all()
+        refreshed_site = sqlite_session.get(Site, site.id)
+        assert refreshed_site is not None
+        assert refreshed_site.title == "Custom Web App Title"
+        assert refreshed_site.updated_by is None
+
+    def test_update_app_name_syncs_default_site_title_on_rename(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()), name="Old App")
+        site = _persist_site(sqlite_session, app_id=app.id, title="Old App")
+        account_id = str(uuid4())
+
+        with (
+            patch("services.app_service.current_user", _account_identity(account_id)),
+            patch("services.app_service.app_was_updated.send"),
+        ):
+            AppService().update_app_name(app, "New App", session=sqlite_session)
+
+        sqlite_session.expire_all()
+        refreshed_site = sqlite_session.get(Site, site.id)
+        assert refreshed_site is not None
+        assert refreshed_site.title == "New App"
+        assert refreshed_site.updated_by == account_id
+
+    def test_update_app_name_preserves_customized_site_title(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()), name="Old App")
+        site = _persist_site(sqlite_session, app_id=app.id, title="Custom Web App Title")
+        account_id = str(uuid4())
+
+        with (
+            patch("services.app_service.current_user", _account_identity(account_id)),
+            patch("services.app_service.app_was_updated.send"),
+        ):
+            AppService().update_app_name(app, "New App", session=sqlite_session)
+
+        sqlite_session.expire_all()
+        refreshed_site = sqlite_session.get(Site, site.id)
+        assert refreshed_site is not None
+        assert refreshed_site.title == "Custom Web App Title"
+        assert refreshed_site.updated_by is None
 
     def test_update_agent_app_preserves_role_when_args_omit_it(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
