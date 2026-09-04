@@ -96,7 +96,7 @@ export function registerNamespaceSourcePreviewHandlers(input: {
       const headers = context.req.valid("header");
       return context.json(
         {
-          workflowId: await input.service.consume(context.get("subject"), {
+          workflowId: await input.service.consume(workflowPrincipal(context), {
             jobId: body.previewJobId,
             pageIds: body.pageIds,
             configurationFingerprint: body.configurationFingerprint,
@@ -112,6 +112,25 @@ export function registerNamespaceSourcePreviewHandlers(input: {
     }
   });
 }
+
+function workflowPrincipal(context: Pick<LooseOpenApiContext, "get">) {
+  const apiKey = context.get("authenticatedApiKey");
+  const capabilityGrant = context.get("capabilityV2Grant");
+  return {
+    ...(apiKey ? { apiKey } : {}),
+    ...(capabilityGrant
+      ? {
+          capability: {
+            contentScopeIds: capabilityGrant.contentScopeIds,
+            grantId: capabilityGrant.grantId,
+          },
+        }
+      : {}),
+    callerKind: context.get("callerKind") ?? "interactive",
+    subject: context.get("subject"),
+  } as const;
+}
+
 function failure(context: LooseOpenApiContext, error: unknown) {
   if (error instanceof NamespaceSourcePreviewError) {
     const status = error.code.includes("NOT_FOUND")

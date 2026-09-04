@@ -14,7 +14,10 @@ import {
   jsonInsertPlaceholder,
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
-import type { SourceProductWorkflowService } from "./source-product-workflow";
+import type {
+  SourceProductWorkflowService,
+  SourceWorkflowPrincipal,
+} from "./source-product-workflow";
 import type { SourceRepository } from "./source-repository";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
 
@@ -558,7 +561,7 @@ export function createNamespaceSourcePreviewService(input: {
       return Boolean(job || cleanupJob);
     },
     consume: async (
-      subject: AuthSubject,
+      principal: SourceWorkflowPrincipal,
       request: {
         jobId: string;
         pageIds: readonly string[];
@@ -568,6 +571,7 @@ export function createNamespaceSourcePreviewService(input: {
         idempotencyKey: string;
       },
     ) => {
+      const { subject } = principal;
       const job = await requireJob(subject, request.jobId);
       if (job.importWorkflowId) return job.importWorkflowId;
       if (job.expiresAt <= now().toISOString())
@@ -607,8 +611,7 @@ export function createNamespaceSourcePreviewService(input: {
         selected.push(page);
       }
       const workflow = await input.workflows.createCrawlImport({
-        subject,
-        callerKind: "interactive",
+        ...principal,
         knowledgeSpaceId: request.knowledgeSpaceId,
         sourceId: request.sourceId,
         idempotencyKey: request.idempotencyKey,

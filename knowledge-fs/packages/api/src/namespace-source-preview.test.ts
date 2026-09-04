@@ -64,18 +64,34 @@ describe("namespace website source preview", () => {
     expect(page).toMatchObject({ sourceUrl: "https://example.com/a" });
     if (!page) throw new Error("Expected a preview page");
 
-    const workflowId = await service.consume(subject, {
-      jobId: job.id,
-      pageIds: [page.pageId],
-      configurationFingerprint: "f".repeat(64),
-      knowledgeSpaceId: "11111111-1111-4111-8111-111111111111",
-      sourceId: "33333333-3333-4333-8333-333333333333",
-      idempotencyKey: "request:crawl-import",
-    });
+    const workflowId = await service.consume(
+      {
+        callerKind: "interactive",
+        capability: {
+          contentScopeIds: ["tenant:tenant", "source:preview"],
+          grantId: "preview-grant",
+        },
+        subject,
+      },
+      {
+        jobId: job.id,
+        pageIds: [page.pageId],
+        configurationFingerprint: "f".repeat(64),
+        knowledgeSpaceId: "11111111-1111-4111-8111-111111111111",
+        sourceId: "33333333-3333-4333-8333-333333333333",
+        idempotencyKey: "request:crawl-import",
+      },
+    );
 
     expect(workflowId).toBe("22222222-2222-4222-8222-222222222222");
     expect(createCrawlImport).toHaveBeenCalledWith(
       expect.objectContaining({
+        callerKind: "interactive",
+        capability: {
+          contentScopeIds: ["tenant:tenant", "source:preview"],
+          grantId: "preview-grant",
+        },
+        subject,
         sourceUrls: ["https://example.com/a"],
         pageReferences: [
           expect.objectContaining({
