@@ -22,6 +22,7 @@ from core.entities import PluginCredentialType
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -161,7 +162,14 @@ class ToolManager:
                 return plugin_tool_providers[provider]
 
             manager = PluginToolManager()
-            provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            try:
+                provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            except (PluginNotFoundError, PluginDaemonNotFoundError) as exc:
+                # The plugin daemon rejected the provider name (probably an
+                # unknown or non-builtin identifier). Translate to the
+                # console's domain error so the API returns a 4xx instead
+                # of leaking the daemon's ``PluginNotFoundError`` as a 500.
+                raise ToolProviderNotFoundError(f"plugin provider {provider} not found") from exc
             if not provider_entity:
                 raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
 
