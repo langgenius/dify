@@ -69,7 +69,10 @@ const externalContact: ContactView = {
   created_at: Date.parse('2026-03-20T08:00:00.000Z') / 1000,
   email: 'external@example.com',
   id: 'contact-external',
-  im_bindings: [],
+  im_bindings: [
+    { id: 'binding-external-feishu', provider: 'feishu', scope: 'organization' },
+    { id: 'binding-external-slack', provider: 'slack', scope: 'workspace' },
+  ],
   name: 'Courtney Henry',
   type: 'external',
 }
@@ -77,24 +80,28 @@ const externalContact: ContactView = {
 const availablePlatformContacts: AvailablePlatformContact[] = [
   {
     avatar_url: null,
+    departmentPath: ['Dev Team', 'Mobile Dev', 'Frontend Team'],
     email: 'ada@example.com',
     id: 'available-platform-ada',
     name: 'Ada Lovelace',
   },
   {
     avatar_url: null,
+    departmentPath: ['Dev Team', 'Mobile Dev', 'Backend Team'],
     email: 'grace@example.com',
     id: 'available-platform-grace',
     name: 'Grace Hopper',
   },
   {
     avatar_url: null,
+    departmentPath: ['Dev Team', 'Mobile Dev'],
     email: 'external@example.com',
     id: 'available-platform-external',
     name: 'Courtney Henry',
   },
   {
     avatar_url: null,
+    departmentPath: ['Dev Team', 'Mobile Dev'],
     email: 'owner@example.com',
     id: 'available-platform-owner',
     name: 'Ralph Edwards',

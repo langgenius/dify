@@ -35,12 +35,11 @@ describe('ContactsDirectoryPage', () => {
   it('renders API timestamps expressed in Unix seconds', async () => {
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
     const firstContact = scenario.contacts[0]!
-    firstContact.created_at = 1768204800
-    const expectedDate = new Date(firstContact.created_at * 1000).toLocaleDateString()
+    firstContact.created_at = Math.floor(Date.now() / 1000) - 5 * 60 * 60
 
     renderDirectory(scenario)
 
-    expect(await screen.findByText(expectedDate)).toBeInTheDocument()
+    expect(await screen.findByText('5 hours ago')).toBeInTheDocument()
   })
 
   it('renders all three contact types and restores details from the loaded list', async () => {
@@ -68,7 +67,7 @@ describe('ContactsDirectoryPage', () => {
     let details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
     expect(details).toHaveTextContent('owner@example.com')
     expect(details).toHaveTextContent('contacts.type.workspace')
-    expect(details).not.toHaveTextContent('slack')
+    expect(details).toHaveTextContent('Slack')
     expect(within(details).queryByRole('button', { name: /edit|remove/i })).not.toBeInTheDocument()
     workspaceView.unmount()
 
@@ -80,6 +79,48 @@ describe('ContactsDirectoryPage', () => {
     expect(details).toHaveTextContent('external@example.com')
     expect(details).toHaveTextContent('contacts.type.external')
     expect(details).not.toHaveTextContent('contacts.details.emailOnly')
+  })
+
+  it('edits an External contact from the details action menu', async () => {
+    const user = userEvent.setup()
+    renderDirectory(
+      createContactsMockScenario(ContactsMockScenario.EeMixed),
+      '?contact_id=contact-external',
+    )
+    const details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+
+    await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'contacts.details.edit' }))
+    const dialog = screen.getByRole('dialog', { name: 'contacts.external.editTitle' })
+    const name = within(dialog).getByRole('textbox', { name: 'contacts.external.name' })
+    expect(name).toHaveValue('Courtney Henry')
+    await user.clear(name)
+    await user.type(name, 'Courtney Cooper')
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.external.save' }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'contacts.external.editTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(await screen.findAllByText('Courtney Cooper')).toHaveLength(2)
+  })
+
+  it('removes a non-workspace contact from the details action menu', async () => {
+    const user = userEvent.setup()
+    renderDirectory(
+      createContactsMockScenario(ContactsMockScenario.EeMixed),
+      '?contact_id=contact-external',
+    )
+    const details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+
+    await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
+
+    await waitFor(() => expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument())
+    expect(
+      screen.queryByRole('complementary', { name: 'contacts.details.title' }),
+    ).not.toBeInTheDocument()
   })
 
   it('preserves list context and restores row focus after closing details', async () => {
@@ -319,7 +360,10 @@ describe('ContactsDirectoryPage', () => {
 
   it('distinguishes an empty directory, a read-only role, and an initial failure', async () => {
     const { unmount } = renderDirectory(createContactsMockScenario(ContactsMockScenario.Empty))
-    expect(await screen.findByText('contacts.directory.emptyTitle')).toBeInTheDocument()
+    expect(await screen.findByText('contacts.directory.externalEmptyTitle')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.directory.addExternal' }),
+    ).toBeInTheDocument()
     unmount()
 
     const readOnly = renderDirectory(createContactsMockScenario(ContactsMockScenario.ReadOnly))

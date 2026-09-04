@@ -28,15 +28,20 @@ export function PlatformContactPickerDialog({
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mutationError, setMutationError] = useState(false)
+  const [team, setTeam] = useState<'Backend Team' | 'Frontend Team' | null>(null)
   const [upgradeConflictCount, setUpgradeConflictCount] = useState<number | null>(null)
   const availableContactsQuery = useAvailablePlatformContacts({ limit: 20, search }, open)
   const addPlatformContacts = useAddPlatformContacts()
   const resetMutation = addPlatformContacts.reset
+  const visibleContacts = team
+    ? availableContactsQuery.contacts.filter((contact) => contact.departmentPath?.includes(team))
+    : availableContactsQuery.contacts
 
   function resetDialog() {
     setSearch('')
     setSelectedIds([])
     setMutationError(false)
+    setTeam(null)
     setUpgradeConflictCount(null)
     resetMutation()
   }
@@ -85,12 +90,12 @@ export function PlatformContactPickerDialog({
       onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
       disablePointerDismissal={addPlatformContacts.isPending}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-120 flex-col overflow-hidden! p-0!">
+      <DialogContent className="flex h-[336px] max-h-[calc(100dvh-2rem)] w-[346px] flex-col overflow-hidden! rounded-xl! p-0!">
         <DialogClose
           render={
             <IconButton
               aria-label={t(($) => $['action.close'])}
-              className="absolute top-6 right-6"
+              className="sr-only"
               disabled={addPlatformContacts.isPending}
               size="lg"
             >
@@ -98,29 +103,61 @@ export function PlatformContactPickerDialog({
             </IconButton>
           }
         />
-        <div className="shrink-0 px-6 pt-6 pb-4">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['platformPicker.title'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+        <div className="shrink-0 bg-components-panel-bg-blur px-2 pt-2 pb-1 backdrop-blur-sm">
+          <DialogTitle className="sr-only">{t(($) => $['platformPicker.title'])}</DialogTitle>
+          <DialogDescription className="sr-only">
             {t(($) => $['platformPicker.description'])}
           </DialogDescription>
-          <div className="relative mt-4">
+          <div className="relative">
             <span
               aria-hidden
               className="absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
             />
             <Input
               aria-label={t(($) => $['platformPicker.search'])}
-              className="pl-9"
+              className="h-8 border-0 bg-background-default-subtle pl-8 shadow-none"
               disabled={addPlatformContacts.isPending}
               placeholder={t(($) => $['platformPicker.search'])}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+          <div className="flex h-8 items-center gap-1 px-1 system-xs-regular">
+            <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
+              {t(($) => $['platformPicker.allMembers'])}
+            </button>
+            <span aria-hidden className="text-text-quaternary">
+              /
+            </span>
+            <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
+              {t(($) => $['platformPicker.devTeam'])}
+            </button>
+            <span aria-hidden className="text-text-quaternary">
+              /
+            </span>
+            {team ? (
+              <>
+                <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
+                  {t(($) => $['platformPicker.mobileDev'])}
+                </button>
+                <span aria-hidden className="text-text-quaternary">
+                  /
+                </span>
+                <span className="text-text-tertiary">
+                  {t(
+                    ($) =>
+                      $[
+                        `platformPicker.${team === 'Frontend Team' ? 'frontendTeam' : 'backendTeam'}`
+                      ],
+                  )}
+                </span>
+              </>
+            ) : (
+              <span className="text-text-tertiary">{t(($) => $['platformPicker.mobileDev'])}</span>
+            )}
+          </div>
         </div>
-        <div className="min-h-48 flex-1 overflow-y-auto border-y border-divider-subtle px-3 py-2">
+        <div className="min-h-48 flex-1 overflow-y-auto bg-components-panel-bg px-1 pb-1">
           {availableContactsQuery.isPending && (
             <div
               role="status"
@@ -155,13 +192,46 @@ export function PlatformContactPickerDialog({
                 {t(($) => $['platformPicker.empty'])}
               </div>
             )}
-          {availableContactsQuery.contacts.map((contact) => {
+          {!team && !availableContactsQuery.isPending && !availableContactsQuery.isError && (
+            <div className="border-b border-divider-subtle pb-1">
+              {(
+                [
+                  { key: 'frontendTeam', pathSegment: 'Frontend Team' },
+                  { key: 'backendTeam', pathSegment: 'Backend Team' },
+                ] as const
+              ).map((team) => {
+                const teamName = t(($) => $[`platformPicker.${team.key}`])
+                const count = availableContactsQuery.contacts.filter((contact) =>
+                  contact.departmentPath?.includes(team.pathSegment),
+                ).length
+                return (
+                  <button
+                    key={team.key}
+                    type="button"
+                    className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    onClick={() => setTeam(team.pathSegment)}
+                  >
+                    <span className="flex size-6 items-center justify-center rounded-full bg-text-accent text-text-primary-on-surface">
+                      <span aria-hidden className="i-ri-organization-chart size-3.5" />
+                    </span>
+                    <span className="system-sm-regular text-text-secondary">{teamName}</span>
+                    <span className="system-xs-regular text-text-tertiary">{count}</span>
+                    <span
+                      aria-hidden
+                      className="ml-auto i-ri-arrow-right-s-line size-4 text-text-quaternary"
+                    />
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {visibleContacts.map((contact) => {
             const selected = selectedIds.includes(contact.id)
             return (
               <label
                 key={contact.id}
                 htmlFor={`platform-contact-${contact.id}`}
-                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
               >
                 <Checkbox
                   id={`platform-contact-${contact.id}`}
@@ -169,49 +239,53 @@ export function PlatformContactPickerDialog({
                     name: contact.name,
                   })}
                   checked={selected}
+                  className="sr-only"
                   disabled={addPlatformContacts.isPending}
                   onCheckedChange={(checked) => toggleContact(contact.id, checked)}
                 />
-                <Avatar avatar={contact.avatar_url} name={contact.name} size="md" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate system-sm-medium text-text-secondary">
-                    {contact.name}
-                  </span>
-                  <span className="block truncate system-xs-regular text-text-tertiary">
-                    {contact.email}
-                  </span>
+                <Avatar avatar={contact.avatar_url} name={contact.name} size="sm" />
+                <span className="truncate system-sm-regular text-text-secondary">
+                  {contact.name}
                 </span>
+                <span className="ml-auto truncate system-xs-regular text-text-quaternary">
+                  {contact.email}
+                </span>
+                {selected && (
+                  <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
+                )}
               </label>
             )
           })}
         </div>
-        <div className="shrink-0 px-6 py-4">
-          {mutationError && (
-            <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
-              {t(($) => $['platformPicker.addFailed'])}
-            </p>
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <span aria-live="polite" className="system-xs-regular text-text-tertiary">
-              {t(($) => $['platformPicker.selected'], { count: selectedIds.length })}
-            </span>
-            <div className="flex gap-2">
-              <Button disabled={addPlatformContacts.isPending} onClick={closeDialog}>
-                {t(($) => $['action.cancel'])}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!selectedIds.length}
-                loading={addPlatformContacts.isPending}
-                onClick={() => handleAdd(false)}
-              >
-                {addPlatformContacts.isPending
-                  ? t(($) => $['platformPicker.adding'])
-                  : t(($) => $['platformPicker.add'])}
-              </Button>
+        {(selectedIds.length > 0 || mutationError) && (
+          <div className="shrink-0 border-t border-divider-subtle px-3 py-2">
+            {mutationError && (
+              <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                {t(($) => $['platformPicker.addFailed'])}
+              </p>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <span aria-live="polite" className="system-xs-regular text-text-tertiary">
+                {t(($) => $['platformPicker.selected'], { count: selectedIds.length })}
+              </span>
+              <div className="flex gap-2">
+                <Button disabled={addPlatformContacts.isPending} onClick={closeDialog}>
+                  {t(($) => $['action.cancel'])}
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={!selectedIds.length}
+                  loading={addPlatformContacts.isPending}
+                  onClick={() => handleAdd(false)}
+                >
+                  {addPlatformContacts.isPending
+                    ? t(($) => $['platformPicker.adding'])
+                    : t(($) => $['platformPicker.add'])}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </DialogContent>
       <PlatformContactUpgradeDialog
         conflictCount={upgradeConflictCount ?? 0}

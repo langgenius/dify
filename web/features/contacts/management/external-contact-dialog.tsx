@@ -1,5 +1,6 @@
 'use client'
 
+import type { ContactView } from './types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -15,7 +16,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCreateExternalContact } from './hooks'
+import { useCreateExternalContact, useUpdateExternalContact } from './hooks'
 
 type ExternalContactDraft = {
   displayName: string
@@ -26,6 +27,7 @@ type ExternalContactDialogProps = {
   onCreated: (contactId: string) => void
   onOpenChange: (open: boolean) => void
   open: boolean
+  contact?: Pick<ContactView, 'email' | 'id' | 'name'>
 }
 
 const emptyDraft: ExternalContactDraft = { displayName: '', email: '' }
@@ -44,28 +46,35 @@ function isValidEmail(value: string) {
 }
 
 export function ExternalContactDialog({
+  contact,
   onCreated,
   onOpenChange,
   open,
 }: ExternalContactDialogProps) {
   const { t } = useTranslation('contacts')
   const createExternalContact = useCreateExternalContact()
-  const [draft, setDraft] = useState<ExternalContactDraft>(emptyDraft)
+  const updateExternalContact = useUpdateExternalContact()
+  const initialDraft = contact
+    ? { displayName: contact.name, email: contact.email ?? '' }
+    : emptyDraft
+  const [draft, setDraft] = useState<ExternalContactDraft>(initialDraft)
   const [fieldError, setFieldError] = useState<
     'name_required' | 'email_required' | 'email_invalid' | null
   >(null)
   const [resultError, setResultError] = useState<string | null>(null)
   const resetMutation = createExternalContact.reset
+  const pending = createExternalContact.isPending || updateExternalContact.isPending
 
   function resetDialog() {
-    setDraft(emptyDraft)
+    setDraft(initialDraft)
     setFieldError(null)
     setResultError(null)
     resetMutation()
+    updateExternalContact.reset()
   }
 
   function closeDialog() {
-    if (createExternalContact.isPending) return
+    if (pending) return
     onOpenChange(false)
     resetDialog()
   }
@@ -90,11 +99,14 @@ export function ExternalContactDialog({
       return
     }
 
-    const result = await createExternalContact.mutateAsync({
+    const values = {
       displayName: draft.displayName.trim(),
       email: draft.email.trim(),
-    })
-    if (result.kind === 'created') {
+    }
+    const result = contact
+      ? await updateExternalContact.mutateAsync({ ...values, contactId: contact.id })
+      : await createExternalContact.mutateAsync(values)
+    if (result.kind === 'created' || result.kind === 'updated') {
       onOpenChange(false)
       onCreated(result.contactId)
       resetDialog()
@@ -124,7 +136,7 @@ export function ExternalContactDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
-      disablePointerDismissal={createExternalContact.isPending}
+      disablePointerDismissal={pending}
     >
       <DialogContent className="w-120 max-w-[calc(100vw-2rem)] p-0!">
         <DialogClose
@@ -132,7 +144,7 @@ export function ExternalContactDialog({
             <IconButton
               aria-label={t(($) => $['action.close'])}
               className="absolute top-6 right-6"
-              disabled={createExternalContact.isPending}
+              disabled={pending}
               size="lg"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -141,10 +153,10 @@ export function ExternalContactDialog({
         />
         <div className="px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['external.title'])}
+            {t(($) => $[contact ? 'external.editTitle' : 'external.title'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t(($) => $['external.description'])}
+            {t(($) => $[contact ? 'external.editDescription' : 'external.description'])}
           </DialogDescription>
         </div>
         <Form<ExternalContactDraft> onFormSubmit={handleSubmit} className="px-6 pb-6">
@@ -164,7 +176,7 @@ export function ExternalContactDialog({
                   fieldError === 'name_required' ? 'external-name-error' : undefined
                 }
                 autoComplete="name"
-                disabled={createExternalContact.isPending}
+                disabled={pending}
                 required
                 value={draft.displayName}
                 onChange={(event) => updateDraft('displayName', event.currentTarget.value)}
@@ -192,7 +204,7 @@ export function ExternalContactDialog({
                   fieldError?.startsWith('email') ? 'external-email-error' : undefined
                 }
                 autoComplete="email"
-                disabled={createExternalContact.isPending}
+                disabled={pending}
                 required
                 type="email"
                 value={draft.email}
@@ -224,13 +236,13 @@ export function ExternalContactDialog({
             </div>
           )}
           <div className="mt-6 flex justify-end gap-2">
-            <Button disabled={createExternalContact.isPending} onClick={closeDialog}>
+            <Button disabled={pending} onClick={closeDialog}>
               {t(($) => $['action.cancel'])}
             </Button>
-            <Button type="submit" variant="primary" loading={createExternalContact.isPending}>
-              {createExternalContact.isPending
-                ? t(($) => $['external.adding'])
-                : t(($) => $['external.add'])}
+            <Button type="submit" variant="primary" loading={pending}>
+              {pending
+                ? t(($) => $[contact ? 'external.saving' : 'external.adding'])
+                : t(($) => $[contact ? 'external.save' : 'external.add'])}
             </Button>
           </div>
         </Form>

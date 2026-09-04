@@ -22,11 +22,15 @@ import {
 } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import UserCommunityIcon from './assets/user-community.svg'
+import { ContactChannelIcon } from './channel-icon'
+import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactDetailsPanel } from './contact-details-panel'
 import { ExternalContactDialog } from './external-contact-dialog'
 import { useContactsDirectory, useRemoveContacts } from './hooks'
 import { PlatformContactPickerDialog } from './platform-contact-picker-dialog'
+import { formatContactRelativeTime } from './relative-time'
 
 const contactKindFilters = ['all', 'workspace', 'platform', 'external'] as const
 const searchParser = parseAsString.withDefault('')
@@ -34,19 +38,10 @@ const kindParser = parseAsStringLiteral(contactKindFilters).withDefault('all')
 const contactIdParser = parseAsString
 const loadedPagesParser = parseAsInteger.withDefault(1)
 
-function ContactTypeBadge({ type }: { type: ContactView['type'] }) {
+function ContactTypeLabel({ type }: { type: ContactView['type'] }) {
   const { t } = useTranslation('contacts')
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-2 py-1 system-xs-medium',
-        type === 'workspace' && 'bg-state-accent-hover text-text-accent',
-        type === 'platform' && 'bg-state-success-hover text-text-success',
-        type === 'external' && 'bg-background-default-subtle text-text-tertiary',
-      )}
-    >
-      {t(($) => $[`type.${type}`])}
-    </span>
+    <span className="system-sm-regular text-text-secondary">{t(($) => $[`type.${type}`])}</span>
   )
 }
 
@@ -67,11 +62,11 @@ function ContactRow({
   selectionPending: boolean
   selectionEnabled: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { i18n, t } = useTranslation('contacts')
   return (
-    <tr className="border-b border-divider-subtle hover:bg-state-base-hover">
+    <tr className="h-12 border-b border-divider-subtle hover:bg-state-base-hover">
       {selectionEnabled && (
-        <td className="w-8 px-2 py-3 text-center">
+        <td className="w-8 px-2 py-2 text-center">
           <Checkbox
             aria-label={t(($) => $['directory.selectContact'], { name: contact.name })}
             checked={selected}
@@ -85,7 +80,7 @@ function ContactRow({
           ref={registerTrigger}
           type="button"
           aria-label={t(($) => $['directory.openDetails'], { name: contact.name })}
-          className="flex w-full min-w-64 items-center gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+          className="flex w-full min-w-64 items-center gap-2.5 px-2 py-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
           onClick={onOpen}
         >
           <Avatar avatar={contact.avatar_url || null} name={contact.name} size="md" />
@@ -99,24 +94,30 @@ function ContactRow({
           </span>
         </button>
       </td>
-      <td className="px-4 py-3">
-        <ContactTypeBadge type={contact.type} />
+      <td className="px-3 py-2">
+        <ContactTypeLabel type={contact.type} />
       </td>
-      <td className="px-4 py-3">
-        <span className="flex items-center gap-2 text-text-tertiary">
+      <td className="px-3 py-2">
+        <span className="flex items-center gap-1.5 text-text-tertiary">
           <span
             aria-label={t(($) => $['directory.channel.email'])}
-            className="i-ri-mail-line size-4"
-          />
+            className="flex size-6 items-center justify-center rounded-md border border-divider-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+          >
+            <ContactChannelIcon provider="email" />
+          </span>
           {contact.im_bindings.map((binding) => (
-            <span key={binding.id} className="system-xs-medium text-text-secondary">
-              {binding.provider}
+            <span
+              key={binding.id}
+              aria-label={getContactChannelLabel(binding.provider)}
+              className="flex size-6 items-center justify-center rounded-md border border-divider-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+            >
+              <ContactChannelIcon provider={binding.provider} />
             </span>
           ))}
         </span>
       </td>
-      <td className="px-4 py-3 system-xs-regular whitespace-nowrap text-text-tertiary">
-        {new Date(contact.created_at * 1000).toLocaleDateString()}
+      <td className="px-3 py-2 system-sm-regular whitespace-nowrap text-text-tertiary">
+        {formatContactRelativeTime(contact.created_at, i18n.resolvedLanguage ?? 'en')}
       </td>
     </tr>
   )
@@ -126,16 +127,24 @@ function DirectoryState({
   action,
   description,
   icon,
+  iconSrc,
   title,
 }: {
   action?: ReactNode
   description: string
   icon: string
+  iconSrc?: string
   title: string
 }) {
   return (
-    <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
-      <span aria-hidden className={cn(icon, 'size-8 text-text-quaternary')} />
+    <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-center">
+      <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular">
+        {iconSrc ? (
+          <img alt="" aria-hidden className="size-6" src={iconSrc} />
+        ) : (
+          <span aria-hidden className={cn(icon, 'size-6 text-text-tertiary')} />
+        )}
+      </span>
       <h2 className="mt-3 system-md-semibold text-text-secondary">{title}</h2>
       <p className="mt-1 max-w-md system-sm-regular text-text-tertiary">{description}</p>
       {action && <div className="mt-4">{action}</div>}
@@ -156,6 +165,7 @@ export function ContactsDirectoryPage() {
   const loadedPages = browsing.contact_pages
   const [contactId, setContactId] = useQueryState('contact_id', contactIdParser)
   const [externalDialogOpen, setExternalDialogOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<ContactView | null>(null)
   const [platformDialogOpen, setPlatformDialogOpen] = useState(false)
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
   const [removalError, setRemovalError] = useState(false)
@@ -181,6 +191,16 @@ export function ContactsDirectoryPage() {
   const allRemovableSelected =
     removableContactIds.length > 0 && selectedRemovableCount === removableContactIds.length
   const someRemovableSelected = selectedRemovableCount > 0 && !allRemovableSelected
+  const contactCounts = contactKindFilters.reduce<Record<ContactTypeFilter, number>>(
+    (counts, filter) => {
+      counts[filter] =
+        filter === 'all'
+          ? directoryQuery.contacts.length
+          : directoryQuery.contacts.filter((contact) => contact.type === filter).length
+      return counts
+    },
+    { all: 0, external: 0, platform: 0, workspace: 0 },
+  )
 
   useEffect(() => {
     if (
@@ -261,6 +281,15 @@ export function ContactsDirectoryPage() {
     setRemovalError(true)
   }
 
+  async function removeContact(contactId: string) {
+    const result = await removeContacts.mutateAsync({ contactIds: [contactId] })
+    if (result.kind !== 'removed') {
+      setRemovalError(true)
+      return
+    }
+    closeDetails()
+  }
+
   async function loadMore() {
     const nextResult = await fetchNextPage()
     if (!nextResult.isFetchNextPageError)
@@ -279,17 +308,17 @@ export function ContactsDirectoryPage() {
 
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
-      <header className="shrink-0 px-4 pt-5 pb-3 sm:px-8">
+      <header className="shrink-0 px-4 pt-4 pb-2 sm:px-8">
         <div className="flex items-center gap-2">
           <h1 className="title-xl-semi-bold text-text-primary">{t(($) => $['directory.title'])}</h1>
           <a
             href="#contacts-help"
-            className="system-xs-medium text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="ml-auto system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             {t(($) => $['directory.learnMore'])}
           </a>
         </div>
-        <div className="mt-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="mt-3.5 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
           <div
             role="group"
             aria-label={t(($) => $['directory.filters'])}
@@ -299,6 +328,7 @@ export function ContactsDirectoryPage() {
               <button
                 key={filter}
                 type="button"
+                aria-label={t(($) => $[`filter.${filter}`])}
                 aria-pressed={kind === filter}
                 className={cn(
                   'h-7 rounded-md px-3 system-xs-medium whitespace-nowrap text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
@@ -306,11 +336,14 @@ export function ContactsDirectoryPage() {
                 )}
                 onClick={() => updateKind(filter)}
               >
-                {t(($) => $[`filter.${filter}`])}
+                <span>{t(($) => $[`filter.${filter}`])}</span>
+                {filter !== 'all' && (
+                  <span className="ml-1 text-text-quaternary">{contactCounts[filter]}</span>
+                )}
               </button>
             ))}
           </div>
-          <div className="relative min-w-0 flex-1 lg:max-w-60">
+          <div className="relative min-w-0 flex-1 lg:max-w-50">
             <span
               aria-hidden
               className="absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
@@ -333,10 +366,18 @@ export function ContactsDirectoryPage() {
                     <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="min-w-48">
-                    <DropdownMenuItem onClick={() => setPlatformDialogOpen(true)}>
+                    <DropdownMenuItem className="gap-2" onClick={() => setPlatformDialogOpen(true)}>
+                      <span
+                        aria-hidden
+                        className="i-ri-building-2-line size-4 text-text-tertiary"
+                      />
                       {t(($) => $['directory.addFromPlatform'])}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setExternalDialogOpen(true)}>
+                    <DropdownMenuItem className="gap-2" onClick={() => setExternalDialogOpen(true)}>
+                      <span
+                        aria-hidden
+                        className="i-ri-contacts-book-line size-4 text-text-tertiary"
+                      />
                       {t(($) => $['directory.addExternal'])}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -356,111 +397,152 @@ export function ContactsDirectoryPage() {
           </p>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-8">
-        {directoryQuery.isPending && (
-          <div
-            role="status"
-            aria-label={t(($) => $['directory.loading'])}
-            className="space-y-2 rounded-xl border border-divider-subtle p-3"
-          >
-            {[0, 1, 2, 3, 4].map((key) => (
-              <div
-                key={key}
-                className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
-              />
-            ))}
-          </div>
-        )}
-        {directoryQuery.isError && !directoryQuery.contacts.length && (
-          <DirectoryState
-            action={
-              <Button onClick={() => directoryQuery.refetch()}>
-                {t(($) => $['action.retry'])}
-              </Button>
-            }
-            description={t(($) => $['directory.errorDescription'])}
-            icon="i-ri-error-warning-line"
-            title={t(($) => $['directory.errorTitle'])}
-          />
-        )}
-        {!directoryQuery.isPending &&
-          !directoryQuery.isError &&
-          !directoryQuery.contacts.length && (
+      <div className="flex min-h-0 flex-1 gap-1 overflow-hidden px-4 pb-1 sm:px-8">
+        <div className="min-w-0 flex-1 overflow-auto rounded-xl bg-components-panel-bg">
+          {directoryQuery.isPending && (
+            <div
+              role="status"
+              aria-label={t(($) => $['directory.loading'])}
+              className="space-y-2 rounded-xl border border-divider-subtle p-3"
+            >
+              {[0, 1, 2, 3, 4].map((key) => (
+                <div
+                  key={key}
+                  className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
+                />
+              ))}
+            </div>
+          )}
+          {directoryQuery.isError && !directoryQuery.contacts.length && (
             <DirectoryState
               action={
-                hasFilters ? (
-                  <Button onClick={clearFilters}>{t(($) => $['action.clearFilters'])}</Button>
-                ) : undefined
+                <Button onClick={() => directoryQuery.refetch()}>
+                  {t(($) => $['action.retry'])}
+                </Button>
               }
-              description={t(
-                ($) =>
-                  $[hasFilters ? 'directory.noResultsDescription' : 'directory.emptyDescription'],
-              )}
-              icon={hasFilters ? 'i-ri-search-line' : 'i-ri-contacts-book-2-line'}
-              title={t(($) => $[hasFilters ? 'directory.noResultsTitle' : 'directory.emptyTitle'])}
+              description={t(($) => $['directory.errorDescription'])}
+              icon="i-ri-error-warning-line"
+              title={t(($) => $['directory.errorTitle'])}
             />
           )}
-        {directoryQuery.contacts.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-divider-subtle bg-components-panel-bg">
-            <table className="w-full min-w-180 border-collapse">
-              <thead className="bg-background-default-subtle text-left system-xs-medium text-text-tertiary">
-                <tr>
-                  {context.permissions.canManageContacts && (
-                    <th scope="col" className="w-8 px-2 py-2 text-center">
-                      <Checkbox
-                        aria-label={t(($) => $['directory.selectAll'])}
-                        checked={allRemovableSelected}
-                        disabled={!removableContactIds.length || removeContacts.isPending}
-                        indeterminate={someRemovableSelected}
-                        onCheckedChange={toggleAllRemovable}
-                      />
-                    </th>
-                  )}
-                  <th scope="col" className="px-4 py-2">
-                    {t(($) => $['directory.column.name'])}
-                  </th>
-                  <th scope="col" className="px-4 py-2">
-                    {t(($) => $['directory.column.type'])}
-                  </th>
-                  <th scope="col" className="px-4 py-2">
-                    {t(($) => $['directory.column.channels'])}
-                  </th>
-                  <th scope="col" className="px-4 py-2">
-                    {t(($) => $['directory.column.joined'])}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {directoryQuery.contacts.map((contact) => (
-                  <ContactRow
-                    key={contact.id}
-                    contact={contact}
-                    selected={selectedContactIds.includes(contact.id)}
-                    selectionEnabled={context.permissions.canManageContacts}
-                    selectionPending={removeContacts.isPending}
-                    registerTrigger={(element) => {
-                      if (element) rowTriggersRef.current.set(contact.id, element)
-                      else rowTriggersRef.current.delete(contact.id)
-                    }}
-                    onOpen={() => openDetails(contact.id)}
-                    onSelectedChange={(selected) => toggleContact(contact.id, selected)}
-                  />
-                ))}
-              </tbody>
-            </table>
-            {directoryQuery.hasNextPage && (
-              <div className="flex flex-col items-center border-t border-divider-subtle p-3">
-                {directoryQuery.isFetchNextPageError && (
-                  <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
-                    {t(($) => $['directory.pageError'])}
-                  </p>
+          {!directoryQuery.isPending &&
+            !directoryQuery.isError &&
+            !directoryQuery.contacts.length && (
+              <DirectoryState
+                action={
+                  hasFilters && !(kind === 'external' && !search) ? (
+                    <Button onClick={clearFilters}>{t(($) => $['action.clearFilters'])}</Button>
+                  ) : context.permissions.canManageContacts ? (
+                    <Button onClick={() => setExternalDialogOpen(true)}>
+                      <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                      {t(($) => $['directory.addExternal'])}
+                    </Button>
+                  ) : undefined
+                }
+                description={t(
+                  ($) =>
+                    $[
+                      hasFilters && !(kind === 'external' && !search)
+                        ? 'directory.noResultsDescription'
+                        : 'directory.externalEmptyDescription'
+                    ],
                 )}
-                <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
-                  {t(($) => $['action.loadMore'])}
-                </Button>
-              </div>
+                icon={hasFilters && !(kind === 'external' && !search) ? 'i-ri-search-line' : ''}
+                iconSrc={
+                  hasFilters && !(kind === 'external' && !search)
+                    ? undefined
+                    : UserCommunityIcon.src
+                }
+                title={t(
+                  ($) =>
+                    $[
+                      hasFilters && !(kind === 'external' && !search)
+                        ? 'directory.noResultsTitle'
+                        : 'directory.externalEmptyTitle'
+                    ],
+                )}
+              />
             )}
-          </div>
+          {directoryQuery.contacts.length > 0 && (
+            <div className="min-h-full overflow-hidden rounded-xl bg-components-panel-bg">
+              <table className="w-full min-w-180 border-collapse">
+                <colgroup>
+                  {context.permissions.canManageContacts && <col className="w-8" />}
+                  <col />
+                  <col className="w-40" />
+                  <col className="w-40" />
+                  <col className="w-40" />
+                </colgroup>
+                <thead className="text-left system-xs-medium text-text-tertiary">
+                  <tr>
+                    {context.permissions.canManageContacts && (
+                      <th scope="col" className="w-8 px-2 py-2 text-center">
+                        <Checkbox
+                          aria-label={t(($) => $['directory.selectAll'])}
+                          checked={allRemovableSelected}
+                          disabled={!removableContactIds.length || removeContacts.isPending}
+                          indeterminate={someRemovableSelected}
+                          onCheckedChange={toggleAllRemovable}
+                        />
+                      </th>
+                    )}
+                    <th scope="col" className="px-2 py-2">
+                      {t(($) => $['directory.column.name'])}
+                    </th>
+                    <th scope="col" className="px-3 py-2">
+                      {t(($) => $['directory.column.type'])}
+                    </th>
+                    <th scope="col" className="px-3 py-2">
+                      {t(($) => $['directory.column.channels'])}
+                    </th>
+                    <th scope="col" className="px-3 py-2">
+                      {t(($) => $['directory.column.joined'])}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {directoryQuery.contacts.map((contact) => (
+                    <ContactRow
+                      key={contact.id}
+                      contact={contact}
+                      selected={selectedContactIds.includes(contact.id)}
+                      selectionEnabled={context.permissions.canManageContacts}
+                      selectionPending={removeContacts.isPending}
+                      registerTrigger={(element) => {
+                        if (element) rowTriggersRef.current.set(contact.id, element)
+                        else rowTriggersRef.current.delete(contact.id)
+                      }}
+                      onOpen={() => openDetails(contact.id)}
+                      onSelectedChange={(selected) => toggleContact(contact.id, selected)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+              {directoryQuery.hasNextPage && (
+                <div className="flex flex-col items-center border-t border-divider-subtle p-3">
+                  {directoryQuery.isFetchNextPageError && (
+                    <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
+                      {t(($) => $['directory.pageError'])}
+                    </p>
+                  )}
+                  <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
+                    {t(($) => $['action.loadMore'])}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {selectedContact && (
+          <ContactDetailsPanel
+            contact={selectedContact}
+            onClose={closeDetails}
+            onEdit={() => {
+              setEditingContact(selectedContact)
+              setExternalDialogOpen(true)
+            }}
+            onRemove={() => void removeContact(selectedContact.id)}
+          />
         )}
       </div>
       {selectedContactIds.length > 0 && (
@@ -512,10 +594,14 @@ export function ContactsDirectoryPage() {
           </div>
         </div>
       )}
-      {selectedContact && <ContactDetailsPanel contact={selectedContact} onClose={closeDetails} />}
       <ExternalContactDialog
+        key={editingContact?.id ?? 'create-external-contact'}
+        contact={editingContact ?? undefined}
         open={externalDialogOpen}
-        onOpenChange={setExternalDialogOpen}
+        onOpenChange={(open) => {
+          setExternalDialogOpen(open)
+          if (!open) setEditingContact(null)
+        }}
         onCreated={() => {}}
       />
       {context.deployment === 'ee' && (
