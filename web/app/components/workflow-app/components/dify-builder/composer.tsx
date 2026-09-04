@@ -15,7 +15,6 @@ const DifyBuilderPromptInput = () => {
   const { t } = useTranslation()
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
-  const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -52,7 +51,7 @@ const DifyBuilderPromptInput = () => {
         if (event.key !== 'Enter' || event.shiftKey || !draft.trim()) return
         if (event.nativeEvent.isComposing || isComposingRef.current) return
         event.preventDefault()
-        void sendDraft()
+        event.currentTarget.form?.requestSubmit()
       }}
     />
   )
@@ -61,15 +60,13 @@ const DifyBuilderPromptInput = () => {
 const DifyBuilderSendButton = () => {
   const { t } = useTranslation()
   const canSend = useAtomValue(difyBuilderCanSendDraftAtom)
-  const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
 
   return (
     <button
-      type="button"
+      type="submit"
       disabled={!canSend}
       aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
       className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border-[0.5px] border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
-      onClick={() => void sendDraft()}
     >
       <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
     </button>
@@ -77,8 +74,18 @@ const DifyBuilderSendButton = () => {
 }
 
 const DifyBuilderComposer = () => {
+  const { t } = useTranslation()
+  const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
+
   return (
-    <div className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1">
+    <form
+      aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
+      className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void sendDraft()
+      }}
+    >
       <div className="flex h-full flex-col items-end justify-end p-1.5">
         <DifyBuilderPromptInput />
         <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
@@ -86,7 +93,7 @@ const DifyBuilderComposer = () => {
           <DifyBuilderSendButton />
         </div>
       </div>
-    </div>
+    </form>
   )
 }
 

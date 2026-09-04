@@ -32,23 +32,32 @@ export const StreamingAssistantTurn = ({
   if (activityCount === 0 && !reasoningText && !replyText) {
     if (!busy) return null
     return (
-      <div role="status" aria-live="polite" className="flex h-8 items-center gap-2 px-1">
-        <span
-          aria-hidden
-          className="i-ri-loader-4-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-        />
-        <span className="text-[13px] font-medium text-text-tertiary">
-          {t(($) => $['common.running'], { ns: 'workflow' })}
-        </span>
-      </div>
+      <article>
+        <h3 className="sr-only">{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h3>
+        <div role="status" aria-live="polite" className="flex h-8 items-center gap-2 px-1">
+          <span
+            aria-hidden
+            className="i-ri-loader-4-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+          />
+          <span className="text-[13px] font-medium text-text-tertiary">
+            {t(($) => $['common.running'], { ns: 'workflow' })}
+          </span>
+        </div>
+      </article>
     )
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <article className="flex flex-col gap-2">
+      <h3 className="sr-only">{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h3>
+      {activityCount === 0 && busy && (
+        <span role="status" aria-live="polite" className="sr-only">
+          {t(($) => $['common.running'], { ns: 'workflow' })}
+        </span>
+      )}
       {activityCount > 0 ? <ExecutionProgress execution={liveExecution?.execution} /> : null}
       <Thinking text={reasoningText} isStreaming />
       {replyText ? <AssistantReply text={replyText} /> : null}
-    </div>
+    </article>
   )
 }
