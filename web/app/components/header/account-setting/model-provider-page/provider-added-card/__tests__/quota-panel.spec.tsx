@@ -249,6 +249,86 @@ describe('QuotaPanel', () => {
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
+  it('should show an active allowance separately without adding it to the Tokener balance', () => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'ready'
+    mockTokenerMetering = {
+      tenant_id: 'tenant-1',
+      currency: 'USD',
+      available_usd_micro: '12500000',
+      current_month: {
+        status: 'available',
+        start_date: '2026-09-01',
+        end_date: '2026-09-03',
+        billed_usd_micro: '3750000',
+        request_count: '42',
+      },
+      balance_generated_at: '2026-09-03T06:00:00Z',
+      usage_generated_at: '2026-09-03T05:59:30Z',
+      entitlement_status: 'active',
+      allowance: {
+        window_id: 'invoice-period-1',
+        source_ref: 'invoice-1',
+        amount_usd_micro: '59000000',
+        available_usd_micro: '20000000',
+        starts_at: '2026-09-01T00:00:00Z',
+        ends_at: '2026-10-01T00:00:00Z',
+      },
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.getByText('$59.00')).toBeInTheDocument()
+    expect(screen.getByText('$20.00')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowanceTotal/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowanceRemaining/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowancePeriod/)).toBeInTheDocument()
+    expect(screen.getByText(/2026-09-01 – 2026-10-01/)).toBeInTheDocument()
+    expect(screen.queryByText('$71.50')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['processing', 'modelProvider.tokenerEntitlementProcessing'],
+    ['retrying', 'modelProvider.tokenerEntitlementRetrying'],
+    ['failed', 'modelProvider.tokenerEntitlementFailed'],
+  ] as const)(
+    'should show the server-provided %s entitlement state without optimistic allowance',
+    (entitlementStatus, messageKey) => {
+      mockModelBillingSource = 'tokener'
+      mockTokenerBootstrapStatus = 'ready'
+      mockTokenerMetering = {
+        tenant_id: 'tenant-1',
+        currency: 'USD',
+        available_usd_micro: '12500000',
+        current_month: {
+          status: 'unavailable',
+          start_date: '2026-09-01',
+          end_date: '2026-09-03',
+          error_code: 'metering_unavailable',
+        },
+        balance_generated_at: '2026-09-03T06:00:00Z',
+        entitlement_status: entitlementStatus,
+        ...(entitlementStatus === 'failed' ? { entitlement_error_code: 'allowance_failed' } : {}),
+        allowance: {
+          window_id: 'not-active-yet',
+          source_ref: 'invoice-1',
+          amount_usd_micro: '59000000',
+          available_usd_micro: '59000000',
+          starts_at: '2026-09-01T00:00:00Z',
+          ends_at: '2026-10-01T00:00:00Z',
+        },
+      }
+
+      renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+      expect(screen.getByText('$12.50')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent(messageKey)
+      expect(screen.queryByText('$59.00')).not.toBeInTheDocument()
+      expect(screen.queryByText(/modelProvider\.tokenerAllowanceTotal/)).not.toBeInTheDocument()
+    },
+  )
+
   it('should preserve a negative Tokener balance while monthly metering is unavailable', () => {
     mockModelBillingSource = 'tokener'
     mockTokenerBootstrapStatus = 'ready'

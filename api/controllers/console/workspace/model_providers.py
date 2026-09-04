@@ -118,6 +118,15 @@ class TokenerCurrentMonthUnavailableMeteringResponse(ResponseModel):
     error_code: str = Field(pattern=r"^[a-z0-9_]{1,100}$")
 
 
+class TokenerAllowanceMeteringResponse(ResponseModel):
+    window_id: str
+    source_ref: str
+    amount_usd_micro: str = Field(pattern=r"^(0|[1-9]\d*)$")
+    available_usd_micro: str = Field(pattern=r"^(0|[1-9]\d*)$")
+    starts_at: str
+    ends_at: str
+
+
 class TokenerMeteringResponse(ResponseModel):
     tenant_id: str
     currency: Literal["USD"]
@@ -128,6 +137,9 @@ class TokenerMeteringResponse(ResponseModel):
     ]
     balance_generated_at: str
     usage_generated_at: str | None = None
+    allowance: TokenerAllowanceMeteringResponse | None = None
+    entitlement_status: Literal["active", "processing", "retrying", "failed"] | None = None
+    entitlement_error_code: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,100}$")
 
 
 class ModelProviderCreditsResponse(ResponseModel):

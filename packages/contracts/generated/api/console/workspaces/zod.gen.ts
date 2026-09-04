@@ -2056,6 +2056,18 @@ export const zConfigurateMethod = z.enum(['customizable-model', 'predefined-mode
 export const zProviderType = z.enum(['custom', 'system'])
 
 /**
+ * TokenerAllowanceMeteringResponse
+ */
+export const zTokenerAllowanceMeteringResponse = z.object({
+  amount_usd_micro: z.string().regex(/^(0|[1-9]\d*)$/),
+  available_usd_micro: z.string().regex(/^(0|[1-9]\d*)$/),
+  ends_at: z.string(),
+  source_ref: z.string(),
+  starts_at: z.string(),
+  window_id: z.string(),
+})
+
+/**
  * TokenerCurrentMonthAvailableMeteringResponse
  */
 export const zTokenerCurrentMonthAvailableMeteringResponse = z.object({
@@ -2080,6 +2092,7 @@ export const zTokenerCurrentMonthUnavailableMeteringResponse = z.object({
  * TokenerMeteringResponse
  */
 export const zTokenerMeteringResponse = z.object({
+  allowance: zTokenerAllowanceMeteringResponse.nullish(),
   available_usd_micro: z.string().regex(/^-?\d+$/),
   balance_generated_at: z.string(),
   currency: z.literal('USD'),
@@ -2087,6 +2100,11 @@ export const zTokenerMeteringResponse = z.object({
     zTokenerCurrentMonthAvailableMeteringResponse.extend({ status: z.literal('available') }),
     zTokenerCurrentMonthUnavailableMeteringResponse.extend({ status: z.literal('unavailable') }),
   ]),
+  entitlement_error_code: z
+    .string()
+    .regex(/^[a-z0-9_]{1,100}$/)
+    .nullish(),
+  entitlement_status: z.enum(['active', 'failed', 'processing', 'retrying']).nullish(),
   tenant_id: z.string(),
   usage_generated_at: z.string().nullish(),
 })
