@@ -299,7 +299,7 @@ class TiDBVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         document_ids_filter = kwargs.get("document_ids_filter")
 
-        where_conditions = ["FTS_MATCH_WORD(text, :query)"]
+        where_conditions = ["FTS_MATCH_WORD(:query, text)"]
         filter_params: dict[str, str] = {}
         if document_ids_filter:
             document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
@@ -314,7 +314,7 @@ class TiDBVector(BaseVector):
                   SELECT
                     meta,
                     text,
-                    FTS_MATCH_WORD(text, :query) AS score
+                    FTS_MATCH_WORD(:query, text) AS score
                   FROM {self._collection_name}
                   WHERE {where_clause}
                   ORDER BY score DESC
