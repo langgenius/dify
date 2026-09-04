@@ -23,7 +23,7 @@ import inspect
 from services.dataset_service import DocumentService
 
 
-def test_session_committed_before_upload_file_lookup():
+def test_session_committed_before_upload_file_lookup() -> None:
     """#41735: ``session.commit()`` must run BEFORE the ``UploadFile``
     SELECT so the SELECT sees rows committed by ``FileService.upload_text``
     on a different session. MySQL REPEATABLE READ keeps the original
