@@ -920,13 +920,8 @@ def _inner_call(
 
 
 def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
-    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else str(resource_type)
-    resource_id = resource_id.strip()
-    if resource_type_value == RBACResourceType.APP.value:
-        return {"resource_type": resource_type_value, "app_id": resource_id}
-    if resource_type_value == RBACResourceType.DATASET.value:
-        return {"resource_type": resource_type_value, "dataset_id": resource_id}
-    raise ValueError(f"unsupported resource_type: {resource_type_value}")
+    resolved = resource_type if isinstance(resource_type, RBACResourceType) else RBACResourceType(resource_type)
+    return {"resource_type": resolved.value, resolved.route.id_param: resource_id.strip()}
 
 
 def try_sync_creator_access_policy_member_bindings(

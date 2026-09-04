@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
@@ -50,6 +50,7 @@ from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -72,6 +73,40 @@ RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
     AppMode.ADVANCED_CHAT,
     AppMode.AGENT_CHAT,
 )
+
+
+@dataclass(frozen=True)
+class _CreatedApp:
+    """The rows a freshly created app needs RBAC access initialized for."""
+
+    tenant_id: str
+    creator_account_id: str
+    app_id: str
+    backing_agent_id: str | None
+
+
+def _initialize_created_app_access(created: _CreatedApp) -> None:
+    enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+        created.tenant_id,
+        created.creator_account_id,
+        enterprise_rbac_service.RBACResourceType.APP,
+        created.app_id,
+    )
+
+
+def _initialize_created_agent_access(created: _CreatedApp) -> None:
+    if created.backing_agent_id is None:
+        raise ValueError(f"agent app {created.app_id} was created without a backing agent")
+    initialize_agent_rbac_access(
+        tenant_id=created.tenant_id,
+        agent_id=created.backing_agent_id,
+        creator_account_id=created.creator_account_id,
+    )
+
+
+_CREATED_APP_ACCESS_INITIALIZERS: dict[AppMode, Callable[[_CreatedApp], None]] = {
+    AppMode.AGENT: _initialize_created_agent_access,
+}
 
 
 class AppListBaseParams(BaseModel):
@@ -670,12 +705,13 @@ class AppService:
         # Created in the same transaction so the App and its backing Agent persist
         # atomically; the Agent Soul (model/prompt/tools) is configured afterward
         # in the Composer.
+        backing_agent: Agent | None = None
         if app_mode == AppMode.AGENT:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
             try:
-                AgentRosterService(session).create_backing_agent_for_app(
+                backing_agent = AgentRosterService(session).create_backing_agent_for_app(
                     tenant_id=tenant_id,
                     account_id=account.id,
                     app_id=app.id,
@@ -696,11 +732,14 @@ class AppService:
         session.commit()
         app_was_created.send(app, account=account, session=session)
         session.commit()
-        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
-            tenant_id,
-            account.id,
-            enterprise_rbac_service.RBACResourceType.APP,
-            app.id,
+        initialize_access = _CREATED_APP_ACCESS_INITIALIZERS.get(app_mode, _initialize_created_app_access)
+        initialize_access(
+            _CreatedApp(
+                tenant_id=tenant_id,
+                creator_account_id=account.id,
+                app_id=app.id,
+                backing_agent_id=backing_agent.id if backing_agent else None,
+            )
         )
 
         if SystemFeatureService.is_webapp_auth_enabled():

@@ -72,6 +72,26 @@ class TestResourceAccessRoute:
         assert route.id_param == id_param
 
 
+class TestResourceIdParams:
+    @pytest.mark.parametrize(
+        ("resource_type", "expected"),
+        [
+            (svc.RBACResourceType.APP, {"resource_type": "app", "app_id": "resource-1"}),
+            (svc.RBACResourceType.DATASET, {"resource_type": "dataset", "dataset_id": "resource-1"}),
+            (svc.RBACResourceType.AGENT, {"resource_type": "agent", "agent_id": "resource-1"}),
+            ("agent", {"resource_type": "agent", "agent_id": "resource-1"}),
+        ],
+    )
+    def test_id_key_comes_from_the_enum_route(
+        self, resource_type: svc.RBACResourceType | str, expected: dict[str, str]
+    ) -> None:
+        assert svc._resource_id_params(resource_type, " resource-1 ") == expected
+
+    def test_unknown_resource_type_raises(self) -> None:
+        with pytest.raises(ValueError):
+            svc._resource_id_params("workflow", "resource-1")
+
+
 class TestAgentAccess:
     def test_whitelist_resources(self, inner_call: MagicMock) -> None:
         _returns(inner_call, {"unrestricted": False, "resource_ids": [AGENT]})
