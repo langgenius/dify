@@ -11,6 +11,7 @@ import type {
   FormField as GeneratedFormField,
   SessionModel as GeneratedSessionModel,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { TraceSnapshot } from './session/trace-buffer'
 
 export type Action = GeneratedAction
 export type CanvasEventData = GeneratedCanvasEventData
@@ -66,6 +67,7 @@ export type DifyBuilderSessionController = {
   sendMessage: (text: string, clientTurnId?: string) => Promise<boolean>
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void
+  getTrace: () => TraceSnapshot
 }
 
 export type DifyBuilderActionPayloadChange = (
