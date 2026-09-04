@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner, Result
+from sqlalchemy import Select
 
 from commands.rbac import _iter_agent_rows as real_iter_agent_rows
 from commands.rbac import migrate_agent_permissions_to_rbac
+from models import AgentStatus
 from services.enterprise.rbac_service import (
     LegacyAgentMigrationReport,
     LegacyAgentRoleMigration,
@@ -180,9 +182,13 @@ def test_skipped_role_template_is_reported_like_a_skipped_role() -> None:
 
 
 def _whitelist_config(
-    scope: str | None = "all", account_ids: list[str] | None = None
+    scope: str | None = "all",
+    account_ids: list[str] | None = None,
+    configured: bool | None = None,
 ) -> _LegacyResourceWhitelistConfig:
-    return _LegacyResourceWhitelistConfig(rbac_whitelist_scope=scope, account_ids=account_ids or [])
+    return _LegacyResourceWhitelistConfig(
+        rbac_whitelist_scope=scope, account_ids=account_ids or [], configured=configured
+    )
 
 
 @dataclass
@@ -194,6 +200,7 @@ class _AgentPhaseMocks:
     sync_creator_bindings: MagicMock
     owner_account_id: MagicMock
     member_batches: MagicMock
+    write_order: MagicMock
 
 
 @dataclass
@@ -203,6 +210,7 @@ class _AgentPhaseSetup:
     app_config: _LegacyResourceWhitelistConfig = field(default_factory=_whitelist_config)
     workspace_members: list[str] = field(default_factory=lambda: ["m1", "m2", "m3"])
     owner_account_id: str = "owner-1"
+    member_write_side_effect: list[object] | None = None
 
 
 def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, _AgentPhaseMocks]:
@@ -242,9 +250,20 @@ def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, 
             member_batches=stack.enter_context(
                 patch(f"{MODULE}._workspace_member_account_id_batches", side_effect=_member_batches)
             ),
+            write_order=MagicMock(),
         )
+        if setup.member_write_side_effect is not None:
+            mocks.replace_user_access_policies.side_effect = setup.member_write_side_effect
+        # Attaching the write mocks to one parent records them on a single ordered call log.
+        mocks.write_order.attach_mock(mocks.replace_user_access_policies, "seed_members")
+        mocks.write_order.attach_mock(mocks.sync_creator_bindings, "sync_creator")
+        mocks.write_order.attach_mock(mocks.replace_whitelist, "replace_whitelist")
         result = CliRunner().invoke(migrate_agent_permissions_to_rbac, args)
     return result, mocks
+
+
+def _write_order(mocks: _AgentPhaseMocks) -> list[str]:
+    return [name for name, _, _ in mocks.write_order.mock_calls]
 
 
 def test_agent_bootstrap_dry_run_proposes_every_agent_and_writes_nothing() -> None:
@@ -294,6 +313,81 @@ def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(
     assert mocks.sync_creator_bindings.call_args.kwargs["resource_id"] == "ag1"
     assert mocks.sync_creator_bindings.call_args.kwargs["account_id"] == "c1"
     assert "1 agent(s) changed, 0 already initialised" in result.output
+
+
+def test_scope_row_is_written_after_every_member_batch() -> None:
+    """A crash before the last write must leave no scope row, so the next run redoes the agent."""
+    _, mocks = _run_agent_phase(
+        ["--apply", "--member-batch-size", "2"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], workspace_members=["m1", "m2", "m3"]),
+    )
+
+    assert _write_order(mocks) == ["seed_members", "seed_members", "sync_creator", "replace_whitelist"]
+
+
+def test_configured_false_with_members_present_is_still_bootstrapped() -> None:
+    """A run that died part-way leaves seeded members but no scope row; resume it."""
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", None)],
+            agent_configs=[_whitelist_config(account_ids=["m1", "m2"], configured=False)],
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert [e["event"] for e in _events(result.output)] == ["agent_access_bootstrap_applied"]
+    mocks.replace_whitelist.assert_called_once()
+    assert "1 agent(s) changed, 0 already initialised" in result.output
+
+
+def test_configured_true_without_members_is_skipped() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[_whitelist_config(configured=True)]),
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"]
+    assert events[0]["reason"] == "already_initialized"
+    mocks.replace_whitelist.assert_not_called()
+    assert "0 agent(s) changed, 1 already initialised" in result.output
+
+
+def test_older_service_without_configured_key_falls_back_to_the_heuristic() -> None:
+    older_service_body = _LegacyResourceWhitelistConfig.model_validate({"scope": "all", "account_ids": ["m1"]})
+    assert older_service_body.configured is None
+
+    result, mocks = _run_agent_phase(
+        ["--apply"], _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[older_service_body])
+    )
+
+    assert result.exit_code == 0, result.output
+    assert [e["event"] for e in _events(result.output)] == ["agent_access_bootstrap_skipped"]
+    mocks.replace_whitelist.assert_not_called()
+
+
+def test_a_failed_member_batch_reports_the_agent_and_stops_the_run() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply", "--member-batch-size", "1"],
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", None), ("ag2", "c2", None)],
+            workspace_members=["m1", "m2", "m3"],
+            member_write_side_effect=[None, RuntimeError("rbac unavailable")],
+        ),
+    )
+
+    assert result.exit_code != 0
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_failed"]
+    assert events[0]["tenant_id"] == "t1"
+    assert events[0]["agent_id"] == "ag1"
+    assert events[0]["error"] == "rbac unavailable"
+    assert "ag1" in result.output
+    # No scope row was written, and the second agent was never reached.
+    mocks.replace_whitelist.assert_not_called()
+    assert mocks.agent_whitelist_config.call_count == 1
 
 
 def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
@@ -419,10 +513,10 @@ def test_missing_agent_whitelist_scope_is_skipped_not_defaulted() -> None:
 
 
 def test_iter_agent_rows_skips_archived_and_keyset_paginates() -> None:
-    statements: list[object] = []
+    statements: list[Select[tuple[str, str | None, str | None]]] = []
     batches: list[list[MagicMock]] = [[MagicMock(id="ag1", created_by="c1", backing_app_id="app-1")], []]
 
-    def _execute(stmt: object) -> MagicMock:
+    def _execute(stmt: Select[tuple[str, str | None, str | None]]) -> MagicMock:
         statements.append(stmt)
         executed = MagicMock()
         executed.all.return_value = batches[len(statements) - 1]
@@ -442,3 +536,6 @@ def test_iter_agent_rows_skips_archived_and_keyset_paginates() -> None:
     assert all("agents.status !=" in text for text in rendered)
     assert all("agents.tenant_id =" in text for text in rendered)
     assert "agents.id >" in rendered[1]
+    # The excluded status is ARCHIVED specifically, not just "some status".
+    for stmt in statements:
+        assert AgentStatus.ARCHIVED in stmt.compile().params.values()

@@ -124,6 +124,10 @@ class _AgentMigrationEventKind:
     def skipped(self) -> str:
         return f"{self.event_stem}_skipped"
 
+    @property
+    def failed(self) -> str:
+        return f"{self.event_stem}_failed"
+
     def outcome(self, *, apply: bool) -> str:
         return f"{self.event_stem}_applied" if apply else f"{self.event_stem}_proposed_change"
 
@@ -1162,15 +1166,23 @@ class _AgentAccessBootstrapOptions:
     apply: bool
 
 
-def _agent_access_is_initialized(scope: RBACResourceWhitelistScope, account_ids: list[str]) -> bool:
+def _agent_access_is_initialized(
+    configured: bool | None,
+    scope: RBACResourceWhitelistScope,
+    account_ids: list[str],
+) -> bool:
     """Decide whether the RBAC service already holds a real access row for this agent.
 
-    The service answers the whitelist read for an unknown agent with the same default
-    body a freshly bootstrapped agent has (`scope=all`, auto-include on) and no member
-    ids, so the config alone cannot tell them apart. Anything else — a narrowed scope,
-    or seeded default-policy members — can only come from a stored row.
+    A current RBAC service answers with `configured`, which says outright whether a stored
+    scope row backs the response; when it is there it is the only signal worth trusting.
+
+    An older service omits it. It then answers the whitelist read for an unknown agent with
+    the same default body a freshly bootstrapped agent has (`scope=all`, auto-include on)
+    and no member ids, so the config alone cannot tell them apart. Anything else — a
+    narrowed scope, or seeded default-policy members — can only come from a stored row.
     """
-    return scope is not RBACResourceWhitelistScope.ALL or bool(account_ids)
+    fabricated_default_body = scope is RBACResourceWhitelistScope.ALL and not account_ids
+    return not fabricated_default_body if configured is None else configured
 
 
 def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions) -> None:
@@ -1197,13 +1209,10 @@ def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions
     )
 
 
+# The scope row is written last on purpose: only `replace_whitelist` creates it, and every step
+# before it is a replace, so a failure part-way leaves `configured=false` and the next run redoes
+# this agent from the start instead of mistaking a half-seeded agent for a finished one.
 def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
-    RBACService.AgentAccess.replace_whitelist(
-        tenant_id=options.tenant_id,
-        account_id=options.operator_account_id,
-        agent_id=options.agent_id,
-        payload=ReplaceMemberBindings(automatic_include_workspace_members=True),
-    )
     for batch in _workspace_member_account_id_batches(options.tenant_id, options.member_batch_size):
         RBACService.AgentAccess.replace_user_access_policies(
             tenant_id=options.tenant_id,
@@ -1222,6 +1231,12 @@ def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
             resource_type=RBACResourceType.AGENT,
             resource_id=options.agent_id,
         )
+    RBACService.AgentAccess.replace_whitelist(
+        tenant_id=options.tenant_id,
+        account_id=options.operator_account_id,
+        agent_id=options.agent_id,
+        payload=ReplaceMemberBindings(automatic_include_workspace_members=True),
+    )
 
 
 def _emit_agent_access_bootstrap_skipped(
@@ -1253,7 +1268,7 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
         return
 
     account_ids = sorted(set(config.account_ids))
-    if _agent_access_is_initialized(scope, account_ids):
+    if _agent_access_is_initialized(config.configured, scope, account_ids):
         counts.already_initialized += 1
         _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.ALREADY_INITIALIZED)
         return
@@ -1261,7 +1276,18 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
     _report_backing_app_specific_whitelist(options)
 
     if options.apply:
-        _write_agent_access_rows(options)
+        try:
+            _write_agent_access_rows(options)
+        except Exception as exc:
+            _emit_agent_migration_event(
+                {
+                    "event": _AGENT_ACCESS_BOOTSTRAP_EVENT_KIND.failed,
+                    "tenant_id": options.tenant_id,
+                    "agent_id": options.agent_id,
+                    "error": str(exc),
+                }
+            )
+            raise click.ClickException(f"tenant {options.tenant_id} agent {options.agent_id}: {exc}") from exc
     counts.changed += 1
 
     event: dict[str, object] = {
@@ -1297,7 +1323,7 @@ def _bootstrap_tenant_agent_access(
                 owner_account_id = _owner_account_id(tenant_id, session=session)
         operator_account_id = creator_account_id or owner_account_id
         if not operator_account_id:
-            raise ValueError(f"No operator account for tenant={tenant_id} agent={agent_id}")
+            raise click.ClickException(f"tenant {tenant_id} agent {agent_id}: no operator account")
         _bootstrap_agent_access(
             _AgentAccessBootstrapOptions(
                 tenant_id=tenant_id,
@@ -1317,7 +1343,10 @@ def _bootstrap_tenant_agent_access(
     help=(
         "Upgrade step for agent RBAC. Phase 1 asks the RBAC service to replace agent.manage on every "
         "custom role with agent.create plus the agent.full_access binding. Phase 2 bootstraps the access "
-        "rows pre-existing agents never got, so they stay visible to workspace members. Dry run by default."
+        "rows pre-existing agents never got, so they stay visible to workspace members. On an RBAC "
+        "service too old to report whether a scope row exists, an agent whose scope was set to all "
+        "with no members by hand is indistinguishable from an uninitialised one and will be re-seeded. "
+        "Dry run by default."
     ),
 )
 @click.option("--tenant-id", help="Only migrate a single workspace.")

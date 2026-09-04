@@ -261,6 +261,9 @@ class ResourceWhitelist(_RBACModel):
 
 class ResourceWhitelistConfig(_RBACModel):
     automatic_include_workspace_members: bool
+    # Absent on RBAC services older than the agent bootstrap migration; true only when a
+    # stored scope row backs this response, false when the service fabricated the default.
+    configured: bool | None = None
 
 
 class ResourceWhitelistConfigResource(_RBACModel):
@@ -296,6 +299,9 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
     rbac_whitelist_scope: str | None = Field(
         default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
     )
+    # Absent on RBAC services older than the agent bootstrap migration; true only when a
+    # stored scope row backs this response, false when the service fabricated the default.
+    configured: bool | None = None
 
     @field_validator("account_ids", mode="before")
     @classmethod
