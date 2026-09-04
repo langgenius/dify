@@ -869,6 +869,22 @@ function retrievalSelectSql(
       database,
       "document_asset_id",
     )}`,
+    `${qualifiedDatabaseIdentifier(database, "retrieval_logical_document", "title")} AS ${quoteDatabaseIdentifier(
+      database,
+      "document_title",
+    )}`,
+    `${qualifiedDatabaseIdentifier(database, "retrieval_logical_document", "id")} AS ${quoteDatabaseIdentifier(
+      database,
+      "logical_document_id",
+    )}`,
+    `${qualifiedDatabaseIdentifier(database, "retrieval_logical_revision", "revision")} AS ${quoteDatabaseIdentifier(
+      database,
+      "logical_document_revision",
+    )}`,
+    `${qualifiedDatabaseIdentifier(database, "retrieval_knowledge_space", "name")} AS ${quoteDatabaseIdentifier(
+      database,
+      "knowledge_space_name",
+    )}`,
     `${qualifiedDatabaseIdentifier(database, nodeAlias, "permission_scope")} AS ${quoteDatabaseIdentifier(
       database,
       "permission_scope",
@@ -964,7 +980,83 @@ function retrievalJoinSql(
     database,
     documentAlias,
     "knowledge_space_id",
-  )} = ${qualifiedDatabaseIdentifier(database, nodeAlias, "knowledge_space_id")}`;
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    nodeAlias,
+    "knowledge_space_id",
+  )} JOIN ${quoteDatabaseIdentifier(database, "document_revisions")} retrieval_logical_revision ON ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "knowledge_space_id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    nodeAlias,
+    "knowledge_space_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "document_asset_id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    nodeAlias,
+    "document_asset_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "document_asset_version",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    artifactAlias,
+    "version",
+  )} JOIN ${quoteDatabaseIdentifier(database, "logical_documents")} retrieval_logical_document ON ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "tenant_id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "tenant_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "knowledge_space_id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "knowledge_space_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "document_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "active_revision",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_revision",
+    "revision",
+  )} JOIN ${quoteDatabaseIdentifier(database, "knowledge_spaces")} retrieval_knowledge_space ON ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_knowledge_space",
+    "tenant_id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "tenant_id",
+  )} AND ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_knowledge_space",
+    "id",
+  )} = ${qualifiedDatabaseIdentifier(
+    database,
+    "retrieval_logical_document",
+    "knowledge_space_id",
+  )}`;
 }
 
 function retrievalBoundedPublishedMemberJoinSql({
@@ -1259,8 +1351,8 @@ function retrievalMetadataFilterSql(
 }
 
 function retrievalEnabledDocumentPredicate(database: DatabaseAdapter, nodeAlias: string): string {
-  const documentAlias = "retrieval_logical_document";
-  const revisionAlias = "retrieval_active_revision";
+  const documentAlias = "retrieval_eligible_document";
+  const revisionAlias = "retrieval_eligible_revision";
   return `EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(database, "logical_documents")} ${documentAlias} JOIN ${quoteDatabaseIdentifier(database, "document_revisions")} ${revisionAlias} ON ${qualifiedDatabaseIdentifier(database, revisionAlias, "tenant_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "tenant_id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "knowledge_space_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "knowledge_space_id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "document_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "revision")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "active_revision")} WHERE ${qualifiedDatabaseIdentifier(database, documentAlias, "knowledge_space_id")} = ${qualifiedDatabaseIdentifier(database, nodeAlias, "knowledge_space_id")} AND ${qualifiedDatabaseIdentifier(database, documentAlias, "enabled")} = TRUE AND ${qualifiedDatabaseIdentifier(database, documentAlias, "status")} <> 'deleting' AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "document_asset_id")} = ${qualifiedDatabaseIdentifier(database, nodeAlias, "document_asset_id")})`;
 }
 

@@ -26,6 +26,7 @@ export type RetrievalEvidence = {
   documentId?: string
   documentName?: string
   documentRevision?: number
+  documentVersion?: number
   id: string
   images: string[]
   page?: number
@@ -180,6 +181,8 @@ function evidenceFromValue(
     record.logicalDocumentId,
     metadata.logical_document_id,
     metadata.logicalDocumentId,
+    citation.logical_document_id,
+    citation.logicalDocumentId,
     record.resource_type !== 'node' && record.resourceType !== 'node'
       ? record.target_id
       : undefined,
@@ -196,12 +199,20 @@ function evidenceFromValue(
     citation.document_asset_id,
   )
   const documentRevision = firstNumber(
+    record.logical_document_revision,
+    record.logicalDocumentRevision,
     record.document_revision,
     record.documentRevision,
-    record.document_version,
-    record.documentVersion,
+    metadata.logical_document_revision,
+    metadata.logicalDocumentRevision,
     metadata.document_revision,
     metadata.documentRevision,
+    citation.logical_document_revision,
+    citation.logicalDocumentRevision,
+  )
+  const documentVersion = firstNumber(
+    record.document_version,
+    record.documentVersion,
     metadata.document_version,
     metadata.documentVersion,
     citation.document_version,
@@ -265,6 +276,7 @@ function evidenceFromValue(
     documentId,
     documentName,
     documentRevision,
+    documentVersion,
     id,
     images: [...new Set(images)],
     page,
@@ -275,13 +287,7 @@ function evidenceFromValue(
       metadata.revision,
       metadata.revision_label,
       metadata.revisionLabel,
-      typeof metadata.documentVersion === 'number' ? String(metadata.documentVersion) : undefined,
-      typeof citation.documentVersion === 'number'
-        ? `Revision ${citation.documentVersion}`
-        : undefined,
-      typeof citation.document_version === 'number'
-        ? `Revision ${citation.document_version}`
-        : undefined,
+      typeof documentRevision === 'number' ? String(documentRevision) : undefined,
     ),
     score,
     text: text ?? '',

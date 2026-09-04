@@ -268,6 +268,12 @@ export interface LogicalDocumentRepository {
   getRevision(
     input: LogicalDocumentLookup & { readonly revision: number },
   ): Promise<DocumentRevision | null>;
+  resolveRevisionByAsset(
+    input: LogicalDocumentScope & {
+      readonly documentAssetId: string;
+      readonly documentAssetVersion: number;
+    },
+  ): Promise<DocumentRevision | null>;
   list(input: ListLogicalDocumentsInput): Promise<ListLogicalDocumentsResult>;
   listRevisions(input: ListDocumentRevisionsInput): Promise<ListDocumentRevisionsResult>;
   listActiveBySource(
@@ -702,6 +708,19 @@ export function createInMemoryLogicalDocumentRepository({
           ? { nextCursor: { revision: last.revision } }
           : {}),
       };
+    },
+    resolveRevisionByAsset: async (input) => {
+      const revision = [...revisions.values()]
+        .flat()
+        .filter(
+          (revision) =>
+            revision.tenantId === input.tenantId &&
+            revision.knowledgeSpaceId === input.knowledgeSpaceId &&
+            revision.documentAssetId === input.documentAssetId &&
+            revision.documentAssetVersion === input.documentAssetVersion,
+        )
+        .sort((left, right) => right.revision - left.revision)[0];
+      return revision ? cloneRevision(revision) : null;
     },
     listActiveBySource: async (input) => {
       validateListLimit(input.limit);
@@ -1420,6 +1439,21 @@ export function createDatabaseLogicalDocumentRepository({
       }),
     get: (input) => getWithActive(database, input),
     getRevision: (input) => readRevision(database, input),
+    resolveRevisionByAsset: async (input) => {
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [
+          input.tenantId,
+          input.knowledgeSpaceId,
+          input.documentAssetId,
+          input.documentAssetVersion,
+        ],
+        sql: `SELECT * FROM ${q(database, "document_revisions")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "document_asset_id")} = ${p(database, 3)} AND ${q(database, "document_asset_version")} = ${p(database, 4)} ORDER BY ${q(database, "revision")} DESC LIMIT 1;`,
+        tableName: "document_revisions",
+      });
+      return result.rows[0] ? mapRevision(result.rows[0]) : null;
+    },
     isAssetReferenced: async (input) => {
       const result = await database.execute({
         maxRows: 1,

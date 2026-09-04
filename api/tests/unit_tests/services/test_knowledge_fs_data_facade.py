@@ -2266,6 +2266,13 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             None,
         ),
         (
+            "resolve_document_reference",
+            "KnowledgeFSResolvedDocumentReferenceResponse",
+            "resolveDocumentReference",
+            {"document_asset_id": "asset-1", "document_asset_version": 7},
+            None,
+        ),
+        (
             "get_logical_document",
             "KnowledgeFSLogicalDocumentResponse",
             "getLogicalDocument",

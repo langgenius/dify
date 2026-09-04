@@ -53,6 +53,9 @@ import {
   zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath,
   zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolvePath,
+  zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveQuery,
+  zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetPath,
   zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse,
@@ -607,6 +610,30 @@ export const bulkJobs = {
   byJobId: byJobId2,
 }
 
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolve',
+    path: '/knowledge-fs/spaces/{control_space_id}/document-references/resolve',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolvePath,
+      query: zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveQuery,
+    }),
+  )
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse)
+
+export const resolve = {
+  get: get7,
+}
+
+export const documentReferences = {
+  resolve,
+}
+
 export const delete3 = oc
   .route({
     inputStructure: 'detailed',
@@ -649,7 +676,7 @@ export const reindex = {
   post: post6,
 }
 
-export const get7 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -667,14 +694,14 @@ export const get7 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse)
 
 export const asset = {
-  get: get7,
+  get: get8,
 }
 
 export const byItemId = {
   asset,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -688,11 +715,11 @@ export const get8 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponse)
 
 export const multimodal = {
-  get: get8,
+  get: get9,
   byItemId,
 }
 
-export const get9 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -706,10 +733,10 @@ export const get9 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponse)
 
 export const outline = {
-  get: get9,
+  get: get10,
 }
 
-export const get10 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -729,10 +756,10 @@ export const get10 = oc
   )
 
 export const byChunkId = {
-  get: get10,
+  get: get11,
 }
 
-export const get11 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -754,7 +781,7 @@ export const get11 = oc
   )
 
 export const chunks = {
-  get: get11,
+  get: get12,
   byChunkId,
 }
 
@@ -762,7 +789,7 @@ export const byRevision = {
   chunks,
 }
 
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -779,7 +806,7 @@ export const get12 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponse)
 
 export const revisions = {
-  get: get12,
+  get: get13,
   byRevision,
 }
 
@@ -801,7 +828,7 @@ export const delete4 = oc
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse)
 
-export const get13 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -830,14 +857,14 @@ export const patch = oc
 
 export const byDocumentId = {
   delete: delete4,
-  get: get13,
+  get: get14,
   patch,
   multimodal,
   outline,
   revisions,
 }
 
-export const get14 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -876,14 +903,14 @@ export const post7 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
 
 export const documents = {
-  get: get14,
+  get: get15,
   post: post7,
   bulk,
   reindex,
   byDocumentId,
 }
 
-export const get15 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -911,7 +938,7 @@ export const put2 = oc
   .output(zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse)
 
 export const externalAccess = {
-  get: get15,
+  get: get16,
   put: put2,
 }
 
@@ -991,7 +1018,7 @@ export const byQuestionId = {
   patch: patch2,
 }
 
-export const get16 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1025,7 +1052,7 @@ export const post10 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse)
 
 export const goldenQuestions = {
-  get: get16,
+  get: get17,
   post: post10,
   bulkImport,
   evidenceMatches,
@@ -1058,7 +1085,7 @@ export const delete6 = oc
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse)
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1071,7 +1098,7 @@ export const get17 = oc
 
 export const byJobId3 = {
   delete: delete6,
-  get: get17,
+  get: get18,
   retry: retry2,
 }
 
@@ -1121,7 +1148,7 @@ export const downloadZip = {
   post: post12,
 }
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1137,7 +1164,7 @@ export const get18 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse)
 
 export const download = {
-  get: get18,
+  get: get19,
 }
 
 export const delete8 = oc
@@ -1158,7 +1185,7 @@ export const delete8 = oc
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
 
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1189,12 +1216,12 @@ export const patch3 = oc
 
 export const byDocumentId2 = {
   delete: delete8,
-  get: get19,
+  get: get20,
   patch: patch3,
   download,
 }
 
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1227,7 +1254,7 @@ export const patch4 = oc
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse)
 
 export const logicalDocuments = {
-  get: get20,
+  get: get21,
   patch: patch4,
   bulk: bulk2,
   downloadZip,
@@ -1291,7 +1318,7 @@ export const byFieldId = {
   patch: patch5,
 }
 
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1325,12 +1352,12 @@ export const post13 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdMetadataResponse)
 
 export const metadata = {
-  get: get21,
+  get: get22,
   post: post13,
   byFieldId,
 }
 
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1347,10 +1374,10 @@ export const get22 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponse)
 
 export const activity = {
-  get: get22,
+  get: get23,
 }
 
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1367,10 +1394,10 @@ export const get23 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponse)
 
 export const attention = {
-  get: get23,
+  get: get24,
 }
 
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1382,10 +1409,10 @@ export const get24 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthResponse)
 
 export const health = {
-  get: get24,
+  get: get25,
 }
 
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1397,10 +1424,10 @@ export const get25 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryResponse)
 
 export const inventory = {
-  get: get25,
+  get: get26,
 }
 
-export const get26 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1417,10 +1444,10 @@ export const get26 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesResponse)
 
 export const queryOutcomes = {
-  get: get26,
+  get: get27,
 }
 
-export const get27 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1437,7 +1464,7 @@ export const get27 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsResponse)
 
 export const stats = {
-  get: get27,
+  get: get28,
 }
 
 export const overview = {
@@ -1449,7 +1476,7 @@ export const overview = {
   stats,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1461,10 +1488,10 @@ export const get28 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdPermissionsResponse)
 
 export const permissions = {
-  get: get28,
+  get: get29,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1480,10 +1507,10 @@ export const get29 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse)
 
 export const traceReference = {
-  get: get29,
+  get: get30,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1511,12 +1538,12 @@ export const patch6 = oc
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse)
 
 export const byBadCaseId = {
-  get: get30,
+  get: get31,
   patch: patch6,
   traceReference,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1550,12 +1577,12 @@ export const post14 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse)
 
 export const badCases = {
-  get: get31,
+  get: get32,
   post: post14,
   byBadCaseId,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1572,10 +1599,10 @@ export const get32 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get32,
+  get: get33,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1610,7 +1637,7 @@ export const post15 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse)
 
 export const replayRuns = {
-  get: get33,
+  get: get34,
   post: post15,
   byRunId,
 }
@@ -1705,7 +1732,7 @@ export const plan = {
   post: post19,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1722,7 +1749,7 @@ export const get34 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponse)
 
 export const partials = {
-  get: get34,
+  get: get35,
 }
 
 export const delete10 = oc
@@ -1736,7 +1763,7 @@ export const delete10 = oc
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse)
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1749,11 +1776,11 @@ export const get35 = oc
 
 export const byTaskId3 = {
   delete: delete10,
-  get: get35,
+  get: get36,
   partials,
 }
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1787,13 +1814,13 @@ export const post20 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse)
 
 export const researchTasks2 = {
-  get: get36,
+  get: get37,
   post: post20,
   plan,
   byTaskId: byTaskId3,
 }
 
-export const get37 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1807,14 +1834,14 @@ export const get37 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse)
 
 export const byMigrationId = {
-  get: get37,
+  get: get38,
 }
 
 export const migrations = {
   byMigrationId,
 }
 
-export const get38 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1842,7 +1869,7 @@ export const patch7 = oc
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse)
 
 export const settings = {
-  get: get38,
+  get: get39,
   patch: patch7,
   migrations,
 }
@@ -1871,7 +1898,7 @@ export const byConnectionId = {
   refresh,
 }
 
-export const get39 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1905,12 +1932,12 @@ export const post22 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse)
 
 export const sourceConnections = {
-  get: get39,
+  get: get40,
   post: post22,
   byConnectionId,
 }
 
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1922,7 +1949,7 @@ export const get40 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse)
 
 export const sourceProviders = {
-  get: get40,
+  get: get41,
 }
 
 export const post23 = oc
@@ -1945,7 +1972,7 @@ export const cancel2 = {
   post: post23,
 }
 
-export const get41 = oc
+export const get42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1962,7 +1989,7 @@ export const get41 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse)
 
 export const pages = {
-  get: get41,
+  get: get42,
 }
 
 export const post24 = oc
@@ -2004,7 +2031,7 @@ export const selection = {
   post: post25,
 }
 
-export const get42 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2016,7 +2043,7 @@ export const get42 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse)
 
 export const byRunId2 = {
-  get: get42,
+  get: get43,
   cancel: cancel2,
   pages,
   retry: retry3,
@@ -2092,7 +2119,7 @@ export const crawlPreview = {
   post: post28,
 }
 
-export const get43 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2109,7 +2136,7 @@ export const get43 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponse)
 
 export const files = {
-  get: get43,
+  get: get44,
 }
 
 export const post29 = oc
@@ -2152,7 +2179,7 @@ export const importFiles = {
   post: post30,
 }
 
-export const get44 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2169,7 +2196,7 @@ export const get44 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse)
 
 export const pages2 = {
-  get: get44,
+  get: get45,
 }
 
 export const post31 = oc
@@ -2193,7 +2220,7 @@ export const sync = {
   post: post31,
 }
 
-export const get45 = oc
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2221,7 +2248,7 @@ export const put4 = oc
   .output(zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse)
 
 export const syncPolicy = {
-  get: get45,
+  get: get46,
   put: put4,
 }
 
@@ -2281,7 +2308,7 @@ export const delete11 = oc
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
 
-export const get46 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2310,7 +2337,7 @@ export const patch8 = oc
 
 export const bySourceId = {
   delete: delete11,
-  get: get46,
+  get: get47,
   patch: patch8,
   asyncImport,
   crawlImport,
@@ -2325,7 +2352,7 @@ export const bySourceId = {
   workflowImports,
 }
 
-export const get47 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2359,12 +2386,12 @@ export const post34 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse)
 
 export const sources = {
-  get: get47,
+  get: get48,
   post: post34,
   bySourceId,
 }
 
-export const get48 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2392,11 +2419,11 @@ export const put5 = oc
   .output(zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse)
 
 export const tags = {
-  get: get48,
+  get: get49,
   put: put5,
 }
 
-export const get49 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2413,10 +2440,10 @@ export const get49 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse)
 
 export const conflicts = {
-  get: get49,
+  get: get50,
 }
 
-export const get50 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2433,10 +2460,10 @@ export const get50 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponse)
 
 export const evidence = {
-  get: get50,
+  get: get51,
 }
 
-export const get51 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2453,10 +2480,10 @@ export const get51 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse)
 
 export const missing = {
-  get: get51,
+  get: get52,
 }
 
-export const get52 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2468,13 +2495,13 @@ export const get52 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponse)
 
 export const byTraceId = {
-  get: get52,
+  get: get53,
   conflicts,
   evidence,
   missing,
 }
 
-export const get53 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2491,7 +2518,7 @@ export const get53 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesResponse)
 
 export const traces = {
-  get: get53,
+  get: get54,
   byTraceId,
 }
 
@@ -2629,7 +2656,7 @@ export const delete12 = oc
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdResponse)
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2658,11 +2685,12 @@ export const patch9 = oc
 
 export const byControlSpaceId = {
   delete: delete12,
-  get: get54,
+  get: get55,
   patch: patch9,
   appBindings,
   backgroundTasks,
   bulkJobs,
+  documentReferences,
   documents,
   externalAccess,
   goldenQuestions,
@@ -2686,7 +2714,7 @@ export const byControlSpaceId = {
   uploadSessions,
 }
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2710,7 +2738,7 @@ export const post40 = oc
   .output(zPostKnowledgeFsSpacesResponse)
 
 export const spaces = {
-  get: get55,
+  get: get56,
   post: post40,
   byControlSpaceId,
 }

@@ -57,8 +57,11 @@ export type CitationItem = {
   data_source_type: string
   dataset_name: string
   dataset_id: string
+  document_asset_id?: string | null
   document_id: string
   document_name: string
+  document_revision?: number | null
+  document_version?: number | null
   hit_count: number
   index_node_hash: string
   segment_id: string

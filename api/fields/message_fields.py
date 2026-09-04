@@ -30,6 +30,9 @@ class RetrieverResource(ResponseModel):
     dataset_id: UUIDString | None = None
     dataset_name: str | None = None
     document_id: UUIDString | None = None
+    document_asset_id: UUIDString | None = None
+    document_revision: int | None = None
+    document_version: int | None = None
     document_name: str | None = None
     data_source_type: str | None = None
     segment_id: UUIDString | None = None

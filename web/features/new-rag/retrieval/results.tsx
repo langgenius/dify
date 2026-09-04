@@ -20,7 +20,7 @@ import { Link as MarkdownLink, ThinkBlock } from '@/app/components/base/markdown
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
@@ -48,39 +48,6 @@ function ScorePill({ score }: { score: number }) {
       <span className="relative system-xs-semibold">{displayedScore}</span>
     </span>
   )
-}
-
-async function resolveLogicalDocumentId({
-  documentAssetId,
-  documentName,
-  knowledgeSpaceId,
-}: {
-  documentAssetId: string
-  documentName?: string
-  knowledgeSpaceId: string
-}) {
-  const matchingDocumentIds = new Set<string>()
-  const visitedCursors = new Set<string>()
-  let cursor: string | undefined
-
-  while (true) {
-    const page = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get({
-      params: { control_space_id: knowledgeSpaceId },
-      query: cursor ? { cursor } : {},
-    })
-
-    for (const document of page.data) {
-      if (document.active?.document_asset_id === documentAssetId) return document.id
-      if (documentName && document.title === documentName) matchingDocumentIds.add(document.id)
-    }
-
-    const nextCursor = page.next_cursor ?? undefined
-    if (!nextCursor || visitedCursors.has(nextCursor)) break
-    visitedCursors.add(nextCursor)
-    cursor = nextCursor
-  }
-
-  return matchingDocumentIds.size === 1 ? [...matchingDocumentIds][0] : undefined
 }
 
 function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
@@ -113,19 +80,19 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
   const handleOpen = async () => {
     setIsResolving(true)
     try {
-      const documentId = await resolveLogicalDocumentId({
+      const citation = await resolveLogicalDocumentCitation({
         documentAssetId,
-        documentName: evidence.documentName,
+        documentVersion: evidence.documentVersion,
         knowledgeSpaceId,
       })
-      if (!documentId) {
+      if (!citation) {
         toast.error(t(($) => $.documentNotFoundDescription))
         return
       }
       router.push(
-        newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId, {
+        newKnowledgeDocumentDetailPath(knowledgeSpaceId, citation.documentId, {
           chunkId: evidence.chunkId,
-          revision: evidence.documentRevision,
+          revision: citation.revision,
         }),
       )
     } catch {

@@ -833,26 +833,49 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         score: float,
     ) -> dict[str, Any]:
         citation = item.citation
-        title = citation.section_path[-1] if citation.section_path else citation.document_asset_id
+        title = citation.document_title or citation.document_asset_id
+        content = item.text or ""
+        citation_metadata = {
+            "artifact_hash": citation.artifact_hash,
+            "document_id": citation.logical_document_id or citation.document_asset_id,
+            "document_asset_id": citation.document_asset_id,
+            "document_version": citation.document_version,
+            "logical_document_id": citation.logical_document_id,
+            "logical_document_revision": citation.logical_document_revision,
+            "section_path": list(citation.section_path),
+            **({"page_number": citation.page_number} if citation.page_number is not None else {}),
+            **({"start_offset": citation.start_offset} if citation.start_offset is not None else {}),
+            **({"end_offset": citation.end_offset} if citation.end_offset is not None else {}),
+        }
         return {
-            "content": item.text or "",
+            "content": content,
             "title": title,
             "metadata": {
-                "citation": {
-                    "artifact_hash": citation.artifact_hash,
-                    "document_id": citation.document_asset_id,
-                    "document_version": citation.document_version,
-                    "section_path": list(citation.section_path),
-                    **({"page_number": citation.page_number} if citation.page_number is not None else {}),
-                    **({"start_offset": citation.start_offset} if citation.start_offset is not None else {}),
-                    **({"end_offset": citation.end_offset} if citation.end_offset is not None else {}),
-                },
+                "citation": citation_metadata,
                 "node_id": item.node_id,
                 "projection_ids": list(item.projection_ids),
                 "score": score,
                 "space_score": item.score,
                 "sources": list(item.sources),
                 "space_id": control_space_id,
+                # LLM context extraction currently recognizes the legacy Knowledge
+                # metadata contract. Preserve the native KnowledgeFS citation above
+                # while providing the compatibility fields needed to emit chat
+                # retriever resources.
+                "_source": "knowledge",
+                "dataset_id": control_space_id,
+                "dataset_name": citation.knowledge_space_name or control_space_id,
+                "document_id": citation.logical_document_id or citation.document_asset_id,
+                "document_asset_id": citation.document_asset_id,
+                "document_name": title,
+                "document_revision": citation.logical_document_revision,
+                "document_version": citation.document_version,
+                "data_source_type": "knowledge_fs",
+                "segment_id": item.node_id,
+                "retriever_from": "workflow",
+                "segment_word_count": len(content),
+                "segment_index_node_hash": citation.artifact_hash,
+                "page": citation.page_number,
             },
         }
 

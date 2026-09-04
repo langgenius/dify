@@ -724,8 +724,11 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null

@@ -105,6 +105,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskPlanPayload,
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskResponse,
+    KnowledgeFSResolvedDocumentReferenceResponse,
     KnowledgeFSRetrievalProfileUpdatePayload,
     KnowledgeFSRetrievalSettingsResponse,
     KnowledgeFSSettingsPayload,
@@ -1119,6 +1120,27 @@ class KnowledgeFSDataFacade:
             query=_knowledge_fs_query(("cursor", cursor), ("limit", limit)),
         )
         return KnowledgeFSDocumentRevisionListResponse.model_validate(raw)
+
+    def resolve_document_reference(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        document_asset_id: str,
+        document_asset_version: int,
+    ) -> KnowledgeFSResolvedDocumentReferenceResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="resolveDocumentReference",
+            query=_knowledge_fs_query(
+                ("documentAssetId", document_asset_id),
+                ("documentAssetVersion", document_asset_version),
+            ),
+        )
+        return KnowledgeFSResolvedDocumentReferenceResponse.model_validate(raw)
 
     def update_document_metadata(
         self,

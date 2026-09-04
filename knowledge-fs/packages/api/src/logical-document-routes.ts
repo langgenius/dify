@@ -24,6 +24,8 @@ import {
   PatchDocumentAvailabilitySchema,
   PatchDocumentSettingsSchema,
   PatchDocumentUserMetadataSchema,
+  ResolveDocumentReferenceQuerySchema,
+  ResolvedDocumentReferenceSchema,
   RollbackDocumentRevisionSchema,
 } from "./logical-document-schemas";
 
@@ -57,6 +59,23 @@ export const listLogicalDocumentsRoute = createRoute({
       description: "Logical documents",
     },
     ...invalidCursorError,
+    ...commonErrors,
+  },
+});
+
+export const resolveDocumentReferenceRoute = createRoute({
+  method: "get",
+  operationId: "resolveDocumentReference",
+  path: "/knowledge-spaces/{id}/document-references/resolve",
+  request: {
+    params: LogicalDocumentParamsSchema.pick({ id: true }),
+    query: ResolveDocumentReferenceQuerySchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ResolvedDocumentReferenceSchema } },
+      description: "Logical document reference for an immutable asset version",
+    },
     ...commonErrors,
   },
 });

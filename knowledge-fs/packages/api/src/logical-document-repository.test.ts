@@ -25,6 +25,48 @@ const otherSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e02";
 const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f01";
 
 describe("logical document repository", () => {
+  it("resolves a superseded revision by its immutable asset version", async () => {
+    const repository = memoryRepository();
+    const first = await repository.createCandidateRevision(
+      createRevisionInput({ documentAssetId: firstAssetId }),
+    );
+    const activeFirst = await repository.activateRevision({
+      documentId,
+      expectedActiveRevision: null,
+      expectedRowVersion: 0,
+      knowledgeSpaceId,
+      now: "2026-07-14T12:01:00.000Z",
+      revision: first.revision.revision,
+      tenantId,
+    });
+    const second = await repository.createCandidateRevision(
+      createRevisionInput({
+        documentAssetId: secondAssetId,
+        documentId,
+        expectedActiveRevision: activeFirst.activeRevision ?? null,
+        expectedDocumentRowVersion: activeFirst.rowVersion,
+      }),
+    );
+    await repository.activateRevision({
+      documentId,
+      expectedActiveRevision: activeFirst.activeRevision ?? null,
+      expectedRowVersion: activeFirst.rowVersion,
+      knowledgeSpaceId,
+      now: "2026-07-14T12:02:00.000Z",
+      revision: second.revision.revision,
+      tenantId,
+    });
+
+    await expect(
+      repository.resolveRevisionByAsset({
+        documentAssetId: firstAssetId,
+        documentAssetVersion: 1,
+        knowledgeSpaceId,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({ documentId, revision: 1, state: "superseded" });
+  });
+
   it("keeps capability provenance on an idempotent in-memory asset tuple", async () => {
     const repository = memoryRepository();
     const input = createRevisionInput({ capabilityGrantId });

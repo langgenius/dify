@@ -664,6 +664,28 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert result == ("", HTTPStatus.NO_CONTENT)
 
 
+def test_console_document_reference_delegates_exact_asset_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    facade = MagicMock()
+    facade.resolve_document_reference.return_value = _RAW_RESULT
+    runtime = SimpleNamespace(facade=facade)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/?document_asset_id=asset-1&document_asset_version=7"):
+        result = _invoke(console_resources, "KnowledgeFSSpaceDocumentReferenceApi", "get", "space-1")
+
+    assert result is _RAW_RESULT
+    facade.resolve_document_reference.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="space-1",
+        document_asset_id="asset-1",
+        document_asset_version=7,
+    )
+
+
 def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pytest.MonkeyPatch) -> None:
     application = MagicMock()
     application.list_spaces.return_value = _RAW_RESULT

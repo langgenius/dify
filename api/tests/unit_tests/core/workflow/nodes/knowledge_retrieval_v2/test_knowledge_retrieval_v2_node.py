@@ -46,7 +46,11 @@ def _response(*, mode: str, score: float, space: str, text: str) -> KnowledgeFSR
                     "citation": {
                         "artifactHash": "a" * 64,
                         "documentAssetId": f"document-{space}",
+                        "documentTitle": f"{space}.pdf",
                         "documentVersion": 2,
+                        "knowledgeSpaceName": f"Space {space}",
+                        "logicalDocumentId": f"logical-{space}",
+                        "logicalDocumentRevision": 4,
                         "pageNumber": 3,
                         "sectionPath": ["Camera", space],
                     },
@@ -418,6 +422,35 @@ def test_multi_space_retrieval_uses_one_system_reranker_and_returns_mixed_metric
         call["payload"].filters.document_types == ["handbook"]  # type: ignore[attr-defined]
         for call in service.calls
     )
+
+
+def test_retrieval_output_includes_chat_citation_compatibility_metadata() -> None:
+    result = _node(
+        service=RecordingCapabilityService(
+            {"space-a": _response(mode="fast", score=0.7, space="space-a", text="Camera manual")}
+        ),
+        spaces=["space-a"],
+    )._run()
+
+    item = result.outputs["result"].value[0]
+    metadata = item["metadata"]
+
+    assert metadata["_source"] == "knowledge"
+    assert metadata["dataset_id"] == "space-a"
+    assert metadata["dataset_name"] == "Space space-a"
+    assert metadata["document_id"] == "logical-space-a"
+    assert metadata["document_asset_id"] == "document-space-a"
+    assert metadata["document_name"] == "space-a.pdf"
+    assert metadata["document_revision"] == 4
+    assert metadata["document_version"] == 2
+    assert metadata["citation"]["document_id"] == "logical-space-a"
+    assert metadata["citation"]["document_asset_id"] == "document-space-a"
+    assert metadata["citation"]["document_version"] == 2
+    assert metadata["data_source_type"] == "knowledge_fs"
+    assert metadata["segment_id"] == "node-space-a"
+    assert metadata["retriever_from"] == "workflow"
+    assert metadata["segment_index_node_hash"] == "a" * 64
+    assert metadata["page"] == 3
 
 
 def test_workflow_query_image_is_forwarded_to_every_space_with_independent_degradation(

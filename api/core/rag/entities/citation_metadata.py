@@ -8,7 +8,10 @@ class RetrievalSourceMetadata(BaseModel):
     dataset_id: str | None = None
     dataset_name: str | None = None
     document_id: str | None = None
+    document_asset_id: str | None = None
     document_name: str | None = None
+    document_revision: int | None = None
+    document_version: int | None = None
     data_source_type: str | None = None
     segment_id: str | None = None
     retriever_from: str | None = None

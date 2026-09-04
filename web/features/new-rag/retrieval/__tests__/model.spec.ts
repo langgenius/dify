@@ -49,8 +49,10 @@ describe('retrieval test model', () => {
           {
             kind: 'resource',
             metadata: {
-              documentId: 'document-1',
+              documentAssetId: 'asset-1',
               documentVersion: 3,
+              logicalDocumentId: 'document-1',
+              logicalDocumentRevision: 4,
               score: 0.89,
               text: 'Verification marker: OR-KFS-2026-07-28.',
               title: 'OpenRouter chain smoke test',
@@ -64,10 +66,12 @@ describe('retrieval test model', () => {
     ).toEqual([
       expect.objectContaining({
         chunkId: 'node-1',
-        documentAssetId: 'document-1',
-        documentRevision: 3,
+        documentAssetId: 'asset-1',
+        documentId: 'document-1',
+        documentRevision: 4,
+        documentVersion: 3,
         id: 'node-1',
-        revision: '3',
+        revision: '4',
         text: 'Verification marker: OR-KFS-2026-07-28.',
         title: 'OpenRouter chain smoke test',
       }),
@@ -135,6 +139,8 @@ describe('retrieval test model', () => {
                     {
                       documentAssetId: 'asset-1',
                       documentVersion: 2,
+                      logicalDocumentId: 'document-1',
+                      logicalDocumentRevision: 3,
                     },
                   ],
                   nodeId: 'node-1',
@@ -150,7 +156,10 @@ describe('retrieval test model', () => {
       expect.objectContaining({
         chunkId: 'node-1',
         documentAssetId: 'asset-1',
-        revision: 'Revision 2',
+        documentId: 'document-1',
+        documentRevision: 3,
+        documentVersion: 2,
+        revision: '3',
         score: 0.45,
       }),
     ])

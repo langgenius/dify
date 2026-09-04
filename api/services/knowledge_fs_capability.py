@@ -508,6 +508,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/logical-documents",
             "knowledge_space",
         ),
+        "resolveDocumentReference": KnowledgeFSCapabilityOperation(
+            "logical_documents.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/document-references/resolve",
+            "knowledge_space",
+        ),
         "getLogicalDocument": KnowledgeFSCapabilityOperation(
             "logical_documents.read",
             _STANDARD_CALLERS,

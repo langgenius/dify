@@ -28,6 +28,14 @@ export const zKnowledgeFsBulkJobResponse = z.object({
 })
 
 /**
+ * KnowledgeFSResolvedDocumentReferenceResponse
+ */
+export const zKnowledgeFsResolvedDocumentReferenceResponse = z.object({
+  document_id: z.string(),
+  revision: z.int().gte(1),
+})
+
+/**
  * KnowledgeFSDocumentStagedUploadPayload
  */
 export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
@@ -3367,6 +3375,21 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
   zKnowledgeFsBulkJobResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolvePath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveQuery = z.object({
+  document_asset_id: z.string().min(1).max(255),
+  document_asset_version: z.int().gte(1),
+})
+
+/**
+ * Resolved KnowledgeFS document reference
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse =
+  zKnowledgeFsResolvedDocumentReferenceResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
   control_space_id: z.string(),

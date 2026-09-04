@@ -269,6 +269,28 @@ describe("logical document handlers", () => {
     );
   });
 
+  it("resolves an immutable asset version with one repository lookup", async () => {
+    const revision = revisionFixture({ revision: 4 });
+    const resolveRevisionByAsset = vi.fn(async () => revision);
+    const app = handlerApp({
+      logicalDocuments: logicalDocumentRepository({ resolveRevisionByAsset }),
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/document-references/resolve?documentAssetId=${assetId}&documentAssetVersion=7`,
+    );
+
+    expect(response.status, await response.clone().text()).toBe(200);
+    await expect(response.json()).resolves.toEqual({ documentId, revision: 4 });
+    expect(resolveRevisionByAsset).toHaveBeenCalledOnce();
+    expect(resolveRevisionByAsset).toHaveBeenCalledWith({
+      documentAssetId: assetId,
+      documentAssetVersion: 7,
+      knowledgeSpaceId,
+      tenantId,
+    });
+  });
+
   it("hides missing documents and revisions whose immutable assets are unreadable", async () => {
     const missing = handlerApp({
       logicalDocuments: logicalDocumentRepository({ get: vi.fn(async () => null) }),
@@ -291,6 +313,12 @@ describe("logical document handlers", () => {
     );
     expect(revisions.status, await revisions.clone().text()).toBe(200);
     await expect(revisions.json()).resolves.toEqual({ items: [] });
+    await expectStatus(
+      unreadable.request(
+        `/knowledge-spaces/${knowledgeSpaceId}/document-references/resolve?documentAssetId=${assetId}&documentAssetVersion=1`,
+      ),
+      404,
+    );
   });
 
   it("handles rollback availability, authorization, success, and CAS conflicts", async () => {
@@ -1023,6 +1051,7 @@ function logicalDocumentRepository(
     list: vi.fn(async () => ({ items: [document] })),
     listActiveBySource: vi.fn(async () => ({ items: [] })),
     listRevisions: vi.fn(async () => ({ items: [revision] })),
+    resolveRevisionByAsset: vi.fn(async () => revision),
     patchUserMetadata: vi.fn(async () => document),
     ...overrides,
   };

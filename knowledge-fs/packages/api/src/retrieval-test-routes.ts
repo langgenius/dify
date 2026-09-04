@@ -222,8 +222,12 @@ export const RetrievalTestResponseSchema = z
               .object({
                 artifactHash: z.string().min(1).max(128),
                 documentAssetId: BoundedIdentifierSchema,
+                documentTitle: z.string().max(512).optional(),
                 documentVersion: z.number().int().positive(),
                 endOffset: z.number().int().nonnegative().optional(),
+                knowledgeSpaceName: z.string().max(160).optional(),
+                logicalDocumentId: BoundedIdentifierSchema.optional(),
+                logicalDocumentRevision: z.number().int().positive().optional(),
                 pageNumber: z.number().int().nonnegative().optional(),
                 sectionPath: z.array(z.string().max(512)).max(64).readonly(),
                 startOffset: z.number().int().nonnegative().optional(),
