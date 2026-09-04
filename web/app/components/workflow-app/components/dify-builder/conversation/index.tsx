@@ -2,6 +2,7 @@ import type {
   ConversationItem,
   DifyBuilderActionPayloadChange,
   DifyBuilderActionValidityChange,
+  SessionView,
 } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
@@ -13,6 +14,7 @@ import { StreamingAssistantTurn } from './streaming-assistant-turn'
 export const DifyBuilderConversation = memo(
   ({
     busy,
+    activeInteraction,
     changesExpanded,
     interrupted,
     items,
@@ -21,6 +23,7 @@ export const DifyBuilderConversation = memo(
     onStreamingContentChange,
   }: {
     busy: boolean
+    activeInteraction: SessionView['active_interaction']
     changesExpanded: boolean
     interrupted: boolean
     items: ConversationItem[]
@@ -30,6 +33,7 @@ export const DifyBuilderConversation = memo(
   }) => {
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
+    const activeCard = activeInteraction?.card
     const hasThinkingTurn = useMemo(
       () => items.some((item) => item.kind === 'assistant_turn' && !item.payload.reply_text),
       [items],
@@ -47,11 +51,13 @@ export const DifyBuilderConversation = memo(
         )}
         {groups.map((group) => {
           if (group.type === 'standalone') {
+            if (group.item.seq === activeCard?.seq) return null
             return (
               <ConversationCard
                 key={`${group.item.seq}-${group.item.kind}`}
                 item={group.item}
                 busy={busy}
+                interactive={group.item.seq === activeInteraction?.card.seq}
                 changesExpanded={changesExpanded}
                 invalidated={false}
                 onActionPayloadChange={onActionPayloadChange}
@@ -74,25 +80,41 @@ export const DifyBuilderConversation = memo(
               <ConversationCard
                 item={group.turn}
                 busy={busy}
+                interactive={group.turn.seq === activeInteraction?.card.seq}
                 changesExpanded={changesExpanded}
                 invalidated={group.invalidated}
                 onActionPayloadChange={onActionPayloadChange}
                 onActionValidityChange={onActionValidityChange}
               />
-              {group.cards.map((item) => (
-                <ConversationCard
-                  key={`${item.seq}-${item.kind}`}
-                  item={item}
-                  busy={busy}
-                  changesExpanded={changesExpanded}
-                  invalidated={group.invalidated}
-                  onActionPayloadChange={onActionPayloadChange}
-                  onActionValidityChange={onActionValidityChange}
-                />
-              ))}
+              {group.cards
+                .filter((item) => item.seq !== activeCard?.seq)
+                .map((item) => (
+                  <ConversationCard
+                    key={`${item.seq}-${item.kind}`}
+                    item={item}
+                    busy={busy}
+                    interactive={item.seq === activeInteraction?.card.seq}
+                    changesExpanded={changesExpanded}
+                    invalidated={group.invalidated}
+                    onActionPayloadChange={onActionPayloadChange}
+                    onActionValidityChange={onActionValidityChange}
+                  />
+                ))}
             </div>
           )
         })}
+        {activeCard && (
+          <ConversationCard
+            key={`active-${activeCard.seq}-${activeCard.kind}`}
+            item={activeCard}
+            busy={busy}
+            interactive
+            changesExpanded={changesExpanded}
+            invalidated={false}
+            onActionPayloadChange={onActionPayloadChange}
+            onActionValidityChange={onActionValidityChange}
+          />
+        )}
         <StreamingAssistantTurn
           busy={busy}
           hasThinkingTurn={hasThinkingTurn}

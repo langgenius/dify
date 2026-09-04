@@ -1,11 +1,11 @@
-import type { FormField } from '../types'
+import type { ConversationItem, FormField } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { DifyBuilderConversation } from '../conversation'
-import { difyBuilderStreamingTurnAtom } from '../session/state'
+import { difyBuilderLiveProgressAtom, difyBuilderStreamingTurnAtom } from '../session/state'
 
 const mocks = vi.hoisted(() => ({
   fileUploader: vi.fn(),
@@ -67,19 +67,23 @@ const renderForm = (
   onActionPayloadChange = vi.fn(),
   onActionValidityChange = vi.fn(),
 ) => {
+  const card: Extract<ConversationItem, { kind: 'form' }> = {
+    seq: 0,
+    at_version: 1,
+    kind: 'form',
+    payload: { variant: 'testdata', fields, values },
+  }
   render(
     <DifyBuilderConversation
       busy={false}
+      activeInteraction={{
+        action_id: 'provide_testdata',
+        card,
+        valid_at_version: 1,
+      }}
       changesExpanded={false}
       interrupted={false}
-      items={[
-        {
-          seq: 0,
-          at_version: 1,
-          kind: 'form',
-          payload: { variant: 'testdata', fields, values },
-        },
-      ]}
+      items={[card]}
       onActionPayloadChange={onActionPayloadChange}
       onActionValidityChange={onActionValidityChange}
     />,
@@ -260,24 +264,28 @@ describe('DifyBuilderConversation test data form', () => {
   it('preserves form input while the isolated assistant tail streams', async () => {
     const user = userEvent.setup()
     const store = createStore()
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 0,
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: {},
+      },
+    }
     render(
       <Provider store={store}>
         <DifyBuilderConversation
           busy={false}
+          activeInteraction={{
+            action_id: 'provide_testdata',
+            card,
+            valid_at_version: 1,
+          }}
           changesExpanded={false}
           interrupted={false}
-          items={[
-            {
-              seq: 0,
-              at_version: 1,
-              kind: 'form',
-              payload: {
-                variant: 'testdata',
-                fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
-                values: {},
-              },
-            },
-          ]}
+          items={[card]}
           onActionPayloadChange={vi.fn()}
           onActionValidityChange={vi.fn()}
         />
@@ -287,17 +295,159 @@ describe('DifyBuilderConversation test data form', () => {
     await user.type(input, 'AI agents')
 
     act(() => {
+      store.set(difyBuilderLiveProgressAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        stageId: 'build.test',
+        atVersion: 2,
+        revision: 1,
+        trace: {
+          status: 'running',
+          steps: [
+            {
+              id: 'build-check-inputs',
+              label: 'Check test inputs',
+              state: 'active',
+              tone: 'neutral',
+            },
+          ],
+        },
+      })
       store.set(difyBuilderStreamingTurnAtom, {
         sessionId: 'session-1',
+        operationId: 'operation-1',
         turnId: 'turn-1',
         sequence: 1,
         atVersion: 2,
+        revision: 1,
         stageId: 'build.test',
         replyText: 'Checking the workflow',
       })
     })
 
     expect(input).toHaveValue('AI agents')
+    expect(screen.getByRole('status')).toHaveTextContent('Check test inputs')
     expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
+  })
+
+  it('restores the current interaction separately and freezes historical forms', async () => {
+    const user = userEvent.setup()
+    const oldCard: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 2,
+      at_version: 2,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: { topic: 'old value' },
+      },
+    }
+    const activeCard: Extract<ConversationItem, { kind: 'form' }> = {
+      seq: 8,
+      at_version: 5,
+      kind: 'form',
+      payload: {
+        variant: 'testdata',
+        fields: [{ key: 'topic', label: 'Topic', type: 'text-input' }],
+        values: { topic: 'restored value' },
+      },
+    }
+    const onActionPayloadChange = vi.fn()
+
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={{
+          action_id: 'provide_testdata',
+          card: activeCard,
+          valid_at_version: 5,
+        }}
+        changesExpanded={false}
+        interrupted={false}
+        items={[oldCard]}
+        onActionPayloadChange={onActionPayloadChange}
+      />,
+    )
+
+    const [historicalInput, activeInput] = screen.getAllByRole('textbox', { name: 'Topic' })
+    expect(historicalInput).toBeDisabled()
+    expect(historicalInput).toHaveValue('old value')
+    expect(activeInput).toBeEnabled()
+    expect(activeInput).toHaveValue('restored value')
+
+    await user.clear(activeInput!)
+    await user.type(activeInput!, 'new value')
+    await waitFor(() =>
+      expect(onActionPayloadChange).toHaveBeenLastCalledWith('provide_testdata', {
+        mode: 'provide',
+        inputs: { topic: 'new value' },
+      }),
+    )
+  })
+
+  it('keeps a completed trace available with the committed assistant reply', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: 'turn-1',
+              stage_id: 'build.initial_plan',
+              trace: {
+                status: 'completed',
+                steps: [
+                  {
+                    id: 'build-draft-plan',
+                    label: 'Draft the workflow plan',
+                    state: 'done',
+                    tone: 'success',
+                  },
+                ],
+              },
+              reply_text: 'The plan is ready.',
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Draft the workflow plan')).toBeInTheDocument()
+    expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
+  })
+
+  it('renders failed test results with the destructive card tone', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'test_result',
+            payload: {
+              tone: 'error',
+              title: 'Validation failed',
+              subtitle: 'One node returned an error.',
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Validation failed').closest('[data-card-state]')).toHaveClass(
+      'border-state-destructive-border',
+    )
   })
 })

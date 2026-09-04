@@ -98,7 +98,7 @@ def test_sessionview_has_new_fields():
         canvas_read_only=True,
         run_status=RunStatus.EXECUTING,
         interrupted=False,
-        conversation=[],
+        conversation_last_seq=-1,
     )
     d = session_view_to_dict(fix_session_view)
     assert d["entry_mode"] == "fix"
@@ -109,16 +109,17 @@ def test_sessionview_has_new_fields():
 
 def test_run_status_terminal_states():
     """Regression for the reviewer-found defect: PcState.BUILD_COMPLETE and
-    PcState.EDIT_PUBLISH are terminal (spec §7.1/§7.2, run_status: complete)
+    PcState.EDIT_COMPLETE are terminal (spec §7.1/§7.2, run_status: complete)
     but are absent from both _WORKING and _WAITING and aren't SUCCESS/FAILED
     -- _run_status must special-case is_terminal() before the waiting/working
     checks, or these fall through to EXECUTING."""
     assert _run_status(PcState.SUCCESS) == RunStatus.COMPLETE
     assert _run_status(PcState.FAILED) == RunStatus.FAILED
     assert _run_status(PcState.BUILD_COMPLETE) == RunStatus.COMPLETE
-    assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.COMPLETE
+    assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.EXECUTING
+    assert _run_status(PcState.EDIT_COMPLETE) == RunStatus.COMPLETE
     assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.EXECUTING  # working
-    assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_INPUT  # waiting
+    assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_CONFIRMATION
 
 
 def test_card_shapes_round_trip():
@@ -366,7 +367,7 @@ def test_transport_json_schema_contains_request_and_sse_unions():
     assert len(create_schema["anyOf"]) == 4
     assert "response_mode" not in str(create_schema)
     assert stream_schema["discriminator"]["propertyName"] == "event"
-    assert len(stream_schema["oneOf"]) == 7
+    assert len(stream_schema["oneOf"]) == 8
 
 
 def test_sse_union_accepts_current_payloads():
@@ -380,28 +381,72 @@ def test_sse_union_accepts_current_payloads():
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
-        "conversation": [],
+        "conversation_last_seq": -1,
     }
     events = [
-        {"event": "snapshot", "data": view},
+        {"event": "command_started", "data": {"kind": "command_started", **view}},
         {
             "event": "node",
-            "data": {"kind": "node", "node_id": "n1", "title": "LLM", "status": "running", "error": ""},
+            "data": {
+                "kind": "node",
+                "session_id": "s1",
+                "operation_id": "operation-1",
+                "stage_id": "edit.impact_analysis",
+                "at_version": 3,
+                "revision": 2,
+                "node_id": "n1",
+                "title": "LLM",
+                "status": "running",
+                "error": "",
+            },
         },
         {
             "event": "canvas",
-            "data": {"kind": "canvas", "event": "highlight_edit_target", "node_id": "n1"},
+            "data": {
+                "kind": "canvas",
+                "session_id": "s1",
+                "operation_id": "operation-1",
+                "stage_id": "edit.impact_analysis",
+                "at_version": 3,
+                "revision": 3,
+                "event": "highlight_edit_target",
+                "node_id": "n1",
+            },
         },
         {
             "event": "agent_message",
             "data": {
                 "kind": "agent_message",
                 "session_id": "s1",
+                "operation_id": "operation-1",
                 "id": "message-1",
                 "answer": "Working",
                 "seq": 1,
                 "at_version": 2,
+                "revision": 1,
                 "stage_id": "edit.impact_analysis",
+            },
+        },
+        {
+            "event": "progress",
+            "data": {
+                "kind": "progress",
+                "session_id": "s1",
+                "operation_id": "operation-1",
+                "stage_id": "edit.impact_analysis",
+                "at_version": 3,
+                "revision": 1,
+                "trace": {
+                    "status": "running",
+                    "steps": [
+                        {
+                            "id": "edit-analyze-impact",
+                            "label": "Analyze the requested change",
+                            "state": "active",
+                            "tone": "neutral",
+                        }
+                    ],
+                },
             },
         },
         {
@@ -409,6 +454,9 @@ def test_sse_union_accepts_current_payloads():
             "data": {
                 "kind": "commit",
                 "session_id": "s1",
+                "operation_id": "operation-1",
+                "stage_id": "edit.impact_analysis",
+                "at_version": 2,
                 "version": 2,
                 "state": "edit.impact_analysis",
                 "settled": True,
@@ -451,7 +499,7 @@ def test_sample_session_view_validates():
             "canvas_read_only": False,
             "run_status": "waiting_input",
             "interrupted": False,
-            "conversation": [],
+            "conversation_last_seq": -1,
             "entry_mode": "fix",
             "phase": "test",
             "actions": [],
@@ -461,3 +509,4 @@ def test_sample_session_view_validates():
 
     assert view.session_id == "s1"
     assert view.run_status == RunStatus.WAITING_INPUT
+    assert "conversation" not in view.model_dump()
