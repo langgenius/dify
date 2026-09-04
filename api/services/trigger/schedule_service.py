@@ -79,17 +79,17 @@ class ScheduleService:
         if not schedule:
             raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
 
-        # If time-related fields are updated, synchronously update the next_run_at.
+        # If time-related fields actually change, synchronously update the next_run_at.
         time_fields_updated = False
 
         if updates.node_id is not None:
             schedule.node_id = updates.node_id
 
-        if updates.cron_expression is not None:
+        if updates.cron_expression is not None and updates.cron_expression != schedule.cron_expression:
             schedule.cron_expression = updates.cron_expression
             time_fields_updated = True
 
-        if updates.timezone is not None:
+        if updates.timezone is not None and updates.timezone != schedule.timezone:
             schedule.timezone = updates.timezone
             time_fields_updated = True
 

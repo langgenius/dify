@@ -1,13 +1,14 @@
 import json
 import unittest
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.workflow import Workflow, WorkflowType
@@ -607,6 +608,74 @@ def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: invalid"):
         ScheduleService.extract_schedule_config(workflow=workflow)
+
+
+def _schedule_plan(
+    *,
+    cron_expression: str = "*/10 * * * *",
+    timezone: str = "UTC",
+    next_run_at: datetime | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        id="schedule-1",
+        node_id="start",
+        cron_expression=cron_expression,
+        timezone=timezone,
+        next_run_at=next_run_at,
+    )
+
+
+def test_update_schedule_preserves_next_run_at_when_cron_and_timezone_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stored_next_run = datetime(2026, 9, 4, 12, 0, 0)
+    schedule = _schedule_plan(next_run_at=stored_next_run)
+    session = MagicMock()
+    session.get.return_value = schedule
+
+    def _fail_if_called(*_args, **_kwargs):
+        raise AssertionError("next_run_at must not be recalculated when cron and timezone are unchanged")
+
+    monkeypatch.setattr("services.trigger.schedule_service.calculate_next_run_at", _fail_if_called)
+
+    updated = ScheduleService.update_schedule(
+        schedule_id="schedule-1",
+        updates=SchedulePlanUpdate(
+            cron_expression="*/10 * * * *",
+            timezone="UTC",
+        ),
+        session=session,
+    )
+
+    assert updated.next_run_at == stored_next_run
+    assert updated.cron_expression == "*/10 * * * *"
+    assert updated.timezone == "UTC"
+
+
+def test_update_schedule_recomputes_next_run_at_when_cron_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    stored_next_run = datetime(2026, 9, 4, 12, 0, 0)
+    recomputed_next_run = datetime(2026, 9, 4, 13, 0, 0)
+    schedule = _schedule_plan(next_run_at=stored_next_run)
+    session = MagicMock()
+    session.get.return_value = schedule
+    monkeypatch.setattr(
+        "services.trigger.schedule_service.calculate_next_run_at",
+        lambda *_args, **_kwargs: recomputed_next_run,
+    )
+
+    updated = ScheduleService.update_schedule(
+        schedule_id="schedule-1",
+        updates=SchedulePlanUpdate(
+            cron_expression="0 * * * *",
+            timezone="UTC",
+        ),
+        session=session,
+    )
+
+    assert updated.cron_expression == "0 * * * *"
+    assert updated.timezone == "UTC"
+    assert updated.next_run_at == recomputed_next_run
+    assert updated.next_run_at != stored_next_run
 
 
 if __name__ == "__main__":
