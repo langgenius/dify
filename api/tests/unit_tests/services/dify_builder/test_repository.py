@@ -312,3 +312,112 @@ def test_list_conversation_returns_items_ordered_by_seq(repo: SqlDifyBuilderRepo
 
 def test_list_conversation_empty_for_unknown_session(repo: SqlDifyBuilderRepository) -> None:
     assert repo.list_conversation("does-not-exist") == []
+
+
+def test_list_recent_conversation_returns_only_the_bounded_tail(repo: SqlDifyBuilderRepository) -> None:
+    domain_session = _make_domain_session()
+    items = [ConversationItem(seq=seq, kind="notice", payload={"text": str(seq)}) for seq in range(5)]
+    repo.create_session(domain_session, DifyBuilderContext(), items)
+
+    recent = repo.list_recent_conversation(domain_session.id, limit=2)
+
+    assert [item.seq for item in recent] == [3, 4]
+
+
+def test_get_conversation_turn_kinds_filters_by_turn_id(repo: SqlDifyBuilderRepository) -> None:
+    domain_session = _make_domain_session()
+    repo.create_session(
+        domain_session,
+        DifyBuilderContext(),
+        [
+            ConversationItem(seq=0, kind="user", payload={"text": "First", "turn_id": "turn-1"}),
+            ConversationItem(seq=1, kind="assistant_turn", payload={"reply_text": "Done", "turn_id": "turn-1"}),
+            ConversationItem(seq=2, kind="user", payload={"text": "Second", "turn_id": "turn-2"}),
+            ConversationItem(seq=3, kind="notice", payload={"turn_id": "turn-1"}),
+        ],
+    )
+
+    assert repo.get_conversation_turn_kinds(domain_session.id, "turn-1") == frozenset({"user", "assistant_turn"})
+    assert repo.get_conversation_turn_kinds(domain_session.id, "missing") == frozenset()
+
+
+def test_latest_conversation_page_keeps_attached_cards_with_assistant_turn(
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    domain_session = _make_domain_session()
+    items = [
+        ConversationItem(seq=0, kind="user", payload={"text": "goal", "turn_id": "t0"}),
+        ConversationItem(seq=1, kind="form", payload={"variant": "build_requirements"}),
+        ConversationItem(seq=2, kind="challenge", payload={"title": "Check"}),
+        ConversationItem(
+            seq=3,
+            kind="assistant_turn",
+            payload={"cards": ["form", "challenge"], "turn_id": "a1"},
+        ),
+    ]
+    repo.create_session(domain_session, DifyBuilderContext(), items)
+
+    page = repo.list_conversation_page(domain_session.id, limit=1)
+
+    assert [item.seq for item in page.data] == [1, 2, 3]
+    assert page.first_seq == 1
+    assert page.last_seq == 3
+    assert page.has_more is True
+
+
+def test_conversation_pages_use_group_boundary_cursors(repo: SqlDifyBuilderRepository) -> None:
+    domain_session = _make_domain_session()
+    items = [
+        ConversationItem(seq=0, kind="user", payload={"text": "goal", "turn_id": "t0"}),
+        ConversationItem(seq=1, kind="form", payload={"variant": "build_requirements"}),
+        ConversationItem(
+            seq=2,
+            kind="assistant_turn",
+            payload={"cards": ["form"], "turn_id": "a1"},
+        ),
+        ConversationItem(seq=3, kind="notice", payload={"text": "done"}),
+    ]
+    repo.create_session(domain_session, DifyBuilderContext(), items)
+
+    latest = repo.list_conversation_page(domain_session.id, limit=2)
+    older = repo.list_conversation_page(domain_session.id, before_seq=latest.first_seq, limit=2)
+    newer = repo.list_conversation_page(domain_session.id, after_seq=0, limit=1)
+
+    assert [item.seq for item in latest.data] == [1, 2, 3]
+    assert latest.has_more is True
+    assert [item.seq for item in older.data] == [0]
+    assert older.has_more is False
+    assert [item.seq for item in newer.data] == [1, 2]
+    assert newer.has_more is True
+
+
+def test_conversation_page_preserves_standalone_trailing_card(repo: SqlDifyBuilderRepository) -> None:
+    domain_session = _make_domain_session()
+    items = [
+        ConversationItem(seq=0, kind="assistant_turn", payload={"cards": [], "turn_id": "a0"}),
+        ConversationItem(seq=1, kind="error", payload={"title": "Failed", "body": "Try again"}),
+    ]
+    repo.create_session(domain_session, DifyBuilderContext(), items)
+
+    page = repo.list_conversation_page(domain_session.id, limit=1)
+
+    assert [(item.seq, item.kind) for item in page.data] == [(1, "error")]
+    assert page.has_more is True
+
+
+def test_get_latest_conversation_item_filters_by_kind(repo: SqlDifyBuilderRepository) -> None:
+    domain_session = _make_domain_session()
+    repo.create_session(
+        domain_session,
+        DifyBuilderContext(),
+        [
+            ConversationItem(seq=0, kind="form", payload={"variant": "build_requirements"}),
+            ConversationItem(seq=1, kind="notice", payload={"text": "chat"}),
+            ConversationItem(seq=2, kind="form", payload={"variant": "testdata"}),
+        ],
+    )
+
+    item = repo.get_latest_conversation_item(domain_session.id, frozenset({"form"}))
+
+    assert item is not None
+    assert item.seq == 2

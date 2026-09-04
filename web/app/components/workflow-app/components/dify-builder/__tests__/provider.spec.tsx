@@ -48,6 +48,7 @@ vi.mock('../session/use-session-controller', () => ({
     mocks.controllerHook()
     return {
       refresh: vi.fn(),
+      loadOlderConversation: vi.fn(async () => true),
       restore: mocks.restore,
       reset: mocks.reset,
       runAction: mocks.runAction,
@@ -102,7 +103,7 @@ const Probe = () => {
           setSessionView({
             app_id: 'app-1',
             canvas_read_only: true,
-            conversation: [],
+            conversation_last_seq: -1,
             interrupted: false,
             run_status: 'executing',
             session_id: 'session-1',
@@ -122,7 +123,7 @@ const Probe = () => {
           setSessionView({
             app_id: 'app-1',
             canvas_read_only: false,
-            conversation: [],
+            conversation_last_seq: -1,
             entry_mode: 'fix_checklist',
             interrupted: false,
             phase: 'test',
@@ -149,7 +150,15 @@ const Probe = () => {
         onClick={() =>
           setLastCanvasEvent({
             id: 1,
-            data: { event: 'highlight_edit_target', node_id: 'llm-1' },
+            data: {
+              at_version: 2,
+              event: 'highlight_edit_target',
+              node_id: 'llm-1',
+              operation_id: 'operation-1',
+              revision: 1,
+              session_id: 'session-1',
+              stage_id: 'fix.diagnose',
+            },
           })
         }
       >
@@ -160,7 +169,14 @@ const Probe = () => {
         onClick={() =>
           setLastCanvasEvent({
             id: 2,
-            data: { event: 'focus_workflow' },
+            data: {
+              at_version: 2,
+              event: 'focus_workflow',
+              operation_id: 'operation-1',
+              revision: 2,
+              session_id: 'session-1',
+              stage_id: 'fix.diagnose',
+            },
           })
         }
       >

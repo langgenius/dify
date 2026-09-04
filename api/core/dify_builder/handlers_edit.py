@@ -2,12 +2,10 @@
 
 Mirrors ``handlers_build.py`` for the Edit entry mode (spec: docs/superpowers/
 specs/2026-08-23-dify-builder-slice3-edit-design.md). Cards for a state are
-emitted by the handler transitioning INTO it; ``edit.test_affected_paths`` is a
-working state that auto-advances; the edit itself rides on
-``handle_plan_approval`` (approve_plan) and the publish rides on
-``handle_review`` (publish_workflow) because ``edit.apply_changes`` is a waiting
-state and ``edit.publish`` is terminal (no handler). Per the product mock
-(02-edit.txt:36-39) publish AND keep_draft both finish the task at edit.publish.
+emitted by the handler transitioning INTO it; ``edit.test_affected_paths`` and
+``edit.publish`` are working states that auto-advance. Publishing is separated
+from the review decision so its progress and side effect precede the terminal
+``edit.complete`` commit. Keeping the draft reaches that terminal directly.
 """
 
 import uuid
@@ -45,6 +43,7 @@ from core.dify_builder.handlers_fix import (
     testdata_form_fields,
 )
 from core.dify_builder.models import DifyBuilderContext, Run, Session, TestInput, Turn
+from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
@@ -56,6 +55,7 @@ __all__ = [
     "handle_capability_check",
     "handle_impact_analysis",
     "handle_plan_approval",
+    "handle_publish",
     "handle_reverted",
     "handle_review",
     "handle_test_affected_paths",
@@ -76,10 +76,25 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     if ok and text:
         fc.goal_text = text
 
-    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("edit-inspect-workflow", "Inspect the current workflow"),
+            ("edit-analyze-impact", "Analyze the requested change"),
+            ("edit-prepare-impact", "Prepare the impact summary"),
+        ],
+    )
+    progress.activate("edit-inspect-workflow")
+    graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
+    fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
     node_count = len(graph.get("nodes", []))
     edge_count = len(graph.get("edges", []))
 
+    progress.activate("edit-analyze-impact")
     impact = env.agent.analyze_impact(fc.goal_text, graph)
     fc.form_fields = list(impact.get("fields") or [])
     fc.edit_rules = dict(impact.get("values") or {})
@@ -88,6 +103,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
+    progress.activate("edit-prepare-impact")
     summary_items = append_card(
         fc,
         SummaryCard(
@@ -119,12 +135,13 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
             full_diff_open=False,
         ),
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="edit.impact_analysis",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Here's the impact of your change.",
             cards=["summary", "form", "challenge", "change_set"],
         ),
@@ -145,16 +162,30 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("edit-review-rules", "Review confirmed edit rules"),
+            ("edit-draft-plan", "Draft the change plan"),
+            ("edit-create-checkpoint", "Create a pre-edit checkpoint"),
+        ],
+    )
+    progress.activate("edit-review-rules")
     fc.checkpoint_seq = fc.next_seq
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
         fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, keys)
 
+    progress.activate("edit-draft-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
 
+    progress.activate("edit-create-checkpoint")
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Submitted edit rules"))
@@ -162,12 +193,13 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="edit.plan_approval",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Change plan ready for approval.",
             cards=["plan", "checkpoint"],
         ),
@@ -181,16 +213,22 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
 _EDIT_TRACE_STEPS = [
     TraceStep(
+        id="edit-prepare",
+        label="Prepare canvas changes",
+        state="pending",
+        tone="neutral",
+    ),
+    TraceStep(
         id="edit-highlight",
         label="Highlight edit targets",
-        state="done",
+        state="pending",
         tone="neutral",
         canvas_event="highlight_edit_target",
     ),
     TraceStep(
         id="edit-apply",
         label="Apply the change plan",
-        state="done",
+        state="pending",
         tone="success",
         canvas_event="apply_edit_plan",
     ),
@@ -212,14 +250,25 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     if kind != "approve_repair":
         return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
 
+    progress = ProgressReporter(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session_id=s.id,
+        stage_id=str(s.current_state),
+        at_version=s.version + 1,
+        steps=_EDIT_TRACE_STEPS,
+    )
+    progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     intents = env.agent.build_edit_intents(dict(fc.edit_rules), graph)
     fc.staged_repair = list(intents)
 
+    progress.activate("edit-highlight")
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
+    progress.activate("edit-apply")
     result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=None)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
@@ -234,12 +283,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         fc, CheckpointCard(checkpoint_id=fc.checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
     decision_items = append_card(fc, DecisionItem(text="Approved the change plan"))
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="edit.apply_changes",
-            trace=Trace(status="completed", steps=list(_EDIT_TRACE_STEPS)),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Applied the changes to the canvas.",
             cards=["change_set", "checkpoint"],
         ),
@@ -278,7 +328,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 fc,
                 AssistantTurnItem(
                     turn_id=str(uuid.uuid4()),
-                    stage_id="edit.await_testdata",
+                    stage_id=str(s.current_state),
                     trace=Trace(status="completed", steps=[]),
                     reply_text="Provide test inputs (or use mock data) to run the affected-path test.",
                     cards=["form"],
@@ -286,16 +336,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             )
             return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
-        items = append_card(
-            fc,
-            AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="edit.test_affected_paths",
-                trace=Trace(status="running", steps=[]),
-                reply_text="Running affected-path tests.",
-                cards=[],
-            ),
-        )
+        items = append_card(fc, DecisionItem(text="Run affected-path tests"))
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
     return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
 
@@ -306,8 +347,17 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     file refs). Persists a TestInput and advances to edit.test_affected_paths."""
     mode, _ = action_string(turn, "mode")
     if mode == "mock":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[("edit-generate-test-inputs", "Generate affected-path test inputs")],
+        )
+        progress.activate("edit-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        progress.finish()
     else:
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
@@ -322,6 +372,18 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     """(working, auto) Live affected-path test via run_draft. Success ->
     edit.review; failure -> real diagnose + propose_repair, staged for the
     edit.await_repair approval gate. No auto-apply (human-gated)."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("edit-prepare-test", "Prepare affected-path tests"),
+            ("edit-run-test", "Run affected workflow paths"),
+            ("edit-evaluate-test", "Evaluate the test result"),
+        ],
+    )
+    progress.activate("edit-prepare-test")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     if fc.test_input_ref:
         inputs = env.repo.get_test_input(fc.test_input_ref).inputs
@@ -332,11 +394,18 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         fc.test_input_ref = ti.id
 
     emit = env.emit if env.emit is not None else (lambda _e: None)
+    progress.activate("edit-run-test")
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
         status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
     except Exception:  # never crash the advance -- surface as a failed run
         status, per_node, dify_run_id = "failed", [], ""
+
+    if status == "succeeded":
+        progress.complete("edit-run-test")
+    else:
+        progress.fail_step("edit-run-test")
+    progress.activate("edit-evaluate-test")
 
     run = Run(
         id=str(uuid.uuid4()),
@@ -369,12 +438,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 items=["Applied the change plan", "Affected paths tested", "Tests passing"],
             ),
         )
+        trace = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="edit.review",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text="Tests passed; ready for review.",
                 cards=["test_result", "summary"],
             ),
@@ -418,12 +488,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 frozen=False,
             ),
         )
+        trace = progress.finish()
         turn_items = append_card(
             fc,
             AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id="edit.await_testdata",
-                trace=Trace(status="completed", steps=[]),
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                trace=trace,
                 reply_text="The run failed on its inputs — provide test data and retry.",
                 cards=["test_result", "form"],
             ),
@@ -437,7 +508,15 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         )
 
     # config failure: existing diagnose + propose_repair -> EDIT_AWAIT_REPAIR
+    progress.add_steps(
+        [
+            ("edit-diagnose-failure", "Diagnose the failed path"),
+            ("edit-prepare-repair", "Prepare a safe repair"),
+        ]
+    )
+    progress.activate("edit-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
+    progress.activate("edit-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
     fc.staged_repair = list(intents)
@@ -469,12 +548,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         if intents
         else []
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="edit.await_repair",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text=(
                 "Test failed — here's a proposed fix to review."
                 if intents
@@ -499,17 +579,28 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     edit.reverted. apply_repair runs ONLY here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=[
+                ("edit-apply-repair", "Apply the approved repair"),
+                ("edit-prepare-retest", "Prepare to retest affected paths"),
+            ],
+        )
+        progress.activate("edit-apply-repair")
         result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
-        changes, scope, fc.change_set = build_change_set(
-            result, default_scope="configuration", fallback_diff="repair"
-        )
+        changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         cs_items = append_card(
             fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
         )
+        progress.activate("edit-prepare-retest")
         decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        progress.finish()
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=[*cs_items, *decision_items])
     if kind == "keep_draft":
         items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
@@ -529,23 +620,13 @@ def _completion_rows(fc: DifyBuilderContext, status: str) -> list[SummaryRow]:
 
 
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) Terminal decision. Mock 02-edit.txt:36-39: publish_workflow AND
-    keep_draft both = Task Completed -> edit.publish (terminal). Because edit.
-    publish runs no handler, this handler emits its cards before returning.
-    continue_adjusting (resolved re_fix) -> edit.impact_analysis (re-analyze);
-    revert (undo) -> edit.reverted: restores the pre-edit draft from the
-    checkpoint and invalidates the approvals made since it (via perform_revert)."""
+    """(waiting) Final user decision before publish or completion."""
     kind = action_kind(turn)
     if kind == "publish_workflow":
-        env.dify.publish(s.app_id, turn.actor)
-        emit_canvas(env, "publish_workflow")
-        decision_items = append_card(fc, DecisionItem(text="Chose to publish"))
-        publish_items = append_card(fc, PublishCard(version="2.1", badge="live"))
-        summary_items = append_card(
-            fc, SummaryCard(variant="completion", title="Edit published", rows=_completion_rows(fc, "Published"))
-        )
         return StepResult(
-            next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *publish_items, *summary_items]
+            next=PcState.EDIT_PUBLISH,
+            context=fc,
+            items=append_card(fc, DecisionItem(text="Chose to publish")),
         )
     if kind == "keep_draft":
         emit_canvas(env, "cancel_publish")
@@ -553,7 +634,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         summary_items = append_card(
             fc, SummaryCard(variant="completion", title="Draft kept", rows=_completion_rows(fc, "Draft kept"))
         )
-        return StepResult(next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *summary_items])
+        return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *summary_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
         emit_canvas(env, "cancel_publish")
         for node_id in fc.edit_target_node_ids:
@@ -588,7 +669,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             fc,
             AssistantTurnItem(
                 turn_id=str(uuid.uuid4()),
-                stage_id="edit.impact_analysis",
+                stage_id=str(s.current_state),
                 trace=Trace(status="completed", steps=[]),
                 reply_text="Let's adjust the change.",
                 cards=["form", "challenge", "change_set"],
@@ -606,6 +687,26 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     return StepResult(next=PcState.EDIT_REVIEW, context=fc)
 
 
+def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(working, auto) Publish the updated workflow and close the edit flow."""
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[("edit-publish-workflow", "Publish the updated workflow")],
+    )
+    progress.activate("edit-publish-workflow")
+    env.dify.publish(s.app_id, turn.actor)
+    emit_canvas(env, "publish_workflow")
+    publish_items = append_card(fc, PublishCard(version="2.1", badge="live"))
+    summary_items = append_card(
+        fc, SummaryCard(variant="completion", title="Edit published", rows=_completion_rows(fc, "Published"))
+    )
+    progress.finish()
+    return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*publish_items, *summary_items])
+
+
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
@@ -614,35 +715,45 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)
 
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            ("edit-rebuild-plan", "Rebuild the change plan"),
+            ("edit-create-checkpoint", "Create a new pre-edit checkpoint"),
+        ],
+    )
+    progress.activate("edit-rebuild-plan")
     fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
+    progress.activate("edit-create-checkpoint")
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
+    trace = progress.finish()
     turn_items = append_card(
         fc,
         AssistantTurnItem(
-            turn_id=str(uuid.uuid4()),
-            stage_id="edit.plan_approval",
-            trace=Trace(status="completed", steps=[]),
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            trace=trace,
             reply_text="Re-approve to apply the change.",
             cards=["plan", "checkpoint"],
         ),
     )
-    return StepResult(
-        next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items]
-    )
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items])
 
 
 def edit_registry() -> dict[PcState, Handler]:
-    """The Edit handler table. Grows across Slice 3 tasks; ``edit.publish`` is
-    terminal and intentionally absent (the loop returns before lookup)."""
+    """The Edit handler table; ``edit.complete`` is the terminal state."""
     return {
         PcState.EDIT_CAPABILITY_CHECK: handle_capability_check,
         PcState.EDIT_IMPACT_ANALYSIS: handle_impact_analysis,
@@ -652,5 +763,6 @@ def edit_registry() -> dict[PcState, Handler]:
         PcState.EDIT_TEST_AFFECTED_PATHS: handle_test_affected_paths,
         PcState.EDIT_AWAIT_REPAIR: handle_await_repair,
         PcState.EDIT_REVIEW: handle_review,
+        PcState.EDIT_PUBLISH: handle_publish,
         PcState.EDIT_REVERTED: handle_reverted,
     }

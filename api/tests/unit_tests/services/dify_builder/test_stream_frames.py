@@ -68,7 +68,10 @@ def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
 
     frames = list(wiring.stream_advance_frames(view, subscription, expect_advance=True))
 
-    assert _event(frames[0]) == {"event": "snapshot", "data": view}
+    assert _event(frames[0]) == {
+        "event": "command_started",
+        "data": {"kind": "command_started", **view},
+    }
     assert _event(frames[1]) == {"event": "node", "data": node}
     assert frames[2] == ": keep-alive\n\n"
     assert _event(frames[3]) == {"event": "commit", "data": commit}
@@ -108,12 +111,14 @@ def test_stream_advance_frames_closes_on_error_event():
     assert subscription.closed is True
 
 
-def test_stream_advance_frames_settled_call_yields_snapshot_only():
+def test_stream_advance_frames_settled_call_yields_command_handshake_only():
     view = {"session_id": "s1", "state": "edit.capability_check"}
 
     frames = list(wiring.stream_advance_frames(view, None, expect_advance=False))
 
-    assert [_event(frame) for frame in frames] == [{"event": "snapshot", "data": view}]
+    assert [_event(frame) for frame in frames] == [
+        {"event": "command_started", "data": {"kind": "command_started", **view}}
+    ]
 
 
 def test_stream_advance_frames_can_emit_terminal_state_for_settled_message():
@@ -129,6 +134,6 @@ def test_stream_advance_frames_can_emit_terminal_state_for_settled_message():
     )
 
     assert [_event(frame) for frame in frames] == [
-        {"event": "snapshot", "data": view},
+        {"event": "command_started", "data": {"kind": "command_started", **view}},
         {"event": "state", "data": {"kind": "state", **view}},
     ]

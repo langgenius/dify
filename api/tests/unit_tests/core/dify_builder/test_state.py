@@ -90,3 +90,11 @@ def test_build_await_learning_is_waiting():
     assert is_waiting(PcState.BUILD_AWAIT_LEARNING) is True
     assert is_working(PcState.BUILD_AWAIT_LEARNING) is False
     assert is_terminal(PcState.BUILD_AWAIT_LEARNING) is False
+
+
+def test_edit_publish_is_working_and_edit_complete_is_terminal():
+    assert PcState.EDIT_PUBLISH == "edit.publish"
+    assert is_working(PcState.EDIT_PUBLISH) is True
+    assert is_terminal(PcState.EDIT_PUBLISH) is False
+    assert PcState.EDIT_COMPLETE == "edit.complete"
+    assert is_terminal(PcState.EDIT_COMPLETE) is True

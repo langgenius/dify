@@ -21,10 +21,12 @@ from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepos
 
 def _actor():
     from core.dify_builder.models import Actor
+
     return Actor(account_id="a", tenant_id="t")
 
 
 # ---- entry_state_for -------------------------------------------------------
+
 
 def test_entry_state_for_all_modes():
     """Parity test for entry_state_for's docstring claim ("mirrors
@@ -50,6 +52,7 @@ def test_entry_state_for_all_modes():
 
 
 # ---- target_node_ids -------------------------------------------------------
+
 
 def test_target_node_ids_per_mode():
     from core.dify_builder import recovery
@@ -84,6 +87,7 @@ def test_target_node_ids_fix_guard_branches():
 
 # ---- classify --------------------------------------------------------------
 
+
 def test_classify_unchanged():
     from core.dify_builder import recovery
 
@@ -102,7 +106,9 @@ def test_classify_structural_compatible():
     from core.dify_builder import recovery
 
     fc = DifyBuilderContext(
-        last_snapshot_hash="h1", last_structure_fingerprint="fp1", built_node_ids=["n1"],
+        last_snapshot_hash="h1",
+        last_structure_fingerprint="fp1",
+        built_node_ids=["n1"],
     )
     # hash + fingerprint changed, but target n1 still present.
     assert recovery.classify("h2", "fp2", ["n1", "n2"], fc, EntryMode.BUILD) == RecoveryClass.STRUCTURAL_COMPATIBLE
@@ -112,13 +118,16 @@ def test_classify_structural_invalidating():
     from core.dify_builder import recovery
 
     fc = DifyBuilderContext(
-        last_snapshot_hash="h1", last_structure_fingerprint="fp1", built_node_ids=["n1"],
+        last_snapshot_hash="h1",
+        last_structure_fingerprint="fp1",
+        built_node_ids=["n1"],
     )
     # target n1 gone from the current graph.
     assert recovery.classify("h2", "fp2", ["n2"], fc, EntryMode.BUILD) == RecoveryClass.STRUCTURAL_INVALIDATING
 
 
 # ---- apply_recovery_action via the runner ----------------------------------
+
 
 def _seed(repo, entry_mode, state, fc):
     s = Session(app_id="app", tenant_id="t", owner_account_id="a", entry_mode=entry_mode, current_state=state)
@@ -143,7 +152,7 @@ def test_check_recovery_sets_class_and_appends_notice():
     out = runner.advance(s.id, Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()))
 
     assert out.current_state == PcState.BUILD_REVIEW  # same state
-    assert out.version == 2                            # committed
+    assert out.version == 2  # committed
     _s, fc2 = repo.get_session(s.id)
     assert fc2.recovery_class == "config_only"
     convo = repo.list_conversation(s.id)
@@ -174,7 +183,10 @@ def test_check_recovery_classifies_structural_compatible_via_runner():
     repo = InMemoryRepository()
     # hash + fingerprint both changed, but the build target n1 is still present.
     fc = DifyBuilderContext(
-        last_snapshot_hash="h-old", last_structure_fingerprint="stale-fp", built_node_ids=["n1"], next_seq=1,
+        last_snapshot_hash="h-old",
+        last_structure_fingerprint="stale-fp",
+        built_node_ids=["n1"],
+        next_seq=1,
     )
     s = _seed(repo, EntryMode.BUILD, PcState.BUILD_REVIEW, fc)
     runner = Runner(Env(dify=dify, agent=StubAgent(), repo=repo, now=lambda: datetime.min), {})
@@ -192,7 +204,10 @@ def test_check_recovery_classifies_structural_invalidating_via_runner():
     repo = InMemoryRepository()
     # hash + fingerprint both changed, and the build target n1 is gone from the graph.
     fc = DifyBuilderContext(
-        last_snapshot_hash="h-old", last_structure_fingerprint="stale-fp", built_node_ids=["n1"], next_seq=1,
+        last_snapshot_hash="h-old",
+        last_structure_fingerprint="stale-fp",
+        built_node_ids=["n1"],
+        next_seq=1,
     )
     s = _seed(repo, EntryMode.BUILD, PcState.BUILD_REVIEW, fc)
     runner = Runner(Env(dify=dify, agent=StubAgent(), repo=repo, now=lambda: datetime.min), {})
@@ -215,6 +230,8 @@ def test_recovery_continue_clears_class():
     assert out.current_state == PcState.BUILD_REVIEW
     _s, fc2 = repo.get_session(s.id)
     assert fc2.recovery_class == ""
+    assert fc2.last_snapshot_hash == dify.hash
+    assert fc2.last_structure_fingerprint == dify.structural_fingerprint(dify.graph)
 
 
 def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
@@ -239,7 +256,7 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
     assert fc2.built_node_ids == []
     assert fc2.plan_items == []
     assert fc2.checkpoint_id == ""
-    assert fc2.goal_text == "build me a thing"   # preserved
+    assert fc2.goal_text == "build me a thing"  # preserved
     assert len(repo.list_conversation(s.id)) >= 1  # conversation preserved (+ restart notice)
 
 
@@ -304,7 +321,10 @@ def test_recovery_restart_in_fix_checklist_mode_drives_working_entry_state_to_wa
     env, repo, dify = _engine_env()
     errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
     fc = DifyBuilderContext(
-        source="checklist", checklist_errors=errors, recovery_class="structural_invalidating", next_seq=1,
+        source="checklist",
+        checklist_errors=errors,
+        recovery_class="structural_invalidating",
+        next_seq=1,
     )
     s = _seed(repo, EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_AWAIT_RECHECK, fc)
 

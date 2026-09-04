@@ -79,6 +79,22 @@ export const getSession = (sessionId: string, signal: AbortSignal) =>
     { context: { silent: true }, signal },
   )
 
+export const getSessionConversation = (
+  sessionId: string,
+  query: { before_seq?: number; after_seq?: number; limit?: number },
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId.conversation.get(
+    { params: { session_id: sessionId }, query },
+    { context: { silent: true }, signal },
+  )
+
+export const getSessionStream = (sessionId: string, signal: AbortSignal) =>
+  consoleClient.difyBuilder.sessions.bySessionId.stream.get(
+    { params: { session_id: sessionId } },
+    { context: { silent: true }, signal },
+  )
+
 export const runSessionAction = (
   sessionId: string,
   actionId: string,
