@@ -145,6 +145,16 @@ describe('VariableModal', () => {
     latestModelParameterModalProps = undefined
   })
 
+  it('closes from an accessible icon button', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderWithProviders(<VariableModal onClose={onClose} onSave={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('creates a secret environment variable and normalizes spaces in its name', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
@@ -279,6 +289,26 @@ describe('VariableModal', () => {
       value_type: 'llm',
       description: '',
     })
+  })
+
+  it('rejects an LLM environment variable with an empty model selection', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const env = createEnv({
+      value: { mode: '', name: '', provider: '' },
+      value_type: 'llm',
+    })
+
+    renderWithProviders(<VariableModal env={env} onClose={vi.fn()} onSave={onSave} />, {
+      storeState: {
+        environmentVariables: [env],
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mockToastError).toHaveBeenCalledWith('workflow.env.modal.valueRequired')
+    expect(onSave).not.toHaveBeenCalled()
   })
 
   it('keeps an edited LLM environment variable within its existing model mode', async () => {

@@ -1,21 +1,16 @@
-import type {
-  EnvironmentVariable,
-  EnvironmentVariableValue,
-  LLMCompletionParams,
-  LLMEnvironmentVariableValue,
-} from '@/app/components/workflow/types'
+import type { EnvironmentVariable, EnvironmentVariableValue } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
+import { LLMEnvironmentVariableValueField } from '@/app/components/workflow/llm-environment-variable-value-field'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -25,19 +20,6 @@ type ModalPropsType = {
   onSave: (env: EnvironmentVariable) => void
 }
 
-const isLLMEnvironmentVariableValue = (value: unknown): value is LLMEnvironmentVariableValue => {
-  if (typeof value !== 'object' || value === null) return false
-
-  return (
-    'provider' in value &&
-    typeof value.provider === 'string' &&
-    'name' in value &&
-    typeof value.name === 'string' &&
-    'mode' in value &&
-    typeof value.mode === 'string'
-  )
-}
-
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -45,21 +27,10 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<EnvironmentVariableValue>()
   const [description, setDescription] = React.useState<string>('')
-  const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const originalLLMMode =
     env?.value_type === 'llm' && isLLMEnvironmentVariableValue(env.value)
       ? env.value.mode
       : undefined
-  const selectableModelList = useMemo(() => {
-    if (!originalLLMMode) return activeTextGenerationModelList
-
-    return activeTextGenerationModelList
-      .map((provider) => ({
-        ...provider,
-        models: provider.models.filter((model) => model.model_properties.mode === originalLLMMode),
-      }))
-      .filter((provider) => provider.models.length > 0)
-  }, [activeTextGenerationModelList, originalLLMMode])
   const isTypeChangeDisabled = (nextType: EnvironmentVariable['value_type']) =>
     !!env && (env.value_type === 'llm') !== (nextType === 'llm')
 
@@ -103,31 +74,6 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
     }
 
     if (typeof value === 'number') setValue(String(value))
-  }
-
-  const handleModelSelect = ({ provider, modelId }: { provider: string; modelId: string }) => {
-    const targetProvider = activeTextGenerationModelList.find(
-      (providerItem) => providerItem.provider === provider,
-    )
-    const targetModel = targetProvider?.models.find((modelItem) => modelItem.model === modelId)
-    const mode = targetModel?.model_properties.mode
-
-    if (typeof mode !== 'string') return
-    if (originalLLMMode && mode !== originalLLMMode) {
-      toast.error(t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' }))
-      return
-    }
-
-    const completionParams =
-      isLLMEnvironmentVariableValue(value) && value.provider === provider && value.name === modelId
-        ? (value.completion_params ?? {})
-        : {}
-    setValue({ provider, name: modelId, mode, completion_params: completionParams })
-  }
-
-  const handleCompletionParamsChange = (completionParams: LLMCompletionParams) => {
-    if (!isLLMEnvironmentVariableValue(value)) return
-    setValue({ ...value, completion_params: completionParams })
   }
 
   const handleSave = () => {
@@ -187,11 +133,9 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
         {!env
           ? t(($) => $['env.modal.title'], { ns: 'workflow' })
           : t(($) => $['env.modal.editTitle'], { ns: 'workflow' })}
-        <div className="flex items-center">
-          <div className="flex size-6 cursor-pointer items-center justify-center" onClick={onClose}>
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
-        </div>
+        <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} onClick={onClose}>
+          <span aria-hidden className="i-ri-close-line size-4" />
+        </IconButton>
       </div>
       <div className="px-4 py-2">
         {/* type */}
@@ -289,21 +233,13 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               ? t(($) => $['modelProvider.model'], { ns: 'common' })
               : t(($) => $['env.modal.value'], { ns: 'workflow' })}
           </div>
-          <div className="flex [&>div]:w-full">
+          <div className="flex">
             {type === 'llm' ? (
-              <ModelParameterModal
-                provider={isLLMEnvironmentVariableValue(value) ? value.provider : ''}
-                modelId={isLLMEnvironmentVariableValue(value) ? value.name : ''}
-                completionParams={
-                  isLLMEnvironmentVariableValue(value) ? (value.completion_params ?? {}) : {}
-                }
-                modelList={selectableModelList}
+              <LLMEnvironmentVariableValueField
+                value={isLLMEnvironmentVariableValue(value) ? value : undefined}
+                requiredMode={originalLLMMode}
                 popupClassName="w-[328px]! max-w-[328px]!"
-                isAdvancedMode={true}
-                setModel={handleModelSelect}
-                onCompletionParamsChange={handleCompletionParamsChange}
-                hideDebugWithMultipleModel
-                debugWithMultipleModel={false}
+                onChange={setValue}
               />
             ) : type !== 'number' ? (
               <textarea

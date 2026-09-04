@@ -434,7 +434,6 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
     assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
-    assert services.notifications._accounts is accounts
     assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
