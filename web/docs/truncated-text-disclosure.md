@@ -2,6 +2,8 @@
 
 Treat native `title` as an opt-in, supplemental product behavior. Do not treat it as a mechanical companion to `truncate`, `text-overflow`, or `line-clamp-*`.
 
+Browser-rendered title tooltips are exempt from the author-controlled hover and focus behavior in [WCAG 1.4.13], but that exception is not an accessibility endorsement. [MDN] documents unreliable access for touch, keyboard, and assistive-technology users. The classifications below decide whether to add `title`; they do not establish WCAG conformance for the surrounding interaction.
+
 Missing `title` is not by itself an accessibility defect. Native title tooltips must not:
 
 - be the only way to access essential information;
@@ -30,10 +32,11 @@ Automatically add `title` only when every condition below is satisfied:
 
 ## COVERED
 
-Classify as `COVERED` and make no change when another component or interaction already owns full-content disclosure, including:
+Classify as `COVERED` and make no change when the full content is already available through the current content, an accessible interaction, or a linked destination. An overlay is not automatically a disclosure owner:
 
-- Tooltip or Popover;
+- a Tooltip only when it duplicates non-essential full text already available from its trigger's readable text or accessible name;
 - a [PreviewCard] whose trigger is a real destination link and whose destination contains the equivalent full content; the preview popup itself is only a visual enhancement, not the disclosure owner;
+- a Popover that exposes the full content through pointer, keyboard, touch, and assistive technology;
 - expandable or “show more” content;
 - a detail view opened from the current surface;
 - a copy or reveal action;
@@ -59,7 +62,8 @@ Classify as `REVIEW`, make no code change, and report the reason when:
 - the value bound or sensitivity cannot be proven;
 - the final DOM element or pointer owner cannot be traced;
 - the component is interactive;
-- PreviewCard content would be the only path to the full content, or its trigger is not a destination link;
+- Tooltip or PreviewCard content would be the only path to the full content, or a PreviewCard trigger is not a destination link;
+- a Popover or other disclosure cannot be reached across pointer, keyboard, touch, and assistive technology;
 - the content uses `line-clamp-*` without an existing full-content path;
 - actual truncation or the intended product behavior cannot be established from the owner contract.
 
@@ -75,3 +79,5 @@ Do not introduce:
 Test the feature-owned disclosure behavior through its public interface. Assert native `title` only when it is an explicitly accepted product contract. Do not use `getByTitle` or `toHaveAttribute('title', ...)` merely to prove a migration, and do not use title-based selectors to test unrelated interactions.
 
 [PreviewCard]: ../../packages/dify-ui/docs/overlays.md#primitive-semantics
+[MDN]: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/title#accessibility_concerns
+[WCAG 1.4.13]: https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html
