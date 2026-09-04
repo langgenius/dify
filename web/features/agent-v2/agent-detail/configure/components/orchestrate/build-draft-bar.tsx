@@ -35,7 +35,7 @@ export function AgentBuildDraftBar({
   const collapsedBarRef = useRef<HTMLDivElement>(null)
   const changesPanelId = useId()
   const isActionPending = isApplying || isDiscarding
-  const applyDisabled = disabled || isActionPending
+  const applyDisabled = disabled || isDiscarding
   const discardDisabled = disabled || isActionPending
   const changesLabel = t(($) => $['agentDetail.configure.buildDraft.changesToApply'], {
     count: changesCount,

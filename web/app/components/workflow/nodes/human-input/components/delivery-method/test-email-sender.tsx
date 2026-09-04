@@ -476,7 +476,7 @@ const EmailSenderContent = ({
       )}
       <div className="mt-6 flex flex-row-reverse gap-2">
         <Button
-          disabled={sendingEmail || !confirmChecked}
+          disabled={!confirmChecked}
           loading={sendingEmail}
           variant="primary"
           onClick={handleConfirm}

@@ -101,6 +101,7 @@ describe('DSLExportConfirmModal', () => {
     await waitFor(() => {
       expectLoadingButton(confirmButton)
       expect(confirmButton).toHaveTextContent('common.operation.exporting')
+      expect(confirmButton).toHaveAccessibleName('common.operation.exporting')
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     })
 

@@ -41,19 +41,9 @@ button semantics. It is not a link mode.
 | `disabled` | The action is unavailable.                   | Native-disabled and removed from the tab order.       |
 | `loading`  | The action was triggered and is now pending. | Activation is blocked while the button retains focus. |
 
-Internally, Dify UI maps these states to Base UI's interaction contract:
-
-```tsx
-disabled={disabled || loading}
-focusableWhenDisabled={focusableWhenDisabled ?? loading}
-```
-
-Base UI recommends disabling a loading button while setting `focusableWhenDisabled` so that an
-action does not lose focus after it is triggered. Dify UI's `loading` prop owns that wiring and
-adds the visible spinner. The loading button remains in the tab order with `aria-disabled`
-instead of the native [`disabled`] attribute. Unlike native disabled, [`aria-disabled`] preserves
-focusability but requires the component to suppress activation. Callers should pass the pending
-state only to `loading`:
+`loading` owns Base UI's disabled interaction, retained focus, and the decorative spinner. The
+button remains in the tab order with `aria-disabled`, and Dify UI suppresses activation. Pass the
+pending state only to `loading`:
 
 ```tsx
 <Button loading={isSaving}>Save</Button>
@@ -62,44 +52,55 @@ state only to `loading`:
 Keep independent availability conditions in `disabled`:
 
 ```tsx
-<Button loading={isSaving} disabled={!canSave}>
+<Button loading={isSaving} disabled={!canManageSettings}>
   Save
 </Button>
 ```
 
-Do not repeat the same pending state in `disabled`:
+Do not repeat the pending state in `disabled`:
 
 ```tsx
-// Incorrect: loading already blocks activation.
-<Button loading={isSaving} disabled={isSaving}>
-  Save
-</Button>
-
-// Incorrect: keep only the independent availability condition in disabled.
-<Button loading={isSaving} disabled={isSaving || !canSave}>
+// Incorrect: loading already handles isSaving.
+<Button loading={isSaving} disabled={isSaving || !canManageSettings}>
   Save
 </Button>
 
 // Correct.
-<Button loading={isSaving} disabled={!canSave}>
+<Button loading={isSaving} disabled={!canManageSettings}>
   Save
 </Button>
 ```
-
-It is valid for `loading` and an independent `disabled` condition to both evaluate to `true`.
-The loading focus policy applies while the action is pending; when loading ends, the remaining
-availability condition still determines whether the button is disabled.
 
 Pass `focusableWhenDisabled={false}` only when a loading button should opt into native disabled
 behavior and may leave the tab order.
 
 ### Accessible loading feedback
 
-The loading spinner is decorative and does not replace the button's visible label. `Button` does
-not add `aria-busy`: [WAI-ARIA `aria-busy`] defines it for an element being modified whose
-content changes may be deferred by assistive technology, not as a generic substitute for a
-pending action state. When a long-running operation needs an announcement or progress updates,
-the feature owns the corresponding status, live region, or progress component.
+The spinner is decorative. Keep a non-empty visible label throughout loading. If the visible label
+stays the same, its text continues to name the button:
+
+```tsx
+<Button loading={isSaving}>Save</Button>
+```
+
+When the label changes while the focused button enters loading, give the changing text a stable ID
+and reference it explicitly. Some browser and screen-reader combinations do not reliably announce
+changes to a focused button's descendant text:
+
+```tsx
+const labelId = useId()
+
+<Button loading={isSaving} aria-labelledby={labelId}>
+  <span id={labelId}>{isSaving ? 'Saving' : 'Save'}</span>
+</Button>
+```
+
+The consumer owns this relationship because only it knows whether the label changes and whether
+other visible context must also be referenced. Do not replace the changing text with `aria-label`.
+
+`Button` does not add `aria-busy`: [WAI-ARIA `aria-busy`] describes an element whose own updates may
+be deferred by assistive technology, not a generic pending action. Long-running announcements and
+progress remain with the feature's status, live-region, or progress owner.
 
 ## Content and spacing
 
@@ -126,5 +127,3 @@ for the other variants. Use a `className` override only for a documented layout 
 [Base UI Button]: https://base-ui.com/react/components/button
 [WAI-ARIA `aria-busy`]: https://www.w3.org/TR/wai-aria#aria-busy
 [`IconButton`]: ../icon-button/README.md
-[`aria-disabled`]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-disabled
-[`disabled`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/disabled
