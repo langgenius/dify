@@ -32,6 +32,9 @@ export const buildTraceExport = (snapshot: TraceSnapshot, view: SessionView | nu
 })
 
 export const serializeTraceExport = (data: TraceExport): string => {
+  // Single-WeakSet cycle guard: a shared-but-acyclic sibling reference (the
+  // same object appearing twice, not nested within itself) is also flagged
+  // as `[Circular]`. Acceptable for a debug export.
   const seen = new WeakSet<object>()
   return JSON.stringify(
     data,
