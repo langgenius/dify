@@ -14,7 +14,7 @@ Before making a change:
 
 1. Trace the value to the final rendered DOM element.
 2. Identify the existing owner of full-content disclosure.
-3. Classify the candidate as `AUTO`, `COVERED`, `SKIP`, or `REVIEW`.
+3. Apply `SKIP`, `COVERED`, `AUTO`, and `REVIEW` in that order, stopping at the first matching classification.
 4. Modify only `AUTO` candidates. Report the others without changing code.
 
 ## AUTO
@@ -53,7 +53,6 @@ Classify as `SKIP` and make no change when any condition below applies:
 - Producing the title would repeat or relocate evaluation of a function call, getter, conversion, mutation, async operation, or other potentially effectful expression.
 - The element is an input, textarea, editable surface, `pointer-events-none`, covered by another element, or not the actual pointer target.
 - An existing `title`, including `title=""`, would need to be overwritten or removed.
-- The content uses `line-clamp-*` and already has an expand or detail interaction.
 
 ## REVIEW
 
