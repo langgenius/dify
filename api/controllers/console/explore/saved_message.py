@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
@@ -28,7 +27,8 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
     @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp):
+    @model_validate(SavedMessageListQuery)
+    def get(self, req_data: SavedMessageListQuery, current_user: Account, installed_app: InstalledApp):
         session = db.session()
         app_model = installed_app.app_with_session(session=session)
         if app_model is None:
@@ -36,10 +36,8 @@ class SavedMessageListApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        args = SavedMessageListQuery.model_validate(request.args.to_dict())
-
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=session
+            app_model, current_user, str(req_data.last_id) if req_data.last_id else None, req_data.limit, session=session
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [
