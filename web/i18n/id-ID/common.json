@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Unggahan {{type}} tidak boleh melebihi {{size}}",
   "fileUploader.uploadFromComputerReadError": "Pembacaan file gagal, silakan coba lagi.",
   "fileUploader.uploadFromComputerUploadError": "Unggahan file gagal, silakan unggah lagi.",
+  "imageGallery.previewImage": "Pratinjau gambar {{index}} dari {{total}}",
   "imageInput.browse": "Telusuri",
   "imageInput.dropImageHere": "Letakkan gambar Anda di sini, atau",
   "imageInput.supportedFormats": "Mendukung PNG, JPG, JPEG, WEBP dan GIF",

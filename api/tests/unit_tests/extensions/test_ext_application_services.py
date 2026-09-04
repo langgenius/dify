@@ -29,6 +29,8 @@ from repositories.account_oauth_repository import (
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
 from services.account_adapters import (
@@ -68,6 +70,7 @@ from services.retention.workflow_run.archive_download_task_cache import Workflow
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -259,6 +262,36 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_app_statistic_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_statistics, AppStatisticQueryRepository)
+    assert services.app_statistics._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_run_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    workflow_runs = services.workflow_runs
+    assert isinstance(workflow_runs, WorkflowRunService)
+    assert isinstance(workflow_runs._workflow_runs, DifyAPISQLAlchemyWorkflowRunRepository)
+    assert workflow_runs._workflow_runs._session_maker is sqlite_session_factory
 
 
 def test_build_application_services_wires_billing_service(

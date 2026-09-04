@@ -568,6 +568,40 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     )
   }
 
+  it('should load the build draft while the inline composer is pending', async () => {
+    render(
+      <WorkflowInlineAgentConfigureWorkspace
+        agentId="agent-1"
+        flowId="app-1"
+        flowType={FlowType.appFlow}
+        nodeId="node-1"
+        open
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
+    await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
+  })
+
+  it('should not load the build draft while the inline agent panel is closed', async () => {
+    render(
+      <WorkflowInlineAgentConfigureWorkspace
+        agentId="agent-1"
+        flowId="app-1"
+        flowType={FlowType.appFlow}
+        inlineComposerState={createInlineComposerState()}
+        nodeId="node-1"
+        open={false}
+      />,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(mocks.loadBuildDraft).not.toHaveBeenCalled()
+  })
+
   async function restartCurrentChat() {
     fireEvent.click(
       screen.getByRole('button', {

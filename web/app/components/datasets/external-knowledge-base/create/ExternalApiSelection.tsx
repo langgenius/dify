@@ -30,6 +30,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
   const { data } = useQuery(externalKnowledgeApiQueryOptions)
   const externalKnowledgeApiList = data?.data ?? []
+  const externalKnowledgeApiLabelId = useId()
   const externalKnowledgeIdInputId = useId()
   const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
@@ -71,12 +72,13 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     <form className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">
+          <span id={externalKnowledgeApiLabelId} className="system-sm-semibold text-text-secondary">
             {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-          </label>
+          </span>
         </div>
         {apiItems.length > 0 ? (
           <ExternalApiSelect
+            aria-labelledby={externalKnowledgeApiLabelId}
             items={apiItems}
             value={selectedApiId}
             onSelect={(e) => {

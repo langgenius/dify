@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "تحميل {{type}} لا يمكن أن يتجاوز {{size}}",
   "fileUploader.uploadFromComputerReadError": "فشل قراءة الملف، يرجى المحاولة مرة أخرى.",
   "fileUploader.uploadFromComputerUploadError": "فشل تحميل الملف، يرجى التحميل مرة أخرى.",
+  "imageGallery.previewImage": "معاينة الصورة {{index}} من {{total}}",
   "imageInput.browse": "تصفح",
   "imageInput.dropImageHere": "أسقط صورتك هنا، أو",
   "imageInput.supportedFormats": "يدعم PNG و JPG و JPEG و WEBP و GIF",

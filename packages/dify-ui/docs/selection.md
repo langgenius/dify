@@ -17,6 +17,12 @@ domain value type through its public API.
 Multiple-selection comboboxes follow the Base UI chips composition: chips and the input share the
 input group, chips wrap, and the group grows vertically.
 
+For chip-based multiple comboboxes, render `ComboboxValue` around `ComboboxChips` and label the
+chips container only while it has the conditional `toolbar` role. Consumers must localize the
+`ComboboxChip` Backspace/Delete description, the item-specific `ComboboxChipRemove` name, and the
+input's selection count and Left Arrow hint. If `FieldDescription` already sets `aria-describedby`,
+put the input hint there because it takes precedence over `aria-description`.
+
 Autocomplete, Combobox, and Select popups use Base UI's `--anchor-width` and `--available-width`
 variables to follow their trigger while clamping to the viewport. Do not replace that sizing with
 a fixed width or an unclamped minimum width.
@@ -73,6 +79,67 @@ single-or-multiple union.
 
 Prefer the Base UI `items` collection pattern so the root, value display, and item list share one
 runtime source of truth. Convert values to strings only at real serialization boundaries.
+
+### Combobox source items and selected values
+
+Combobox has separate types for the selected business value and the source record rendered by the
+list:
+
+```tsx
+import {
+  Combobox,
+  ComboboxItem,
+  ComboboxList,
+  createComboboxItems,
+} from '@langgenius/dify-ui/combobox'
+import { useMemo } from 'react'
+
+const userItems = useMemo(
+  () =>
+    createComboboxItems(users, {
+      getValue: user => user.id,
+      getLabel: user => user.name,
+    }),
+  [users],
+)
+
+<Combobox<string, true, User>
+  multiple
+  items={userItems}
+  value={selectedUserIds}
+  onValueChange={setSelectedUserIds}
+>
+  <ComboboxList<User>>
+    {user => <ComboboxItem<string> value={user.id}>{user.name}</ComboboxItem>}
+  </ComboboxList>
+</Combobox>
+```
+
+The first generic is `Value`, the second is the literal multiple-selection mode, and the third is
+the source `Item`. `ComboboxValue` and `ComboboxItem` use `Value`; `filter`, `ComboboxList`,
+`ComboboxGroup`, `ComboboxCollection`, and `useComboboxFilteredItems` use source items. Grouped
+roots use the leaf record as `Item`, while the list callback receives the group object.
+
+Use `createComboboxItems` when the business contract stores a stable primitive ID but list rows
+need complete records. Its `getValue` result must be unique and stable, and `getLabel` owns default
+filtering, typeahead, and selected-value display. Create static collections at module scope and
+memoize collections derived from changing data. Treat the returned collection as opaque and pass
+it directly to `items`.
+
+For server-side search, keep the complete set of records needed to resolve selected labels in the
+collection passed to `items`, and pass the current result window to `filteredItems`. Filtered items
+are source `Item` records, not derived IDs, and grouped results must retain the collection's group
+shape.
+
+Keep object values when the selected record itself is the business state or the selection callback
+immediately needs the full record. When async refreshes may replace object references, provide
+`isItemEqualToValue` using the stable domain identity.
+
+`itemToStringValue` only serializes a selected `Value` for forms and autofill; it does not change
+`onValueChange` into an ID callback. Do not add it, `itemToStringLabel`, or a comparator as a
+mechanical trio. Primitive IDs normally use the default equality. For async or paged data, keep
+selected records in the collection when their labels must remain available after they leave the
+current result window, or provide an ID-only label fallback.
 
 `CheckboxGroup` follows Base UI and uses `string[]`. Model stronger business ID distinctions at
 the domain boundary unless the upstream primitive contract changes.
