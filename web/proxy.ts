@@ -7,6 +7,7 @@ import { env } from '@/env'
 
 const NECESSARY_DOMAIN =
   '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://cdn-cookieyes.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
+const COOKIEYES_LOGGING_ORIGIN = 'https://log.cookieyes.com'
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const EMBEDDABLE_PATH_SEGMENTS = [
@@ -87,7 +88,7 @@ export function proxy(request: NextRequest) {
 
   const cspHeader = `
     default-src 'self' ${scheme_source} ${csp} ${whiteList};
-    connect-src 'self' ${scheme_source} ${csp} ${whiteList};
+    connect-src 'self' ${scheme_source} ${csp} ${whiteList} ${COOKIEYES_LOGGING_ORIGIN};
     script-src 'self' 'wasm-unsafe-eval' ${scheme_source} ${csp} ${whiteList};
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};

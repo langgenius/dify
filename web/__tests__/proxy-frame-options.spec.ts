@@ -88,6 +88,25 @@ describe('proxy frame options', () => {
   })
 })
 
+describe('proxy CookieYes consent logging', () => {
+  it('should allow CookieYes logging requests only through connect-src', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const response = proxy(createRequest('https://cloud.dify.ai/signin'))
+    const contentSecurityPolicy = response.headers.get('content-security-policy')!
+    const directives = Object.fromEntries(
+      contentSecurityPolicy
+        .split(';')
+        .map((directive) => directive.trim().split(/\s+/))
+        .filter(([name]) => name)
+        .map(([name, ...sources]) => [name, sources]),
+    )
+
+    expect(directives['connect-src']).toContain('https://log.cookieyes.com')
+    for (const directive of ['default-src', 'script-src', 'style-src', 'worker-src', 'media-src'])
+      expect(directives[directive]).not.toContain('https://log.cookieyes.com')
+  })
+})
+
 describe('proxy education entry normalization', () => {
   it('redirects the legacy education action without leaking it into the canonical URL', () => {
     const response = proxy(
