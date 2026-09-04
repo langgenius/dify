@@ -1,16 +1,32 @@
 import json
-from unittest.mock import patch
+from collections.abc import Iterator
+from contextlib import ExitStack
+from dataclasses import dataclass, field
+from unittest.mock import MagicMock, patch
 
-from click.testing import CliRunner
+import pytest
+from click.testing import CliRunner, Result
 
+from commands.rbac import _iter_agent_rows as real_iter_agent_rows
 from commands.rbac import migrate_agent_permissions_to_rbac
-from services.enterprise.rbac_service import LegacyAgentMigrationReport, LegacyAgentRoleMigration
+from services.enterprise.rbac_service import (
+    LegacyAgentMigrationReport,
+    LegacyAgentRoleMigration,
+    _LegacyResourceWhitelistConfig,
+)
 
 MODULE = "commands.rbac"
 
 
 def _events(output: str) -> list[dict[str, object]]:
     return [json.loads(line) for line in output.splitlines() if line.startswith("{")]
+
+
+@pytest.fixture(autouse=True)
+def _no_agents() -> Iterator[None]:
+    """Phase 2 always runs, so keep it off the database unless a test supplies agent rows."""
+    with patch(f"{MODULE}._iter_agent_rows", return_value=iter(())):
+        yield
 
 
 def _roles() -> list[LegacyAgentRoleMigration]:
@@ -161,3 +177,268 @@ def test_skipped_role_template_is_reported_like_a_skipped_role() -> None:
     assert [e["event"] for e in events] == ["agent_manage_role_template_migration_skipped"]
     assert events[0]["reason"] == "policy row missing"
     assert "tenant_id" not in events[0]
+
+
+def _whitelist_config(
+    scope: str | None = "all", account_ids: list[str] | None = None
+) -> _LegacyResourceWhitelistConfig:
+    return _LegacyResourceWhitelistConfig(rbac_whitelist_scope=scope, account_ids=account_ids or [])
+
+
+@dataclass
+class _AgentPhaseMocks:
+    agent_whitelist_config: MagicMock
+    app_whitelist_config: MagicMock
+    replace_whitelist: MagicMock
+    replace_user_access_policies: MagicMock
+    sync_creator_bindings: MagicMock
+    owner_account_id: MagicMock
+    member_batches: MagicMock
+
+
+@dataclass
+class _AgentPhaseSetup:
+    agents: list[tuple[str, str | None, str | None]]
+    agent_configs: list[_LegacyResourceWhitelistConfig] | None = None
+    app_config: _LegacyResourceWhitelistConfig = field(default_factory=_whitelist_config)
+    workspace_members: list[str] = field(default_factory=lambda: ["m1", "m2", "m3"])
+    owner_account_id: str = "owner-1"
+
+
+def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, _AgentPhaseMocks]:
+    def _member_batches(_tenant_id: str, batch_size: int) -> Iterator[list[str]]:
+        for start in range(0, len(setup.workspace_members), batch_size):
+            yield setup.workspace_members[start : start + batch_size]
+
+    with ExitStack() as stack:
+        stack.enter_context(patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1"])))
+        stack.enter_context(
+            patch(
+                f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles",
+                return_value=LegacyAgentMigrationReport(),
+            )
+        )
+        stack.enter_context(patch(f"{MODULE}._iter_agent_rows", return_value=iter(setup.agents)))
+        agent_whitelist_config = stack.enter_context(patch(f"{MODULE}.RBACService.AgentAccess.legacy_whitelist_config"))
+        if setup.agent_configs is None:
+            agent_whitelist_config.return_value = _whitelist_config()
+        else:
+            agent_whitelist_config.side_effect = setup.agent_configs
+        mocks = _AgentPhaseMocks(
+            agent_whitelist_config=agent_whitelist_config,
+            app_whitelist_config=stack.enter_context(
+                patch(f"{MODULE}.RBACService.AppAccess.legacy_whitelist_config", return_value=setup.app_config)
+            ),
+            replace_whitelist=stack.enter_context(patch(f"{MODULE}.RBACService.AgentAccess.replace_whitelist")),
+            replace_user_access_policies=stack.enter_context(
+                patch(f"{MODULE}.RBACService.AgentAccess.replace_user_access_policies")
+            ),
+            sync_creator_bindings=stack.enter_context(
+                patch(f"{MODULE}.RBACService.AccessPolicies.sync_creator_access_policy_member_bindings")
+            ),
+            owner_account_id=stack.enter_context(
+                patch(f"{MODULE}._owner_account_id", return_value=setup.owner_account_id)
+            ),
+            member_batches=stack.enter_context(
+                patch(f"{MODULE}._workspace_member_account_id_batches", side_effect=_member_batches)
+            ),
+        )
+        result = CliRunner().invoke(migrate_agent_permissions_to_rbac, args)
+    return result, mocks
+
+
+def test_agent_bootstrap_dry_run_proposes_every_agent_and_writes_nothing() -> None:
+    result, mocks = _run_agent_phase([], _AgentPhaseSetup(agents=[("ag1", "c1", None), ("ag2", "c2", None)]))
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_proposed_change"] * 2
+    assert [e["agent_id"] for e in events] == ["ag1", "ag2"]
+    assert events[0]["dry_run"] is True
+    assert events[0]["operator_account_id"] == "c1"
+    assert events[0]["before"] == {"rbac_whitelist_scope": "all", "whitelist_account_ids": []}
+    assert events[0]["after"] == {
+        "automatic_include_workspace_members": True,
+        "default_policy_member_source": "workspace_members",
+        "creator_access_policy_synced": True,
+    }
+    mocks.replace_whitelist.assert_not_called()
+    mocks.replace_user_access_policies.assert_not_called()
+    mocks.sync_creator_bindings.assert_not_called()
+    assert "2 agent(s) would change, 0 already initialised" in result.output
+
+
+def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply", "--member-batch-size", "2"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], workspace_members=["m1", "m2", "m3"]),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert [e["event"] for e in _events(result.output)] == ["agent_access_bootstrap_applied"]
+    assert _events(result.output)[0]["dry_run"] is False
+
+    mocks.replace_whitelist.assert_called_once()
+    assert mocks.replace_whitelist.call_args.kwargs["agent_id"] == "ag1"
+    assert mocks.replace_whitelist.call_args.kwargs["account_id"] == "c1"
+    assert mocks.replace_whitelist.call_args.kwargs["payload"].automatic_include_workspace_members is True
+
+    mocks.member_batches.assert_called_once_with("t1", 2)
+    assert mocks.replace_user_access_policies.call_count == 2
+    calls = mocks.replace_user_access_policies.call_args_list
+    assert [call.kwargs["payload"].account_ids for call in calls] == [["m1", "m2"], ["m3"]]
+    assert all(call.kwargs["payload"].access_policy_ids == ["default"] for call in calls)
+    assert all(call.kwargs["target_account_id"] is None for call in calls)
+
+    mocks.sync_creator_bindings.assert_called_once()
+    assert mocks.sync_creator_bindings.call_args.kwargs["resource_id"] == "ag1"
+    assert mocks.sync_creator_bindings.call_args.kwargs["account_id"] == "c1"
+    assert "1 agent(s) changed, 0 already initialised" in result.output
+
+
+def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", None), ("ag2", "c2", None)],
+            agent_configs=[
+                _whitelist_config(account_ids=["m1", "m2"]),
+                _whitelist_config(account_ids=["m1"]),
+            ],
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"] * 2
+    assert {e["reason"] for e in events} == {"already_initialized"}
+    mocks.replace_whitelist.assert_not_called()
+    mocks.sync_creator_bindings.assert_not_called()
+    assert "0 agent(s) changed, 2 already initialised" in result.output
+
+
+def test_agent_with_hand_picked_whitelist_scope_is_left_alone() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[_whitelist_config(scope="specific")]),
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"]
+    assert events[0]["reason"] == "already_initialized"
+    mocks.replace_whitelist.assert_not_called()
+
+
+def test_agent_without_creator_falls_back_to_owner_and_reports_no_creator() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"], _AgentPhaseSetup(agents=[("ag1", None, None)], owner_account_id="owner-9")
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert events[0]["operator_account_id"] == "owner-9"
+    assert events[0]["reason"] == "no_creator"
+    assert events[0]["after"] == {
+        "automatic_include_workspace_members": True,
+        "default_policy_member_source": "workspace_members",
+        "creator_access_policy_synced": False,
+    }
+    mocks.replace_whitelist.assert_called_once()
+    mocks.sync_creator_bindings.assert_not_called()
+
+
+def test_owner_lookup_is_cached_per_tenant() -> None:
+    _, mocks = _run_agent_phase([], _AgentPhaseSetup(agents=[("ag1", None, None), ("ag2", None, None)]))
+
+    mocks.owner_account_id.assert_called_once()
+
+
+def test_backing_app_with_specific_whitelist_is_flagged_for_review() -> None:
+    result, mocks = _run_agent_phase(
+        [],
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", "app-1")],
+            app_config=_whitelist_config(scope="specific", account_ids=["m2", "m1"]),
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == [
+        "agent_backing_app_has_specific_whitelist",
+        "agent_access_bootstrap_proposed_change",
+    ]
+    assert events[0]["app_id"] == "app-1"
+    assert events[0]["agent_id"] == "ag1"
+    assert events[0]["backing_app_account_ids"] == ["m1", "m2"]
+    mocks.app_whitelist_config.assert_called_once()
+    # The hand-picked members are reported for review, never copied onto the agent.
+    assert mocks.replace_user_access_policies.call_count == 0
+
+
+def test_backing_app_without_specific_whitelist_is_not_flagged() -> None:
+    result, _ = _run_agent_phase([], _AgentPhaseSetup(agents=[("ag1", "c1", "app-1")]))
+
+    assert result.exit_code == 0, result.output
+    assert [e["event"] for e in _events(result.output)] == ["agent_access_bootstrap_proposed_change"]
+
+
+def test_tenant_with_zero_agents_completes() -> None:
+    result, mocks = _run_agent_phase([], _AgentPhaseSetup(agents=[]))
+
+    assert result.exit_code == 0, result.output
+    assert _events(result.output) == []
+    assert "0 agent(s) would change, 0 already initialised" in result.output
+    mocks.agent_whitelist_config.assert_not_called()
+
+
+def test_unknown_agent_whitelist_scope_stops_the_migration() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[_whitelist_config(scope="galaxy_brain")]),
+    )
+
+    assert result.exit_code != 0
+    assert "galaxy_brain" in str(result.exception)
+    mocks.replace_whitelist.assert_not_called()
+
+
+def test_missing_agent_whitelist_scope_is_skipped_not_defaulted() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[_whitelist_config(scope=None)]),
+    )
+
+    assert result.exit_code == 0, result.output
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"]
+    assert events[0]["reason"] == "missing_whitelist_scope"
+    mocks.replace_whitelist.assert_not_called()
+    assert "0 agent(s) changed, 0 already initialised" in result.output
+
+
+def test_iter_agent_rows_skips_archived_and_keyset_paginates() -> None:
+    statements: list[object] = []
+    batches: list[list[MagicMock]] = [[MagicMock(id="ag1", created_by="c1", backing_app_id="app-1")], []]
+
+    def _execute(stmt: object) -> MagicMock:
+        statements.append(stmt)
+        executed = MagicMock()
+        executed.all.return_value = batches[len(statements) - 1]
+        return executed
+
+    session = MagicMock()
+    session.execute.side_effect = _execute
+    factory = MagicMock()
+    factory.create_session.return_value.__enter__.return_value = session
+
+    with patch(f"{MODULE}.session_factory", factory):
+        rows = list(real_iter_agent_rows("t1", 500))
+
+    assert rows == [("ag1", "c1", "app-1")]
+    rendered = [str(stmt) for stmt in statements]
+    assert len(rendered) == 2
+    assert all("agents.status !=" in text for text in rendered)
+    assert all("agents.tenant_id =" in text for text in rendered)
+    assert "agents.id >" in rendered[1]

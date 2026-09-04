@@ -4,6 +4,7 @@ import json
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from enum import StrEnum
 
 import click
 from sqlalchemy import select
@@ -12,10 +13,21 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
-from models import App, Dataset, DatasetPermission, DatasetPermissionEnum, Tenant, TenantAccountJoin, TenantAccountRole
+from models import (
+    Agent,
+    AgentStatus,
+    App,
+    Dataset,
+    DatasetPermission,
+    DatasetPermissionEnum,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+)
 from services.enterprise.rbac_service import (
     LegacyAgentRoleMigration,
     ListOption,
+    RBACResourceType,
     RBACService,
     ReplaceMemberBindings,
     ReplaceUserAccessPolicies,
@@ -24,7 +36,7 @@ from services.enterprise.rbac_service import (
 _RBAC_DEFAULT_ACCESS_POLICY_ID = "default"
 _RBAC_RESOURCE_ACCESS_POLICY_BATCH_SIZE = 500
 
-_AGENT_MIGRATION_ROLE_STATE_LABEL = {
+_AGENT_MIGRATION_STATE_LABEL = {
     False: "would change",
     True: "changed",
 }
@@ -103,16 +115,35 @@ def _emit_agent_migration_event(payload: dict[str, object]) -> None:
 
 @dataclass(frozen=True)
 class _AgentMigrationEventKind:
-    """Names the event family for one migration pass (tenant roles vs. global role templates)."""
+    """Names the event family for one migration pass and owns its event-name stem."""
 
     event_stem: str
-    include_tenant_id: bool
+    include_tenant_id: bool = True
+
+    @property
+    def skipped(self) -> str:
+        return f"{self.event_stem}_skipped"
+
+    def outcome(self, *, apply: bool) -> str:
+        return f"{self.event_stem}_applied" if apply else f"{self.event_stem}_proposed_change"
 
 
-_AGENT_ROLE_MIGRATION_EVENT_KIND = _AgentMigrationEventKind(event_stem="agent_manage_role", include_tenant_id=True)
+_AGENT_ROLE_MIGRATION_EVENT_KIND = _AgentMigrationEventKind(event_stem="agent_manage_role_migration")
 _AGENT_ROLE_TEMPLATE_MIGRATION_EVENT_KIND = _AgentMigrationEventKind(
-    event_stem="agent_manage_role_template", include_tenant_id=False
+    event_stem="agent_manage_role_template_migration", include_tenant_id=False
 )
+_AGENT_ACCESS_BOOTSTRAP_EVENT_KIND = _AgentMigrationEventKind(event_stem="agent_access_bootstrap")
+
+_AGENT_BACKING_APP_SPECIFIC_WHITELIST_EVENT = "agent_backing_app_has_specific_whitelist"
+_AGENT_ACCESS_BOOTSTRAP_MEMBER_SOURCE = "workspace_members"
+
+
+class _AgentAccessBootstrapReason(StrEnum):
+    """Why one agent did not get a freshly bootstrapped access row, or got an incomplete one."""
+
+    ALREADY_INITIALIZED = "already_initialized"
+    MISSING_WHITELIST_SCOPE = "missing_whitelist_scope"
+    NO_CREATOR = "no_creator"
 
 
 def _agent_manage_role_event(
@@ -130,11 +161,10 @@ def _agent_manage_role_event(
     if kind.include_tenant_id:
         base["tenant_id"] = tenant_id
     if entry.skipped:
-        return {**base, "event": f"{kind.event_stem}_migration_skipped", "reason": entry.skipped}
-    event = f"{kind.event_stem}_migration_applied" if apply else f"{kind.event_stem}_migration_proposed_change"
+        return {**base, "event": kind.skipped, "reason": entry.skipped}
     return {
         **base,
-        "event": event,
+        "event": kind.outcome(apply=apply),
         "after": {
             "added_keys": entry.added_keys,
             "removed_keys": entry.removed_keys,
@@ -1083,11 +1113,211 @@ def migrate_dataset_permissions_to_rbac(
         )
 
 
+def _iter_agent_rows(tenant_id: str, batch_size: int) -> Iterator[tuple[str, str | None, str | None]]:
+    """Yield `(agent_id, created_by, backing_app_id)` for one tenant's live agents.
+
+    Archived agents are excluded: they are hidden from the roster, so bootstrapping
+    access rows for them would only add noise.
+    """
+    last_agent_id: str | None = None
+    while True:
+        with session_factory.create_session() as session:
+            stmt = (
+                select(Agent.id, Agent.created_by, Agent.backing_app_id)
+                .where(Agent.tenant_id == tenant_id, Agent.status != AgentStatus.ARCHIVED)
+                .order_by(Agent.id.asc())
+                .limit(batch_size)
+            )
+            if last_agent_id:
+                stmt = stmt.where(Agent.id > last_agent_id)
+
+            rows = list(session.execute(stmt).all())
+            if not rows:
+                return
+
+        for row in rows:
+            yield (
+                str(row.id),
+                str(row.created_by) if row.created_by else None,
+                str(row.backing_app_id) if row.backing_app_id else None,
+            )
+
+        last_agent_id = str(rows[-1].id)
+
+
+@dataclass
+class _AgentAccessBootstrapCounts:
+    changed: int = 0
+    already_initialized: int = 0
+
+
+@dataclass(frozen=True)
+class _AgentAccessBootstrapOptions:
+    tenant_id: str
+    agent_id: str
+    creator_account_id: str | None
+    backing_app_id: str | None
+    operator_account_id: str
+    member_batch_size: int
+    apply: bool
+
+
+def _agent_access_is_initialized(scope: RBACResourceWhitelistScope, account_ids: list[str]) -> bool:
+    """Decide whether the RBAC service already holds a real access row for this agent.
+
+    The service answers the whitelist read for an unknown agent with the same default
+    body a freshly bootstrapped agent has (`scope=all`, auto-include on) and no member
+    ids, so the config alone cannot tell them apart. Anything else — a narrowed scope,
+    or seeded default-policy members — can only come from a stored row.
+    """
+    return scope is not RBACResourceWhitelistScope.ALL or bool(account_ids)
+
+
+def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions) -> None:
+    """Flag a backing App whose members were hand-picked; the operator decides what to copy."""
+    if not options.backing_app_id:
+        return
+    app_config = _resource_legacy_whitelist_config(
+        "app",
+        tenant_id=options.tenant_id,
+        operator_account_id=options.operator_account_id,
+        resource_id=options.backing_app_id,
+    )
+    if _normalize_rbac_whitelist_scope(app_config.rbac_whitelist_scope) is not RBACResourceWhitelistScope.SPECIFIC:
+        return
+    _emit_agent_migration_event(
+        {
+            "event": _AGENT_BACKING_APP_SPECIFIC_WHITELIST_EVENT,
+            "dry_run": not options.apply,
+            "tenant_id": options.tenant_id,
+            "agent_id": options.agent_id,
+            "app_id": options.backing_app_id,
+            "backing_app_account_ids": sorted(set(app_config.account_ids)),
+        }
+    )
+
+
+def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
+    RBACService.AgentAccess.replace_whitelist(
+        tenant_id=options.tenant_id,
+        account_id=options.operator_account_id,
+        agent_id=options.agent_id,
+        payload=ReplaceMemberBindings(automatic_include_workspace_members=True),
+    )
+    for batch in _workspace_member_account_id_batches(options.tenant_id, options.member_batch_size):
+        RBACService.AgentAccess.replace_user_access_policies(
+            tenant_id=options.tenant_id,
+            account_id=options.operator_account_id,
+            agent_id=options.agent_id,
+            target_account_id=None,
+            payload=ReplaceUserAccessPolicies(
+                access_policy_ids=[_RBAC_DEFAULT_ACCESS_POLICY_ID],
+                account_ids=batch,
+            ),
+        )
+    if options.creator_account_id:
+        RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
+            tenant_id=options.tenant_id,
+            account_id=options.creator_account_id,
+            resource_type=RBACResourceType.AGENT,
+            resource_id=options.agent_id,
+        )
+
+
+def _emit_agent_access_bootstrap_skipped(
+    options: _AgentAccessBootstrapOptions,
+    reason: _AgentAccessBootstrapReason,
+) -> None:
+    _emit_agent_migration_event(
+        {
+            "event": _AGENT_ACCESS_BOOTSTRAP_EVENT_KIND.skipped,
+            "reason": reason.value,
+            "dry_run": not options.apply,
+            "tenant_id": options.tenant_id,
+            "agent_id": options.agent_id,
+            "operator_account_id": options.operator_account_id,
+        }
+    )
+
+
+def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _AgentAccessBootstrapCounts) -> None:
+    """Give one pre-existing agent the access rows a newly created agent gets."""
+    config = RBACService.AgentAccess.legacy_whitelist_config(
+        tenant_id=options.tenant_id,
+        account_id=options.operator_account_id,
+        agent_id=options.agent_id,
+    )
+    scope = _normalize_rbac_whitelist_scope(config.rbac_whitelist_scope)
+    if scope is None:
+        _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.MISSING_WHITELIST_SCOPE)
+        return
+
+    account_ids = sorted(set(config.account_ids))
+    if _agent_access_is_initialized(scope, account_ids):
+        counts.already_initialized += 1
+        _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.ALREADY_INITIALIZED)
+        return
+
+    _report_backing_app_specific_whitelist(options)
+
+    if options.apply:
+        _write_agent_access_rows(options)
+    counts.changed += 1
+
+    event: dict[str, object] = {
+        "event": _AGENT_ACCESS_BOOTSTRAP_EVENT_KIND.outcome(apply=options.apply),
+        "dry_run": not options.apply,
+        "tenant_id": options.tenant_id,
+        "agent_id": options.agent_id,
+        "operator_account_id": options.operator_account_id,
+        "before": {"rbac_whitelist_scope": scope.value, "whitelist_account_ids": account_ids},
+        "after": {
+            "automatic_include_workspace_members": True,
+            "default_policy_member_source": _AGENT_ACCESS_BOOTSTRAP_MEMBER_SOURCE,
+            "creator_access_policy_synced": bool(options.creator_account_id),
+        },
+    }
+    if not options.creator_account_id:
+        event["reason"] = _AgentAccessBootstrapReason.NO_CREATOR.value
+    _emit_agent_migration_event(event)
+
+
+def _bootstrap_tenant_agent_access(
+    tenant_id: str,
+    *,
+    agent_batch_size: int,
+    member_batch_size: int,
+    apply: bool,
+    counts: _AgentAccessBootstrapCounts,
+) -> None:
+    owner_account_id: str | None = None
+    for agent_id, creator_account_id, backing_app_id in _iter_agent_rows(tenant_id, agent_batch_size):
+        if creator_account_id is None and owner_account_id is None:
+            with session_factory.create_session() as session:
+                owner_account_id = _owner_account_id(tenant_id, session=session)
+        operator_account_id = creator_account_id or owner_account_id
+        if not operator_account_id:
+            raise ValueError(f"No operator account for tenant={tenant_id} agent={agent_id}")
+        _bootstrap_agent_access(
+            _AgentAccessBootstrapOptions(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                creator_account_id=creator_account_id,
+                backing_app_id=backing_app_id,
+                operator_account_id=operator_account_id,
+                member_batch_size=member_batch_size,
+                apply=apply,
+            ),
+            counts,
+        )
+
+
 @click.command(
     "rbac-migrate-agent-permissions",
     help=(
-        "Upgrade step for agent RBAC. Asks the RBAC service to replace agent.manage on every "
-        "custom role with agent.create plus the agent.full_access binding. Dry run by default."
+        "Upgrade step for agent RBAC. Phase 1 asks the RBAC service to replace agent.manage on every "
+        "custom role with agent.create plus the agent.full_access binding. Phase 2 bootstraps the access "
+        "rows pre-existing agents never got, so they stay visible to workspace members. Dry run by default."
     ),
 )
 @click.option("--tenant-id", help="Only migrate a single workspace.")
@@ -1098,14 +1328,35 @@ def migrate_dataset_permissions_to_rbac(
     type=click.IntRange(min=1),
     help="Tenants fetched per database batch.",
 )
+@click.option(
+    "--agent-batch-size",
+    default=500,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Agents fetched per database batch.",
+)
+@click.option(
+    "--member-batch-size",
+    default=_RBAC_RESOURCE_ACCESS_POLICY_BATCH_SIZE,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Workspace members written per default-policy call when bootstrapping an agent.",
+)
 @click.option("--apply", is_flag=True, default=False, help="Write changes. Without it nothing is written.")
-def migrate_agent_permissions_to_rbac(tenant_id: str | None, batch_size: int, apply: bool) -> None:
+def migrate_agent_permissions_to_rbac(
+    tenant_id: str | None,
+    batch_size: int,
+    agent_batch_size: int,
+    member_batch_size: int,
+    apply: bool,
+) -> None:
     click.echo(click.style("Starting agent RBAC migration: custom roles holding agent.manage.", fg="green"))
     tenant_count = 0
     role_count = 0
     skipped_count = 0
     seen_template_ids: set[str] = set()
     template_count = 0
+    agent_counts = _AgentAccessBootstrapCounts()
     for workspace_id in _iter_tenant_ids(tenant_id, batch_size=batch_size):
         tenant_count += 1
         try:
@@ -1127,10 +1378,19 @@ def migrate_agent_permissions_to_rbac(tenant_id: str | None, batch_size: int, ap
             _emit_agent_migration_event(
                 _agent_manage_role_event(None, template, apply=apply, kind=_AGENT_ROLE_TEMPLATE_MIGRATION_EVENT_KIND)
             )
-    role_state = _AGENT_MIGRATION_ROLE_STATE_LABEL[apply]
+        _bootstrap_tenant_agent_access(
+            workspace_id,
+            agent_batch_size=agent_batch_size,
+            member_batch_size=member_batch_size,
+            apply=apply,
+            counts=agent_counts,
+        )
+    role_state = _AGENT_MIGRATION_STATE_LABEL[apply]
     click.echo(
         f"{tenant_count} tenant(s), {role_count} role(s) {role_state}, {skipped_count} skipped, "
-        f"{template_count} template(s) {role_state}"
+        f"{template_count} template(s) {role_state}, "
+        f"{agent_counts.changed} agent(s) {role_state}, "
+        f"{agent_counts.already_initialized} already initialised"
     )
     if not apply:
         click.echo(click.style("Dry run: no changes written. Re-run with --apply.", fg="yellow"))
