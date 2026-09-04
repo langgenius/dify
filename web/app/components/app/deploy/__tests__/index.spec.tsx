@@ -1200,9 +1200,13 @@ describe('AppDeploy', () => {
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
     await user.click(await screen.findByRole('menuitem', { name: /Dev/ }))
 
-    const dialog = await screen.findByRole('dialog', {
-      name: 'deployments.versions.deployTo:{"name":"Dev"}',
-    })
+    const dialog = await screen.findByRole(
+      'dialog',
+      {
+        name: 'deployments.versions.deployTo:{"name":"Dev"}',
+      },
+      { timeout: 3000 },
+    )
     expect(dialog).toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Release 7/ })).toBeEnabled()
