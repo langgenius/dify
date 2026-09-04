@@ -6,6 +6,8 @@ export const retrievalKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing retrieval knowledge space id')
 })
 
+export const retrievalCanQueryAtom = atomWithLazy<boolean>(() => false)
+
 export const retrievalLocationQuery = createQueryAtoms(
   {
     research: parseAsString,

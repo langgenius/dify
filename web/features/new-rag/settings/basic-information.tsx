@@ -162,7 +162,6 @@ export function BasicInformationSection() {
     draftBaseVersionRef.current !== serverVersion
   const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
-  const basicDirty = !draftsMatch(current, serverDraft)
   const spaceDirty =
     current.name !== serverDraft.name ||
     current.description !== serverDraft.description ||
@@ -180,8 +179,14 @@ export function BasicInformationSection() {
     current.selectedMemberIds.length === 0
   const isSaving = spaceMutation.isPending || membersMutation.isPending || isRefreshing
   const fieldsDisabled = !canEdit || isSaving
+  const authorizedSpaceDirty = canEdit && spaceDirty
+  const authorizedMembersDirty = canManageAccess && membersDirty
+  const authorizedDirty = authorizedSpaceDirty || authorizedMembersDirty
   const saveDisabled =
-    !basicDirty || nameInvalid || descriptionInvalid || membersInvalid || serverConflict
+    !authorizedDirty ||
+    (authorizedSpaceDirty && (nameInvalid || descriptionInvalid)) ||
+    membersInvalid ||
+    serverConflict
 
   const updateDraft = (update: (value: BasicDraft) => BasicDraft) => {
     const next = update(draftRef.current ?? current)
@@ -211,7 +216,7 @@ export function BasicInformationSection() {
     )
 
   const performSave = async () => {
-    if (saveDisabled || isSaving || !canEdit) return
+    if (saveDisabled || isSaving) return
     setSavePending({ owner: 'basic', pending: true })
     try {
       const saveSlice = async (
@@ -225,7 +230,7 @@ export function BasicInformationSection() {
         completedSaveFingerprintsRef.current[slice] = fingerprint
       }
 
-      if (spaceDirty) {
+      if (authorizedSpaceDirty) {
         const body = {
           ...(current.description !== serverDraft.description
             ? { description: current.description }
@@ -396,24 +401,27 @@ export function BasicInformationSection() {
 
         <SettingsFieldRow label={tSettings(($) => $['form.permissions'])}>
           <KnowledgeSettingsMembers
-            disabled={!canEdit || !canManageAccess || isSaving}
+            disabled={!canManageAccess || isSaving}
             hasError={membersInvalid}
             members={membersQuery.data?.accounts ?? []}
             ownerAccountId={space.owner_account_id}
             selectedMemberIds={current.selectedMemberIds}
             visibility={current.visibility}
+            visibilityDisabled={!canEdit || !canManageAccess || isSaving}
             onSelectedMemberIdsChange={(selectedMemberIds) =>
               updateDraft((value) => ({ ...value, selectedMemberIds }))
             }
-            onVisibilityChange={(visibility) => updateDraft((value) => ({ ...value, visibility }))}
+            onVisibilityChange={(visibility) => {
+              if (canEdit && canManageAccess) updateDraft((value) => ({ ...value, visibility }))
+            }}
           />
         </SettingsFieldRow>
 
-        {canEdit && (
+        {(canEdit || canManageAccess) && (
           <div className="flex justify-end gap-2 pt-1">
             <Button
               type="button"
-              disabled={(!basicDirty && !serverConflict) || isSaving}
+              disabled={(!authorizedDirty && !serverConflict) || isSaving}
               onClick={resetDraft}
             >
               {tCommon(($) => $['operation.cancel'])}

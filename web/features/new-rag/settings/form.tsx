@@ -13,11 +13,15 @@ export function KnowledgeSettingsForm() {
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
 
   if (!space) return null
-  const canEdit = space.permission_keys.includes('knowledge_space_edit')
+  const canModify = space.permission_keys.some((permission) =>
+    ['knowledge_space_access_config', 'knowledge_space_delete', 'knowledge_space_edit'].includes(
+      permission,
+    ),
+  )
 
   return (
     <>
-      {!canEdit && (
+      {!canModify && (
         <div
           className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
           role="status"

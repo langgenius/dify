@@ -69,7 +69,7 @@ const apiMock = vi.hoisted(() => ({
   } as KnowledgeFsSettingsResponse,
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_edit'],
+  keys: ['knowledge_space_edit', 'knowledge_space_query'],
 }))
 vi.mock('../../space/context', () => ({
   useKnowledgeSpacePermission: (permission: string) =>
@@ -381,7 +381,7 @@ function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
 describe('RetrievalTestPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
+    knowledgeSpacePermissionState.keys = ['knowledge_space_edit', 'knowledge_space_query']
     apiMock.planResearch.mockResolvedValue({
       budget: { budget_usd: 1, exceeds_budget: false },
       estimates: {},
@@ -580,6 +580,35 @@ describe('RetrievalTestPage', () => {
       expect(dialog).not.toHaveTextContent('common.modelProvider.rerankModel.key')
     },
   )
+
+  it('keeps retrieval history read-only without knowledge_space_query', async () => {
+    knowledgeSpacePermissionState.keys = ['knowledge_space_read']
+    apiMock.traces = [
+      {
+        completed: false,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-read-only',
+        mode: 'fast',
+        profile: {},
+        query: 'Previously run query',
+        scores: {},
+        stages: [{ name: 'query.generate', status: 'error' }],
+      },
+    ]
+
+    renderPage({ searchParams: '?trace=trace-read-only&retest=trace-read-only' })
+
+    expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
+    expect(screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' })).toBeDisabled()
+    expect((await screen.findAllByText('Previously run query')).length).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => expect(apiMock.queryAdmission).not.toHaveBeenCalled())
+    expect(apiMock.planResearch).not.toHaveBeenCalled()
+    expect(apiMock.createResearch).not.toHaveBeenCalled()
+  })
 
   it('admits only one research task while the first Run request is pending', async () => {
     let resolvePlan: ((value: Awaited<ReturnType<typeof apiMock.planResearch>>) => void) | undefined

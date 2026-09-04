@@ -200,7 +200,7 @@ function DocumentSelectionCell({ document }: { document: LogicalDocument }) {
     () => createDocumentRowSelectionFactsAtom(document.id),
     [document.id],
   )
-  const { canWrite, readOnlyReasonId, resultsIncomplete, selected, selectionDisabled } =
+  const { canSelect, readOnlyReasonId, resultsIncomplete, selected, selectionDisabled } =
     useAtomValue(selectionFactsAtom)
   const onSelectedChange = useSetAtom(toggleDocumentSelectionAtom)
   const titleId = `new-document-${document.id}`
@@ -213,7 +213,7 @@ function DocumentSelectionCell({ document }: { document: LogicalDocument }) {
         disabled={selectionDisabled || document.status === 'deleting'}
         aria-describedby={
           selectionDisabled
-            ? canWrite
+            ? canSelect
               ? resultsIncomplete
                 ? PARTIAL_RESULTS_DESCRIPTION_ID
                 : undefined
@@ -447,7 +447,7 @@ function DocumentsTableHeader() {
   const { t } = useTranslation('knowledgeSpace')
   const {
     allSelected,
-    canWrite,
+    canSelect,
     hasSelectableDocuments,
     readOnlyReasonId,
     resultsIncomplete,
@@ -466,7 +466,7 @@ function DocumentsTableHeader() {
             indeterminate={someSelected && !allSelected}
             disabled={selectionDisabled || !hasSelectableDocuments}
             aria-describedby={
-              !canWrite
+              selectionDisabled && !canSelect
                 ? readOnlyReasonId
                 : selectionDisabled && resultsIncomplete
                   ? PARTIAL_RESULTS_DESCRIPTION_ID

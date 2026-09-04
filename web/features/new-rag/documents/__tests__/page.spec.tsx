@@ -3702,6 +3702,41 @@ describe('DocumentsPage', () => {
     })
   })
 
+  it('allows bulk download without document-write permission', async () => {
+    const user = userEvent.setup()
+    permissionStateMock.datasetKeys = ['dataset.acl.readonly', 'dataset.acl.document_download']
+    permissionStateMock.spaceKeys = ['knowledge_space_read']
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'download-only', title: 'Download only.pdf' })] }],
+    }
+    const archive = new File(['documents'], 'download-only.zip', {
+      type: 'application/zip',
+    })
+    downloadDocumentsMutation.mockResolvedValue(archive)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const selection = screen.getByRole('checkbox', { name: 'Download only.pdf' })
+    expect(selection).toBeEnabled()
+    await user.click(selection)
+    const actions = screen.getByRole('group', {
+      name: 'knowledgeSpace.bulkDocumentActions',
+    })
+    expect(
+      within(actions).queryByRole('button', { name: 'knowledgeSpace.reindexDocuments' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(actions).queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['download-only'] },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -7687,12 +7722,15 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(toastMock.error).not.toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
+    const actions = screen.getByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' })
     expect(
-      screen.queryByRole('group', { name: 'knowledgeSpace.bulkDocumentActions' }),
+      within(actions).queryByRole('button', { name: 'knowledgeSpace.reindexDocuments' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+    expect(
+      within(actions).getByRole('button', { name: 'knowledgeSpace.downloadDocuments' }),
+    ).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
-      'true',
     )
     expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toHaveFocus()
   })

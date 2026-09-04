@@ -55,9 +55,8 @@ export function ExternalAccessSection() {
   if (!space) return null
   const serverDraft = externalAccessDraftFromServer(externalAccess)
   const current = draft ?? serverDraft
-  const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
-  const disabled = !canEdit || !canManageAccess
+  const disabled = !canManageAccess
 
   const showSaveError = (error?: unknown) =>
     toast.error(

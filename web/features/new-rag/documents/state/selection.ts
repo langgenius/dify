@@ -14,7 +14,7 @@ import {
   selectionResultsUnavailableAtom,
   taskResultsIncompleteAtom,
 } from './results'
-import { documentCanWriteAtom } from './runtime'
+import { documentCanDownloadAtom, documentCanWriteAtom } from './runtime'
 import { selectedDocumentIdsAtom } from './scoped'
 import { documentReadOnlyReasonIdAtom } from './upload'
 
@@ -37,7 +37,9 @@ export const validSelectedDocumentIdsAtom = atom((get) => {
 })
 
 export const documentBulkActionsVisibleAtom = atom(
-  (get) => get(documentCanWriteAtom) && get(validSelectedDocumentIdsAtom).size > 0,
+  (get) =>
+    (get(documentCanWriteAtom) || get(documentCanDownloadAtom)) &&
+    get(validSelectedDocumentIdsAtom).size > 0,
 )
 
 export const selectedDocumentsAtom = atom((get) => {
@@ -118,14 +120,15 @@ export const hasSelectableDocumentsAtom = atom(
 
 export const documentTableSelectionFactsAtom = atom((get) => {
   const canWrite = get(documentCanWriteAtom)
+  const canSelect = canWrite || get(documentCanDownloadAtom)
   const resultsUnavailable = get(selectionResultsUnavailableAtom)
   return {
     allSelected: get(allFilteredDocumentsSelectedAtom),
-    canWrite,
+    canSelect,
     hasSelectableDocuments: get(hasSelectableDocumentsAtom),
     readOnlyReasonId: get(documentReadOnlyReasonIdAtom),
     resultsIncomplete: get(filteredResultsIncompleteAtom),
-    selectionDisabled: !canWrite || resultsUnavailable,
+    selectionDisabled: !canSelect || resultsUnavailable,
     someSelected: get(someFilteredDocumentsSelectedAtom),
   }
 })
@@ -133,12 +136,13 @@ export const documentTableSelectionFactsAtom = atom((get) => {
 export const createDocumentRowSelectionFactsAtom = (documentId: string) => {
   const factsAtom = atom((get) => {
     const canWrite = get(documentCanWriteAtom)
+    const canSelect = canWrite || get(documentCanDownloadAtom)
     const resultsUnavailable = get(selectionResultsUnavailableAtom)
     return {
-      canWrite,
+      canSelect,
       readOnlyReasonId: get(documentReadOnlyReasonIdAtom),
       resultsIncomplete: get(filteredResultsIncompleteAtom),
-      selectionDisabled: !canWrite || resultsUnavailable,
+      selectionDisabled: !canSelect || resultsUnavailable,
       selected: get(validSelectedDocumentIdsAtom).has(documentId),
     }
   })
@@ -146,7 +150,7 @@ export const createDocumentRowSelectionFactsAtom = (documentId: string) => {
     factsAtom,
     (facts) => facts,
     (left, right) =>
-      left.canWrite === right.canWrite &&
+      left.canSelect === right.canSelect &&
       left.readOnlyReasonId === right.readOnlyReasonId &&
       left.resultsIncomplete === right.resultsIncomplete &&
       left.selectionDisabled === right.selectionDisabled &&

@@ -15,7 +15,11 @@ import {
   retrievalTestRecords,
 } from '../model'
 import { researchTaskAnswerFromEvents } from '../services/research-task-events'
-import { retrievalKnowledgeSpaceIdAtom, retrievalLinkedSelectionAtom } from './inputs'
+import {
+  retrievalCanQueryAtom,
+  retrievalKnowledgeSpaceIdAtom,
+  retrievalLinkedSelectionAtom,
+} from './inputs'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
@@ -399,17 +403,19 @@ export const retrievalRetainedImagesAtom = atom((get) => {
 })
 
 export const retrievalComposerFactsAtom = atom((get) => {
+  const canQuery = get(retrievalCanQueryAtom)
   const localRun = get(retrievalLocalRunAtom)
   const selectedResearchActive = researchTaskIsActive(get(retrievalSelectedResearchTaskAtom))
   const query = get(retrievalComposerQueryAtom)
   const images = get(retrievalComposerQueryImagesAtom)
   return {
-    disabled: selectedResearchActive || localRun?.status === 'running',
+    disabled: !canQuery || selectedResearchActive || localRun?.status === 'running',
     images,
     mode: get(retrievalComposerModeAtom),
     query,
     runnable:
       (Boolean(query.trim()) || images.length > 0) &&
+      canQuery &&
       !selectedResearchActive &&
       localRun?.status !== 'running',
   }

@@ -1,4 +1,5 @@
 import type {
+  KnowledgeFsPermissionResponse,
   KnowledgeFsSettingsResponse,
   KnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
@@ -311,6 +312,7 @@ function renderForm({
   accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
+  permissions = [],
   queryClient: queryClientOverride,
   settings: settingsOverride = settings,
   space: spaceOverride = space,
@@ -326,6 +328,7 @@ function renderForm({
   }>
   externalAccess?: typeof externalAccess
   members?: Member[]
+  permissions?: KnowledgeFsPermissionResponse[]
   queryClient?: QueryClient
   settings?: KnowledgeFsSettingsResponse
   space?: KnowledgeFsSpaceDetailResponse
@@ -353,12 +356,12 @@ function renderForm({
   })
   queryClient.setQueryData(queryKeys.systemFeatures, createSystemFeaturesFixture())
   knowledgeQueryMock.externalAccess = externalAccessOverride
-  knowledgeQueryMock.permissions = { data: [] }
+  knowledgeQueryMock.permissions = { data: permissions }
   knowledgeQueryMock.settings = settingsOverride
   knowledgeQueryMock.space = spaceOverride
   membersQueryMock.data = { accounts: members }
   queryClient.setQueryData(queryKeys.externalAccess, externalAccessOverride)
-  queryClient.setQueryData(queryKeys.permissions, { data: [] })
+  queryClient.setQueryData(queryKeys.permissions, { data: permissions })
   queryClient.setQueryData(queryKeys.settings, settingsOverride)
   queryClient.setQueryData(queryKeys.space, spaceOverride)
   const Wrapper = ({ children }: { children: ReactNode }) => {
@@ -1326,9 +1329,25 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(reasoningSelector).toBeEnabled()
     expect(rerankSelector).toBeEnabled()
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeEnabled()
-    expect(
-      screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
-    ).not.toHaveAttribute('aria-disabled', 'true')
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'knowledgeSpace.apiAgentAccess',
+    })
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(apiAccessSwitch)
+    await waitFor(() =>
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
+        {
+          body: {
+            agent_enabled: false,
+            mcp_enabled: true,
+            service_api_enabled: false,
+            workflow_enabled: true,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
     await user.click(rerankSelector)
 
     expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
@@ -1892,5 +1911,66 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(
       screen.queryByRole('button', { name: 'common.operation.delete' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('lets an access-config-only user update members and external access', async () => {
+    const user = userEvent.setup()
+    const member = {
+      avatar: '',
+      avatar_url: null,
+      email: 'member@example.com',
+      id: 'member-1',
+      name: 'Team Member',
+      role: 'normal',
+      roles: [],
+      status: 'active',
+    } satisfies Member
+    renderForm({
+      members: [member],
+      space: {
+        ...space,
+        permission_keys: ['knowledge_space_access_config', 'knowledge_space_read'],
+        visibility: 'partial_members',
+      },
+    })
+
+    expect(screen.queryByText('knowledgeSpace.settings.viewOnly')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
+    expect(
+      screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: /Test User/ }))
+    const picker = screen.getByRole('dialog', { name: 'datasetSettings.form.permissions' })
+    expect(
+      within(picker).getByRole('radio', {
+        name: /datasetSettings\.form\.permissionsOnlyMe/,
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    await user.click(within(picker).getByRole('button', { name: /Team Member/ }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
+
+    await waitFor(() =>
+      expect(serviceMock.replaceMembers).toHaveBeenCalledWith(
+        {
+          body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+  })
+
+  it('shows the destructive action to a delete-only user', () => {
+    renderForm({
+      space: {
+        ...space,
+        permission_keys: ['knowledge_space_delete', 'knowledge_space_read'],
+      },
+    })
+
+    expect(screen.queryByText('knowledgeSpace.settings.viewOnly')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
   })
 })
