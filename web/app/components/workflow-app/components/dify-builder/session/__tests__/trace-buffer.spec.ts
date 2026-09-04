@@ -4,12 +4,23 @@ describe('createTraceBuffer', () => {
   it('stamps a monotonic seq (starting at 1) and an ISO timestamp on each append', () => {
     const buffer = createTraceBuffer()
     buffer.append({ dir: 'out', kind: 'action', payload: { a: 1 } })
-    buffer.append({ dir: 'in', kind: 'progress', payload: { b: 2 }, version: 3, state: 'build.execution' })
+    buffer.append({
+      dir: 'in',
+      kind: 'progress',
+      payload: { b: 2 },
+      version: 3,
+      state: 'build.execution',
+    })
     const { entries, truncated } = buffer.snapshot()
     expect(entries.map((e) => e.seq)).toEqual([1, 2])
-    expect(entries[0].dir).toBe('out')
-    expect(entries[1]).toMatchObject({ dir: 'in', kind: 'progress', version: 3, state: 'build.execution' })
-    expect(entries[1].ts).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
+    expect(entries[0]?.dir).toBe('out')
+    expect(entries[1]).toMatchObject({
+      dir: 'in',
+      kind: 'progress',
+      version: 3,
+      state: 'build.execution',
+    })
+    expect(entries[1]?.ts).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
     expect(truncated).toBe(false)
   })
 
@@ -39,7 +50,7 @@ describe('createTraceBuffer', () => {
     buffer.clear()
     expect(buffer.snapshot()).toEqual({ entries: [], truncated: false })
     buffer.append({ dir: 'in', kind: 'c', payload: {} })
-    expect(buffer.snapshot().entries[0].seq).toBe(1)
+    expect(buffer.snapshot().entries[0]?.seq).toBe(1)
   })
 
   it('readTraceVersion prefers version, falls back to at_version, else undefined', () => {
