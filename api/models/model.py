@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column, validates
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session, validates
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -508,7 +508,9 @@ class App(Base):
         agent = self.agent_app_binding_with_session(session=session)
         return agent.id if agent else None
 
-    def agent_app_binding_with_session(self, *, session: Session, include_archived: bool = False) -> Agent | None:
+    def agent_app_binding_with_session(
+        self, *, session: Session | scoped_session, include_archived: bool = False
+    ) -> Agent | None:
         """For an Agent App (mode=agent), the Agent bound to it.
 
         A roster Agent is bound through ``Agent.app_id``; a workflow-only Agent

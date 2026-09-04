@@ -166,7 +166,7 @@ class TestTagListApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
-            patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
+            patch.object(module, "enforce_rbac_checks") as enforce_rbac_checks,
         ):
             unwrap(TagListApi().post)(
                 TagListApi(),
@@ -174,13 +174,13 @@ class TestTagListApi:
                 request_context,
             )
 
-        enforce_rbac_access.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="user-1",
-            resource_type=module.RBACResourceScope.WORKSPACE,
-            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-            resource_required=False,
-        )
+        enforce_rbac_checks.assert_called_once()
+        rbac_kwargs = enforce_rbac_checks.call_args.kwargs
+        assert rbac_kwargs["tenant_id"] == "tenant-1"
+        assert rbac_kwargs["account_id"] == "user-1"
+        (rbac_check,) = rbac_kwargs["checks"]
+        assert rbac_check.scene is module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY
+        assert isinstance(rbac_check.locator, module.Workspace)
 
     def test_post_rejects_read_only_member(self, app: Flask, request_context: RequestContext) -> None:
         readonly = _account(TenantAccountRole.NORMAL)
@@ -249,7 +249,7 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
-            patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
+            patch.object(module, "enforce_rbac_checks") as enforce_rbac_checks,
         ):
             result, status = unwrap(TagUpdateDeleteApi().patch)(
                 TagUpdateDeleteApi(),
@@ -258,13 +258,13 @@ class TestTagUpdateDeleteApi:
                 "tag-1",
             )
 
-        enforce_rbac_access.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="user-1",
-            resource_type=module.RBACResourceScope.WORKSPACE,
-            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-            resource_required=False,
-        )
+        enforce_rbac_checks.assert_called_once()
+        rbac_kwargs = enforce_rbac_checks.call_args.kwargs
+        assert rbac_kwargs["tenant_id"] == "tenant-1"
+        assert rbac_kwargs["account_id"] == "user-1"
+        (rbac_check,) = rbac_kwargs["checks"]
+        assert rbac_check.scene is module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY
+        assert isinstance(rbac_check.locator, module.Workspace)
         tags_service.update_tag.assert_called_once_with(request_context, "tag-1", UpdateTagInput(name="Updated"))
         assert status == 200
         assert result["binding_count"] == "3"
@@ -345,12 +345,12 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
-            patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
+            patch.object(module, "enforce_rbac_checks") as enforce_rbac_checks,
         ):
             unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
 
         tags_service.get_tag_type.assert_called_once_with(request_context, "tag-1")
-        enforce_rbac_access.assert_called_once()
+        enforce_rbac_checks.assert_called_once()
 
     def test_delete_does_not_authorize_tag_outside_current_workspace(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -363,12 +363,12 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
-            patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
+            patch.object(module, "enforce_rbac_checks") as enforce_rbac_checks,
         ):
             with pytest.raises(NotFound):
                 unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
 
-        enforce_rbac_access.assert_not_called()
+        enforce_rbac_checks.assert_not_called()
 
 
 class TestTagBindings:

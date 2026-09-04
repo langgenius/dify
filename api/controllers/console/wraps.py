@@ -11,11 +11,8 @@ from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
-from controllers.common.wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    rbac_permission_required,
-)
+from controllers.common.rbac import RBACPermission, RBACResourceScope
+from controllers.common.wraps import rbac_permission_required
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums import CloudPlan, DeploymentEdition

@@ -4,13 +4,13 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -72,7 +72,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(TraceProviderQuery)
     def get(self, req_data: TraceProviderQuery, app_model: App):
@@ -101,7 +101,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(TraceConfigPayload)
     def post(self, req_data: TraceConfigPayload, app_model: App):
@@ -136,7 +136,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(TraceConfigPayload)
     def patch(self, req_data: TraceConfigPayload, app_model: App):
@@ -165,7 +165,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(TraceProviderQuery)
     def delete(self, req_data: TraceProviderQuery, app_model: App):

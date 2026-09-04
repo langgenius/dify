@@ -4,13 +4,13 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     model_validate,
 )
 from extensions.ext_application_services import application_services
@@ -106,8 +106,7 @@ class WorkflowDailyRunsStatistic(Resource):
         console_ns.models[WorkflowDailyRunsStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(WorkflowStatisticQuery)
@@ -136,8 +135,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
         console_ns.models[WorkflowDailyTerminalsStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(WorkflowStatisticQuery)
@@ -166,8 +164,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
         console_ns.models[WorkflowDailyTokenCostStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(WorkflowStatisticQuery)
@@ -196,8 +193,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         console_ns.models[WorkflowAverageAppInteractionStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(WorkflowStatisticQuery)

@@ -25,7 +25,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/features/agent-v2/permissions', () => {
   return {
     useCanManageAgents: () =>
-      mockConsoleStateReader().workspacePermissionKeys.includes('agent.manage'),
+      mockConsoleStateReader().workspacePermissionKeys.includes('agent.acl.preview'),
   }
 })
 
@@ -41,7 +41,7 @@ type ConsoleStateFixture = {
 const baseContext: ConsoleStateFixture = {
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  workspacePermissionKeys: ['agent.manage'],
+  workspacePermissionKeys: ['agent.acl.preview'],
   currentWorkspace: {
     id: 'workspace-1',
   },
@@ -88,7 +88,7 @@ describe('AgentsAccessGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('redirects to /apps without agent.manage', async () => {
+  it('redirects to /apps without agent.acl.preview', async () => {
     setConsoleState({ workspacePermissionKeys: ['dataset.create_and_management'] })
 
     render(
@@ -103,7 +103,7 @@ describe('AgentsAccessGuard', () => {
     })
   })
 
-  it('renders children with agent.manage', () => {
+  it('renders children with agent.acl.preview', () => {
     render(
       <AgentsAccessGuard>
         <div>agents</div>

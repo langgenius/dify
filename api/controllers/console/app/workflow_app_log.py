@@ -6,12 +6,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     model_validate,
     rbac_permission_required,
@@ -139,7 +139,7 @@ class WorkflowAppLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()))
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(WorkflowAppLogQuery)
     def get(self, req_data: WorkflowAppLogQuery, app_model: App):

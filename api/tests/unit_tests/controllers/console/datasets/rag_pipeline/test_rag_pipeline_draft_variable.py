@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterator
-from inspect import getclosurevars, unwrap
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import RBACResourceScope
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
@@ -21,7 +22,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable impor
     RagPipelineVariableResetApi,
     WorkflowDraftVariablePatchPayload,
 )
-from controllers.console.wraps import RBACPermission, RBACResourceScope
+from controllers.console.wraps import RBACPermission
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
@@ -30,6 +31,7 @@ from graphon.variables import IntegerVariable, StringVariable
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -102,12 +104,11 @@ def restx_config(app):
 def test_rag_draft_variable_routes_require_dataset_edit_permission() -> None:
     route = RagPipelineVariableApi.get
     legacy_gate = unwrap(route, stop=lambda decorator: "edit_permission_required" in decorator.__code__.co_qualname)
-    rbac_gate = unwrap(route, stop=lambda decorator: "scene" in getclosurevars(decorator).nonlocals)
-
     assert "edit_permission_required" in legacy_gate.__code__.co_qualname
-    permissions = getclosurevars(rbac_gate).nonlocals
-    assert permissions["resource_type"] == RBACResourceScope.DATASET
-    assert permissions["scene"] == RBACPermission.DATASET_EDIT
+
+    [check] = rbac_checks(route)
+    assert check.locator.scope == RBACResourceScope.DATASET
+    assert check.scene == RBACPermission.DATASET_EDIT
 
 
 class TestRagPipelineVariableCollectionApi:

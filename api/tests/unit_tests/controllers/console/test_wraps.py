@@ -4,14 +4,14 @@ from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask
 from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from controllers.common.wraps import _extract_resource_id
+from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace
 from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console import wraps as wraps_module
@@ -41,10 +41,10 @@ from controllers.console.wraps import (
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError, AdmissionConfigurationError
+from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
-from models.dataset import Dataset, RateLimitLog
+from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -359,15 +359,13 @@ class TestCurrentContextInjection:
             ),
             patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
             patch("controllers.console.flask_admission.get_trace_id", return_value=None),
-            patch("controllers.console.flask_admission.enforce_rbac_access") as enforce_rbac_access,
+            patch("controllers.console.flask_admission.enforce_rbac_checks") as enforce_rbac_checks,
         ):
 
             class Handler:
                 @flask_admission.console_account_admission(
                     allowed_roles=frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-                    rbac_resource_scope=RBACResourceScope.WORKSPACE,
-                    rbac_permission=RBACPermission.CREDENTIAL_CREATE,
-                    rbac_resource_required=False,
+                    rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace())],
                 )
                 def post(self, request_context: RequestContext):
                     return request_context
@@ -378,18 +376,14 @@ class TestCurrentContextInjection:
         assert isinstance(result, RequestContext)
         assert result.active_workspace_id == "tenant-123"
         assert result.trace_id == "trace-1"
-        enforce_rbac_access.assert_called_once_with(
-            tenant_id="tenant-123",
-            account_id=current_user.id,
-            resource_type=RBACResourceScope.WORKSPACE,
-            scene=RBACPermission.CREDENTIAL_CREATE,
-            resource_required=False,
-            path_args={},
-        )
-
-    def test_console_account_admission_rejects_incomplete_rbac_requirement(self):
-        with pytest.raises(AdmissionConfigurationError, match="configured together"):
-            flask_admission.console_account_admission(rbac_resource_scope=RBACResourceScope.WORKSPACE)
+        enforce_rbac_checks.assert_called_once()
+        call_kwargs = enforce_rbac_checks.call_args.kwargs
+        assert call_kwargs["tenant_id"] == "tenant-123"
+        assert call_kwargs["account_id"] == current_user.id
+        assert call_kwargs["path_args"] == {}
+        (check,) = call_kwargs["checks"]
+        assert check.scene is RBACPermission.CREDENTIAL_CREATE
+        assert isinstance(check.locator, Workspace)
 
     def test_console_account_admission_can_admit_uninitialized_accounts(self):
         current_user = make_account()
@@ -501,67 +495,72 @@ class TestRbacPermissionRequired:
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
 
-        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+        @rbac_permission_required(RBACCheck(RBACPermission.APP_DELETE, PlainApp()))
         def protected_view(**kwargs):
             return "ok"
 
         with (
-            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
-            patch("controllers.common.wraps._extract_resource_id", return_value="app-123") as mock_extract,
-            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            Flask(__name__).test_request_context("/"),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch("controllers.common.rbac.locators.agent_binding", return_value=None) as mock_binding,
+            patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None) as mock_owner,
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"})
-        mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
+        mock_binding.assert_called_once_with("tenant-1", "app-123")
+        mock_owner.assert_called_once()
         mock_check.assert_called_once_with(
             "tenant-1",
             "account-1",
-            scene="app_delete",
-            resource_type="app",
+            scene=RBACPermission.APP_DELETE,
+            resource_type=RBACResourceScope.APP,
             resource_id="app-123",
         )
 
     def test_workspace_scoped_check_skips_resource_id_extraction(self):
         current_user = make_account("account-2")
 
-        @rbac_permission_required(
-            RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-        )
+        @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
         def protected_view():
             return "ok"
 
         with (
-            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-2")),
-            patch("controllers.common.wraps._extract_resource_id") as mock_extract,
-            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            Flask(__name__).test_request_context("/"),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-2"),
+            ),
+            patch("controllers.common.rbac.locators.DatasetId.owner_id") as mock_owner,
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view() == "ok"
 
-        mock_extract.assert_not_called()
-        mock_owned.assert_not_called()
+        mock_owner.assert_not_called()
         mock_check.assert_called_once_with(
             "tenant-2",
             "account-2",
-            scene="dataset_create_and_management",
-            resource_type="dataset",
+            scene=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+            resource_type=None,
             resource_id=None,
         )
 
     def test_workspace_scene_omits_resource_type(self):
         current_user = make_account("account-3")
 
-        @rbac_permission_required(
-            RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-        )
+        @rbac_permission_required(RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace()))
         def protected_view():
             return "ok"
 
         with (
-            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-3")),
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-3"),
+            ),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view() == "ok"
 
@@ -576,136 +575,45 @@ class TestRbacPermissionRequired:
     def test_resource_owned_app_skips_rbac_check(self):
         current_user = make_account("account-4")
 
-        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+        @rbac_permission_required(RBACCheck(RBACPermission.APP_DELETE, PlainApp()))
         def protected_view(**kwargs):
             return "ok"
 
         with (
-            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
-            patch("controllers.common.wraps._extract_resource_id", return_value="app-123"),
-            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
-            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+            Flask(__name__).test_request_context("/"),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-4"),
+            ),
+            patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+            patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value="account-4") as mock_owner,
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check") as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_owned.assert_called_once_with("tenant-4", "account-4", "app", "app-123")
+        mock_owner.assert_called_once()
         mock_check.assert_not_called()
 
     def test_resource_owned_dataset_skips_rbac_check(self):
         current_user = make_account("account-5")
 
-        @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+        @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
         def protected_view(**kwargs):
             return "ok"
 
         with (
-            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
-            patch("controllers.common.wraps._extract_resource_id", return_value="dataset-123"),
-            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
-            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+            Flask(__name__).test_request_context("/"),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-5"),
+            ),
+            patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value="account-5") as mock_owner,
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check") as mock_check,
         ):
             assert protected_view(dataset_id="dataset-123") == "ok"
 
-        mock_owned.assert_called_once_with("tenant-5", "account-5", "dataset", "dataset-123")
+        mock_owner.assert_called_once()
         mock_check.assert_not_called()
-
-    def test_extract_resource_id_prefers_path_args(self):
-        app = Flask(__name__)
-
-        with app.test_request_context("/"):
-            request.view_args = {"app_id": "view-app"}
-
-            assert _extract_resource_id("app", "tenant-1", {"app_id": "path-app"}) == "path-app"
-
-    def test_extract_resource_id_falls_back_to_request_view_args(self):
-        app = Flask(__name__)
-
-        with app.test_request_context("/"):
-            request.view_args = {"app_id": "view-app"}
-
-            assert _extract_resource_id("app", "tenant-1") == "view-app"
-
-    def test_extract_resource_id_supports_legacy_route_aliases(self):
-        app = Flask(__name__)
-
-        with app.test_request_context("/apps/app-1/api-keys"):
-            request.view_args = {"resource_id": "app-1"}
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "app-1"
-
-        with app.test_request_context("/datasets/dataset-1/api-keys"):
-            request.view_args = {"resource_id": "dataset-1"}
-            assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
-
-    def test_extract_resource_id_scopes_pipeline_resolution_to_the_calling_tenant(self, sqlite_session: Session):
-        app = Flask(__name__)
-        pipeline_id = "00000000-0000-0000-0000-000000000001"
-        current_tenant_id = "00000000-0000-0000-0000-000000000002"
-        foreign_dataset = Dataset(
-            id="00000000-0000-0000-0000-000000000003",
-            tenant_id="00000000-0000-0000-0000-000000000004",
-            name="Foreign decoy",
-            created_by="00000000-0000-0000-0000-000000000005",
-            pipeline_id=pipeline_id,
-        )
-        current_dataset = Dataset(
-            id="00000000-0000-0000-0000-000000000006",
-            tenant_id=current_tenant_id,
-            name="Current tenant dataset",
-            created_by="00000000-0000-0000-0000-000000000007",
-            pipeline_id=pipeline_id,
-        )
-        sqlite_session.add_all([foreign_dataset, current_dataset])
-
-        unscoped_dataset = sqlite_session.scalar(select(Dataset).where(Dataset.pipeline_id == pipeline_id))
-        assert unscoped_dataset is foreign_dataset
-
-        with (
-            app.test_request_context("/rag/pipelines/pipeline-1"),
-            patch("controllers.common.wraps.db", SimpleNamespace(session=sqlite_session)),
-        ):
-            request.view_args = {"pipeline_id": pipeline_id}
-            assert _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id) == current_dataset.id
-
-    def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
-        app = Flask(__name__)
-
-        with (
-            app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.AgentRosterService") as mock_service,
-        ):
-            request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
-
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "parent-app-1"
-
-    def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
-        """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
-        app = Flask(__name__)
-
-        with (
-            app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.AgentRosterService") as mock_service,
-        ):
-            request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
-
-            _extract_resource_id(RBACResourceScope.APP, "tenant-9")
-
-            mock_service.return_value.peek_authz_app_id.assert_called_once_with(
-                tenant_id="tenant-9", agent_id="agent-1"
-            )
-
-    def test_extract_resource_id_keeps_agent_id_when_the_agent_does_not_resolve(self):
-        app = Flask(__name__)
-
-        with (
-            app.test_request_context("/agent/agent-1/chat-messages"),
-            patch("controllers.common.wraps.AgentRosterService") as mock_service,
-        ):
-            request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_authz_app_id.return_value = None
-
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 
     def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
         @is_admin_or_owner_required

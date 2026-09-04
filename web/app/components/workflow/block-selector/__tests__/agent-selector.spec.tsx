@@ -63,7 +63,7 @@ describe('AgentSelectorContent', () => {
     mocks.agents = []
   })
 
-  it('offers the Agent Console link with agent.manage', async () => {
+  it('offers the Agent Console link with agent.acl.preview', async () => {
     await renderSelector({ onStartFromScratch: vi.fn() })
 
     const listbox = screen.getByRole('listbox')
@@ -99,7 +99,7 @@ describe('AgentSelectorContent', () => {
     expect(listbox.querySelector('.overflow-y-auto')).not.toBeInTheDocument()
   })
 
-  it('hides the Agent Console link without agent.manage', async () => {
+  it('hides the Agent Console link without agent.acl.preview', async () => {
     mocks.canManageAgents = false
 
     await renderSelector()
@@ -107,7 +107,7 @@ describe('AgentSelectorContent', () => {
     expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
   })
 
-  it('keeps start from scratch without agent.manage', async () => {
+  it('keeps start from scratch without agent.acl.preview', async () => {
     mocks.canManageAgents = false
 
     await renderSelector({ onStartFromScratch: vi.fn() })

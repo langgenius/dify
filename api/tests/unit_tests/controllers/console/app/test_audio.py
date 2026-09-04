@@ -111,11 +111,11 @@ def test_agent_console_audio_api_uses_agent_draft(
         calls["asr"] = kwargs
         return {"text": "agent transcript"}
 
-    def enforce_rbac_access(**kwargs):
+    def enforce_rbac_checks(**kwargs):
         calls["rbac"] = kwargs
 
     monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", enforce_rbac_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", enforce_rbac_checks)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
     monkeypatch.setattr(AudioService, "transcript_agent_asr", transcript_agent_asr)
 
@@ -138,13 +138,13 @@ def test_agent_console_audio_api_uses_agent_draft(
 
     assert response == {"text": "agent transcript"}
     assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
-    assert calls["rbac"] == {
-        "tenant_id": "tenant-1",
-        "account_id": "account-1",
-        "resource_type": audio_module.RBACResourceScope.APP,
-        "scene": audio_module.RBACPermission.APP_TEST_AND_RUN,
-        "path_args": {"app_id": "backing-app-1"},
-    }
+    rbac_call = calls["rbac"]
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == "account-1"
+    assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.APP_TEST_AND_RUN
+    assert isinstance(rbac_check.locator, audio_module.PlainApp)
     assert calls["draft"] == {
         "tenant_id": "tenant-1",
         "agent_id": str(agent_id),
@@ -216,7 +216,7 @@ def test_agent_console_audio_api_checks_rbac_with_backing_app_id(
         soul_loaded = True
         return AgentSoulConfig()
 
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", deny_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", deny_access)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
 
     api = AgentChatMessageAudioApi()

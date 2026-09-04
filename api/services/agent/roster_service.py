@@ -44,6 +44,7 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentW
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
+from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
@@ -314,10 +315,12 @@ class AgentRosterService:
                 source=source,
             )
             self._session.commit()
-            return agent
         except IntegrityError as exc:
             self._session.rollback()
             raise AgentNameConflictError() from exc
+
+        initialize_agent_rbac_access(tenant_id=tenant_id, agent_id=agent.id, creator_account_id=account_id)
+        return agent
 
     def _create_roster_agent_in_transaction(
         self,
