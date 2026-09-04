@@ -957,13 +957,19 @@ def try_sync_creator_access_policy_member_bindings(
 class _ResourceAccessClient[MatrixT: _RBACModel]:
     """Per-resource access-policy calls for one resource type.
 
-    `AppAccess`/`DatasetAccess` predate this and still spell every call out; new
-    resource types are wired up by instantiating this with the type's route.
+    A resource type is wired up by instantiating this with the type's route.
     """
 
-    def __init__(self, route: _ResourceAccessRoute, matrix_model: type[MatrixT]) -> None:
+    def __init__(
+        self,
+        route: _ResourceAccessRoute,
+        matrix_model: type[MatrixT],
+        *,
+        replace_user_policies_exclude_unset: bool = False,
+    ) -> None:
         self._route = route
         self._matrix_model = matrix_model
+        self._replace_user_policies_exclude_unset = replace_user_policies_exclude_unset
 
     def _path(self, suffix: str) -> str:
         return f"{_INNER_PREFIX}/{self._route.segment}/{suffix}"
@@ -1017,7 +1023,7 @@ class _ResourceAccessClient[MatrixT: _RBACModel]:
             tenant_id=tenant_id,
             account_id=account_id,
             params=params,
-            json=payload.model_dump(mode="json"),
+            json=payload.model_dump(mode="json", exclude_unset=self._replace_user_policies_exclude_unset),
         )
         return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1260,6 +1266,11 @@ class _WorkspaceAccessClient:
         return AccessMatrixItem.model_validate(data or {})
 
 
+_APP_ACCESS = _ResourceAccessClient(RBACResourceType.APP.route, AppAccessMatrix)
+# Datasets alone send only the fields the caller actually set.
+_DATASET_ACCESS = _ResourceAccessClient(
+    RBACResourceType.DATASET.route, DatasetAccessMatrix, replace_user_policies_exclude_unset=True
+)
 _AGENT_ACCESS = _ResourceAccessClient(RBACResourceType.AGENT.route, AgentAccessMatrix)
 _WORKSPACE_APP_ACCESS = _WorkspaceAccessClient(RBACResourceType.APP.route)
 _WORKSPACE_DATASET_ACCESS = _WorkspaceAccessClient(RBACResourceType.DATASET.route)
@@ -1604,13 +1615,7 @@ class RBACService:
     class AppAccess:
         @staticmethod
         def whitelist_resources(tenant_id: str, account_id: str | None) -> ResourceWhitelistResources:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/whitelist/resources",
-                tenant_id=tenant_id,
-                account_id=account_id,
-            )
-            return ResourceWhitelistResources.model_validate(data or {})
+            return _APP_ACCESS.whitelist_resources(tenant_id, account_id)
 
         @staticmethod
         def user_access_policies(
@@ -1620,15 +1625,7 @@ class RBACService:
             *,
             options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
-            params = (options or ListOption()).to_params({"app_id": app_id})
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/user-access-policies",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params=params,
-            )
-            return ResourceUserAccessPoliciesResponse.model_validate(data or {})
+            return _APP_ACCESS.user_access_policies(tenant_id, account_id, app_id, options=options)
 
         @staticmethod
         def replace_user_access_policies(
@@ -1638,51 +1635,21 @@ class RBACService:
             target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
-            request_data = payload.model_dump(mode="json")
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/apps/user-access-policies",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "account_id": target_account_id},
-                json=request_data,
-            )
-            return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
+            return _APP_ACCESS.replace_user_access_policies(tenant_id, account_id, app_id, target_account_id, payload)
 
         @staticmethod
         def whitelist(tenant_id: str, account_id: str | None, app_id: str) -> ResourceWhitelist:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id},
-            )
-            return ResourceWhitelist.model_validate(data or {})
+            return _APP_ACCESS.whitelist(tenant_id, account_id, app_id)
 
         @staticmethod
         def whitelist_config(tenant_id: str, account_id: str | None, app_id: str) -> ResourceWhitelistConfig:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id},
-            )
-            return ResourceWhitelistConfig.model_validate(data or {})
+            return _APP_ACCESS.whitelist_config(tenant_id, account_id, app_id)
 
         @staticmethod
         def legacy_whitelist_config(
             tenant_id: str, account_id: str | None, app_id: str
         ) -> _LegacyResourceWhitelistConfig:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id},
-            )
-            return _LegacyResourceWhitelistConfig.model_validate(data or {})
+            return _APP_ACCESS.legacy_whitelist_config(tenant_id, account_id, app_id)
 
         @staticmethod
         def replace_whitelist(
@@ -1691,15 +1658,7 @@ class RBACService:
             app_id: str,
             payload: ReplaceMemberBindings,
         ) -> ResourceWhitelist:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/apps/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return ResourceWhitelist.model_validate(data or {})
+            return _APP_ACCESS.replace_whitelist(tenant_id, account_id, app_id, payload)
 
         @staticmethod
         def append_whitelist_members_batch(
@@ -1707,24 +1666,11 @@ class RBACService:
             account_id: str | None,
             data: Sequence[AppendAppWhitelistMembersBatchItem],
         ) -> None:
-            _inner_call(
-                "POST",
-                f"{_INNER_PREFIX}/apps/whitelist/members/batch",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                json={"data": [item.model_dump(mode="json") for item in data]},
-            )
+            _APP_ACCESS.append_whitelist_members_batch(tenant_id, account_id, data)
 
         @staticmethod
         def matrix(tenant_id: str, account_id: str | None, app_id: str) -> AppAccessMatrix:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/access-policy",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id},
-            )
-            return AppAccessMatrix.model_validate(data or {})
+            return _APP_ACCESS.matrix(tenant_id, account_id, app_id)
 
         @staticmethod
         def list_role_bindings(
@@ -1733,14 +1679,7 @@ class RBACService:
             app_id: str,
             policy_id: str,
         ) -> RoleBindingsResponse:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/access-policy/role-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-            )
-            return RoleBindingsResponse.model_validate(data or {})
+            return _APP_ACCESS.list_role_bindings(tenant_id, account_id, app_id, policy_id)
 
         @staticmethod
         def replace_role_bindings(
@@ -1750,15 +1689,7 @@ class RBACService:
             policy_id: str,
             payload: ReplaceRoleBindings,
         ) -> RoleBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/apps/access-policy/role-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return RoleBindingsResponse.model_validate(data or {})
+            return _APP_ACCESS.replace_role_bindings(tenant_id, account_id, app_id, policy_id, payload)
 
         @staticmethod
         def list_member_bindings(
@@ -1767,14 +1698,7 @@ class RBACService:
             app_id: str,
             policy_id: str,
         ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/apps/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-            )
-            return MemberBindingsResponse.model_validate(data or {})
+            return _APP_ACCESS.list_member_bindings(tenant_id, account_id, app_id, policy_id)
 
         @staticmethod
         def delete_member_bindings(
@@ -1784,14 +1708,7 @@ class RBACService:
             policy_id: str,
             payload: DeleteMemberBindings,
         ) -> None:
-            _inner_call(
-                "DELETE",
-                f"{_INNER_PREFIX}/apps/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
+            _APP_ACCESS.delete_member_bindings(tenant_id, account_id, app_id, policy_id, payload)
 
         @staticmethod
         def replace_bindings(
@@ -1801,15 +1718,7 @@ class RBACService:
             policy_id: str,
             payload: ReplaceBindings,
         ) -> AccessMatrixItem:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/apps/access-policy/bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return AccessMatrixItem.model_validate(data or {})
+            return _APP_ACCESS.replace_bindings(tenant_id, account_id, app_id, policy_id, payload)
 
     # ------------------------------------------------------------------
     # Per-dataset access (screenshot 1: Knowledge Base Access Config).
@@ -1817,13 +1726,7 @@ class RBACService:
     class DatasetAccess:
         @staticmethod
         def whitelist_resources(tenant_id: str, account_id: str | None) -> ResourceWhitelistResources:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/whitelist/resources",
-                tenant_id=tenant_id,
-                account_id=account_id,
-            )
-            return ResourceWhitelistResources.model_validate(data or {})
+            return _DATASET_ACCESS.whitelist_resources(tenant_id, account_id)
 
         @staticmethod
         def user_access_policies(
@@ -1833,15 +1736,7 @@ class RBACService:
             *,
             options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
-            params = (options or ListOption()).to_params({"dataset_id": dataset_id})
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/user-access-policies",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params=params,
-            )
-            return ResourceUserAccessPoliciesResponse.model_validate(data or {})
+            return _DATASET_ACCESS.user_access_policies(tenant_id, account_id, dataset_id, options=options)
 
         @staticmethod
         def replace_user_access_policies(
@@ -1851,50 +1746,23 @@ class RBACService:
             target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/datasets/user-access-policies",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "account_id": target_account_id},
-                json=payload.model_dump(mode="json", exclude_unset=True),
+            return _DATASET_ACCESS.replace_user_access_policies(
+                tenant_id, account_id, dataset_id, target_account_id, payload
             )
-            return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 
         @staticmethod
         def whitelist(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceWhitelist:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id},
-            )
-            return ResourceWhitelist.model_validate(data or {})
+            return _DATASET_ACCESS.whitelist(tenant_id, account_id, dataset_id)
 
         @staticmethod
         def whitelist_config(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceWhitelistConfig:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id},
-            )
-            return ResourceWhitelistConfig.model_validate(data or {})
+            return _DATASET_ACCESS.whitelist_config(tenant_id, account_id, dataset_id)
 
         @staticmethod
         def legacy_whitelist_config(
             tenant_id: str, account_id: str | None, dataset_id: str
         ) -> _LegacyResourceWhitelistConfig:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id},
-            )
-            return _LegacyResourceWhitelistConfig.model_validate(data or {})
+            return _DATASET_ACCESS.legacy_whitelist_config(tenant_id, account_id, dataset_id)
 
         @staticmethod
         def replace_whitelist(
@@ -1903,15 +1771,7 @@ class RBACService:
             dataset_id: str,
             payload: ReplaceMemberBindings,
         ) -> ResourceWhitelist:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/datasets/whitelist",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return ResourceWhitelist.model_validate(data or {})
+            return _DATASET_ACCESS.replace_whitelist(tenant_id, account_id, dataset_id, payload)
 
         @staticmethod
         def append_whitelist_members_batch(
@@ -1919,24 +1779,11 @@ class RBACService:
             account_id: str | None,
             data: Sequence[AppendDatasetWhitelistMembersBatchItem],
         ) -> None:
-            _inner_call(
-                "POST",
-                f"{_INNER_PREFIX}/datasets/whitelist/members/batch",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                json={"data": [item.model_dump(mode="json") for item in data]},
-            )
+            _DATASET_ACCESS.append_whitelist_members_batch(tenant_id, account_id, data)
 
         @staticmethod
         def matrix(tenant_id: str, account_id: str | None, dataset_id: str) -> DatasetAccessMatrix:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/access-policy",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id},
-            )
-            return DatasetAccessMatrix.model_validate(data or {})
+            return _DATASET_ACCESS.matrix(tenant_id, account_id, dataset_id)
 
         @staticmethod
         def list_role_bindings(
@@ -1945,14 +1792,7 @@ class RBACService:
             dataset_id: str,
             policy_id: str,
         ) -> RoleBindingsResponse:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/access-policy/role-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-            )
-            return RoleBindingsResponse.model_validate(data or {})
+            return _DATASET_ACCESS.list_role_bindings(tenant_id, account_id, dataset_id, policy_id)
 
         @staticmethod
         def replace_role_bindings(
@@ -1962,15 +1802,7 @@ class RBACService:
             policy_id: str,
             payload: ReplaceRoleBindings,
         ) -> RoleBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/datasets/access-policy/role-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return RoleBindingsResponse.model_validate(data or {})
+            return _DATASET_ACCESS.replace_role_bindings(tenant_id, account_id, dataset_id, policy_id, payload)
 
         @staticmethod
         def list_member_bindings(
@@ -1979,14 +1811,7 @@ class RBACService:
             dataset_id: str,
             policy_id: str,
         ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/datasets/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-            )
-            return MemberBindingsResponse.model_validate(data or {})
+            return _DATASET_ACCESS.list_member_bindings(tenant_id, account_id, dataset_id, policy_id)
 
         @staticmethod
         def delete_member_bindings(
@@ -1996,14 +1821,7 @@ class RBACService:
             policy_id: str,
             payload: DeleteMemberBindings,
         ) -> None:
-            _inner_call(
-                "DELETE",
-                f"{_INNER_PREFIX}/datasets/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
+            _DATASET_ACCESS.delete_member_bindings(tenant_id, account_id, dataset_id, policy_id, payload)
 
         @staticmethod
         def replace_bindings(
@@ -2013,18 +1831,10 @@ class RBACService:
             policy_id: str,
             payload: ReplaceBindings,
         ) -> AccessMatrixItem:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/datasets/access-policy/bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return AccessMatrixItem.model_validate(data or {})
+            return _DATASET_ACCESS.replace_bindings(tenant_id, account_id, dataset_id, policy_id, payload)
 
     # ------------------------------------------------------------------
-    # Per-agent access, delegating to the generic resource-access client.
+    # Per-agent access.
     # ------------------------------------------------------------------
     class AgentAccess:
         @staticmethod
