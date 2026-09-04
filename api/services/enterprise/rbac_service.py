@@ -417,6 +417,14 @@ class MyPermissionsResponse(_RBACModel):
     workspace: WorkspacePermissionSnapshot = Field(default_factory=WorkspacePermissionSnapshot)
     app: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
     dataset: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
+    agent: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
+
+    def resource_snapshot(self, resource_type: RBACResourceType) -> ResourcePermissionSnapshot:
+        return {
+            RBACResourceType.APP: self.app,
+            RBACResourceType.DATASET: self.dataset,
+            RBACResourceType.AGENT: self.agent,
+        }[resource_type]
 
 
 # Fallback permission snapshots for legacy Dify tenant roles when external RBAC is disabled.
@@ -645,30 +653,57 @@ _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
     "dataset.acl.pipeline_release",
 ]
 
+# Agent resource keys mirror langgenius/rbac's built-in agent access policies:
+# owner/admin/editor inherit full access, everyone else keeps the preview pair
+# that also sits in the workspace lists above.
+_LEGACY_AGENT_FULL_ACCESS_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.edit",
+    "agent.acl.test_and_run",
+    "agent.acl.release_and_version",
+    "agent.acl.access_point_view",
+    "agent.acl.access_point_manage",
+    "agent.acl.log_manage",
+    "agent.acl.monitor",
+    "agent.acl.access_config",
+    "agent.acl.import_export_dsl",
+    "agent.acl.delete",
+]
+
+_LEGACY_AGENT_PREVIEW_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
+]
+
 _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
     TenantAccountRole.OWNER: {
         "workspace": _LEGACY_WORKSPACE_OWNER_KEYS,
         "app": _LEGACY_APP_OWNER_KEYS,
         "dataset": _LEGACY_DATASET_OWNER_KEYS,
+        "agent": _LEGACY_AGENT_FULL_ACCESS_KEYS,
     },
     TenantAccountRole.ADMIN: {
         "workspace": _LEGACY_WORKSPACE_ADMIN_KEYS,
         "app": _LEGACY_APP_ADMIN_KEYS,
         "dataset": _LEGACY_DATASET_ADMIN_KEYS,
+        "agent": _LEGACY_AGENT_FULL_ACCESS_KEYS,
     },
     TenantAccountRole.EDITOR: {
         "workspace": _LEGACY_WORKSPACE_EDITOR_KEYS,
         "app": _LEGACY_APP_EDITOR_KEYS,
         "dataset": _LEGACY_DATASET_EDITOR_KEYS,
+        "agent": _LEGACY_AGENT_FULL_ACCESS_KEYS,
     },
     TenantAccountRole.NORMAL: {
         "workspace": _LEGACY_WORKSPACE_NORMAL_KEYS,
         "app": _LEGACY_APP_NORMAL_KEYS,
+        "agent": _LEGACY_AGENT_PREVIEW_KEYS,
     },
     TenantAccountRole.DATASET_OPERATOR: {
         "workspace": _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
         "app": _LEGACY_APP_DATASET_OPERATOR_KEYS,
         "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
+        "agent": _LEGACY_AGENT_PREVIEW_KEYS,
     },
 }
 
@@ -681,6 +716,7 @@ def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
                 *permissions.get("workspace", []),
                 *permissions.get("app", []),
                 *permissions.get("dataset", []),
+                *permissions.get("agent", []),
             ]
         )
     )
@@ -737,6 +773,7 @@ def _legacy_my_permissions(tenant_id: str, account_id: str | None, *, session: S
         workspace=WorkspacePermissionSnapshot(permission_keys=list(permissions.get("workspace", []))),
         app=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("app", []))),
         dataset=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("dataset", []))),
+        agent=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("agent", []))),
     )
 
 
@@ -749,10 +786,7 @@ def _legacy_resource_permission_keys_batch(
     session: Session,
 ) -> dict[str, list[str]]:
     snapshot = _legacy_my_permissions(tenant_id, account_id, session=session)
-    if resource_type == RBACResourceType.APP:
-        permission_keys = snapshot.app.default_permission_keys
-    else:
-        permission_keys = snapshot.dataset.default_permission_keys
+    permission_keys = snapshot.resource_snapshot(resource_type).default_permission_keys
     return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
 
 
@@ -2444,6 +2478,7 @@ class RBACService:
             *,
             app_id: str | None = None,
             dataset_id: str | None = None,
+            agent_id: str | None = None,
             session: Session,
         ) -> MyPermissionsResponse:
             if not dify_config.RBAC_ENABLED:
@@ -2459,6 +2494,7 @@ class RBACService:
                     for k, v in {
                         "app_id": app_id,
                         "dataset_id": dataset_id,
+                        "agent_id": agent_id,
                     }.items()
                     if v is not None
                 }

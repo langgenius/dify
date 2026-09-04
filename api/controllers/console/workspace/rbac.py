@@ -569,6 +569,7 @@ class RBACMyPermissionsApi(Resource):
                 account_id,
                 app_id=request.args.get("app_id") or None,
                 dataset_id=request.args.get("dataset_id") or None,
+                agent_id=request.args.get("agent_id") or None,
                 session=db.session(),
             )
         )
