@@ -35,6 +35,7 @@ import {
   type SourceBulkAction,
   type SourceCrawlPreviewPage,
   type SourceProductWorkflowRepository,
+  type SourceWorkflowContentStagingStore,
   SourceWorkflowError,
   type SourceWorkflowFence,
   type SourceWorkflowRun,
@@ -48,27 +49,13 @@ import type { CrawledPage, WebsiteCrawlConnector } from "./website-crawl-connect
 const encoder = new TextEncoder();
 const PROVIDER_SELECTION_METADATA_KEY = "__knowledgeFsProviderSelection";
 
-export interface SourceWorkflowContentStore {
-  deleteRun(input: {
-    readonly knowledgeSpaceId: string;
-    readonly limit: number;
-    readonly runId: string;
-    readonly tenantId: string;
-  }): Promise<{ readonly deleted: number; readonly hasMore: boolean }>;
+export interface SourceWorkflowContentStore extends SourceWorkflowContentStagingStore {
   get(input: {
     readonly contentObjectKey: string;
     readonly knowledgeSpaceId: string;
     readonly runId: string;
     readonly tenantId: string;
   }): Promise<Uint8Array | null>;
-  put(input: {
-    readonly body: Uint8Array;
-    readonly contentHash: string;
-    readonly knowledgeSpaceId: string;
-    readonly pageId: string;
-    readonly runId: string;
-    readonly tenantId: string;
-  }): Promise<string>;
 }
 
 export interface SourceBulkRemovalRequester {
@@ -123,26 +110,39 @@ export function createObjectStorageSourceWorkflowContentStore(input: {
   const maxCleanupBatchSize = input.maxCleanupBatchSize ?? 100;
   const prefix = (tenantId: string, knowledgeSpaceId: string, runId: string) =>
     `__knowledge-source-workflows/${segment(tenantId)}/${segment(knowledgeSpaceId)}/${segment(runId)}/`;
+  const put: SourceWorkflowContentStore["put"] = async ({
+    body,
+    contentHash,
+    knowledgeSpaceId,
+    pageId,
+    runId,
+    tenantId,
+  }) => {
+    if (body.byteLength > maxObjectBytes) {
+      throw runtimeError(
+        "SOURCE_WORKFLOW_CONTENT_TOO_LARGE",
+        "Provider item exceeds staging limit",
+      );
+    }
+    const actual = createHash("sha256").update(body).digest("hex");
+    if (actual !== contentHash) {
+      throw runtimeError("SOURCE_WORKFLOW_CONTENT_HASH_MISMATCH", "Provider item hash mismatch");
+    }
+    const key = `${prefix(tenantId, knowledgeSpaceId, runId)}${segment(pageId)}-${contentHash}.bin`;
+    await input.storage.putObject({
+      body,
+      contentType: "application/octet-stream",
+      key,
+      metadata: { contentHash, lifecycle: "source-workflow-staging", runId },
+    });
+    return key;
+  };
   return {
-    put: async ({ body, contentHash, knowledgeSpaceId, pageId, runId, tenantId }) => {
-      if (body.byteLength > maxObjectBytes) {
-        throw runtimeError(
-          "SOURCE_WORKFLOW_CONTENT_TOO_LARGE",
-          "Provider item exceeds staging limit",
-        );
-      }
-      const actual = createHash("sha256").update(body).digest("hex");
-      if (actual !== contentHash) {
-        throw runtimeError("SOURCE_WORKFLOW_CONTENT_HASH_MISMATCH", "Provider item hash mismatch");
-      }
-      const key = `${prefix(tenantId, knowledgeSpaceId, runId)}${segment(pageId)}-${contentHash}.bin`;
-      await input.storage.putObject({
-        body,
-        contentType: "application/octet-stream",
-        key,
-        metadata: { contentHash, lifecycle: "source-workflow-staging", runId },
-      });
-      return key;
+    put,
+    copy: async ({ contentHash, knowledgeSpaceId, pageId, runId, sourceObjectKey, tenantId }) => {
+      const body = await input.storage.getObject(sourceObjectKey);
+      if (!body) throw runtimeError("SOURCE_WORKFLOW_CONTENT_MISSING", "Staged content is missing");
+      return put({ body, contentHash, knowledgeSpaceId, pageId, runId, tenantId });
     },
     get: async ({ contentObjectKey, knowledgeSpaceId, runId, tenantId }) => {
       if (!contentObjectKey.startsWith(prefix(tenantId, knowledgeSpaceId, runId))) {
@@ -780,6 +780,23 @@ async function processSelectedCrawlImport(
   execution: RuntimeExecution,
   source: Source,
 ): Promise<void> {
+  const referencedPages = selectedStagedPageReferences(execution.run());
+  if (referencedPages.length) {
+    await execution.mutate((current) =>
+      input.repository.checkpoint({
+        checkpoint: "selection-frozen",
+        fence: fence(current),
+        now: iso((input.now ?? Date.now)()),
+        progressCompleted: 0,
+        progressFailed: 0,
+        progressSkipped: 0,
+        progressTotal: referencedPages.length,
+        state: "importing",
+      }),
+    );
+    await importCrawlPages(input, execution, source, referencedPages);
+    return;
+  }
   const stagedPages = selectedStagedPages(execution.run());
   if (stagedPages.length) {
     const selectedPages = await stageCrawlPages(input, execution, stagedPages, (page) =>
@@ -3294,6 +3311,43 @@ function selectedStagedPages(run: SourceWorkflowRun): readonly CrawledPage[] {
       typeof page.content === "string" &&
       typeof page.sourceUrl === "string",
   );
+}
+
+function selectedStagedPageReferences(run: SourceWorkflowRun): readonly SourceCrawlPreviewPage[] {
+  const value = run.payload.stagedPageReferences;
+  if (!Array.isArray(value)) return [];
+  const pages: SourceCrawlPreviewPage[] = [];
+  for (const reference of value) {
+    if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
+      throw runtimeError("SOURCE_WORKFLOW_PAYLOAD_INVALID", "Staged crawl page is invalid");
+    }
+    const page = reference as Record<string, unknown>;
+    const contentHash = page.contentHash;
+    const contentObjectKey = page.contentObjectKey;
+    const pageId = page.pageId;
+    const sourceUrl = page.sourceUrl;
+    if (
+      typeof contentHash !== "string" ||
+      !/^[a-f0-9]{64}$/u.test(contentHash) ||
+      typeof contentObjectKey !== "string" ||
+      typeof pageId !== "string" ||
+      typeof sourceUrl !== "string"
+    ) {
+      throw runtimeError("SOURCE_WORKFLOW_PAYLOAD_INVALID", "Staged crawl page is invalid");
+    }
+    pages.push({
+      contentHash,
+      contentObjectKey,
+      createdAt: typeof page.createdAt === "string" ? page.createdAt : run.createdAt,
+      ...(typeof page.description === "string" ? { description: page.description } : {}),
+      id: pageId,
+      pageId,
+      runId: run.id,
+      sourceUrl,
+      ...(typeof page.title === "string" ? { title: page.title } : {}),
+    });
+  }
+  return pages;
 }
 
 function requiredPayloadString(record: Record<string, unknown>, key: string): string {

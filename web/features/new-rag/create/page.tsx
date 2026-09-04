@@ -110,6 +110,7 @@ export function CreateKnowledgePage() {
   )
   const [initialSource, setInitialSource] = useState<InitialSource>()
   const initialSourceRef = useRef<InitialSource | undefined>(undefined)
+  const preservePreviewOnUnmountRef = useRef(false)
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
@@ -141,6 +142,7 @@ export function CreateKnowledgePage() {
     initialSourceRef.current = source
     setInitialSource(source)
   }, [])
+  const shouldPreservePreviewOnUnmount = useCallback(() => preservePreviewOnUnmountRef.current, [])
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
@@ -242,6 +244,8 @@ export function CreateKnowledgePage() {
         visibility,
       })
       const created = result.knowledgeSpace
+      if (startMode === 'source' && latestInitialSource && 'previewJobId' in latestInitialSource)
+        preservePreviewOnUnmountRef.current = true
       if (startMode === 'upload') {
         if (result.modelSetupRequired) {
           setModelSetupDialogOpen(true)
@@ -487,6 +491,7 @@ export function CreateKnowledgePage() {
                             resetUnsubmittedError()
                           }}
                           onInitialSourceChange={updateInitialSource}
+                          shouldPreservePreviewOnUnmount={shouldPreservePreviewOnUnmount}
                           onSourceTypeChange={(value) => {
                             setSourceDraft(createNewKnowledgeSourceDraft(value))
                             updateInitialSource(undefined)

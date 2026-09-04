@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createInMemoryNamespaceSourcePreviewRepository,
+  createNamespaceSourcePreviewRuntime,
   createNamespaceSourcePreviewService,
 } from "./namespace-source-preview";
 
@@ -76,10 +77,17 @@ describe("namespace website source preview", () => {
     expect(createCrawlImport).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceUrls: ["https://example.com/a"],
-        pages: [{ sourceUrl: "https://example.com/a", title: "A", content: "large body" }],
+        pageReferences: [
+          expect.objectContaining({
+            contentHash: expect.stringMatching(/^[a-f0-9]{64}$/u),
+            contentObjectKey: expect.stringContaining("__namespace-source-previews/"),
+            sourceUrl: "https://example.com/a",
+            title: "A",
+          }),
+        ],
       }),
     );
-    expect(JSON.stringify(createCrawlImport.mock.calls[0])).toContain("large body");
+    expect(JSON.stringify(createCrawlImport.mock.calls[0])).not.toContain("large body");
     expect(objects.size).toBe(0);
   });
 
@@ -168,6 +176,92 @@ describe("namespace website source preview", () => {
     await expect(service.get(subject, job.id)).resolves.toMatchObject({
       contentCleanedAt: "2026-09-04T00:00:00.000Z",
     });
+  });
+
+  it("processes queued previews even when an older cleanup job keeps failing", async () => {
+    const objects = new Map<string, Uint8Array>();
+    const repository = createInMemoryNamespaceSourcePreviewRepository();
+    await repository.create({
+      id: "11111111-1111-4111-8111-111111111111",
+      tenantId: "tenant",
+      accountId: "account",
+      status: "failed",
+      config: {
+        credentialId: "credential",
+        pluginId: "plugin",
+        provider: "firecrawl",
+        datasource: "crawl",
+        parameters: {},
+        rootUrl: "https://failed.example.com",
+      },
+      configurationFingerprint: "e".repeat(64),
+      expiresAt: "2026-09-04T01:00:00.000Z",
+      createdAt: "2026-09-03T23:00:00.000Z",
+      updatedAt: "2026-09-03T23:00:00.000Z",
+      errorCode: "PREVIEW_PROVIDER_FAILED",
+    });
+    const storage = memoryStorage(objects);
+    storage.listObjects = vi.fn(async ({ prefix }: { prefix: string }) => {
+      if (prefix.includes("11111111-1111-4111-8111-111111111111"))
+        throw new Error("storage unavailable");
+      return {
+        objects: [...objects.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => ({ key })),
+      };
+    });
+    const service = createNamespaceSourcePreviewService({
+      repository,
+      storage: storage as never,
+      websiteCrawl: crawlPages([{ sourceUrl: "https://example.com/new", content: "body" }]),
+      workflows: {} as never,
+      sources: {} as never,
+      now: () => new Date("2026-09-04T00:00:00.000Z"),
+    });
+    const { subject, job } = await createJob(service);
+
+    await expect(service.tick()).resolves.toBe(true);
+
+    await expect(service.get(subject, job.id)).resolves.toMatchObject({ status: "completed" });
+  });
+
+  it("serializes scheduled ticks and reports failures without stopping the scheduler", async () => {
+    let releaseFirst: (() => void) | undefined;
+    const first = new Promise<boolean>((resolve) => {
+      releaseFirst = () => resolve(true);
+    });
+    const tick = vi
+      .fn<() => Promise<boolean>>()
+      .mockImplementationOnce(() => first)
+      .mockRejectedValueOnce(new Error("database unavailable"))
+      .mockResolvedValue(false);
+    const onError = vi.fn();
+    let scheduled: (() => void) | undefined;
+    const interval = { unref: vi.fn() } as unknown as ReturnType<typeof setInterval>;
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation((handler) => {
+      scheduled = handler as () => void;
+      return interval;
+    });
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval").mockImplementation(() => {});
+    const stop = createNamespaceSourcePreviewRuntime({ service: { tick }, onError }).start();
+    if (!scheduled || !releaseFirst) throw new Error("Expected the preview runtime to start");
+
+    scheduled();
+    scheduled();
+    expect(tick).toHaveBeenCalledOnce();
+    releaseFirst();
+    await first;
+    await Promise.resolve();
+    await Promise.resolve();
+    scheduled();
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
+    scheduled();
+    await vi.waitFor(() => expect(tick).toHaveBeenCalledTimes(3));
+
+    await stop();
+    expect(clearIntervalSpy).toHaveBeenCalledWith(interval);
+    setIntervalSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
   });
 });
 

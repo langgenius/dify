@@ -14,6 +14,7 @@ import {
   type SourceWorkflowRun,
   nextSourceWorkflowMaterializationGeneration,
   nextSyncPolicyRunAt,
+  sourceWorkflowIdempotencyPayload,
 } from "./source-product-workflow";
 
 export function createInMemorySourceProductWorkflowRepository(input?: {
@@ -97,7 +98,8 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       if (
         replay.kind !== record.kind ||
         replay.sourceId !== record.sourceId ||
-        stableJson(replay.payload) !== stableJson(record.payload)
+        stableJson(sourceWorkflowIdempotencyPayload(replay.payload)) !==
+          stableJson(sourceWorkflowIdempotencyPayload(record.payload))
       ) {
         throw new SourceWorkflowError(
           "SOURCE_WORKFLOW_IDEMPOTENCY_CONFLICT",

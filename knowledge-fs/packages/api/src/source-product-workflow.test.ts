@@ -24,6 +24,128 @@ const knowledgeSpaceId = "space-a";
 const editor = { scopes: [], subjectId: "editor-a", tenantId };
 
 describe("source product workflows", () => {
+  it("stages selected website bodies as object references before persisting the workflow", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const source = sourceRecord("source-web", [], { type: "web" });
+    const objects = new Map<string, Uint8Array>();
+    const deleteRun = vi.fn(async ({ runId }: { runId: string }) => {
+      let deleted = 0;
+      for (const key of [...objects.keys()]) {
+        if (!key.startsWith(`${runId}/`)) continue;
+        objects.delete(key);
+        deleted += 1;
+      }
+      return { deleted, hasMore: false };
+    });
+    const runIds = ["crawl-import-a", "crawl-import-replay"];
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      generateRunId: () => runIds.shift() ?? "unexpected-run",
+      now: () => "2026-09-04T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => (id === source.id ? source : null) },
+      stagingContentStore: {
+        copy: vi.fn(async () => {
+          throw new Error("copy should not be called for inline content");
+        }),
+        deleteRun,
+        put: vi.fn(async ({ body, contentHash, runId }) => {
+          const key = `${runId}/${contentHash}`;
+          objects.set(key, body);
+          return key;
+        }),
+      },
+    });
+    const request = {
+      callerKind: "interactive" as const,
+      idempotencyKey: "crawl-import-request",
+      knowledgeSpaceId,
+      pages: [
+        {
+          content: "preview body",
+          sourceUrl: "https://example.test/page",
+          title: "Page",
+        },
+      ],
+      sourceId: source.id,
+      sourceUrls: ["https://example.test/page"],
+      subject: editor,
+    };
+
+    const created = await service.createCrawlImport(request);
+    expect(JSON.stringify(created.payload)).not.toContain("preview body");
+    expect(created.payload).toMatchObject({
+      selectedSourceUrls: ["https://example.test/page"],
+      stagedPageReferences: [
+        expect.objectContaining({
+          contentHash: expect.stringMatching(/^[a-f0-9]{64}$/u),
+          contentObjectKey: expect.stringContaining("crawl-import-a/"),
+          sourceUrl: "https://example.test/page",
+        }),
+      ],
+    });
+    expect(objects.size).toBe(1);
+
+    await expect(service.createCrawlImport(request)).resolves.toMatchObject({ id: created.id });
+    expect(deleteRun).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: "crawl-import-replay" }),
+    );
+    expect([...objects.keys()]).toEqual([expect.stringContaining("crawl-import-a/")]);
+  });
+
+  it("copies namespace preview objects into workflow-owned staging", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const source = sourceRecord("source-preview-reference", [], { type: "web" });
+    const copy = vi.fn(async ({ runId }: { runId: string }) => `${runId}/copied-preview`);
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      generateRunId: () => "crawl-import-reference",
+      now: () => "2026-09-04T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => (id === source.id ? source : null) },
+      stagingContentStore: {
+        copy,
+        deleteRun: vi.fn(async () => ({ deleted: 0, hasMore: false })),
+        put: vi.fn(async () => {
+          throw new Error("put should not receive namespace preview content");
+        }),
+      },
+    });
+
+    const run = await service.createCrawlImport({
+      callerKind: "interactive",
+      idempotencyKey: "crawl-import-reference-request",
+      knowledgeSpaceId,
+      pageReferences: [
+        {
+          contentHash: "a".repeat(64),
+          contentObjectKey: "__namespace-source-previews/tenant/job/page.bin",
+          sourceUrl: "https://example.test/page",
+          title: "Page",
+        },
+      ],
+      sourceId: source.id,
+      sourceUrls: ["https://example.test/page"],
+      subject: editor,
+    });
+
+    expect(copy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "crawl-import-reference",
+        sourceObjectKey: "__namespace-source-previews/tenant/job/page.bin",
+      }),
+    );
+    expect(run.payload).toMatchObject({
+      stagedPageReferences: [
+        expect.objectContaining({
+          contentObjectKey: "crawl-import-reference/copied-preview",
+        }),
+      ],
+    });
+  });
+
   it("enforces source candidate ACL and permits viewer reads without write access", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     const accesses: string[] = [];

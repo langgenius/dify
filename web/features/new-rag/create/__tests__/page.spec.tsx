@@ -1687,6 +1687,51 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.selectWorkflowPages).not.toHaveBeenCalled()
   })
 
+  it('does not cancel a preview job after creation hands it to the initial-source worker', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    const view = renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
+
+    view.unmount()
+
+    expect(serviceMock.cancelWebsitePreview).not.toHaveBeenCalled()
+  })
+
+  it('still cancels an unused preview job when the creation page unmounts', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    const view = renderPage()
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    view.unmount()
+
+    expect(serviceMock.cancelWebsitePreview).toHaveBeenCalledWith({
+      params: { job_id: 'website-preview-1' },
+    })
+  })
+
   it('distinguishes an installed document provider with no credential', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'

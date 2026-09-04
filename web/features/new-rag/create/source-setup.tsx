@@ -57,6 +57,7 @@ type CreateSourceSetupProps = {
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onInitialSourceChange: (source?: InitialSource) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
+  shouldPreservePreviewOnUnmount: () => boolean
 }
 
 function datasourceAuthForProvider(
@@ -191,6 +192,7 @@ function CreateSourceSetupSession({
   draft,
   onDraftChange,
   onInitialSourceChange,
+  shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
   const { t } = useTranslation('knowledgeSpace')
   const datasourcePluginsQuery = useDataSourceList(true)
@@ -325,7 +327,7 @@ function CreateSourceSetupSession({
     () => () => {
       crawlAttemptRef.current += 1
       const jobId = previewJobIdRef.current
-      if (jobId)
+      if (jobId && !shouldPreservePreviewOnUnmount())
         void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
           .delete({
             params: { job_id: jobId },
@@ -333,7 +335,7 @@ function CreateSourceSetupSession({
           .catch(() => {})
       onInitialSourceChange(undefined)
     },
-    [onInitialSourceChange],
+    [onInitialSourceChange, shouldPreservePreviewOnUnmount],
   )
 
   const startPreview = async () => {
