@@ -430,10 +430,11 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
+        effective_limit = min(query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
             query.page,
-            query.limit,
+            effective_limit,
             session,
             tenant_id,
             current_user,
@@ -467,8 +468,8 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": query.page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
             "page": query.page,
         }
