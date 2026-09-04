@@ -12,6 +12,21 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
 )
 
+_TRUNCATION_MARKER = "...[TRUNCATED]..."
+_TRUNCATION_KEEP = 10
+
+
+def _truncate_media_data(data: str) -> str:
+    """Truncate media data for saving, keeping its head and tail.
+
+    Only truncate when the data is longer than twice the kept length. For
+    shorter data the head/tail slices would overlap and otherwise duplicate
+    the content (e.g. "abc" -> "abc...[TRUNCATED]...abc").
+    """
+    if len(data) <= 2 * _TRUNCATION_KEEP:
+        return data
+    return data[:_TRUNCATION_KEEP] + _TRUNCATION_MARKER + data[-_TRUNCATION_KEEP:]
+
 
 class SavedPromptFile(TypedDict):
     type: str
@@ -87,7 +102,7 @@ class PromptMessageUtil:
                                 files.append(
                                     {
                                         "type": "image",
-                                        "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                        "data": _truncate_media_data(content.data),
                                         "detail": content.detail.value,
                                     }
                                 )
@@ -95,7 +110,7 @@ class PromptMessageUtil:
                                 files.append(
                                     {
                                         "type": "audio",
-                                        "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                        "data": _truncate_media_data(content.data),
                                         "format": content.format,
                                     }
                                 )
@@ -123,7 +138,7 @@ class PromptMessageUtil:
                         prompt_files.append(
                             {
                                 "type": "image",
-                                "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                "data": _truncate_media_data(content.data),
                                 "detail": content.detail.value,
                             }
                         )
