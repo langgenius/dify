@@ -157,7 +157,6 @@ def _chunks[T](items: list[T], chunk_size: int) -> Iterator[list[T]]:
 def _resolve_target_resource(
     resource_ids: dict[enterprise_rbac_service.RBACResourceType, str | None],
 ) -> tuple[_WhitelistResourceKind, str]:
-    """Return the resource kind and id for the single id the caller supplied."""
     provided = [(resource_type, rid) for resource_type, rid in resource_ids.items() if rid is not None]
     if len(provided) != 1:
         given = ", ".join(sorted(resource_type.value for resource_type, _ in provided)) or "none"
@@ -175,10 +174,11 @@ def initialize_created_app_rbac_access_task(
     dataset_id: str | None = None,
     agent_id: str | None = None,
 ) -> None:
-    """Grant the default access policy on one resource to current workspace members.
+    """Grant the default policy on one app, dataset or agent to current workspace members.
 
-    Replacing member policies is idempotent, so retrying the whole synchronization is
-    safe when the enterprise RBAC service is temporarily unavailable.
+    The resource scope is persisted synchronously before this task is queued. Replacing
+    member policies is idempotent, so retrying the whole synchronization is safe
+    when the enterprise RBAC service is temporarily unavailable.
     """
     if not dify_config.RBAC_ENABLED:
         return

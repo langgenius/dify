@@ -56,8 +56,6 @@ class MembersInRole(_RBACModel):
 
 @dataclass(frozen=True)
 class _ResourceAccessRoute:
-    """Where one resource type lives in the inner RBAC API."""
-
     segment: str
     id_param: str
 
@@ -296,8 +294,6 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
     rbac_whitelist_scope: str | None = Field(
         default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
     )
-    # Absent on RBAC services older than the agent bootstrap migration; true only when a
-    # stored scope row backs this response, false when the service fabricated the default.
     configured: bool | None = None
 
     @field_validator("account_ids", mode="before")
@@ -309,8 +305,6 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
 
 
 class LegacyAgentRoleMigration(_RBACModel):
-    """One custom role's outcome from the RBAC service's agent.manage migration."""
-
     role_id: str
     role_name: str = ""
     added_keys: list[str] = Field(default_factory=list)
@@ -320,8 +314,6 @@ class LegacyAgentRoleMigration(_RBACModel):
 
 
 class LegacyAgentMigrationReport(_RBACModel):
-    """Outcome of the RBAC service's agent.manage migration: tenant roles plus global role templates."""
-
     roles: list[LegacyAgentRoleMigration] = Field(default_factory=list)
     role_templates: list[LegacyAgentRoleMigration] = Field(default_factory=list)
 
@@ -656,9 +648,6 @@ _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
     "dataset.acl.pipeline_release",
 ]
 
-# Agent resource keys mirror langgenius/rbac's built-in agent access policies:
-# owner/admin/editor inherit full access, everyone else keeps the preview pair
-# that also sits in the workspace lists above.
 _LEGACY_AGENT_FULL_ACCESS_KEYS: list[str] = [
     "agent.acl.preview",
     "agent.acl.edit",
@@ -955,11 +944,6 @@ def try_sync_creator_access_policy_member_bindings(
 
 
 class _ResourceAccessClient[MatrixT: _RBACModel]:
-    """Per-resource access-policy calls for one resource type.
-
-    A resource type is wired up by instantiating this with the type's route.
-    """
-
     def __init__(
         self,
         route: _ResourceAccessRoute,
@@ -1187,8 +1171,6 @@ class _ResourceAccessClient[MatrixT: _RBACModel]:
 
 
 class _WorkspaceAccessClient:
-    """Workspace-wide access-policy calls for one resource type."""
-
     def __init__(self, route: _ResourceAccessRoute) -> None:
         self._route = route
 
@@ -1267,7 +1249,6 @@ class _WorkspaceAccessClient:
 
 
 _APP_ACCESS = _ResourceAccessClient(RBACResourceType.APP.route, AppAccessMatrix)
-# Datasets alone send only the fields the caller actually set.
 _DATASET_ACCESS = _ResourceAccessClient(
     RBACResourceType.DATASET.route, DatasetAccessMatrix, replace_user_policies_exclude_unset=True
 )
@@ -1833,9 +1814,6 @@ class RBACService:
         ) -> AccessMatrixItem:
             return _DATASET_ACCESS.replace_bindings(tenant_id, account_id, dataset_id, policy_id, payload)
 
-    # ------------------------------------------------------------------
-    # Per-agent access.
-    # ------------------------------------------------------------------
     class AgentAccess:
         @staticmethod
         def whitelist_resources(tenant_id: str, account_id: str | None) -> ResourceWhitelistResources:

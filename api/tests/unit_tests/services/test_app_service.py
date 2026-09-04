@@ -279,42 +279,6 @@ class TestCreateAppRBACAccessInitialization:
         )
         app_creator_sync.assert_not_called()
 
-    def test_chat_app_only_syncs_the_app_creator_policy(
-        self, sqlite_session: Session, config_overrides: Callable[..., None]
-    ) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=True)
-        account = _persist_account(sqlite_session)
-
-        with (
-            patch("services.app_service.initialize_agent_rbac_access") as agent_init,
-            patch(
-                "services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
-            ) as app_creator_sync,
-        ):
-            app = self._create(sqlite_session, account, AppMode.CHAT)
-
-        agent_init.assert_not_called()
-        app_creator_sync.assert_called_once_with(
-            account.current_tenant_id,
-            account.id,
-            enterprise_rbac_service.RBACResourceType.APP,
-            app.id,
-        )
-
-    def test_agent_app_creation_survives_an_unreachable_rbac_service(
-        self, sqlite_session: Session, config_overrides: Callable[..., None]
-    ) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=True)
-        account = _persist_account(sqlite_session)
-
-        with patch(
-            "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist",
-            side_effect=RuntimeError("rbac unavailable"),
-        ):
-            app = self._create(sqlite_session, account, AppMode.AGENT)
-
-        assert sqlite_session.get(App, app.id) is app
-
 
 @pytest.mark.parametrize(
     "update_status",

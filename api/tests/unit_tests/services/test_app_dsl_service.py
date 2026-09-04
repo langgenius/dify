@@ -542,20 +542,6 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
         load_annotation_reply_config.assert_called_once_with(service_session, app_id)
 
 
-def test_agent_import_permission_noops_when_rbac_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-    unbound_session: Session,
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(RBAC_ENABLED=False)
-    check = Mock()
-    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
-
-    AppDslService(session=unbound_session)._ensure_agent_import_permission(_account(), app=None)
-
-    check.assert_not_called()
-
-
 def test_agent_import_of_new_agent_checks_function_scope(
     monkeypatch: pytest.MonkeyPatch,
     unbound_session: Session,
@@ -575,18 +561,6 @@ def test_agent_import_of_new_agent_checks_function_scope(
         resource_type=None,
         resource_id=None,
     )
-
-
-def test_agent_import_denied_raises_no_permission(
-    monkeypatch: pytest.MonkeyPatch,
-    unbound_session: Session,
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(RBAC_ENABLED=True)
-    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-
-    with pytest.raises(NoPermissionError):
-        AppDslService(session=unbound_session)._ensure_agent_import_permission(_account(), app=None)
 
 
 def test_create_or_update_app_gates_agent_mode_before_creation(

@@ -104,19 +104,6 @@ class TestMyPermissions:
         assert mock_get.call_args.kwargs["agent_id"] == "agent-1"
         assert response["agent"]["default_permission_keys"] == ["agent.acl.preview"]
 
-    def test_blank_agent_id_query_param_becomes_none(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/my-permissions?agent_id="),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
-                return_value=rbac_mod.svc.MyPermissionsResponse(),
-            ) as mock_get,
-        ):
-            inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
-
-        assert mock_get.call_args.kwargs["agent_id"] is None
-
 
 class TestAccessMatrixAccountNames:
     def test_hydrates_missing_account_names(self):

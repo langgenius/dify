@@ -115,8 +115,6 @@ def _emit_agent_migration_event(payload: dict[str, object]) -> None:
 
 @dataclass(frozen=True)
 class _AgentMigrationEventKind:
-    """Names the event family for one migration pass and owns its event-name stem."""
-
     event_stem: str
     include_tenant_id: bool = True
 
@@ -143,8 +141,6 @@ _AGENT_ACCESS_BOOTSTRAP_MEMBER_SOURCE = "workspace_members"
 
 
 class _AgentAccessBootstrapReason(StrEnum):
-    """Why one agent did not get a freshly bootstrapped access row, or got an incomplete one."""
-
     ALREADY_INITIALIZED = "already_initialized"
     MISSING_WHITELIST_SCOPE = "missing_whitelist_scope"
     NO_CREATOR = "no_creator"
@@ -1118,11 +1114,6 @@ def migrate_dataset_permissions_to_rbac(
 
 
 def _iter_agent_rows(tenant_id: str, batch_size: int) -> Iterator[tuple[str, str | None, str | None]]:
-    """Yield `(agent_id, created_by, backing_app_id)` for one tenant's live agents.
-
-    Archived agents are excluded: they are hidden from the roster, so bootstrapping
-    access rows for them would only add noise.
-    """
     last_agent_id: str | None = None
     while True:
         with session_factory.create_session() as session:
@@ -1171,22 +1162,11 @@ def _agent_access_is_initialized(
     scope: RBACResourceWhitelistScope,
     account_ids: list[str],
 ) -> bool:
-    """Decide whether the RBAC service already holds a real access row for this agent.
-
-    A current RBAC service answers with `configured`, which says outright whether a stored
-    scope row backs the response; when it is there it is the only signal worth trusting.
-
-    An older service omits it. It then answers the whitelist read for an unknown agent with
-    the same default body a freshly bootstrapped agent has (`scope=all`, auto-include on)
-    and no member ids, so the config alone cannot tell them apart. Anything else — a
-    narrowed scope, or seeded default-policy members — can only come from a stored row.
-    """
     fabricated_default_body = scope is RBACResourceWhitelistScope.ALL and not account_ids
     return not fabricated_default_body if configured is None else configured
 
 
 def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions) -> None:
-    """Flag a backing App whose members were hand-picked; the operator decides what to copy."""
     if not options.backing_app_id:
         return
     app_config = _resource_legacy_whitelist_config(
@@ -1209,9 +1189,6 @@ def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions
     )
 
 
-# The scope row is written last on purpose: only `replace_whitelist` creates it, and every step
-# before it is a replace, so a failure part-way leaves `configured=false` and the next run redoes
-# this agent from the start instead of mistaking a half-seeded agent for a finished one.
 def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
     for batch in _workspace_member_account_id_batches(options.tenant_id, options.member_batch_size):
         RBACService.AgentAccess.replace_user_access_policies(
@@ -1271,7 +1248,6 @@ def _agent_access_bootstrap_failure(
 
 
 def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _AgentAccessBootstrapCounts) -> None:
-    """Give one pre-existing agent the access rows a newly created agent gets."""
     config = RBACService.AgentAccess.legacy_whitelist_config(
         tenant_id=options.tenant_id,
         account_id=options.operator_account_id,

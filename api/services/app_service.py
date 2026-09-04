@@ -77,8 +77,6 @@ RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
 
 @dataclass(frozen=True)
 class _CreatedApp:
-    """The rows a freshly created app needs RBAC access initialized for."""
-
     tenant_id: str
     creator_account_id: str
     app_id: str

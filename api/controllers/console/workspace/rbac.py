@@ -506,11 +506,6 @@ class RBACAccessPolicyBindingUnlockApi(Resource):
         return _dump(svc.RBACService.AccessPolicyBindings.unlock(tenant_id, account_id, str(binding_id)))
 
 
-# ---------------------------------------------------------------------------
-# Shared request/response models for the per-resource access config.
-# ---------------------------------------------------------------------------
-
-
 class _ResourceAccessScopeRequest(BaseModel):
     automatic_include_workspace_members: bool
 
@@ -575,18 +570,6 @@ class RBACMyPermissionsApi(Resource):
         )
 
 
-# ---------------------------------------------------------------------------
-# Access-permission routes for every resource kind (app, dataset, agent).
-#
-# The three resource kinds expose the same twelve endpoints and differ only in
-# the URL segment, the path parameter and which inner-API client they call, so
-# they are declared once as a table and registered in a loop.
-#
-# `dev/lint_response_contracts.py` is AST-based and cannot see generated classes, so the
-# documented-vs-returned response models below are covered by tests, not by that linter.
-# ---------------------------------------------------------------------------
-
-
 type _ResourceAccessClient = (
     type[svc.RBACService.AppAccess] | type[svc.RBACService.DatasetAccess] | type[svc.RBACService.AgentAccess]
 )
@@ -594,8 +577,6 @@ type _ResourceAccessClient = (
 
 @dataclass(frozen=True)
 class _ResourceAccessRoutes:
-    """Everything that differs between the app, dataset and agent access routes."""
-
     resource_type: svc.RBACResourceType
     class_prefix: str
     matrix_model: type[BaseModel]
@@ -605,7 +586,6 @@ class _ResourceAccessRoutes:
     workspace_role_bindings: Callable[[str, str, str], svc.RoleBindingsResponse]
     workspace_member_bindings: Callable[[str, str, str], svc.MemberBindingsResponse]
     replace_workspace_bindings: Callable[[str, str, str, svc.ReplaceBindings], svc.AccessMatrixItem]
-    # Only resources that carry a maintainer column pin that account to the top of the member list.
     maintainer_id: Callable[[str, str], str | None] | None = None
 
     @property
@@ -619,8 +599,6 @@ class _ResourceAccessRoutes:
 
 @dataclass(frozen=True)
 class _ResourceAccessApis:
-    """The Flask-RESTX resources generated for one resource kind."""
-
     catalog: type[Resource]
     matrix: type[Resource]
     whitelist: type[Resource]
@@ -707,8 +685,6 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
         return str(path_params[id_param])
 
     def register(resource: type[Resource], name: str, url: str) -> type[Resource]:
-        # Flask-RESTX derives the endpoint and the OpenAPI operation id from the class name,
-        # so every generated resource keeps the distinct name its hand-written twin had.
         resource.__name__ = name
         resource.__qualname__ = name
         console_ns.route(url)(resource)
@@ -753,8 +729,6 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
                     automatic_include_workspace_members=scope.automatic_include_workspace_members
                 ),
             )
-            # Widening the scope only records it: the members still need the default access
-            # policy before they can reach the resource.
             if scope.automatic_include_workspace_members:
                 initialize_created_app_rbac_access_task.delay(tenant_id, account_id, **{id_param: target_id})
             return _dump(result)

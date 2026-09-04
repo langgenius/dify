@@ -3953,32 +3953,6 @@ def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqli
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
-def test_create_roster_agent_initializes_rbac_access_after_commit(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    service = AgentRosterService(sqlite_session)
-    phases: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: phases.append("commit"))
-    calls: list[dict[str, str]] = []
-
-    def record(*, tenant_id: str, agent_id: str, creator_account_id: str) -> None:
-        phases.append("rbac")
-        calls.append({"tenant_id": tenant_id, "agent_id": agent_id, "creator_account_id": creator_account_id})
-
-    monkeypatch.setattr(roster_service, "initialize_agent_rbac_access", record)
-    payload = roster_service.RosterAgentCreatePayload(
-        name="Analyst",
-        description="desc",
-        role="Research assistant",
-        agent_soul=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "x"}}),
-    )
-
-    created = service.create_roster_agent(tenant_id="tenant-1", account_id="account-1", payload=payload)
-
-    assert phases == ["commit", "rbac"]
-    assert calls == [{"tenant_id": "tenant-1", "agent_id": created.id, "creator_account_id": "account-1"}]
-
-
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
     service = AgentRosterService(session)

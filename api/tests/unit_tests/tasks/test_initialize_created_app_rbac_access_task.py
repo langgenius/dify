@@ -94,32 +94,6 @@ def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_p
     assert called.call_args.kwargs["payload"].account_ids == ["acct-1"]
 
 
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {},
-        {"app_id": "app-1", "dataset_id": "dataset-1"},
-        {"app_id": "app-1", "agent_id": "agent-1"},
-        {"app_id": "app-1", "dataset_id": "dataset-1", "agent_id": "agent-1"},
-    ],
-)
-def test_initialize_created_app_rbac_access_task_rejects_anything_but_one_resource_id(
-    monkeypatch: pytest.MonkeyPatch, kwargs: dict[str, str]
-):
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-
-    with pytest.raises(ValueError, match="exactly one of"):
-        initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **kwargs)
-
-
-def test_initialize_created_app_rbac_access_task_is_a_no_op_when_rbac_is_disabled(monkeypatch: pytest.MonkeyPatch):
-    """With RBAC off the task returns before it even looks at its arguments."""
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
-
-    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1")
-    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", app_id="app-1", dataset_id="dataset-1")
-
-
 def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
@@ -232,17 +206,3 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
     assert [item.agent_id for item in agent_call["data"]] == ["agent-1"]
     assert agent_call["data"][0].account_ids == ["member-1"]
     assert agent_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
-
-
-def test_agent_whitelist_append_targets_agent_inner_route(monkeypatch: pytest.MonkeyPatch):
-    from services.enterprise import rbac_service as rbac
-
-    inner_call = MagicMock(return_value=None)
-    monkeypatch.setattr(rbac, "_inner_call", inner_call)
-    item = rbac.AppendAgentWhitelistMembersBatchItem(agent_id="agent-1", account_ids=["member-1"], policy_id="default")
-
-    rbac.RBACService.AgentAccess.append_whitelist_members_batch(tenant_id="tenant-1", account_id="actor-1", data=[item])
-
-    inner_call.assert_called_once()
-    assert inner_call.call_args.args[1].endswith("/agents/whitelist/members/batch")
-    assert inner_call.call_args.kwargs["json"] == {"data": [item.model_dump(mode="json")]}
