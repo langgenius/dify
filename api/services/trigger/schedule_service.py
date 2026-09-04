@@ -85,11 +85,17 @@ class ScheduleService:
         if updates.node_id is not None:
             schedule.node_id = updates.node_id
 
-        if updates.cron_expression is not None:
+        # Only mark time fields as updated when the new value differs from
+        # the stored value. The previous behavior always set
+        # `time_fields_updated = True` whenever the field was non-None,
+        # which caused republishing an unchanged schedule to reset
+        # `next_run_at` from "now" and skip a pending fire that was about
+        # to run. See #41782.
+        if updates.cron_expression is not None and updates.cron_expression != schedule.cron_expression:
             schedule.cron_expression = updates.cron_expression
             time_fields_updated = True
 
-        if updates.timezone is not None:
+        if updates.timezone is not None and updates.timezone != schedule.timezone:
             schedule.timezone = updates.timezone
             time_fields_updated = True
 
