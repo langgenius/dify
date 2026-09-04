@@ -10,6 +10,16 @@ from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, WebAp
 from services.web_passport_service import WebAppAuthType, WebPassportUnauthorizedError
 
 
+def resolve_web_app_auth_type(access_mode: str) -> WebAppAuthType:
+    if access_mode == WebAppAccessMode.PUBLIC:
+        return WebAppAuthType.PUBLIC
+    if access_mode in PERMISSION_CHECK_MODES:
+        return WebAppAuthType.INTERNAL
+    if access_mode == WebAppAccessMode.SSO_VERIFIED:
+        return WebAppAuthType.EXTERNAL
+    raise ValueError(f"Unsupported web app access mode: {access_mode}")
+
+
 class DeploymentWebPassportAuthGateway:
     def __init__(
         self,
@@ -25,13 +35,7 @@ class DeploymentWebPassportAuthGateway:
 
     def get_app_auth_type(self, app_id: str) -> WebAppAuthType:
         access_mode = self._get_app_access_mode(app_id).access_mode
-        if access_mode == WebAppAccessMode.PUBLIC:
-            return WebAppAuthType.PUBLIC
-        if access_mode in PERMISSION_CHECK_MODES:
-            return WebAppAuthType.INTERNAL
-        if access_mode == WebAppAccessMode.SSO_VERIFIED:
-            return WebAppAuthType.EXTERNAL
-        raise ValueError(f"Unsupported web app access mode: {access_mode}")
+        return resolve_web_app_auth_type(access_mode)
 
 
 class PassportTokenGateway:

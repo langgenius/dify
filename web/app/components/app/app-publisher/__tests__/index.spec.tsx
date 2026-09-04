@@ -1,8 +1,5 @@
 /* oxlint-disable typescript/no-explicit-any */
-import {
-  DeploymentStatus,
-  EnvironmentStatus,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -16,8 +13,12 @@ import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
-const render = (ui: React.ReactElement) =>
+const render = (
+  ui: React.ReactElement,
+  queryClient?: ReturnType<typeof createConsoleQueryClient>,
+) =>
   renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -454,6 +455,8 @@ describe('AppPublisher', () => {
 
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
+        appId: 'app-1',
+        appMode: AppModeEnum.WORKFLOW,
         url: '/apps/app-1/workflows/workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
@@ -722,7 +725,7 @@ describe('AppPublisher', () => {
                   marked_name: 'Release 5',
                   version: 'v5',
                 },
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               },
               environment: {
                 description: '',
@@ -1118,6 +1121,7 @@ describe('AppPublisher', () => {
 
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
     const setPublishedAt = vi.fn()
+    const queryClient = createConsoleQueryClient()
     const workflowStore = {
       getState: () => ({ setPublishedAt }),
     }
@@ -1129,11 +1133,16 @@ describe('AppPublisher', () => {
       created_at: 1_710_000_300,
       hash: 'published-hash',
     })
+    queryClient.setQueryData(['workflow', 'publish', 'app-1'], {
+      created_at: 1_710_000_100,
+      hash: 'stale-published-hash',
+    })
 
     render(
       <WorkflowContext value={workflowStore as any}>
         <AppPublisher publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
+      queryClient,
     )
 
     act(() => {
