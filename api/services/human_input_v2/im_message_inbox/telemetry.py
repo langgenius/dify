@@ -1,9 +1,8 @@
-"""Low-cardinality, payload-free observability for durable IM intake."""
+"""Low-cardinality, payload-free observability for durable IM callback intake."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
@@ -16,25 +15,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class _GaugeInstrument(Protocol):
-    """The stable synchronous Gauge surface used by this adapter."""
-
-    def set(self, amount: int | float, attributes: Mapping[str, str] | None = None) -> None:
-        """Replace the current value for one attribute set."""
-
-
 class IMInboxMetricKind(StrEnum):
-    """Stable event dimensions emitted by inbox components."""
+    """Stable event dimensions emitted during callback intake."""
 
     ACCEPTANCE = "acceptance"
     DUPLICATE = "duplicate"
     ACCEPTANCE_FAILURE = "acceptance_failure"
     DISPATCH_FAILURE = "dispatch_failure"
-    CLAIM = "claim"
-    LEASE_RECLAIM = "lease_reclaim"
-    RETRY = "retry"
-    TERMINAL = "terminal"
-    LOST_LEASE = "lost_lease"
 
 
 class IMInboxMetrics(Protocol):
@@ -47,10 +34,7 @@ class IMInboxMetrics(Protocol):
         provider: IMProvider | None,
         outcome: str | None = None,
     ) -> None:
-        """Increment one low-cardinality lifecycle metric."""
-
-    def record_backlog(self, *, status: str, count: int, oldest_age_seconds: float | None) -> None:
-        """Record one payload-free backlog snapshot."""
+        """Increment one low-cardinality intake metric."""
 
 
 class NoopIMInboxMetrics:
@@ -65,21 +49,14 @@ class NoopIMInboxMetrics:
     ) -> None:
         return None
 
-    def record_backlog(self, *, status: str, count: int, oldest_age_seconds: float | None) -> None:
-        return None
-
 
 class OpenTelemetryIMInboxMetrics:
     """OpenTelemetry adapter with stable, low-cardinality dimensions."""
 
     _events: Counter | None
-    _backlog_count: _GaugeInstrument | None
-    _oldest_pending_age: _GaugeInstrument | None
 
     def __init__(self) -> None:
         self._events = None
-        self._backlog_count = None
-        self._oldest_pending_age = None
         if not dify_config.ENABLE_OTEL:
             return
         try:
@@ -88,18 +65,8 @@ class OpenTelemetryIMInboxMetrics:
             meter = get_meter("im_message_inbox", version=dify_config.project.version)
             self._events = meter.create_counter(
                 "im_message_inbox_events_total",
-                description="Durable IM inbox lifecycle events.",
+                description="Durable IM callback intake events.",
                 unit="{event}",
-            )
-            self._backlog_count = meter.create_gauge(
-                "im_message_inbox_backlog_records",
-                description="IM inbox records by current processing status.",
-                unit="{record}",
-            )
-            self._oldest_pending_age = meter.create_gauge(
-                "im_message_inbox_oldest_pending_age_seconds",
-                description="Age of the oldest pending IM inbox record.",
-                unit="s",
             )
         except Exception:
             logger.exception("Failed to initialize IM inbox metrics")
@@ -117,9 +84,3 @@ class OpenTelemetryIMInboxMetrics:
         if outcome is not None:
             attributes["outcome"] = outcome
         self._events.add(1, attributes)
-
-    def record_backlog(self, *, status: str, count: int, oldest_age_seconds: float | None) -> None:
-        if self._backlog_count is not None:
-            self._backlog_count.set(count, {"status": status})
-        if status == "pending" and self._oldest_pending_age is not None:
-            self._oldest_pending_age.set(oldest_age_seconds if oldest_age_seconds is not None else 0)

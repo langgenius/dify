@@ -162,7 +162,6 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
-        mock_config.IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS = 30
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -213,7 +212,6 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
-        mock_config.IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS = 30
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False

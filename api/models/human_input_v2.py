@@ -40,7 +40,7 @@ from core.human_input_v2.im_integration.change_log import (
 from core.human_input_v2.im_integration.change_log import (
     IMReconciliationSubjectKind as _IMReconciliationSubjectKind,
 )
-from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
+from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from repositories.human_input_v2.im_channel_repository import IMChannelStatus
@@ -335,7 +335,7 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
 
 
 class _IMMessageInboxDefaultFieldsMixin(MappedAsDataclass):
-    """Default fields whose update timestamp is controlled by the inbox repository."""
+    """Database identity and creation time for one callback record."""
 
     __abstract__ = True
 
@@ -354,24 +354,10 @@ class _IMMessageInboxDefaultFieldsMixin(MappedAsDataclass):
         init=False,
         server_default=sa.func.current_timestamp(),
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        insert_default=naive_utc_now,
-        default_factory=naive_utc_now,
-        init=False,
-        server_default=sa.func.current_timestamp(),
-        comment="Repository-owned processing transition timestamp and retry-backoff anchor.",
-    )
 
 
 class IMMessageInbox(_IMMessageInboxDefaultFieldsMixin, TypeBase):
-    """Authenticated event facts plus one renewable fenced processing lease.
-
-    ``updated_at`` is the repository-owned processing transition timestamp and
-    retry-backoff anchor. It must never be replaced by an automatic database
-    clock update because processing policy evaluates application-injected UTC.
-    """
+    """Authenticated callback facts and successful processing time."""
 
     __tablename__ = "im_message_inbox"
     __table_args__ = (
@@ -381,22 +367,7 @@ class IMMessageInbox(_IMMessageInboxDefaultFieldsMixin, TypeBase):
             "provider_event_id",
             name="im_message_inbox_provider_event_uq",
         ),
-        sa.CheckConstraint(
-            "attempt_count >= 0",
-            name="im_message_inbox_attempt_count_nonnegative",
-        ),
-        sa.CheckConstraint(
-            # Pending work must remain unowned so any eligible worker can claim it.
-            "(status = 'pending' AND claim_token IS NULL AND lease_expires_at IS NULL) OR "
-            # Active work needs complete lease ownership for fencing and recovery.
-            "(status = 'processing' AND claim_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR "
-            # Finalized work must release ownership so stale workers cannot retain a claim.
-            "(status IN ('succeeded', 'ignored', 'failed') AND claim_token IS NULL AND lease_expires_at IS NULL)",
-            name=sa.schema.conv("im_message_inbox_processing_state_valid"),
-        ),
-        sa.Index("im_message_inbox_processing_lease_idx", "status", "lease_expires_at", "id"),
-        sa.Index("im_message_inbox_status_created_idx", "status", "created_at", "id"),
-        {"comment": "Durable authenticated IM event intake and processing backlog."},
+        {"comment": "Durable authenticated IM callback records."},
     )
 
     integration_id: Mapped[str] = mapped_column(
@@ -443,24 +414,12 @@ class IMMessageInbox(_IMMessageInboxDefaultFieldsMixin, TypeBase):
     payload: Mapped[str] = mapped_column(
         LongText, nullable=False, kw_only=True, comment="Authenticated Provider-native payload."
     )
-    status: Mapped[InboxProcessingStatus] = mapped_column(
-        EnumText(InboxProcessingStatus),
-        nullable=False,
-        default=InboxProcessingStatus.PENDING,
+    processed_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime,
+        nullable=True,
+        default=None,
         kw_only=True,
-        comment="Current processing lifecycle state.",
-    )
-    attempt_count: Mapped[int] = mapped_column(
-        sa.Integer, nullable=False, default=0, kw_only=True, comment="Number of acquired processing leases."
-    )
-    claim_token: Mapped[str | None] = mapped_column(
-        sa.String(64), nullable=True, default=None, kw_only=True, comment="Opaque current lease fencing token."
-    )
-    lease_expires_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime, nullable=True, default=None, kw_only=True, comment="Current processing lease expiry."
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime, nullable=True, default=None, kw_only=True, comment="Terminal transition timestamp."
+        comment="Timestamp when callback processing completed successfully.",
     )
 
 

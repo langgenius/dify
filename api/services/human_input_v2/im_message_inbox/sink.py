@@ -1,21 +1,19 @@
-"""Integration-bound adapter from provider-neutral intake to durable inbox.
+"""Persist authenticated callbacks and enqueue their Celery processing task.
 
-The repository commit completes before this adapter returns ``ACCEPTED`` or
-attempts a wakeup. Wakeup is a bounded best-effort latency optimization; the
-database remains canonical when publishing is disabled or unavailable.
-Expected persistence and broker failures are logged without exception details
-because their tracebacks may contain event payloads or connection credentials.
+The database commit completes before task publication. Transport acceptance
+requires both operations; an identified Provider redelivery resolves the same
+record and attempts publication again. Failure logs omit exception details
+because they may contain callback payloads or connection credentials.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
-from typing import Protocol, override
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent, EventAcceptance
-from core.human_input_v2.im_integration.adapters.protocols import IMEventConsumer
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
     IMMessageInboxRepository,
@@ -25,29 +23,21 @@ from core.human_input_v2.im_message_inbox import (
     validate_inbox_provider_tenant_id,
 )
 from core.human_input_v2.shared import IntegrationId
+from tasks.im_message_inbox_tasks import process_im_message_inbox_record
 
-from . import wakeup
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
 
 logger = logging.getLogger(__name__)
 
 
-class InboxClock(Protocol):
-    """Injectable UTC clock for deterministic acceptance timestamps."""
-
-    def now(self) -> datetime:
-        """Return the current UTC timestamp."""
-
-
-class IMMessageInboxSink(IMEventConsumer):
+class IMMessageInboxSink:
     """Concrete durable sink bound to one logical local Integration."""
 
     _integration_id: IntegrationId
     _expected_provider: IMProvider
     _expected_provider_tenant_id: str
     _repository: IMMessageInboxRepository
-    _clock: InboxClock
-    _wakeup: wakeup.InboxWakeup | None
+    _clock: Callable[[], datetime]
     _metrics: IMInboxMetrics
 
     def __init__(
@@ -57,23 +47,19 @@ class IMMessageInboxSink(IMEventConsumer):
         expected_provider: IMProvider,
         expected_provider_tenant_id: str,
         repository: IMMessageInboxRepository,
-        clock: InboxClock,
-        wakeup: wakeup.InboxWakeup | None,
+        clock: Callable[[], datetime],
         metrics: IMInboxMetrics,
     ) -> None:
-        normalized_provider_tenant_id = expected_provider_tenant_id.strip()
-        if not normalized_provider_tenant_id:
+        if not expected_provider_tenant_id.strip():
             raise ValueError("expected provider tenant id must not be blank")
-        validate_inbox_provider_tenant_id(normalized_provider_tenant_id)
+        validate_inbox_provider_tenant_id(expected_provider_tenant_id)
         self._integration_id = integration_id
         self._expected_provider = expected_provider
-        self._expected_provider_tenant_id = normalized_provider_tenant_id
+        self._expected_provider_tenant_id = expected_provider_tenant_id
         self._repository = repository
         self._clock = clock
-        self._wakeup = wakeup
         self._metrics = metrics
 
-    @override
     def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
         """Commit or resolve the event before returning transport acceptance."""
 
@@ -98,7 +84,7 @@ class IMMessageInboxSink(IMEventConsumer):
             accepted = self._repository.insert_or_resolve(
                 self._integration_id,
                 event,
-                now=self._clock.now(),
+                now=self._clock(),
             )
         except InboxPersistenceError:
             self._metrics.record(
@@ -121,20 +107,20 @@ class IMMessageInboxSink(IMEventConsumer):
         if accepted.kind is AcceptanceKind.DUPLICATE:
             self._metrics.record(IMInboxMetricKind.DUPLICATE, provider=event.provider)
 
-        if self._wakeup is not None and accepted.kind is AcceptanceKind.NEW:
-            try:
-                self._wakeup.publish(accepted.record_id)
-            except wakeup.InboxWakeupError:
-                self._metrics.record(
-                    IMInboxMetricKind.DISPATCH_FAILURE,
-                    provider=event.provider,
-                    outcome="broker_unavailable",
-                )
-                logger.warning(
-                    "Failed post-commit IM inbox wakeup record_id=%s integration_id=%s provider=%s "
-                    "error_code=broker_unavailable",
-                    accepted.record_id,
-                    self._integration_id,
-                    event.provider.value,
-                )
+        try:
+            process_im_message_inbox_record.apply_async(args=(str(accepted.record_id),), retry=False)
+        except Exception:
+            self._metrics.record(
+                IMInboxMetricKind.DISPATCH_FAILURE,
+                provider=event.provider,
+                outcome="broker_unavailable",
+            )
+            logger.warning(
+                "Failed post-commit IM callback task publication record_id=%s integration_id=%s provider=%s "
+                "error_code=broker_unavailable",
+                accepted.record_id,
+                self._integration_id,
+                event.provider.value,
+            )
+            return EventAcceptance.NOT_ACCEPTED
         return EventAcceptance.ACCEPTED

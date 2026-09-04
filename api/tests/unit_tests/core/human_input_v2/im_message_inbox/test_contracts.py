@@ -1,28 +1,18 @@
-"""Contract tests for infrastructure-free IM event inbox values."""
+"""Contract tests for durable IM callback facts."""
 
 from datetime import datetime
 
-import pytest
-
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, EventAcceptance, IMEventIngressKind
-from core.human_input_v2.im_message_inbox import (
-    ClaimToken,
-    ConsumerDecision,
-    IMInboxDelivery,
-    IMInboxRecordId,
-    InboxClaimOrigin,
-    InboxProcessingStatus,
-    LostLease,
-)
+from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IMEventIngressKind
+from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId, canonicalize_inbox_event
 from core.human_input_v2.shared import IntegrationId
 
 
-def _event() -> AuthenticatedIMEvent:
+def _event(*, event_id: str | None = "event-1") -> AuthenticatedIMEvent:
     return AuthenticatedIMEvent(
         provider=IMProvider.FEISHU,
         provider_tenant_id="tenant-1",
-        event_id="event-1",
+        event_id=event_id,
         occurred_at=datetime(2026, 8, 2, 8),
         received_at=datetime(2026, 8, 2, 8, 0, 1),
         event_type="card.action",
@@ -31,73 +21,30 @@ def _event() -> AuthenticatedIMEvent:
     )
 
 
-def test_authenticated_event_and_delivery_preserve_payload_verbatim() -> None:
-    payload = ' {"token":"secret","nested":[1,true]}\n'
-    event = AuthenticatedIMEvent(
-        provider=IMProvider.FEISHU,
-        provider_tenant_id="tenant-1",
-        event_id="event-1",
-        occurred_at=None,
-        received_at=datetime(2026, 8, 2, 8),
-        event_type=None,
-        ingress_kind=IMEventIngressKind.WEBHOOK,
-        payload=payload,
-    )
-    delivery = IMInboxDelivery(
+def test_inbox_record_preserves_callback_facts_verbatim() -> None:
+    event = _event()
+    record = IMInboxRecord(
         record_id=IMInboxRecordId("record-1"),
         integration_id=IntegrationId("integration-1"),
         event=event,
-        claim_origin=InboxClaimOrigin.PENDING,
-        attempt=1,
-        claim_token=ClaimToken("claim-1"),
+        processed_at=None,
     )
 
-    assert event.payload == payload
-    assert delivery.event is event
+    assert record.event is event
+    assert record.event.payload == ' {"token":"secret","nested":[1,true]}\n'
+    assert record.processed_at is None
 
 
-def test_inbox_identifiers_are_nominal_strings_without_runtime_validation() -> None:
-    record_id = IMInboxRecordId("")
-    claim_token = ClaimToken(" ")
+def test_blank_provider_event_id_is_canonicalized_as_unidentified() -> None:
+    event = _event(event_id=" \t\n")
 
-    assert record_id == ""
-    assert claim_token == " "
-    assert not hasattr(record_id, "value")
-    assert not hasattr(claim_token, "value")
+    canonical = canonicalize_inbox_event(event)
 
-
-def test_inbox_delivery_rejects_invalid_attempts() -> None:
-    with pytest.raises(ValueError, match="attempt"):
-        IMInboxDelivery(
-            record_id=IMInboxRecordId("record-1"),
-            integration_id=IntegrationId("integration-1"),
-            event=_event(),
-            claim_origin=InboxClaimOrigin.PENDING,
-            attempt=0,
-            claim_token=ClaimToken("claim-1"),
-        )
+    assert canonical.event_id is None
+    assert canonical.payload == event.payload
 
 
-def test_processing_and_consumer_outcomes_are_closed_typed_sets() -> None:
-    assert {origin.value for origin in InboxClaimOrigin} == {"pending", "expired_processing"}
-    assert {status.value for status in InboxProcessingStatus} == {
-        "pending",
-        "processing",
-        "succeeded",
-        "ignored",
-        "failed",
-    }
-    assert {decision.value for decision in ConsumerDecision} == {
-        "succeeded",
-        "ignored",
-        "retry",
-        "failed",
-    }
-    assert {acceptance.value for acceptance in EventAcceptance} == {"accepted", "not_accepted"}
+def test_nonblank_provider_event_id_is_preserved_verbatim() -> None:
+    event = _event(event_id=" event-1 ")
 
-
-def test_lost_lease_result_preserves_fencing_identity() -> None:
-    lost_lease = LostLease(IMInboxRecordId("record-1"), ClaimToken("stale-claim"))
-
-    assert lost_lease.record_id == IMInboxRecordId("record-1")
-    assert lost_lease.claim_token == ClaimToken("stale-claim")
+    assert canonicalize_inbox_event(event) is event

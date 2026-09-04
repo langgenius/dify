@@ -1,4 +1,4 @@
-"""Tests for IM inbox OpenTelemetry instrument semantics."""
+"""Tests for payload-free IM callback metrics."""
 
 from __future__ import annotations
 
@@ -8,54 +8,31 @@ import opentelemetry.metrics
 import pytest
 
 from configs import dify_config
-from services.human_input_v2.im_message_inbox.telemetry import OpenTelemetryIMInboxMetrics
+from core.human_input_v2.entities import IMProvider
+from services.human_input_v2.im_message_inbox.telemetry import IMInboxMetricKind, OpenTelemetryIMInboxMetrics
 
 
 class _RecordingCounter:
-    def add(self, amount: int, attributes: Mapping[str, str]) -> None:
-        pass
-
-
-class _RecordingGauge:
-    updates: list[tuple[int | float, Mapping[str, str] | None]]
+    calls: list[tuple[int, Mapping[str, str]]]
 
     def __init__(self) -> None:
-        self.updates = []
+        self.calls = []
 
-    def set(self, amount: int | float, attributes: Mapping[str, str] | None = None) -> None:
-        self.updates.append((amount, attributes))
-
-
-class _RecordingHistogram:
-    def record(self, amount: int | float, attributes: Mapping[str, str] | None = None) -> None:
-        pass
+    def add(self, amount: int, attributes: Mapping[str, str]) -> None:
+        self.calls.append((amount, attributes))
 
 
 class _RecordingMeter:
-    gauges: dict[str, _RecordingGauge]
-    histogram_names: list[str]
-
     def __init__(self) -> None:
-        self.gauges = {}
-        self.histogram_names = []
+        self.counter = _RecordingCounter()
 
     def create_counter(self, name: str, *, description: str, unit: str) -> _RecordingCounter:
-        del name, description, unit
-        return _RecordingCounter()
-
-    def create_gauge(self, name: str, *, description: str, unit: str) -> _RecordingGauge:
+        assert name == "im_message_inbox_events_total"
         del description, unit
-        gauge = _RecordingGauge()
-        self.gauges[name] = gauge
-        return gauge
-
-    def create_histogram(self, name: str, *, description: str, unit: str) -> _RecordingHistogram:
-        del description, unit
-        self.histogram_names.append(name)
-        return _RecordingHistogram()
+        return self.counter
 
 
-def test_backlog_snapshots_use_current_value_gauges(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_callback_metrics_use_low_cardinality_dimensions(monkeypatch: pytest.MonkeyPatch) -> None:
     meter = _RecordingMeter()
 
     def get_meter(_name: str, *, version: str) -> _RecordingMeter:
@@ -64,22 +41,8 @@ def test_backlog_snapshots_use_current_value_gauges(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(dify_config, "ENABLE_OTEL", True)
     monkeypatch.setattr(opentelemetry.metrics, "get_meter", get_meter)
-
     metrics = OpenTelemetryIMInboxMetrics()
 
-    assert set(meter.gauges) == {
-        "im_message_inbox_backlog_records",
-        "im_message_inbox_oldest_pending_age_seconds",
-    }
-    assert meter.histogram_names == []
+    metrics.record(IMInboxMetricKind.ACCEPTANCE, provider=IMProvider.FEISHU, outcome="new")
 
-    metrics.record_backlog(status="pending", count=7, oldest_age_seconds=12.5)
-    metrics.record_backlog(status="processing", count=3, oldest_age_seconds=None)
-    metrics.record_backlog(status="pending", count=0, oldest_age_seconds=None)
-
-    assert meter.gauges["im_message_inbox_backlog_records"].updates == [
-        (7, {"status": "pending"}),
-        (3, {"status": "processing"}),
-        (0, {"status": "pending"}),
-    ]
-    assert meter.gauges["im_message_inbox_oldest_pending_age_seconds"].updates == [(12.5, None), (0, None)]
+    assert meter.counter.calls == [(1, {"kind": "acceptance", "provider": "feishu", "outcome": "new"})]

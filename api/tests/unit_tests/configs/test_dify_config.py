@@ -11,44 +11,6 @@ from configs.deploy import IMEventTransportMode
 from enums import DeploymentEdition
 
 
-def test_im_message_inbox_policy_defaults_are_bounded() -> None:
-    config = DifyConfig(_env_file=None)
-
-    assert config.IM_MESSAGE_INBOX_MAXIMUM_ATTEMPTS == 5
-    assert config.IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS == 60
-    assert config.IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS == 20
-    assert config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS == 5
-    assert config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS == 300
-    assert config.IM_MESSAGE_INBOX_RECOVERY_BATCH_SIZE == 100
-    assert config.IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS == 30
-
-
-def test_im_message_inbox_policy_rejects_invalid_heartbeat_interval() -> None:
-    with pytest.raises(ValidationError, match="heartbeat interval"):
-        DifyConfig(
-            _env_file=None,
-            IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS=30,
-            IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS=30,
-        )
-
-
-def test_im_message_inbox_policy_rejects_inverted_retry_backoff_bounds() -> None:
-    with pytest.raises(ValidationError, match="retry backoff maximum"):
-        DifyConfig(
-            _env_file=None,
-            IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS=30,
-            IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS=10,
-        )
-
-
-def test_im_message_inbox_policy_rejects_nonpositive_retry_backoff() -> None:
-    with pytest.raises(ValidationError, match="greater than 0"):
-        DifyConfig(_env_file=None, IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS=0)
-
-    with pytest.raises(ValidationError, match="greater than 0"):
-        DifyConfig(_env_file=None, IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS=0)
-
-
 def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in tuple(os.environ):
         monkeypatch.delenv(name)

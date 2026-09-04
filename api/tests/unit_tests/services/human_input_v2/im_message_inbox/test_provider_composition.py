@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import fields
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -26,12 +25,12 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxProcessingPolicy
+from core.human_input_v2.im_message_inbox import IMInboxRecordId
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
-from services.human_input_v2.im_message_inbox import IMMessageInboxSink, NoopIMInboxMetrics
-from services.human_input_v2.im_message_inbox.wakeup import InboxWakeup
+from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
+from services.human_input_v2.im_message_inbox.telemetry import NoopIMInboxMetrics
 
 _SIGNING_SECRET = "sanitized-signing-material"
 _PROVIDER_TENANT_ID = "sanitized-team"
@@ -40,32 +39,36 @@ _RECEIVED_AT = datetime(2026, 8, 6, 8)
 _NOW = _RECEIVED_AT.replace(tzinfo=UTC)
 
 
-def _policy() -> InboxProcessingPolicy:
-    return InboxProcessingPolicy(
-        maximum_attempts=3,
-        lease_duration=timedelta(seconds=30),
-        retry_backoff_minimum=timedelta(seconds=5),
-        retry_backoff_maximum=timedelta(seconds=20),
-    )
-
-
 class _FixedClock:
     def now(self) -> datetime:
         return _NOW
 
 
-class _CommitObservingWakeup:
-    _session_maker: sessionmaker[Session]
+class _TaskPublisher:
     record_ids: list[IMInboxRecordId]
+    observer: Callable[[IMInboxRecordId], None] | None
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
-        self._session_maker = session_maker
+    def __init__(self) -> None:
         self.record_ids = []
+        self.observer = None
 
-    def publish(self, record_id: IMInboxRecordId) -> None:
-        with self._session_maker() as session:
-            assert session.get(IMMessageInbox, str(record_id)) is not None
+    def apply_async(self, args: tuple[str, ...], *, retry: bool) -> object:
+        assert retry is False
+        record_id = IMInboxRecordId(args[0])
         self.record_ids.append(record_id)
+        if self.observer is not None:
+            self.observer(record_id)
+        return object()
+
+
+@pytest.fixture(autouse=True)
+def task_publisher(monkeypatch: pytest.MonkeyPatch) -> _TaskPublisher:
+    publisher = _TaskPublisher()
+    monkeypatch.setattr(
+        "services.human_input_v2.im_message_inbox.sink.process_im_message_inbox_record.apply_async",
+        publisher.apply_async,
+    )
+    return publisher
 
 
 class _DelegatingConsumer:
@@ -123,11 +126,7 @@ def _signed_request(body: bytes, *, valid_signature: bool = True) -> WebhookRequ
     )
 
 
-def _build_sink(
-    sqlite_engine: Engine,
-    *,
-    wakeup: InboxWakeup | None = None,
-) -> tuple[IMMessageInboxSink, sessionmaker[Session]]:
+def _build_sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Session]]:
     inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
     IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
@@ -135,9 +134,8 @@ def _build_sink(
         integration_id=_INTEGRATION_ID,
         expected_provider=IMProvider.SLACK,
         expected_provider_tenant_id=_PROVIDER_TENANT_ID,
-        repository=SQLAlchemyIMMessageInboxRepository(session_maker, _policy()),
-        clock=_FixedClock(),
-        wakeup=wakeup,
+        repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+        clock=_FixedClock().now,
         metrics=NoopIMInboxMetrics(),
     )
     return sink, session_maker
@@ -145,10 +143,15 @@ def _build_sink(
 
 def test_slack_webhook_commits_only_authenticated_business_events_before_success(
     sqlite_engine: Engine,
+    task_publisher: _TaskPublisher,
 ) -> None:
-    _, session_maker = _build_sink(sqlite_engine)
-    wakeup = _CommitObservingWakeup(session_maker)
-    sink, _ = _build_sink(sqlite_engine, wakeup=wakeup)
+    sink, session_maker = _build_sink(sqlite_engine)
+
+    def observe_commit(record_id: IMInboxRecordId) -> None:
+        with session_maker() as session:
+            assert session.get(IMMessageInbox, str(record_id)) is not None
+
+    task_publisher.observer = observe_commit
     consumer = _DelegatingConsumer(sink)
     handler = SlackIMProviderAdapter(_credentials()).create_webhook_handler(consumer)
     event_body = _event_body("sanitized-webhook-event")
@@ -170,9 +173,9 @@ def test_slack_webhook_commits_only_authenticated_business_events_before_success
     assert json.loads(challenge_response.body) == {"challenge": "sanitized-challenge"}
     assert accepted_response.status_code == 200
     assert len(consumer.events) == 1
-    assert len(wakeup.record_ids) == 1
+    assert len(task_publisher.record_ids) == 1
     with session_maker() as session:
-        stored = session.get_one(IMMessageInbox, str(wakeup.record_ids[0]))
+        stored = session.get_one(IMMessageInbox, str(task_publisher.record_ids[0]))
         assert stored.integration_id == str(_INTEGRATION_ID)
         assert stored.provider is IMProvider.SLACK
         assert stored.provider_tenant_id == _PROVIDER_TENANT_ID
@@ -248,6 +251,7 @@ def test_slack_stream_connection_acks_only_the_event_committed_by_the_inbox(
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _SocketTransport)
     sqlalchemy_event.listen(sqlite_engine, "commit", fail_first_commit)
     stream = SlackIMProviderAdapter(_credentials()).create_stream_handler(sink)
+    assert stream is not None
     try:
         stream.start()
     finally:
@@ -264,7 +268,7 @@ def test_slack_stream_connection_acks_only_the_event_committed_by_the_inbox(
     assert transport.closed is True
 
 
-def test_slack_webhook_and_stream_share_inbox_deduplication_without_expanding_event_contract(
+def test_slack_webhook_and_stream_share_identified_callback_deduplication(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -300,6 +304,7 @@ def test_slack_webhook_and_stream_share_inbox_deduplication_without_expanding_ev
 
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _SocketTransport)
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
     stream.start()
 
     transport = _SocketTransport.instance
@@ -307,21 +312,11 @@ def test_slack_webhook_and_stream_share_inbox_deduplication_without_expanding_ev
     assert webhook_response.status_code == 200
     assert [response.to_dict() for response in transport.responses] == [{"envelope_id": "sanitized-shared-envelope"}]
     assert len(consumer.events) == 2
-    assert {field.name for field in fields(AuthenticatedIMEvent)} == {
-        "provider",
-        "provider_tenant_id",
-        "event_id",
-        "event_type",
-        "occurred_at",
-        "received_at",
-        "ingress_kind",
-        "payload",
-    }
     with session_maker() as session:
         records = list(session.scalars(sa.select(IMMessageInbox)))
         assert len(records) == 1
         assert records[0].integration_id == str(_INTEGRATION_ID)
-        assert records[0].claim_token is None
+        assert records[0].processed_at is None
         assert consumer.events[0].ingress_kind.value == "webhook"
         assert consumer.events[1].ingress_kind.value == "stream"
         assert json.loads(consumer.events[1].payload) == stream_request.to_dict()

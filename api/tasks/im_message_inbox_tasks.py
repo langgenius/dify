@@ -1,77 +1,44 @@
-"""Celery boundaries for durable IM inbox processing and recovery.
-
-Broker messages carry only an inbox record ID. Processing and recovery fail
-before claim or backlog scan until application composition installs one
-immutable record-processor factory; the separate Provider integration supplies
-the concrete business consumer.
-"""
+"""Celery execution boundary for durable IM callbacks."""
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from celery import shared_task
 from flask import current_app
-from sqlalchemy.orm import sessionmaker
 
-from configs import dify_config
-from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxProcessingPolicy
+from core.human_input_v2.im_message_inbox import IMInboxRecordId
 from dify_app import DifyApp
-from extensions.ext_database import db
-from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
-from services.human_input_v2.im_message_inbox import (
-    IMInboxRecovery,
-    InboxWorkerOutcome,
-    OpenTelemetryIMInboxMetrics,
-)
-from services.human_input_v2.im_message_inbox.wakeup import InboxWakeupError
+
+logger = logging.getLogger(__name__)
 
 _RUNTIME_EXTENSION_KEY = "im_message_inbox_task_runtime"
+_MAX_RETRIES = 5
 
 
 class IMInboxRecordProcessor(Protocol):
-    """Process one record through the repository-backed claim contract."""
+    """Process one callback record without owning task retry policy."""
 
-    def process(self, record_id: IMInboxRecordId) -> InboxWorkerOutcome:
-        """Claim and process one durable inbox record."""
-
-
-class CeleryRecordTask(Protocol):
-    """Narrow Celery publish surface for record-ID-only wakeups."""
-
-    def apply_async(self, args: tuple[str, ...], *, retry: bool) -> object:
-        """Publish one task without broker-side publish retries."""
+    def process(self, record_id: IMInboxRecordId) -> None:
+        """Process one durable callback record."""
 
 
 @dataclass(frozen=True, slots=True)
 class IMInboxTaskRuntime:
-    """Application-composed factory for the concrete inbox record processor."""
+    """Application-composed factory for callback processing."""
 
     processor_factory: Callable[[], IMInboxRecordProcessor]
 
 
-class IMInboxRuntimeNotConfiguredError(RuntimeError):
-    """The Provider/application composition has not installed a consumer path."""
+class IMInboxRuntimeNotConfiguredError(Exception):
+    """Application composition has not installed callback processing."""
 
 
-class CeleryIMInboxWakeup:
-    """Bounded Celery adapter that publishes only an inbox record ID."""
-
-    _record_task: CeleryRecordTask
-
-    def __init__(self, record_task: CeleryRecordTask) -> None:
-        self._record_task = record_task
-
-    def publish(self, record_id: IMInboxRecordId) -> None:
-        """Publish once and sanitize all broker-specific failure details."""
-
-        try:
-            self._record_task.apply_async(args=(str(record_id),), retry=False)
-        except Exception as error:
-            raise InboxWakeupError("failed to publish IM inbox wakeup") from error
+class IMInboxTaskRetryError(Exception):
+    """Sanitized callback processing failure retried by Celery."""
 
 
 def configure_im_inbox_task_runtime(
@@ -79,7 +46,7 @@ def configure_im_inbox_task_runtime(
     *,
     processor_factory: Callable[[], IMInboxRecordProcessor],
 ) -> None:
-    """Install the single application-composed processing factory."""
+    """Install the application-composed callback processor factory."""
 
     app.extensions[_RUNTIME_EXTENSION_KEY] = IMInboxTaskRuntime(processor_factory=processor_factory)
 
@@ -87,41 +54,26 @@ def configure_im_inbox_task_runtime(
 def _task_runtime() -> IMInboxTaskRuntime:
     runtime = current_app.extensions.get(_RUNTIME_EXTENSION_KEY)
     if not isinstance(runtime, IMInboxTaskRuntime):
-        raise IMInboxRuntimeNotConfiguredError("IM inbox record processor is not configured")
+        raise IMInboxRuntimeNotConfiguredError("IM callback processor is not configured")
     return runtime
 
 
-@shared_task(name="im_message_inbox.process_record", queue="human_input_delivery")
-def process_im_message_inbox_record(record_id: str) -> str:
-    """Process one record ID after application composition supplies a consumer."""
+@shared_task(
+    name="im_message_inbox.process_record",
+    queue="human_input_delivery",
+    autoretry_for=(IMInboxTaskRetryError,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": _MAX_RETRIES},
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def process_im_message_inbox_record(record_id: str) -> None:
+    """Process one committed callback and let Celery own retry lifecycle."""
 
-    processor = _task_runtime().processor_factory()
-    return processor.process(IMInboxRecordId(record_id)).value
-
-
-def _build_recovery() -> IMInboxRecovery:
-    policy = InboxProcessingPolicy(
-        maximum_attempts=dify_config.IM_MESSAGE_INBOX_MAXIMUM_ATTEMPTS,
-        lease_duration=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS),
-        retry_backoff_minimum=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS),
-        retry_backoff_maximum=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS),
-    )
-    repository = SQLAlchemyIMMessageInboxRepository(
-        sessionmaker(bind=db.engine, expire_on_commit=False),
-        policy,
-    )
-    return IMInboxRecovery(
-        repository=repository,
-        wakeup=CeleryIMInboxWakeup(process_im_message_inbox_record),
-        clock=lambda: datetime.now(UTC),
-        batch_size=dify_config.IM_MESSAGE_INBOX_RECOVERY_BATCH_SIZE,
-        metrics=OpenTelemetryIMInboxMetrics(),
-    )
-
-
-@shared_task(name="im_message_inbox.recover", queue="schedule_executor")
-def recover_im_message_inbox() -> None:
-    """Dispatch one bounded batch only when accepted records can be processed."""
-
-    _task_runtime()
-    _build_recovery().dispatch_available()
+    runtime = _task_runtime()
+    try:
+        processor = runtime.processor_factory()
+        processor.process(IMInboxRecordId(record_id))
+    except Exception:
+        logger.warning("IM callback processing will be retried record_id=%s", record_id)
+        raise IMInboxTaskRetryError(f"failed to process IM callback record {record_id}") from None

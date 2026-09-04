@@ -1,5 +1,1 @@
-"""SQLAlchemy IM message inbox persistence adapter."""
-
-from .repository import SQLAlchemyIMMessageInboxRepository
-
-__all__ = ["SQLAlchemyIMMessageInboxRepository"]
+"""Persistence adapters for durable IM callback records."""
