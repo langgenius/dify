@@ -228,14 +228,13 @@ class Workflow(Base):  # bug
         EnumText(WorkflowKind, length=255),
         nullable=True,
         default=WorkflowKind.STANDARD,
-        server_default=sa.text("'standard'"),
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
     # NULL for draft workflows and for versions published before numbering was introduced.
     version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
-    marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    marked_name: Mapped[str] = mapped_column(String(255), default="")
+    marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText)
     _features: Mapped[str] = mapped_column("features", LongText)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
