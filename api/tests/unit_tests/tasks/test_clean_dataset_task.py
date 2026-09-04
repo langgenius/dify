@@ -218,6 +218,29 @@ def _persist_attachment(
     return binding, attachment_file
 
 
+def _persist_segment(
+    session_maker: sessionmaker[Session],
+    *,
+    dataset_id: str,
+    tenant_id: str,
+    document_id: str,
+    position: int = 1,
+) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        position=position,
+        content="segment",
+        word_count=1,
+        tokens=1,
+        created_by=str(uuid.uuid4()),
+    )
+    with session_maker.begin() as session:
+        session.add(segment)
+    return segment
+
+
 # ============================================================================
 # Test Basic Cleanup
 # ============================================================================
@@ -579,3 +602,121 @@ class TestIndexProcessorParameters:
             )
 
         schedule_refresh.assert_not_called()
+
+
+# ============================================================================
+# Test Step Isolation and Batching
+# ============================================================================
+
+
+class TestStepIsolation:
+    """Each cleanup step is committed on its own, so one failure cannot undo the rest."""
+
+    def test_cleanup_commits_more_than_once(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """A single commit at the end is what strands data when any step fails."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        _persist_segment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id)
+
+        commits: list[int] = []
+
+        def _count_commit(_session: Session) -> None:
+            commits.append(1)
+
+        event.listen(sqlite_session_factory, "after_commit", _count_commit)
+        try:
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+        finally:
+            event.remove(sqlite_session_factory, "after_commit", _count_commit)
+
+        assert len(commits) > 1, (
+            f"Cleanup still runs as one transaction ({len(commits)} commit); a failure anywhere rolls back everything"
+        )
+
+    def test_failing_step_keeps_earlier_work_and_still_runs_later_steps(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """Segments are deleted before documents and metadata after them. With documents
+        failing, the committed segment deletion must survive and the metadata step must
+        still run."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        metadata = DatasetMetadata(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            type="string",
+            name="meta",
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(metadata)
+
+        with patch(
+            "tasks.clean_dataset_task._delete_documents",
+            side_effect=RuntimeError("deadlock on documents"),
+        ):
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+
+        with orm_session_maker() as session:
+            assert session.get(DocumentSegment, segment.id) is None, (
+                "The committed segment deletion was rolled back by a later failure"
+            )
+            assert session.get(DatasetMetadata, metadata.id) is None, "A failed step skipped the steps after it"
+            assert session.get(Document, document.id) is not None, (
+                "Sanity check: the failing step should not have deleted its own rows"
+            )
+
+
+class TestBatchedDeletes:
+    """Large child tables are deleted in bounded batches."""
+
+    def test_documents_are_deleted_across_multiple_batches(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """With a batch size smaller than the row count the loop must still drain the
+        table, rather than stopping after the first batch."""
+        documents = [_persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id) for _ in range(5)]
+
+        with patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2):
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+
+        with orm_session_maker() as session:
+            remaining = [document.id for document in documents if session.get(Document, document.id) is not None]
+        assert not remaining, f"Batched delete left {len(remaining)} of 5 documents behind"
