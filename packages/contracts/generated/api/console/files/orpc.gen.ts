@@ -8,6 +8,8 @@ import {
   zGetFilesSupportTypeResponse,
   zGetFilesUploadResponse,
   zPostFilesUploadBody,
+  zPostFilesUploadIconBody,
+  zPostFilesUploadIconResponse,
   zPostFilesUploadResponse,
 } from './zod.gen'
 
@@ -25,6 +27,22 @@ export const supportType = {
   get,
 }
 
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFilesUploadIcon',
+    path: '/files/upload/icon',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostFilesUploadIconBody }))
+  .output(zPostFilesUploadIconResponse)
+
+export const icon = {
+  post,
+}
+
 export const get2 = oc
   .route({
     inputStructure: 'detailed',
@@ -35,7 +53,7 @@ export const get2 = oc
   })
   .output(zGetFilesUploadResponse)
 
-export const post = oc
+export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -49,7 +67,8 @@ export const post = oc
 
 export const upload = {
   get: get2,
-  post,
+  post: post2,
+  icon,
 }
 
 export const get3 = oc

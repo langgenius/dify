@@ -1,10 +1,11 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, Union, overload, override
 
 from flask import Flask
 
 from configs import dify_config
+from configs.extra.public_storage_config import PublicStoragePolicyConfig
 from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
@@ -13,10 +14,18 @@ logger = logging.getLogger(__name__)
 
 
 class Storage:
+    storage_runner: BaseStorage
+    storage_type: StorageType | None
+
+    def __init__(self, storage_type: StorageType | None = None):
+        self.storage_type = storage_type
+
     def init_app(self, app: Flask):
-        storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
+        storage_type = StorageType(dify_config.STORAGE_TYPE)
+        storage_factory = self.get_storage_factory(storage_type)
         with app.app_context():
             self.storage_runner = storage_factory()
+        self.storage_type = storage_type
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
@@ -85,7 +94,9 @@ class Storage:
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
-    def save(self, filename: str, data: bytes):
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        if content_type is not None:
+            raise NotImplementedError("This storage backend doesn't support explicit content types")
         self.storage_runner.save(filename, data)
 
     @overload
@@ -136,11 +147,99 @@ class Storage:
         return self.storage_runner.scan(path, files=files, directories=directories)
 
 
+class PublicStorage(Storage):
+    """Storage backend for one public upload policy."""
+
+    enabled: bool
+
+    def __init__(self, storage_type: StorageType, policy_config: PublicStoragePolicyConfig):
+        super().__init__(storage_type)
+        self.policy_config = policy_config
+        self.enabled = False
+
+    @override
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        from extensions.storage.aws_s3_storage import AwsS3Storage
+
+        if not isinstance(self.storage_runner, AwsS3Storage):
+            raise RuntimeError("Public storage must use the S3 storage backend")
+        self.storage_runner.save(filename, data, content_type=content_type)
+
+    @override
+    def init_app(self, app: Flask):
+        if self.storage_type != StorageType.S3:
+            raise ValueError(f"unsupported public storage type {self.storage_type}")
+
+        bucket_name = self.policy_config.bucket or dify_config.S3_BUCKET_NAME
+        required_settings = (
+            dify_config.PUBLIC_STORAGE_ENDPOINT,
+            bucket_name,
+            dify_config.PUBLIC_STORAGE_ACCESS_KEY,
+            dify_config.PUBLIC_STORAGE_SECRET_KEY,
+        )
+        if not all(required_settings):
+            raise ValueError(
+                "Public storage configuration is incomplete. Required: PUBLIC_STORAGE_ENDPOINT, "
+                "PUBLIC_STORAGE_<PURPOSE>_S3_BUCKET or S3_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, "
+                "and PUBLIC_STORAGE_SECRET_KEY"
+            )
+
+        from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
+
+        settings = AwsS3StorageSettings(
+            endpoint=dify_config.PUBLIC_STORAGE_ENDPOINT,
+            region=dify_config.PUBLIC_STORAGE_REGION,
+            bucket_name=bucket_name,
+            access_key=dify_config.PUBLIC_STORAGE_ACCESS_KEY,
+            secret_key=dify_config.PUBLIC_STORAGE_SECRET_KEY,
+            address_style=dify_config.PUBLIC_STORAGE_ADDRESS_STYLE,
+            use_aws_managed_iam=False,
+        )
+        with app.app_context():
+            self.storage_runner = AwsS3Storage(settings)
+        self.enabled = True
+
+
+class PublicStorageRegistry:
+    def __init__(self):
+        self._storages: dict[tuple[str, StorageType], PublicStorage] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self._storages)
+
+    def init_app(self, app: Flask) -> None:
+        self._storages.clear()
+        if not dify_config.PUBLIC_STORAGE_ENABLED:
+            return
+        if not dify_config.PUBLIC_STORAGE_POLICIES:
+            raise ValueError("PUBLIC_STORAGE_ENABLED requires at least one public storage policy")
+
+        from models.enums import UploadFilePurpose
+
+        for purpose_name, storage_policies in dify_config.PUBLIC_STORAGE_POLICIES.items():
+            if purpose_name not in UploadFilePurpose.__members__:
+                raise ValueError(f"unsupported public upload purpose {purpose_name}")
+            if len(storage_policies) != 1:
+                raise ValueError(f"public upload purpose {purpose_name} must configure exactly one storage type")
+
+            for storage_type, policy_config in storage_policies.items():
+                policy_config.validate_policy()
+                policy_storage = PublicStorage(storage_type, policy_config)
+                policy_storage.init_app(app)
+                self._storages[(purpose_name, storage_type)] = policy_storage
+
+    def get(self, purpose_name: str, storage_type: StorageType) -> PublicStorage | None:
+        return self._storages.get((purpose_name, storage_type))
+
+
 storage = Storage()
+public_storage = PublicStorageRegistry()
 
 
 def init_app(app: DifyApp):
     storage.init_app(app)
+    public_storage.init_app(app)
     from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
 
     bind_dify_workflow_file_runtime()

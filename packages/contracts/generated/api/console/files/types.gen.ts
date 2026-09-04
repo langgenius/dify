@@ -88,6 +88,22 @@ export type PostFilesUploadResponses = {
 
 export type PostFilesUploadResponse = PostFilesUploadResponses[keyof PostFilesUploadResponses]
 
+export type PostFilesUploadIconData = {
+  body: {
+    file: Blob | File
+  }
+  path?: never
+  query?: never
+  url: '/files/upload/icon'
+}
+
+export type PostFilesUploadIconResponses = {
+  201: FileResponse
+}
+
+export type PostFilesUploadIconResponse =
+  PostFilesUploadIconResponses[keyof PostFilesUploadIconResponses]
+
 export type GetFilesByFileIdPreviewData = {
   body?: never
   path: {

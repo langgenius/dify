@@ -7,9 +7,10 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from core.file.upload_file_url import build_icon_url
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import build_icon_url, dump_response
+from libs.helper import dump_response
 from models.account import Tenant
 from models.model import App, AppMode, EndUser, Site
 from services.entities.feature_entities import FeatureModel

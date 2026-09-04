@@ -137,11 +137,13 @@ export const useImageFiles = () => {
 type useLocalUploaderProps = {
   disabled?: boolean
   limit?: number
+  uploadUrl?: string
   onUpload: (imageFile: ImageFile) => void
 }
 export const useLocalFileUploader = ({
   limit,
   disabled = false,
+  uploadUrl,
   onUpload,
 }: useLocalUploaderProps) => {
   const params = useParams()
@@ -193,6 +195,7 @@ export const useLocalFileUploader = ({
               },
             },
             !!params?.token,
+            uploadUrl,
           )
         },
         false,
@@ -206,7 +209,7 @@ export const useLocalFileUploader = ({
       )
       reader.readAsDataURL(file)
     },
-    [disabled, limit, t, onUpload, params?.token],
+    [disabled, limit, uploadUrl, t, onUpload, params?.token],
   )
   return { disabled, handleLocalFileUpload }
 }

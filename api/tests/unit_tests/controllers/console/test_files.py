@@ -1,6 +1,6 @@
 import io
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -17,16 +17,18 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console.files import (
+    ICON_FILE_EXTENSIONS,
     FileApi,
     FilePreviewApi,
     FileSupportTypeApi,
+    IconFileApi,
     upload_file_from_request,
 )
 from extensions.storage.storage_type import StorageType
 from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import UploadFile
 
 
@@ -204,6 +206,7 @@ class TestFileApiPost:
             user=mock_account_context,
             tenant_id=None,
             source=None,
+            purpose=None,
             default_file_size_limit=None,
         )
 
@@ -222,6 +225,22 @@ class TestFileApiPost:
 
         assert result is upload_file
         assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+
+    def test_generic_upload_does_not_accept_purpose(self, app: Flask, mock_account_context, mock_file_service):
+        upload_file = MagicMock()
+        mock_file_service.upload_file.return_value = upload_file
+
+        with app.test_request_context(
+            method="POST",
+            data={
+                "file": (io.BytesIO(b"hello"), "icon.png"),
+                "purpose": "icon",
+            },
+        ):
+            result = upload_file_from_request(current_user=mock_account_context)
+
+        assert result is upload_file
+        assert mock_file_service.upload_file.call_args.kwargs["purpose"] is None
 
     def test_dataset_source_from_query_uses_knowledge_limit(
         self,
@@ -329,6 +348,41 @@ class TestFileApiPost:
 
         assert error_info.value.description == error.description
         assert error_info.value.__cause__ is error
+
+
+class TestIconFileApiPost:
+    def test_upload_sets_icon_purpose(self, app: Flask, mock_account_context):
+        api = IconFileApi()
+        post_method = unwrap(api.post)
+        upload_file = MagicMock()
+
+        with (
+            app.test_request_context(method="POST"),
+            patch("controllers.console.files.upload_file_from_request", return_value=upload_file) as upload,
+            patch("controllers.console.files.dump_response", return_value={"id": "file-id"}),
+        ):
+            response, status = post_method(api, mock_account_context)
+
+        assert status == 201
+        assert response == {"id": "file-id"}
+        upload.assert_called_once_with(
+            current_user=mock_account_context,
+            purpose=UploadFilePurpose.ICON,
+            allowed_extensions=ICON_FILE_EXTENSIONS,
+        )
+
+    def test_upload_rejects_unsupported_icon_type(self, app: Flask, mock_account_context, mock_file_service):
+        api = IconFileApi()
+        post_method = unwrap(api.post)
+
+        with app.test_request_context(
+            method="POST",
+            data={"file": (io.BytesIO(b"<svg></svg>"), "icon.svg")},
+        ):
+            with pytest.raises(UnsupportedFileTypeError):
+                post_method(api, mock_account_context)
+
+        mock_file_service.upload_file.assert_not_called()
 
 
 class TestFilePreviewApi:

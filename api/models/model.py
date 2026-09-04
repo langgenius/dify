@@ -51,6 +51,7 @@ from .enums import (
     PromptType,
     ProviderQuotaType,
     TagType,
+    UploadFilePurpose,
 )
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
@@ -2517,6 +2518,11 @@ class UploadFile(TypeBase):
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     source_url: Mapped[str] = mapped_column(LongText, default="")
+    purpose: Mapped[UploadFilePurpose | None] = mapped_column(
+        EnumText(UploadFilePurpose, length=255),
+        nullable=True,
+        default=None,
+    )
 
     def __init__(
         self,
@@ -2536,10 +2542,12 @@ class UploadFile(TypeBase):
         used_at: datetime | None = None,
         hash: str | None = None,
         source_url: str = "",
+        purpose: UploadFilePurpose | None = None,
     ):
         self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type
+        self.purpose = purpose
         self.key = key
         self.name = name
         self.size = size

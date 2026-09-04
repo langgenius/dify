@@ -46,9 +46,9 @@ def _create_upload_file(db_session: Session, *, tenant_id: str, key: str, name: 
 def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure ZIP entry names are safe and unique while preserving extensions."""
     upload_files: list[Any] = [
-        SimpleNamespace(name="a/b.txt", key="k1"),
-        SimpleNamespace(name="c/b.txt", key="k2"),
-        SimpleNamespace(name="../b.txt", key="k3"),
+        SimpleNamespace(name="a/b.txt", key="k1", purpose=None, storage_type=None),
+        SimpleNamespace(name="c/b.txt", key="k2", purpose=None, storage_type=None),
+        SimpleNamespace(name="../b.txt", key="k3", purpose=None, storage_type=None),
     ]
 
     data_by_key: dict[str, list[bytes]] = {"k1": [b"one"], "k2": [b"two"], "k3": [b"three"]}

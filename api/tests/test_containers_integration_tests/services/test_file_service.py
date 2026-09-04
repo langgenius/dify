@@ -35,6 +35,7 @@ class TestFileService:
             patch("services.file_service.ExtractProcessor") as mock_extract_processor,
         ):
             # Setup default mock returns
+            mock_storage.storage_type = StorageType(dify_config.STORAGE_TYPE)
             mock_storage.save.return_value = None
             mock_storage.load.return_value = BytesIO(b"mock file content")
             mock_file_helpers.get_signed_file_url.return_value = "https://example.com/signed-url"

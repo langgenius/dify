@@ -54,3 +54,9 @@ class ApolloSettingsSource(RemoteSettingsSource):
             raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")
         field_value = self.remote_configs.get(field_name)
         return field_value, field_name, False
+
+    @override
+    def get_all(self) -> Mapping[str, Any]:
+        if not isinstance(self.remote_configs, dict):
+            raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")
+        return self.remote_configs

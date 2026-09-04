@@ -75,6 +75,15 @@ export const zPostFilesUploadBody = z.object({
  */
 export const zPostFilesUploadResponse = zFileResponse
 
+export const zPostFilesUploadIconBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostFilesUploadIconResponse = zFileResponse
+
 export const zGetFilesByFileIdPreviewPath = z.object({
   file_id: z.uuid(),
 })

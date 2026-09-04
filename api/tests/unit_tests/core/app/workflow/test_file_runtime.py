@@ -22,7 +22,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
 from models.base import TypeBase
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 
 
 @pytest.fixture
@@ -43,10 +43,13 @@ def _persist_upload_file(
     key: str = "canonical-storage-key",
     tenant_id: str = "tenant-id",
     created_by: str = "end-user-id",
+    purpose: UploadFilePurpose | None = None,
+    storage_type: StorageType = StorageType.LOCAL,
 ) -> UploadFile:
     upload_file = UploadFile(
         tenant_id=tenant_id,
-        storage_type=StorageType.LOCAL,
+        storage_type=storage_type,
+        purpose=purpose,
         key=key,
         name="diagram.png",
         size=128,
@@ -216,6 +219,42 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert parsed.path == "/files/upload-file-id/file-preview"
     assert query["as_attachment"] == ["true"]
     assert query["timestamp"] == ["1700000000"]
+
+
+def test_resolve_upload_file_url_does_not_load_upload_file_without_access_scope(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
+    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
+    controller = MagicMock()
+    controller.current_scope.return_value = None
+
+    result = DifyWorkflowFileRuntime(file_access_controller=controller).resolve_upload_file_url(
+        upload_file_id="upload-file-id"
+    )
+
+    assert urlparse(result).path == "/files/upload-file-id/file-preview"
+    controller.get_upload_file.assert_not_called()
+
+
+def test_resolve_upload_file_url_keeps_attachment_on_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
+    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
+
+    result = _build_runtime().resolve_upload_file_url(
+        upload_file_id="upload-file-id",
+        as_attachment=True,
+    )
+
+    parsed = urlparse(result)
+    assert parsed.path == "/files/upload-file-id/file-preview"
+    assert parse_qs(parsed.query)["as_attachment"] == ["true"]
 
 
 def test_verify_preview_signature_validates_signature_and_expiration(

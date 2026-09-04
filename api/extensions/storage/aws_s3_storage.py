@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Generator
-from typing import override
+from dataclasses import dataclass
+from typing import Literal, override
 
 import boto3
 from botocore.client import Config
@@ -12,28 +13,53 @@ from extensions.storage.base_storage import BaseStorage
 logger = logging.getLogger(__name__)
 
 
-class AwsS3Storage(BaseStorage):
-    """Implementation for Amazon Web Services S3 storage."""
+@dataclass(frozen=True, slots=True)
+class AwsS3StorageSettings:
+    """Connection settings for one S3-compatible storage instance."""
 
-    def __init__(self):
+    endpoint: str | None
+    region: str | None
+    bucket_name: str | None
+    access_key: str | None
+    secret_key: str | None
+    address_style: Literal["auto", "virtual", "path"]
+    use_aws_managed_iam: bool
+
+    @classmethod
+    def from_dify_config(cls) -> "AwsS3StorageSettings":
+        return cls(
+            endpoint=dify_config.S3_ENDPOINT,
+            region=dify_config.S3_REGION,
+            bucket_name=dify_config.S3_BUCKET_NAME,
+            access_key=dify_config.S3_ACCESS_KEY,
+            secret_key=dify_config.S3_SECRET_KEY,
+            address_style=dify_config.S3_ADDRESS_STYLE,
+            use_aws_managed_iam=dify_config.S3_USE_AWS_MANAGED_IAM,
+        )
+
+
+class AwsS3Storage(BaseStorage):
+    """Implementation for S3-compatible storage using explicit or default settings."""
+
+    def __init__(self, settings: AwsS3StorageSettings | None = None):
         super().__init__()
-        self.bucket_name = dify_config.S3_BUCKET_NAME
-        if dify_config.S3_USE_AWS_MANAGED_IAM:
+        settings = settings or AwsS3StorageSettings.from_dify_config()
+        self.bucket_name = settings.bucket_name
+        if settings.use_aws_managed_iam:
             logger.info("Using AWS managed IAM role for S3")
 
             session = boto3.Session()
-            region_name = dify_config.S3_REGION
-            self.client = session.client(service_name="s3", region_name=region_name)
+            self.client = session.client(service_name="s3", region_name=settings.region)
         else:
             logger.info("Using ak and sk for S3")
 
             self.client = boto3.client(
                 "s3",
-                aws_secret_access_key=dify_config.S3_SECRET_KEY,
-                aws_access_key_id=dify_config.S3_ACCESS_KEY,
-                endpoint_url=dify_config.S3_ENDPOINT,
-                region_name=dify_config.S3_REGION,
-                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
+                aws_secret_access_key=settings.secret_key,
+                aws_access_key_id=settings.access_key,
+                endpoint_url=settings.endpoint,
+                region_name=settings.region,
+                config=Config(s3={"addressing_style": settings.address_style}),
             )
         # create bucket
         try:
@@ -50,8 +76,11 @@ class AwsS3Storage(BaseStorage):
                 raise
 
     @override
-    def save(self, filename, data):
-        self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+    def save(self, filename: str, data: bytes, *, content_type: str | None = None) -> None:
+        params = {"Bucket": self.bucket_name, "Key": filename, "Body": data}
+        if content_type is not None:
+            params["ContentType"] = content_type
+        self.client.put_object(**params)
 
     @override
     def load_once(self, filename: str) -> bytes:

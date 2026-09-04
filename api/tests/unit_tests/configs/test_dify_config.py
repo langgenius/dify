@@ -1,4 +1,6 @@
+import os
 from typing import override
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -8,8 +10,27 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.extra.public_storage_config import parse_public_storage_policy_settings
 from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
+from extensions.storage.storage_type import StorageType
+
+
+def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in tuple(os.environ):
+        monkeypatch.delenv(name)
+
+
+def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_environment(monkeypatch)
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
 
 
 def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
@@ -148,6 +169,102 @@ def test_new_user_default_plugin_ids_are_parsed() -> None:
         "langgenius/openai",
         "langgenius/gemini",
     ]
+
+
+def test_public_storage_policy_is_parsed_from_template_environment_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_BUCKET", "icons")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", "presigned")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_DOWNLOAD_URL_EXPIRES_IN", "600")
+
+    config = DifyConfig(_env_file=None)
+
+    policy = config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3]
+    assert policy.bucket == "icons"
+    assert policy.download_mode == "presigned"
+    assert policy.download_url_expires_in == 600
+    assert not hasattr(config, "PUBLIC_STORAGE_ICON_S3_BUCKET")
+
+
+def test_public_storage_policy_parser_handles_storage_type_with_underscores() -> None:
+    parsed = parse_public_storage_policy_settings(
+        {
+            "PUBLIC_STORAGE_ICON_AZURE_BLOB_BUCKET": "icons",
+            "PUBLIC_STORAGE_ENABLED": "true",
+        }
+    )
+
+    policy = parsed["PUBLIC_STORAGE_POLICIES"]["ICON"][StorageType.AZURE_BLOB]
+    assert policy == {"bucket": "icons"}
+
+
+def test_public_storage_policy_environment_overrides_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", "presigned")
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text(
+        "PUBLIC_STORAGE_ICON_S3_BUCKET=icons\n"
+        "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE=proxy\n"
+        "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_URL_EXPIRES_IN=600\n"
+    )
+
+    config = DifyConfig(_env_file=dotenv_path)
+
+    policy = config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3]
+    assert policy.bucket == "icons"
+    assert policy.download_mode == "presigned"
+    assert policy.download_url_expires_in == 600
+
+
+def test_public_storage_policy_is_parsed_from_remote_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("REMOTE_SETTINGS_SOURCE_NAME", "apollo")
+    remote_source = MagicMock()
+    remote_source.get_field_value.return_value = (None, "unused", False)
+    remote_source.prepare_field_value.return_value = None
+    remote_source.get_all.return_value = {
+        "PUBLIC_STORAGE_ICON_S3_BUCKET": "remote-icons",
+        "PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE": "presigned",
+    }
+
+    with patch("configs.app_config.ApolloSettingsSource", return_value=remote_source):
+        config = DifyConfig(_env_file=None)
+
+    policy = config.PUBLIC_STORAGE_POLICIES["ICON"][StorageType.S3]
+    assert policy.bucket == "remote-icons"
+    assert policy.download_mode == "presigned"
+
+
+def test_public_storage_policy_rejects_incomplete_cloudflare_waf_hmac_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PUBLIC_STORAGE_ENABLED", "true")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", "cf_waf_hmac")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL", "https://icons.example.com")
+
+    with pytest.raises(ValidationError, match="Cloudflare WAF HMAC download configuration is incomplete"):
+        DifyConfig(_env_file=None)
+
+
+def test_public_storage_policy_rejects_invalid_cloudflare_waf_hmac_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PUBLIC_STORAGE_ENABLED", "true")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_DOWNLOAD_MODE", "cf_waf_hmac")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_BASE_URL", "https://icons.example.com?unsafe=true")
+    monkeypatch.setenv("PUBLIC_STORAGE_ICON_S3_CF_WAF_HMAC_SECRET", "unit-secret")
+
+    with pytest.raises(ValidationError, match=r"must be an HTTP\(S\) URL without a query or fragment"):
+        DifyConfig(_env_file=None)
 
 
 def test_turnstile_config_is_parsed() -> None:

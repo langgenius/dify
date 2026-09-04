@@ -20,6 +20,7 @@ from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
 from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
+from models import UploadFile
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -62,6 +63,15 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
     @override
     def resolve_file_url(self, *, file: File, for_external: bool = True) -> str | None:
+        if file.transfer_method == FileTransferMethod.LOCAL_FILE:
+            parsed_reference = parse_file_reference(file.reference)
+            if parsed_reference is None:
+                raise ValueError("Missing file reference")
+            return self.resolve_upload_file_url(
+                upload_file_id=parsed_reference.record_id,
+                for_external=for_external,
+            )
+
         uri = self.resolve_file_uri(file=file)
         if uri is None or file.transfer_method == FileTransferMethod.REMOTE_URL:
             return uri
@@ -121,6 +131,9 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         """Resolve a signed UploadFile URI without selecting an origin."""
 
         self._assert_upload_file_access(upload_file_id=upload_file_id)
+        return self._sign_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+
+    def _sign_upload_file_uri(self, *, upload_file_id: str, as_attachment: bool) -> str:
         uri = f"/files/{upload_file_id}/file-preview"
         query = self._sign_query(payload=f"file-preview|{upload_file_id}")
         if as_attachment:
@@ -200,10 +213,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         if self._file_access_controller.current_scope() is None:
             return
 
+        self._get_upload_file(upload_file_id=upload_file_id)
+
+    def _get_upload_file(self, *, upload_file_id: str) -> UploadFile:
         with session_factory.create_session() as session:
             upload_file = self._file_access_controller.get_upload_file(session=session, file_id=upload_file_id)
             if upload_file is None:
                 raise ValueError(f"Upload file {upload_file_id} not found")
+            return upload_file
 
     def _assert_tool_file_access(self, *, tool_file_id: str) -> None:
         if self._file_access_controller.current_scope() is None:

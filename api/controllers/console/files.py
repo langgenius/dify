@@ -32,6 +32,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account, UploadFile
+from models.enums import UploadFilePurpose
 from services.feature_service import FeatureService
 
 register_response_schema_models(
@@ -43,6 +44,7 @@ register_response_schema_models(
 )
 
 PREVIEW_WORDS_LIMIT = 3000
+ICON_FILE_EXTENSIONS = frozenset({"gif", "jpeg", "jpg", "png", "webp"})
 
 FILE_UPLOAD_PARAMS = {
     "file": {
@@ -59,9 +61,16 @@ FILE_UPLOAD_PARAMS = {
         "required": False,
     },
 }
+ICON_FILE_UPLOAD_PARAMS = {"file": FILE_UPLOAD_PARAMS["file"]}
 
 
-def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+def upload_file_from_request(
+    *,
+    current_user: Account,
+    resource_tenant_id: str | None = None,
+    purpose: UploadFilePurpose | None = None,
+    allowed_extensions: frozenset[str] | None = None,
+) -> UploadFile:
     """Validate the multipart request and persist the file under the requested resource tenant."""
     source_str = request.args.get("source") or request.form.get("source")
     source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
@@ -75,6 +84,10 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
 
     if not file.filename:
         raise FilenameNotExistsError()
+    if allowed_extensions is not None:
+        _, separator, extension = file.filename.rpartition(".")
+        if not separator or extension.lower() not in allowed_extensions:
+            raise UnsupportedFileTypeError()
     if source == "datasets" and not current_user.is_dataset_editor:
         raise Forbidden()
 
@@ -95,6 +108,7 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
             user=current_user,
             tenant_id=resource_tenant_id,
             source=source,
+            purpose=purpose,
             default_file_size_limit=default_file_size_limit,
         )
     except services.errors.file.FileTooLargeError as file_too_large_error:
@@ -135,6 +149,25 @@ class FileApi(Resource):
     @with_current_user
     def post(self, current_user: Account) -> JsonResponseWithStatus:
         upload_file = upload_file_from_request(current_user=current_user)
+
+        return dump_response(FileResponse, upload_file), 201
+
+
+@console_ns.route("/files/upload/icon")
+class IconFileApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=ICON_FILE_UPLOAD_PARAMS)
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account):
+        upload_file = upload_file_from_request(
+            current_user=current_user,
+            purpose=UploadFilePurpose.ICON,
+            allowed_extensions=ICON_FILE_EXTENSIONS,
+        )
 
         return dump_response(FileResponse, upload_file), 201
 

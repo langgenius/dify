@@ -10,6 +10,7 @@ import 'vitest-canvas-mock'
 type LocalFileUploaderOptions = {
   disabled?: boolean
   limit?: number
+  uploadUrl?: string
   onUpload: (imageFile: ImageFile) => void
 }
 
@@ -70,6 +71,7 @@ const mocks = vi.hoisted(() => ({
   disableUpload: false,
   uploadResult: null as ImageFile | null,
   onUpload: null as ((imageFile: ImageFile) => void) | null,
+  uploadUrl: null as string | null,
   handleLocalFileUpload: vi.fn<(file: File) => void>(),
 }))
 
@@ -105,6 +107,7 @@ vi.mock('react-easy-crop', () => ({
 vi.mock('../../image-uploader/hooks', () => ({
   useLocalFileUploader: (options: LocalFileUploaderOptions) => {
     mocks.onUpload = options.onUpload
+    mocks.uploadUrl = options.uploadUrl ?? null
     return { handleLocalFileUpload: mocks.handleLocalFileUpload }
   },
 }))
@@ -148,6 +151,7 @@ describe('AppIconPicker', () => {
     mocks.disableUpload = false
     mocks.uploadResult = createImageFile()
     mocks.onUpload = null
+    mocks.uploadUrl = null
     mocks.handleLocalFileUpload.mockImplementation(() => {
       if (mocks.uploadResult) mocks.onUpload?.(mocks.uploadResult)
     })
@@ -258,6 +262,12 @@ describe('AppIconPicker', () => {
   })
 
   describe('Image Upload', () => {
+    it('should use the icon upload endpoint', () => {
+      renderPicker()
+
+      expect(mocks.uploadUrl).toBe('/files/upload/icon')
+    })
+
     it('should return early when image tab is active and no file has been selected', async () => {
       const { onSelect } = renderPicker()
 

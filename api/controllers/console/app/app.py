@@ -39,6 +39,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.file.remote_file_metadata import FileInfo
+from core.file.upload_file_url import build_icon_url
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -47,7 +48,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url, dump_response, to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType

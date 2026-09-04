@@ -364,7 +364,9 @@ describe('useLocalFileUploader', () => {
 
   it('should read file and call onUpload on successful FileReader load', async () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
+    const { result } = renderHook(() =>
+      useLocalFileUploader({ onUpload, uploadUrl: '/files/upload/icon' }),
+    )
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -387,6 +389,13 @@ describe('useLocalFileUploader', () => {
 
     // imageUpload should be called after FileReader load
     expect(mockImageUpload).toHaveBeenCalledTimes(1)
+    expect(mockImageUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file,
+      }),
+      false,
+      '/files/upload/icon',
+    )
   })
 
   it('should call onUpload with progress during imageUpload', async () => {

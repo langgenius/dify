@@ -9,9 +9,10 @@ from controllers.console import console_ns
 from controllers.console.explore.error import RecommendedAppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
+from core.file.upload_file_url import build_icon_url
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import build_icon_url, dump_response
+from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.recommended_app_query_service import RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError
 

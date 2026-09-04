@@ -115,6 +115,7 @@ function AppIconPickerContent({
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit: 3,
     disabled: false,
+    uploadUrl: '/files/upload/icon',
     onUpload: (imageFile: ImageFile) => {
       if (imageFile.fileId) {
         setUploading(false)
