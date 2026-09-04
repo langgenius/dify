@@ -4997,6 +4997,7 @@ Sync partner tenants bindings
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden |  |
+| 409 | Education subscriptions are not supported with Tokener billing | **application/json**: [TokenerEducationCheckoutUnsupportedErrorResponse](#tokenereducationcheckoutunsupportederrorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
@@ -22893,6 +22894,17 @@ Available voices
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
 
+#### TokenerAllowanceMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| amount_usd_micro | string |  | Yes |
+| available_usd_micro | string |  | Yes |
+| ends_at | string |  | Yes |
+| source_ref | string |  | Yes |
+| starts_at | string |  | Yes |
+| window_id | string |  | Yes |
+
 #### TokenerCurrentMonthAvailableMeteringResponse
 
 | Name | Type | Description | Required |
@@ -22912,14 +22924,25 @@ Available voices
 | start_date | string |  | Yes |
 | status | string |  | Yes |
 
+#### TokenerEducationCheckoutUnsupportedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### TokenerMeteringResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| allowance | [TokenerAllowanceMeteringResponse](#tokenerallowancemeteringresponse) |  | No |
 | available_usd_micro | string |  | Yes |
 | balance_generated_at | string |  | Yes |
 | currency | string |  | Yes |
 | current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
+| entitlement_error_code | string |  | No |
+| entitlement_status | string, <br>**Available values:** "active", "failed", "processing", "retrying" |  | No |
 | tenant_id | string |  | Yes |
 | usage_generated_at | string |  | No |
 
