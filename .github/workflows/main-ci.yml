@@ -48,6 +48,7 @@ jobs:
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
       dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
       python-style-changed: ${{ steps.changes.outputs.python-style }}
+      dify-agent-style-changed: ${{ steps.changes.outputs.dify-agent-style }}
       web-style-changed: ${{ steps.changes.outputs.web-style }}
       ts-common-style-changed: ${{ steps.changes.outputs.ts-common-style }}
       superlinter-changed: ${{ steps.changes.outputs.superlinter }}
@@ -160,6 +161,10 @@ jobs:
               - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
               - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
+            dify-agent-style:
+              - 'dify-agent/**'
               - '.github/workflows/style.yml'
               - '.github/workflows/main-ci.yml'
             web-style:
@@ -455,6 +460,7 @@ jobs:
       base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
       classification-succeeded: ${{ needs.check-changes.result == 'success' }}
       run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}
+      run-dify-agent-style: ${{ needs.check-changes.outputs.dify-agent-style-changed == 'true' }}
       run-web-style: ${{ needs.check-changes.outputs.web-style-changed == 'true' }}
       run-ts-common-style: ${{ needs.check-changes.outputs.ts-common-style-changed == 'true' }}
       run-superlinter: ${{ needs.check-changes.outputs.superlinter-changed == 'true' }}

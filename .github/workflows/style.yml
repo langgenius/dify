@@ -14,6 +14,10 @@ on:
         description: Run Python style checks for the changed files.
         required: true
         type: boolean
+      run-dify-agent-style:
+        description: Run Dify Agent style checks for the changed files.
+        required: true
+        type: boolean
       run-web-style:
         description: Run Web style checks for the changed files.
         required: true
@@ -40,7 +44,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-python-style) }}
+    if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-python-style || inputs.run-dify-agent-style) }}
     runs-on: depot-ubuntu-24.04
 
     steps:
@@ -61,29 +65,46 @@ jobs:
         with:
           enable-cache: false
           python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
+          cache-dependency-glob: |
+            api/uv.lock
+            dify-agent/uv.lock
 
       - name: Install dependencies
+        if: inputs.run-python-style
         run: uv sync --project api --dev
 
       - name: Run Import Linter
+        if: inputs.run-python-style
         run: uv run --directory api --dev lint-imports
 
       - name: Run Response Contract Linter
+        if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
       - name: Run No New Getattr Guard
+        if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run No New Controller SQLAlchemy Guard
+        if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run Type Checks
+        if: inputs.run-python-style
         env:
           PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
 
+      - name: Run Dify Agent Ruff
+        if: inputs.run-dify-agent-style
+        run: make -C dify-agent check
+
+      - name: Run Dify Agent Type Checks
+        if: inputs.run-dify-agent-style
+        run: make -C dify-agent typecheck
+
       - name: Dotenv check
+        if: inputs.run-python-style
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
   web-style:
