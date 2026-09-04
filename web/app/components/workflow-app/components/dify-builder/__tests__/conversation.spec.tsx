@@ -1,6 +1,7 @@
 import type { ConversationItem, FormField } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
@@ -12,7 +13,18 @@ import {
 } from '../session/state'
 
 const mocks = vi.hoisted(() => ({
+  copy: vi.fn(() => true),
   fileUploader: vi.fn(),
+  markdown: vi.fn(),
+  toastSuccess: vi.fn(),
+}))
+
+vi.mock('copy-to-clipboard', () => ({
+  default: mocks.copy,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { success: mocks.toastSuccess },
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -25,7 +37,10 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <p>{content}</p>,
+  Markdown: (props: MarkdownProps) => {
+    mocks.markdown(props)
+    return <p>{props.content}</p>
+  },
 }))
 
 vi.mock('@/app/components/base/file-uploader', () => ({
@@ -347,6 +362,94 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Check test inputs')
     expect(screen.getByText('Inspecting the supplied test data.')).toBeInTheDocument()
     expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
+  })
+
+  it('renders assistant reply text through the shared Markdown renderer', () => {
+    const replyText = '**The plan is ready.**'
+
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 1,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: 'turn-assistant-1',
+              stage_id: 'build.plan',
+              execution: { status: 'completed' },
+              reply_text: replyText,
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    expect(mocks.markdown).toHaveBeenCalledTimes(1)
+    expect(mocks.markdown).toHaveBeenCalledWith(expect.objectContaining({ content: replyText }))
+  })
+
+  it('copies user and assistant text with copy before retry', async () => {
+    const user = userEvent.setup()
+    const onRetryMessage = vi.fn()
+
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        activeInteraction={null}
+        changesExpanded={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 1,
+            kind: 'user',
+            payload: { text: 'Refine the workflow', turn_id: 'turn-1' },
+          },
+          {
+            seq: 1,
+            at_version: 2,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: 'turn-1',
+              stage_id: 'build.plan',
+              execution: { status: 'completed' },
+              reply_text: '**Updated plan**',
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+        onRetryMessage={onRetryMessage}
+        retryableTurnId="turn-1"
+      />,
+    )
+
+    const userArticle = screen.getByText('Refine the workflow').closest('article')
+    const assistantArticle = screen.getByText('**Updated plan**').closest('article')
+    expect(userArticle).not.toBeNull()
+    expect(assistantArticle).not.toBeNull()
+
+    const userActions = within(userArticle!).getAllByRole('button')
+    expect(userActions).toHaveLength(2)
+    expect(userActions[0]).toHaveAccessibleName('common.operation.copy')
+    expect(userActions[1]).toHaveAccessibleName('common.operation.retry')
+    const assistantCopy = within(assistantArticle!).getByRole('button', {
+      name: 'common.operation.copy',
+    })
+
+    await user.click(userActions[0]!)
+    await user.click(assistantCopy)
+
+    expect(mocks.copy).toHaveBeenNthCalledWith(1, 'Refine the workflow')
+    expect(mocks.copy).toHaveBeenNthCalledWith(2, '**Updated plan**')
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(2)
+    expect(mocks.toastSuccess).toHaveBeenLastCalledWith('common.actionMsg.copySuccessfully')
+    expect(onRetryMessage).not.toHaveBeenCalled()
   })
 
   it('announces committed messages as a labelled log without putting streaming tokens in it', () => {

@@ -7,6 +7,7 @@ import type {
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import {
+  difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
@@ -190,8 +191,28 @@ export const difyBuilderSendDraftAtom = atom(null, async (get, set) => {
   const prompt = draft.trim()
   if (!prompt || !get(difyBuilderCanComposeAtom)) return false
 
-  const sent = await set(difyBuilderStartPromptAtom, prompt)
-  if (sent && get(difyBuilderDraftAtom) === draft) set(difyBuilderDraftAtom, '')
+  set(difyBuilderDraftAtom, '')
+  return set(difyBuilderStartPromptAtom, prompt)
+})
+
+export const difyBuilderRetryMessageAtom = atom(null, async (get, set, turnId: string) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  const retryableMessage = get(difyBuilderRetryableMessageAtom)
+  const view = get(difyBuilderSessionViewAtom)
+  if (
+    !runtime?.enabled ||
+    !runtime.canEdit ||
+    !retryableMessage ||
+    retryableMessage.turnId !== turnId ||
+    retryableMessage.sessionId !== view?.session_id ||
+    get(difyBuilderInteractionBusyAtom)
+  )
+    return false
+
+  set(difyBuilderLocalErrorAtom, '')
+  const sent = await runtime.session.sendMessage(retryableMessage.text, retryableMessage.turnId)
+  if (sent && get(difyBuilderRetryableMessageAtom)?.turnId === retryableMessage.turnId)
+    set(difyBuilderRetryableMessageAtom, null)
   return sent
 })
 
@@ -285,6 +306,7 @@ export const difyBuilderResetAtom = atom(null, (get, set) => {
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
   set(difyBuilderDraftAtom, '')
+  set(difyBuilderRetryableMessageAtom, null)
   set(difyBuilderLocalErrorAtom, '')
   set(difyBuilderChecklistErrorsAtom, [])
   set(difyBuilderCanvasRefreshGenerationAtom, 0)

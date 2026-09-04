@@ -12,6 +12,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderRetryableMessageAtom,
 } from './session/state'
 import {
   difyBuilderActionsAtom,
@@ -27,6 +28,7 @@ import {
   difyBuilderRecoveryAtom,
   difyBuilderResetAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRetryMessageAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
@@ -122,13 +124,16 @@ const DifyBuilderPanel = () => {
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
+  const retryableMessage = useAtomValue(difyBuilderRetryableMessageAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
+  const retryMessage = useSetAtom(difyBuilderRetryMessageAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
   const interactionFormId = useId()
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
+  const [retryingTurnId, setRetryingTurnId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionInteractionState, setActionInteractionState] = useState(
     EMPTY_ACTION_INTERACTION_STATE,
@@ -250,10 +255,24 @@ const DifyBuilderPanel = () => {
     if (action) void handleAction(action)
   }, [actions, activeFormActionId, handleAction])
 
+  const handleRetryMessage = useCallback(
+    async (turnId: string) => {
+      if (interactionBusy || retryingTurnId !== null) return
+      setRetryingTurnId(turnId)
+      try {
+        await retryMessage(turnId)
+      } finally {
+        setRetryingTurnId((current) => (current === turnId ? null : current))
+      }
+    },
+    [interactionBusy, retryMessage, retryingTurnId],
+  )
+
   const handleReset = () => {
     reset()
     pinnedToBottomRef.current = true
     setPendingActionId(null)
+    setRetryingTurnId(null)
     setChangesExpanded(false)
     setActionInteractionState(EMPTY_ACTION_INTERACTION_STATE)
   }
@@ -326,7 +345,10 @@ const DifyBuilderPanel = () => {
                 onActionPayloadChange={handleActionPayloadChange}
                 onActionValidityChange={handleActionValidityChange}
                 onActiveFormSubmit={handleActiveFormSubmit}
+                onRetryMessage={(turnId) => void handleRetryMessage(turnId)}
                 onStreamingContentChange={scrollToBottomIfPinned}
+                retryableTurnId={retryableMessage?.turnId}
+                retryingTurnId={retryingTurnId}
               />
             </>
           ) : (
@@ -335,7 +357,7 @@ const DifyBuilderPanel = () => {
               <h3 className="system-sm-semibold text-text-primary">
                 {t(($) => $['difyBuilder.emptyBuildTitle'], { ns: 'workflow' })}
               </h3>
-              <p className="mt-1 max-w-[284px] text-sm leading-5 tracking-[-0.07px] text-text-tertiary">
+              <p className="mt-1 max-w-71 text-sm leading-5 tracking-[-0.07px] text-text-tertiary">
                 {t(($) => $['difyBuilder.emptyDescription'], { ns: 'workflow' })}
               </p>
             </div>

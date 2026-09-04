@@ -1,9 +1,13 @@
 import type { ConversationItem, SessionView } from '../types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import DifyBuilderPanel from '../panel'
-import { difyBuilderConversationAtom, difyBuilderSessionViewAtom } from '../session/state'
+import {
+  difyBuilderConversationAtom,
+  difyBuilderRetryableMessageAtom,
+  difyBuilderSessionViewAtom,
+} from '../session/state'
 import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
@@ -133,6 +137,64 @@ describe('DifyBuilderPanel', () => {
     await user.click(sendButton)
     expect(mocks.sendMessage).toHaveBeenCalledWith('Make the repair smaller')
     await waitFor(() => expect(composer).toHaveValue(''))
+  })
+
+  it('clears the composer immediately when Enter submits a pending message', async () => {
+    const user = userEvent.setup()
+    let finishSending!: (sent: boolean) => void
+    const sending = new Promise<boolean>((resolve) => {
+      finishSending = resolve
+    })
+    mocks.sendMessage.mockReturnValueOnce(sending)
+    renderPanel()
+
+    const composer = screen.getByRole('textbox', {
+      name: 'workflow.difyBuilder.messagePlaceholder',
+    })
+    await user.type(composer, 'Make the repair smaller')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.sendMessage).toHaveBeenCalledWith('Make the repair smaller')
+    })
+    try {
+      expect(composer).toHaveValue('')
+    } finally {
+      await act(async () => {
+        finishSending(true)
+        await sending
+      })
+    }
+  })
+
+  it('shows retry below the failed user bubble and resends the same turn', async () => {
+    const user = userEvent.setup()
+    let finishRetry!: (sent: boolean) => void
+    const retrying = new Promise<boolean>((resolve) => {
+      finishRetry = resolve
+    })
+    mocks.sendMessage.mockReturnValueOnce(retrying)
+    renderPanel(sessionView, (store) => {
+      store.set(difyBuilderRetryableMessageAtom, {
+        sessionId: 'session-1',
+        text: 'Fix the workflow',
+        turnId: 'turn-user-1',
+      })
+    })
+
+    const message = screen.getByText('Fix the workflow')
+    const userBubble = message.closest('article')
+    expect(userBubble).not.toBeNull()
+    const retry = within(userBubble!).getByRole('button', { name: 'common.operation.retry' })
+    expect(retry).not.toHaveTextContent('common.operation.retry')
+    expect(message.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await user.click(retry)
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith('Fix the workflow', 'turn-user-1')
+    await waitFor(() => expect(retry).toBeDisabled())
+    act(() => finishRetry(true))
+    await waitFor(() => expect(retry).not.toBeInTheDocument())
   })
 
   it('does not submit while Enter confirms an IME composition', async () => {

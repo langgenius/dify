@@ -37,6 +37,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
@@ -62,6 +63,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
   const setConversation = useSetAtom(difyBuilderConversationAtom)
   const setConversationHasMore = useSetAtom(difyBuilderConversationHasMoreAtom)
   const setConversationLoading = useSetAtom(difyBuilderConversationLoadingAtom)
+  const setRetryableMessage = useSetAtom(difyBuilderRetryableMessageAtom)
   const setView = useSetAtom(difyBuilderSessionViewAtom)
   const setLastError = useSetAtom(difyBuilderSessionLastErrorAtom)
   const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
@@ -199,6 +201,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setView((current) => (current?.session_id === sessionId ? null : current))
       setConversation([])
       setConversationHasMore(false)
+      setRetryableMessage(null)
       executionProgress.clear()
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
@@ -209,6 +212,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setActiveSessionId,
       setConversation,
       setConversationHasMore,
+      setRetryableMessage,
       setView,
       streamingTurnBuffer,
     ],
@@ -442,6 +446,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         setActiveSessionId(null)
         setConversation([])
         setConversationHasMore(false)
+        setRetryableMessage(null)
         setLastCanvasEvent(null)
         canvasCursorRef.current = undefined
         pendingMessageRef.current = null
@@ -550,6 +555,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setIsBusy,
       setLastCanvasEvent,
       setLastError,
+      setRetryableMessage,
       store,
       streamingTurnBuffer,
     ],
@@ -606,6 +612,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
       setConversationLoading(false)
+      setRetryableMessage(null)
+      pendingMessageRef.current = null
       const controller = new AbortController()
       abortRef.current = controller
       setActiveSessionId(normalizedSessionId)
@@ -645,6 +653,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setActiveSessionId,
       setIsBusy,
       setLastError,
+      setRetryableMessage,
       setConversationLoading,
       store,
       streamingTurnBuffer,
@@ -718,16 +727,21 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
   )
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, requestedTurnId?: string) => {
       const view = store.get(difyBuilderSessionViewAtom)
       if (!view || store.get(difyBuilderSessionBusyAtom)) return false
       const normalizedText = text.trim()
       if (!normalizedText) return false
       const pending = pendingMessageRef.current
       const clientTurnId =
-        pending?.sessionId === view.session_id && pending.text === normalizedText
+        requestedTurnId?.trim() ||
+        (pending?.sessionId === view.session_id && pending.text === normalizedText
           ? pending.turnId
-          : globalThis.crypto.randomUUID()
+          : globalThis.crypto.randomUUID())
+      const retryableMessage = store.get(difyBuilderRetryableMessageAtom)
+      const retrying =
+        retryableMessage?.sessionId === view.session_id && retryableMessage.turnId === clientTurnId
+      if (!retrying) setRetryableMessage(null)
       pendingMessageRef.current = {
         sessionId: view.session_id,
         text: normalizedText,
@@ -739,11 +753,21 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         openStream: (signal) =>
           sendSessionMessage(view.session_id, normalizedText, view.version, clientTurnId, signal),
       })
-      if (sent && pendingMessageRef.current?.turnId === clientTurnId)
-        pendingMessageRef.current = null
+      if (pendingMessageRef.current?.turnId === clientTurnId) {
+        if (sent) {
+          pendingMessageRef.current = null
+          setRetryableMessage((current) => (current?.turnId === clientTurnId ? null : current))
+        } else {
+          setRetryableMessage({
+            sessionId: view.session_id,
+            text: normalizedText,
+            turnId: clientTurnId,
+          })
+        }
+      }
       return sent
     },
-    [runCommand, store],
+    [runCommand, setRetryableMessage, store],
   )
 
   const updateModel = useCallback(
@@ -758,6 +782,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     reasoningBuffer.clear()
     streamingTurnBuffer.clear()
     pendingMessageRef.current = null
+    setRetryableMessage(null)
     setActiveSessionId(null)
     setConversation([])
     setConversationHasMore(false)
@@ -777,6 +802,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     setIsBusy,
     setLastCanvasEvent,
     setLastError,
+    setRetryableMessage,
     setView,
     streamingTurnBuffer,
   ])
