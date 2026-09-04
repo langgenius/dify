@@ -1415,3 +1415,64 @@ def test_get_session_view_no_recovery_when_unset(service: DifyBuilderService, re
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.recovery is None
+
+
+def test_interrupted_working_state_surfaces_recovery_offer(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # working state, lock unheld -> interrupted
+    view = service.get_session_view(s.id, _actor())
+    assert view.interrupted is True
+    assert view.recovery is not None
+    assert view.recovery.can_continue is True  # Retry
+    assert view.recovery.can_restart is True  # Start over
+    assert view.recovery.recovery_class == ""  # not a drift class
+
+
+def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.service import _internal_action_allowed
+
+    fc = DifyBuilderContext()
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_continue") is True
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_restart") is True
+    # an unrelated action is still rejected at a working state
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "publish_workflow") is False
+
+
+def test_repeat_failure_resurfaces_offer_no_wedge(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock, monkeypatch
+) -> None:
+    """A Retry (recovery_continue) whose handler raises again must not wedge the
+    session: the task's generic except publishes a "step failed" event and releases
+    the lock in `finally`, and afterward the session still reads as interrupted with
+    the recovery offer present -- never a dead end."""
+    import tasks.dify_builder_advance_task as advance_mod
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    class RaisingDify(FakeBuildDifyPort):
+        def publish(self, _app_id, _actor) -> None:
+            raise RuntimeError("boom: publish still broken")
+
+    monkeypatch.setattr(advance_mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(advance_mod, "WorkflowServiceDifyPort", RaisingDify)
+    monkeypatch.setattr(advance_mod, "session_lock", lock)
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(advance_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+
+    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # already interrupted: working, lock unheld
+    actor = _actor()
+    token = lock.acquire(s.id)
+    assert token is not None
+
+    action = {"kind": "recovery_continue", "payload": {}, "base_version": s.version}
+    advance_mod.advance_session(s.id, action, {"account_id": actor.account_id, "tenant_id": actor.tenant_id}, token)
+
+    assert not lock.exists(s.id)  # lock released -- a stuck lock would wedge the session
+    assert ("error", "step failed") in [(ev["kind"], ev.get("error")) for _sid, ev in events]
+
+    view = service.get_session_view(s.id, actor)
+    assert view.interrupted is True
+    assert view.recovery is not None  # offer resurfaces -- no dead end
+    assert view.recovery.can_continue is True
+    assert view.recovery.can_restart is True

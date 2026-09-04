@@ -22,6 +22,7 @@ from core.dify_builder.contract import (
     CheckpointRef,
     NoticeItem,
     Phase,
+    RecoveryRef,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -417,6 +418,11 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     transitions must change the current pause flag, and recovery choices must
     be present in the current RecoveryRef.
     """
+    # Interrupted working step: allow Retry/Start over via the existing recovery
+    # actions. (The lock is handled downstream -- recovery_continue's dispatch
+    # acquires the advance lock and raises BusyError if one is already held.)
+    if is_working(state) and kind in ("recovery_continue", "recovery_restart"):
+        return True
     if not is_waiting(state):
         return False
     if kind in {"check_recovery", "message", "update_model"}:
@@ -852,6 +858,20 @@ class DifyBuilderService:
             else None
         )
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
+        # Interrupted working step (crash mid auto-advance, lock released): offer
+        # Retry (recovery_continue) / Start over (recovery_restart). Built directly
+        # with recovery_class="" so recovery_ref_for/classify never see a fabricated
+        # drift class. Retry re-runs the working handler (recovery_continue returns
+        # the working state -> non-settled -> runner re-drives it); Start over resets
+        # + re-enters the flow's entry state. A real drift class still wins (only fires
+        # when recovery_ref is None).
+        if recovery_ref is None and is_working(st) and not lock_held:
+            recovery_ref = RecoveryRef(
+                recovery_class="",
+                can_continue=True,
+                can_restart=True,
+                message="The last step didn't finish. Retry it, or start over.",
+            )
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,

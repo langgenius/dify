@@ -1183,3 +1183,40 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     assert out.current_state == PcState.BUILD_EXECUTION
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
+
+
+def test_recovery_continue_reruns_interrupted_publish_step():
+    """An interrupted build.publish recovered via recovery_continue must re-run
+    handle_publish (the runner falls through because build.publish is a working
+    state) and advance to build.governance_feedback -- not stay wedged."""
+    from core.dify_builder.handlers_build import build_registry
+    from core.dify_builder.runner import Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_PUBLISH, plan_items=["x"], built_node_ids=["start_1"])
+    runner = Runner(env, build_registry())
+
+    runner.advance(s.id, Turn(action=Action(kind="recovery_continue", base_version=s.version), actor=_actor()))
+
+    reloaded, _fc = repo.get_session(s.id)
+    assert reloaded.current_state != PcState.BUILD_PUBLISH  # advanced, not wedged
+    assert dify.published is True  # handle_publish re-ran (FakeBuildDifyPort records publish)
+
+
+def test_recovery_restart_resets_interrupted_step_to_entry_state():
+    from core.dify_builder.handlers_build import build_registry
+    from core.dify_builder.models import EntryMode
+    from core.dify_builder.recovery import entry_state_for
+    from core.dify_builder.runner import Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, repo = _new_env(dify=FakeBuildDifyPort())
+    s = _seed_build_session(repo, PcState.BUILD_PUBLISH, plan_items=["x"], staged_repair=[object()])
+    Runner(env, build_registry()).advance(
+        s.id, Turn(action=Action(kind="recovery_restart", base_version=s.version), actor=_actor())
+    )
+    reloaded, fc = repo.get_session(s.id)
+    assert reloaded.current_state == entry_state_for(EntryMode.BUILD)  # back at the flow entry
+    assert fc.staged_repair == []  # working fields reset
