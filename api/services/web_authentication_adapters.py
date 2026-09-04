@@ -9,7 +9,8 @@ from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from services.account_service import AccountService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.authentication_entities import LoginFailureReason, StoredAuthenticationToken
+from services.entities.auth_audit_entities import LoginFailureReason
+from services.entities.authentication_entities import StoredAuthenticationToken
 from services.web_authentication_service import (
     WebAppAccessGateway,
     WebAppSessionGateway,

@@ -7,7 +7,8 @@ import pytest
 
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
-from services.entities.authentication_entities import LoginFailureReason, StoredAuthenticationToken
+from services.entities.auth_audit_entities import LoginFailureReason
+from services.entities.authentication_entities import StoredAuthenticationToken
 from services.web_authentication_service import (
     WebAccountBannedError,
     WebAuthenticationFailedError,

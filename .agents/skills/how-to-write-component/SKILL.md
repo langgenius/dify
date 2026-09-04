@@ -35,6 +35,11 @@ Use this skill to route component architecture decisions to its bundled referenc
 3. Implement one coherent vertical slice. Do not expand into equivalent patterns elsewhere unless the current contract cannot be completed without them.
 4. Verify observable behavior at the narrowest sufficient boundary, then run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and `packages/dify-ui/docs/testing.md` for Dify UI.
 
+## Tailwind CSS
+
+- Write canonical Tailwind v4 classes; prefer canonical utilities over equivalent arbitrary values.
+- Common forms include `w-105` instead of `w-[420px]`, `px-2.25` instead of `px-[9px]`, `bg-linear-to-b` instead of `bg-gradient-to-b`, `wrap-break-word` instead of `break-words`, and `field-sizing-content` instead of `[field-sizing:content]`.
+
 [data]: references/data.md
 [interactions]: references/interactions.md
 [ownership]: references/ownership.md

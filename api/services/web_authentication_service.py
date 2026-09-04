@@ -5,8 +5,8 @@ from typing import Never, Protocol
 from machinery.context import RequestContext
 from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
+from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import (
-    LoginFailureReason,
     StoredAuthenticationToken,
     WebAppSessionRecord,
     WebLoginStatus,

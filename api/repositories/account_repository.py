@@ -1,12 +1,14 @@
 """SQLAlchemy implementation of the account persistence port."""
 
+from datetime import datetime
 from typing import override
 
-from sqlalchemy import delete, select
+from sqlalchemy import case, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from services.account_email import normalize_email
+from services.account_login_service import ConsoleAuthAccountRepository
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountAuthenticationSnapshot,
@@ -20,9 +22,14 @@ from services.entities.account_entities import (
     AccountProfileChanges,
     AccountSnapshot,
 )
+from services.entities.account_login_entities import (
+    AccountSessionPreparation,
+    LoginAccountSnapshot,
+    PasswordLoginCompletion,
+)
 
 
-class SQLAlchemyAccountRepository(AccountRepository):
+class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -39,6 +46,15 @@ class SQLAlchemyAccountRepository(AccountRepository):
             if account is None and email != email.lower():
                 account = session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
             return self._to_snapshot(account) if account is not None else None
+
+    @override
+    def activate_pending(self, account_id: str, *, initialized_at: datetime) -> None:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None or account.status != AccountStatus.PENDING:
+                return
+            account.status = AccountStatus.ACTIVE
+            account.initialized_at = initialized_at
 
     @override
     def get_credentials(self, account_id: str) -> AccountCredentials | None:
@@ -63,6 +79,47 @@ class SQLAlchemyAccountRepository(AccountRepository):
                 password_hash=account.password,
                 password_salt=account.password_salt,
             )
+
+    @override
+    def list_for_login(self, email: str) -> tuple[LoginAccountSnapshot, ...]:
+        normalized_email = email.lower()
+        candidate_emails = (email,) if email == normalized_email else (email, normalized_email)
+        email_priority = case((Account.email == email, 0), else_=1)
+        with self._session_factory() as session:
+            accounts = session.scalars(
+                select(Account)
+                .where(Account.email.in_(candidate_emails))
+                .order_by(email_priority.asc(), Account.id.asc())
+            ).all()
+            return tuple(self._to_login_snapshot(account) for account in accounts)
+
+    @override
+    def complete_password_login(self, completion: PasswordLoginCompletion) -> bool:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, completion.account_id)
+            if account is None:
+                return False
+            if completion.password is not None:
+                account.password = completion.password.password_hash
+                account.password_salt = completion.password.password_salt
+            if completion.activate_pending_account and account.status == AccountStatus.PENDING:
+                account.status = AccountStatus.ACTIVE
+                account.initialized_at = completion.initialized_at
+            session.flush()
+            return True
+
+    @override
+    def prepare_session(self, account_id: str, preparation: AccountSessionPreparation) -> bool:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return False
+            account.last_login_at = preparation.logged_in_at
+            account.last_login_ip = preparation.ip_address
+            if preparation.activate_pending_account and account.status == AccountStatus.PENDING:
+                account.status = AccountStatus.ACTIVE
+            session.flush()
+            return True
 
     @override
     def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None:
@@ -187,4 +244,14 @@ class SQLAlchemyAccountRepository(AccountRepository):
             status=account.status.value,
             initialized_at=account.initialized_at,
             created_at=account.created_at,
+        )
+
+    @staticmethod
+    def _to_login_snapshot(account: Account) -> LoginAccountSnapshot:
+        return LoginAccountSnapshot(
+            id=account.id,
+            email=account.email,
+            status=account.status.value,
+            password_hash=account.password,
+            password_salt=account.password_salt,
         )

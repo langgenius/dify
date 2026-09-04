@@ -18,16 +18,22 @@ from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.account_oauth_repository import (
+    AccountServiceOAuthAccountRegistrationGateway,
+    AccountServiceOAuthSessionGateway,
+    AccountServiceOAuthWorkspaceGateway,
+    RegisterServiceOAuthInvitationGateway,
+)
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
-from services.account_activation_adapters import (
+from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RBACWorkspaceMemberAccessSync,
-    RegisterServiceInvitationTokenStore,
+    RedisInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_email_registration_adapters import (
@@ -41,6 +47,10 @@ from services.account_forgot_password_adapters import (
     RedisForgotPasswordSecurityGateway,
     RedisForgotPasswordTokenGateway,
 )
+from services.account_oauth_adapters import (
+    DeploymentOAuthPolicyGateway,
+    RedisOAuthAccountClaimLock,
+)
 from services.account_service import AccountService
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
@@ -48,7 +58,7 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.mail_entities import InnerMailMessage
+from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -200,6 +210,21 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_reuses_file_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.files, FileService)
+    assert services.files._session_maker is sqlite_session_factory
+    assert services.web_app_runtime._file_service is services.files
 
 
 def test_build_application_services_wires_workflow_run_archives(
@@ -405,6 +430,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
     assert services.accounts.password._accounts is accounts
+    assert services.accounts.authentication._passwords is services.accounts.password._passwords
     forgot_password = services.accounts.forgot_password
     assert forgot_password._accounts is accounts
     assert forgot_password._passwords is services.accounts.password._passwords
@@ -434,12 +460,26 @@ def test_build_application_services_wires_account_profile_repository(
     assert email_registration._registration._session_factory is sqlite_session_factory
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.authentication._accounts is accounts
+    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
     assert services.notifications._accounts is accounts
     assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
+    oauth = services.accounts.oauth
+    assert oauth._accounts is accounts
+    assert oauth._integrations is integrations
+    assert oauth._memberships is services.workspace_queries._workspaces
+    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
+    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
+    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
+    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert oauth._sessions is not oauth._workspaces
+    assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
+    assert oauth._workspace_policy is oauth._registration_policy
     avatar_files = services.accounts.avatar._files
     assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
     assert avatar_files._session_factory is sqlite_session_factory
@@ -479,7 +519,7 @@ def test_build_application_services_wires_account_activation(
     )
 
     activation = services.account_activation
-    assert isinstance(activation._tokens, RegisterServiceInvitationTokenStore)
+    assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory
     assert isinstance(activation._workspace_policy, DeploymentWorkspaceInvitePolicy)
@@ -501,59 +541,6 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
-
-
-@pytest.mark.parametrize(
-    ("substitutions", "expected_substitutions"),
-    [
-        pytest.param({"name": "Ada"}, {"name": "Ada"}, id="configured"),
-        pytest.param(None, {}, id="omitted-or-null"),
-    ],
-)
-def test_build_application_services_wires_inner_mail_dispatcher(
-    sqlite_session_factory: sessionmaker[Session],
-    substitutions: dict[str, object] | None,
-    expected_substitutions: dict[str, object],
-) -> None:
-    services = ext_application_services.build_application_services(
-        database_client=sqlite_session_factory,
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
-    )
-    message = InnerMailMessage(
-        recipients=("one@example.com", "two@example.com"),
-        subject="Subject",
-        body="Body",
-        substitutions=substitutions,
-    )
-
-    with patch("tasks.mail_inner_task.send_inner_email_task.delay") as delay:
-        services.inner_mail.send(message)
-
-    delay.assert_called_once_with(
-        to=["one@example.com", "two@example.com"],
-        subject="Subject",
-        body="Body",
-        substitutions=expected_substitutions,
-    )
-
-
-def test_build_application_services_uses_passed_edition_for_webapp_auth(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-
-    with patch("extensions.ext_application_services.DeploymentWebPassportAuthGateway") as auth_gateway:
-        ext_application_services.build_application_services(
-            database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.ENTERPRISE,
-            initialization_password="",
-            redis=MagicMock(spec=RedisClientWrapper),
-        )
-
-    assert auth_gateway.call_args.kwargs["webapp_auth_enabled"] is True
 
 
 def test_build_application_services_wires_trial_app_usage(

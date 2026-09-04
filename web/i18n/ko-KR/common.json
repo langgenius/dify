@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} 크레딧",
   "mainNav.workspace.creditsUnit": "크레딧",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "워크스페이스를 찾을 수 없습니다",
   "mainNav.workspace.openMenu": "워크스페이스 메뉴 열기",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",
