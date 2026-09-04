@@ -1644,9 +1644,7 @@ class Message(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    agent_based: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
+    agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     app_mode: Mapped[AppMode | None] = mapped_column(EnumText(AppMode, length=255), nullable=True, default=None)
 
