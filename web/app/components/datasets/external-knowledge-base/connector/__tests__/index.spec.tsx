@@ -368,16 +368,12 @@ describe('ExternalKnowledgeBaseConnector', () => {
       expect((descriptionInput as HTMLTextAreaElement).value).toBe('My Description')
     })
 
-    it('should handle cancel button click', async () => {
-      const user = userEvent.setup()
+    it('should link back to the dataset list from cancel', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
-      const cancelButton = screen
-        .getByText('dataset.externalKnowledgeForm.cancel')
-        .closest('button')
-      await user.click(cancelButton!)
-
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      expect(
+        screen.getByRole('link', { name: 'dataset.externalKnowledgeForm.cancel' }),
+      ).toHaveAttribute('href', '/datasets')
     })
 
     it('should handle back button click', async () => {

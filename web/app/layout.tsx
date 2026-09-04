@@ -2,7 +2,7 @@ import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -10,12 +10,13 @@ import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
-  getSystemFeaturesQueryClient,
-  systemFeaturesServerQueryOptions,
+  dehydrateSystemFeatures,
+  getOptionalSystemFeatures,
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
+import { basePath } from '@/utils/var'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -31,37 +32,31 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const ensureSystemFeatures = async () => {
-  const queryClient = getSystemFeaturesQueryClient()
-  const queryOptions = systemFeaturesServerQueryOptions()
-  const queryState = queryClient.getQueryState(queryOptions.queryKey)
-
-  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
-
-  return { queryClient, queryOptions }
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const { queryClient, queryOptions } = await ensureSystemFeatures()
-  const systemFeatures = queryClient.getQueryData(queryOptions.queryKey)
-  const applicationTitle = getApplicationTitle(systemFeatures?.branding)
+  const systemFeatures = await getOptionalSystemFeatures()
+  const branding = systemFeatures?.branding
+  const applicationTitle = getApplicationTitle(branding)
+  const brandedFavicon = branding?.enabled ? branding.favicon : undefined
 
   return {
     title: {
       default: applicationTitle,
       template: `%s - ${applicationTitle}`,
     },
+    icons: brandedFavicon
+      ? { icon: brandedFavicon, apple: brandedFavicon }
+      : { icon: `${basePath}/favicon.ico` },
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const [locale, requestHeaders, { queryClient }] = await Promise.all([
+  const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    ensureSystemFeatures(),
+    getOptionalSystemFeatures(),
   ])
-  const dehydratedState = dehydrate(queryClient)
+  const dehydratedState = dehydrateSystemFeatures()
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
     attribute: 'data-theme',

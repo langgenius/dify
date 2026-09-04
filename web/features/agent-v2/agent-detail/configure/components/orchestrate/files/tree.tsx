@@ -13,13 +13,7 @@ import {
   FileTreeLabel,
   FileTreeList,
 } from '@langgenius/dify-ui/file-tree'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
+import { ScrollArea, ScrollAreaContent, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
 import { Fragment } from 'react'
 
 type AgentFileTreeFolderOpenStrategy = (context: { file: AgentFileNode; depth: number }) => boolean
@@ -205,9 +199,6 @@ export function AgentFileTree({
             </FileTree>
           </ScrollAreaContent>
         </ScrollAreaViewport>
-        <ScrollAreaScrollbar className="hidden">
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
       </ScrollArea>
     </div>
   )

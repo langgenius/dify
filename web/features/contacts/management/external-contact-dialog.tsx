@@ -4,13 +4,15 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateExternalContact } from './hooks'
@@ -125,9 +127,17 @@ export function ExternalContactDialog({
       disablePointerDismissal={createExternalContact.isPending}
     >
       <DialogContent className="w-120 max-w-[calc(100vw-2rem)] p-0!">
-        <DialogCloseButton
-          aria-label={t(($) => $['action.close'])}
-          disabled={createExternalContact.isPending}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['action.close'])}
+              className="absolute top-6 right-6"
+              disabled={createExternalContact.isPending}
+              size="lg"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
         <div className="px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -149,7 +159,7 @@ export function ExternalContactDialog({
           <div className="space-y-4">
             <Field name="displayName" invalid={fieldError === 'name_required'}>
               <FieldLabel>{t(($) => $['external.name'])}</FieldLabel>
-              <FieldControl
+              <Input
                 aria-describedby={
                   fieldError === 'name_required' ? 'external-name-error' : undefined
                 }
@@ -157,7 +167,7 @@ export function ExternalContactDialog({
                 disabled={createExternalContact.isPending}
                 required
                 value={draft.displayName}
-                onValueChange={(value) => updateDraft('displayName', value)}
+                onChange={(event) => updateDraft('displayName', event.currentTarget.value)}
               />
               {fieldError === 'name_required' && (
                 <p
@@ -177,7 +187,7 @@ export function ExternalContactDialog({
               invalid={fieldError === 'email_required' || fieldError === 'email_invalid'}
             >
               <FieldLabel>{t(($) => $['external.email'])}</FieldLabel>
-              <FieldControl
+              <Input
                 aria-describedby={
                   fieldError?.startsWith('email') ? 'external-email-error' : undefined
                 }
@@ -186,7 +196,7 @@ export function ExternalContactDialog({
                 required
                 type="email"
                 value={draft.email}
-                onValueChange={(value) => updateDraft('email', value)}
+                onChange={(event) => updateDraft('email', event.currentTarget.value)}
               />
               {fieldError?.startsWith('email') && (
                 <p

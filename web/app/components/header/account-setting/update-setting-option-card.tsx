@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type UpdateSettingOptionCardProps<Value extends string> = {
   value: Value

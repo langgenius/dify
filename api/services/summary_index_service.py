@@ -9,7 +9,9 @@ from typing import TypedDict, cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
@@ -46,6 +48,7 @@ class SummaryIndexService:
     """Service for generating and managing summary indexes."""
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_summary_for_segment(
         segment: DocumentSegment,
         dataset: Dataset,
@@ -158,6 +161,7 @@ class SummaryIndexService:
             return summary_record
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def vectorize_summary(
         summary_record: DocumentSegmentSummary,
         segment: DocumentSegment,
@@ -243,8 +247,8 @@ class SummaryIndexService:
                 tokens_list = embedding_model.get_text_embedding_num_tokens([summary_content])
                 raw_embedding_tokens = tokens_list[0] if tokens_list else 0
                 embedding_tokens = raw_embedding_tokens if isinstance(raw_embedding_tokens, int) else 0
-        except Exception as e:
-            logger.warning("Failed to calculate embedding tokens for summary: %s", str(e))
+        except Exception:
+            logger.warning("Failed to calculate embedding tokens for summary", exc_info=True)
 
         # Create document with summary content and metadata
         summary_document = Document(
@@ -655,6 +659,7 @@ class SummaryIndexService:
                 logger.warning("Summary record not found for segment %s when updating error", segment.id)
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_and_vectorize_summary(
         segment: DocumentSegment,
         dataset: Dataset,
@@ -914,8 +919,8 @@ class SummaryIndexService:
                     try:
                         vector = Vector(dataset, session=session)
                         vector.delete_by_ids(summary_node_ids)
-                    except Exception as e:
-                        logger.warning("Failed to remove summary vectors: %s", str(e))
+                    except Exception:
+                        logger.warning("Failed to remove summary vectors", exc_info=True)
 
             # Disable summary records (don't delete)
             now = naive_utc_now()

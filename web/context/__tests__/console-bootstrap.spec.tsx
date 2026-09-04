@@ -10,7 +10,7 @@ import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { initialWorkspaceSummary } from '../app-context-defaults'
@@ -186,10 +186,14 @@ vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
 
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
+  subscribeRegistrationSuccess: () => () => {},
+  getRegistrationSuccessSnapshot: () => 0,
 }))
 
-vi.mock('@/app/components/base/zendesk/utils', () => ({
-  setZendeskConversationFields: vi.fn(),
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: {
+    setConversationFields: vi.fn(),
+  },
 }))
 
 vi.mock('@/app/components/header/maintenance-notice', () => ({
@@ -455,7 +459,7 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.ENVIRONMENT,
@@ -465,7 +469,7 @@ describe('Console bootstrap', () => {
           'CLOUD',
         )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.VERSION,
@@ -474,7 +478,7 @@ describe('Console bootstrap', () => {
         ],
         'CLOUD',
       )
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.EMAIL,
@@ -484,7 +488,7 @@ describe('Console bootstrap', () => {
         'CLOUD',
       )
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
@@ -518,13 +522,13 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await screen.findByText('workspace:Workspace')
-      expect(setZendeskConversationFields).not.toHaveBeenCalled()
+      expect(zendeskRuntime.setConversationFields).not.toHaveBeenCalled()
     })
 
     it('should resync only changed Zendesk fields', async () => {
       const { queryClient, rerender } = renderConsoleBootstrap()
 
-      await waitFor(() => expect(setZendeskConversationFields).toHaveBeenCalledTimes(4))
+      await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4))
 
       rerender(
         <JotaiProvider>
@@ -538,7 +542,7 @@ describe('Console bootstrap', () => {
           </QueryClientProvider>
         </JotaiProvider>,
       )
-      expect(setZendeskConversationFields).toHaveBeenCalledTimes(4)
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4)
 
       act(() => {
         queryClient.setQueryData(['user-profile'], {
@@ -551,8 +555,8 @@ describe('Console bootstrap', () => {
       })
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledTimes(5)
-        expect(setZendeskConversationFields).toHaveBeenLastCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(5)
+        expect(zendeskRuntime.setConversationFields).toHaveBeenLastCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.EMAIL,

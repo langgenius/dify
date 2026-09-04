@@ -5,11 +5,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,9 +86,17 @@ export function PlatformContactPickerDialog({
       disablePointerDismissal={addPlatformContacts.isPending}
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-120 flex-col overflow-hidden! p-0!">
-        <DialogCloseButton
-          aria-label={t(($) => $['action.close'])}
-          disabled={addPlatformContacts.isPending}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['action.close'])}
+              className="absolute top-6 right-6"
+              disabled={addPlatformContacts.isPending}
+              size="lg"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
         <div className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">

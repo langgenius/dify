@@ -1,16 +1,14 @@
-import type { ApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { SecretKeyScope } from '@/app/components/develop/secret-key/secret-key-modal'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ApiSecretKeyButton } from '../shared/api-secret-key-button'
 
-const appApiKeys: ApiKeyList = {
+const appApiKeys = {
   data: [
-    { id: 'key-1', token: 'app-a', type: 'app', created_at: 1, last_used_at: 1 },
-    { id: 'key-2', token: 'app-b', type: 'app', created_at: 2, last_used_at: 2 },
+    { id: 'key-1', token: 'app-a', type: 'app', created_at: 1, last_used_at: 1, dataset_ids: [] },
+    { id: 'key-2', token: 'app-b', type: 'app', created_at: 2, last_used_at: 2, dataset_ids: [] },
   ],
 }
 
@@ -25,17 +23,20 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({
+vi.mock('@/app/components/api-key/api-key-modal', () => ({
+  ApiKeyModal: ({
     canManage,
-    isShow,
+    open,
     scope,
   }: {
     canManage: boolean
-    isShow: boolean
-    scope: SecretKeyScope
+    open: boolean
+    scope:
+      | { type: 'app'; appId: string }
+      | { type: 'dataset' }
+      | { type: 'environment'; appId: string; environmentId: string }
   }) =>
-    isShow ? (
+    open ? (
       <div role="dialog" aria-label="API key management">
         {scope.type === 'dataset' ? '' : scope.appId}:
         {scope.type === 'environment' ? scope.environmentId : ''}:{String(canManage)}

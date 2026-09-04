@@ -11,6 +11,7 @@ import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -133,7 +134,7 @@ export function AgentConfigurePublishBar({
       },
       enabled: publishIsAvailable && !selectedVersionSnapshot,
     })
-  const workflowReferencesQuery = useQuery(workflowReferencesQueryOptions)
+  useQuery(workflowReferencesQueryOptions)
   const restoreVersionMutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions(),
   )
@@ -202,12 +203,10 @@ export function AgentConfigurePublishBar({
 
     let referencesResponse: AgentReferencingWorkflowsResponse | undefined
     try {
-      referencesResponse =
-        queryClient.getQueryData<AgentReferencingWorkflowsResponse>(
-          workflowReferencesQueryOptions.queryKey,
-        ) ??
-        workflowReferencesQuery.data ??
-        (await queryClient.ensureQueryData(workflowReferencesQueryOptions))
+      referencesResponse = await queryClient.query({
+        ...workflowReferencesQueryOptions,
+        staleTime: 0,
+      })
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
       return
@@ -379,7 +378,10 @@ function PublishBarActions({
         <span aria-hidden className="shrink-0">
           ·
         </span>
-        <span className="min-w-0 truncate">{metaLabel}</span>
+        <Tooltip>
+          <TooltipTrigger render={<span className="min-w-0 truncate">{metaLabel}</span>} />
+          <TooltipContent>{metaLabel}</TooltipContent>
+        </Tooltip>
       </div>
       <button
         type="button"
@@ -402,7 +404,7 @@ function PublishBarActions({
         variant="primary"
         disabled={!canPublish}
         loading={isPublishing}
-        className="h-8 rounded-lg px-3"
+        className="h-8 gap-1 rounded-lg px-3"
         onClick={onPublishRequest}
       >
         {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
@@ -467,7 +469,7 @@ function AgentVersionRestoreBar({
       <Button
         type="button"
         variant="secondary"
-        className="h-8 rounded-lg px-3 text-text-accent"
+        className="h-8 shrink-0 rounded-lg px-3 text-text-accent"
         onClick={onExitVersions}
       >
         <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />

@@ -1,8 +1,11 @@
 import threading
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
+from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from opentelemetry.trace import StatusCode, get_current_span, get_tracer
+from sqlalchemy.orm import Session
 
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -10,9 +13,15 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrieval
 from models.dataset import Dataset
 
 
+@pytest.fixture(autouse=True)
+def _otel_enabled(config_overrides: Callable[..., None]) -> None:
+    config_overrides(ENABLE_OTEL=True)
+
+
 def test_knowledge_retrieval_creates_a_child_otel_span(
     memory_span_exporter,
     tracer_provider_with_memory_exporter,
+    sqlite_session: Session,
 ) -> None:
     """The retrieval entry point must be visible beneath its workflow node span."""
     request = KnowledgeRetrievalRequest(
@@ -27,12 +36,11 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
     retrieval = DatasetRetrieval()
 
     with (
-        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
         patch.object(retrieval, "_check_knowledge_rate_limit"),
         patch.object(retrieval, "_get_available_datasets", return_value=[]),
         get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
     ):
-        assert retrieval.knowledge_retrieval(MagicMock(), request) == []
+        assert retrieval.knowledge_retrieval(sqlite_session, request) == []
 
     retrieval_span = next(
         span
@@ -64,7 +72,6 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
 
     with (
         app.app_context(),
-        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
         patch.object(retrieval, "_multiple_retrieve_thread", side_effect=record_active_trace),
         patch.object(retrieval, "_on_query"),
         get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
@@ -96,8 +103,6 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
     expected_error = RuntimeError("retrieval failed")
 
     with (
-        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
-        patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session"),
         patch.object(retrieval, "_retriever", side_effect=expected_error),
     ):
         retrieval._run_retriever_thread_safely(
@@ -135,8 +140,6 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
     dataset_id = str(uuid4())
 
     with (
-        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
-        patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session"),
         patch.object(retrieval, "_retriever", side_effect=expected_error),
         get_tracer(__name__).start_as_current_span("dataset-retrieval-parent") as parent_span,
     ):

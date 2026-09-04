@@ -15,7 +15,6 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
 )
 from core.human_input_v2.shared import (
-    AccountId,
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
@@ -25,7 +24,6 @@ from models.human_input_v2 import (
     HumanInputIMSyncRun,
 )
 from repositories.human_input_v2.im_integration.mappers import (
-    sync_result_to_record,
     sync_run_to_record,
 )
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository

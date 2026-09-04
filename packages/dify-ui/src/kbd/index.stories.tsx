@@ -210,7 +210,7 @@ export const InContextMenu: Story = {
       >
         Context menu trigger
       </ContextMenuTrigger>
-      <ContextMenuContent popupClassName="w-60">
+      <ContextMenuContent className="w-60">
         {MENU_ITEMS.map(({ label, icon, hotkey }) => (
           <ContextMenuItem key={label} className="justify-between gap-4">
             <span aria-hidden className={`${icon} size-4 shrink-0 text-text-tertiary`} />

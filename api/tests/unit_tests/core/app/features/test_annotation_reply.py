@@ -10,9 +10,26 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource
-from models.model import AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, AppMode, Message, MessageAnnotation
 
 TABLES = (AppAnnotationSetting, DatasetCollectionBinding, MessageAnnotation, AppAnnotationHitHistory)
+
+
+def _app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Test App",
+        description="",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _message() -> Message:
+    return Message(id="msg-1")
 
 
 def _persist_binding(session: Session) -> DatasetCollectionBinding:
@@ -65,8 +82,8 @@ class TestAnnotationReplyFeature:
         _persist_setting(sqlite_session, app_id="other-app", collection_binding_id=binding.id)
 
         result = AnnotationReplyFeature().query(
-            app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_record=_app(),
+            message=_message(),
             query="hi",
             user_id="user-1",
             invoke_from=InvokeFrom.SERVICE_API,
@@ -79,8 +96,8 @@ class TestAnnotationReplyFeature:
         _persist_setting(sqlite_session, collection_binding_id="missing-binding")
 
         result = AnnotationReplyFeature().query(
-            app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_record=_app(),
+            message=_message(),
             query="hi",
             user_id="user-1",
             invoke_from=InvokeFrom.SERVICE_API,
@@ -101,8 +118,8 @@ class TestAnnotationReplyFeature:
             "core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance
         ) as vector_cls:
             result = AnnotationReplyFeature().query(
-                app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-                message=SimpleNamespace(id="msg-1"),
+                app_record=_app(),
+                message=_message(),
                 query="hi",
                 user_id="user-1",
                 invoke_from=InvokeFrom.SERVICE_API,
@@ -135,8 +152,8 @@ class TestAnnotationReplyFeature:
 
         with patch("core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance):
             result = AnnotationReplyFeature().query(
-                app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-                message=SimpleNamespace(id="msg-1"),
+                app_record=_app(),
+                message=_message(),
                 query="hi",
                 user_id="user-1",
                 invoke_from=InvokeFrom.EXPLORE,
@@ -162,8 +179,8 @@ class TestAnnotationReplyFeature:
             caplog.at_level(logging.WARNING),
         ):
             result = AnnotationReplyFeature().query(
-                app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-                message=SimpleNamespace(id="msg-1"),
+                app_record=_app(),
+                message=_message(),
                 query="hi",
                 user_id="user-1",
                 invoke_from=InvokeFrom.SERVICE_API,

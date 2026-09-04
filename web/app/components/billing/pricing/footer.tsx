@@ -1,33 +1,25 @@
-import type { Category } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { CategoryEnum } from './types'
 
-type FooterProps = {
+export function PricingFooter({
+  pricingPageURL,
+  category,
+}: {
   pricingPageURL: string
-  currentCategory: Category
-}
-
-const Footer = ({ pricingPageURL, currentCategory }: FooterProps) => {
+  category: 'cloud' | 'self-hosted'
+}) {
   const { t } = useTranslation()
 
   return (
     <div className="flex min-h-16 w-full justify-center border-t border-divider-accent px-10">
       <div
-        className={cn(
-          'flex max-w-[1680px] grow border-x border-divider-accent p-6',
-          currentCategory === CategoryEnum.CLOUD ? 'justify-between' : 'justify-end',
-        )}
+        data-category={category}
+        className="flex max-w-[1680px] grow justify-end border-x border-divider-accent p-6 data-[category=cloud]:justify-between"
       >
-        {currentCategory === CategoryEnum.CLOUD && (
+        {category === 'cloud' && (
           <div className="flex flex-col text-text-tertiary">
             <span className="system-xs-regular">
               {t(($) => $['plansCommon.taxTip'], { ns: 'billing' })}
-            </span>
-            <span className="system-xs-regular">
-              {t(($) => $['plansCommon.taxTipSecond'], { ns: 'billing' })}
             </span>
           </div>
         )}
@@ -46,5 +38,3 @@ const Footer = ({ pricingPageURL, currentCategory }: FooterProps) => {
     </div>
   )
 }
-
-export default React.memo(Footer)

@@ -64,6 +64,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services import dataset_api_key_service
 from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
@@ -1360,6 +1361,10 @@ class DatasetService:
 
         dataset_was_deleted.send(dataset)
 
+        # Remove any dataset API key scoped only to this knowledge base, so it cannot
+        # silently degrade to unrestricted (access-all) once its last binding is gone.
+        dataset_api_key_service.delete_keys_scoped_only_to(session, str(dataset.id))
+
         session.delete(dataset)
         session.commit()
         return True
@@ -1664,7 +1669,7 @@ class DocumentService:
         """Fetch documents for a dataset in a single batch query."""
         if not document_ids:
             return []
-        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
         # Fetch all requested documents in one query to avoid N+1 lookups.
         documents: Sequence[Document] = session.scalars(
             select(Document).where(
@@ -1700,7 +1705,7 @@ class DocumentService:
         if not document_ids:
             return 0
 
-        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
 
         result = session.execute(
             update(Document)
@@ -1861,7 +1866,7 @@ class DocumentService:
         """
         Batch load upload files keyed by document id for ZIP downloads.
         """
-        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
 
         documents = DocumentService.get_documents_by_ids(
             DatasetRef(tenant_id=tenant_id, dataset_id=dataset_id), document_id_list, session

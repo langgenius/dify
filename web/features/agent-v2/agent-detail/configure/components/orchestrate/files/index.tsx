@@ -13,6 +13,7 @@ import {
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -145,6 +146,7 @@ function AgentFileItem({
         },
       },
     }),
+    staleTime: 0,
     enabled: shouldDownloadPreviewFile && !apiContext.workflow,
   })
   const workflowDownloadQuery = useQuery({
@@ -161,6 +163,7 @@ function AgentFileItem({
         },
       },
     }),
+    staleTime: 0,
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
@@ -179,8 +182,8 @@ function AgentFileItem({
 
       const fileName = getAgentFilePreviewKey(targetFile)
       if (apiContext.workflow) {
-        const result = await queryClient.fetchQuery(
-          consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
+        const result = await queryClient.query({
+          ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
             input: {
               params: {
                 app_id: apiContext.workflow.appId,
@@ -193,13 +196,14 @@ function AgentFileItem({
               },
             },
           }),
-        )
+          staleTime: 0,
+        })
         downloadUrl({ url: result.url, fileName: targetFile.name })
         return
       }
 
-      const result = await queryClient.fetchQuery(
-        consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
+      const result = await queryClient.query({
+        ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
           input: {
             params: {
               agent_id: apiContext.agentId,
@@ -211,19 +215,26 @@ function AgentFileItem({
             },
           },
         }),
-      )
+        staleTime: 0,
+      })
       downloadUrl({ url: result.url, fileName: targetFile.name })
     },
     [apiContext, queryClient],
   )
+  const downloadFileAction = useCallback(
+    (targetFile: AgentFileNode) => {
+      void downloadFile(targetFile).catch(noop)
+    },
+    [downloadFile],
+  )
   const handleDownload = useCallback(
-    async (event: MouseEvent<HTMLButtonElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       if (file.isMissing) return
 
       event.stopPropagation()
-      await downloadFile(file)
+      downloadFileAction(file)
     },
-    [downloadFile, file],
+    [downloadFileAction, file],
   )
   const handlePreviewOpenChange = useCallback(
     (open: boolean) => {
@@ -268,15 +279,15 @@ function AgentFileItem({
             filePreview: {
               binary: previewQuery.data?.binary,
               content: selectedPreviewFile.virtualContent ?? previewQuery.data?.text ?? undefined,
-              downloadUrl: downloadQuery.data?.url,
+              downloadUrl: downloadQuery.isFetching ? undefined : downloadQuery.data?.url,
               fileName: selectedPreviewFile.name,
               isDownloadError: downloadQuery.isError,
-              isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isPending,
+              isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isFetching,
               isError: !isVirtualPreviewFile && previewQuery.isError,
               isImage: isImagePreviewFile,
               isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
-            onDownloadFile: () => downloadFile(selectedPreviewFile),
+            onDownloadFile: () => downloadFileAction(selectedPreviewFile),
             onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
             sections: [],
@@ -375,6 +386,7 @@ export function AgentFiles() {
   const { t } = useTranslation('agentV2')
   const filesTip = t(($) => $['agentDetail.configure.files.tip'])
   const filesTreeId = 'agent-configure-files-tree'
+  const readOnly = useAgentOrchestrateReadOnly()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
@@ -477,10 +489,12 @@ export function AgentFiles() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"
         actions={
-          <ConfigureSectionAddButton
-            ariaLabel={t(($) => $['agentDetail.configure.files.add'])}
-            onClick={() => handleOpenUpload()}
-          />
+          !readOnly ? (
+            <ConfigureSectionAddButton
+              ariaLabel={t(($) => $['agentDetail.configure.files.add'])}
+              onClick={() => handleOpenUpload()}
+            />
+          ) : undefined
         }
       >
         {visibleFiles.length === 0 ? (

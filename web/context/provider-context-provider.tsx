@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { defaultPlan } from '@/app/components/billing/config'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import {
@@ -43,6 +43,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const isFetchedPlan = featuresQuery.isSuccess && enableBilling
   const isFetchedPlanInfo = featuresQuery.isFetched
   const enableEducationPlan = features?.education.enabled ?? false
+  const enableSkill = features?.enable_skill ?? false
   const enableReplaceWebAppLogo = features?.can_replace_logo ?? false
   const modelLoadBalancingEnabled = features?.model_load_balancing_enabled ?? false
   const webappCopyrightEnabled = features?.webapp_copyright_enabled ?? false
@@ -67,7 +68,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
-      setZendeskConversationFields(
+      zendeskRuntime.setConversationFields(
         [
           {
             id: ZENDESK_FIELD_IDS.PLAN,
@@ -97,6 +98,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isFetchedPlan,
         isFetchedPlanInfo,
         enableBilling,
+        enableSkill,
         onPlanInfoChanged: refreshFeatures,
         enableReplaceWebAppLogo,
         modelLoadBalancingEnabled,

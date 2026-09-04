@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHook } from '@/test/console/render'
-import { useRefreshMCPServerCode } from '../use-tools'
+import { useAllToolProviders, useRefreshMCPServerCode } from '../use-tools'
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -66,5 +66,28 @@ describe('useRefreshMCPServerCode', () => {
       },
     })
     expect(mockGet).not.toHaveBeenCalled()
+  })
+})
+
+describe('useAllToolProviders', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockResolvedValue([])
+  })
+
+  it('keeps filtered MCP providers in a separate query', async () => {
+    renderHook(
+      () => {
+        useAllToolProviders()
+        useAllToolProviders(true, 'mcp')
+      },
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2))
+    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers')
+    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers', {
+      params: { type: 'mcp' },
+    })
   })
 })

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -31,7 +32,6 @@ from models.human_input_v2 import (
 )
 from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.im_integration.mappers import identity_to_record
-from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.locking import OrganizationIMWriteLockUnavailableError

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -53,10 +53,33 @@ from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import AppMode, EndUser
-from models.workflow import WorkflowAppLog
+from models.workflow import Workflow, WorkflowAppLog, WorkflowType
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+def _workflow() -> Workflow:
+    return Workflow(
+        id="workflow-id",
+        tenant_id="tenant",
+        app_id="app",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features=json.dumps({}),
+        created_by="user",
+    )
+
+
+def _end_user(*, end_user_id: str = "user", session_id: str = "session") -> EndUser:
+    return EndUser(
+        id=end_user_id,
+        tenant_id="tenant",
+        app_id="app",
+        type=EndUserType.BROWSER,
+        session_id=session_id,
+    )
 
 
 def _make_pipeline():
@@ -81,8 +104,8 @@ def _make_pipeline():
         extras={},
         call_depth=0,
     )
-    workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
-    user = SimpleNamespace(id="user", session_id="session")
+    workflow = _workflow()
+    user = _end_user()
 
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
@@ -172,7 +195,7 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
-        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
+        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
@@ -453,6 +476,7 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
@@ -462,15 +486,21 @@ class TestWorkflowGenerateTaskPipeline:
             def __init__(self, *args, **kwargs):
                 self.calls = 0
 
-            def check_and_get_audio(self):
+            def check_and_get_audio(self, *, block=False):
                 self.calls += 1
                 if self.calls == 1:
-                    return AudioTrunk(status="stream", audio="data")
+                    assert not block
+                    return AudioTrunk(status="responding", audio="data")
                 if self.calls == 2:
+                    assert not block
                     return None
+                assert block
                 return AudioTrunk(status="finish", audio="")
 
             def publish(self, message):
+                return None
+
+            def cancel(self):
                 return None
 
         monkeypatch.setattr(
@@ -505,10 +535,9 @@ class TestWorkflowGenerateTaskPipeline:
             extras={},
             call_depth=0,
         )
-        workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+        workflow = _workflow()
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None)
-        end_user = EndUser(tenant_id="tenant", type="session", name="user", session_id="session-id")
-        end_user.id = "end-user-id"
+        end_user = _end_user(end_user_id="end-user-id", session_id="session-id")
 
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -603,33 +632,30 @@ class TestWorkflowGenerateTaskPipeline:
         responses = list(pipeline._wrapper_process_stream_response())
         assert responses == [PingStreamResponse(task_id="task")]
 
-    def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch: pytest.MonkeyPatch):
+    def test_wrapper_process_stream_response_uses_a_blocking_terminal_read(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
-        sleep_spy = []
+        blocking_reads = []
 
         class _Publisher:
             def __init__(self, *args, **kwargs):
-                self.calls = 0
+                pass
 
-            def check_and_get_audio(self):
-                self.calls += 1
-                if self.calls == 1:
-                    return None
+            def check_and_get_audio(self, *, block=False):
+                blocking_reads.append(block)
                 return AudioTrunk(status="finish", audio="")
 
             def publish(self, message):
                 _ = message
 
-        time_values = iter([0.0, 0.0, 0.2])
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: next(time_values))
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.time.sleep", lambda _: sleep_spy.append(True)
-        )
+            def cancel(self):
+                return None
+
         monkeypatch.setattr(
             "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
@@ -637,13 +663,14 @@ class TestWorkflowGenerateTaskPipeline:
 
         responses = list(pipeline._wrapper_process_stream_response())
 
-        assert sleep_spy
+        assert blocking_reads == [True]
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_wrapper_process_stream_response_handles_audio_exception(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    def test_wrapper_process_stream_response_does_not_swallow_audio_queue_exceptions(
+        self, monkeypatch: pytest.MonkeyPatch
     ):
         pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
@@ -651,28 +678,25 @@ class TestWorkflowGenerateTaskPipeline:
 
         class _Publisher:
             def __init__(self, *args, **kwargs):
-                self.called = False
+                pass
 
-            def check_and_get_audio(self):
-                if not self.called:
-                    self.called = True
-                    raise RuntimeError("tts failure")
-                return AudioTrunk(status="finish", audio="")
+            def check_and_get_audio(self, *, block=False):
+                assert block
+                raise RuntimeError("tts failure")
 
             def publish(self, message):
                 _ = message
 
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: 0.0)
+            def cancel(self):
+                return None
+
         monkeypatch.setattr(
             "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
-        with caplog.at_level(logging.ERROR, logger="core.app.apps.workflow.generate_task_pipeline"):
-            responses = list(pipeline._wrapper_process_stream_response())
-
-        assert "Fails to get audio trunk, task_id: task" in caplog.messages
-        assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
+        with pytest.raises(RuntimeError, match="tts failure"):
+            list(pipeline._wrapper_process_stream_response())
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
     def test_database_session_rolls_back_on_error(
@@ -833,7 +857,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         responses = list(pipeline._process_stream_response(tts_publisher=_Publisher()))
         assert responses == ["started", "text", "dispatched", "error"]
-        assert publisher_calls == [None]
+        assert publisher_calls == []
 
     def test_process_stream_response_break_paths(self):
         pipeline = _make_pipeline()

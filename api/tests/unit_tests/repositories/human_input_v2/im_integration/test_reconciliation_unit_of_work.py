@@ -6,12 +6,12 @@ from dataclasses import replace
 from datetime import datetime
 
 import pytest
+from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import (
-    IMBindingScope,
     IMIntegrationStatus,
     IMProvider,
     IMSyncResultType,
@@ -20,17 +20,11 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.im_integration import (
     ActiveRunDecisionKind,
     ApplyReconciliationStatus,
-    ConfigurationTransition,
     CurrentIMBindingState,
     CurrentIMIdentityState,
-    EncryptedCredentials,
-    IMBinding,
     IMIdentity,
-    IMIntegration,
     IMSyncRun,
-    IntegrationDeletion,
     IntegrationRevisionToken,
-    ProviderTenantIdentity,
     ReconciliationInput,
     ReconciliationPlan,
     ReconciliationRunRef,
@@ -39,7 +33,6 @@ from core.human_input_v2.im_integration import (
 from core.human_input_v2.im_integration.adapters import DirectoryEntry, ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
-    ContactId,
     IMBindingId,
     IMIdentityId,
     IMSyncRunId,
@@ -58,12 +51,9 @@ from models.human_input_v2 import (
     IMEncryptedCredentials,
 )
 from repositories.human_input_v2.im_integration.mappers import (
-    binding_to_record,
     identity_to_record,
-    integration_from_record,
     sync_run_to_record,
 )
-from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 
 _NOW = datetime(2026, 8, 11, 8)
 _LATER = datetime(2026, 8, 11, 9)

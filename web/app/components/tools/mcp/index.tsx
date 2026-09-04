@@ -1,6 +1,7 @@
 'use client'
 import type { ComponentProps } from 'react'
 import type { ToolsContentInset } from '../content-inset'
+import type { Collection } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   AlertDialog,
@@ -25,7 +26,7 @@ import MCPModal from './modal'
 import MCPCard from './provider-card'
 
 type Props = Readonly<{
-  providers?: ToolWithProvider[]
+  providers?: Collection[]
   isLoading?: boolean
   searchText: string
   contentInset?: ToolsContentInset

@@ -1,9 +1,9 @@
 'use client'
 
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAvailability } from '../shared/access-point-status'
 import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { ConfigParams } from '@/app/components/app/overview/settings'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,6 +14,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
@@ -21,15 +23,21 @@ import CustomizeModal from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { getAccessPointStatus } from '@/app/components/base/access-point/status'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import { AccessPointCard } from '../shared/access-point-card'
-import { getAccessPointStatus } from '../shared/access-point-status'
-import { AccessPointUrl } from '../shared/access-point-url'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getBuiltInAccessUrls, getHiddenStartInputs } from '../shared/utils'
-import { WebAppAccessControlEntry } from '../shared/web-app-access-control'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -48,14 +56,12 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: AccessPointAvailability
-  canEdit: boolean
   canDeploy: boolean
   canManageAccess: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
-  onChangeStatus: (enabled: boolean) => Promise<void>
   onRefreshApp: () => Promise<void>
-  onRegenerate: () => Promise<void>
   onSaveSiteConfig: (params: ConfigParams) => Promise<void>
   workflow: PublishedWorkflow
 }
@@ -63,27 +69,63 @@ type WebAppAccessPointCardProps = {
 export function WebAppAccessPointCard({
   appInfo,
   availability,
-  canEdit,
   canDeploy,
   canManageAccess,
+  canManageAccessPoint,
   highlighted,
-  onChangeStatus,
   onRefreshApp,
-  onRegenerate,
   onSaveSiteConfig,
   showAccessControl,
   workflow,
 }: WebAppAccessPointCardProps) {
   const { t } = useTranslation()
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
-  const [regenerating, setRegenerating] = useState(false)
+  const toggleSiteMutation = useMutation(
+    consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
+      scope: {
+        id: `app-web-app-toggle:${appInfo.id}`,
+      },
+      onSuccess: (updatedApp) => {
+        const currentAppDetail = useAppStore.getState().appDetail
+        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
+
+        setAppDetail({
+          ...currentAppDetail,
+          enable_site: updatedApp.enable_site,
+          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
+        })
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
+  const resetSiteAccessToken = useMutation(
+    consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
+      onSuccess: async () => {
+        await onRefreshApp()
+        setShowRegenerate(false)
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        setShowRegenerate(false)
+      },
+    }),
+  )
   const { webApp: webAppUrl } = getBuiltInAccessUrls(appInfo)
-  const running = availability === 'available' && appInfo.enable_site
+  const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
+  const optimisticEnabled =
+    toggleSiteMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : appInfo.enable_site
+  const running = availability === 'available' && optimisticEnabled
+  const actionsAvailable = running && !toggleSiteMutation.isPending
   const supportsEmbedded =
     appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
   const hiddenLaunchVariables = getHiddenStartInputs(workflow)
@@ -100,14 +142,27 @@ export function WebAppAccessPointCard({
     appInfo.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
     Boolean(accessSubjects?.groups?.length || accessSubjects?.members?.length)
 
-  const handleRegenerate = async () => {
-    setRegenerating(true)
-    await onRegenerate()
-    setRegenerating(false)
-    setShowRegenerate(false)
+  const handleRegenerate = () => {
+    if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
+
+    resetSiteAccessToken.mutate({ params: { app_id: appInfo.id } })
+  }
+
+  const handleEnabledChange = (enabled: boolean) => {
+    if (!canManageAccessPoint) return
+
+    toggleSiteMutation.mutate({
+      params: {
+        app_id: appInfo.id,
+      },
+      body: {
+        enable_site: enabled,
+      },
+    })
   }
 
   const status = getAccessPointStatus(availability, running)
+  const statusLabel = useAccessPointStatusLabel(status)
 
   return (
     <>
@@ -126,17 +181,18 @@ export function WebAppAccessPointCard({
           />
         }
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
-        switchDisabled={!canEdit}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
-        onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
+        onEnabledChange={availability === 'available' ? handleEnabledChange : undefined}
         actions={
           <>
             {hiddenLaunchVariables.length > 0 && (
               <Button
                 className="flex items-center gap-1 px-3"
                 variant="secondary"
-                disabled={!running}
+                disabled={!actionsAvailable || !canManageAccessPoint}
                 onClick={() => setShowWorkflowLaunch(true)}
               >
                 <span aria-hidden className="i-ri-settings-2-line size-4" />
@@ -147,7 +203,7 @@ export function WebAppAccessPointCard({
               <Button
                 className="flex items-center gap-1 px-3"
                 variant="secondary"
-                disabled={!running}
+                disabled={!actionsAvailable || !canManageAccessPoint}
                 onClick={() => setShowEmbedded(true)}
               >
                 <span aria-hidden className="i-ri-window-line size-4" />
@@ -157,7 +213,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!running}
+              disabled={!actionsAvailable || !canManageAccessPoint}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -168,7 +224,7 @@ export function WebAppAccessPointCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={availability !== 'available' || !canEdit}
+              disabled={availability !== 'available' || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -190,24 +246,26 @@ export function WebAppAccessPointCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
-          openUrl={webAppUrl}
+          openUrl={appInfo.enable_site && !toggleSiteMutation.isPending ? webAppUrl : undefined}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canEdit}
-          regenerating={regenerating}
+          regenerateDisabled={!canManageAccessPoint}
+          regenerating={resetSiteAccessToken.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
-        {showAccessControl && (
-          <WebAppAccessControlEntry
-            accessConfigured={accessConfigured}
-            accessIcon={accessIcon}
-            accessLabel={t(accessLabel, { ns: 'app' })}
-            available={availability === 'available'}
-            disabled={!canManageAccess}
-            onClick={() => setShowAccess(true)}
-          />
-        )}
+        {showAccessControl &&
+          (availability === 'available' ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={accessIcon}
+              accessLabel={t(accessLabel, { ns: 'app' })}
+              disabled={!canManageAccess}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={availability === 'loading'} />
+          ))}
       </AccessPointCard>
 
       <SettingsModal
@@ -265,7 +323,10 @@ export function WebAppAccessPointCard({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => void handleRegenerate()}>
+            <AlertDialogConfirmButton
+              disabled={resetSiteAccessToken.isPending}
+              onClick={handleRegenerate}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

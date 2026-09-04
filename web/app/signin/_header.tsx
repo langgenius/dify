@@ -24,7 +24,7 @@ const Header = () => {
         <img
           src={systemFeatures.branding.login_page_logo}
           className="block h-7 w-auto object-contain"
-          alt="logo"
+          alt={systemFeatures.branding.application_title || ''}
         />
       ) : (
         <DifyLogo alt="Dify" size="large" />

@@ -1,9 +1,11 @@
+from http import HTTPStatus
 from importlib import import_module
 
-from flask import Blueprint
+from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
+from machinery.errors import ActiveWorkspaceRequiredError
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
@@ -13,6 +15,19 @@ api = ExternalApi(
     title="Console API",
     description="Console management APIs for app configuration, monitoring, and administration",
 )
+
+
+@api.errorhandler(ActiveWorkspaceRequiredError)
+def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
+    """Map a broken Console admission invariant without exposing internal details."""
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.INTERNAL_SERVER_ERROR
+    return {
+        "code": error.error_code,
+        "message": status.phrase,
+        "status": status.value,
+    }, status.value
+
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
@@ -57,7 +72,6 @@ from .app import (
     agent_app_feature,
     agent_app_sandbox,
     agent_config_inspector,
-    agent_drive_inspector,
     annotation,
     app,
     audio,
@@ -146,6 +160,7 @@ from .workspace import (
     models,
     plugin,
     rbac,
+    skills,
     snippets,
     tool_providers,
     trigger_providers,
@@ -164,7 +179,6 @@ __all__ = [
     "agent_app_sandbox",
     "agent_composer",
     "agent_config_inspector",
-    "agent_drive_inspector",
     "agent_providers",
     "agent_roster",
     "annotation",
@@ -228,6 +242,7 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "skills",
     "snippet_workflow",
     "snippet_workflow_draft_variable",
     "snippets",

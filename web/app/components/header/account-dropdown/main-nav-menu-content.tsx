@@ -72,7 +72,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="max-h-90 w-34.75 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}

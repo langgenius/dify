@@ -108,7 +108,7 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(
     )
     dispatcher = MagicMock()
     dispatcher.load_form_contexts.return_value = ()
-    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda registry: dispatcher)
+    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda _registry: dispatcher)
 
     task_module.dispatch_human_input_email_task(
         form_id=form.id,
@@ -127,7 +127,7 @@ def test_dispatch_human_input_email_task_skips_when_mail_not_inited(monkeypatch:
     dispatcher = MagicMock()
 
     monkeypatch.setattr(task_module, "mail", mail)
-    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda registry: dispatcher)
+    monkeypatch.setattr(task_module, "HumanInputFormDeliveryDispatcher", lambda _registry: dispatcher)
 
     task_module.dispatch_human_input_email_task(form_id="form-1", node_title="Approve", session_factory=lambda: None)
 

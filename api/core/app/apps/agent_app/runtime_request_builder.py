@@ -29,6 +29,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.llm.model_access import resolve_model_context_window
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -43,10 +44,13 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_config_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
+    load_runtime_agent_skill_configs,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import expand_prompt_mentions
+
+from .errors import AgentSessionSnapshotIncompatibleError
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -120,15 +124,28 @@ class AgentAppRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
+        runtime_config_skills = load_runtime_agent_skill_configs(
+            tenant_id=context.dify_context.tenant_id,
+            agent_id=context.agent_id,
+        )
         config_layer_config, config_warnings = build_config_layer_config(
             agent_soul,
             agent_id=context.agent_id,
             config_version_id=context.agent_config_snapshot_id,
             config_version_kind=context.agent_config_version_kind,
+            runtime_config_skills=runtime_config_skills,
         )
         append_runtime_warnings(metadata, config_warnings)
-        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(
+            agent_soul,
+            runtime_config_skills=runtime_config_skills,
+        )
         knowledge_config = build_knowledge_layer_config(agent_soul)
+        context_window_tokens = resolve_model_context_window(
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+        )
         model_plugin_id, model_provider = normalize_plugin_daemon_provider_identity(
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
@@ -141,6 +158,7 @@ class AgentAppRuntimeRequestBuilder:
                     model_provider=model_provider,
                     model=agent_soul.model.model,
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
+                    context_window_tokens=context_window_tokens,
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
@@ -175,6 +193,7 @@ class AgentAppRuntimeRequestBuilder:
                 metadata=metadata,
             )
         )
+        self._validate_session_snapshot_layers(request)
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
         return AgentAppRuntimeRequest(
             request=request,
@@ -182,6 +201,24 @@ class AgentAppRuntimeRequestBuilder:
             metadata=metadata,
             binding_id=context.binding_id,
         )
+
+    @staticmethod
+    def _validate_session_snapshot_layers(request: CreateRunRequest) -> None:
+        """Reject stale snapshots before they reach the Agent backend.
+
+        Draft rows are updated in place, so their IDs cannot prove that a
+        retained snapshot still belongs to the current composition. Agenton
+        requires the ordered layer names to match exactly; enforce the same
+        invariant at the API boundary and return a product-level error.
+        """
+
+        snapshot = request.session_snapshot
+        if snapshot is None:
+            return
+        snapshot_layer_names = tuple(layer.name for layer in snapshot.layers)
+        composition_layer_names = tuple(layer.name for layer in request.composition.layers)
+        if snapshot_layer_names != composition_layer_names:
+            raise AgentSessionSnapshotIncompatibleError()
 
     def _build_tool_layers(
         self,

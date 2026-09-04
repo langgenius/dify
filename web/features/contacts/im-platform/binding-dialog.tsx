@@ -4,19 +4,15 @@ import type { ContactImIntegrationView, ContactImProviderDefinition } from './ty
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import copy from 'copy-to-clipboard'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -130,7 +126,18 @@ export function ContactImBindingDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={isPending}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={isPending} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              className="absolute top-6 right-6"
+              disabled={isPending}
+              size="lg"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
@@ -205,7 +212,7 @@ export function ContactImBindingDialog({
                 return (
                   <Field key={field} name={field}>
                     <FieldLabel>{fieldLabel}</FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       placeholder={
                         isCurrentProvider
@@ -214,7 +221,8 @@ export function ContactImBindingDialog({
                       }
                       required={!isCurrentProvider}
                       value={values[field] ?? ''}
-                      onValueChange={(value) => {
+                      onChange={(event) => {
+                        const value = event.currentTarget.value
                         setValues((currentValues) => ({ ...currentValues, [field]: value }))
                       }}
                     />
@@ -226,13 +234,13 @@ export function ContactImBindingDialog({
               })}
               <Field name={ContactImProviderField.Secret}>
                 <FieldLabel>{t(($) => $['imPlatform.bindingDialog.field.secret'])}</FieldLabel>
-                <FieldControl
+                <Input
                   autoComplete="new-password"
                   placeholder={t(($) => $['imPlatform.bindingDialog.secretPlaceholder'])}
                   required={!isCurrentProvider || !integration?.secretConfigured}
                   type="password"
                   value={secret}
-                  onValueChange={setSecret}
+                  onChange={(event) => setSecret(event.currentTarget.value)}
                 />
                 {isCurrentProvider && integration?.secretConfigured && (
                   <FieldDescription>

@@ -2,15 +2,18 @@
 
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from models import Account, App, EndUser, Message, WorkflowRunTriggeredFrom
-from models.enums import ConversationFromSource
+from graphon.enums import WorkflowExecutionStatus
+from models import Account, App, EndUser, Message, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models.account import Tenant
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.model import AppMode
 from services import workflow_run_service as service_module
 from services.workflow_run_service import WorkflowRunService
 
@@ -27,21 +30,53 @@ def repository_factory_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock
     return node_repo, workflow_run_repo, factory
 
 
-@pytest.fixture
-def sqlalchemy_session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+def _app_model(*, app_id: str = "app-1", tenant_id: str = "tenant-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Workflow App",
+        mode=AppMode.ADVANCED_CHAT,
+        enable_site=False,
+        enable_api=False,
+    )
 
 
-def _app_model(**kwargs: Any) -> App:
-    return cast(App, SimpleNamespace(**kwargs))
+def _account(*, account_id: str = "account-1", current_tenant_id: str | None = "tenant-1") -> Account:
+    account = Account(name="Workflow User", email=f"{account_id}@example.com")
+    account.id = account_id
+    if current_tenant_id is not None:
+        tenant = Tenant(name="Workflow Tenant")
+        tenant.id = current_tenant_id
+        account._current_tenant = tenant
+    return account
 
 
-def _account(**kwargs: Any) -> Account:
-    return cast(Account, SimpleNamespace(**kwargs))
+def _end_user(*, end_user_id: str = "end-user-1", tenant_id: str = "tenant-1") -> EndUser:
+    return EndUser(
+        id=end_user_id,
+        tenant_id=tenant_id,
+        type=EndUserType.SERVICE_API,
+        session_id=f"session-{end_user_id}",
+    )
 
 
-def _end_user(**kwargs: Any) -> EndUser:
-    return cast(EndUser, SimpleNamespace(**kwargs))
+def _workflow_run(
+    *, run_id: str = "run-1", status: WorkflowExecutionStatus = WorkflowExecutionStatus.SUCCEEDED
+) -> WorkflowRun:
+    return WorkflowRun(
+        id=run_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=status,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
 
 
 def _message(*, message_id: str, workflow_run_id: str, conversation_id: str) -> Message:
@@ -91,28 +126,28 @@ class TestWorkflowRunServiceInitialization:
     def test___init___should_keep_provided_sessionmaker_and_create_repositories(
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         node_repo, workflow_run_repo, factory = repository_factory_mocks
 
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
 
-        assert service._session_factory is sqlalchemy_session_factory
+        assert service._session_factory is sqlite_session_factory
         assert service._node_execution_service_repo is node_repo
         assert service._workflow_run_repo is workflow_run_repo
-        factory.create_api_workflow_node_execution_repository.assert_called_once_with(sqlalchemy_session_factory)
-        factory.create_api_workflow_run_repository.assert_called_once_with(sqlalchemy_session_factory)
+        factory.create_api_workflow_node_execution_repository.assert_called_once_with(sqlite_session_factory)
+        factory.create_api_workflow_run_repository.assert_called_once_with(sqlite_session_factory)
 
 
 class TestWorkflowRunServiceQueries:
     def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         _, workflow_run_repo, _ = repository_factory_mocks
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        app_model = _app_model(tenant_id="tenant-1", id="app-1")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        app_model = _app_model(tenant_id="tenant-1", app_id="app-1")
         expected = MagicMock(name="pagination")
         workflow_run_repo.get_paginated_workflow_runs.return_value = expected
         args = {"limit": "7", "last_id": "last-1", "status": "succeeded"}
@@ -138,13 +173,13 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
         sqlite_session: Session,
     ) -> None:
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        app_model = _app_model(tenant_id="tenant-1", id="app-1")
-        run_with_message = SimpleNamespace(id="run-1", status="running")
-        run_without_message = SimpleNamespace(id="run-2", status="succeeded")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        app_model = _app_model(tenant_id="tenant-1", app_id="app-1")
+        run_with_message = _workflow_run(status=WorkflowExecutionStatus.RUNNING)
+        run_without_message = _workflow_run(run_id="run-2")
         pagination = SimpleNamespace(data=[run_with_message, run_without_message])
         monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
 
@@ -166,7 +201,7 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
         sqlite_session: Session,
     ) -> None:
         """Messages must load with a constant query count regardless of run count.
@@ -174,9 +209,9 @@ class TestWorkflowRunServiceQueries:
         Previously the deprecated WorkflowRun.message property issued one query per
         run (N+1); they are now batch-loaded in a single query.
         """
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        app_model = _app_model(tenant_id="tenant-1", id="app-1")
-        runs = [SimpleNamespace(id=f"run-{i}", status="succeeded") for i in range(5)]
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        app_model = _app_model(tenant_id="tenant-1", app_id="app-1")
+        runs = [_workflow_run(run_id=f"run-{i}") for i in range(5)]
         pagination = SimpleNamespace(data=runs)
         monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
 
@@ -192,19 +227,18 @@ class TestWorkflowRunServiceQueries:
             service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={})
         finally:
             event.remove(engine, "before_cursor_execute", count_message_query)
-
         assert all(not hasattr(run, "message_id") for run in runs)
         assert message_query_count == 1
 
     def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         _, workflow_run_repo, _ = repository_factory_mocks
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        app_model = _app_model(tenant_id="tenant-1", id="app-1")
-        expected = MagicMock(name="workflow_run")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        app_model = _app_model(tenant_id="tenant-1", app_id="app-1")
+        expected = _workflow_run()
         workflow_run_repo.get_workflow_run_by_id.return_value = expected
 
         result = service.get_workflow_run(app_model=app_model, run_id="run-1")
@@ -219,11 +253,11 @@ class TestWorkflowRunServiceQueries:
     def test_get_workflow_runs_count_should_forward_optional_filters(
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         _, workflow_run_repo, _ = repository_factory_mocks
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        app_model = _app_model(tenant_id="tenant-1", id="app-1")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        app_model = _app_model(tenant_id="tenant-1", app_id="app-1")
         expected = {"total": 3, "succeeded": 2}
         workflow_run_repo.get_workflow_runs_count.return_value = expected
 
@@ -247,11 +281,11 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
         monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=None))
-        app_model = _app_model(id="app-1")
+        app_model = _app_model(app_id="app-1")
         user = _account(current_tenant_id="tenant-1")
 
         result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
@@ -262,19 +296,13 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         node_repo, _, _ = repository_factory_mocks
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
-
-        class FakeEndUser:
-            def __init__(self, tenant_id: str) -> None:
-                self.tenant_id = tenant_id
-
-        monkeypatch.setattr(service_module, "EndUser", FakeEndUser)
-        user = cast(EndUser, FakeEndUser(tenant_id="tenant-end-user"))
-        app_model = _app_model(id="app-1")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=_workflow_run()))
+        user = _end_user(tenant_id="tenant-end-user")
+        app_model = _app_model(app_id="app-1")
         expected_executions = [SimpleNamespace(id="exec-1")]
         expected_traces = [SimpleNamespace(id="exec-1:retry:1")]
         node_repo.get_executions_by_workflow_run.return_value = expected_executions
@@ -295,12 +323,12 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         node_repo, _, _ = repository_factory_mocks
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
-        app_model = _app_model(id="app-1")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=_workflow_run()))
+        app_model = _app_model(app_id="app-1")
         user = _account(current_tenant_id="tenant-account")
         expected_executions = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
         expected_traces = [SimpleNamespace(id="exec-1:retry:1"), SimpleNamespace(id="exec-1")]
@@ -322,11 +350,11 @@ class TestWorkflowRunServiceQueries:
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
         monkeypatch: pytest.MonkeyPatch,
-        sqlalchemy_session_factory: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        service = WorkflowRunService(session_factory=sqlalchemy_session_factory)
-        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
-        app_model = _app_model(id="app-1")
+        service = WorkflowRunService(session_factory=sqlite_session_factory)
+        monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=_workflow_run()))
+        app_model = _app_model(app_id="app-1")
         user = _account(current_tenant_id=None)
 
         with pytest.raises(ValueError, match="tenant_id cannot be None"):

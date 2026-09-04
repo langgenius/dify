@@ -332,7 +332,7 @@ export function ContactsDirectoryPage() {
                     {t(($) => $['directory.addContact'])}
                     <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent popupClassName="min-w-48">
+                  <DropdownMenuContent className="min-w-48">
                     <DropdownMenuItem onClick={() => setPlatformDialogOpen(true)}>
                       {t(($) => $['directory.addFromPlatform'])}
                     </DropdownMenuItem>

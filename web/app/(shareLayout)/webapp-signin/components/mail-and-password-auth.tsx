@@ -1,13 +1,18 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import {
+  navigateAfterWebAppLogin,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -25,7 +30,6 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -66,7 +70,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       const loginData = {
         email,
         password: encryptPassword(password),
-        language: locale,
         remember_me: true,
       }
 
@@ -84,7 +87,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       } else {
         toast.error(res.data)
       }
@@ -111,7 +114,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
         <div className="mt-1">
-          <FieldControl
+          <Input
             value={email}
             onValueChange={setEmail}
             id="email"
@@ -137,8 +140,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             {t(($) => $.forget, { ns: 'login' })}
           </Link>
         </div>
-        <div className="relative mt-1">
-          <FieldControl
+        <InputGroup className="mt-1">
+          <InputGroupInput
             value={password}
             onValueChange={setPassword}
             id="password"
@@ -147,9 +150,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
           />
-          <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button
-              type="button"
+          <InputGroupAddon align="inline-end">
+            <IconButton
+              size="lg"
               variant="ghost"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',
@@ -157,9 +160,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
               onClick={() => setShowPassword(!showPassword)}
             >
               <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
-            </Button>
-          </div>
-        </div>
+            </IconButton>
+          </InputGroupAddon>
+        </InputGroup>
       </Field>
 
       <div className="mb-2">

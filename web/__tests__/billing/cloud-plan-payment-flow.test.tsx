@@ -7,14 +7,14 @@
  * Covers plan comparison, downgrade prevention, monthly/yearly pricing,
  * and workspace manager permission enforcement.
  */
+import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
-import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
-import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'
+import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
@@ -70,21 +70,29 @@ const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
 type RenderCloudPlanItemOptions = {
   currentPlan?: CloudPlan
   plan?: CloudPlan
-  planRange?: PlanRange
-  canPay?: boolean
+  billingInterval?: GetBillingSubscriptionData['query']['interval']
+  canManageBilling?: boolean
+  isEducationDiscountEligible?: boolean
 }
 
 const renderCloudPlanItem = ({
   currentPlan = 'sandbox',
   plan = 'professional',
-  planRange = PlanRange.monthly,
-  canPay = true,
+  billingInterval = 'month',
+  canManageBilling = true,
+  isEducationDiscountEligible = false,
 }: RenderCloudPlanItemOptions = {}) => {
+  setupConsoleState({ isCurrentWorkspaceManager: canManageBilling })
   const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
       <ToastHost timeout={0} />
-      <CloudPlanItem currentPlan={currentPlan} plan={plan} planRange={planRange} canPay={canPay} />
+      <CloudPlanItem
+        currentPlan={currentPlan}
+        plan={plan}
+        billingInterval={billingInterval}
+        isEducationDiscountEligible={isEducationDiscountEligible}
+      />
     </>,
     { wrapper },
   )
@@ -118,13 +126,13 @@ describe('Cloud Plan Payment Flow', () => {
     })
 
     it('should show monthly price for paid plans', () => {
-      renderCloudPlanItem({ plan: 'professional', planRange: PlanRange.monthly })
+      renderCloudPlanItem({ plan: 'professional', billingInterval: 'month' })
 
       expect(screen.getByText(`$${ALL_PLANS.professional.price}`)).toBeInTheDocument()
     })
 
     it('should show yearly discounted price (10 months) and strikethrough original (12 months)', () => {
-      renderCloudPlanItem({ plan: 'professional', planRange: PlanRange.yearly })
+      renderCloudPlanItem({ plan: 'professional', billingInterval: 'year' })
 
       const yearlyPrice = ALL_PLANS.professional.price * 10
       const originalPrice = ALL_PLANS.professional.price * 12
@@ -217,7 +225,7 @@ describe('Cloud Plan Payment Flow', () => {
       renderCloudPlanItem({
         currentPlan: 'sandbox',
         plan: 'professional',
-        planRange: PlanRange.monthly,
+        billingInterval: 'month',
       })
 
       const button = getPlanButton('billing.plansCommon.startBuilding')
@@ -235,7 +243,7 @@ describe('Cloud Plan Payment Flow', () => {
       renderCloudPlanItem({
         currentPlan: 'sandbox',
         plan: 'team',
-        planRange: PlanRange.yearly,
+        billingInterval: 'year',
       })
 
       const button = getPlanButton('billing.plansCommon.getStarted')
@@ -281,7 +289,11 @@ describe('Cloud Plan Payment Flow', () => {
   describe('Payment capability', () => {
     it('should change plans when payment is allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: 'sandbox', plan: 'professional', canPay: true })
+      renderCloudPlanItem({
+        currentPlan: 'sandbox',
+        plan: 'professional',
+        canManageBilling: true,
+      })
 
       const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
@@ -295,7 +307,11 @@ describe('Cloud Plan Payment Flow', () => {
 
     it('should block plan changes when payment is not allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: 'sandbox', plan: 'professional', canPay: false })
+      renderCloudPlanItem({
+        currentPlan: 'sandbox',
+        plan: 'professional',
+        canManageBilling: false,
+      })
 
       const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
@@ -311,7 +327,7 @@ describe('Cloud Plan Payment Flow', () => {
       renderCloudPlanItem({
         currentPlan: 'professional',
         plan: 'professional',
-        canPay: true,
+        canManageBilling: true,
       })
 
       const button = getPlanButton('billing.plansCommon.currentPlan')
@@ -328,7 +344,7 @@ describe('Cloud Plan Payment Flow', () => {
       renderCloudPlanItem({
         currentPlan: 'professional',
         plan: 'professional',
-        canPay: false,
+        canManageBilling: false,
       })
 
       const button = getPlanButton('billing.plansCommon.currentPlan')

@@ -208,6 +208,7 @@ class InvokeFrom(StrEnum):
 class EndUserType(StrEnum):
     """Persisted type values for the ``end_users.type`` column."""
 
+    APP_DEPLOY = "app-deploy"
     BROWSER = "browser"
     MCP = "mcp"
     OPENAPI = "openapi"
@@ -249,6 +250,7 @@ class TagType(StrEnum):
     KNOWLEDGE = "knowledge"
     APP = "app"
     SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class DatasetMetadataType(StrEnum):

@@ -4,9 +4,10 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   ScrollArea,
@@ -365,7 +366,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">
                 {t(($) => $[`${prefixSettings}.title`], { ns: 'appOverview' })}
               </DialogTitle>
-              <DialogCloseButton className="relative top-auto right-auto shrink-0" />
+              <DialogClose
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    size="sm"
+                    className="relative top-auto right-auto shrink-0 rounded-2xl"
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
+              />
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
               <span>{t(($) => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}</span>
@@ -402,16 +413,19 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
             )}
             {/* form body */}
-            <ScrollArea className="relative row-start-2 min-h-0 overflow-hidden">
-              <ScrollAreaViewport className="max-h-full overflow-y-auto overscroll-contain">
-                <ScrollAreaContent className="flex min-w-0 flex-col gap-y-5 px-6 py-3">
+            <ScrollArea className="row-start-2 min-h-0 overflow-hidden">
+              <ScrollAreaViewport className="overscroll-contain">
+                <ScrollAreaContent
+                  className="flex flex-col gap-y-5 px-6 py-3"
+                  style={{ minWidth: 0 }}
+                >
                   {/* name & icon */}
                   <div className="flex gap-4">
                     <Field name="title" className="grow">
                       <FieldLabel>
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
-                      <FieldControl
+                      <Input
                         value={inputInfo.title}
                         onValueChange={(value) =>
                           setInputInfo((item) => ({ ...item, title: value }))
@@ -510,7 +524,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       </div>
                       <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <FieldControl
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
+                            ns: 'appOverview',
+                          })}
                           className="mb-1"
                           value={inputInfo.chatColorTheme ?? ''}
                           onValueChange={(value) =>

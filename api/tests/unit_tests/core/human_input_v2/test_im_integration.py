@@ -57,6 +57,7 @@ def test_confirmed_configuration_rejects_blank_provider_tenant_id() -> None:
             provider_tenant_display=None,
         )
 
+
 def test_identity_and_binding_reject_invalid_current_state() -> None:
     with pytest.raises(ValueError, match="provider user id"):
         IMIdentity.create(

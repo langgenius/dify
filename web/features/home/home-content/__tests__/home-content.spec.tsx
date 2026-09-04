@@ -47,7 +47,7 @@ function StepByStepTourSessionFixture({
 }
 
 const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
+  userProfile: { id: 'user-1', name: 'Evan' },
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
@@ -546,6 +546,14 @@ type RenderOptions = {
 const localeInput = { query: { language: 'en-US' } }
 const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
+const recommendedAppQueryKey = (appId: string) => [
+  'console',
+  'explore',
+  'apps',
+  'byAppId',
+  'get',
+  { params: { app_id: appId } },
+]
 
 const renderHomeContent = ({
   hasEditPermission = false,
@@ -634,6 +642,20 @@ describe('HomeContent', () => {
   })
 
   describe('Rendering', () => {
+    it('should always render the page intro as the only h1 when the banner is disabled', () => {
+      renderHomeContent()
+
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'explore.banner.greeting:{"name":"Evan"}',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.tagline')).toBeInTheDocument()
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+    })
+
     it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -684,7 +706,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -990,6 +1012,36 @@ describe('HomeContent', () => {
           templateId: 'app-1',
         })
       })
+    })
+
+    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockHandleImportDSL.mockResolvedValue(undefined)
+      const { queryClient } = renderHomeContent({ hasEditPermission: true })
+      queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
+        export_data: 'cached-yaml',
+        mode: AppModeEnum.CHAT,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: recommendedAppQueryKey('app-1'),
+        exact: true,
+        refetchType: 'none',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.any(Object),
+      )
     })
 
     it('should open create flow from learn dify item card click', async () => {
@@ -1517,6 +1569,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     })
   })
 })

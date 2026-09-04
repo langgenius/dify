@@ -16,16 +16,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { docPathProductAvailability } from '@/types/doc-paths'
+import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
   if (!helpLinkUri) return undefined
 
   const helpLinkPath = `/use-dify/nodes/${helpLinkUri}`
-  if (!docPathProductAvailability[helpLinkPath]) return undefined
-
-  return helpLinkPath as DocPathWithoutLang
+  return isProductlessDocPathWithAnchor(helpLinkPath) ? helpLinkPath : undefined
 }
 
 export const useAvailableNodesMetaData = () => {
@@ -47,15 +45,8 @@ export const useAvailableNodesMetaData = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) => {
-      if (node.metaData.type === BlockEnum.HumanInput) return false
-      return shouldUseAgentV2
-        ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2
-    })
-
     return [
-      ...commonNodes,
+      ...WORKFLOW_COMMON_NODES,
       startNodeMetaData,
       ...(isChatMode
         ? [AnswerDefault]
@@ -67,37 +58,37 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatMode, shouldUseAgentV2, startNodeMetaData])
+  }, [isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(() => {
-    const localizeNode = (node: (typeof mergedNodesMetaData)[number]) => {
-      const { metaData } = node
-      const titleKey =
-        metaData.type === BlockEnum.HumanInputV2 ? BlockEnum.HumanInput : metaData.type
-      const title = t(($) => $[`blocks.${titleKey}`], { ns: 'workflow' })
-      const description = t(
-        ($) => $[`blocksAbout.${titleKey}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
-        { ns: 'workflow' },
-      )
-      const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
-      return {
-        ...node,
-        metaData: {
-          ...metaData,
-          title,
-          description,
-          helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
-        },
-        defaultValue: {
-          ...node.defaultValue,
-          type: getNodePersistedType(metaData.type),
-          title,
-        },
-      }
-    }
-
-    return mergedNodesMetaData.map(localizeNode)
-  }, [mergedNodesMetaData, t, docLink])
+  const nodesMetaData = useMemo(
+    () =>
+      mergedNodesMetaData.map((node) => {
+        const { metaData } = node
+        const titleKey =
+          metaData.type === BlockEnum.HumanInputV2 ? BlockEnum.HumanInput : metaData.type
+        const title = t(($) => $[`blocks.${titleKey}`], { ns: 'workflow' })
+        const description = t(
+          ($) => $[`blocksAbout.${titleKey}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
+          { ns: 'workflow' },
+        )
+        const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
+        return {
+          ...node,
+          metaData: {
+            ...metaData,
+            title,
+            description,
+            helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
+          },
+          defaultValue: {
+            ...node.defaultValue,
+            type: getNodePersistedType(metaData.type),
+            title,
+          },
+        }
+      }),
+    [mergedNodesMetaData, t, docLink],
+  )
 
   const legacyHumanInputMetaData = useMemo(() => {
     const { metaData } = HumanInputDefault
@@ -115,9 +106,21 @@ export const useAvailableNodesMetaData = () => {
     }
   }, [t])
 
-  const availableNodesMetaDataMap = useMemo(
+  const availableNodesMetaData = useMemo(
     () =>
-      availableNodesMetaData.reduce(
+      nodesMetaData.filter(
+        (node) =>
+          node.metaData.type !== BlockEnum.HumanInput &&
+          (shouldUseAgentV2
+            ? node.metaData.type !== BlockEnum.Agent
+            : node.metaData.type !== BlockEnum.AgentV2),
+      ),
+    [nodesMetaData, shouldUseAgentV2],
+  )
+
+  const nodesMetaDataMap = useMemo(
+    () =>
+      nodesMetaData.reduce(
         (acc, node) => {
           acc![node.metaData.type] = node
           return acc
@@ -126,16 +129,16 @@ export const useAvailableNodesMetaData = () => {
           [BlockEnum.HumanInput]: legacyHumanInputMetaData,
         } as unknown as AvailableNodesMetaData['nodesMap'],
       ),
-    [availableNodesMetaData, legacyHumanInputMetaData],
+    [nodesMetaData, legacyHumanInputMetaData],
   )
 
   return useMemo(() => {
     return {
       nodes: availableNodesMetaData,
       nodesMap: {
-        ...availableNodesMetaDataMap,
-        [BlockEnum.VariableAssigner]: availableNodesMetaDataMap?.[BlockEnum.VariableAggregator],
+        ...nodesMetaDataMap,
+        [BlockEnum.VariableAssigner]: nodesMetaDataMap?.[BlockEnum.VariableAggregator],
       },
     }
-  }, [availableNodesMetaData, availableNodesMetaDataMap])
+  }, [availableNodesMetaData, nodesMetaDataMap])
 }

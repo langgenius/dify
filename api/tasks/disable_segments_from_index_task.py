@@ -81,8 +81,8 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                     segment_ids=segment_ids_list,
                     disabled_by=disabled_by,
                 )
-            except Exception as e:
-                logger.warning("Failed to disable summaries for segments: %s", str(e))
+            except Exception:
+                logger.warning("Failed to disable summaries for segments", exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))

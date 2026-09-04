@@ -16,7 +16,6 @@ from core.human_input_v2.im_integration import (
     IMIntegration,
     ProviderTenantIdentity,
     ReconciliationPlan,
-    StaleRevision,
 )
 from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId
 from extensions.ext_database import db

@@ -1,4 +1,9 @@
+import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
+import { consoleQuery } from '@/service/client'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
 import { useInsertSnippet } from '../use-insert-snippet'
 
@@ -38,7 +43,7 @@ type TestEdge = {
   }
 }
 
-const mockFetchQuery = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
@@ -49,10 +54,9 @@ const mockSetEdges = vi.fn()
 const mockIncrementSnippetUseCount = vi.fn()
 let mockEdges: unknown[] = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    fetchQuery: mockFetchQuery,
-  }),
+vi.mock('@/service/base', () => ({
+  request: (...args: unknown[]) => mockRequest(...args),
+  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('reactflow', () => ({
@@ -94,9 +98,28 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
+type PublishedWorkflow = Pick<SnippetWorkflowResponse, 'graph'>
+
+const seedPublishedWorkflow = (queryClient: QueryClient, workflow: PublishedWorkflow) => {
+  const queryOptions = consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
+    input: {
+      params: { snippet_id: 'snippet-1' },
+    },
+  })
+
+  queryClient.setQueryData<PublishedWorkflow>(queryOptions.queryKey, workflow)
+}
+
 describe('useInsertSnippet', () => {
+  let queryClient: QueryClient
+  const renderUseInsertSnippet = () =>
+    renderHook(() => useInsertSnippet(), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
     mockEdges = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
     mockGetNodes.mockReturnValue([
       {
@@ -105,6 +128,10 @@ describe('useInsertSnippet', () => {
         data: { selected: true },
       },
     ])
+  })
+
+  afterEach(() => {
+    queryClient.clear()
   })
 
   describe('Insert Flow', () => {
@@ -116,7 +143,7 @@ describe('useInsertSnippet', () => {
           data: { type: 'human-input' },
         },
       ])
-      mockFetchQuery.mockResolvedValue({
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
@@ -128,7 +155,7 @@ describe('useInsertSnippet', () => {
           edges: [],
         },
       })
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         expect(await result.current.handleInsertSnippet('snippet-1')).toBe(false)
@@ -143,7 +170,7 @@ describe('useInsertSnippet', () => {
     })
 
     it('should append remapped snippet graph into current workflow graph', async () => {
-      mockFetchQuery.mockResolvedValue({
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
@@ -185,13 +212,12 @@ describe('useInsertSnippet', () => {
         },
       })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')
       })
 
-      expect(mockFetchQuery).toHaveBeenCalledTimes(1)
       expect(mockSetNodes).toHaveBeenCalledTimes(1)
       expect(mockSetEdges).toHaveBeenCalledTimes(1)
 
@@ -225,7 +251,7 @@ describe('useInsertSnippet', () => {
     })
 
     it('should remap variable selectors that reference nodes inside the snippet', async () => {
-      mockFetchQuery.mockResolvedValue({
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
@@ -264,7 +290,7 @@ describe('useInsertSnippet', () => {
         },
       })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')
@@ -282,7 +308,7 @@ describe('useInsertSnippet', () => {
     })
 
     it('should remap structural node ids inside a loop snippet', async () => {
-      mockFetchQuery.mockResolvedValue({
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
@@ -310,7 +336,7 @@ describe('useInsertSnippet', () => {
         },
       })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')
@@ -367,7 +393,7 @@ describe('useInsertSnippet', () => {
             },
           },
         ]
-        mockFetchQuery.mockResolvedValue({
+        seedPublishedWorkflow(queryClient, {
           graph: {
             nodes: [
               {
@@ -402,7 +428,7 @@ describe('useInsertSnippet', () => {
           },
         })
 
-        const { result } = renderHook(() => useInsertSnippet())
+        const { result } = renderUseInsertSnippet()
 
         await act(async () => {
           await result.current.handleInsertSnippet('snippet-1', {
@@ -486,9 +512,9 @@ describe('useInsertSnippet', () => {
     )
 
     it('should show error toast when fetching snippet workflow fails', async () => {
-      mockFetchQuery.mockRejectedValue(new Error('insert failed'))
+      mockRequest.mockRejectedValue(new Error('insert failed'))
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')

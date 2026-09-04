@@ -70,8 +70,13 @@ export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
 
+export type DatasetApiKeyCreatePayload = {
+  dataset_ids?: Array<string>
+}
+
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string
@@ -392,8 +397,12 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: {
+    [key: string]: unknown
+  }
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -719,8 +728,12 @@ export type DocumentWithSegmentsResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: {
+    [key: string]: unknown
+  }
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -1147,7 +1160,7 @@ export type GetDatasetsApiKeysResponse =
   GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
-  body?: never
+  body: DatasetApiKeyCreatePayload
   path?: never
   query?: never
   url: '/datasets/api-keys'

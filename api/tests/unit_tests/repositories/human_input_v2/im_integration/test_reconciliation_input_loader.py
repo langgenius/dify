@@ -3,6 +3,7 @@
 from datetime import datetime
 
 import pytest
+from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,7 +26,6 @@ from models.human_input_v2 import (
     IMEncryptedCredentials,
 )
 from repositories.human_input_v2.im_integration.mappers import binding_to_record, sync_run_to_record
-from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 
 _NOW = datetime(2026, 8, 11, 8)
 _TENANT_ID = TenantId("workspace-1")
