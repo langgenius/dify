@@ -211,6 +211,7 @@
   "mainNav.workspace.credits": "{{count}} tín dụng",
   "mainNav.workspace.creditsUnit": "tín dụng",
   "mainNav.workspace.inviteMembers": "Invite members",
+  "mainNav.workspace.noResults": "Không tìm thấy không gian làm việc",
   "mainNav.workspace.openMenu": "Mở menu workspace",
   "mainNav.workspace.searchPlaceholder": "Search workspace",
   "mainNav.workspace.settings": "Workspace settings",

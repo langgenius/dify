@@ -270,7 +270,8 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should render suggestion icon with tooltip for suggested models', async () => {
+  it('should expose the suggestion in the model name and on hover', async () => {
+    const user = userEvent.setup()
     renderPopupItem(
       <PopupItem
         {...previewCardProps()}
@@ -287,14 +288,24 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
-    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
+    const modelButton = screen.getByRole('button', {
+      name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/,
+    })
+    const suggestionText = screen.getByText('common.modelProvider.selector.suggestionTip')
+    const suggestionIndicator = suggestionText.parentElement
 
-    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
+    expect(modelButton).toBeInTheDocument()
+    expect(suggestionIndicator).not.toBeNull()
 
-    await userEvent.hover(suggestionIcon)
+    await user.hover(suggestionIndicator!)
 
     expect(
-      await screen.findByText('common.modelProvider.selector.suggestionTip'),
+      await screen.findByText(
+        (content, element) =>
+          content === 'common.modelProvider.selector.suggestionTip' &&
+          !!element &&
+          !modelButton.contains(element),
+      ),
     ).toBeInTheDocument()
   })
 

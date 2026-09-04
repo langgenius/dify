@@ -12,6 +12,11 @@ const render = (ui: ReactElement) => {
   queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
     data: [{ provider: 'model-collection-id' }],
   })
+  void queryClient.invalidateQueries({
+    queryKey: commonQueryKeys.modelProviderDetails,
+    exact: true,
+    refetchType: 'none',
+  })
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
@@ -584,6 +589,7 @@ describe('ProviderDetail', () => {
       await waitFor(() => {
         expect(mockSetShowModelModal).toHaveBeenCalled()
       })
+      expect(globalThis.fetch).not.toHaveBeenCalled()
     })
   })
 
