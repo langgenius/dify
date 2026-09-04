@@ -45,12 +45,11 @@ class DatasourceProvider(TypeBase):
     encrypted_credentials: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False)
     user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     avatar_url: Mapped[str] = mapped_column(LongText, nullable=True, default="default")
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
-    expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1", default=-1)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=-1)
     visibility: Mapped[PermissionEnum] = mapped_column(
         EnumText(PermissionEnum, length=40),
         nullable=False,
-        server_default=sa.text("'all_team_members'"),
         default=PermissionEnum.ALL_TEAM,
     )
 
