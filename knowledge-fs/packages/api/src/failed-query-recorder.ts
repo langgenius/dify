@@ -49,7 +49,7 @@ export function createFailedQueryRecorder({
 
 export interface FailedQueryTriggerInput {
   readonly finishReason: string | undefined;
-  /** When set, a `retrieval-evidence` answer whose top score is below this floor is low-confidence. */
+  /** The mode-final score threshold used to identify below-threshold retrieval evidence. */
   readonly lowConfidenceScoreFloor?: number | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
 }
@@ -63,10 +63,23 @@ export interface ClassifiedQueryOutcome {
 
 /**
  * Maps a query generator's done event to a failed-query trigger, or `null` when the query was
- * answered with sufficient evidence. Empty retrieval is always captured; a low-confidence answer
- * (top retrieval score below an opt-in floor) is captured only when the floor is configured.
+ * answered with sufficient evidence. A retrieval with no candidates is no-evidence; candidates
+ * rejected by the configured score threshold, or an answer below that threshold, are
+ * low-confidence.
  */
 export function failedQueryTrigger(input: FailedQueryTriggerInput): FailedQuery["trigger"] | null {
+  if (input.finishReason === "low-confidence" || input.finishReason === "low-score") {
+    return "low-confidence";
+  }
+
+  if (
+    input.finishReason === "no-retrieval-evidence" &&
+    input.lowConfidenceScoreFloor !== undefined &&
+    readScoreThresholdFilteredCandidates(input.metadata) > 0
+  ) {
+    return "low-confidence";
+  }
+
   if (
     input.finishReason === "no-retrieval-evidence" ||
     input.finishReason === "no-local-evidence" ||
@@ -74,10 +87,6 @@ export function failedQueryTrigger(input: FailedQueryTriggerInput): FailedQuery[
     input.finishReason === "missing-evidence"
   ) {
     return "no-retrieval-evidence";
-  }
-
-  if (input.finishReason === "low-confidence" || input.finishReason === "low-score") {
-    return "low-confidence";
   }
 
   if (input.finishReason === "retrieval-evidence" && input.lowConfidenceScoreFloor !== undefined) {
@@ -112,4 +121,18 @@ export function readTopScore(metadata: Record<string, unknown> | undefined): num
   const value = metadata?.topScore;
 
   return typeof value === "number" ? value : undefined;
+}
+
+function readScoreThresholdFilteredCandidates(
+  metadata: Record<string, unknown> | undefined,
+): number {
+  const metrics = metadata?.metrics;
+  if (!isRecord(metrics)) return 0;
+
+  const value = metrics.scoreThresholdFilteredCandidates;
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

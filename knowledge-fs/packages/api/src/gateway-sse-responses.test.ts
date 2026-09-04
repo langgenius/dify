@@ -565,6 +565,12 @@ describe("createQuerySseResponse", () => {
       finishReason: "retrieval-evidence",
       metadata: { topScore: 0.7 },
     },
+    {
+      expectedOutcome: "low-confidence",
+      expectedTrigger: "low-confidence",
+      finishReason: "no-retrieval-evidence",
+      metadata: { metrics: { scoreThresholdFilteredCandidates: 2 } },
+    },
   ] as const)(
     "persists $expectedOutcome before Capability failed-query capture can be skipped",
     async ({ expectedOutcome, expectedTrigger, finishReason, metadata }) => {

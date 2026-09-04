@@ -15,6 +15,28 @@ describe("failedQueryTrigger", () => {
     expect(failedQueryTrigger({ finishReason: "no-local-evidence" })).toBe("no-retrieval-evidence");
   });
 
+  it("classifies retrieval candidates removed by the configured score threshold as low-confidence", () => {
+    const metadata = { metrics: { scoreThresholdFilteredCandidates: 2 } };
+
+    expect(
+      failedQueryTrigger({
+        finishReason: "no-retrieval-evidence",
+        lowConfidenceScoreFloor: 0.8,
+        metadata,
+      }),
+    ).toBe("low-confidence");
+    expect(failedQueryTrigger({ finishReason: "no-retrieval-evidence", metadata })).toBe(
+      "no-retrieval-evidence",
+    );
+    expect(
+      failedQueryTrigger({
+        finishReason: "no-retrieval-evidence",
+        lowConfidenceScoreFloor: 0.8,
+        metadata: { metrics: { scoreThresholdFilteredCandidates: 0 } },
+      }),
+    ).toBe("no-retrieval-evidence");
+  });
+
   it("captures low-confidence only when a floor is set and the top score is below it", () => {
     const metadata = { topScore: 0.12 };
 
