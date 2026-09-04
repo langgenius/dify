@@ -16,7 +16,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
-from dify_agent.protocol import DeferredToolResultsPayload
+from dify_agent.protocol import DeferredToolResultsPayload, RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend import (
@@ -79,19 +79,18 @@ class _DefaultSessionScopeSnapshotId:
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
 
-_AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
-    "InvokeAuthorizationError": InvokeAuthorizationError,
-    "InvokeBadRequestError": InvokeBadRequestError,
-    "CredentialsValidateFailedError": InvokeBadRequestError,
-    "InvokeConnectionError": InvokeConnectionError,
-    "InvokeRateLimitError": InvokeRateLimitError,
-    "InvokeServerUnavailableError": InvokeServerUnavailableError,
+_AGENT_BACKEND_INVOKE_ERROR_BY_TYPE: Mapping[RunFailureType, type[InvokeError]] = {
+    RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR: InvokeAuthorizationError,
+    RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR: InvokeBadRequestError,
+    RunFailureType.MODEL_INVOKE_CONNECTION_ERROR: InvokeConnectionError,
+    RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR: InvokeRateLimitError,
+    RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR: InvokeServerUnavailableError,
 }
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    if event.error_type is None:
-        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+    if event.error_type is not None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_TYPE.get(event.error_type)
         if err_cls is not None:
             return err_cls(event.error)
     message = event.error or "Agent backend run did not complete successfully."
@@ -727,8 +726,7 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
-                reason = terminal.reason
-                if terminal.error_type is None and reason == "binding_lost":
+                if terminal.error_type == RunFailureType.BINDING_LOST:
                     raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
