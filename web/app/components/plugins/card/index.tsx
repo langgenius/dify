@@ -149,7 +149,7 @@ const Card = ({
                 {org && (
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="shrink-0 lowercase">
-                      {t(($) => $.author, { ns: 'tools' })}
+                      {t(($) => $['marketplace.by'], { ns: 'plugin' })}
                     </span>
                     <span className="truncate">{org}</span>
                   </div>

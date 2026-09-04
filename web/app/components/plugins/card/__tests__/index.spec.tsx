@@ -16,8 +16,25 @@ vi.mock('@/context/workspace-state', () => ({
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string | ((...args: never[]) => unknown)) =>
-      typeof key === 'string' ? key : 'translated',
+    t: (
+      key: string | ((dict: Record<string, string>) => string),
+      options?: { ns?: string },
+    ) => {
+      if (typeof key === 'string')
+        return key
+
+      // Independent Marketplace does not load the tools namespace, so
+      // tools.author falls back to the key name "author".
+      const dict: Record<string, string> = options?.ns === 'tools'
+        ? { author: 'author' }
+        : {
+            'marketplace.by': 'by',
+            'marketplace.partnerTip': 'Verified by a Dify partner',
+            'marketplace.verifiedTip': 'Verified by Dify',
+            install: '{{num}} installs',
+          }
+      return key(dict)
+    },
   }),
 }))
 
@@ -82,5 +99,15 @@ describe('Plugin card workspace boundary', () => {
       `${MARKETPLACE_API_PREFIX}/plugins/langgenius/demo-plugin/icon`,
     )
     expect(useAtomValue).not.toHaveBeenCalled()
+  })
+
+  it('labels the marketplace author as by, not the tools.author key fallback', () => {
+    const { container } = render(
+      <Card payload={marketplacePlugin} variant="marketplace" />,
+    )
+
+    expect(container).toHaveTextContent('by')
+    expect(container).toHaveTextContent('langgenius')
+    expect(container).not.toHaveTextContent('author')
   })
 })
