@@ -159,4 +159,53 @@ describe('VariableInspectTrigger', () => {
     ).not.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
+
+  it('should render the normal trigger as a native button', () => {
+    renderTrigger()
+
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.normal' }),
+    ).toBeInTheDocument()
+  })
+
+  it('should render the cached and clear triggers as native buttons', () => {
+    inspectVarsState = {
+      conversationVars: [createVariable()],
+      systemVars: [],
+      nodesWithInspectVars: [],
+    }
+
+    renderTrigger()
+
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.cached' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.clear' }),
+    ).toBeInTheDocument()
+  })
+
+  it('should expose an accessible name on the stop trigger', () => {
+    renderTrigger({
+      nodes: [
+        createNode({
+          data: {
+            type: BlockEnum.Code,
+            title: 'Code',
+            desc: '',
+            _singleRunningStatus: NodeRunningStatus.Running,
+          },
+        }),
+      ],
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          result: { status: WorkflowRunningStatus.Running },
+        }),
+      },
+    })
+
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    ).toBeInTheDocument()
+  })
 })
