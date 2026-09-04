@@ -1356,6 +1356,14 @@ export const zAccessMatrixItem = z.object({
 })
 
 /**
+ * AgentAccessMatrix
+ */
+export const zAgentAccessMatrix = z.object({
+  agent_id: z.string().optional().default(''),
+  items: z.array(zAccessMatrixItem).optional(),
+})
+
+/**
  * AppAccessMatrix
  */
 export const zAppAccessMatrix = z.object({
@@ -2529,6 +2537,7 @@ export const zResourcePermissionSnapshot = z.object({
  * MyPermissionsResponse
  */
 export const zMyPermissionsResponse = z.object({
+  agent: zResourcePermissionSnapshot.optional(),
   app: zResourcePermissionSnapshot.optional(),
   dataset: zResourcePermissionSnapshot.optional(),
   workspace: zWorkspacePermissionSnapshot.optional(),
@@ -4898,6 +4907,120 @@ export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockRespo
   z.unknown(),
 )
 
+export const zDeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsBody =
+  zDeleteMemberBindingsRequest
+
+export const zDeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
+    agent_id: z.uuid(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
+    agent_id: z.uuid(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
+    agent_id: z.uuid(),
+    policy_id: z.uuid(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponse = zAgentAccessMatrix
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponse =
+  zResourceUserAccessPoliciesResponse
+
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesBody =
+  zReplaceUserAccessPolicies
+
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesPath =
+  z.object({
+    agent_id: z.uuid(),
+    target_account_id: z.uuid(),
+  })
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponse =
+  zReplaceUserAccessPoliciesResponse
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse = zResourceWhitelist
+
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdWhitelistBody = zResourceAccessScopeRequest
+
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdWhitelistPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse = zResourceWhitelist
+
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponse =
+  zResourceWhitelistConfig
+
 export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody =
   zDeleteMemberBindingsRequest
 
@@ -5158,6 +5281,12 @@ export const zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse = zPermissi
 /**
  * Success
  */
+export const zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse =
+  zPermissionCatalogResponse
+
+/**
+ * Success
+ */
 export const zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse = zPermissionCatalogResponse
 
 /**
@@ -5220,6 +5349,47 @@ export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
  * Success
  */
 export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse = zMembersInRoleList
+
+export const zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsBody =
+  zReplaceBindingsRequest
+
+export const zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsPath =
+  z.object({
+    policy_id: z.uuid(),
+  })
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponse =
+  zAccessMatrixItem
+
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
+    policy_id: z.uuid(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
+
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
+    policy_id: z.uuid(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse = zWorkspaceAccessMatrix
 
 export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody =
   zReplaceBindingsRequest
