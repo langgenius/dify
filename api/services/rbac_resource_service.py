@@ -18,7 +18,7 @@ class RBACResourceService:
         app_model = db.session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
         if app_model is None:
             return None
-        return app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
+        return app_model.agent_app_binding_with_session(session=db.session, include_archived=True)
 
     @staticmethod
     def get_app_maintainer(tenant_id: str, app_id: str) -> str | None:

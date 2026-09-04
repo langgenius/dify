@@ -11,7 +11,7 @@ from functools import wraps
 from typing import cast, overload
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from controllers.common.session import with_session
 from controllers.console.app.error import AppNotFoundError
@@ -29,7 +29,7 @@ __all__ = [
 ]
 
 
-def _is_hidden_backing_app(app_model: App, session: Session) -> bool:
+def _is_hidden_backing_app(app_model: App, session: Session | scoped_session) -> bool:
     binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
     return binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY
 
@@ -51,7 +51,7 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     app_model = db.session.scalar(
         select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
     )
-    if app_model is not None and _is_hidden_backing_app(app_model, db.session()):
+    if app_model is not None and _is_hidden_backing_app(app_model, db.session):
         return None
     return app_model
 
