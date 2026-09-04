@@ -469,6 +469,55 @@ def test_apply_repair_skips_already_present_create_and_connect(mock_session: Mag
     mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
 
 
+def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_session: MagicMock):
+    """A from-scratch build (handlers_build.handle_plan_approval) sends
+    delete_node(placeholder_start) + create_node(same id) in ONE batch, to
+    replace the canvas's default placeholder start with the generator's own
+    start node of the same id. The already-present filter above must NOT
+    treat "start" as already-present just because it's in before_graph --
+    that would drop the create_node while the delete_node still runs,
+    deleting the start node with no re-create, and the subsequent connect
+    would then raise ValueError('node not found: start')."""
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    # Draft has only the canvas's default placeholder start node "start".
+    existing_graph = {
+        "nodes": [{"id": "start", "data": {"type": "start"}}],
+        "edges": [],
+    }
+    workflow = SimpleNamespace(
+        graph_dict=existing_graph,
+        unique_hash="h0",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="h1")
+    intents = [
+        MutationIntent(op="delete_node", args={"node_id": "start"}),
+        MutationIntent(op="create_node", args={"node_type": "start", "node_id": "start", "config": {}}),
+        MutationIntent(op="create_node", args={"node_type": "llm", "node_id": "llm_1", "config": {}}),
+        MutationIntent(op="connect", args={"from_node": "start", "to_node": "llm_1"}),
+    ]
+
+    with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        # Must not raise -- the recreate of "start" must survive the filter.
+        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+    assert result.new_hash == "h1"
+    _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
+    synced_nodes = {n["id"] for n in kwargs["graph"]["nodes"]}
+    synced_edges = {(e["source"], e["target"]) for e in kwargs["graph"]["edges"]}
+    # "start" must still be present (recreated, not left deleted) alongside the new node.
+    assert synced_nodes == {"start", "llm_1"}
+    # The connect from the recreated "start" to "llm_1" must have applied.
+    assert ("start", "llm_1") in synced_edges
+
+
 # ---- run_draft --------------------------------------------------------------
 
 

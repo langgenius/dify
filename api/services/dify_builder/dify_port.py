@@ -211,10 +211,23 @@ class WorkflowServiceDifyPort:
             # present so the re-apply is a clean no-op. Uses the ORIGINAL draft graph
             # (before_graph) as the reference, so an in-batch duplicate of a NEW id
             # still reaches graph_ops and raises (validation preserved).
-            _present_node_ids = {n.get("id") for n in before_graph.get("nodes", [])}
-            _present_edges = {(e.get("source"), e.get("target")) for e in before_graph.get("edges", [])}
+            #
+            # Mirror handlers_build.py's M2 guard: ids targeted by a delete_node in
+            # THIS SAME batch must not count as "already present" for the filter
+            # above. A from-scratch build sends delete_node(placeholder_start) +
+            # create_node(same id) in one batch (recreating the id the placeholder
+            # occupied); without this exclusion the create_node would be dropped as
+            # already-present while the delete_node still runs, deleting the node
+            # with no re-create.
+            _deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
+            _present_node_ids = {n.get("id") for n in before_graph.get("nodes", [])} - _deleted_ids
+            _present_edges = {
+                (e.get("source"), e.get("target"))
+                for e in before_graph.get("edges", [])
+                if e.get("source") not in _deleted_ids and e.get("target") not in _deleted_ids
+            }
 
-            def _already_present(intent) -> bool:
+            def _already_present(intent: MutationIntent) -> bool:
                 if intent.op == "create_node":
                     return intent.args.get("node_id") in _present_node_ids
                 if intent.op == "connect":
