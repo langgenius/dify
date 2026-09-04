@@ -80,6 +80,6 @@ Do not introduce:
 
 Test the feature-owned disclosure behavior through its public interface. Assert native `title` only when it is an explicitly accepted product contract. Do not use `getByTitle` or `toHaveAttribute('title', ...)` merely to prove a migration, and do not use title-based selectors to test unrelated interactions.
 
-[PreviewCard]: ../../packages/dify-ui/docs/overlays.md#primitive-semantics
 [MDN]: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/title#accessibility_concerns
+[PreviewCard]: ../../packages/dify-ui/docs/overlays.md#primitive-semantics
 [WCAG 1.4.13]: https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html
