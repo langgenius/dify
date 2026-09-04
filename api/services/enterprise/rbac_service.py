@@ -58,6 +58,7 @@ class RBACResourceType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+    AGENT = "agent"
 
 
 class RBACRoleType(StrEnum):
@@ -350,6 +351,12 @@ class AppendAppWhitelistMembersBatchItem(_RBACModel):
 
 class AppendDatasetWhitelistMembersBatchItem(_RBACModel):
     dataset_id: str
+    account_ids: list[str] = Field(default_factory=list)
+    policy_id: str
+
+
+class AppendAgentWhitelistMembersBatchItem(_RBACModel):
+    agent_id: str
     account_ids: list[str] = Field(default_factory=list)
     policy_id: str
 
@@ -1641,6 +1648,21 @@ class RBACService:
                 json=payload.model_dump(mode="json"),
             )
             return AccessMatrixItem.model_validate(data or {})
+
+    class AgentAccess:
+        @staticmethod
+        def append_whitelist_members_batch(
+            tenant_id: str,
+            account_id: str | None,
+            data: Sequence[AppendAgentWhitelistMembersBatchItem],
+        ) -> None:
+            _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/agents/whitelist/members/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"data": [item.model_dump(mode="json") for item in data]},
+            )
 
     # ------------------------------------------------------------------
     # Workspace-level access (screenshot 2: Settings > Access Rules).

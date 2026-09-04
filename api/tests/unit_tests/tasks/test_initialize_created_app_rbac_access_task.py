@@ -87,6 +87,8 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.APP, resource_id="app-1"),
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.DATASET, resource_id="dataset-1"),
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.APP, resource_id="app-2"),
+        rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.AGENT, resource_id="agent-1"),
+        rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.AGENT, resource_id="agent-2"),
     ]
     configs = rbac.ResourceWhitelistConfigsResponse(
         data=[
@@ -105,17 +107,29 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
                 resource_id="app-2",
                 automatic_include_workspace_members=False,
             ),
+            rbac.ResourceWhitelistConfigItem(
+                resource_type=rbac.RBACResourceType.AGENT,
+                resource_id="agent-1",
+                automatic_include_workspace_members=True,
+            ),
+            rbac.ResourceWhitelistConfigItem(
+                resource_type=rbac.RBACResourceType.AGENT,
+                resource_id="agent-2",
+                automatic_include_workspace_members=False,
+            ),
         ]
     )
     batch_get = MagicMock(return_value=configs)
     app_append = MagicMock()
     dataset_append = MagicMock()
+    agent_append = MagicMock()
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(task_module, "_iter_resource_config_batches", lambda tenant_id, batch_size: iter([resources]))
     monkeypatch.setattr(rbac.RBACService.ResourceWhitelistConfigs, "batch_get", batch_get)
     monkeypatch.setattr(rbac.RBACService.AppAccess, "append_whitelist_members_batch", app_append)
     monkeypatch.setattr(rbac.RBACService.DatasetAccess, "append_whitelist_members_batch", dataset_append)
+    monkeypatch.setattr(rbac.RBACService.AgentAccess, "append_whitelist_members_batch", agent_append)
 
     sync_joined_workspace_member_rbac_access_task.run("tenant-1", "member-1", "actor-1")
 
@@ -141,3 +155,25 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
     assert dataset_call["data"][0].dataset_id == "dataset-1"
     assert dataset_call["data"][0].account_ids == ["member-1"]
     assert dataset_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+
+    agent_append.assert_called_once()
+    agent_call = agent_append.call_args.kwargs
+    assert agent_call["tenant_id"] == "tenant-1"
+    assert agent_call["account_id"] == "actor-1"
+    assert [item.agent_id for item in agent_call["data"]] == ["agent-1"]
+    assert agent_call["data"][0].account_ids == ["member-1"]
+    assert agent_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+
+
+def test_agent_whitelist_append_targets_agent_inner_route(monkeypatch: pytest.MonkeyPatch):
+    from services.enterprise import rbac_service as rbac
+
+    inner_call = MagicMock(return_value=None)
+    monkeypatch.setattr(rbac, "_inner_call", inner_call)
+    item = rbac.AppendAgentWhitelistMembersBatchItem(agent_id="agent-1", account_ids=["member-1"], policy_id="default")
+
+    rbac.RBACService.AgentAccess.append_whitelist_members_batch(tenant_id="tenant-1", account_id="actor-1", data=[item])
+
+    inner_call.assert_called_once()
+    assert inner_call.call_args.args[1].endswith("/agents/whitelist/members/batch")
+    assert inner_call.call_args.kwargs["json"] == {"data": [item.model_dump(mode="json")]}
