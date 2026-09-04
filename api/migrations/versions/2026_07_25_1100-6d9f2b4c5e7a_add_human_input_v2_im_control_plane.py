@@ -106,12 +106,6 @@ def upgrade() -> None:
         "human_input_im_identities",
         ["channel_id", "normalized_name"],
     )
-    op.create_index(
-        "hiimi_channel_last_seen_run_idx",
-        "human_input_im_identities",
-        ["channel_id", "last_seen_sync_run_id"],
-    )
-
     op.create_table(
         "human_input_im_bindings",
         sa.Column(
@@ -151,9 +145,6 @@ def upgrade() -> None:
         ),
         comment="Default Contact-to-IM-identity Bindings for one IM Channel.",
     )
-    op.create_index("hiimb_contact_idx", "human_input_im_bindings", ["contact_id"])
-    op.create_index("hiimb_identity_idx", "human_input_im_bindings", ["im_identity_id"])
-
     op.create_table(
         "human_input_im_workspace_binding_overrides",
         sa.Column(

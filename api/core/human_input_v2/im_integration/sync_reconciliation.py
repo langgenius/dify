@@ -17,7 +17,7 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
 )
 
-from .integration import IntegrationRevisionToken
+from .sync_records import IMChannelRevision
 
 
 class IMIdentityUpsertKind(StrEnum):
@@ -56,7 +56,7 @@ class ReconciliationRunRef:
     """Immutable reconciliation namespace captured when a sync run starts."""
 
     sync_run_id: IMSyncRunId
-    integration_revision: IntegrationRevisionToken
+    channel_revision: IMChannelRevision
     provider: IMProvider
 
 

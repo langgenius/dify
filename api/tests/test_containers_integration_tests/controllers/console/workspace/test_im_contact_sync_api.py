@@ -17,12 +17,8 @@ from core.human_input_v2.entities import (
     IMSyncRunStatus,
 )
 from core.human_input_v2.im_integration import (
-    EncryptedCredentials,
-    IMIdentity,
-    IMIntegration,
+    IMChannelRevision,
     IMSyncRun,
-    IntegrationRevisionToken,
-    ProviderTenantIdentity,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
     SyncResultFact,
@@ -34,21 +30,31 @@ from core.human_input_v2.shared import (
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
+    NormalizedEmail,
     TenantId,
 )
+from models.account import Account, Tenant
 from models.human_input_v2 import (
     ContactSubjectType,
     HumanInputContactIdentity,
     HumanInputIMBinding,
     HumanInputIMSyncRun,
+    IMEncryptedCredentials,
 )
 from repositories.human_input_v2.contact import Contact, ContactType
+from repositories.human_input_v2.im_channel_repository import (
+    IMChannel,
+    IMChannelId,
+    IMChannelStatus,
+    WebhookId,
+)
+from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.mappers import (
-    identity_to_record,
-    integration_to_record,
     sync_result_to_record,
     sync_run_to_record,
 )
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
+from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from tasks.im_contact_sync_tasks import reconcile_im_contacts_task
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
@@ -58,13 +64,15 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 _NOW = datetime(2026, 8, 11, 8)
 _LATER = datetime(2026, 8, 11, 9)
 _CONTACT_ID = ContactId("00000000-0000-0000-0000-000000000101")
-_INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000201")
+_CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000201")
 _PRIMARY_IDENTITY_ID = IMIdentityId("00000000-0000-0000-0000-000000000301")
 _SECONDARY_IDENTITY_ID = IMIdentityId("00000000-0000-0000-0000-000000000302")
 _SYNC_RUNS_PATH = "/console/api/workspaces/current/human-input/im-sync-runs"
 
 
-def _seed_control_plane(session: Session):
+def _seed_control_plane(
+    session: Session,
+) -> tuple[Account, Tenant, Contact, IMChannel, IMIdentity, IMIdentity]:
     account, tenant = create_console_account_and_tenant(session)
     tenant_id = TenantId(tenant.id)
     account.name = "Reviewer"
@@ -84,52 +92,56 @@ def _seed_control_plane(session: Session):
         avatar_file_id=None,
         created_at=_NOW,
     )
-    integration = IMIntegration.create(
-        integration_id=_INTEGRATION_ID,
-        tenant_id=tenant_id,
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+    channel = IMChannel(
+        id=_CHANNEL_ID,
+        created_at=_NOW,
+        updated_at=_NOW,
+        provider=IMProvider.FEISHU,
+        provider_tenant_id="provider-tenant-1",
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
         app_identifier="app-1",
-        configured_by_account_id=AccountId(account.id),
-        callback_url=None,
-        now=_NOW,
+        webhook_id=WebhookId("00000000000000000000000000000001"),
+        config_version=1,
+        status=IMChannelStatus.CONNECTED,
     )
-    primary_identity = _identity(
+    session.add(contact_identity)
+    WorkspaceIMChannelWriter(session, tenant_id, AccountId(account.id)).create(channel)
+    identity_repository = SQLAlchemyIMIdentityRepository(session, channel.id)
+    primary_identity = _create_identity(
+        identity_repository,
         _PRIMARY_IDENTITY_ID,
         "provider-user-primary",
         "Primary Reviewer",
         "reviewer@example.com",
     )
-    secondary_identity = _identity(
+    secondary_identity = _create_identity(
+        identity_repository,
         _SECONDARY_IDENTITY_ID,
         "provider-user-secondary",
         "Secondary Reviewer",
         "secondary@example.com",
     )
-    session.add_all(
-        (
-            contact_identity,
-            integration_to_record(integration),
-            identity_to_record(primary_identity),
-            identity_to_record(secondary_identity),
-        )
-    )
     session.commit()
-    return account, tenant, contact, integration, primary_identity, secondary_identity
+    return account, tenant, contact, channel, primary_identity, secondary_identity
 
 
-def _identity(identity_id: IMIdentityId, provider_user_id: str, display_name: str, email: str) -> IMIdentity:
-    return IMIdentity.create(
-        identity_id=identity_id,
-        integration_id=_INTEGRATION_ID,
-        provider=IMProvider.FEISHU,
-        provider_user_id=provider_user_id,
-        display_name=display_name,
-        email=email,
-        raw_payload={},
-        last_seen_sync_run_id=None,
-        last_seen_at=_NOW,
-        now=_NOW,
+def _create_identity(
+    repository: SQLAlchemyIMIdentityRepository,
+    identity_id: IMIdentityId,
+    provider_user_id: str,
+    display_name: str,
+    email: str,
+) -> IMIdentity:
+    return repository.create(
+        identity_id,
+        IMIdentityObservation(
+            provider_user_id=provider_user_id,
+            display_name=display_name,
+            email=email,
+            raw_payload=OpaqueProviderPayload({}),
+            sync_run_id=IMSyncRunId("00000000-0000-0000-0000-000000000901"),
+            observed_at=_NOW,
+        ),
     )
 
 
@@ -137,7 +149,7 @@ def test_manual_binding_http_commands_use_real_guarded_postgresql_writes(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, _tenant, contact, _integration, _primary, _secondary = _seed_control_plane(db_session_with_containers)
+    account, _tenant, contact, _channel, _primary, _secondary = _seed_control_plane(db_session_with_containers)
     headers = authenticate_console_client(test_client_with_containers, account)
     binding_path = f"/console/api/workspaces/current/human-input/contacts/{contact.id}/im-bindings"
     override_path = f"/console/api/workspaces/current/human-input/contacts/{contact.id}/im-override"
@@ -222,12 +234,12 @@ def test_manual_binding_http_commands_use_real_guarded_postgresql_writes(
     assert db_session_with_containers.scalar(select(HumanInputIMBinding)) is None
 
 
-def test_sync_command_and_identity_queries_use_real_postgresql_and_redis(
+def test_sync_command_and_identity_queries_use_real_postgresql(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    account, tenant, _contact, integration, _primary, _secondary = _seed_control_plane(db_session_with_containers)
+    account, tenant, _contact, channel, _primary, _secondary = _seed_control_plane(db_session_with_containers)
     headers = authenticate_console_client(test_client_with_containers, account)
     dispatched: list[tuple[tuple[str, str, str | None], str]] = []
 
@@ -259,21 +271,19 @@ def test_sync_command_and_identity_queries_use_real_postgresql_and_redis(
     assert len(identity_page["data"]) == 1
     assert identity_page["data"][0]["provider"] == IMProvider.FEISHU.value
     assert identity_page["data"][0]["binding_status"] == "unbound"
-    assert created_run["integration_id"] == str(integration.id)
+    assert created_run["integration_id"] == str(channel.id)
 
 
 def test_latest_result_http_projection_reads_every_persisted_bucket(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, _tenant, contact, integration, primary_identity, _secondary = _seed_control_plane(
-        db_session_with_containers
-    )
+    account, _tenant, contact, channel, primary_identity, _secondary = _seed_control_plane(db_session_with_containers)
     run = replace(
         IMSyncRun.create(
             sync_run_id=IMSyncRunId("00000000-0000-0000-0000-000000000501"),
-            integration_revision=IntegrationRevisionToken(integration.id, integration.config_version),
-            provider=integration.provider_tenant.provider,
+            channel_revision=IMChannelRevision(str(channel.id), channel.config_version),
+            provider=channel.provider,
             started_by_account_id=AccountId(account.id),
             now=_NOW,
         ),
@@ -286,7 +296,7 @@ def test_latest_result_http_projection_reads_every_persisted_bucket(
         started_at=_NOW,
         finished_at=_LATER,
     )
-    results = _result_facts(run, contact, primary_identity)
+    results = _result_facts(run, contact, primary_identity, channel.provider)
     db_session_with_containers.add(sync_run_to_record(run))
     db_session_with_containers.add_all(sync_result_to_record(result) for result in results)
     db_session_with_containers.commit()
@@ -325,11 +335,16 @@ def test_latest_result_http_projection_reads_every_persisted_bucket(
     assert removed["reason"] == IMSyncRemovalReason.NOT_PRESENT_IN_DIRECTORY.value
 
 
-def _result_facts(run: IMSyncRun, contact: Contact, identity: IMIdentity) -> tuple[SyncResultFact, ...]:
+def _result_facts(
+    run: IMSyncRun,
+    contact: Contact,
+    identity: IMIdentity,
+    provider: IMProvider,
+) -> tuple[SyncResultFact, ...]:
     contact_snapshot = SyncContactSnapshot(contact.id, contact.name, contact.email, contact.avatar_file_id)
     identity_snapshot = SyncIdentitySnapshot(
         identity.id,
-        identity.provider,
+        provider,
         identity.provider_user_id,
         identity.display_name,
         identity.email,
@@ -347,14 +362,14 @@ def _result_facts(run: IMSyncRun, contact: Contact, identity: IMIdentity) -> tup
         suffix = str(result_id).zfill(12)
         return SyncResultFact(
             id=IMSyncResultId(f"00000000-0000-0000-0000-{suffix}"),
-            integration_id=run.integration_revision.integration_id,
+            integration_id=IntegrationId(run.channel_revision.channel_id),
             sync_run_id=run.id,
             operation_key=f"result:{result_type.value}:{result_id}",
             result_type=result_type,
             provider_user_id=identity.provider_user_id if include_entry else None,
             display_name=identity.display_name if include_entry else None,
             email=identity.email if include_entry else None,
-            normalized_email=identity.normalized_email if include_entry else None,
+            normalized_email=NormalizedEmail(identity.email) if include_entry and identity.email is not None else None,
             contact_id=contact.id if include_contact else None,
             identity_id=identity.id,
             binding_id=None,
@@ -398,17 +413,19 @@ def test_missing_control_plane_state_returns_stable_http_errors(
     assert missing_integration.status_code == missing_sync_integration.status_code == 404
     assert missing_integration.get_json()["code"] == "im_integration_not_configured"
 
-    integration = IMIntegration.create(
-        integration_id=_INTEGRATION_ID,
-        tenant_id=TenantId(tenant.id),
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+    channel = IMChannel(
+        id=_CHANNEL_ID,
+        created_at=_NOW,
+        updated_at=_NOW,
+        provider=IMProvider.FEISHU,
+        provider_tenant_id="provider-tenant-1",
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
         app_identifier="app-1",
-        configured_by_account_id=AccountId(account.id),
-        callback_url=None,
-        now=_NOW,
+        webhook_id=WebhookId("00000000000000000000000000000001"),
+        config_version=1,
+        status=IMChannelStatus.CONNECTED,
     )
-    db_session_with_containers.add(integration_to_record(integration))
+    WorkspaceIMChannelWriter(db_session_with_containers, TenantId(tenant.id), AccountId(account.id)).create(channel)
     db_session_with_containers.commit()
 
     missing_run = test_client_with_containers.get(f"{_SYNC_RUNS_PATH}/latest", headers=headers)

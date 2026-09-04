@@ -39,7 +39,7 @@ def reconcile_im_contacts_task(sync_run_id: str, scope_kind: str, tenant_id: str
     logger.info(
         "IM Contact sync task completed, sync_run_id=%s, integration_id=%s, status=%s",
         terminal_run.id,
-        terminal_run.integration_revision.integration_id,
+        terminal_run.channel_revision.channel_id,
         terminal_run.status.value,
     )
     return terminal_run.status.value

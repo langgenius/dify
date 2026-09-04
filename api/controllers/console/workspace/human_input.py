@@ -34,7 +34,6 @@ from controllers.common.human_input_v2_contracts import (
     HumanInputContact,
     HumanInputContactType,
     IMContactSyncErrorResponse,
-    IMIntegrationStatus,
     IMProvider,
     IMSyncResultType,
     IMSyncRunStatus,
@@ -102,13 +101,17 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
     SQLAlchemyContactIMBindingRepository,
     SQLAlchemyContactRepository,
 )
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelReader,
+    WorkspaceIMChannelReader,
+)
 from services.enterprise.human_input_contact_composition import build_enterprise_contact_management_service
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.contact_service import ContactManagementService, ContactWithIMBindings
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
-    IMIntegrationNotConfiguredError,
+    IMChannelNotConfiguredError,
     IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
@@ -118,7 +121,6 @@ from services.human_input_v2.node_data_migration import MigrationNode, NodeDataM
 register_enum_models(
     console_ns,
     HumanInputContactType,
-    IMIntegrationStatus,
     IMSyncRunStatus,
     IMSyncResultType,
     IMProvider,
@@ -183,7 +185,7 @@ def _workspace_scope(tenant_id: str) -> WorkspaceScope:
 
 type _IMApplicationError = (
     IMBindingCommandError
-    | IMIntegrationNotConfiguredError
+    | IMChannelNotConfiguredError
     | IMSyncDispatchUnavailableError
     | IMSyncRevisionChangedError
     | IMSyncRunNotFoundError
@@ -195,7 +197,7 @@ def _im_application_error_response(error: _IMApplicationError) -> tuple[dict[str
     if isinstance(error, IMBindingCommandError):
         status = _IM_BINDING_ERROR_STATUS[error.code]
         code = error.code.value
-    elif isinstance(error, IMIntegrationNotConfiguredError):
+    elif isinstance(error, IMChannelNotConfiguredError):
         status = HTTPStatus.NOT_FOUND
         code = "im_integration_not_configured"
     elif isinstance(error, IMSyncRunNotFoundError):
@@ -234,8 +236,9 @@ def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
             "skipped": run.skipped_count,
         },
         "provider": run.provider,
-        "integration_id": run.integration_revision.integration_id,
-        "integration_config_version": run.integration_revision.config_version,
+        # TODO(QuantumGhost): rename to channel_id
+        "integration_id": run.channel_revision.channel_id,
+        "integration_config_version": run.channel_revision.config_version,
     }
 
 
@@ -358,11 +361,15 @@ def _contact_summary_payload(view: ContactWithIMBindings) -> dict[str, object]:
     }
 
 
-def _contact_service(session: Session) -> ContactManagementService:
+def _contact_service(session: Session, tenant_id: TenantId) -> ContactManagementService:
     repository = SQLAlchemyContactRepository(session)
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        channel = DeploymentIMChannelReader(session).get()
+    else:
+        channel = WorkspaceIMChannelReader(session, tenant_id).get()
     return ContactManagementService(
         repository,
-        SQLAlchemyContactIMBindingRepository(session),
+        SQLAlchemyContactIMBindingRepository(session, channel),
     )
 
 
@@ -391,7 +398,7 @@ class WorkspaceContactsApi(Resource):
             keyword=query.keyword or "",
             contact_type=ContactType(query.group.value) if query.group is not None else None,
         )
-        service = _contact_service(session)
+        service = _contact_service(session, TenantId(tenant_id))
         page, views = service.list_contacts(
             TenantId(tenant_id),
             page=query.page,
@@ -422,7 +429,7 @@ class WorkspaceContactApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, contact_id: str):
-        contact = _contact_service(session).get_contact(TenantId(tenant_id), ContactId(contact_id))
+        contact = _contact_service(session, TenantId(tenant_id)).get_contact(TenantId(tenant_id), ContactId(contact_id))
         if contact is None:
             abort(HTTPStatus.NOT_FOUND, "Contact not found")
         assert contact is not None
@@ -449,7 +456,7 @@ class WorkspaceContactOptionsApi(Resource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
         query = ContactOptionsQuery.model_validate(request.args.to_dict(flat=True))
-        service = _contact_service(session)
+        service = _contact_service(session, TenantId(tenant_id))
         page = service.list_contact_options(
             TenantId(tenant_id),
             page=query.page,
@@ -545,7 +552,7 @@ class WorkspaceExternalContactsApi(Resource):
         request_body = ExternalContactCreateRequest.model_validate(console_ns.payload or {})
         try:
             with session.begin():
-                contact = _contact_service(session).create_external_contact(
+                contact = _contact_service(session, TenantId(tenant_id)).create_external_contact(
                     TenantId(tenant_id),
                     contact_id=ContactId(str(uuidv7())),
                     name=request_body.name,
@@ -570,7 +577,7 @@ class WorkspaceExternalContactApi(Resource):
     @with_session
     def patch(self, session: Session, tenant_id: str, contact_id: str):
         request_body = ExternalContactUpdateRequest.model_validate(console_ns.payload or {})
-        service = _contact_service(session)
+        service = _contact_service(session, TenantId(tenant_id))
         try:
             with session.begin():
                 current = service.get_contact(TenantId(tenant_id), ContactId(contact_id))
@@ -619,7 +626,9 @@ class WorkspaceContactsRemoveApi(Resource):
                         contact_ids,
                     )
                 else:
-                    removed_ids = _contact_service(session).remove_contacts(TenantId(tenant_id), contact_ids)
+                    removed_ids = _contact_service(session, TenantId(tenant_id)).remove_contacts(
+                        TenantId(tenant_id), contact_ids
+                    )
         except ContactError as error:
             _raise_contact_error(error)
         except ValueError as error:
@@ -650,7 +659,7 @@ class WorkspaceIMSyncRunsApi(Resource):
                 AccountId(current_user.id),
             )
         except (
-            IMIntegrationNotConfiguredError,
+            IMChannelNotConfiguredError,
             IMSyncDispatchUnavailableError,
             IMSyncRevisionChangedError,
             IMWriteUnavailableError,
@@ -677,7 +686,7 @@ class WorkspaceLatestIMSyncRunApi(Resource):
     def get(self, tenant_id: str):
         try:
             run = build_im_contact_sync_application().sync_service.get_latest_run(_workspace_scope(tenant_id))
-        except (IMIntegrationNotConfiguredError, IMSyncRunNotFoundError) as error:
+        except (IMChannelNotConfiguredError, IMSyncRunNotFoundError) as error:
             return _im_application_error_response(error)
         return dump_response(GetLatestIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
@@ -707,7 +716,7 @@ class WorkspaceLatestIMSyncRunResultsApi(Resource):
                 page=query.page,
                 limit=query.limit,
             )
-        except (IMIntegrationNotConfiguredError, IMSyncRunNotFoundError) as error:
+        except (IMChannelNotConfiguredError, IMSyncRunNotFoundError) as error:
             return _im_application_error_response(error)
         return dump_response(
             ListLatestIMSyncRunResultsResponse,
@@ -739,7 +748,7 @@ class WorkspaceIMIdentitiesApi(Resource):
                 page=query.page,
                 limit=query.limit,
             )
-        except IMIntegrationNotConfiguredError as error:
+        except IMChannelNotConfiguredError as error:
             return _im_application_error_response(error)
         return dump_response(
             ListIMIdentitiesResponse,
@@ -905,7 +914,7 @@ class BatchGetContactsAPI(Resource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
         query = query_params_from_request(BatchGetContactsQuery, list_fields=("contact_ids",))
-        contacts = _contact_service(session).get_contacts(
+        contacts = _contact_service(session, TenantId(tenant_id)).get_contacts(
             TenantId(tenant_id),
             [ContactId(contact_id) for contact_id in query.contact_ids],
         )
@@ -935,7 +944,7 @@ class BatchGetContactOptionsAPI(Resource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
         query = query_params_from_request(BatchGetContactOptionsQuery, list_fields=("contact_ids",))
-        contacts = _contact_service(session).get_contact_options(
+        contacts = _contact_service(session, TenantId(tenant_id)).get_contact_options(
             TenantId(tenant_id),
             [ContactId(contact_id) for contact_id in query.contact_ids],
         )

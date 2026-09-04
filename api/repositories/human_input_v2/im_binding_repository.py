@@ -33,13 +33,8 @@ class IMBinding:
 
 @dataclass(frozen=True, slots=True)
 class IMBindingAssignment:
-    """Requested Contact-to-Identity assignment.
+    """Requested Contact-to-Identity assignment."""
 
-    The candidate ID is consumed only when an operation creates a row. Updating
-    an existing workspace override preserves its persisted ID and creation time.
-    """
-
-    new_binding_id: IMBindingId
     contact_id: ContactId
     identity_id: IMIdentityId
     assigned_at: NaiveDatetime
@@ -55,10 +50,6 @@ class IMBindingConflictError(IMBindingRepositoryError):
 
 class IMBindingIdentityNotFoundError(IMBindingRepositoryError):
     """The requested Identity is not current in the bound Channel."""
-
-
-class StaleIMBindingWriteError(IMBindingRepositoryError):
-    """An exact Binding write no longer matches current state."""
 
 
 class IMBindingRepository(Protocol):
@@ -89,8 +80,9 @@ class IMBindingRepository(Protocol):
         next_identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
         updated_at: NaiveDatetime,
-    ) -> IMBinding:
-        """Replace one exact default Binding in the bound Channel."""
+        # TODO(QuantumGhost): The API seems weird
+    ) -> IMBinding | None:
+        """Replace one exact default Binding, or return no value when stale."""
         ...
 
     def delete(
@@ -98,8 +90,8 @@ class IMBindingRepository(Protocol):
         binding_id: IMBindingId,
         *,
         expected_identity_id: IMIdentityId,
-    ) -> IMBinding:
-        """Delete one exact default Binding in the bound Channel."""
+    ) -> None:
+        """Idempotently delete one exact default Binding in the bound Channel."""
         ...
 
     def set_workspace_override(
@@ -145,5 +137,4 @@ __all__ = [
     "IMBindingKind",
     "IMBindingRepository",
     "IMBindingRepositoryError",
-    "StaleIMBindingWriteError",
 ]

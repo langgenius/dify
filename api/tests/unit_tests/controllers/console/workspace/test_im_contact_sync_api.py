@@ -8,14 +8,20 @@ from datetime import datetime
 from importlib import import_module
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import Never
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 
 from controllers.console.workspace.human_input import (
+    BatchGetContactOptionsAPI,
+    BatchGetContactsAPI,
+    WorkspaceContactApi,
     WorkspaceContactIMBindingsApi,
     WorkspaceContactIMOverrideApi,
+    WorkspaceContactOptionsApi,
+    WorkspaceContactsApi,
     WorkspaceIMIdentitiesApi,
     WorkspaceIMSyncRunsApi,
     WorkspaceLatestIMSyncRunApi,
@@ -31,11 +37,10 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.im_integration import (
     ContactIMBindingView,
-    IMBinding,
     IMBindingCommandError,
     IMBindingCommandErrorCode,
+    IMChannelRevision,
     IMSyncRun,
-    IntegrationRevisionToken,
     SyncContactSnapshot,
     SynchronizedIMIdentity,
     SynchronizedIMIdentityPage,
@@ -54,10 +59,14 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
+from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, IMBinding, Page
+from services.human_input_v2.contact_service import ContactWithIMBindings
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
-    IMIntegrationNotConfiguredError,
+    IMChannelNotConfiguredError,
     IMSyncDispatchUnavailableError,
+    IMSyncRevisionChangedError,
+    IMSyncRunNotFoundError,
 )
 
 _CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
@@ -65,7 +74,7 @@ _NOW = datetime(2026, 8, 11, 8)
 _CONTACT_CREATED_AT = datetime(2025, 7, 10, 6)
 _RUN = IMSyncRun.create(
     sync_run_id=IMSyncRunId("run-1"),
-    integration_revision=IntegrationRevisionToken(IntegrationId("integration-1"), 3),
+    channel_revision=IMChannelRevision("integration-1", 3),
     provider=IMProvider.FEISHU,
     started_by_account_id=AccountId("account-1"),
     now=_NOW,
@@ -95,22 +104,40 @@ _RESULT = SyncResultFact(
 
 
 class _SyncService:
-    def create_or_get_active_run(self, organization_scope, started_by_account_id):
+    def create_or_get_active_run(
+        self,
+        organization_scope: WorkspaceScope,
+        started_by_account_id: AccountId,
+    ) -> IMSyncRun:
         assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert started_by_account_id == AccountId("account-1")
         return _RUN
 
-    def get_latest_run(self, organization_scope):
+    def get_latest_run(self, organization_scope: WorkspaceScope) -> IMSyncRun:
         assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         return _RUN
 
-    def list_latest_results(self, organization_scope, result_type, *, page, limit):
+    def list_latest_results(
+        self,
+        organization_scope: WorkspaceScope,
+        result_type: IMSyncResultType,
+        *,
+        page: int,
+        limit: int,
+    ) -> SyncResultPage:
         assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert result_type is IMSyncResultType.NOT_MATCHED
         assert (page, limit) == (1, 20)
         return SyncResultPage((_RESULT,), page=page, limit=limit, total=1)
 
-    def search_identities(self, organization_scope, *, keyword, page, limit):
+    def search_identities(
+        self,
+        organization_scope: WorkspaceScope,
+        *,
+        keyword: str | None,
+        page: int,
+        limit: int,
+    ) -> SynchronizedIMIdentityPage:
         assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert (keyword, page, limit) == ("provider-user", 1, 20)
         return SynchronizedIMIdentityPage(
@@ -131,16 +158,12 @@ class _SyncService:
 
 
 def _contact_view(scope: IMBindingScope) -> ContactIMBindingView:
-    binding = IMBinding.create(
-        binding_id=IMBindingId(f"binding-{scope.value}"),
-        integration_id=IntegrationId("integration-1"),
+    binding = IMBinding(
+        id=IMBindingId(f"binding-{scope.value}"),
         scope=scope,
-        scope_id="workspace-1" if scope is IMBindingScope.WORKSPACE else "integration-1",
         contact_id=ContactId("00000000-0000-0000-0000-000000000001"),
         identity_id=IMIdentityId("identity-1"),
         provider=IMProvider.FEISHU,
-        bound_by_account_id=AccountId("account-1"),
-        now=_NOW,
     )
     return ContactIMBindingView(
         id=binding.contact_id,
@@ -154,7 +177,7 @@ def _contact_view(scope: IMBindingScope) -> ContactIMBindingView:
 
 
 class _BindingService:
-    def create_organization_binding(self, **kwargs):
+    def create_organization_binding(self, **kwargs: object) -> ContactIMBindingView:
         assert kwargs == {
             "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
             "tenant_id": TenantId("workspace-1"),
@@ -164,18 +187,18 @@ class _BindingService:
         }
         return _contact_view(IMBindingScope.ORGANIZATION)
 
-    def delete_organization_binding(self, **kwargs):
+    def delete_organization_binding(self, **kwargs: object) -> None:
         assert kwargs["binding_id"] == IMBindingId("binding-organization")
 
-    def set_workspace_override(self, **_kwargs):
+    def set_workspace_override(self, **_kwargs: object) -> ContactIMBindingView:
         return _contact_view(IMBindingScope.WORKSPACE)
 
-    def reset_workspace_override(self, **_kwargs):
+    def reset_workspace_override(self, **_kwargs: object) -> ContactIMBindingView:
         return _contact_view(IMBindingScope.ORGANIZATION)
 
 
 @pytest.fixture
-def application(monkeypatch: pytest.MonkeyPatch):
+def application(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     application = SimpleNamespace(sync_service=_SyncService(), binding_service=_BindingService())
     monkeypatch.setattr(
         _CONTROLLER_MODULE,
@@ -188,7 +211,7 @@ def application(monkeypatch: pytest.MonkeyPatch):
 
 def test_sync_command_and_queries_map_transport_neutral_results(
     app: Flask,
-    application,
+    application: SimpleNamespace,
 ) -> None:
     assert application.sync_service is not None
     account = SimpleNamespace(id="account-1")
@@ -268,7 +291,7 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
     error = IMSyncDispatchUnavailableError("IM synchronization dispatch is temporarily unavailable")
 
     class SyncService:
-        def create_or_get_active_run(self, _scope, _account_id):
+        def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
             raise error
 
     monkeypatch.setattr(
@@ -293,7 +316,7 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
 
 
 @pytest.mark.parametrize("command", ["sync_create", "organization_binding", "workspace_override"])
-def test_write_lock_unavailable_has_stable_retryable_http_mapping(
+def test_write_unavailable_has_stable_retryable_http_mapping(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     command: str,
@@ -301,14 +324,14 @@ def test_write_lock_unavailable_has_stable_retryable_http_mapping(
     error = IMWriteUnavailableError("IM write is temporarily unavailable")
 
     class SyncService:
-        def create_or_get_active_run(self, _scope, _account_id):
+        def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
             raise error
 
     class BindingService:
-        def create_organization_binding(self, **_kwargs):
+        def create_organization_binding(self, **_kwargs: object) -> Never:
             raise error
 
-        def set_workspace_override(self, **_kwargs):
+        def set_workspace_override(self, **_kwargs: object) -> Never:
             raise error
 
     monkeypatch.setattr(
@@ -389,7 +412,14 @@ def test_latest_results_map_every_discriminated_bucket(
     sync_result: SyncResultFact,
 ) -> None:
     class SyncService:
-        def list_latest_results(self, _scope, result_type, *, page, limit):
+        def list_latest_results(
+            self,
+            _scope: object,
+            result_type: IMSyncResultType,
+            *,
+            page: int,
+            limit: int,
+        ) -> SyncResultPage:
             assert result_type is sync_result.result_type
             return SyncResultPage((sync_result,), page=page, limit=limit, total=1)
 
@@ -422,7 +452,7 @@ def test_latest_results_map_every_discriminated_bucket(
 
 def test_binding_and_override_handlers_return_current_contact_projection(
     app: Flask,
-    application,
+    application: SimpleNamespace,
 ) -> None:
     assert application.binding_service is not None
     account = SimpleNamespace(id="account-1")
@@ -458,7 +488,9 @@ def test_binding_and_override_handlers_return_current_contact_projection(
 @pytest.mark.parametrize(
     ("error", "expected_status", "expected_code"),
     [
-        (IMIntegrationNotConfiguredError("missing"), 404, "im_integration_not_configured"),
+        (IMChannelNotConfiguredError("missing"), 404, "im_integration_not_configured"),
+        (IMSyncRunNotFoundError("missing run"), 404, "im_sync_run_not_found"),
+        (IMSyncRevisionChangedError("stale revision"), 409, "im_sync_revision_changed"),
         (
             IMBindingCommandError(IMBindingCommandErrorCode.BINDING_CONFLICT, "conflict"),
             409,
@@ -481,7 +513,7 @@ def test_expected_application_errors_have_stable_http_mapping(
     if isinstance(error, IMBindingCommandError):
 
         class BindingService:
-            def create_organization_binding(self, **_kwargs):
+            def create_organization_binding(self, **_kwargs: object) -> Never:
                 raise error
 
         application = SimpleNamespace(binding_service=BindingService())
@@ -493,10 +525,20 @@ def test_expected_application_errors_have_stable_http_mapping(
             SimpleNamespace(id="account-1"),
             "00000000-0000-0000-0000-000000000001",
         )
+    elif isinstance(error, IMSyncRevisionChangedError):
+
+        class SyncService:
+            def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
+                raise error
+
+        application = SimpleNamespace(sync_service=SyncService())
+        handler = unwrap(WorkspaceIMSyncRunsApi.post)
+        request_context = app.test_request_context(method="POST")
+        handler_args = (WorkspaceIMSyncRunsApi(), "workspace-1", SimpleNamespace(id="account-1"))
     else:
 
         class SyncService:
-            def get_latest_run(self, _scope):
+            def get_latest_run(self, _scope: object) -> Never:
                 raise error
 
         application = SimpleNamespace(sync_service=SyncService())
@@ -552,3 +594,97 @@ def test_handlers_preserve_authorization_and_do_not_reach_persistence_or_stub() 
         assert "sqlalchemy" not in source.lower()
     for controller_class in command_classes:
         assert "@with_current_user" in inspect.getsource(controller_class)
+
+
+class _ContactService:
+    def __init__(self) -> None:
+        contact = Contact(
+            id=ContactId("00000000-0000-0000-0000-000000000001"),
+            type=ContactType.WORKSPACE,
+            name="Reviewer",
+            email="reviewer@example.com",
+            avatar_file_id=None,
+            created_at=_CONTACT_CREATED_AT,
+        )
+        self.view = ContactWithIMBindings(contact, _contact_view(IMBindingScope.ORGANIZATION).im_bindings)
+
+    def list_contacts(
+        self,
+        tenant_id: TenantId,
+        *,
+        page: int,
+        limit: int,
+        query: ContactQuery,
+    ) -> tuple[Page[Contact], tuple[ContactWithIMBindings, ...]]:
+        assert tenant_id == TenantId("workspace-1")
+        assert (page, limit, query) == (1, 20, ContactQuery())
+        return Page((self.view.contact,), page, limit), (self.view,)
+
+    def count_contacts(self, tenant_id: TenantId, query: ContactQuery) -> int:
+        assert tenant_id == TenantId("workspace-1")
+        assert query == ContactQuery()
+        return 1
+
+    def get_contact(self, tenant_id: TenantId, contact_id: ContactId) -> ContactWithIMBindings | None:
+        assert tenant_id == TenantId("workspace-1")
+        return self.view if contact_id == self.view.contact.id else None
+
+    def list_contact_options(
+        self,
+        tenant_id: TenantId,
+        *,
+        page: int,
+        limit: int,
+        keyword: str,
+    ) -> Page[Contact]:
+        assert tenant_id == TenantId("workspace-1")
+        assert (page, limit, keyword) == (1, 20, "")
+        return Page((self.view.contact,), page, limit)
+
+    def get_contacts(self, tenant_id: TenantId, contact_ids: list[ContactId]) -> tuple[ContactWithIMBindings, ...]:
+        assert tenant_id == TenantId("workspace-1")
+        assert contact_ids == [self.view.contact.id]
+        return (self.view,)
+
+    def get_contact_options(self, tenant_id: TenantId, contact_ids: list[ContactId]) -> tuple[Contact, ...]:
+        assert tenant_id == TenantId("workspace-1")
+        assert contact_ids == [self.view.contact.id]
+        return (self.view.contact,)
+
+
+def test_contact_read_handlers_preserve_current_and_editor_safe_projections(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _ContactService()
+    monkeypatch.setattr(_CONTROLLER_MODULE, "_contact_service", lambda _session, _tenant_id: service)
+    contact_id = str(service.view.contact.id)
+
+    with app.test_request_context(method="GET", query_string={"page": "1", "limit": "20"}):
+        listed = unwrap(WorkspaceContactsApi.get)(WorkspaceContactsApi(), object(), "workspace-1")
+        detail = unwrap(WorkspaceContactApi.get)(WorkspaceContactApi(), object(), "workspace-1", contact_id)
+        options = unwrap(WorkspaceContactOptionsApi.get)(WorkspaceContactOptionsApi(), object(), "workspace-1")
+    with app.test_request_context(method="GET", query_string=[("contact_ids", contact_id)]):
+        batch = unwrap(BatchGetContactsAPI.get)(BatchGetContactsAPI(), object(), "workspace-1")
+        batch_options = unwrap(BatchGetContactOptionsAPI.get)(BatchGetContactOptionsAPI(), object(), "workspace-1")
+
+    assert listed["data"][0]["id"] == contact_id
+    assert detail["contact"]["id"] == contact_id
+    assert options["data"][0]["id"] == contact_id
+    assert batch["data"][0]["id"] == contact_id
+    assert batch_options["data"][0]["id"] == contact_id
+    assert "im_bindings" not in options["data"][0]
+    assert "email" not in batch["data"][0]
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        replace(_RESULT, provider_user_id=None, result_type=IMSyncResultType.ADDED),
+        replace(_RESULT, result_type=IMSyncResultType.SKIPPED),
+        replace(_RESULT, result_type=IMSyncResultType.REMOVED),
+    ],
+)
+def test_sync_result_projection_rejects_incomplete_persisted_snapshots(result: SyncResultFact) -> None:
+    with pytest.raises(RuntimeError, match="missing"):
+        _CONTROLLER_MODULE._sync_result_payload(result)

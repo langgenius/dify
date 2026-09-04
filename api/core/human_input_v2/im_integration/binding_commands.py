@@ -9,8 +9,7 @@ from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import HumanInputContactType
 from core.human_input_v2.shared import ContactId
-
-from .records import IMBinding
+from repositories.human_input_v2.contact import IMBinding
 
 
 class IMBindingCommandErrorCode(StrEnum):

@@ -24,8 +24,27 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
 )
 
-from .integration import IntegrationRevisionToken
 from .records import OpaqueProviderPayload
+
+
+@dataclass(frozen=True, slots=True)
+class IMChannelRevision:
+    """Historical configuration token captured by one synchronization run."""
+
+    channel_id: str
+    config_version: int
+
+    def __post_init__(self) -> None:
+        if self.config_version < 1:
+            raise ValueError("config version must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class StaleRevision:
+    """Stable rejection for a synchronization token that is no longer current."""
+
+    expected: IMChannelRevision
+    actual: IMChannelRevision | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,10 +129,10 @@ class SynchronizedIMIdentityPage:
 
 @dataclass(frozen=True, slots=True)
 class IMSyncRun:
-    """Independent sync aggregate that captures one complete Integration token."""
+    """Independent sync aggregate that captures one complete Channel revision."""
 
     id: IMSyncRunId
-    integration_revision: IntegrationRevisionToken
+    channel_revision: IMChannelRevision
     provider: IMProvider
     status: IMSyncRunStatus
     added_count: int
@@ -134,14 +153,14 @@ class IMSyncRun:
         cls,
         *,
         sync_run_id: IMSyncRunId,
-        integration_revision: IntegrationRevisionToken,
+        channel_revision: IMChannelRevision,
         provider: IMProvider,
         started_by_account_id: AccountId | None,
         now: NaiveDatetime,
     ) -> IMSyncRun:
         return cls(
             id=sync_run_id,
-            integration_revision=integration_revision,
+            channel_revision=channel_revision,
             provider=provider,
             status=IMSyncRunStatus.QUEUED,
             added_count=0,

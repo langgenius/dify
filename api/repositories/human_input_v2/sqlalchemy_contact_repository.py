@@ -18,8 +18,8 @@ from sqlalchemy.engine import Row, RowMapping
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
-from core.human_input_v2.entities import IMBindingScope, IMProvider
-from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, NormalizedEmail, TenantId
+from core.human_input_v2.entities import IMBindingScope
+from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, NormalizedEmail, TenantId
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
@@ -27,8 +27,6 @@ from models.human_input_v2 import (
     ContactSubjectType,
     HumanInputContactIdentity,
     HumanInputExternalContactProfile,
-    HumanInputIMBinding,
-    HumanInputIMIntegration,
     HumanInputPlatformContactWorkspaceEntry,
 )
 from models.model import UploadFile
@@ -44,6 +42,9 @@ from repositories.human_input_v2.contact import (
     OrganizationCandidate,
     Page,
 )
+from repositories.human_input_v2.im_binding_repository import IMBindingKind
+from repositories.human_input_v2.im_channel_repository import IMChannel
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 
 _CONTACT_ID = "contact_id"
 _CONTACT_TYPE = "contact_type"
@@ -511,10 +512,11 @@ class SQLAlchemyContactRepository:
 
 
 class SQLAlchemyContactIMBindingRepository:
-    """Explicit current-binding batch reader using a caller-provided Session."""
-
-    def __init__(self, session: Session) -> None:
+    """Contact projection over one already-resolved current IM Channel."""
+    # TODO(QuantumGhost): channel should not be None here.
+    def __init__(self, session: Session, channel: IMChannel | None) -> None:
         self._session = session
+        self._channel = channel
 
     def get_im_bindings(
         self,
@@ -522,7 +524,7 @@ class SQLAlchemyContactIMBindingRepository:
         contact_ids: Sequence[ContactId],
     ) -> Sequence[IMBinding]:
         distinct_ids = tuple(dict.fromkeys(contact_ids))
-        if not distinct_ids:
+        if not distinct_ids or self._channel is None:
             return ()
         contact_repository = SQLAlchemyContactRepository(self._session)
         current_account_contact_ids = {
@@ -532,41 +534,23 @@ class SQLAlchemyContactIMBindingRepository:
         }
         if not current_account_contact_ids:
             return ()
-        priority = sa.case((HumanInputIMBinding.scope == IMBindingScope.WORKSPACE, 0), else_=1)
-        records = self._session.scalars(
-            sa.select(HumanInputIMBinding)
-            .join(HumanInputIMIntegration, HumanInputIMIntegration.id == HumanInputIMBinding.integration_id)
-            .where(
-                HumanInputIMBinding.contact_id.in_([str(contact_id) for contact_id in current_account_contact_ids]),
-                sa.or_(
-                    HumanInputIMIntegration.tenant_id == str(tenant_id),
-                    HumanInputIMIntegration.tenant_id.is_(None),
-                ),
-                sa.or_(
-                    sa.and_(
-                        HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                        HumanInputIMBinding.scope_id == str(tenant_id),
-                    ),
-                    sa.and_(
-                        HumanInputIMBinding.scope == IMBindingScope.ORGANIZATION,
-                        HumanInputIMBinding.scope_id == HumanInputIMBinding.integration_id,
-                    ),
-                ),
-            )
-            .order_by(HumanInputIMBinding.contact_id, HumanInputIMBinding.provider, priority, HumanInputIMBinding.id)
-        ).all()
-        effective_records: dict[tuple[str, IMProvider], HumanInputIMBinding] = {}
-        for record in records:
-            effective_records.setdefault((record.contact_id, record.provider), record)
+        records = SQLAlchemyIMBindingRepository(self._session, self._channel.id).get_effective_many(
+            tenant_id,
+            tuple(current_account_contact_ids),
+        )
         return tuple(
             IMBinding(
                 id=IMBindingId(record.id),
-                scope=record.scope,
-                contact_id=ContactId(record.contact_id),
-                identity_id=IMIdentityId(record.im_identity_id),
-                provider=record.provider,
+                scope=(
+                    IMBindingScope.WORKSPACE
+                    if record.kind is IMBindingKind.WORKSPACE_OVERRIDE
+                    else IMBindingScope.ORGANIZATION
+                ),
+                contact_id=record.contact_id,
+                identity_id=record.identity_id,
+                provider=self._channel.provider,
             )
-            for record in effective_records.values()
+            for record in records
         )
 
 

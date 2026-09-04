@@ -614,7 +614,6 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
         ),
         sa.Index("hiimi_channel_email_idx", "channel_id", "normalized_email"),
         sa.Index("hiimi_channel_name_idx", "channel_id", "normalized_name"),
-        sa.Index("hiimi_channel_last_seen_run_idx", "channel_id", "last_seen_sync_run_id"),
         {
             "comment": (
                 "Current Provider users synchronized through one IM Channel. "
@@ -680,8 +679,6 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
             "im_identity_id",
             name="human_input_im_bindings_channel_identity_uq",
         ),
-        sa.Index("hiimb_contact_idx", "contact_id"),
-        sa.Index("hiimb_identity_idx", "im_identity_id"),
         {"comment": "Default Contact-to-IM-identity Bindings for one IM Channel."},
     )
 
@@ -775,7 +772,7 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
         sa.Index("hiimsr_integration_status_created_idx", "integration_id", "status", "created_at"),
         {"comment": "Manual IM directory synchronization lifecycle and aggregate counts."},
     )
-
+    # TODO(QuantumGhost): Rename this field
     integration_id: Mapped[str] = mapped_column(
         StringUUID, nullable=False, comment="Logical foreign key to human_input_im_integrations.id."
     )

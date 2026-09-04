@@ -1,35 +1,48 @@
-"""Application contract tests for transport-neutral IM synchronization commands."""
+"""Application behavior tests for Channel-bound IM synchronization commands."""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 import pytest
+import sqlalchemy as sa
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.entities import IMProvider, IMSyncResultType
-from core.human_input_v2.im_integration import (
-    ActiveRunDecision,
-    ActiveRunDecisionKind,
-    EncryptedCredentials,
-    IMIntegration,
-    IMSyncRun,
-    IntegrationRevisionToken,
-    ProviderTenantIdentity,
-    StaleRevision,
-    SyncResultPage,
-)
+from core.human_input_v2.entities import IMProvider, IMSyncResultType, IMSyncRunStatus
+from core.human_input_v2.im_integration import SyncResultFact
 from core.human_input_v2.shared import (
     AccountId,
+    ContactId,
+    DirectoryScope,
+    IMBindingId,
+    IMIdentityId,
+    IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
     TenantId,
     WorkspaceScope,
 )
-from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
-from services.human_input_v2.im_contact_sync.locking import OrganizationIMWriteLockUnavailableError
+from models.human_input_v2 import HumanInputIMSyncRun, IMEncryptedCredentials
+from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
+from repositories.human_input_v2.im_channel_repository import (
+    IMChannel,
+    IMChannelId,
+    IMChannelStatus,
+    WebhookId,
+)
+from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
+from repositories.human_input_v2.im_integration.mappers import sync_result_to_record
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    WorkspaceIMChannelReader,
+    WorkspaceIMChannelWriter,
+)
+from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.im_contact_sync.service import (
-    IMIntegrationNotConfiguredError,
+    IMChannelNotConfiguredError,
     IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
@@ -37,299 +50,182 @@ from services.human_input_v2.im_contact_sync.service import (
 )
 
 _NOW = datetime(2026, 8, 11, 8)
-_TENANT_ID = TenantId("workspace-1")
+_TENANT_ID = TenantId("00000000-0000-0000-0000-000000000101")
+_ACCOUNT_ID = AccountId("00000000-0000-0000-0000-000000000201")
+_CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000301")
+_RUN_ID = IMSyncRunId("00000000-0000-0000-0000-000000000401")
+_IDENTITY_ID = IMIdentityId("00000000-0000-0000-0000-000000000501")
 _SCOPE = WorkspaceScope(id=_TENANT_ID)
 
 
-def _integration() -> IMIntegration:
-    return IMIntegration.create(
-        integration_id=IntegrationId("integration-1"),
-        tenant_id=_TENANT_ID,
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
-        app_identifier="app-1",
-        configured_by_account_id=AccountId("account-1"),
-        callback_url=None,
-        now=_NOW,
-    )
-
-
-def _run(run_id: str = "run-1") -> IMSyncRun:
-    return IMSyncRun.create(
-        sync_run_id=IMSyncRunId(run_id),
-        integration_revision=IntegrationRevisionToken(IntegrationId("integration-1"), 1),
+def _channel(*, config_version: int = 1) -> IMChannel:
+    return IMChannel(
+        id=_CHANNEL_ID,
+        created_at=_NOW,
+        updated_at=_NOW,
         provider=IMProvider.FEISHU,
-        started_by_account_id=AccountId("account-1"),
-        now=_NOW,
+        provider_tenant_id="provider-tenant-1",
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
+        webhook_id=WebhookId("00000000000000000000000000000001"),
+        config_version=config_version,
+        status=IMChannelStatus.CONNECTED,
     )
 
 
-class _Repository:
-    def __init__(self, decision: ActiveRunDecision, latest_run: IMSyncRun | None = None) -> None:
-        self.integration: IMIntegration | None = _integration()
-        self.decision = decision
-        self.latest_run = latest_run
-        self.result_page = SyncResultPage((), page=1, limit=20, total=0)
-        self.page_request: tuple[IMSyncRunId, IMSyncResultType, int, int] | None = None
-        self.identity_page = object()
-        self.identity_request: tuple[IntegrationId, IMProvider, str | None, int, int] | None = None
+@dataclass
+class _ServiceContext:
+    sessions: sessionmaker[Session]
+    dispatched: list[tuple[IMSyncRunId, DirectoryScope]]
 
-    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
-        assert tenant_id == _TENANT_ID
-        return self.integration
+    def service(self, *, channel_override: IMChannel | None = None) -> IMSyncService:
+        def resolve_channel(session: Session, owner_scope: DirectoryScope) -> IMChannel | None:
+            assert owner_scope == _SCOPE
+            if channel_override is not None:
+                return channel_override
+            assert isinstance(owner_scope, WorkspaceScope)
+            return WorkspaceIMChannelReader(session, _TENANT_ID).get()
 
-    def create_or_get_active_run(
-        self,
-        integration_revision: IntegrationRevisionToken,
-        *,
-        organization_scope: WorkspaceScope,
-        sync_run_id: IMSyncRunId,
-        started_by_account_id: AccountId | None,
-        now: datetime,
-    ) -> ActiveRunDecision:
-        assert integration_revision == _integration().revision
-        assert organization_scope == _SCOPE
-        assert sync_run_id == IMSyncRunId("generated-run")
-        assert started_by_account_id == AccountId("account-1")
-        assert now == _NOW
-        return self.decision
-
-    def load_latest_sync_run(self, integration_id: IntegrationId) -> IMSyncRun | None:
-        assert integration_id == IntegrationId("integration-1")
-        return self.latest_run
-
-    def page_sync_results(
-        self,
-        sync_run_id: IMSyncRunId,
-        result_type: IMSyncResultType,
-        *,
-        page: int,
-        limit: int,
-    ) -> SyncResultPage:
-        self.page_request = (sync_run_id, result_type, page, limit)
-        return self.result_page
-
-    def search_identities(
-        self,
-        integration_id: IntegrationId,
-        provider: IMProvider,
-        *,
-        keyword: str | None,
-        page: int,
-        limit: int,
-    ) -> object:
-        self.identity_request = (integration_id, provider, keyword, page, limit)
-        return self.identity_page
+        return IMSyncService(
+            self.sessions,
+            resolve_channel,
+            lambda run_id, scope: self.dispatched.append((run_id, scope)),
+            clock=lambda: _NOW,
+            run_id_factory=lambda: _RUN_ID,
+        )
 
 
-def test_created_run_is_dispatched_once_after_persistence() -> None:
-    created_run = _run()
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, created_run))
-    dispatched: list[tuple[IMSyncRunId, WorkspaceScope]] = []
-    service = IMSyncService(
-        repository,
-        lambda run_id, scope: dispatched.append((run_id, scope)),
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    result = service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
-
-    assert result == created_run
-    assert dispatched == [(created_run.id, _SCOPE)]
+@pytest.fixture
+def service_context(sqlite_engine: Engine) -> _ServiceContext:
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with sessions.begin() as session:
+        WorkspaceIMChannelWriter(session, _TENANT_ID, _ACCOUNT_ID).create(_channel())
+    return _ServiceContext(sessions, [])
 
 
-def test_existing_queued_run_is_dispatched_again() -> None:
-    active_run = _run()
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, active_run))
-    dispatched: list[tuple[IMSyncRunId, WorkspaceScope]] = []
-    service = IMSyncService(
-        repository,
-        lambda run_id, scope: dispatched.append((run_id, scope)),
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
+def test_created_or_existing_active_run_is_serialized_and_dispatched_by_state(
+    service_context: _ServiceContext,
+) -> None:
+    service = service_context.service()
 
-    result = service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+    created = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+    retried = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
 
-    assert result == active_run
-    assert dispatched == [(active_run.id, _SCOPE)]
+    assert created == retried
+    assert created.channel_revision.channel_id == str(_CHANNEL_ID)
+    assert service_context.dispatched == [(_RUN_ID, _SCOPE), (_RUN_ID, _SCOPE)]
+    with service_context.sessions.begin() as session:
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = IMSyncRunStatus.RUNNING
 
-
-def test_existing_running_run_is_not_dispatched_again() -> None:
-    active_run = _run().start(_NOW)
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, active_run))
-    dispatched: list[tuple[IMSyncRunId, WorkspaceScope]] = []
-    service = IMSyncService(
-        repository,
-        lambda run_id, scope: dispatched.append((run_id, scope)),
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    result = service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
-
-    assert result == active_run
-    assert dispatched == []
+    running = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+    assert running.status is IMSyncRunStatus.RUNNING
+    assert service_context.dispatched == [(_RUN_ID, _SCOPE), (_RUN_ID, _SCOPE)]
+    with service_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncRun.id))) == 1
 
 
-def test_dispatch_failure_is_logged_and_raised_as_retryable_application_error(
+def test_dispatch_failure_occurs_after_queued_run_is_committed(
+    service_context: _ServiceContext,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    created_run = _run()
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, created_run))
-
-    def dispatch(_run_id: IMSyncRunId, _scope: WorkspaceScope) -> None:
+    def fail_dispatch(_run_id: IMSyncRunId, _scope: DirectoryScope) -> None:
         raise ConnectionError("queue unavailable")
 
+    def resolve_channel(session: Session, scope: DirectoryScope) -> IMChannel | None:
+        assert isinstance(scope, WorkspaceScope)
+        return WorkspaceIMChannelReader(session, scope.id).get()
+
     service = IMSyncService(
-        repository,
-        dispatch,
+        service_context.sessions,
+        resolve_channel,
+        fail_dispatch,
         clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
+        run_id_factory=lambda: _RUN_ID,
     )
 
-    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError) as error_info:
-        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+    with caplog.at_level(logging.ERROR), pytest.raises(IMSyncDispatchUnavailableError) as error_info:
+        service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
 
-    assert isinstance(error_info.value, IMSyncDispatchUnavailableError)
     assert isinstance(error_info.value.__cause__, ConnectionError)
-    assert "run-1" in caplog.text
-    assert "integration-1" in caplog.text
+    assert str(_RUN_ID) in caplog.text
+    with service_context.sessions() as session:
+        assert session.get(HumanInputIMSyncRun, str(_RUN_ID)) is not None
 
 
-def test_run_creation_maps_lock_unavailable_to_retryable_application_error() -> None:
-    class LockUnavailableRepository(_Repository):
-        def create_or_get_active_run(self, *_args, **_kwargs) -> ActiveRunDecision:
-            raise OrganizationIMWriteLockUnavailableError("busy")
-
-    repository = LockUnavailableRepository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, _run()))
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    with pytest.raises(RuntimeError) as error_info:
-        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
-
-    assert isinstance(error_info.value, IMWriteUnavailableError)
-    assert isinstance(error_info.value.__cause__, OrganizationIMWriteLockUnavailableError)
-
-
-def test_run_creation_maps_missing_integration_and_stale_revision() -> None:
-    expected_revision = _integration().revision
-    repository = _Repository(
-        ActiveRunDecision(
-            ActiveRunDecisionKind.STALE_REVISION,
-            None,
-            StaleRevision(expected_revision, IntegrationRevisionToken(expected_revision.integration_id, 2)),
-        )
-    )
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
+def test_missing_or_stale_channel_fails_before_run_creation(service_context: _ServiceContext) -> None:
+    missing = IMSyncService(service_context.sessions, lambda _session, _scope: None, lambda _id, _scope: None)
+    with pytest.raises(IMChannelNotConfiguredError):
+        missing.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
 
     with pytest.raises(IMSyncRevisionChangedError):
-        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+        service_context.service(channel_override=replace(_channel(), config_version=2)).create_or_get_active_run(
+            _SCOPE,
+            _ACCOUNT_ID,
+        )
 
-    repository.integration = None
-    with pytest.raises(IMIntegrationNotConfiguredError):
-        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
-
-
-def test_run_creation_rejects_repository_decision_without_a_run() -> None:
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, None))
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    with pytest.raises(RuntimeError, match="active run decision is missing its run"):
-        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+    with service_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncRun.id))) == 0
 
 
-def test_latest_summary_and_required_bucket_page_use_current_integration() -> None:
-    latest_run = _run("latest-run")
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, latest_run), latest_run)
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
+def test_latest_result_and_identity_queries_use_current_channel(service_context: _ServiceContext) -> None:
+    service = service_context.service()
+    run = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+    with service_context.sessions.begin() as session:
+        identities = SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID)
+        identities.create(
+            _IDENTITY_ID,
+            IMIdentityObservation(
+                provider_user_id="provider-user-1",
+                display_name="Reviewer",
+                email="reviewer@example.com",
+                raw_payload=OpaqueProviderPayload({}),
+                sync_run_id=run.id,
+                observed_at=_NOW,
+            ),
+        )
+        SQLAlchemyIMBindingRepository(session, _CHANNEL_ID).create(
+            IMBindingAssignment(
+                ContactId("00000000-0000-0000-0000-000000000601"),
+                _IDENTITY_ID,
+                _NOW,
+            ),
+            bound_by_account_id=None,
+        )
+        session.add(
+            sync_result_to_record(
+                SyncResultFact(
+                    id=IMSyncResultId("00000000-0000-0000-0000-000000000701"),
+                    integration_id=IntegrationId(str(_CHANNEL_ID)),
+                    sync_run_id=run.id,
+                    operation_key="result:not-matched:provider-user-1",
+                    result_type=IMSyncResultType.NOT_MATCHED,
+                    provider_user_id="provider-user-1",
+                    display_name="Reviewer",
+                    email="reviewer@example.com",
+                    normalized_email=None,
+                    contact_id=None,
+                    identity_id=_IDENTITY_ID,
+                    binding_id=IMBindingId("00000000-0000-0000-0000-000000000801"),
+                    removal_reason=None,
+                    reason_code="contact_not_found",
+                    reason_message=None,
+                    directory_entry_payload=None,
+                    contact_snapshot=None,
+                    identity_snapshot=None,
+                    created_at=_NOW,
+                    updated_at=_NOW,
+                )
+            )
+        )
 
-    assert service.get_latest_run(_SCOPE) == latest_run
-    assert service.list_latest_results(_SCOPE, IMSyncResultType.NOT_MATCHED, page=2, limit=10) == repository.result_page
-    assert repository.page_request == (latest_run.id, IMSyncResultType.NOT_MATCHED, 2, 10)
+    assert service.get_latest_run(_SCOPE) == run
+    result_page = service.list_latest_results(_SCOPE, IMSyncResultType.NOT_MATCHED, page=1, limit=20)
+    identity_page = service.search_identities(_SCOPE, keyword="REVIEWER", page=1, limit=20)
+    assert [result.id for result in result_page.items] == [IMSyncResultId("00000000-0000-0000-0000-000000000701")]
+    assert [identity.id for identity in identity_page.items] == [_IDENTITY_ID]
+    assert identity_page.items[0].binding_status.value == "bound"
 
 
-def test_latest_queries_fail_closed_without_current_run() -> None:
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, _run()))
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
+def test_latest_queries_fail_closed_without_a_current_run(service_context: _ServiceContext) -> None:
     with pytest.raises(IMSyncRunNotFoundError):
-        service.get_latest_run(_SCOPE)
-    with pytest.raises(IMSyncRunNotFoundError):
-        service.list_latest_results(_SCOPE, IMSyncResultType.ADDED, page=1, limit=20)
-
-
-def test_identity_search_uses_current_integration_and_remains_run_independent() -> None:
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, _run()))
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    result = service.search_identities(_SCOPE, keyword=" reviewer ", page=2, limit=10)
-
-    assert result is repository.identity_page
-    assert repository.identity_request == (
-        IntegrationId("integration-1"),
-        IMProvider.FEISHU,
-        " reviewer ",
-        2,
-        10,
-    )
-
-
-@pytest.mark.parametrize(("page", "limit"), [(0, 20), (1, 0), (1, 101)])
-def test_latest_result_paging_rejects_invalid_bounds(page: int, limit: int) -> None:
-    latest_run = _run("latest-run")
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, latest_run), latest_run)
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    with pytest.raises(ValueError, match="page|limit"):
-        service.list_latest_results(_SCOPE, IMSyncResultType.ADDED, page=page, limit=limit)
-
-
-@pytest.mark.parametrize(("page", "limit"), [(0, 20), (1, 0), (1, 101)])
-def test_identity_search_rejects_invalid_bounds(page: int, limit: int) -> None:
-    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, _run()))
-    service = IMSyncService(
-        repository,
-        lambda _run_id, _scope: None,
-        clock=lambda: _NOW,
-        run_id_factory=lambda: IMSyncRunId("generated-run"),
-    )
-
-    with pytest.raises(ValueError, match="page|limit"):
-        service.search_identities(_SCOPE, keyword=None, page=page, limit=limit)
+        service_context.service().get_latest_run(_SCOPE)

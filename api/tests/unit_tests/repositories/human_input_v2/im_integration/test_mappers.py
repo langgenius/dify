@@ -5,26 +5,24 @@ from datetime import datetime
 import pytest
 
 from core.human_input_v2.entities import (
-    IMBindingScope,
     IMProvider,
     IMSyncRemovalReason,
     IMSyncResultType,
 )
 from core.human_input_v2.im_integration import (
-    IMBinding,
     IMBindingChangeSnapshot,
-    IMIdentity,
+    IMChannelRevision,
     IMIdentityChangeSnapshot,
     IMReconciliationChange,
     IMReconciliationOperation,
     IMReconciliationSubjectKind,
     IMSyncRun,
-    IntegrationRevisionToken,
     OpaqueProviderPayload,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
     SyncResultFact,
 )
+from core.human_input_v2.im_integration.adapters import ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -37,10 +35,6 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
 )
 from repositories.human_input_v2.im_integration.mappers import (
-    binding_from_record,
-    binding_to_record,
-    identity_from_record,
-    identity_to_record,
     reconciliation_change_from_record,
     reconciliation_change_to_record,
     sync_result_from_record,
@@ -53,39 +47,10 @@ _NOW = datetime(2026, 7, 25, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
 
 
-def _identity() -> IMIdentity:
-    return IMIdentity.create(
-        identity_id=IMIdentityId("identity-1"),
-        integration_id=_INTEGRATION_ID,
-        provider=IMProvider.FEISHU,
-        provider_user_id="provider-user-1",
-        display_name="Reviewer",
-        email="reviewer@example.com",
-        raw_payload={"provider": "value"},
-        last_seen_sync_run_id=IMSyncRunId("run-1"),
-        last_seen_at=_NOW,
-        now=_NOW,
-    )
-
-
-def _binding() -> IMBinding:
-    return IMBinding.create(
-        binding_id=IMBindingId("binding-1"),
-        integration_id=_INTEGRATION_ID,
-        scope=IMBindingScope.ORGANIZATION,
-        scope_id=str(_INTEGRATION_ID),
-        contact_id=ContactId("contact-1"),
-        identity_id=IMIdentityId("identity-1"),
-        provider=IMProvider.FEISHU,
-        bound_by_account_id=AccountId("account-1"),
-        now=_NOW,
-    )
-
-
 def _run() -> IMSyncRun:
     return IMSyncRun.create(
         sync_run_id=IMSyncRunId("run-1"),
-        integration_revision=IntegrationRevisionToken(_INTEGRATION_ID, 1),
+        channel_revision=IMChannelRevision(str(_INTEGRATION_ID), 1),
         provider=IMProvider.FEISHU,
         started_by_account_id=AccountId("account-1"),
         now=_NOW,
@@ -129,21 +94,6 @@ def _result() -> SyncResultFact:
     )
 
 
-def test_identity_mapping_round_trips_structured_raw_payload() -> None:
-    identity = _identity()
-
-    record = identity_to_record(identity)
-
-    assert record.raw_payload.root == {"provider": "value"}
-    assert identity_from_record(record) == identity
-
-
-def test_binding_mapping_round_trips_scope_and_owner_facts() -> None:
-    binding = _binding()
-
-    assert binding_from_record(binding_to_record(binding)) == binding
-
-
 def test_sync_run_mapping_round_trips_captured_revision_and_counts() -> None:
     run = _run()
 
@@ -177,7 +127,7 @@ def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:
             before=IMIdentityChangeSnapshot(
                 identity_id=IMIdentityId("identity-1"),
                 provider=IMProvider.FEISHU,
-                provider_user_id="provider-user-1",
+                provider_user_id=ProviderUserId("provider-user-1"),
                 display_name="Before",
                 email="reviewer@example.com",
                 normalized_email=NormalizedEmail("reviewer@example.com"),
@@ -186,7 +136,7 @@ def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:
             after=IMIdentityChangeSnapshot(
                 identity_id=IMIdentityId("identity-1"),
                 provider=IMProvider.FEISHU,
-                provider_user_id="provider-user-1",
+                provider_user_id=ProviderUserId("provider-user-1"),
                 display_name="After",
                 email="reviewer@example.com",
                 normalized_email=NormalizedEmail("reviewer@example.com"),

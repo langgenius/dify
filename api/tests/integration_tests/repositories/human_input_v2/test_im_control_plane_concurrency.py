@@ -1,35 +1,41 @@
-"""PostgreSQL-only concurrency coverage for the IM Control Plane."""
+"""PostgreSQL-only concurrency coverage for Channel-bound IM persistence."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from threading import Barrier
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import (
-    ActiveRunDecisionKind,
-    ApplyReconciliationStatus,
-    ConfigurationTransition,
-    EncryptedCredentials,
-    IMIntegration,
-    ProviderTenantIdentity,
-    ReconciliationPlan,
-    StaleRevision,
-)
-from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId
+from core.human_input_v2.im_integration import ActiveRunDecisionKind
+from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncRunId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import (
     HumanInputIMBinding,
+    HumanInputIMBindingWorkspaceOverride,
+    HumanInputIMChannel,
     HumanInputIMIdentity,
-    HumanInputIMIntegration,
+    HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
+    IMEncryptedCredentials,
 )
+from repositories.human_input_v2.im_binding_repository import IMBindingAssignment, IMBindingConflictError
+from repositories.human_input_v2.im_channel_repository import (
+    IMChannel,
+    IMChannelId,
+    IMChannelStatus,
+    WebhookId,
+)
+from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import DeploymentIMChannelWriter
+from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 
 
 def _require_postgresql() -> None:
@@ -37,121 +43,136 @@ def _require_postgresql() -> None:
         pytest.skip("requires the CI PostgreSQL integration database")
 
 
-def _integration(integration_id: str, tenant_id: str | None) -> IMIntegration:
-    return IMIntegration.create(
-        integration_id=IntegrationId(integration_id),
-        tenant_id=TenantId(tenant_id) if tenant_id is not None else None,
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-{tenant_id or 'deployment'}"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
+def _channel() -> IMChannel:
+    now = naive_utc_now()
+    return IMChannel(
+        id=IMChannelId(str(uuidv7())),
+        created_at=now,
+        updated_at=now,
+        provider=IMProvider.FEISHU,
+        provider_tenant_id=f"provider-{uuidv7()}",
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
         app_identifier="app-1",
-        configured_by_account_id=AccountId(str(uuidv7())),
-        callback_url=None,
-        now=naive_utc_now(),
+        webhook_id=WebhookId(uuidv7().hex),
+        config_version=1,
+        status=IMChannelStatus.CONNECTED,
     )
 
 
-def _cleanup(
-    session_maker,
-    integration_ids: tuple[str, ...],
-) -> None:
+def _cleanup(session_maker: sessionmaker[Session], channel_id: IMChannelId) -> None:
     with session_maker.begin() as session:
         run_ids = session.scalars(
-            sa.select(HumanInputIMSyncRun.id).where(HumanInputIMSyncRun.integration_id.in_(integration_ids))
+            sa.select(HumanInputIMSyncRun.id).where(HumanInputIMSyncRun.integration_id == str(channel_id))
         ).all()
         if run_ids:
+            session.execute(
+                sa.delete(HumanInputIMReconciliationChange).where(
+                    HumanInputIMReconciliationChange.sync_run_id.in_(run_ids)
+                )
+            )
             session.execute(sa.delete(HumanInputIMSyncResult).where(HumanInputIMSyncResult.sync_run_id.in_(run_ids)))
-        session.execute(sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.integration_id.in_(integration_ids)))
-        session.execute(sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.integration_id.in_(integration_ids)))
-        session.execute(sa.delete(HumanInputIMSyncRun).where(HumanInputIMSyncRun.integration_id.in_(integration_ids)))
-        session.execute(sa.delete(HumanInputIMIntegration).where(HumanInputIMIntegration.id.in_(integration_ids)))
+        session.execute(
+            sa.delete(HumanInputIMBindingWorkspaceOverride).where(
+                HumanInputIMBindingWorkspaceOverride.channel_id == str(channel_id)
+            )
+        )
+        session.execute(sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.channel_id == str(channel_id)))
+        session.execute(sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.channel_id == str(channel_id)))
+        session.execute(sa.delete(HumanInputIMSyncRun).where(HumanInputIMSyncRun.integration_id == str(channel_id)))
+        session.execute(sa.delete(HumanInputIMChannel).where(HumanInputIMChannel.id == str(channel_id)))
 
 
-def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx) -> None:
+def _persist_channel(session_maker: sessionmaker[Session], channel: IMChannel) -> None:
+    with session_maker.begin() as session:
+        DeploymentIMChannelWriter(session).create(channel)
+
+
+def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: object) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-    integration_id = str(uuidv7())
-    repository = SQLAlchemyIMControlPlaneRepository(session_maker)
-    integration = repository.create_integration(_integration(integration_id, str(uuidv7())))
+    channel = _channel()
+    _persist_channel(session_maker, channel)
     barrier = Barrier(2)
 
-    def trigger(_index: int):
+    def trigger(_index: int) -> ActiveRunDecisionKind:
         barrier.wait()
-        return SQLAlchemyIMControlPlaneRepository(session_maker).create_or_get_active_run(
-            integration.revision,
-            sync_run_id=IMSyncRunId(str(uuidv7())),
-            started_by_account_id=None,
-            now=naive_utc_now(),
-        )
+        with session_maker.begin() as session:
+            decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
+                sync_run_id=IMSyncRunId(str(uuidv7())),
+                started_by_account_id=None,
+                now=naive_utc_now(),
+            )
+            return decision.kind
 
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(trigger, range(2)))
+            outcomes = list(executor.map(trigger, range(2)))
 
-        assert [result.kind for result in results].count(ActiveRunDecisionKind.CREATED) == 1
-        assert [result.kind for result in results].count(ActiveRunDecisionKind.EXISTING_ACTIVE) == 1
+        assert outcomes.count(ActiveRunDecisionKind.CREATED) == 1
+        assert outcomes.count(ActiveRunDecisionKind.EXISTING_ACTIVE) == 1
         with session_maker() as session:
             count = session.scalar(
                 sa.select(sa.func.count(HumanInputIMSyncRun.id)).where(
-                    HumanInputIMSyncRun.integration_id == integration_id
+                    HumanInputIMSyncRun.integration_id == str(channel.id)
                 )
             )
         assert count == 1
     finally:
-        _cleanup(session_maker, (integration_id,))
+        _cleanup(session_maker, channel.id)
 
 
-def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_req_ctx) -> None:
+def test_concurrent_default_binding_conflict_commits_at_most_one_endpoint(flask_req_ctx: object) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-    integration_id = str(uuidv7())
-    repository = SQLAlchemyIMControlPlaneRepository(session_maker)
-    integration = repository.create_integration(_integration(integration_id, str(uuidv7())))
-    run_decision = repository.create_or_get_active_run(
-        integration.revision,
-        sync_run_id=IMSyncRunId(str(uuidv7())),
-        started_by_account_id=None,
-        now=naive_utc_now(),
-    )
-    assert run_decision.run is not None
-    rotation = integration.reconfigure(
-        expected_revision=integration.revision,
-        provider_tenant=integration.provider_tenant,
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
-        app_identifier="app-1",
-        configured_by_account_id=None,
-        callback_url=None,
-        now=naive_utc_now(),
-    )
-    assert isinstance(rotation, ConfigurationTransition)
-    repository.compare_and_swap_configuration(rotation)
-    plan = ReconciliationPlan(
-        sync_run_id=run_decision.run.id,
-        integration_revision=integration.revision,
-        provider=integration.provider_tenant.provider,
-        actions=(),
-        removed_identity_ids=(),
-    )
+    channel = _channel()
+    _persist_channel(session_maker, channel)
+    identity_ids = (IMIdentityId(str(uuidv7())), IMIdentityId(str(uuidv7())))
+    contact_id = ContactId(str(uuidv7()))
+    run_id = IMSyncRunId(str(uuidv7()))
+    now = naive_utc_now()
+    with session_maker.begin() as session:
+        identities = SQLAlchemyIMIdentityRepository(session, channel.id)
+        for index, identity_id in enumerate(identity_ids):
+            identities.create(
+                identity_id,
+                IMIdentityObservation(
+                    provider_user_id=f"provider-user-{index}",
+                    display_name=None,
+                    email=None,
+                    raw_payload=OpaqueProviderPayload({}),
+                    sync_run_id=run_id,
+                    observed_at=now,
+                ),
+            )
+    barrier = Barrier(2)
+
+    def bind(identity_id: IMIdentityId) -> str:
+        barrier.wait()
+        try:
+            with session_maker.begin() as session:
+                SQLAlchemyIMBindingRepository(session, channel.id).create(
+                    IMBindingAssignment(contact_id, identity_id, datetime.fromtimestamp(now.timestamp())),
+                    bound_by_account_id=None,
+                )
+            return "created"
+        except IMBindingConflictError:
+            return "conflict"
 
     try:
-        result = repository.apply_reconciliation(plan, now=naive_utc_now())
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = list(executor.map(bind, identity_ids))
 
-        assert result.status is ApplyReconciliationStatus.STALE_REVISION
+        assert outcomes.count("created") == 1
+        assert outcomes.count("conflict") == 1
         with session_maker() as session:
             assert (
                 session.scalar(
-                    sa.select(sa.func.count(HumanInputIMSyncResult.id)).where(
-                        HumanInputIMSyncResult.sync_run_id == str(plan.sync_run_id)
+                    sa.select(sa.func.count(HumanInputIMBinding.id)).where(
+                        HumanInputIMBinding.channel_id == str(channel.id),
+                        HumanInputIMBinding.contact_id == str(contact_id),
                     )
                 )
                 == 1
             )
-            assert (
-                session.scalar(
-                    sa.select(sa.func.count(HumanInputIMIdentity.id)).where(
-                        HumanInputIMIdentity.integration_id == integration_id
-                    )
-                )
-                == 0
-            )
     finally:
-        _cleanup(session_maker, (integration_id,))
+        _cleanup(session_maker, channel.id)

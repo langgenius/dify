@@ -95,8 +95,8 @@ class IMIdentityRepository(Protocol):
         """Update a current bound-Channel Identity from one observation."""
         ...
 
-    def delete(self, identity_id: IMIdentityId) -> IMIdentity:
-        """Delete an unbound current Identity from the bound Channel."""
+    def delete(self, identity_id: IMIdentityId) -> None:
+        """Idempotently delete an unbound Identity from the bound Channel."""
         ...
 
 
