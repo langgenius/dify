@@ -8,7 +8,7 @@ from flask import Response, abort, request
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.rbac import RBACCheck, enforce_rbac_checks
+from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
 from controllers.console.wraps import (
     account_initialization_required,
     enable_change_email,
@@ -86,7 +86,7 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         if rbac_checks is not None:
-            inject_request_context.rbac_checks = rbac_checks  # pyrefly: ignore[missing-attribute]
+            setattr(inject_request_context, RBAC_CHECKS_ATTR, rbac_checks)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
         if require_change_email_enabled:

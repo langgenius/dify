@@ -9,7 +9,7 @@ from services.enterprise.rbac_service import LegacyAgentRoleMigration
 MODULE = "commands.rbac"
 
 
-def _events(output: str) -> list[dict]:
+def _events(output: str) -> list[dict[str, object]]:
     return [json.loads(line) for line in output.splitlines() if line.startswith("{")]
 
 
@@ -26,7 +26,7 @@ def _report() -> list[LegacyAgentRoleMigration]:
     ]
 
 
-def test_dry_run_by_default_and_one_event_per_role():
+def test_dry_run_by_default_and_one_event_per_role() -> None:
     with (
         patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1"])),
         patch(f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles", return_value=_report()) as migrate,
@@ -51,7 +51,7 @@ def test_dry_run_by_default_and_one_event_per_role():
     assert "would change" in result.output
 
 
-def test_apply_flag_writes_and_reports_applied():
+def test_apply_flag_writes_and_reports_applied() -> None:
     with (
         patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1", "t2"])),
         patch(f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles", return_value=_report()[:1]) as migrate,
@@ -67,7 +67,7 @@ def test_apply_flag_writes_and_reports_applied():
     assert "changed" in result.output
 
 
-def test_tenant_id_option_limits_scope():
+def test_tenant_id_option_limits_scope() -> None:
     with (
         patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t9"])) as iter_tenants,
         patch(f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles", return_value=[]),
@@ -78,7 +78,7 @@ def test_tenant_id_option_limits_scope():
     iter_tenants.assert_called_once_with("t9", batch_size=500)
 
 
-def test_service_error_stops_with_tenant_in_message():
+def test_service_error_stops_with_tenant_in_message() -> None:
     with (
         patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1"])),
         patch(f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles", side_effect=RuntimeError("boom")),

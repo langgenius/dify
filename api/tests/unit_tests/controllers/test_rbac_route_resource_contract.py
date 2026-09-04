@@ -96,9 +96,12 @@ def _rbac_checks_from_exprs(exprs: list[ast.expr]) -> list[tuple[str, str]]:
         if locator_arg is None:
             continue
         parsed = _locator_param(locator_arg)
-        if parsed is None or parsed[1] is None:
+        if parsed is None:
             continue
-        found.append(parsed)
+        locator_name, param = parsed
+        if param is None:
+            continue
+        found.append((locator_name, param))
     return found
 
 

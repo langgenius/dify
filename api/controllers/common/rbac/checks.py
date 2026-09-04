@@ -10,7 +10,9 @@ from services.enterprise.rbac_service import RBACService
 
 from .locators import ResourceLocator, Workspace
 
-__all__ = ["RBACCheck", "enforce_rbac_checks"]
+__all__ = ["RBAC_CHECKS_ATTR", "RBACCheck", "enforce_rbac_checks"]
+
+RBAC_CHECKS_ATTR = "rbac_checks"
 
 
 @dataclass(frozen=True)

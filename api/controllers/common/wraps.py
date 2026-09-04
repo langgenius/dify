@@ -2,7 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 
 from configs import dify_config
-from controllers.common.rbac import RBACCheck, enforce_rbac_checks
+from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
 from libs.login import current_account_with_tenant
 
 __all__ = ["rbac_permission_required"]
@@ -26,7 +26,7 @@ def rbac_permission_required[**P, R](*checks: RBACCheck) -> Callable[[Callable[P
             )
             return view(*args, **kwargs)
 
-        decorated.rbac_checks = checks  # pyrefly: ignore[missing-attribute]
+        setattr(decorated, RBAC_CHECKS_ATTR, checks)
         return decorated
 
     return decorator
