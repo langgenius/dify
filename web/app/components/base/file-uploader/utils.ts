@@ -196,14 +196,33 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
     }
   })
 }
+const normalizeFileExtension = (ext: string) => ext.replace(/^\./, '').trim().toUpperCase()
+
 export const getSupportFileExtensionList = (
   allowFileTypes: string[],
   allowFileExtensions: string[],
 ) => {
-  if (allowFileTypes.includes(SupportUploadFileTypes.custom))
-    return allowFileExtensions.map((item) => item.slice(1).toUpperCase())
+  const seen = new Set<string>()
+  const result: string[] = []
 
-  return allowFileTypes.map((type) => FILE_EXTS[type]).flat()
+  const add = (ext?: string) => {
+    if (!ext) return
+    const normalized = normalizeFileExtension(ext)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    result.push(normalized)
+  }
+
+  for (const type of allowFileTypes) {
+    if (type === SupportUploadFileTypes.custom) continue
+    for (const ext of FILE_EXTS[type] || []) add(ext)
+  }
+
+  if (allowFileTypes.includes(SupportUploadFileTypes.custom)) {
+    for (const ext of allowFileExtensions) add(ext)
+  }
+
+  return result
 }
 
 export const isAllowedFileExtension = (

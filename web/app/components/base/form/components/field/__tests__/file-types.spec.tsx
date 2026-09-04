@@ -76,24 +76,24 @@ describe('FileTypesField', () => {
     expect(screen.getByRole('button', { name: SupportUploadFileTypes.custom })).toBeInTheDocument()
   })
 
-  it('should keep only custom when users choose custom types', () => {
+  it('should allow custom together with standard types', () => {
     mockField.state.value.allowedFileTypes = [SupportUploadFileTypes.document]
     render(<FileTypesField label="Allowed file types" />)
 
     fireEvent.click(screen.getByRole('button', { name: SupportUploadFileTypes.custom }))
     expect(mockField.handleChange).toHaveBeenCalledWith({
-      allowedFileTypes: [SupportUploadFileTypes.custom],
+      allowedFileTypes: [SupportUploadFileTypes.document, SupportUploadFileTypes.custom],
       allowedFileExtensions: [],
     })
   })
 
-  it('should remove custom and add selected standard type', () => {
+  it('should add a standard type without clearing custom', () => {
     mockField.state.value.allowedFileTypes = [SupportUploadFileTypes.custom]
     render(<FileTypesField label="Allowed file types" />)
 
     fireEvent.click(screen.getByRole('button', { name: SupportUploadFileTypes.image }))
     expect(mockField.handleChange).toHaveBeenCalledWith({
-      allowedFileTypes: [SupportUploadFileTypes.image],
+      allowedFileTypes: [SupportUploadFileTypes.custom, SupportUploadFileTypes.image],
       allowedFileExtensions: [],
     })
   })

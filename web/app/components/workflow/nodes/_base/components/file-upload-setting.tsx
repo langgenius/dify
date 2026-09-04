@@ -45,18 +45,9 @@ const FileUploadSetting: FC<Props> = ({
   const handleSupportFileTypeChange = useCallback(
     (type: SupportUploadFileTypes) => {
       const newPayload = produce(payload, (draft) => {
-        if (type === SupportUploadFileTypes.custom) {
-          if (!draft.allowed_file_types.includes(SupportUploadFileTypes.custom))
-            draft.allowed_file_types = [SupportUploadFileTypes.custom]
-          else draft.allowed_file_types = draft.allowed_file_types.filter((v) => v !== type)
-        } else {
-          draft.allowed_file_types = draft.allowed_file_types.filter(
-            (v) => v !== SupportUploadFileTypes.custom,
-          )
-          if (draft.allowed_file_types.includes(type))
-            draft.allowed_file_types = draft.allowed_file_types.filter((v) => v !== type)
-          else draft.allowed_file_types.push(type)
-        }
+        if (draft.allowed_file_types.includes(type))
+          draft.allowed_file_types = draft.allowed_file_types.filter((v) => v !== type)
+        else draft.allowed_file_types.push(type)
       })
       onChange(newPayload)
     },
