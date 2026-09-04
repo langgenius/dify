@@ -41,6 +41,32 @@ function getMarketplaceHeaders() {
   })
 }
 
+// 15s deadline so a stalled Marketplace fetch can error/retry.
+const MARKETPLACE_REQUEST_TIMEOUT_MS = 15_000
+
+// Combine the caller's abort with the deadline; AbortSignal.any is too new.
+function withRequestDeadline(callerSignal: AbortSignal | null | undefined): AbortSignal {
+  const deadline = AbortSignal.timeout(MARKETPLACE_REQUEST_TIMEOUT_MS)
+  if (!callerSignal) return deadline
+  if (callerSignal.aborted) return callerSignal
+
+  const controller = new AbortController()
+  callerSignal.addEventListener('abort', () => controller.abort(callerSignal.reason), {
+    once: true,
+  })
+  deadline.addEventListener('abort', () => controller.abort(deadline.reason), { once: true })
+  return controller.signal
+}
+
+function isMarketplacePackageDownload(input: Request | URL | string): boolean {
+  const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  try {
+    return new URL(href).pathname.endsWith('/download')
+  } catch {
+    return false
+  }
+}
+
 function isURL(path: string) {
   try {
     // oxlint-disable-next-line no-new
@@ -104,9 +130,14 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   url: MARKETPLACE_API_PREFIX,
   headers: () => getMarketplaceHeaders(),
   fetch: (request, init) => {
+    const requestInit = init as RequestInit | undefined
+    const callerSignal = requestInit?.signal ?? request.signal
     return globalThis.fetch(request, {
-      ...init,
+      ...requestInit,
       cache: 'no-store',
+      signal: isMarketplacePackageDownload(request)
+        ? callerSignal
+        : withRequestDeadline(callerSignal),
     })
   },
   interceptors: [
