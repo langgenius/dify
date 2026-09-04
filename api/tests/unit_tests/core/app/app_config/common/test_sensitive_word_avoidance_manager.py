@@ -95,6 +95,8 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         "config",
         [
             {"sensitive_word_avoidance": {"enabled": False}},
+            {"sensitive_word_avoidance": {"enabled": False, "type": "", "config": {}}},
+            {"sensitive_word_avoidance": {"enabled": False, "type": "keywords", "config": {"k": "v"}}},
             {"sensitive_word_avoidance": {"enabled": None}},
             {"sensitive_word_avoidance": {}},
         ],
@@ -106,7 +108,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         )
 
         # Assert
-        assert result_config["sensitive_word_avoidance"]["enabled"] is False
+        assert result_config["sensitive_word_avoidance"] == {"enabled": False}
 
     def test_validate_raises_when_enabled_true_without_type(self):
         config = {"sensitive_word_avoidance": {"enabled": True}}
