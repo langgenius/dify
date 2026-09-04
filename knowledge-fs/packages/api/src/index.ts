@@ -1555,6 +1555,7 @@ export function createKnowledgeGateway({
   app.use("/internal/dify-integration/*", authMiddleware);
   app.use("/queries/*", authMiddleware);
   app.use("/jobs/*", authMiddleware);
+  app.use("/namespace/*", authMiddleware);
   app.use("/research-tasks/*", authMiddleware);
   app.use("/upload-sessions/*", authMiddleware);
   app.use("/agent-workspace-snapshots/*", authMiddleware);

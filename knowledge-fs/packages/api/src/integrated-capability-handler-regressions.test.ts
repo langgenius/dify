@@ -9,6 +9,43 @@ import type {
 import { createInMemoryKnowledgeSpaceRepository, createKnowledgeGateway } from "./index";
 
 describe("integrated Capability handler regressions", () => {
+  it("authenticates namespace source preview routes before dispatch", async () => {
+    const grant = capabilityGrant({
+      action: "namespace_source_previews.create",
+      callerKind: "interactive",
+      resource: { id: "tenant-1", parent_id: null, type: "namespace" },
+    });
+    const authenticate = vi.fn<DifyCapabilityV2GatewayAuthenticator["authenticate"]>(async () =>
+      capabilityPrincipal(grant),
+    );
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: { authenticate },
+    });
+    app.post("/namespace/source-preview-jobs", (context) =>
+      context.json({ subject: context.get("subject") }),
+    );
+
+    const unauthenticated = await app.request("/namespace/source-preview-jobs", {
+      method: "POST",
+    });
+    expect(unauthenticated.status).toBe(401);
+
+    const authenticated = await app.request("/namespace/source-preview-jobs", {
+      headers: { authorization: "Bearer capability" },
+      method: "POST",
+    });
+    expect(authenticated.status).toBe(200);
+    await expect(authenticated.json()).resolves.toEqual({
+      subject: {
+        scopes: ["knowledge-spaces:read"],
+        subjectId: grant.subject,
+        tenantId: grant.namespaceId,
+      },
+    });
+    expect(authenticate).toHaveBeenCalledOnce();
+  });
+
   it("lists tenant-scoped integrated spaces without requiring legacy member or policy rows", async () => {
     const spaces = createInMemoryKnowledgeSpaceRepository({ maxListLimit: 10, maxSpaces: 10 });
     const integrated = await spaces.create({
