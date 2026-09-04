@@ -23,7 +23,9 @@ class SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(CapabilityIssuanceAuditor):
         jti_hash = cast(str, serialized.pop("jti_hash"))
         audit = KnowledgeFSCapabilityIssuanceAudit(
             tenant_id=event.namespace_id,
-            control_space_id=event.control_space_id,
+            control_space_id=(
+                None if event.control_space_id == f"namespace:{event.namespace_id}" else event.control_space_id
+            ),
             trace_id=trace_id,
             jti_hash=jti_hash,
             claims_summary=cast(KnowledgeFSCapabilityClaimsSummary, serialized),

@@ -102,6 +102,51 @@ def test_auditor_commits_sanitized_event_before_returning() -> None:
     assert "raw-jti" not in str(audit.claims_summary)
 
 
+def test_auditor_persists_namespace_issuance_without_a_control_space_foreign_key() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    KnowledgeFSControlSpace.metadata.create_all(
+        engine,
+        tables=[KnowledgeFSControlSpace.__table__, KnowledgeFSCapabilityIssuanceAudit.__table__],
+    )
+    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+    auditor = SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
+    issued_at = datetime(2026, 9, 4, tzinfo=UTC)
+
+    auditor.record(
+        CapabilityIssuanceAuditEvent(
+            action="namespace_source_previews.create",
+            actor="dify-account:account-1",
+            authz_revision=CapabilityAuthzRevision(
+                membership_epoch=0,
+                space_acl_epoch=0,
+                external_access_epoch=0,
+                credential_revision=None,
+            ),
+            caller_kind="interactive",
+            content_policy_revision=0,
+            content_scope_ids=(),
+            control_space_id="namespace:11111111-1111-4111-8111-111111111111",
+            expires_at=issued_at + timedelta(minutes=1),
+            grant_id="22222222-2222-4222-8222-222222222222",
+            issued_at=issued_at,
+            jti_hash="sha256:namespace",
+            namespace_id="11111111-1111-4111-8111-111111111111",
+            operation_id="createNamespaceSourcePreview",
+            resource_id="11111111-1111-4111-8111-111111111111",
+            resource_parent_id=None,
+            resource_type="namespace",
+            subject="dify-account:account-1",
+            trace_id="trace-namespace",
+        )
+    )
+
+    with Session(engine) as session:
+        audit = session.scalar(select(KnowledgeFSCapabilityIssuanceAudit))
+    assert audit is not None
+    assert audit.control_space_id is None
+    assert audit.claims_summary["control_space_id"] == "namespace:11111111-1111-4111-8111-111111111111"
+
+
 def test_terminal_reservation_cleanup_never_removes_an_active_fence() -> None:
     engine = create_engine("sqlite:///:memory:")
     KnowledgeFSControlSpace.metadata.create_all(

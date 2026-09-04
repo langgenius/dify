@@ -594,7 +594,7 @@ class KnowledgeFSCapabilityIssuanceAudit(DefaultFieldsDCMixin, TypeBase):
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    control_space_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    control_space_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     trace_id: Mapped[str] = mapped_column(String(128), nullable=False)
     jti_hash: Mapped[str] = mapped_column(String(80), nullable=False)
     claims_summary: Mapped[KnowledgeFSCapabilityClaimsSummary] = mapped_column(sa.JSON, nullable=False)
