@@ -486,20 +486,17 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     """Validate runner/service short-circuits against their product state.
 
     These commands do not appear in ``_ACTIONS_FOR``, but they are not global:
-    transcript/model/recovery commands operate only at a waiting gate, pause
-    transitions must change the current pause flag, and recovery choices must
-    be present in the current RecoveryRef.
+    transcript/model commands operate only at a waiting gate, pause transitions
+    must change the current pause flag, and recovery choices must match the
+    current terminal/interrupted/drift-recovery condition.
     """
     if state == PcState.FAILED:
         # Durable, deterministic failure -- only a restart is meaningful.
         return kind == "recovery_restart"
+    # An interrupted working step may be retried or restarted. A live worker is
+    # still protected downstream by dispatch's advance-lock acquisition.
     if is_working(state):
-        # A working state without its advance lock is projected as interrupted
-        # (crash mid-step). Retry (recovery_continue) re-runs the handler; Start
-        # over (recovery_restart) resets and re-enters the entry state. Lock
-        # acquisition downstream still protects a live worker from a concurrent
-        # recovery (recovery_continue's dispatch raises BusyError if one is held).
-        return kind in ("recovery_continue", "recovery_restart")
+        return kind in {"recovery_continue", "recovery_restart"}
     if not is_waiting(state):
         return False
     if fc.paused:

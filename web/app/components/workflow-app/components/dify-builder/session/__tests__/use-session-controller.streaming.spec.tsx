@@ -5,6 +5,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderExecutionProgressAtom,
   difyBuilderReasoningAtom,
+  difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
@@ -169,6 +170,98 @@ describe('useDifyBuilderSessionController streaming', () => {
       },
       { signal: expect.any(AbortSignal) },
     )
+  })
+
+  it('marks a failed user turn as retryable and reuses its client turn id', async () => {
+    const waiting = createSessionView({
+      conversation_last_seq: -1,
+      version: 2,
+      state: 'fix.await_approval',
+      run_status: 'waiting_input',
+    })
+    const reconciled = createSessionView({
+      ...waiting,
+      conversation_last_seq: 0,
+      version: 3,
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValueOnce(stream.iterable)
+    clientMocks.get.mockResolvedValue(reconciled)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Retry me')
+    })
+    await waitFor(() => expect(clientMocks.message).toHaveBeenCalledOnce())
+    const firstRequest = clientMocks.message.mock.calls[0]?.[0] as {
+      body: { client_turn_id: string }
+    }
+    const clientTurnId = firstRequest.body.client_turn_id
+    const userItem: ConversationItem = {
+      seq: 0,
+      at_version: 3,
+      kind: 'user',
+      payload: { text: 'Retry me', turn_id: clientTurnId },
+    }
+
+    act(() => {
+      stream.push(commandStartedEvent(waiting))
+      stream.push({
+        event: 'commit',
+        data: {
+          kind: 'commit',
+          session_id: 'session-1',
+          operation_id: 'operation-1',
+          stage_id: 'fix.await_approval',
+          at_version: 3,
+          version: 3,
+          state: 'fix.await_approval',
+          settled: false,
+          items: [userItem],
+        },
+      })
+    })
+    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toEqual([userItem]))
+
+    await act(async () => {
+      stream.push({ event: 'error', data: { kind: 'error', error: 'message failed' } })
+      expect(await messagePromise).toBe(false)
+    })
+    expect(store.get(difyBuilderRetryableMessageAtom)).toEqual({
+      sessionId: 'session-1',
+      text: 'Retry me',
+      turnId: clientTurnId,
+    })
+
+    const retryTerminal = createSessionView({
+      ...reconciled,
+      version: 4,
+    })
+    clientMocks.message.mockResolvedValueOnce(
+      streamOf(commandStartedEvent(reconciled), stateEvent(retryTerminal)),
+    )
+
+    await act(async () => {
+      expect(await result.current.sendMessage('Retry me', clientTurnId)).toBe(true)
+    })
+    expect(clientMocks.message).toHaveBeenNthCalledWith(
+      2,
+      {
+        params: { session_id: 'session-1' },
+        body: {
+          text: 'Retry me',
+          base_version: 3,
+          client_turn_id: clientTurnId,
+        },
+      },
+      { signal: expect.any(AbortSignal) },
+    )
+    expect(store.get(difyBuilderRetryableMessageAtom)).toBeNull()
   })
 
   it('repairs a dropped commit through conversation JSON before merging a later commit', async () => {

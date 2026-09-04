@@ -196,7 +196,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             }
           />
         </div>
-        <div className="max-h-105 overflow-y-auto">
+        <div className="relative max-h-105 overflow-x-hidden overflow-y-auto">
           {trigger && (
             <div className="px-4 pt-2 pb-4">
               <ModelSelector

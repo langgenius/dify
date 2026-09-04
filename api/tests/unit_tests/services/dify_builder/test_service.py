@@ -1598,13 +1598,14 @@ def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
     assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "publish_workflow") is False
 
 
-def test_retry_whose_handler_raises_lands_in_failed_no_wedge(
+def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock, monkeypatch
 ) -> None:
-    """A Retry (recovery_continue) whose handler raises again must not wedge the
-    session: the task records a durable FAILED state via runner.fail() and releases
-    the lock in `finally`, publishing a terminal `state` frame. Afterward the session
-    reads as FAILED and still offers a restart -- never a dead end."""
+    """A Retry whose handler raises again must not wedge the session.
+
+    The task persists the caught failure, releases the lock, and publishes the
+    authoritative failed-state projection with its restart action.
+    """
     import tasks.dify_builder_advance_task as advance_mod
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1626,15 +1627,17 @@ def test_retry_whose_handler_raises_lands_in_failed_no_wedge(
     action = {"kind": "recovery_continue", "payload": {}, "base_version": s.version}
     advance_mod.advance_session(s.id, action, {"account_id": actor.account_id, "tenant_id": actor.tenant_id}, token)
 
-    assert not lock.exists(s.id)  # lock released -- a stuck lock would wedge the session
-    # The failed retry is recorded as a durable terminal FAILED state (a `state` frame),
-    # per the PR's "any handler exception -> FAILED" rule -- not an open-ended error.
-    assert ("state", None) in [(ev["kind"], ev.get("error")) for _sid, ev in events]
+    assert not lock.exists(s.id)
+    state_event = next(ev for _sid, ev in events if ev["kind"] == "state")
+    assert state_event["state"] == "failed"
+    assert state_event["run_status"] == "failed"
+    assert [item["id"] for item in state_event["actions"]] == ["restart"]
 
     view = service.get_session_view(s.id, actor)
     assert view.state == str(PcState.FAILED)
-    assert view.interrupted is False  # FAILED is terminal, not interrupted
-    assert [action.id for action in view.actions] == ["restart"]  # restart offer -- no dead end
+    assert view.interrupted is False
+    assert view.recovery is None
+    assert [item.id for item in view.actions] == ["restart"]
 
 
 def test_recovery_continue_retry_carries_the_working_states_access_tier() -> None:
@@ -1645,6 +1648,7 @@ def test_recovery_continue_retry_carries_the_working_states_access_tier() -> Non
 
     assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_continue") == AppAccess.RELEASE
     assert _app_access_for_action(PcState.FIX_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.EDIT_PUBLISH, "recovery_continue") == AppAccess.RELEASE
     assert _app_access_for_action(PcState.BUILD_TEST_AND_REPAIR, "recovery_continue") == AppAccess.TEST_AND_RUN
     assert _app_access_for_action(PcState.FIX_VERIFY, "recovery_continue") == AppAccess.TEST_AND_RUN
     assert _app_access_for_action(PcState.EDIT_TEST_AFFECTED_PATHS, "recovery_continue") == AppAccess.TEST_AND_RUN

@@ -63,7 +63,7 @@ export type DifyBuilderSessionController = {
   refresh: () => Promise<boolean>
   restore: (sessionId: string) => Promise<boolean>
   runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
-  sendMessage: (text: string) => Promise<boolean>
+  sendMessage: (text: string, clientTurnId?: string) => Promise<boolean>
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void
 }

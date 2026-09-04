@@ -1,7 +1,7 @@
 import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
@@ -12,6 +12,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderRetryableMessageAtom,
 } from './session/state'
 import {
   difyBuilderActionsAtom,
@@ -27,6 +28,7 @@ import {
   difyBuilderRecoveryAtom,
   difyBuilderResetAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRetryMessageAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
@@ -53,6 +55,8 @@ const DifyBuilderActionBar = ({
   actions,
   busy,
   changesExpanded,
+  formActionId,
+  formId,
   pendingActionId,
   recheckReady,
   onAction,
@@ -61,6 +65,8 @@ const DifyBuilderActionBar = ({
   actions: Action[]
   busy: boolean
   changesExpanded: boolean
+  formActionId?: string
+  formId?: string
   pendingActionId: string | null
   recheckReady: boolean
   onAction: (action: Action) => void
@@ -73,6 +79,7 @@ const DifyBuilderActionBar = ({
       {visibleActions.map((action) => {
         const loading = pendingActionId === action.id
         const awaitingChecklist = action.id === 'recheck' && !recheckReady
+        const submitsForm = action.id === formActionId && formId !== undefined
         const invalid = FORM_ACTION_IDS.has(action.id)
           ? actionValidity[action.id] !== true
           : actionValidity[action.id] === false
@@ -82,12 +89,16 @@ const DifyBuilderActionBar = ({
             size="small"
             variant={action.kind === 'primary' ? 'primary' : 'secondary'}
             tone={action.kind === 'destructive' ? 'destructive' : 'default'}
+            type={submitsForm ? 'submit' : 'button'}
+            form={submitsForm ? formId : undefined}
             loading={loading}
             disabled={
-              loading ? false : busy || pendingActionId !== null || awaitingChecklist || invalid
+              loading
+                ? false
+                : busy || pendingActionId !== null || awaitingChecklist || (!submitsForm && invalid)
             }
             aria-expanded={action.id === 'view_changes' ? changesExpanded : undefined}
-            onClick={() => onAction(action)}
+            onClick={submitsForm ? undefined : () => onAction(action)}
           >
             {action.label}
           </Button>
@@ -113,12 +124,16 @@ const DifyBuilderPanel = () => {
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
+  const retryableMessage = useAtomValue(difyBuilderRetryableMessageAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
+  const retryMessage = useSetAtom(difyBuilderRetryMessageAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
+  const interactionFormId = useId()
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
+  const [retryingTurnId, setRetryingTurnId] = useState<string | null>(null)
   const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionInteractionState, setActionInteractionState] = useState(
     EMPTY_ACTION_INTERACTION_STATE,
@@ -128,6 +143,11 @@ const DifyBuilderPanel = () => {
   const activeInteractionKey = activeInteraction
     ? `${activeInteraction.action_id}:${activeInteraction.card.seq}`
     : ''
+  const activeFormActionId =
+    activeInteraction?.card.kind === 'form' && FORM_ACTION_IDS.has(activeInteraction.action_id)
+      ? activeInteraction.action_id
+      : undefined
+  const activeFormId = activeFormActionId ? `${interactionFormId}-interaction` : undefined
   const currentActionInteractionState =
     actionInteractionState.key === activeInteractionKey
       ? actionInteractionState
@@ -229,10 +249,30 @@ const DifyBuilderPanel = () => {
     ],
   )
 
+  const handleActiveFormSubmit = useCallback(() => {
+    if (!activeFormActionId) return
+    const action = actions.find((action) => action.id === activeFormActionId)
+    if (action) void handleAction(action)
+  }, [actions, activeFormActionId, handleAction])
+
+  const handleRetryMessage = useCallback(
+    async (turnId: string) => {
+      if (interactionBusy || retryingTurnId !== null) return
+      setRetryingTurnId(turnId)
+      try {
+        await retryMessage(turnId)
+      } finally {
+        setRetryingTurnId((current) => (current === turnId ? null : current))
+      }
+    },
+    [interactionBusy, retryMessage, retryingTurnId],
+  )
+
   const handleReset = () => {
     reset()
     pinnedToBottomRef.current = true
     setPendingActionId(null)
+    setRetryingTurnId(null)
     setChangesExpanded(false)
     setActionInteractionState(EMPTY_ACTION_INTERACTION_STATE)
   }
@@ -301,9 +341,14 @@ const DifyBuilderPanel = () => {
                 busy={interactionBusy}
                 changesExpanded={changesExpanded}
                 interrupted={interrupted}
+                activeFormId={activeFormId}
                 onActionPayloadChange={handleActionPayloadChange}
                 onActionValidityChange={handleActionValidityChange}
+                onActiveFormSubmit={handleActiveFormSubmit}
+                onRetryMessage={(turnId) => void handleRetryMessage(turnId)}
                 onStreamingContentChange={scrollToBottomIfPinned}
+                retryableTurnId={retryableMessage?.turnId}
+                retryingTurnId={retryingTurnId}
               />
             </>
           ) : (
@@ -312,7 +357,7 @@ const DifyBuilderPanel = () => {
               <h3 className="system-sm-semibold text-text-primary">
                 {t(($) => $['difyBuilder.emptyBuildTitle'], { ns: 'workflow' })}
               </h3>
-              <p className="mt-1 max-w-[284px] text-sm leading-5 tracking-[-0.07px] text-text-tertiary">
+              <p className="mt-1 max-w-71 text-sm leading-5 tracking-[-0.07px] text-text-tertiary">
                 {t(($) => $['difyBuilder.emptyDescription'], { ns: 'workflow' })}
               </p>
             </div>
@@ -354,6 +399,8 @@ const DifyBuilderPanel = () => {
             actions={actions}
             busy={interactionBusy}
             changesExpanded={changesExpanded}
+            formActionId={activeFormActionId}
+            formId={activeFormId}
             pendingActionId={pendingActionId}
             recheckReady={recheckReady}
             onAction={(action) => void handleAction(action)}
