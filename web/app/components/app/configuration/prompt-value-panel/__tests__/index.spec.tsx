@@ -132,7 +132,7 @@ describe('PromptValuePanel', () => {
   it('updates inputs, clears values, and triggers run when ready', async () => {
     renderPanel()
 
-    const textInput = screen.getByPlaceholderText('Text Var')
+    const textInput = screen.getByRole('textbox', { name: 'Text Var' })
     fireEvent.change(textInput, { target: { value: 'updated' } })
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ textVar: 'updated' }))
 
@@ -258,10 +258,10 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paragraph Var' }), {
       target: { value: 'updated paragraph' },
     })
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'Select Var' }))
     await user.click(await screen.findByRole('option', { name: 'b' }))
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
     fireEvent.click(screen.getByText('bool-input'))
@@ -311,7 +311,9 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Text Var'), { target: { value: 'ignored' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Text Var' }), {
+      target: { value: 'ignored' },
+    })
 
     expect(mockSetInputs).not.toHaveBeenCalled()
   })
@@ -338,7 +340,7 @@ describe('PromptValuePanel', () => {
     })
 
     expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Number Var')).toHaveValue(null)
+    expect(screen.getByRole('spinbutton', { name: 'Number Var' })).toHaveValue(null)
     expect(screen.queryAllByRole('option')).toHaveLength(0)
   })
 
@@ -400,7 +402,7 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
@@ -413,7 +415,7 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })

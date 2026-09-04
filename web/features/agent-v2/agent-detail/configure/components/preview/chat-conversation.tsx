@@ -191,7 +191,7 @@ export function AgentPreviewChatConversation({
           handleSend,
           callbacks: {
             onGetConversationMessages: async (conversationId) => {
-              return queryClient.fetchQuery({
+              return queryClient.query({
                 ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
                   input: {
                     params: {

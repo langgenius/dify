@@ -31,7 +31,6 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
         'relative overflow-hidden rounded-xl',
         expand ? 'p-2 hover:bg-state-base-hover' : 'flex items-center justify-center px-1 py-1.5',
       )}
-      aria-label={!expand ? dataset.name : undefined}
     >
       <div
         className={cn(
@@ -47,6 +46,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
             imageUrl={iconInfo.icon_url}
           />
         </div>
+        {!expand && <span className="sr-only">{dataset.name}</span>}
         {expand && (
           <>
             <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5">

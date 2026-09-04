@@ -48,6 +48,7 @@ export type ResponseError = {
   code: string
   message: string
   error?: string
+  reason?: string
   status: number
 }
 
