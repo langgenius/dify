@@ -17,6 +17,12 @@ domain value type through its public API.
 Multiple-selection comboboxes follow the Base UI chips composition: chips and the input share the
 input group, chips wrap, and the group grows vertically.
 
+For chip-based multiple comboboxes, render `ComboboxValue` around `ComboboxChips` and label the
+chips container only while it has the conditional `toolbar` role. Consumers must localize the
+`ComboboxChip` Backspace/Delete description, the item-specific `ComboboxChipRemove` name, and the
+input's selection count and Left Arrow hint. If `FieldDescription` already sets `aria-describedby`,
+put the input hint there because it takes precedence over `aria-description`.
+
 Autocomplete, Combobox, and Select popups use Base UI's `--anchor-width` and `--available-width`
 variables to follow their trigger while clamping to the viewport. Do not replace that sizing with
 a fixed width or an unclamped minimum width.
