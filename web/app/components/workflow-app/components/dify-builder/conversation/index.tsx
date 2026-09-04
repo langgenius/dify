@@ -34,10 +34,6 @@ export const DifyBuilderConversation = memo(
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
     const activeCard = activeInteraction?.card
-    const hasThinkingTurn = useMemo(
-      () => items.some((item) => item.kind === 'assistant_turn' && !item.payload.reply_text),
-      [items],
-    )
 
     return (
       <div className="flex flex-col gap-3 px-4 py-4">
@@ -115,11 +111,7 @@ export const DifyBuilderConversation = memo(
             onActionValidityChange={onActionValidityChange}
           />
         )}
-        <StreamingAssistantTurn
-          busy={busy}
-          hasThinkingTurn={hasThinkingTurn}
-          onContentChange={onStreamingContentChange}
-        />
+        <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
       </div>
     )
   },

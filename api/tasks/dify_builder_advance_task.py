@@ -26,7 +26,13 @@ from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.dify_builder.contract import AgentMessageEventData, ErrorCard, ProgressEventData, Trace
+from core.dify_builder.contract import (
+    AgentMessageEventData,
+    ErrorCard,
+    ExecutionProgress,
+    ProgressEventData,
+    ReasoningEventData,
+)
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
@@ -178,6 +184,16 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     message.id,
                 )
 
+        def emit_reasoning(reasoning: ReasoningEventData) -> None:
+            try:
+                progress_bus.publish(session_id, asdict(reasoning))
+            except Exception:
+                logger.exception(
+                    "dify_builder reasoning event publish failed for session %s operation %s",
+                    session_id,
+                    reasoning.operation_id,
+                )
+
         def emit_progress(progress: ProgressEventData) -> None:
             nonlocal last_progress
             last_progress = progress
@@ -202,6 +218,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_commit=emit_commit,
             emit_message=emit_message,
             emit_progress=emit_progress,
+            emit_reasoning=emit_reasoning,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
         env.begin_operation(loaded_session)
@@ -218,18 +235,24 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # Generic message only -- never leak exception detail into the
         # progress event (it is relayed to the end user via SSE in P3c).
         logger.exception("dify_builder advance failed for session %s", session_id)
-        if last_progress is not None and last_progress.trace.status == "running":
-            failed_trace = Trace(
+        if last_progress is not None and last_progress.execution.status == "running":
+            failed_execution = ExecutionProgress(
                 status="error",
-                steps=[
-                    replace(step, state="stopped", tone="error") if step.state == "active" else replace(step)
-                    for step in last_progress.trace.steps
+                activities=[
+                    replace(activity, state="failed") if activity.state == "active" else replace(activity)
+                    for activity in last_progress.execution.activities
                 ],
             )
             try:
                 progress_bus.publish(
                     session_id,
-                    asdict(replace(last_progress, revision=last_progress.revision + 1, trace=failed_trace)),
+                    asdict(
+                        replace(
+                            last_progress,
+                            revision=last_progress.revision + 1,
+                            execution=failed_execution,
+                        )
+                    ),
                 )
             except Exception:
                 logger.exception("dify_builder failed progress publish failed for session %s", session_id)

@@ -7,9 +7,9 @@ import type {
   DifyBuilderSessionViewResponse,
   Action as GeneratedAction,
   CanvasEventData as GeneratedCanvasEventData,
+  ExecutionProgress as GeneratedExecutionProgress,
   FormField as GeneratedFormField,
   SessionModel as GeneratedSessionModel,
-  Trace as GeneratedTrace,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 
 export type Action = GeneratedAction
@@ -32,13 +32,22 @@ export type DifyBuilderStreamingTurn = {
   replyText: string
 }
 
-export type DifyBuilderLiveProgress = {
+export type DifyBuilderExecutionProgress = {
   sessionId: string
   operationId: string
   stageId: string
   atVersion: number
   revision: number
-  trace: GeneratedTrace
+  execution: GeneratedExecutionProgress
+}
+
+export type DifyBuilderReasoning = {
+  sessionId: string
+  operationId: string
+  stageId: string
+  atVersion: number
+  revision: number
+  text: string
 }
 
 export type DifyBuilderSessionController = {

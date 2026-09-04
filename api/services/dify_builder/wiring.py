@@ -36,7 +36,7 @@ __all__ = [
 _HEARTBEAT_SECONDS = 15
 _MAX_STREAM_SECONDS = dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HEARTBEAT_SECONDS
 _TERMINAL_KINDS = ("state", "error")
-_PROGRESS_KINDS = frozenset({"node", "canvas", "agent_message", "progress", "commit", *_TERMINAL_KINDS})
+_PROGRESS_KINDS = frozenset({"node", "canvas", "agent_message", "reasoning", "progress", "commit", *_TERMINAL_KINDS})
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:

@@ -1,7 +1,7 @@
 import logging
 
 from core.dify_builder.models import Diagnosis
-from core.dify_builder.ports import DifyBuilderAgent
+from core.dify_builder.ports import DifyBuilderAgent, ReasoningStreamingAgent
 from services.dify_builder.agent import build as build_mod
 from services.dify_builder.agent import chat as chat_mod
 from services.dify_builder.agent import edit as edit_mod
@@ -11,7 +11,9 @@ from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
 
 def test_is_dify_builder_agent():
-    assert isinstance(LlmBuilderAgent("t1", None), DifyBuilderAgent)
+    agent = LlmBuilderAgent("t1", None)
+    assert isinstance(agent, DifyBuilderAgent)
+    assert isinstance(agent, ReasoningStreamingAgent)
 
 
 def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
@@ -20,7 +22,10 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
     monkeypatch.setattr(
         build,
         "analyze_goal",
-        lambda _m, _g: {"fields": [{"key": "k", "label": "K", "type": "text"}], "values": {}},
+        lambda _m, _g, _reasoning=None: {
+            "fields": [{"key": "k", "label": "K", "type": "text"}],
+            "values": {},
+        },
     )
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
@@ -29,7 +34,7 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
 def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
     seen = {}
 
-    def mock_analyze_goal(model, _goal_text):
+    def mock_analyze_goal(model, _goal_text, _reasoning=None):
         seen["m"] = model
         return {"fields": [], "values": {}}
 
@@ -48,11 +53,11 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
 
-    def mock_propose_plan_v1(model, requirements):
+    def mock_propose_plan_v1(model, requirements, _reasoning=None):
         seen["propose_plan_v1"] = (model, requirements)
         return []
 
-    def mock_discover_resources(model, tenant_id, plan_items):
+    def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None):
         seen["discover_resources"] = (model, tenant_id, plan_items)
         return []
 
@@ -64,7 +69,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["build_nodes"] = (tenant_id, model_config, plan_items)
         return []
 
-    def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids):
+    def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids, _reasoning=None):
         seen["learn_from_build"] = (model, goal_text, requirements, plan_items, built_node_ids)
         return "skill"
 
@@ -121,7 +126,7 @@ def test_model_is_resolved_lazily_and_memoized(monkeypatch):
 def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch):
     seen = {}
 
-    def mock_diagnose(model, fr, g, no):  # noqa: ARG001
+    def mock_diagnose(model, fr, g, no, _reasoning=None):  # noqa: ARG001
         seen["m"] = model
         return "DIAG"
 
@@ -134,7 +139,11 @@ def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch):
 
 def test_model_or_none_swallows_resolution_error(monkeypatch):
     seen = {}
-    monkeypatch.setattr(fix_mod, "propose_repair", lambda model, d, g: seen.setdefault("m", model) or ([], None))  # noqa: ARG005
+    monkeypatch.setattr(
+        fix_mod,
+        "propose_repair",
+        lambda model, d, g, _reasoning=None: seen.setdefault("m", model) or ([], None),  # noqa: ARG005
+    )
     agent = LlmBuilderAgent("t1", None)
 
     def boom():
@@ -149,7 +158,7 @@ def test_llm_agent_generate_mock_inputs_delegates(monkeypatch):
     from services.dify_builder.agent import mock_inputs
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-    monkeypatch.setattr(mock_inputs, "generate", lambda _m, _s, _p: {"q": "x"})
+    monkeypatch.setattr(mock_inputs, "generate", lambda _m, _s, _p, _reasoning=None: {"q": "x"})
     assert LlmBuilderAgent("t1", {}).generate_mock_inputs({"variables": []}, {}) == {"q": "x"}
 
 
@@ -157,9 +166,13 @@ def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
     monkeypatch.setattr(
         edit_mod,
         "analyze_impact",
-        lambda _m, _g, _graph: {"fields": [], "values": {}, "target_node_ids": []},
+        lambda _m, _g, _graph, _reasoning=None: {
+            "fields": [],
+            "values": {},
+            "target_node_ids": [],
+        },
     )
-    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph: [])
+    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None: [])
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_impact("g", {"nodes": [], "edges": []}) == {
         "fields": [],
@@ -175,15 +188,15 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
     corresponding edit.* with the resolved model threaded through."""
     seen = {}
 
-    def mock_analyze_impact(model, goal_text, graph):
+    def mock_analyze_impact(model, goal_text, graph, _reasoning=None):
         seen["analyze_impact"] = (model, goal_text, graph)
         return {"fields": [], "values": {}, "target_node_ids": []}
 
-    def mock_propose_edit_plan(model, edit_rules, graph):
+    def mock_propose_edit_plan(model, edit_rules, graph, _reasoning=None):
         seen["propose_edit_plan"] = (model, edit_rules, graph)
         return ["step"]
 
-    def mock_build_edit_intents(model, edit_rules, graph):
+    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None):
         seen["build_edit_intents"] = (model, edit_rules, graph)
         return []
 
@@ -227,8 +240,9 @@ def test_model_or_none_logs_resolution_failure_once(caplog):
 def test_message_reply_delegates_stream_callback(monkeypatch):
     seen = {}
 
-    def mock_respond(model, model_config, state, context, history, graph, text, on_delta):
+    def mock_respond(model, model_config, state, context, history, graph, text, on_delta, on_reasoning):
         seen["args"] = (model, model_config, state, context, history, graph, text)
+        assert on_reasoning is None
         on_delta("first ")
         on_delta("second")
         return "first second"

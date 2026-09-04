@@ -35,13 +35,12 @@ class Phase(StrEnum):
 class RunStatus(StrEnum):
     """Widened run-status vocabulary (spec §2).
 
-    ``thinking``/``executing`` => ``canvas_read_only = true`` (WORKING).
+    ``processing`` => ``canvas_read_only = true`` (WORKING).
     ``waiting_*``/``paused`` => editable (WAITING).
     ``complete``/``failed`` => terminal.
     """
 
-    THINKING = "thinking"
-    EXECUTING = "executing"
+    PROCESSING = "processing"
     WAITING_INPUT = "waiting_input"
     WAITING_CONFIRMATION = "waiting_confirmation"
     PAUSED = "paused"
@@ -349,30 +348,32 @@ class PreflightIssue:
     kind: str
 
 
-@dataclass
-class TraceStep:
-    """One step of an ``assistant_turn``'s trace (spec §4.2).
+ExecutionActivityState = Literal["active", "done", "failed", "stopped"]
+ExecutionActivityKind = Literal["stage", "node"]
+ExecutionProgressStatus = Literal["running", "completed", "error", "stopped"]
 
-    ``state`` in pending|active|done|stopped; ``tone`` in
-    neutral|success|error; ``canvas_event`` fires as the step activates.
+
+@dataclass
+class ExecutionActivity:
+    """One observable action that has started during a Builder operation.
+
+    Planned future work is intentionally absent. Node activities use
+    ``parent_id`` to sit under the stage that owns the workflow run.
     """
 
     id: str
     label: str
-    state: str
-    tone: str = "neutral"
-    canvas_event: str | None = None
+    state: ExecutionActivityState
+    kind: ExecutionActivityKind = "stage"
+    parent_id: str | None = None
 
 
 @dataclass
-class Trace:
-    """The streamable trace nested in an ``assistant_turn`` (spec §4.2).
+class ExecutionProgress:
+    """A snapshot containing only execution activities observed so far."""
 
-    ``status`` in running|completed|error|stopped.
-    """
-
-    status: str
-    steps: list[TraceStep] = field(default_factory=list)
+    status: ExecutionProgressStatus
+    activities: list[ExecutionActivity] = field(default_factory=list)
 
 
 @dataclass
@@ -476,7 +477,8 @@ class AssistantTurnItem(_Card):
 
     turn_id: str
     stage_id: str
-    trace: Trace
+    execution: ExecutionProgress
+    reasoning_text: str | None = None
     reply_text: str | None = None
     cards: list[str] = field(default_factory=list)
     card_state: str | None = None
@@ -786,14 +788,35 @@ class AgentMessageEventData(_SseEventData):
 
 
 @dataclass
+class ReasoningEventData(_SseEventData):
+    """One model-provided reasoning delta for the current operation.
+
+    Reasoning is independent from curated execution progress. ``span_id``
+    identifies the cognitive call within an operation so clients can preserve
+    stable rendering while deltas arrive.
+    """
+
+    sse_event: ClassVar[str] = "reasoning"
+
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
+    span_id: str
+    delta: str
+    kind: Literal["reasoning"] = "reasoning"
+
+
+@dataclass
 class ProgressEventData(_SseEventData):
-    """A replaceable, non-durable trace snapshot for an in-flight step.
+    """A replaceable execution snapshot for an in-flight operation.
 
     ``revision`` is monotonic within ``operation_id``. ``at_version`` points
     at the next durable transition that supersedes this snapshot, allowing a
     client to discard delayed progress after it has already applied a commit.
-    The payload contains curated phase labels only; model chain-of-thought and
-    raw prompts are never part of this contract.
+    The payload contains observable actions only. Model-provided reasoning is
+    delivered separately through ``ReasoningEventData``.
     """
 
     sse_event: ClassVar[str] = "progress"
@@ -803,7 +826,7 @@ class ProgressEventData(_SseEventData):
     stage_id: str
     at_version: int
     revision: int
-    trace: Trace
+    execution: ExecutionProgress
     kind: Literal["progress"] = "progress"
 
 
