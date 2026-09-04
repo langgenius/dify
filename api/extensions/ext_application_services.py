@@ -582,7 +582,6 @@ def build_application_services(
             expected_password=initialization_password,
         ),
         notifications=NotificationService(
-            accounts=accounts,
             notifications=BillingNotificationGateway(),
         ),
         step_by_step_tour=StepByStepTourService(
