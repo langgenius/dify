@@ -4491,12 +4491,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
