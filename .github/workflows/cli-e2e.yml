@@ -112,7 +112,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-framework-output-error:
     name: 'Suite: framework + output + error-handling'
-    if: ${{ inputs.suite_framework_output_error != 'false' }}
+    if: ${{ inputs.suite_framework_output_error }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -129,9 +129,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -159,7 +162,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-discovery:
     name: 'Suite: discovery'
-    if: ${{ inputs.suite_discovery != 'false' }}
+    if: ${{ inputs.suite_discovery }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -176,9 +179,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -207,7 +213,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-run:
     name: 'Suite: run / ${{ matrix.name }}'
-    if: ${{ inputs.suite_run != 'false' }}
+    if: ${{ inputs.suite_run }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -239,9 +245,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -284,7 +293,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-auth-safe:
     name: 'Suite: auth (login / status / whoami)'
-    if: ${{ inputs.suite_auth != 'false' }}
+    if: ${{ inputs.suite_auth }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -301,9 +310,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -333,7 +345,7 @@ jobs:
   suite-last:
     name: 'Suite: auth-use + devices + logout + agent (last, serial)'
     # Runs when auth is selected; also runs after all parallel jobs finish
-    if: ${{ inputs.suite_auth != 'false' || inputs.suite_agent != 'false' }}
+    if: ${{ inputs.suite_auth || inputs.suite_agent }}
     needs:
       - provision
       - suite-framework-output-error
@@ -357,9 +369,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 

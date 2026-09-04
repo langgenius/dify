@@ -12,9 +12,11 @@ Read this document when adding, moving, splitting, or refactoring React componen
 
 ## Component Ownership
 
-- Put state, data access, loading, empty, error, and handlers in the lowest visual owner that uses them.
-- Keep coordination in a parent only when it needs one consistent snapshot or coordinates submission, shared selection, batch behavior, navigation, or cross-section loading and errors.
-- Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
+- Put state, data access, loading, empty, error, and handlers in the lowest owner that uses them and whose mounted lifetime matches the required persistence.
+- Keep coordination in a parent only when it needs one consistent snapshot, the value must intentionally survive the local owner's unmount, or the parent coordinates submission, shared selection, batch behavior, navigation, or cross-section loading and errors.
+- Repeated TanStack Query hooks for the same key and input in Client Component siblings under one QueryClient are
+  acceptable; shared cache is not a reason to hoist. Separate Server Component QueryClients do not share it, so
+  request-level deduplication needs an identified request-local cache or verified framework or transport owner.
 - Pass stable domain identity across boundaries. Do not pass raw server data together with separately derived flags for the same concept.
 - One pass-through prop layer is acceptable. Repeated forwarding means ownership should move closer to the consumer or into feature-scoped shared state.
 - Do not replace prop drilling with one large view-model hook. Move each query, derived value, and handler to the concrete owner that consumes it.
@@ -23,7 +25,8 @@ Read this document when adding, moving, splitting, or refactoring React componen
 ## Boundaries
 
 - State-heavy wizards, drawers, modals, and secondary workflows can form a small vertical surface with an entrypoint, optional feature-local state, and shallow owners matching real visual regions.
-- The entrypoint owns route integration, provider wiring, close behavior, and mounting. Composition owners handle workflow branches; the closest visual owner handles section branches.
+- The entrypoint owns route integration, provider wiring, placement, and open-state coordination. A content or session owner keeps state scoped to that mounted surface.
+- Judge hook lifetime by the component that declares the hook and the primitive's mount contract, not only by where its rendered controls appear in JSX.
 - Separate hidden dialogs, dropdowns, and popovers into small local owners when their content obscures the parent flow.
 - Keep cohesive forms, menu bodies, and one-off helpers local unless they have their own state, reuse, or semantic boundary.
 - Avoid wrapper components and wrapper DOM that only rename props, pass children through, or hide the real primitive. A wrapper must own behavior, validation, state, accessibility, layout, or library integration.

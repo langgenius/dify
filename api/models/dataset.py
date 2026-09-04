@@ -212,16 +212,8 @@ class Dataset(Base):
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.text("false"))
 
-    @property
-    def total_documents(self) -> int:
-        return self.get_total_documents(session=db.session())
-
     def get_total_documents(self, *, session: Session) -> int:
         return self.get_document_count(session=session)
-
-    @property
-    def total_available_documents(self) -> int:
-        return self.get_total_available_documents(session=db.session())
 
     def get_total_available_documents(self, *, session: Session) -> int:
         return (
@@ -258,19 +250,11 @@ class Dataset(Base):
     def get_created_by_account(self, *, session: Session) -> Account | None:
         return session.get(Account, self.created_by)
 
-    @property
-    def author_name(self) -> str | None:
-        return self.get_author_name(session=db.session())
-
     def get_author_name(self, *, session: Session) -> str | None:
         account = self.get_created_by_account(session=session)
         if account:
             return account.name
         return None
-
-    @property
-    def latest_process_rule(self):
-        return self.get_latest_process_rule(session=db.session())
 
     def get_latest_process_rule(self, *, session: Session) -> "DatasetProcessRule | None":
         return session.scalar(
@@ -390,10 +374,6 @@ class Dataset(Base):
         ).all()
 
         return tags or []
-
-    @property
-    def external_knowledge_info(self) -> dict[str, Any] | None:
-        return self.get_external_knowledge_info(session=db.session())
 
     def get_external_knowledge_info(self, *, session: Session) -> dict[str, Any] | None:
         if self.provider != "external":
@@ -642,10 +622,6 @@ class Document(Base):
             return data_source_info_dict
         return {}
 
-    @property
-    def data_source_detail_dict(self) -> dict[str, Any]:
-        return self.get_data_source_detail_dict(session=db.session())
-
     def get_data_source_detail_dict(self, *, session: Session) -> dict[str, Any]:
         if self.data_source_info:
             if self.data_source_type == "upload_file":
@@ -685,10 +661,6 @@ class Document(Base):
             return session.get(DatasetProcessRule, self.dataset_process_rule_id)
         return None
 
-    @property
-    def dataset(self) -> Dataset | None:
-        return self.get_dataset(session=db.session())
-
     def get_dataset(self, *, session: Session) -> Dataset | None:
         """Load the owning dataset with the caller-owned database session."""
         return session.get(Dataset, self.dataset_id)
@@ -714,10 +686,6 @@ class Document(Base):
             or 0
         )
 
-    @property
-    def uploader(self):
-        return self.get_uploader(session=db.session())
-
     def get_uploader(self, *, session: Session) -> str | None:
         user = session.scalar(select(Account).where(Account.id == self.created_by))
         return user.name if user else None
@@ -729,10 +697,6 @@ class Document(Base):
     @property
     def last_update_date(self):
         return self.updated_at
-
-    @property
-    def doc_metadata_details(self) -> list[DocMetadataDetailItem] | None:
-        return self.get_doc_metadata_details(session=db.session())
 
     def get_doc_metadata_details(self, *, session: Session) -> list[DocMetadataDetailItem] | None:
         if self.doc_metadata:
@@ -974,17 +938,15 @@ class DocumentSegment(TypeBase):
         """Load the owning document with the caller-owned database session."""
         return session.get(Document, self.document_id)
 
-    @property
-    def previous_segment(self):
-        return db.session.scalar(
+    def previous_segment(self, session: Session) -> "DocumentSegment | None":
+        return session.scalar(
             select(DocumentSegment).where(
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1
             )
         )
 
-    @property
-    def next_segment(self):
-        return db.session.scalar(
+    def next_segment(self, session: Session) -> "DocumentSegment | None":
+        return session.scalar(
             select(DocumentSegment).where(
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
             )
@@ -1173,17 +1135,14 @@ class ChildChunk(TypeBase):
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
-    @property
-    def dataset(self):
-        return db.session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
+    def dataset(self, session: Session) -> Dataset | None:
+        return session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
 
-    @property
-    def document(self):
-        return db.session.scalar(select(Document).where(Document.id == self.document_id))
+    def document(self, session: Session) -> Document | None:
+        return session.scalar(select(Document).where(Document.id == self.document_id))
 
-    @property
-    def segment(self):
-        return db.session.scalar(select(DocumentSegment).where(DocumentSegment.id == self.segment_id))
+    def segment(self, session: Session) -> DocumentSegment | None:
+        return session.scalar(select(DocumentSegment).where(DocumentSegment.id == self.segment_id))
 
 
 class AppDatasetJoin(TypeBase):
@@ -1207,9 +1166,8 @@ class AppDatasetJoin(TypeBase):
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self):
-        return db.session.get(App, self.app_id)
+    def app(self, session: Session) -> App | None:
+        return session.get(App, self.app_id)
 
 
 class DatasetQuery(TypeBase):
@@ -1711,9 +1669,8 @@ class PipelineCustomizedTemplate(TypeBase):
         init=False,
     )
 
-    @property
-    def created_user_name(self):
-        account = db.session.scalar(select(Account).where(Account.id == self.created_by))
+    def created_user_name(self, session: Session) -> str:
+        account = session.scalar(select(Account).where(Account.id == self.created_by))
         if account:
             return account.name
         return ""

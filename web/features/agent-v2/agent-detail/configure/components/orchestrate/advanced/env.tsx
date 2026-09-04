@@ -540,9 +540,9 @@ export function AgentEnvEditor() {
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
       tipAriaLabel={envEditorTip}
-      rootClassName="gap-1 pt-3"
+      rootClassName="gap-1 py-3"
       headerClassName="mb-0 gap-1 px-3"
-      panelContentClassName="px-3 pb-3"
+      panelContentClassName="px-3"
       actions={
         !readOnly ? (
           <>
@@ -562,9 +562,6 @@ export function AgentEnvEditor() {
                 render={
                   <button
                     type="button"
-                    aria-label={t(
-                      ($) => $['agentDetail.configure.advancedSettings.envEditor.importEnv'],
-                    )}
                     onClick={() => envImportInputRef.current?.click()}
                     className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >

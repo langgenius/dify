@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
@@ -25,7 +25,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.base import TypeBase
@@ -399,7 +399,49 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     cache.delete.assert_called_once()
 
 
-def test_get_tool_runtime_builtin_plugin_provider_deleted_raises(
+def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error(
+    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
+):
+    tool = Mock()
+    controller = SimpleNamespace(
+        get_tool=Mock(return_value=tool),
+        need_credentials=True,
+        get_credentials_schema_by_type=Mock(return_value=[]),
+    )
+    tenant_id = "00000000-0000-0000-0000-000000000001"
+    builtin_provider = _builtin_provider(
+        provider_id="00000000-0000-0000-0000-000000000002",
+        tenant_id=tenant_id,
+        credential_type=CredentialType.OAUTH2,
+        expires_at=1,
+    )
+    tool_database.session.add(builtin_provider)
+    tool_database.session.commit()
+    monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
+
+    encrypter = Mock()
+    encrypter.decrypt.return_value = {"token": "expired"}
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=controller),
+        patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, Mock())),
+        patch("core.tools.tool_manager.time.time", return_value=1000),
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+            return_value={"client_id": "id"},
+        ),
+        patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,
+    ):
+        oauth_handler_cls.return_value.refresh_credentials.side_effect = ValueError("refresh token revoked")
+        with pytest.raises(ToolProviderCredentialValidationError, match="could not be refreshed"):
+            ToolManager.get_tool_runtime(
+                provider_type=ToolProviderType.BUILT_IN,
+                provider_id="time",
+                tool_name="weekday",
+                tenant_id=tenant_id,
+            )
+
+
+def test_get_tool_runtime_builtin_plugin_credential_deleted_raises(
     monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
 ):
     plugin_controller = object.__new__(PluginToolProviderController)
@@ -409,13 +451,51 @@ def test_get_tool_runtime_builtin_plugin_provider_deleted_raises(
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
-        with pytest.raises(ToolProviderNotFoundError, match="provider has been deleted"):
+        with pytest.raises(ToolProviderCredentialValidationError, match="credential .* has been deleted"):
             ToolManager.get_tool_runtime(
                 provider_type=ToolProviderType.BUILT_IN,
                 provider_id="time",
                 tool_name="weekday",
                 tenant_id="00000000-0000-0000-0000-000000000001",
                 credential_id="00000000-0000-0000-0000-000000000002",
+            )
+
+
+def test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises(
+    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
+):
+    plugin_controller = object.__new__(PluginToolProviderController)
+    plugin_controller.entity = SimpleNamespace(credentials_schema=[{"name": "k"}], oauth_schema=None)
+    plugin_controller.get_tool = Mock(return_value=Mock())
+    plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
+
+    monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
+    with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
+        with pytest.raises(ToolProviderCredentialValidationError, match="No workspace credential is configured"):
+            ToolManager.get_tool_runtime(
+                provider_type=ToolProviderType.BUILT_IN,
+                provider_id="langgenius/dify-gmail/dify-gmail",
+                tool_name="send_draft",
+                tenant_id="00000000-0000-0000-0000-000000000001",
+            )
+
+
+def test_get_tool_runtime_hardcoded_provider_without_credential_raises(
+    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
+):
+    controller = SimpleNamespace(
+        get_tool=Mock(return_value=Mock()),
+        need_credentials=True,
+    )
+
+    monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
+    with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
+        with pytest.raises(ToolProviderCredentialValidationError, match="No credential is configured"):
+            ToolManager.get_tool_runtime(
+                provider_type=ToolProviderType.BUILT_IN,
+                provider_id="legacy-provider",
+                tool_name="legacy-tool",
+                tenant_id="00000000-0000-0000-0000-000000000001",
             )
 
 
@@ -956,10 +1036,10 @@ def test_get_mcp_provider_controller_missing_raises(monkeypatch: pytest.MonkeyPa
             ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
 
 
-def test_generate_tool_icon_urls_for_builtin_and_plugin():
-    with patch("core.tools.tool_manager.dify_config.CONSOLE_API_URL", "https://console.example.com"):
-        builtin_url = ToolManager.generate_builtin_tool_icon_url("time")
-        plugin_url = ToolManager.generate_plugin_tool_icon_url("tenant-1", "icon.svg")
+def test_generate_tool_icon_urls_for_builtin_and_plugin(config_overrides: Callable[..., None]):
+    config_overrides(CONSOLE_API_URL="https://console.example.com")
+    builtin_url = ToolManager.generate_builtin_tool_icon_url("time")
+    plugin_url = ToolManager.generate_plugin_tool_icon_url("tenant-1", "icon.svg")
 
     assert builtin_url.endswith("/tool-provider/builtin/time/icon")
     assert "/plugin/icon" in plugin_url

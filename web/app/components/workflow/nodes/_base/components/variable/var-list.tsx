@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
@@ -11,7 +12,6 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
-import Input from '@/app/components/base/input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
@@ -41,6 +41,7 @@ const VarList: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
+  const variableNameLabel = t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })
 
   const listWithIds = useMemo(
     () =>
@@ -159,11 +160,12 @@ const VarList: FC<Props> = ({
         return (
           <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
             <Input
-              wrapperClassName="w-[120px]"
+              aria-label={variableNameLabel}
+              className="w-30"
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
-              placeholder={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })!}
+              placeholder={variableNameLabel}
             />
             <VarReferencePicker
               nodeId={nodeId}

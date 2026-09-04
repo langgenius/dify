@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import Table, delete, func, select
 from sqlalchemy.exc import IntegrityError
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from models.account import Account
@@ -63,6 +64,7 @@ from services.skill_management_service import (
     validate_skill_description,
     validate_skill_name,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"
@@ -387,7 +389,7 @@ def test_create_assistant_stream_uses_default_model_and_keeps_draft_read_only() 
     )
     manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
 
-    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager) as for_tenant:
         response = list(
             service.create_assistant_stream(
                 tenant_id=TENANT,
@@ -396,6 +398,10 @@ def test_create_assistant_stream_uses_default_model_and_keeps_draft_read_only() 
             )
         )
 
+    for_tenant.assert_called_once_with(
+        tenant_id=TENANT,
+        request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+    )
     assert response == ["# Draft"]
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     assert draft["files"][0]["content"] == created["files"][0]["content"]
@@ -429,7 +435,7 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
     )
     manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
 
-    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager) as for_tenant:
         response = list(
             service.create_assistant_action_stream(
                 tenant_id=TENANT,
@@ -440,6 +446,10 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
             )
         )
 
+    for_tenant.assert_called_once_with(
+        tenant_id=TENANT,
+        request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+    )
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
     assert [event["event"] for event in events] == [
         "skill_assistant_progress",
@@ -2673,7 +2683,7 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
 
 
 def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.skill_management_service.dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT", 0)
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 

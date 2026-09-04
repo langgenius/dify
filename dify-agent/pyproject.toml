@@ -1,6 +1,6 @@
 [project]
 name = "dify-agent"
-version = "1.16.1"
+version = "1.17.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
@@ -19,7 +19,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [
-    "e2b>=2.34.0,<3.0.0",
+    "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
@@ -46,6 +46,10 @@ pythonVersion = "3.12"
 extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 
 [tool.pytest.ini_options]
+# Several test modules share a basename across directories (test_layer.py,
+# test_client.py, ...). The default prepend import mode derives module names
+# from the basename, so collecting them together is an import file mismatch.
+addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 markers = ["integration: requires a real external service or exercises multiple concrete adapters"]
