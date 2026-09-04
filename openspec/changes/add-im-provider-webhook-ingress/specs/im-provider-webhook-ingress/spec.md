@@ -1,149 +1,95 @@
 ## ADDED Requirements
 
-### Requirement: Ingress MUST reuse Channel Management routing contracts
+### Requirement: The callback controller MUST preserve Provider request facts
 
-Webhook ingress MUST reuse existing `WebhookId`、typed `dify_config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE`、`IMProvider.supports_webhook()` and Human Input callback URL path。It MUST NOT redefine Channel ID、Webhook ID lifecycle、Provider capability、mode configuration or management URL projection。Concrete `adapter.create_webhook_handler()` remains the credential-bound authority after ingress recovers credentials。
+The application MUST register `POST /callbacks/human-input/v2/im/<webhook_id>` only when deployment transport mode is `WEBHOOK`。The route MUST have no Console session、CSRF、Workspace or Account authentication。The controller MUST capture the UTC receive time，validate `webhook_id` and read the exact request body through the existing `WEBHOOK_REQUEST_BODY_MAX_SIZE` bound。The controller MUST populate `WebhookRequest.headers` with `tuple(request.headers.items())`。The controller MUST NOT read deployment transport mode or parse the Provider payload。
 
 #### Scenario: Deployment selects STREAM
-- **WHEN** shared deployment configuration is `STREAM`
-- **THEN** callback ingress MUST return the unknown-route `404` without querying Channel persistence、recovering credentials or calling a Provider handler
+- **WHEN** deployment transport mode is `STREAM`
+- **THEN** the application MUST NOT register the callback blueprint
+- **AND** Flask MUST return its normal `404` for the callback path
 
-#### Scenario: Provider has no Webhook capability
-- **WHEN** current Channel Provider returns `False` from `IMProvider.supports_webhook()`
-- **THEN** ingress MUST return the same `404` without recovering credentials
+#### Scenario: A valid callback reaches the Service
+- **WHEN** the route identity and body size are valid
+- **THEN** the controller MUST pass the uppercase method、Flask header pairs、exact body bytes and captured receive time to `IMWebhookIngressService`
 
-### Requirement: Public controller MUST perform only bounded HTTP adaptation
+#### Scenario: The callback body is oversized
+- **WHEN** the request body exceeds `WEBHOOK_REQUEST_BODY_MAX_SIZE`
+- **THEN** the controller MUST return `413` before Channel lookup or Provider handler construction
 
-The system MUST expose `POST /callbacks/human-input/v2/im/<webhook_id>` through a dedicated blueprint without Console session。Controller MUST capture trusted UTC receive time before body read or I/O，read exact body bytes through a configured bound，construct adapters-package `WebhookRequest` and map Service `WebhookResponse` to Flask response。Controller MUST NOT parse Provider JSON、select Provider or owner、recover credentials or process business events。
+#### Scenario: The route identity is malformed
+- **WHEN** `webhook_id` has an invalid length or character
+- **THEN** the controller MUST return the same empty `404` used for an unknown route
 
-#### Scenario: Valid callback reaches controller
-- **WHEN** callback path、method and body size are valid
-- **THEN** controller MUST pass uppercase method、`tuple(request.headers.items())`、exact body bytes and entry receive time to `IMWebhookIngressService`
+### Requirement: Reverse lookup MUST return a detached current Channel route
 
-#### Scenario: Callback body exceeds the limit
-- **WHEN** request body exceeds `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES`
-- **THEN** controller MUST return `413` before Channel lookup、adapter construction or inbox work
+`IMWebhookChannelRepository.find_by_webhook_id(webhook_id)` MUST query the current `HumanInputIMChannel` row by its globally unique `webhook_id`。It MUST return `None` when no current row exists。Otherwise it MUST return `IMWebhookChannelRoute(channel, credential_scope)` with an owner-free `IMChannel` and a validated `WorkspaceScope | DeploymentScope`。It MUST close the lookup transaction before credential、Provider or inbox work starts。
 
-#### Scenario: Browser sends preflight
-- **WHEN** client sends CORS preflight to the callback route
-- **THEN** callback blueprint MUST NOT provide application CORS policy or authenticated Web API fallback
+#### Scenario: A current route exists
+- **WHEN** one current Channel owns `webhook_id`
+- **THEN** the repository MUST return that Channel and its validated credential scope
 
-#### Scenario: Callback carries Console state
-- **WHEN** callback includes Console session cookie or CSRF header
-- **THEN** controller MUST NOT use that state for authentication、owner selection or authorization
+#### Scenario: No current route exists
+- **WHEN** no current Channel owns `webhook_id`
+- **THEN** the Service MUST return `404` without credential or inbox work
 
-### Requirement: Reverse lookup MUST return authoritative current Channel routing
+#### Scenario: Lookup cannot produce a valid route
+- **WHEN** the database query fails or persisted owner scope is invalid
+- **THEN** the Service MUST return `503` rather than treat the failure as route absence
 
-`IMWebhookChannelRepository.load_by_webhook_id(webhook_id)` MUST load the current `HumanInputIMChannel` row by globally unique `webhook_id` and return immutable `IMWebhookChannelRoute(channel, scope)`。`channel` MUST be the canonical owner-free `IMChannel`。`scope` MUST be validated `WorkspaceScope` or `DeploymentScope` derived from persisted owner key。Repository MUST NOT return raw owner key、ORM record or configuring actor，and MUST NOT resolve ciphers、recover credentials or perform Provider I/O。
+#### Scenario: An old Webhook ID is called after replacement
+- **WHEN** Channel replacement or deletion commits before reverse lookup starts
+- **THEN** `find_by_webhook_id()` MUST return `None` for the old `webhook_id`
 
-#### Scenario: Current Channel route is loaded
-- **WHEN** `webhook_id` identifies a current Channel in `WEBHOOK` mode
-- **THEN** route snapshot MUST contain Channel ID、Provider、Provider tenant、config version、opaque credentials and validated credential scope
+### Requirement: IMProviderBuilder MUST construct an adapter from IMChannel
 
-#### Scenario: Route is absent after replacement or deletion
-- **WHEN** no current Channel row owns `webhook_id`
-- **THEN** repository MUST return not found and Service MUST return `404` without credential or inbox work
+`IMProviderBuilder` MUST be constructed with one already-bound `BoundCredentialCipher`。Its `build(channel: IMChannel)` operation MUST call `IMCredentialCodec.load(channel.provider, channel.encrypted_credentials)` and MUST pass the recovered credentials to `build_im_provider_adapter()`。It MUST NOT accept `IMWebhookChannelRoute`、credential scope or owner identity。It MUST NOT cache the Channel、recovered credentials or returned adapter。The caller MUST own and close the returned `IMProviderAdapter`。
 
-#### Scenario: Persisted owner key is invalid
-- **WHEN** a row cannot be mapped to `WorkspaceScope` or `DeploymentScope`
-- **THEN** repository MUST report lookup failure rather than expose raw owner state or treat the route as missing
+#### Scenario: A Channel is materialized as a Provider adapter
+- **WHEN** `build()` receives an `IMChannel` whose credential envelope is valid for the Builder's bound cipher and whose Provider matches the recovered credentials
+- **THEN** it MUST return the `IMProviderAdapter` constructed from those credentials
 
-#### Scenario: Route lookup fails
-- **WHEN** database query or mapping cannot complete
-- **THEN** Service MUST return payload-free `503` and MUST NOT map the failure to route not found
+#### Scenario: The credential envelope does not match the Channel
+- **WHEN** credential recovery fails or the recovered Provider differs from `channel.provider`
+- **THEN** the Builder MUST fail without calling `build_im_provider_adapter()`
 
-### Requirement: Service MUST construct one request-scoped Channel handler
+#### Scenario: The same Channel is built twice
+- **WHEN** callers invoke `build()` twice for the same Channel snapshot
+- **THEN** the Builder MUST recover credentials and construct an independent adapter for each call
 
-`IMWebhookIngressService.handle(webhook_id, request)` MUST perform authoritative Channel lookup for every admitted callback。For a supported Provider，Service MUST select a bound cipher from route scope、call `IMCredentialCodec.load(channel.provider, channel.encrypted_credentials)` exactly once、call `build_im_provider_adapter(credentials)` exactly once and create one handler bound to a Channel-scoped `IMMessageInboxSink`。Service MUST NOT retain adapter、handler or recovered credentials between requests。
+### Requirement: Ingress MUST construct a request-scoped Provider handler
 
-#### Scenario: Workspace Channel receives callback
-- **WHEN** route scope is `WorkspaceScope`
-- **THEN** Service MUST construct `TenantBoundCredentialCipher` from trusted route Tenant ID and configured Key Provider
+`IMWebhookIngressService` MUST resolve an owner-bound `IMProviderBuilder` using the `credential_scope` returned by reverse lookup，call `builder.build(route.channel)` and pass a Channel-bound `IMMessageInboxSink` to `adapter.create_webhook_handler()`。The Service MUST NOT read deployment transport mode。Blueprint registration owns that policy。The returned handler is the runtime Webhook capability authority。Ingress MUST NOT cache adapters or handlers。
 
-#### Scenario: Deployment Channel receives callback
-- **WHEN** route scope is `DeploymentScope`
-- **THEN** Service MUST use only explicitly injected deployment-bound cipher
-- **AND** missing deployment cipher MUST return `503`
+#### Scenario: A Workspace Channel receives a callback
+- **WHEN** the route contains `WorkspaceScope`
+- **THEN** ingress MUST use an `IMProviderBuilder` whose `TenantBoundCredentialCipher` is bound to that scope
 
-#### Scenario: Concurrent callbacks target the same Channel revision
-- **WHEN** multiple requests resolve the same Channel ID and config version
-- **THEN** each request MUST independently construct、invoke and close its own Provider adapter and handler
+#### Scenario: Deployment cipher is unavailable
+- **WHEN** the route contains `DeploymentScope` and the independent deployment credential capability cannot supply a bound cipher
+- **THEN** ingress MUST return `503` without calling `IMProviderBuilder.build()`
 
-#### Scenario: Concrete credentials do not support Webhook
-- **WHEN** static Provider capability is true but `create_webhook_handler()` returns `None`
-- **THEN** Service MUST return the same `404` surface without invoking a Provider handler
+#### Scenario: Credentials do not provide a Webhook handler
+- **WHEN** `adapter.create_webhook_handler()` returns `None`
+- **THEN** ingress MUST return the same `404` used for an unknown route
 
-#### Scenario: Caller forges Provider identity
-- **WHEN** callback header or body claims another Provider or Provider tenant
-- **THEN** Service MUST still construct from route Channel facts
-- **AND** Provider handler or bound sink MUST reject conflicting authenticated identity
+#### Scenario: Handler invocation completes
+- **WHEN** ingress has constructed a Provider adapter
+- **THEN** ingress MUST close that adapter after handler invocation or failure
 
-### Requirement: Inbox intake MUST bind current Channel identity
+### Requirement: Ingress MUST pass through the Provider response
 
-Ingress MUST construct `IMMessageInboxSink` with current `IMChannelId`、Provider and Provider tenant。Sink and inbox repository MUST persist Channel ID as local routing metadata without adding it to `AuthenticatedIMEvent`。Provider event deduplication MUST remain independent of Channel ID。
+The Service MUST return the `WebhookResponse` produced by the Provider handler without changing its status，headers or body。The controller MUST map those values to the Flask response without interpreting Provider semantics。
 
-#### Scenario: Matching event is accepted
-- **WHEN** handler emits an event matching bound Channel Provider and Provider tenant
-- **THEN** sink MUST persist `channel_id` with event facts before returning `ACCEPTED`
+#### Scenario: A Provider handler returns a response
+- **WHEN** the Provider handler returns a `WebhookResponse`
+- **THEN** the HTTP response MUST preserve its status，headers and body
 
-#### Scenario: Event conflicts with Channel identity
-- **WHEN** authenticated event Provider or Provider tenant differs from the bound Channel
-- **THEN** sink MUST create no record and MUST NOT return `ACCEPTED`
+### Requirement: Ingress failures MUST not expose credentials
 
-#### Scenario: Same Provider event is redelivered after Channel replacement
-- **WHEN** real Provider event ID already exists for the same Provider tenant under an earlier Channel
-- **THEN** deduplication MUST resolve the existing event without adding Channel ID to the deduplication key or overwriting immutable routing facts
+Ingress MUST return an empty `503` when route lookup、`IMProviderBuilder` resolution or `build()`、or Provider handler construction fails。Ingress logs、traces and exceptions MUST NOT contain credential plaintext or credential ciphertext。`webhook_id` MUST be treated as an observable routing identifier rather than a credential and MAY appear in diagnostics。
 
-### Requirement: Provider response and durable acceptance semantics MUST remain unchanged
-
-Service MUST return Provider handler status、headers and body without rewriting challenge、authentication failure、validation failure or ACK。A business event success ACK MUST continue to require `IMMessageInboxSink` durable acceptance or real-ID duplicate resolution。
-
-#### Scenario: Provider challenge succeeds
-- **WHEN** handler validates and processes challenge request
-- **THEN** controller MUST return handler challenge response and inbox MUST add no record
-
-#### Scenario: Provider authentication fails
-- **WHEN** handler rejects signature、token、JWT or encryption material
-- **THEN** controller MUST return handler non-success response and inbox MUST add no record
-
-#### Scenario: New business event commits
-- **WHEN** bound sink durably accepts authenticated event
-- **THEN** controller MUST return handler success ACK
-
-#### Scenario: Inbox persistence fails
-- **WHEN** bound sink cannot durably accept event
-- **THEN** controller MUST return handler retry-compatible response and Service MUST NOT fabricate success
-
-### Requirement: Failure and observability MUST protect sensitive content
-
-Malformed or unknown `webhook_id`、`STREAM` mode、unsupported Provider and unavailable credential-bound handler MUST use one `404` surface。Database、scope mapping、cipher、credential recovery、adapter construction and unclassified internal failures MUST return payload-free `503`。After successful lookup，Service MUST emit one `im_webhook_channel_resolved` structured log containing Provider and Channel ID before capability、cipher or credential work。Logs、metrics、traces and exceptions MUST NOT contain request body、headers、Provider response body、credential plaintext、credential ciphertext、tenant ID or complete `webhook_id`。
-
-#### Scenario: Malformed route identity is probed
-- **WHEN** path identity has invalid length or character set
-- **THEN** controller MUST return the same `404` as unknown well-formed route
-
-#### Scenario: Channel lookup succeeds
-- **WHEN** repository returns `IMWebhookChannelRoute`
-- **THEN** Service MUST immediately log `provider` and `channel_id`
-- **AND** log MUST precede Provider capability、cipher、credential and adapter work
-
-#### Scenario: Credential envelope cannot be opened
-- **WHEN** codec raises `IMCredentialError`
-- **THEN** Service MUST return `503` and diagnostics MUST contain only safe failure code、Channel ID and Provider
-
-#### Scenario: Ingress metric is recorded
-- **WHEN** controller or Service records request outcome
-- **THEN** dimensions MUST contain only low-cardinality Provider、outcome and HTTP status class
-
-### Requirement: Channel configuration commits MUST define in-flight boundaries
-
-Ingress MUST NOT hold Channel transaction during cipher work、Provider authentication or inbox commit。Request MUST use Channel snapshot captured by reverse lookup。Rotation、replacement or delete commit followed by a new lookup MUST expose new configuration or route absence。Downstream authorization MUST continue to use current Channel and Binding state rather than only ingress snapshot。
-
-#### Scenario: Credential rotation overlaps request
-- **WHEN** request resolves Channel before rotation commit
-- **THEN** in-flight request MAY finish with old envelope
-- **AND** lookup started after commit MUST recover new envelope and config version
-
-#### Scenario: Replacement overlaps old callback
-- **WHEN** replacement commits and Provider calls old `webhook_id`
-- **THEN** ingress MUST return `404` and MUST NOT route callback to replacement Channel
+#### Scenario: Credential recovery fails
+- **WHEN** the stored credential envelope cannot be opened
+- **THEN** ingress MUST return an empty `503`
+- **AND** diagnostics MUST contain no credential plaintext or credential ciphertext
