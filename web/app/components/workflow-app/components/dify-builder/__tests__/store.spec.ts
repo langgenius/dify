@@ -49,6 +49,7 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
     onSyncDraft: vi.fn(async () => undefined),
     session: {
       refresh: vi.fn(async () => true),
+      getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
       reset: vi.fn(),
