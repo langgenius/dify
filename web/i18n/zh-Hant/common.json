@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "上傳 {{type}} 不能超過 {{size}}",
   "fileUploader.uploadFromComputerReadError": "檔案讀取失敗，請重試。",
   "fileUploader.uploadFromComputerUploadError": "檔案上傳失敗，請重新上傳。",
+  "imageGallery.previewImage": "預覽第 {{index}} 張圖片，共 {{total}} 張",
   "imageInput.browse": "瀏覽",
   "imageInput.dropImageHere": "將您的圖片放在這裡，或",
   "imageInput.supportedFormats": "支援 PNG、JPG、JPEG、WEBP 和 GIF",

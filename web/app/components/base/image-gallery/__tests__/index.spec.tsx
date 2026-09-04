@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import ImageGallery from '..'
+
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'imageGallery.previewImage': 'Preview image {{index}} of {{total}}',
+  }),
+)
 
 describe('ImageGallery', () => {
   it('previews the selected image and closes on Escape', async () => {
@@ -9,7 +16,7 @@ describe('ImageGallery', () => {
       <ImageGallery srcs={['https://example.com/first.png', 'https://example.com/second.png']} />,
     )
 
-    await user.click(screen.getAllByTestId('gallery-image')[1]!)
+    await user.click(screen.getByRole('button', { name: 'Preview image 2 of 2' }))
 
     expect(screen.getByTestId('image-preview-container').querySelector('img')).toHaveAttribute(
       'src',
