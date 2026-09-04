@@ -177,10 +177,12 @@ def initialize_created_app_rbac_access_task(
 ) -> None:
     """Grant the default access policy on one resource to current workspace members.
 
-    The resource scope is persisted synchronously before this task is queued. Replacing
-    member policies is idempotent, so retrying the whole synchronization is safe
-    when the enterprise RBAC service is temporarily unavailable.
+    Replacing member policies is idempotent, so retrying the whole synchronization is
+    safe when the enterprise RBAC service is temporarily unavailable.
     """
+    if not dify_config.RBAC_ENABLED:
+        return
+
     kind, resource_id = _resolve_target_resource(
         {
             enterprise_rbac_service.RBACResourceType.APP: app_id,
@@ -188,9 +190,6 @@ def initialize_created_app_rbac_access_task(
             enterprise_rbac_service.RBACResourceType.AGENT: agent_id,
         }
     )
-
-    if not dify_config.RBAC_ENABLED:
-        return
 
     try:
         for account_ids in TenantService.iter_member_account_id_batches(

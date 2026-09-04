@@ -23,18 +23,20 @@ def initialize_agent_rbac_access(*, tenant_id: str, agent_id: str, creator_accou
         return
 
     try:
-        enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist(
-            tenant_id,
-            creator_account_id,
-            agent_id,
-            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-        )
+        # The scope row is written last so a failure before it leaves the agent unconfigured,
+        # which is what the bootstrap migration looks for when it repairs an agent.
         initialize_created_app_rbac_access_task.delay(tenant_id, creator_account_id, agent_id=agent_id)
         enterprise_rbac_service.RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
             tenant_id,
             creator_account_id,
             resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
             resource_id=agent_id,
+        )
+        enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist(
+            tenant_id,
+            creator_account_id,
+            agent_id,
+            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
         )
     except Exception:
         logger.warning(

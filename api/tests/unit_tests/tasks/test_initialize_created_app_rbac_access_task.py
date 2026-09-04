@@ -112,6 +112,14 @@ def test_initialize_created_app_rbac_access_task_rejects_anything_but_one_resour
         initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **kwargs)
 
 
+def test_initialize_created_app_rbac_access_task_is_a_no_op_when_rbac_is_disabled(monkeypatch: pytest.MonkeyPatch):
+    """With RBAC off the task returns before it even looks at its arguments."""
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+
+    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1")
+    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", app_id="app-1", dataset_id="dataset-1")
+
+
 def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task

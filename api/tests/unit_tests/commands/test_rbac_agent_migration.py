@@ -488,14 +488,24 @@ def test_tenant_with_zero_agents_completes() -> None:
 
 
 def test_unknown_agent_whitelist_scope_stops_the_migration() -> None:
+    """A scope this build has never heard of is never guessed at: it fails the agent like any other error."""
     result, mocks = _run_agent_phase(
         ["--apply"],
-        _AgentPhaseSetup(agents=[("ag1", "c1", None)], agent_configs=[_whitelist_config(scope="galaxy_brain")]),
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", None), ("ag2", "c2", None)],
+            agent_configs=[_whitelist_config(scope="galaxy_brain")],
+        ),
     )
 
     assert result.exit_code != 0
-    assert "galaxy_brain" in str(result.exception)
+    events = _events(result.output)
+    assert [e["event"] for e in events] == ["agent_access_bootstrap_failed"]
+    assert events[0]["agent_id"] == "ag1"
+    assert "galaxy_brain" in str(events[0]["error"])
+    assert "ag1" in result.output
     mocks.replace_whitelist.assert_not_called()
+    # The second agent was never reached.
+    assert mocks.agent_whitelist_config.call_count == 1
 
 
 def test_missing_agent_whitelist_scope_is_skipped_not_defaulted() -> None:

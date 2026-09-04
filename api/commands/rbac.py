@@ -1255,6 +1255,21 @@ def _emit_agent_access_bootstrap_skipped(
     )
 
 
+def _agent_access_bootstrap_failure(
+    options: _AgentAccessBootstrapOptions,
+    exc: Exception,
+) -> click.ClickException:
+    _emit_agent_migration_event(
+        {
+            "event": _AGENT_ACCESS_BOOTSTRAP_EVENT_KIND.failed,
+            "tenant_id": options.tenant_id,
+            "agent_id": options.agent_id,
+            "error": str(exc),
+        }
+    )
+    return click.ClickException(f"tenant {options.tenant_id} agent {options.agent_id}: {exc}")
+
+
 def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _AgentAccessBootstrapCounts) -> None:
     """Give one pre-existing agent the access rows a newly created agent gets."""
     config = RBACService.AgentAccess.legacy_whitelist_config(
@@ -1262,7 +1277,10 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
         account_id=options.operator_account_id,
         agent_id=options.agent_id,
     )
-    scope = _normalize_rbac_whitelist_scope(config.rbac_whitelist_scope)
+    try:
+        scope = _normalize_rbac_whitelist_scope(config.rbac_whitelist_scope)
+    except ValueError as exc:
+        raise _agent_access_bootstrap_failure(options, exc) from exc
     if scope is None:
         _emit_agent_access_bootstrap_skipped(options, _AgentAccessBootstrapReason.MISSING_WHITELIST_SCOPE)
         return
@@ -1279,15 +1297,7 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
         try:
             _write_agent_access_rows(options)
         except Exception as exc:
-            _emit_agent_migration_event(
-                {
-                    "event": _AGENT_ACCESS_BOOTSTRAP_EVENT_KIND.failed,
-                    "tenant_id": options.tenant_id,
-                    "agent_id": options.agent_id,
-                    "error": str(exc),
-                }
-            )
-            raise click.ClickException(f"tenant {options.tenant_id} agent {options.agent_id}: {exc}") from exc
+            raise _agent_access_bootstrap_failure(options, exc) from exc
     counts.changed += 1
 
     event: dict[str, object] = {
@@ -1318,12 +1328,13 @@ def _bootstrap_tenant_agent_access(
 ) -> None:
     owner_account_id: str | None = None
     for agent_id, creator_account_id, backing_app_id in _iter_agent_rows(tenant_id, agent_batch_size):
-        if creator_account_id is None and owner_account_id is None:
-            with session_factory.create_session() as session:
-                owner_account_id = _owner_account_id(tenant_id, session=session)
-        operator_account_id = creator_account_id or owner_account_id
-        if not operator_account_id:
-            raise click.ClickException(f"tenant {tenant_id} agent {agent_id}: no operator account")
+        if creator_account_id:
+            operator_account_id = creator_account_id
+        else:
+            if owner_account_id is None:
+                with session_factory.create_session() as session:
+                    owner_account_id = _owner_account_id(tenant_id, session=session)
+            operator_account_id = owner_account_id
         _bootstrap_agent_access(
             _AgentAccessBootstrapOptions(
                 tenant_id=tenant_id,

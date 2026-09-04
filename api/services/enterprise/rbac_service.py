@@ -261,9 +261,6 @@ class ResourceWhitelist(_RBACModel):
 
 class ResourceWhitelistConfig(_RBACModel):
     automatic_include_workspace_members: bool
-    # Absent on RBAC services older than the agent bootstrap migration; true only when a
-    # stored scope row backs this response, false when the service fabricated the default.
-    configured: bool | None = None
 
 
 class ResourceWhitelistConfigResource(_RBACModel):
