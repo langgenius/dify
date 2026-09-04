@@ -151,6 +151,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
@@ -233,6 +235,7 @@ describe("runApiDatabaseMigrations", () => {
       "-- Migration id: 0050_deletion_job_capability_provenance\n",
     );
     expect(migrationSql[50]).toContain("-- Migration id: 0051_failed_query_trace_outcome_index\n");
+    expect(migrationSql[51]).toContain("-- Migration id: 0052_namespace_source_previews\n");
     expect(closed).toBe(true);
   });
 

@@ -59,6 +59,7 @@ const deletionActiveScopeIndexesMigrationId = "0048_deletion_active_scope_indexe
 const answerTraceQueryImagesMigrationId = "0049_answer_trace_query_images";
 const deletionJobCapabilityProvenanceMigrationId = "0050_deletion_job_capability_provenance";
 const failedQueryTraceOutcomeIndexMigrationId = "0051_failed_query_trace_outcome_index";
+const namespaceSourcePreviewsMigrationId = "0052_namespace_source_previews";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -94,6 +95,7 @@ const migrationsAfterDurableDeletion = [
   answerTraceQueryImagesMigrationId,
   deletionJobCapabilityProvenanceMigrationId,
   failedQueryTraceOutcomeIndexMigrationId,
+  namespaceSourcePreviewsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

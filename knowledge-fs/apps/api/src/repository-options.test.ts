@@ -111,6 +111,7 @@ describe("createApiDatabaseRepositories", () => {
       knowledgeSpaceProvisioning: expect.any(Object),
       knowledgeSpaceUnpublishedProfileActivations: expect.any(Object),
       legacySpacePublicationBootstraps: expect.any(Object),
+      namespaceSourcePreviews: expect.any(Object),
       pageIndexFindability: expect.any(Object),
       pageIndexUpgradeBackfills: expect.any(Object),
       qualityControl: expect.any(Object),
