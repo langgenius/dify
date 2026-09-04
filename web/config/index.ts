@@ -14,14 +14,20 @@ const getStringConfig = (envVar: string | undefined, defaultValue: string) => {
 const isLocalMarketplaceApiUrl = (url: string | undefined) =>
   /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/)/i.test(url ?? '')
 
-// NEXT_PUBLIC_* is inlined at build. The standalone marketplace image sets
-// MARKETPLACE_API_URL at runtime instead, so SSR must read that here or it
-// falls through to localhost:5002 and creator pages throw.
+// Docker entrypoint sets NEXT_PUBLIC_MARKETPLACE_API_PREFIX=${MARKETPLACE_API_URL}/api/v1.
+// MARKETPLACE_API_URL itself is the site origin (no /api/v1). Standalone marketplace
+// images may set MARKETPLACE_API_URL at runtime for SSR; normalize the same way
+// entrypoint does so console SSR does not call the HTML origin and fail Templates.
+const marketplaceApiPrefixFromUrl = (url: string) => {
+  const trimmed = url.replace(/\/$/, '')
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`
+}
+
 const runtimeMarketplaceApiUrl =
   typeof globalThis.window === 'undefined' &&
   process.env.MARKETPLACE_API_URL &&
   !isLocalMarketplaceApiUrl(process.env.MARKETPLACE_API_URL)
-    ? process.env.MARKETPLACE_API_URL
+    ? marketplaceApiPrefixFromUrl(process.env.MARKETPLACE_API_URL)
     : undefined
 
 export const API_PREFIX = getStringConfig(
