@@ -24,6 +24,7 @@ from core.dify_builder.contract import (
     ConversationPage,
     NoticeItem,
     Phase,
+    RecoveryRef,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -448,12 +449,27 @@ _TEST_AND_RUN_ACTIONS = frozenset(
 _RELEASE_ACTIONS = frozenset({"publish", "publish_workflow"})
 _REPAIR_THEN_RETEST_STATES = frozenset({PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR})
 
+# Working states whose interrupted-step Retry (recovery_continue) re-runs a
+# privileged op: publish (RELEASE) or a draft test run (TEST_AND_RUN). A Retry
+# re-invokes the state's handler, so it must be gated at that op's tier, not the
+# base EDIT the recovery actions otherwise carry.
+_PUBLISH_WORKING_STATES = frozenset({PcState.BUILD_PUBLISH, PcState.FIX_PUBLISH})
+_TEST_WORKING_STATES = frozenset({PcState.BUILD_TEST_AND_REPAIR, PcState.FIX_VERIFY, PcState.EDIT_TEST_AFFECTED_PATHS})
+
 
 def _app_access_for_action(state: PcState, kind: str) -> AppAccess:
     if kind in _RELEASE_ACTIONS:
         return AppAccess.RELEASE
     if kind in _TEST_AND_RUN_ACTIONS or (kind == "approve_repair" and state in _REPAIR_THEN_RETEST_STATES):
         return AppAccess.TEST_AND_RUN
+    # A recovery_continue (Retry) re-runs the interrupted working handler, which
+    # re-invokes the state's privileged op -- enforce that op's tier, not base EDIT.
+    # (recovery_restart only resets + re-enters the entry state, so it stays EDIT.)
+    if kind == "recovery_continue":
+        if state in _PUBLISH_WORKING_STATES:
+            return AppAccess.RELEASE
+        if state in _TEST_WORKING_STATES:
+            return AppAccess.TEST_AND_RUN
     return AppAccess.EDIT
 
 
@@ -461,17 +477,16 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     """Validate runner/service short-circuits against their product state.
 
     These commands do not appear in ``_ACTIONS_FOR``, but they are not global:
-    transcript/model/recovery commands operate only at a waiting gate, pause
-    transitions must change the current pause flag, and recovery choices must
-    be present in the current RecoveryRef.
+    transcript/model commands operate only at a waiting gate, pause transitions
+    must change the current pause flag, and recovery choices must match the
+    current terminal/interrupted/drift-recovery condition.
     """
     if state == PcState.FAILED:
         return kind == "recovery_restart"
+    # An interrupted working step may be retried or restarted. A live worker is
+    # still protected downstream by dispatch's advance-lock acquisition.
     if is_working(state):
-        # A working state without its advance lock is projected as
-        # interrupted. Lock acquisition still protects a live worker from a
-        # concurrent restart.
-        return kind == "recovery_restart"
+        return kind in {"recovery_continue", "recovery_restart"}
     if not is_waiting(state):
         return False
     if fc.paused:
@@ -976,6 +991,22 @@ class DifyBuilderService:
             else None
         )
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
+        # Interrupted working step (crash mid auto-advance, lock released): offer
+        # Retry (recovery_continue) / Start over (recovery_restart). Built directly
+        # with recovery_class="" so recovery_ref_for/classify never see a fabricated
+        # drift class. Retry re-runs the working handler (recovery_continue returns
+        # the working state -> non-settled -> runner re-drives it); Start over resets
+        # + re-enters the flow's entry state. This overrides any stale drift class a
+        # user left set at an earlier waiting gate -- once a step has crashed, the
+        # interrupted-step recovery is what matters (drift recovery only applies at a
+        # waiting gate, where is_working is False and this branch never fires).
+        if is_working(st) and not lock_held:
+            recovery_ref = RecoveryRef(
+                recovery_class="",
+                can_continue=True,
+                can_restart=True,
+                message="The last step didn't finish. Retry it, or start over.",
+            )
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,

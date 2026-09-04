@@ -1572,3 +1572,84 @@ def test_get_session_view_no_recovery_when_unset(service: DifyBuilderService, re
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.recovery is None
+
+
+def test_interrupted_working_state_surfaces_recovery_offer(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # working state, lock unheld -> interrupted
+    view = service.get_session_view(s.id, _actor())
+    assert view.interrupted is True
+    assert view.recovery is not None
+    assert view.recovery.can_continue is True  # Retry
+    assert view.recovery.can_restart is True  # Start over
+    assert view.recovery.recovery_class == ""  # not a drift class
+
+
+def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.service import _internal_action_allowed
+
+    fc = DifyBuilderContext()
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_continue") is True
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_restart") is True
+    # an unrelated action is still rejected at a working state
+    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "publish_workflow") is False
+
+
+def test_repeat_failure_persists_restartable_failed_state(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock, monkeypatch
+) -> None:
+    """A Retry whose handler raises again must not wedge the session.
+
+    The task persists the caught failure, releases the lock, and publishes the
+    authoritative failed-state projection with its restart action.
+    """
+    import tasks.dify_builder_advance_task as advance_mod
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    class RaisingDify(FakeBuildDifyPort):
+        def publish(self, _app_id, _actor) -> None:
+            raise RuntimeError("boom: publish still broken")
+
+    monkeypatch.setattr(advance_mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(advance_mod, "WorkflowServiceDifyPort", RaisingDify)
+    monkeypatch.setattr(advance_mod, "session_lock", lock)
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(advance_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+
+    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # already interrupted: working, lock unheld
+    actor = _actor()
+    token = lock.acquire(s.id)
+    assert token is not None
+
+    action = {"kind": "recovery_continue", "payload": {}, "base_version": s.version}
+    advance_mod.advance_session(s.id, action, {"account_id": actor.account_id, "tenant_id": actor.tenant_id}, token)
+
+    assert not lock.exists(s.id)
+    state_event = next(ev for _sid, ev in events if ev["kind"] == "state")
+    assert state_event["state"] == "failed"
+    assert state_event["run_status"] == "failed"
+    assert [item["id"] for item in state_event["actions"]] == ["restart"]
+
+    view = service.get_session_view(s.id, actor)
+    assert view.state == "failed"
+    assert view.interrupted is False
+    assert view.recovery is None
+    assert [item.id for item in view.actions] == ["restart"]
+
+
+def test_recovery_continue_retry_carries_the_working_states_access_tier() -> None:
+    """A recovery_continue (Retry) re-runs the interrupted working handler, so it
+    must be gated at that op's tier: RELEASE at publish states, TEST_AND_RUN at test
+    states, EDIT elsewhere. recovery_restart (reset only) stays EDIT."""
+    from services.dify_builder.service import AppAccess, _app_access_for_action
+
+    assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.FIX_PUBLISH, "recovery_continue") == AppAccess.RELEASE
+    assert _app_access_for_action(PcState.BUILD_TEST_AND_REPAIR, "recovery_continue") == AppAccess.TEST_AND_RUN
+    assert _app_access_for_action(PcState.FIX_VERIFY, "recovery_continue") == AppAccess.TEST_AND_RUN
+    assert _app_access_for_action(PcState.EDIT_TEST_AFFECTED_PATHS, "recovery_continue") == AppAccess.TEST_AND_RUN
+    # a non-privileged working step (diagnose) and recovery_restart stay EDIT
+    assert _app_access_for_action(PcState.FIX_DIAGNOSE, "recovery_continue") == AppAccess.EDIT
+    assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_restart") == AppAccess.EDIT
