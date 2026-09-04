@@ -219,6 +219,18 @@ describe('Variable Utilities', () => {
       expect(url).not.toContain('source=https%253A%252F%252Fexample.com')
     })
 
+    it('should let params replace the default source without duplicating it', () => {
+      const url = getMarketplaceUrl(
+        '/plugins',
+        { source: 'http://localhost:3001', language: 'en-US' },
+        { source: 'http://localhost:3000' },
+      )
+      const searchParams = new URL(url, 'https://marketplace.dify.ai').searchParams
+
+      expect(searchParams.getAll('source')).toEqual(['http://localhost:3001'])
+      expect(searchParams.get('language')).toBe('en-US')
+    })
+
     it('should not access window during server render', () => {
       const originalWindow = window
       vi.stubGlobal('window', undefined)

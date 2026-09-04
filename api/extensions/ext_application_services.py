@@ -5,6 +5,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -23,9 +24,10 @@ from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
+from libs.oauth_bearer import invalidate_oauth_token_cache
 from libs.passport import PassportService
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -44,8 +46,10 @@ from repositories.explore_banner_query_repository import ExploreBannerQueryRepos
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
@@ -55,6 +59,7 @@ from repositories.webapp_access_query_repository import WebAppAccessQueryReposit
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services.account_access_service import AccountAccessService
 from services.account_activation_service import AccountActivationService
 from services.account_adapters import (
     BillingAccountActivationEligibility,
@@ -181,6 +186,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
@@ -211,6 +217,7 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class AccountServices:
+    access: AccountAccessService
     authentication: ConsoleAuthenticationService
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
@@ -253,6 +260,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
+    workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     inner_mail: InnerMailService
@@ -409,8 +417,19 @@ def build_application_services(
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
+    workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
+    workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        session_maker=database_client
+    )
     return ApplicationServices(
         accounts=AccountServices(
+            access=AccountAccessService(
+                accounts=accounts,
+                workspaces=workspace_query_repository,
+                sessions=SQLAlchemyOAuthAccessTokenRepository(session_factory=database_client),
+                invalidate_token_cache=partial(invalidate_oauth_token_cache, redis),
+                now=utc_now,
+            ),
             authentication=ConsoleAuthenticationService(
                 accounts=accounts,
                 workspaces=workspace_query_repository,
@@ -647,6 +666,10 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+        ),
+        workflow_runs=WorkflowRunService(
+            workflow_runs=workflow_run_repository,
+            node_executions=workflow_node_execution_repository,
         ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,

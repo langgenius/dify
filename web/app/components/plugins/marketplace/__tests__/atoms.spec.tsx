@@ -6,6 +6,7 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   useActivePluginType,
   useFilterPluginTags,
+  useFilterTemplateLanguages,
   useMarketplaceMoreClick,
   useMarketplaceSearchMode,
   useMarketplaceSort,
@@ -125,6 +126,25 @@ describe('useFilterPluginTags', () => {
     const { result } = renderHook(() => useFilterPluginTags(), { wrapper })
 
     expect(result.current[0]).toEqual(['search'])
+  })
+})
+
+describe('useFilterTemplateLanguages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return empty array as default', () => {
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+
+    expect(result.current[0]).toEqual([])
+  })
+
+  it('parses languages from search params', () => {
+    const { wrapper } = createWrapper('?languages=ja')
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+    expect(result.current[0]).toEqual(['ja'])
   })
 })
 
