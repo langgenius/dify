@@ -204,6 +204,25 @@ class WorkflowServiceDifyPort:
             before_graph: Graph = dict(workflow.graph_dict)
             graph: Graph = before_graph
             unique_hash = workflow.unique_hash
+
+            # Idempotent re-entry (interrupted-step Retry): a re-applied fix.apply
+            # re-sends the same intents against an already-mutated draft. Drop
+            # create_node for an id already present and connect for an edge already
+            # present so the re-apply is a clean no-op. Uses the ORIGINAL draft graph
+            # (before_graph) as the reference, so an in-batch duplicate of a NEW id
+            # still reaches graph_ops and raises (validation preserved).
+            _present_node_ids = {n.get("id") for n in before_graph.get("nodes", [])}
+            _present_edges = {(e.get("source"), e.get("target")) for e in before_graph.get("edges", [])}
+
+            def _already_present(intent) -> bool:
+                if intent.op == "create_node":
+                    return intent.args.get("node_id") in _present_node_ids
+                if intent.op == "connect":
+                    return (intent.args.get("from_node"), intent.args.get("to_node")) in _present_edges
+                return False
+
+            intents = [intent for intent in intents if not _already_present(intent)]
+
             changed_nodes: list[str] = []
             for intent in intents:
                 apply_fn = graph_ops.APPLY_FNS.get(intent.op)
