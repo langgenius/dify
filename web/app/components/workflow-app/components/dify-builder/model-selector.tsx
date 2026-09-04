@@ -53,6 +53,7 @@ const DifyBuilderModelSelector = () => {
       popupClassName="w-[340px]! max-w-[340px]!"
       placement="top-start"
       isAdvancedMode
+      isInWorkflow
       readonly={readonly}
       modelSelectorReadonly={readonly}
       setModel={({ provider, modelId, mode }) => {
