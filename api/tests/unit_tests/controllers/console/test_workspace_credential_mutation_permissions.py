@@ -9,7 +9,11 @@ from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
-from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi, ToolOAuthCustomClient
+from controllers.console.workspace.tool_providers import (
+    ToolBuiltinProviderAddApi,
+    ToolMCPDetailApi,
+    ToolOAuthCustomClient,
+)
 
 
 @pytest.mark.parametrize(
@@ -98,4 +102,16 @@ def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
     rbac_config = getclosurevars(rbac_wrapper).nonlocals
     assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
     assert rbac_config["scene"] == RBACPermission.AGENT_MANAGE
+    assert rbac_config["resource_required"] is False
+
+
+def test_tool_mcp_detail_get_requires_rbac() -> None:
+    """GET endpoint that returns MCP provider details must enforce
+    the workspace MCP management RBAC gate."""
+    method = ToolMCPDetailApi.get
+
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    rbac_config = getclosurevars(rbac_wrapper).nonlocals
+    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
+    assert rbac_config["scene"] == RBACPermission.MCP_MANAGE
     assert rbac_config["resource_required"] is False
