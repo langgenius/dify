@@ -98,7 +98,6 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
     const appId = appDetail.id
     const isWorkflowApp =
       appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
-    const supportsAppDeploy = appDetail.mode === AppModeEnum.WORKFLOW
     const supportsAnnotations =
       appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
     const supportsResourceAccess = appDetail.mode !== AppModeEnum.AGENT
@@ -130,7 +129,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      ...(supportsAppDeploy && appACLCapabilities.canDeploy
+      ...(isWorkflowApp && appACLCapabilities.canDeploy
         ? [
             {
               name: t(($) => $['appMenus.deploy'], { ns: 'common' }),

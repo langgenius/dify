@@ -1,31 +1,29 @@
+import { dehydrate } from '@tanstack/react-query'
 import { cache } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
 import { connection } from '@/next/server'
 import { serverConsoleQuery } from '@/service/server'
 import 'server-only'
 
-export const getSystemFeaturesQueryClient = cache(getQueryClient)
+const getRequestQueryClient = cache(getQueryClient)
 
-const systemFeaturesServerQueryOptions = () => serverConsoleQuery.systemFeatures.get.queryOptions()
+const systemFeaturesServerQueryOptions = () =>
+  serverConsoleQuery.systemFeatures.get.queryOptions({ staleTime: 'static' })
 
-export const getCachedSystemFeatures = () => {
-  const queryClient = getSystemFeaturesQueryClient()
-  const queryOptions = systemFeaturesServerQueryOptions()
-  return queryClient.getQueryData(queryOptions.queryKey)
-}
-
-export const prefetchSystemFeatures = async () => {
+export const getOptionalSystemFeatures = async () => {
   await connection()
-  const queryClient = getSystemFeaturesQueryClient()
+  const queryClient = getRequestQueryClient()
   const queryOptions = systemFeaturesServerQueryOptions()
   const queryState = queryClient.getQueryState(queryOptions.queryKey)
 
-  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
+  if (queryState?.status === 'error' && queryState.data === undefined) return undefined
 
-  return queryClient.getQueryData(queryOptions.queryKey)
+  return queryClient.query(queryOptions).catch(() => undefined)
 }
 
-export const ensureSystemFeatures = async () => {
+export const getSystemFeatures = async () => {
   await connection()
-  return getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions())
+  return getRequestQueryClient().query(systemFeaturesServerQueryOptions())
 }
+
+export const dehydrateSystemFeatures = () => dehydrate(getRequestQueryClient())

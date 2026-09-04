@@ -546,6 +546,14 @@ type RenderOptions = {
 const localeInput = { query: { language: 'en-US' } }
 const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
+const recommendedAppQueryKey = (appId: string) => [
+  'console',
+  'explore',
+  'apps',
+  'byAppId',
+  'get',
+  { params: { app_id: appId } },
+]
 
 const renderHomeContent = ({
   hasEditPermission = false,
@@ -1004,6 +1012,36 @@ describe('HomeContent', () => {
           templateId: 'app-1',
         })
       })
+    })
+
+    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockHandleImportDSL.mockResolvedValue(undefined)
+      const { queryClient } = renderHomeContent({ hasEditPermission: true })
+      queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
+        export_data: 'cached-yaml',
+        mode: AppModeEnum.CHAT,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: recommendedAppQueryKey('app-1'),
+        exact: true,
+        refetchType: 'none',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.any(Object),
+      )
     })
 
     it('should open create flow from learn dify item card click', async () => {

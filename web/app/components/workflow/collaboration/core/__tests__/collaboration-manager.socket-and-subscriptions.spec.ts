@@ -501,10 +501,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
     internals.setupSocketEventListeners(socket as unknown as Socket)
 
     const varsFeatureHandler = vi.fn()
-    const appStateHandler = vi.fn()
     const appMetaHandler = vi.fn()
     const appPublishHandler = vi.fn()
-    const mcpHandler = vi.fn()
     const workflowUpdateHandler = vi.fn()
     const commentsHandler = vi.fn()
     const restoreIntentHandler = vi.fn()
@@ -515,10 +513,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
     let latestCursors: Record<string, unknown> | null = null
 
     manager.onVarsAndFeaturesUpdate(varsFeatureHandler)
-    manager.onAppStateUpdate(appStateHandler)
     manager.onAppMetaUpdate(appMetaHandler)
     manager.onAppPublishUpdate(appPublishHandler)
-    manager.onMcpServerUpdate(mcpHandler)
     manager.onWorkflowUpdate(workflowUpdateHandler)
     manager.onCommentsUpdate(commentsHandler)
     manager.onRestoreIntent(restoreIntentHandler)
@@ -549,11 +545,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
-      type: 'app_state_update',
-      data: { value: 2 },
-    } satisfies CollaborationUpdate)
-    socket.trigger('collaboration_update', {
-      ...baseUpdate,
       type: 'app_meta_update',
       data: { value: 3 },
     } satisfies CollaborationUpdate)
@@ -561,11 +552,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
       ...baseUpdate,
       type: 'app_publish_update',
       data: { value: 4 },
-    } satisfies CollaborationUpdate)
-    socket.trigger('collaboration_update', {
-      ...baseUpdate,
-      type: 'mcp_server_update',
-      data: { value: 5 },
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
@@ -627,10 +613,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
       'u-1': { x: 1, y: 2, userId: 'u-1' },
     })
     expect(varsFeatureHandler).toHaveBeenCalledTimes(1)
-    expect(appStateHandler).toHaveBeenCalledTimes(1)
     expect(appMetaHandler).toHaveBeenCalledTimes(1)
     expect(appPublishHandler).toHaveBeenCalledTimes(1)
-    expect(mcpHandler).toHaveBeenCalledTimes(1)
     expect(workflowUpdateHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 9 })
     expect(commentsHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 10 })
     expect(latestPresence).toMatchObject({ 'n-1': { 'socket-events': { userId: 'u-1' } } })
