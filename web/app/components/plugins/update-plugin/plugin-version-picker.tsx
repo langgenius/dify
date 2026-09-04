@@ -91,12 +91,12 @@ const PluginVersionPicker: FC<Props> = ({
         placement="bottom-start"
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="relative w-52.25 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
-        <div className="relative max-h-[224px] overflow-y-auto">
+        <div className="relative max-h-56 overflow-y-auto">
           {isLoading ? (
             <div
               role="status"

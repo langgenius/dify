@@ -8,7 +8,6 @@ Also absorbs unit_tests/models/test_account.py role helper coverage.
 Covers:
 - Account.current_tenant setter (sets _current_tenant and role from TenantAccountJoin)
 - Account.set_tenant_id (resolves tenant + role from real join row)
-- Account.get_by_openid (AccountIntegrate lookup then Account fetch)
 - Tenant.get_accounts (returns accounts linked via TenantAccountJoin)
 """
 
@@ -20,9 +19,9 @@ import pytest
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from models.account import Account, AccountIntegrate, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 
-TrackedRow = Account | AccountIntegrate | Tenant | TenantAccountJoin
+TrackedRow = Account | Tenant | TenantAccountJoin
 
 
 def _cleanup_tracked_rows(db_session: Session, tracked: list[TrackedRow]) -> None:
@@ -170,37 +169,6 @@ class TestAccountSetTenantId(_DBTrackingTestBase):
         account.set_tenant_id(tenant.id)
 
         assert account._current_tenant is None
-
-
-class TestAccountGetByOpenId(_DBTrackingTestBase):
-    """Integration tests for Account.get_by_openid class method."""
-
-    def test_get_by_openid_returns_account_when_integrate_exists(self, db_session_with_containers: Session) -> None:
-        """get_by_openid returns the Account when a matching AccountIntegrate row exists."""
-        account = self._create_account(db_session_with_containers, email_prefix="openid")
-        provider = "google"
-        open_id = f"google_{uuid4()}"
-
-        integrate = AccountIntegrate(
-            account_id=account.id,
-            provider=provider,
-            open_id=open_id,
-            encrypted_token="token",
-        )
-        db_session_with_containers.add(integrate)
-        db_session_with_containers.flush()
-        self._tracked.append(integrate)
-
-        result = Account.get_by_openid(provider, open_id)
-
-        assert result is not None
-        assert result.id == account.id
-
-    def test_get_by_openid_returns_none_when_no_integrate_exists(self) -> None:
-        """get_by_openid returns None when no AccountIntegrate row matches."""
-        result = Account.get_by_openid("github", f"github_{uuid4()}")
-
-        assert result is None
 
 
 class TestTenantGetAccounts(_DBTrackingTestBase):

@@ -120,7 +120,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
   const loadDetail = async (action: DetailAction) => {
     setLoadingAction(action)
     try {
-      const response = await queryClient.fetchQuery(
+      const response = await queryClient.query(
         consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
           input: { body: { plugin_ids: [summary.plugin_id] } },
         }),

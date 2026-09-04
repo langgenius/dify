@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -244,12 +244,17 @@ const renderList = ({
     accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
-
-  return renderWithNuqs(
+  const createList = () => (
     <ConsoleQueryWrapper>
       <SnippetList />
-    </ConsoleQueryWrapper>,
+    </ConsoleQueryWrapper>
   )
+  const rendered = renderWithNuqs(createList())
+
+  return {
+    ...rendered,
+    rerenderList: () => rendered.rerender(createList()),
+  }
 }
 
 describe('SnippetList', () => {
@@ -286,15 +291,6 @@ describe('SnippetList', () => {
       '/snippets/snippet-1/orchestrate',
     )
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
-  })
-
-  it('lays out snippet cards with auto-fill grid columns', () => {
-    renderList()
-
-    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
-    const grid = card?.parentElement
-
-    expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {
@@ -421,13 +417,15 @@ describe('SnippetList', () => {
   it('does not fetch or render snippets without snippet list permissions', () => {
     mockWorkspacePermissionKeys.mockReturnValue([])
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
     expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
       enabled: false,
     })
     expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
   it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
@@ -457,24 +455,194 @@ describe('SnippetList', () => {
       fetchNextPage: mockFetchNextPage,
     })
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
   })
 
-  it('renders loading and next-page skeleton cards', () => {
+  it('announces request failures and preserves retry focus while refetching', async () => {
+    const user = userEvent.setup()
+    const requestError = new Error('Request failed')
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       data: { pages: [] },
+      error: requestError,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
+    expect(status).not.toHaveTextContent('workflow.tabs.noSnippetsFound')
+
+    await user.click(retryButton)
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(retryButton).toHaveFocus()
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.loading')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
+  })
+
+  it('announces the current result count', () => {
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
+  it('announces the total result count when only the first page is loaded', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            total: 80,
+            has_more: true,
+          },
+        ],
+      },
+      hasNextPage: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'common.operation.searchCount:{"count":80,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
+  it('announces kept-data refreshes when the result count stays the same', () => {
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const grid = screen.getByRole('link', { name: /Sales Snippet/ }).closest('[aria-busy]')
+
+    expect(status.closest('[aria-busy]')).toBeNull()
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('common.loading')
+    expect(grid).toHaveAttribute('aria-busy', 'true')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            data: [
+              {
+                ...mockSnippetListState.data.pages[0]!.data[0]!,
+                id: 'snippet-2',
+                name: 'Support Snippet',
+              },
+            ],
+          },
+        ],
+      },
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+    expect(screen.getByRole('link', { name: /Support Snippet/ })).toBeInTheDocument()
+    expect(grid).toHaveAttribute('aria-busy', 'false')
+  })
+
+  it('mounts an empty live region before announcing initial results', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      isFetching: true,
       isLoading: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    const { container, rerenderList } = renderList()
+    const status = screen.getByRole('status')
+
+    expect(status).toBeEmptyDOMElement()
+    expect(status.closest('[aria-busy]')).toBeNull()
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
+  it('keeps current results available while the next page is loading', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
       isFetchingNextPage: true,
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
     })
 
-    const { container } = renderList()
+    renderList()
+    const card = screen.getByRole('link', { name: /Sales Snippet/ })
+    const list = card.closest('[aria-busy]')
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(9)
+    expect(card).toBeInTheDocument()
+    expect(list).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
   })
 
   it('fetches the next page when the scroll anchor intersects', () => {

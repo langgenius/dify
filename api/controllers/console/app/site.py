@@ -8,7 +8,6 @@ from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
-from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -108,8 +107,8 @@ class AppSite(Resource):
         allowed_roles=_APP_SITE_EDIT_ROLES,
         rbac_resource_scope=RBACResourceScope.APP,
         rbac_permission=RBACPermission.APP_RELEASE_AND_VERSION,
+        agent_manage_fallback=True,
     )
-    @agent_manage_required_for_agent_app
     @model_validate(AppSiteUpdatePayload)
     def post(
         self,
@@ -139,8 +138,8 @@ class AppSiteAccessTokenReset(Resource):
         allowed_roles=_APP_SITE_TOKEN_RESET_ROLES,
         rbac_resource_scope=RBACResourceScope.APP,
         rbac_permission=RBACPermission.APP_RELEASE_AND_VERSION,
+        agent_manage_fallback=True,
     )
-    @agent_manage_required_for_agent_app
     def post(self, request_context: RequestContext, app_id: UUID):
         try:
             site = application_services().app_sites.reset_access_token(request_context, str(app_id))

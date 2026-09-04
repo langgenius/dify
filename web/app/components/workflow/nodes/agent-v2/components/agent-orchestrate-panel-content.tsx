@@ -193,7 +193,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
           | undefined)
       : undefined
 
-  if (!agentId || !agentSoulConfig) {
+  if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
         <Loading type="app" />
@@ -227,7 +227,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
-  agentSoulConfig: AgentSoulConfig
+  agentSoulConfig?: AgentSoulConfig
 }) {
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const rightPanelMode = useAtomValue(agentConfigureRightPanelModeAtom)
@@ -236,7 +236,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
     agentId,
     activeVersionId: activeConfigSnapshot?.id,
     composerAgentSoulConfig: agentSoulConfig,
-    isBuildMode: rightPanelMode === 'build',
+    isBuildMode: props.open && rightPanelMode === 'build',
     isViewingVersion: false,
     normalAgentSoulConfig: agentSoulConfig,
     setSoulSourceOverride,
@@ -244,7 +244,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   })
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
-  if (buildDraft.isPending) {
+  if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
         <Loading type="app" />

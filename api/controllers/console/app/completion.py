@@ -24,7 +24,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -263,7 +263,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -292,7 +292,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session

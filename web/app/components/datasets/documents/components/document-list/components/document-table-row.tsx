@@ -107,12 +107,8 @@ const DocumentTableRow = React.memo(
         onClick={handleRowClick}
       >
         <td className="text-left align-middle text-xs text-text-tertiary">
-          <div
-            className="flex items-center"
-            role="presentation"
-            onClick={stopPropagation}
-            onKeyDown={stopPropagation}
-          >
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation. */}
+          <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
             <Checkbox className="mr-2 shrink-0" value={doc.id} aria-labelledby={documentNameId} />
             {index + 1}
           </div>

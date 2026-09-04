@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
+from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
@@ -58,7 +59,7 @@ def _add_catalog_app(
                 privacy_policy="site privacy",
                 custom_disclaimer="site disclaimer",
                 default_language="en-US",
-                customize_token_strategy="not_allow",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
             )
         )
     session.commit()

@@ -1404,14 +1404,14 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
         mock_key_1 = ApiToken(
             id="key-1",
             type="dataset",
-            token="ds-abc",
+            token="dataset-aaaa1111bbbb",
             last_used_at=None,
             created_at=None,
         )
         mock_key_2 = ApiToken(
             id="key-2",
             type="dataset",
-            token="ds-def",
+            token="dataset-cccc2222dddd",
             last_used_at=None,
             created_at=None,
         )
@@ -1424,10 +1424,11 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
             response = method(api, session, "tenant-1")
         assert "data" in response
         assert len(response["data"]) == 2
+        # reveal-once: the list returns masked tokens, never the full secret
         assert response["data"][0]["id"] == "key-1"
-        assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][0]["token"] == "datas...bbbb"
         assert response["data"][1]["id"] == "key-2"
-        assert response["data"][1]["token"] == "ds-def"
+        assert response["data"][1]["token"] == "datas...dddd"
 
     def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()
@@ -1465,6 +1466,72 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
             "message": "Cannot create more than 10 API keys for this resource type.",
             "custom": "max_keys_exceeded",
         }
+
+    def test_get_api_keys_include_bound_dataset_ids(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.get)
+        mock_key = MagicMock(spec=ApiToken)
+        mock_key.id = "key-1"
+        mock_key.type = "dataset"
+        mock_key.token = "dataset-aaaa1111bbbb"
+        mock_key.last_used_at = None
+        mock_key.created_at = None
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [mock_key]
+        # Two binding rows for the same key -> the masked list surfaces both dataset ids.
+        session.execute.return_value.all.return_value = [("key-1", "ds-1"), ("key-1", "ds-2")]
+        with app.test_request_context("/"):
+            response = method(api, session, "tenant-1")
+        assert response["data"][0]["dataset_ids"] == ["ds-1", "ds-2"]
+
+    def test_post_create_scoped_key_persists_bindings(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        mock_token = MagicMock()
+        mock_token.id = "new-key-id"
+        mock_token.last_used_at = None
+        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
+        mock_api_token_cls = MagicMock()
+        mock_api_token_cls.return_value = mock_token
+        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
+        session = MagicMock()
+        # Dataset-ownership validation returns exactly the requested ids (all belong to tenant).
+        session.scalars.return_value.all.return_value = ["ds-1", "ds-2"]
+        session.scalar.return_value = 1
+        with (
+            app.test_request_context("/", json={"dataset_ids": ["ds-1", "ds-2", "ds-1"]}),
+            patch("controllers.console.datasets.datasets.ApiToken", mock_api_token_cls),
+        ):
+            response, status = method(api, session, "tenant-1")
+        assert status == 200
+        # Duplicates are collapsed and returned in the reveal-once response.
+        assert response["dataset_ids"] == ["ds-1", "ds-2"]
+        # One binding row is added per unique dataset id (plus the token itself).
+        added = [call.args[0] for call in session.add.call_args_list]
+        binding_dataset_ids = [obj.dataset_id for obj in added if obj.__class__.__name__ == "DatasetApiTokenBinding"]
+        assert binding_dataset_ids == ["ds-1", "ds-2"]
+
+    def test_post_rejects_dataset_ids_from_another_tenant(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        # None of the requested ids belong to this tenant.
+        session.scalars.return_value.all.return_value = []
+        with app.test_request_context("/", json={"dataset_ids": ["foreign-ds"]}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert "Unknown knowledge base id(s)" in vars(exc_info.value)["data"]["message"]
+
+    def test_post_rejects_non_list_dataset_ids(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        with app.test_request_context("/", json={"dataset_ids": "not-a-list"}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert vars(exc_info.value)["data"]["message"] == "dataset_ids must be a list of strings."
 
 
 class TestDatasetApiDeleteApi(_UsesSQLiteSession):

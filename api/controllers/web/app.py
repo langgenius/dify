@@ -10,6 +10,7 @@ from constants import HEADER_NAME_APP_CODE
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import AccessModeResponse, BooleanResultResponse, Parameters
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AgentNotPublishedError,
@@ -25,6 +26,7 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.web_passport_service import WebAppAuthType
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
@@ -133,9 +135,8 @@ class AppAccessMode(Resource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[AccessModeResponse.__name__])
-    def get(self):
-        raw_args = request.args.to_dict()
-        args = AppAccessModeQuery.model_validate(raw_args)
+    @model_validate(AppAccessModeQuery)
+    def get(self, args: AppAccessModeQuery):
         try:
             access_mode = application_services().webapp_access.get_access_mode(
                 app_id=args.app_id,
@@ -184,12 +185,16 @@ class AppWebAuthPermission(Resource):
             if not tk:
                 raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)
-            user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
             raise WebAppAuthRequiredError() from None
         except Exception:
             logger.exception("Unexpected error during auth verification")
             raise
+        if decoded.get("auth_type") != WebAppAuthType.INTERNAL:
+            raise WebAppAuthRequiredError()
+        user_id = decoded.get("user_id")
+        if not user_id:
+            raise WebAppAuthRequiredError()
 
         try:
             is_allowed = webapp_access.is_user_allowed(user_id=str(user_id), app_id=app_id)
