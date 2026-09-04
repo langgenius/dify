@@ -279,7 +279,7 @@ describe('ListWithCollection', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' }),
     ).toBeInTheDocument()
-    const carousel = screen.getByRole('region')
+    const carousel = screen.getByRole('region', { name: 'Featured' })
     const carouselViewport = carousel.querySelector('.overflow-hidden')
     const carouselContent = carouselViewport?.firstElementChild
     expect(carousel).not.toHaveClass('overflow-hidden')

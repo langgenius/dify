@@ -5,6 +5,7 @@ import type {
   MarketplaceTemplateCollection,
 } from '@dify/contracts/marketplace'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 import Link from '@/next/link'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import Carousel from '../list/carousel'
@@ -51,6 +52,7 @@ export default function TemplateCollectionList({
   viewMoreText,
 }: TemplateCollectionListProps) {
   const itemsPerPage = useCarouselItemsPerPage()
+  const collectionLabelPrefixId = useId()
 
   return collections.map((collection) => {
     const templates = templatesByCollection[collection.name] ?? []
@@ -59,6 +61,7 @@ export default function TemplateCollectionList({
 
     const isPartnerCollection = PARTNER_COLLECTION_NAMES.has(collection.name)
     const hasMultiplePages = !collection.searchable && templates.length > itemsPerPage
+    const collectionLabelId = `${collectionLabelPrefixId}-${encodeURIComponent(collection.name)}`
 
     return (
       <section key={collection.name} className="py-3">
@@ -71,6 +74,7 @@ export default function TemplateCollectionList({
             )}
           >
             <h2
+              id={collectionLabelId}
               className={cn(
                 'title-xl-semi-bold text-text-primary',
                 isPartnerCollection && styles.partnerTitle,
@@ -158,7 +162,7 @@ export default function TemplateCollectionList({
                 }
               },
             )}
-            ariaLabel={getTemplateCollectionText(collection.label, locale)}
+            aria-labelledby={collectionLabelId}
             showNavigation
             showPagination
             autoPlay={isPartnerCollection}
