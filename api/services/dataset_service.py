@@ -3850,7 +3850,8 @@ class SegmentService:
                                     logger.exception("Failed to regenerate summary for segment %s", segment.id)
                                     # Don't fail the entire update if summary regeneration fails
             # update multimodel vector index
-            VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset, session=session)
+            if args.attachment_ids is not None:
+                VectorService.update_multimodel_vector(segment, args.attachment_ids, dataset, session=session)
         except Exception as e:
             logger.exception("update segment index failed")
             segment.enabled = False
