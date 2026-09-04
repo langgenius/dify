@@ -34,6 +34,7 @@ from controllers.console.app.error import (
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
+from models.model import AppMode
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
@@ -490,7 +491,7 @@ def test_text_to_audio_with_language_param(app: Flask, monkeypatch: pytest.Monke
 
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "test"})
 
-    app_model = _app(app_id="app-1")
+    app_model = make_chat_app(app_id="app-1")
 
     with app.test_request_context(
         "/console/api/apps/app-1/text-to-audio",
