@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
   "fileUploader.uploadFromComputerReadError": "File reading failed, please try again.",
   "fileUploader.uploadFromComputerUploadError": "File upload failed, please upload again.",
+  "imageGallery.previewImage": "Afbeelding {{index}} van {{total}} bekijken",
   "imageInput.browse": "browse",
   "imageInput.dropImageHere": "Drop your image here, or",
   "imageInput.supportedFormats": "Supports PNG, JPG, JPEG, WEBP and GIF",

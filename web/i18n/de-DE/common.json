@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Der Upload von {{type}} darf {{size}} nicht überschreiten",
   "fileUploader.uploadFromComputerReadError": "Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.",
   "fileUploader.uploadFromComputerUploadError": "Datei-Upload fehlgeschlagen, bitte erneut hochladen.",
+  "imageGallery.previewImage": "Bild {{index}} von {{total}} in der Vorschau anzeigen",
   "imageInput.browse": "blättern",
   "imageInput.dropImageHere": "Laden Sie Ihr Bild hierher hoch oder",
   "imageInput.supportedFormats": "Unterstützt PNG, JPG, JPEG, WEBP und GIF",
