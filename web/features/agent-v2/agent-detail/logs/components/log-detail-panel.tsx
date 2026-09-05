@@ -8,10 +8,14 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 
@@ -28,6 +32,36 @@ export function AgentLogDetailPanel({
   const { t: tAgentV2 } = useTranslation('agentV2')
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } =
+    useAppStore(
+      useShallow((state) => ({
+        currentLogItem: state.currentLogItem,
+        setCurrentLogItem: state.setCurrentLogItem,
+        showPromptLogModal: state.showPromptLogModal,
+        setShowPromptLogModal: state.setShowPromptLogModal,
+      })),
+    )
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [modalWidth, setModalWidth] = useState(0)
+
+  // Position the floating prompt-log modal to the left of this detail panel.
+  useEffect(() => {
+    const adjustModalWidth = () => {
+      if (panelRef.current)
+        setModalWidth(document.body.clientWidth - (panelRef.current.clientWidth + 16) - 8)
+    }
+    const raf = requestAnimationFrame(adjustModalWidth)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  // Close any open prompt log when switching conversations or unmounting (e.g. the
+  // drawer closes), so a stale log from a previous conversation doesn't linger.
+  useEffect(() => {
+    return () => {
+      setShowPromptLogModal(false)
+      setCurrentLogItem(undefined)
+    }
+  }, [log?.conversation_id, setShowPromptLogModal, setCurrentLogItem])
   const feedbackMutation = useMutation(
     consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
   )
@@ -87,7 +121,10 @@ export function AgentLogDetailPanel({
   }
 
   return (
-    <div className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
+    <div
+      ref={panelRef}
+      className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border"
+    >
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="min-w-0 shrink-0">
           <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
@@ -150,6 +187,7 @@ export function AgentLogDetailPanel({
               }
               chatList={chatList}
               noChatInput
+              showPromptLog
               hideProcessDetail
               hideLogModal
               chatContainerInnerClassName="px-3"
@@ -158,6 +196,16 @@ export function AgentLogDetailPanel({
           </div>
         )}
       </div>
+      {showPromptLogModal && !!currentLogItem?.log && (
+        <PromptLogModal
+          width={modalWidth}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }
