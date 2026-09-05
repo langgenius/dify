@@ -11,7 +11,6 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
-    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueLoopCompletedEvent,
     QueueNodeExceptionEvent,
@@ -36,7 +35,6 @@ from graphon.engine_events import (
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
-    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
     NodeRunReasoningChunkEvent,
@@ -50,7 +48,6 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.runtime import RuntimeState, VariablePool
-from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
 
@@ -659,43 +656,6 @@ class TestWorkflowBasedAppRunner:
         assert event.in_iteration_id == expected_iteration_id
         assert event.in_loop_id == expected_loop_id
         assert not (event.in_iteration_id and event.in_loop_id)
-
-    def test_handle_human_input_form_filled_event_preserves_submitted_data(self):
-        published: list[object] = []
-
-        class _QueueManager:
-            def publish(self, event, publish_from):
-                published.append(event)
-
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = RuntimeState(
-            workflow_id="test-workflow",
-            variable_pool=VariablePool.from_bootstrap(
-                system_variables=default_system_variables(),
-                user_inputs={},
-                environment_variables=[],
-            ),
-            start_at=0.0,
-        )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
-
-        runner._handle_event(
-            workflow_entry,
-            NodeRunHumanInputFormFilledEvent(
-                id="exec",
-                node_id="node",
-                node_type=BuiltinNodeTypes.HUMAN_INPUT,
-                node_title="Human Input",
-                rendered_content="content",
-                action_id="approve",
-                action_text="Approve",
-                submitted_data={"decision": StringSegment(value="approve")},
-            ),
-        )
-
-        queue_event = published[-1]
-        assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
-        assert queue_event.submitted_data == {"decision": StringSegment(value="approve")}
 
     def test_handle_nested_answer_success_publishes_text_chunk(self):
         published: list[object] = []

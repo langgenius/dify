@@ -40,10 +40,6 @@ class WorkflowAgentWorkspaceRetirementLayer(Layer):
         self._dify_run_context = dify_run_context
 
     @override
-    def on_graph_start(self) -> None:
-        return
-
-    @override
     def on_event(self, event: EngineEvent) -> None:
         if not isinstance(event, self._TERMINAL_EVENTS):
             return
@@ -74,10 +70,6 @@ class WorkflowAgentWorkspaceRetirementLayer(Layer):
             tenant_id=self._dify_run_context.tenant_id,
             workspace_ids=workspace_ids,
         )
-
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        return
 
 
 def build_workflow_agent_workspace_retirement_layer(

@@ -894,7 +894,11 @@ class TestWorkflowPersistenceLayer:
         result = NodeRunResult(
             inputs={"new": True},
             outputs={"out": 1},
-            process_data={"p": 1, "workflow_agent_binding_id": "workflow-binding-1"},
+            process_data={
+                "p": 1,
+                "workflow_agent_binding_id": "workflow-binding-1",
+                "workflow_tool_invocation_id": "tool-call-1",
+            },
             metadata={},
         )
         pause_event = NodeRunPauseRequestedEvent(
@@ -908,7 +912,10 @@ class TestWorkflowPersistenceLayer:
 
         assert domain_execution.status == WorkflowNodeExecutionStatus.PAUSED
         assert domain_execution.inputs == {"old": True}
-        assert domain_execution.process_data == {"workflow_agent_binding_id": "workflow-binding-1"}
+        assert domain_execution.process_data == {
+            "workflow_agent_binding_id": "workflow-binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
+        }
 
     def test_handle_node_retry_preserves_workflow_agent_binding_identity(self):
         layer, _, _, _ = _make_layer()
@@ -934,12 +941,16 @@ class TestWorkflowPersistenceLayer:
                 error="retry",
                 retry_index=1,
                 node_run_result=NodeRunResult(
-                    process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+                    process_data={
+                        "workflow_agent_binding_id": "workflow-binding-1",
+                        "workflow_tool_invocation_id": "tool-call-1",
+                    },
                 ),
             )
         )
 
         assert layer._node_execution_cache["exec"].process_data["workflow_agent_binding_id"] == "workflow-binding-1"
+        assert layer._node_execution_cache["exec"].process_data["workflow_tool_invocation_id"] == "tool-call-1"
 
     def test_get_node_execution_raises_for_missing(self):
         layer, _, _, _ = _make_layer()

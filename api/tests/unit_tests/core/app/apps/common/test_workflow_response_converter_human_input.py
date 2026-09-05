@@ -48,7 +48,7 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
     )
 
     queue_event = QueueHumanInputFormFilledEvent(
-        node_execution_id="exec-1",
+        form_id="form-1",
         node_id="node-1",
         node_type="human-input",
         node_title="Human Input",
@@ -60,6 +60,7 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
     resp = converter.human_input_form_filled_to_stream_response(event=queue_event, task_id="task-1")
 
     assert resp.workflow_run_id == "run-1"
+    assert resp.data.form_id == "form-1"
     assert resp.data.node_id == "node-1"
     assert resp.data.node_title == "Human Input"
     assert resp.data.rendered_content.startswith("# Title")
@@ -76,7 +77,7 @@ def test_human_input_form_filled_stream_response_serializes_submitted_data():
     )
 
     queue_event = QueueHumanInputFormFilledEvent(
-        node_execution_id="exec-1",
+        form_id="form-1",
         node_id="node-1",
         node_type="human-input",
         node_title="Human Input",
@@ -107,6 +108,7 @@ def test_human_input_form_timeout_stream_response_contains_timeout_metadata():
     )
 
     queue_event = QueueHumanInputFormTimeoutEvent(
+        form_id="form-1",
         node_id="node-1",
         node_type="human-input",
         node_title="Human Input",
@@ -116,6 +118,7 @@ def test_human_input_form_timeout_stream_response_contains_timeout_metadata():
     resp = converter.human_input_form_timeout_to_stream_response(event=queue_event, task_id="task-1")
 
     assert resp.workflow_run_id == "run-1"
+    assert resp.data.form_id == "form-1"
     assert resp.data.node_id == "node-1"
     assert resp.data.node_title == "Human Input"
     assert resp.data.expiration_time == 1735689600

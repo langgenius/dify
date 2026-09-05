@@ -429,6 +429,7 @@ class WorkflowResponseConverter:
     ) -> HumanInputFormFilledResponse:
         run_id = self._ensure_workflow_run_id()
         data = HumanInputFormFilledResponse.Data(
+            form_id=event.form_id,
             node_id=event.node_id,
             node_title=event.node_title,
             rendered_content=event.rendered_content,
@@ -450,6 +451,7 @@ class WorkflowResponseConverter:
             task_id=task_id,
             workflow_run_id=run_id,
             data=HumanInputFormTimeoutResponse.Data(
+                form_id=event.form_id,
                 node_id=event.node_id,
                 node_title=event.node_title,
                 expiration_time=to_utc_timestamp(event.expiration_time),
