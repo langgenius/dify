@@ -54,7 +54,7 @@ def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(
             rows,
         )
 
-        def execute_query(*, sql: str, **_kwargs):
+        def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
             return [dict(row) for row in database.execute(sql)]
 
         repository.logstore_client.execute_sql.side_effect = execute_query
@@ -72,7 +72,7 @@ def test_sdk_history_queries_exclude_recursive_tool_executions() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
         repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
     repository.logstore_client = MagicMock(supports_pg_protocol=False)
-    repository.logstore_client.get_logs.return_value = []
+    repository.logstore_client.get_logs.return_value = list[dict[str, object]]()
 
     repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
     repository.get_node_last_execution(tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node")
