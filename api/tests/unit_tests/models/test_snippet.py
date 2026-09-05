@@ -5,7 +5,6 @@ import json
 import pytest
 from sqlalchemy.orm import Session
 
-from models import snippet as snippet_module
 from models.account import Account
 from models.enums import TagType
 from models.model import Tag, TagBinding
@@ -21,21 +20,14 @@ ACCOUNT_2_ID = "55555555-5555-5555-5555-555555555556"
 SQLITE_MODELS = (Workflow, Tag, TagBinding, Account)
 
 
-@pytest.fixture
-def snippet_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Expose the shared SQLite session to model properties that use the global Flask session."""
-    monkeypatch.setattr(snippet_module.db, "session", sqlite_session)
-    return sqlite_session
-
-
-def test_graph_dict_returns_empty_without_workflow_id() -> None:
+def test_graph_dict_returns_empty_without_workflow_id(sqlite_session: Session) -> None:
     snippet = CustomizedSnippet(workflow_id=None)
 
-    assert snippet.graph_dict == {}
+    assert snippet.graph_dict(session=sqlite_session) == {}
 
 
 @pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
-def test_graph_dict_loads_published_workflow_graph(snippet_session: Session) -> None:
+def test_graph_dict_loads_published_workflow_graph(sqlite_session: Session) -> None:
     workflow = Workflow(
         tenant_id=TENANT_ID,
         app_id=APP_ID,
@@ -46,18 +38,18 @@ def test_graph_dict_loads_published_workflow_graph(snippet_session: Session) -> 
         created_by=ACCOUNT_1_ID,
     )
     workflow.id = WORKFLOW_ID
-    snippet_session.add(workflow)
-    snippet_session.commit()
+    sqlite_session.add(workflow)
+    sqlite_session.commit()
     snippet = CustomizedSnippet(workflow_id=WORKFLOW_ID)
 
-    assert snippet.graph_dict == {"nodes": [{"id": "llm-1"}], "edges": []}
+    assert snippet.graph_dict(session=sqlite_session) == {"nodes": [{"id": "llm-1"}], "edges": []}
 
 
 @pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
-def test_graph_dict_returns_empty_when_workflow_missing(snippet_session: Session) -> None:
+def test_graph_dict_returns_empty_when_workflow_missing(sqlite_session: Session) -> None:
     snippet = CustomizedSnippet(workflow_id=WORKFLOW_ID)
 
-    assert snippet.graph_dict == {}
+    assert snippet.graph_dict(session=sqlite_session) == {}
 
 
 def test_input_fields_list_parses_json_or_returns_empty() -> None:
@@ -68,44 +60,70 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
-def test_tags_returns_query_results_or_empty(snippet_session: Session) -> None:
+def test_tags_returns_query_results_or_empty(sqlite_session: Session) -> None:
     tag = Tag(tenant_id=TENANT_ID, type=TagType.SNIPPET, name="Reusable", created_by=ACCOUNT_1_ID)
     binding = TagBinding(tenant_id=TENANT_ID, tag_id=tag.id, target_id=SNIPPET_ID, created_by=ACCOUNT_1_ID)
-    snippet_session.add_all((tag, binding))
-    snippet_session.commit()
+    sqlite_session.add_all((tag, binding))
+    sqlite_session.commit()
     snippet = CustomizedSnippet(id=SNIPPET_ID, tenant_id=TENANT_ID)
 
-    assert snippet.tags == [tag]
+    assert snippet.tags(session=sqlite_session) == [tag]
 
-    snippet_session.delete(binding)
-    snippet_session.commit()
-    assert snippet.tags == []
+    sqlite_session.delete(binding)
+    sqlite_session.commit()
+    assert snippet.tags(session=sqlite_session) == []
 
 
 @pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
-def test_account_properties_and_author_name(snippet_session: Session) -> None:
+def test_account_properties_and_author_name(sqlite_session: Session) -> None:
     account = Account(name="Ada", email="ada@example.com")
     account.id = ACCOUNT_1_ID
     updated_account = Account(name="Grace", email="grace@example.com")
     updated_account.id = ACCOUNT_2_ID
-    snippet_session.add_all((account, updated_account))
-    snippet_session.commit()
+    sqlite_session.add_all((account, updated_account))
+    sqlite_session.commit()
     snippet = CustomizedSnippet(created_by=ACCOUNT_1_ID, updated_by=ACCOUNT_2_ID)
 
-    assert snippet.created_by_account is account
-    assert snippet.author_name == "Ada"
-    assert snippet.updated_by_account is updated_account
+    assert snippet.created_by_account(session=sqlite_session) is account
+    assert snippet.author_name(session=sqlite_session) == "Ada"
+    assert snippet.updated_by_account(session=sqlite_session) is updated_account
 
 
-def test_account_properties_return_none_without_account_ids() -> None:
+def test_account_properties_return_none_without_account_ids(sqlite_session: Session) -> None:
     snippet = CustomizedSnippet(created_by=None, updated_by=None)
 
-    assert snippet.created_by_account is None
-    assert snippet.author_name is None
-    assert snippet.updated_by_account is None
+    assert snippet.created_by_account(session=sqlite_session) is None
+    assert snippet.author_name(session=sqlite_session) is None
+    assert snippet.updated_by_account(session=sqlite_session) is None
 
 
 def test_version_str_returns_string_value() -> None:
     snippet = CustomizedSnippet(version=7)
 
     assert snippet.version_str == "7"
+
+
+class TestCustomizedSnippetSessionAccessors:
+    """Regression coverage for ``CustomizedSnippet`` accessors refactored to take a caller-provided session.
+
+    ``graph_dict`` / ``tags`` / ``created_by_account`` / ``updated_by_account`` were ``@property``
+    accessors reaching for the global ``db.session`` internally; they are now plain methods
+    accepting a ``Session`` explicitly. ``author_name`` threads the session through to
+    ``created_by_account``.
+    """
+
+    def test_accessors_return_none_when_related_rows_are_absent(self, sqlite_session: Session):
+        missing_account_id = "66666666-6666-6666-6666-666666666666"
+        snippet = CustomizedSnippet(
+            id=SNIPPET_ID,
+            tenant_id=TENANT_ID,
+            created_by=missing_account_id,
+            updated_by=missing_account_id,
+            workflow_id=None,
+        )
+
+        assert snippet.created_by_account(session=sqlite_session) is None
+        assert snippet.updated_by_account(session=sqlite_session) is None
+        assert snippet.author_name(session=sqlite_session) is None
+        assert snippet.graph_dict(session=sqlite_session) == {}
+        assert snippet.tags(session=sqlite_session) == []
