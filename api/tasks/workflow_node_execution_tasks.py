@@ -55,7 +55,12 @@ def save_workflow_node_execution_task(
 
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == app_id,
+                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                )
             )
 
             if existing_execution:
