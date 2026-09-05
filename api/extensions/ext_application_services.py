@@ -46,6 +46,7 @@ from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSour
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -152,6 +153,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.notification_gateway import BillingNotificationGateway
@@ -256,6 +258,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    human_input_file_uploads: HumanInputFileUploadService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -419,6 +422,7 @@ def build_application_services(
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
+    remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
@@ -641,6 +645,14 @@ def build_application_services(
         ),
         file_grants=_build_file_grant_service(database_client=database_client),
         files=file_service,
+        human_input_file_uploads=HumanInputFileUploadService(
+            uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
+            workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
+            files=file_service,
+            remote_files=remote_file_service,
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
@@ -664,9 +676,7 @@ def build_application_services(
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
             trial_enabled=trial_app_enabled,
         ),
-        remote_files=RemoteFileService(
-            files=FileService(session_factory=database_client),
-        ),
+        remote_files=remote_file_service,
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),

@@ -5,297 +5,219 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
 
-import models.account as account_module
 import services.human_input_file_upload_service as service_module
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantAccountJoin
-from models.base import Base
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
-from models.human_input import (
-    HumanInputForm,
-    HumanInputFormRecipient,
-    HumanInputFormUploadFile,
-    HumanInputFormUploadToken,
+from models.account import Account
+from models.enums import CreatorUserRole
+from services.human_input_file_upload_service import (
+    HITL_UPLOAD_TOKEN_PREFIX,
+    HumanInputFileUploadRepository,
+    HumanInputFileUploadService,
+    HumanInputUploadContext,
+    HumanInputUploadFormRecord,
+    HumanInputUploadGrantRecord,
+    InvalidUploadTokenError,
 )
-from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun, WorkflowType
-from services.human_input_file_upload_service import HITL_UPLOAD_TOKEN_PREFIX, HumanInputFileUploadService
-from services.human_input_service import FormSubmittedError
+from services.human_input_service import FormNotFoundError, FormSubmittedError
 
 
-@pytest.fixture
-def session_maker(monkeypatch: pytest.MonkeyPatch):
-    engine = create_engine("sqlite:///:memory:")
-    monkeypatch.setattr(account_module, "db", SimpleNamespace(engine=engine))
-    Base.metadata.create_all(
-        engine,
-        tables=[
-            Tenant.__table__,
-            Account.__table__,
-            TenantAccountJoin.__table__,
-            App.__table__,
-            EndUser.__table__,
-            WorkflowRun.__table__,
-            HumanInputForm.__table__,
-            HumanInputFormRecipient.__table__,
-            HumanInputFormUploadToken.__table__,
-            HumanInputFormUploadFile.__table__,
-        ],
-    )
-    try:
-        yield sessionmaker(bind=engine, expire_on_commit=False)
-    finally:
-        Base.metadata.drop_all(
-            engine,
-            tables=[
-                HumanInputFormUploadFile.__table__,
-                HumanInputFormUploadToken.__table__,
-                HumanInputFormRecipient.__table__,
-                HumanInputForm.__table__,
-                WorkflowRun.__table__,
-                EndUser.__table__,
-                App.__table__,
-                TenantAccountJoin.__table__,
-                Account.__table__,
-                Tenant.__table__,
-            ],
-        )
-        engine.dispose()
-
-
-def _create_waiting_form(
-    session_maker,
+def _active_form(
     *,
-    created_by_role: CreatorUserRole = CreatorUserRole.ACCOUNT,
+    workflow_run_id: str | None = "run-1",
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME,
-) -> tuple[str, str, str]:
-    form_id = "00000000-0000-0000-0000-000000000001"
-    recipient_id = "00000000-0000-0000-0000-000000000002"
-    workflow_run_id = None
-    if form_kind == HumanInputFormKind.RUNTIME:
-        workflow_run_id = "00000000-0000-0000-0000-000000000012"
-    tenant_id = "00000000-0000-0000-0000-000000000010"
-    app_id = "00000000-0000-0000-0000-000000000011"
+    status: HumanInputFormStatus = HumanInputFormStatus.WAITING,
+) -> HumanInputUploadFormRecord:
     now = naive_utc_now()
-    created_by = (
-        "00000000-0000-0000-0000-000000000020"
-        if created_by_role == CreatorUserRole.ACCOUNT
-        else "00000000-0000-0000-0000-000000000021"
+    return HumanInputUploadFormRecord(
+        form_id="form-1",
+        recipient_id="recipient-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id=workflow_run_id,
+        form_kind=form_kind,
+        status=status,
+        submitted_at=None,
+        expiration_time=now + timedelta(hours=1),
+        created_at=now,
     )
-    with session_maker.begin() as session:
-        tenant = Tenant(name="tenant-1")
-        tenant.id = tenant_id
-        session.add(tenant)
-        if created_by_role == CreatorUserRole.ACCOUNT:
-            account = Account(name="owner", email="owner@example.com")
-            account.id = created_by
-            session.add(account)
-            session.add(
-                TenantAccountJoin(
-                    tenant_id=tenant_id,
-                    account_id=created_by,
-                    current=True,
-                )
-            )
-            app_creator = created_by
-        else:
-            end_user = EndUser(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                type=EndUserType.BROWSER,
-                is_anonymous=False,
-                session_id="session-1",
-                external_user_id="external-1",
-            )
-            end_user.id = created_by
-            session.add(end_user)
-            app_creator = "00000000-0000-0000-0000-000000000020"
-            account = Account(name="owner", email="owner@example.com")
-            account.id = app_creator
-            session.add(account)
-            session.add(
-                TenantAccountJoin(
-                    tenant_id=tenant_id,
-                    account_id=app_creator,
-                    current=True,
-                )
-            )
-        app = App(
-            tenant_id=tenant_id,
-            name="app-1",
-            description="",
-            mode=AppMode.WORKFLOW,
-            icon_type="emoji",
-            icon="app",
-            icon_background="#ffffff",
-            enable_site=True,
-            enable_api=True,
-            created_by=app_creator,
-            updated_by=app_creator,
-        )
-        app.id = app_id
-        session.add(app)
-        if workflow_run_id is not None:
-            workflow_run = WorkflowRun(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                workflow_id="00000000-0000-0000-0000-000000000013",
-                type=WorkflowType.WORKFLOW,
-                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                version="1",
-                graph="{}",
-                inputs="{}",
-                status=WorkflowExecutionStatus.RUNNING,
-                created_by_role=created_by_role,
-                created_by=created_by,
-                created_at=now,
-            )
-            workflow_run.id = workflow_run_id
-            session.add(workflow_run)
-        session.add(
-            HumanInputForm(
-                id=form_id,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                workflow_run_id=workflow_run_id,
-                form_kind=form_kind,
-                node_id="node-1",
-                form_definition="{}",
-                rendered_content="content",
-                expiration_time=now + timedelta(hours=1),
-                created_at=now,
-            )
-        )
-        session.add(
-            HumanInputFormRecipient(
-                id=recipient_id,
-                form_id=form_id,
-                delivery_id="00000000-0000-0000-0000-000000000003",
-                recipient_type="standalone_web_app",
-                recipient_payload='{"TYPE": "standalone_web_app"}',
-                access_token="form-token-1",
-            )
-        )
-    return form_id, recipient_id, created_by
+
+
+def _upload_context() -> HumanInputUploadContext:
+    return HumanInputUploadContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        form_id="form-1",
+        recipient_id="recipient-1",
+        upload_token_id="token-1",
+        owner=MagicMock(spec=Account),
+    )
 
 
 def _create_service(
-    session_maker,
-    workflow_run_repository: MagicMock | None = None,
+    *,
+    uploads: MagicMock | None = None,
+    workflow_runs: MagicMock | None = None,
+    files: MagicMock | None = None,
+    remote_files: MagicMock | None = None,
 ) -> HumanInputFileUploadService:
     return HumanInputFileUploadService(
-        session_maker,
-        workflow_run_repository=workflow_run_repository or MagicMock(),
+        uploads=uploads if uploads is not None else MagicMock(spec=HumanInputFileUploadRepository),
+        workflow_run_repository=workflow_runs if workflow_runs is not None else MagicMock(),
+        files=files if files is not None else MagicMock(),
+        remote_files=remote_files if remote_files is not None else MagicMock(),
     )
 
 
-def _get_workflow_run(session_maker) -> WorkflowRun:
-    with session_maker() as session:
-        workflow_run = session.get(WorkflowRun, "00000000-0000-0000-0000-000000000012")
-    assert workflow_run is not None
-    return workflow_run
-
-
-def test_issue_upload_token_persists_token_without_technical_end_user(
-    monkeypatch: pytest.MonkeyPatch,
-    session_maker,
-) -> None:
-    form_id, recipient_id, _created_by = _create_waiting_form(session_maker)
+def test_issue_upload_token_persists_repository_record(monkeypatch: pytest.MonkeyPatch) -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    form = _active_form()
+    uploads.get_form_by_recipient_token.return_value = form
     monkeypatch.setattr(service_module.secrets, "token_urlsafe", lambda _bytes: "random-value")
 
-    token = _create_service(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(uploads=uploads).issue_upload_token("form-token-1")
 
     assert token.upload_token == f"{HITL_UPLOAD_TOKEN_PREFIX}random-value"
-    with session_maker() as session:
-        token_model = session.scalar(select(HumanInputFormUploadToken))
-        assert token_model is not None
-        assert token_model.form_id == form_id
-        assert token_model.recipient_id == recipient_id
-        assert token_model.token == token.upload_token
-        assert session.scalar(select(EndUser).limit(1)) is None
+    assert token.expires_at == form.expiration_time
+    uploads.get_form_by_recipient_token.assert_called_once_with("form-token-1")
+    uploads.create_upload_token.assert_called_once_with(form=form, upload_token=token.upload_token)
 
 
-def test_validate_upload_token_returns_account_owner_and_record_file_link(session_maker) -> None:
-    form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.ACCOUNT)
-    token = _create_service(session_maker).issue_upload_token("form-token-1")
-    workflow_run_repository = MagicMock()
-    workflow_run_repository.get_workflow_run_by_id.return_value = _get_workflow_run(session_maker)
+def test_issue_upload_token_rejects_unknown_form_token() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    uploads.get_form_by_recipient_token.return_value = None
 
-    context = HumanInputFileUploadService(
-        session_maker,
-        workflow_run_repository=workflow_run_repository,
-    ).validate_upload_token(token.upload_token)
-    assert context.form_id == form_id
-    assert context.recipient_id == recipient_id
-    assert isinstance(context.owner, Account)
-    assert context.owner.id == created_by
-    assert context.owner.current_tenant_id == "00000000-0000-0000-0000-000000000010"
-    workflow_run_repository.get_workflow_run_by_id.assert_called_once_with(
-        tenant_id="00000000-0000-0000-0000-000000000010",
-        app_id="00000000-0000-0000-0000-000000000011",
-        run_id="00000000-0000-0000-0000-000000000012",
+    with pytest.raises(FormNotFoundError):
+        _create_service(uploads=uploads).issue_upload_token("missing-form-token")
+
+    uploads.create_upload_token.assert_not_called()
+
+
+@pytest.mark.parametrize("owner_role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+def test_validate_upload_token_resolves_workflow_run_owner(owner_role: CreatorUserRole) -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    form = _active_form()
+    uploads.get_upload_grant.return_value = HumanInputUploadGrantRecord(upload_token_id="token-1", form=form)
+    owner = MagicMock()
+    uploads.get_upload_owner.return_value = owner
+    workflow_runs = MagicMock()
+    workflow_runs.get_workflow_run_by_id.return_value = SimpleNamespace(
+        created_by="owner-1",
+        created_by_role=owner_role,
+        tenant_id="tenant-1",
+        app_id="app-1",
     )
 
-    _create_service(session_maker).record_upload_file(
-        context=context,
-        file_id="00000000-0000-0000-0000-000000000099",
+    context = _create_service(uploads=uploads, workflow_runs=workflow_runs).validate_upload_token("upload-token-1")
+
+    assert context == HumanInputUploadContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        form_id="form-1",
+        recipient_id="recipient-1",
+        upload_token_id="token-1",
+        owner=owner,
+    )
+    workflow_runs.get_workflow_run_by_id.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        run_id="run-1",
+    )
+    uploads.get_upload_owner.assert_called_once_with(
+        owner_id="owner-1",
+        owner_role=owner_role,
+        tenant_id="tenant-1",
+        app_id="app-1",
     )
 
-    with session_maker() as session:
-        link = session.scalar(select(HumanInputFormUploadFile))
-        assert link is not None
-        assert link.tenant_id == context.tenant_id
-        assert link.app_id == context.app_id
-        assert link.form_id == form_id
-        assert link.upload_token_id == context.upload_token_id
+
+def test_validate_upload_token_resolves_delivery_test_owner() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    form = _active_form(workflow_run_id=None, form_kind=HumanInputFormKind.DELIVERY_TEST)
+    uploads.get_upload_grant.return_value = HumanInputUploadGrantRecord(upload_token_id="token-1", form=form)
+    owner = MagicMock(spec=Account)
+    uploads.get_delivery_test_upload_owner.return_value = owner
+    workflow_runs = MagicMock()
+
+    context = _create_service(uploads=uploads, workflow_runs=workflow_runs).validate_upload_token("upload-token-1")
+
+    assert context.owner is owner
+    uploads.get_delivery_test_upload_owner.assert_called_once_with(tenant_id="tenant-1", app_id="app-1")
+    workflow_runs.get_workflow_run_by_id.assert_not_called()
 
 
-def test_validate_upload_token_returns_end_user_owner(session_maker) -> None:
-    form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.END_USER)
-    token = _create_service(session_maker).issue_upload_token("form-token-1")
-    workflow_run_repository = MagicMock()
-    workflow_run_repository.get_workflow_run_by_id.return_value = _get_workflow_run(session_maker)
+def test_validate_upload_token_rejects_unknown_upload_token() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    uploads.get_upload_grant.return_value = None
 
-    context = HumanInputFileUploadService(
-        session_maker,
-        workflow_run_repository=workflow_run_repository,
-    ).validate_upload_token(token.upload_token)
-
-    assert context.form_id == form_id
-    assert context.recipient_id == recipient_id
-    assert isinstance(context.owner, EndUser)
-    assert context.owner.id == created_by
+    with pytest.raises(InvalidUploadTokenError):
+        _create_service(uploads=uploads).validate_upload_token("missing-upload-token")
 
 
-def test_validate_upload_token_allows_delivery_test_form(session_maker) -> None:
-    form_id, recipient_id, _created_by = _create_waiting_form(
-        session_maker,
-        form_kind=HumanInputFormKind.DELIVERY_TEST,
-    )
-    token = _create_service(session_maker).issue_upload_token("form-token-1")
-
-    context = _create_service(session_maker).validate_upload_token(token.upload_token)
-
-    assert context.form_id == form_id
-    assert context.recipient_id == recipient_id
-    assert isinstance(context.owner, Account)
-    assert context.owner.id == "00000000-0000-0000-0000-000000000020"
-    assert context.owner.current_tenant_id == "00000000-0000-0000-0000-000000000010"
-
-
-def test_validate_upload_token_rejects_submitted_form(session_maker) -> None:
-    form_id, _recipient_id, _created_by = _create_waiting_form(session_maker)
-    token = _create_service(session_maker).issue_upload_token("form-token-1")
-    with session_maker.begin() as session:
-        form = session.get(HumanInputForm, form_id)
-        assert form is not None
-        form.status = HumanInputFormStatus.SUBMITTED
-        form.submitted_at = naive_utc_now()
+def test_validate_upload_token_rejects_submitted_form() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    form = _active_form(status=HumanInputFormStatus.SUBMITTED)
+    uploads.get_upload_grant.return_value = HumanInputUploadGrantRecord(upload_token_id="token-1", form=form)
 
     with pytest.raises(FormSubmittedError):
-        _create_service(session_maker).validate_upload_token(token.upload_token)
+        _create_service(uploads=uploads).validate_upload_token("upload-token-1")
+
+    uploads.get_upload_owner.assert_not_called()
+
+
+def test_upload_local_file_records_the_form_file_link() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    files = MagicMock()
+    upload_file = MagicMock(id="file-1")
+    files.upload_file.return_value = upload_file
+    context = _upload_context()
+
+    result = _create_service(uploads=uploads, files=files).upload_local_file(
+        context=context,
+        filename="sample.txt",
+        content=b"content",
+        mimetype="text/plain",
+    )
+
+    assert result is upload_file
+    files.upload_file.assert_called_once_with(
+        filename="sample.txt",
+        content=b"content",
+        mimetype="text/plain",
+        user=context.owner,
+        source=None,
+    )
+    uploads.add_file.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        form_id="form-1",
+        upload_token_id="token-1",
+        file_id="file-1",
+    )
+
+
+def test_upload_remote_file_records_the_form_file_link() -> None:
+    uploads = MagicMock(spec=HumanInputFileUploadRepository)
+    remote_files = MagicMock()
+    upload_file = MagicMock(id="file-1")
+    remote_files.upload_from_url.return_value = upload_file
+    context = _upload_context()
+
+    result = _create_service(uploads=uploads, remote_files=remote_files).upload_remote_file(
+        context=context,
+        url="https://example.com/sample.txt",
+    )
+
+    assert result is upload_file
+    remote_files.upload_from_url.assert_called_once_with(
+        url="https://example.com/sample.txt",
+        user=context.owner,
+    )
+    uploads.add_file.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        form_id="form-1",
+        upload_token_id="token-1",
+        file_id="file-1",
+    )
