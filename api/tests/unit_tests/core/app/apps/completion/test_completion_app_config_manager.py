@@ -1,19 +1,34 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 import core.app.apps.completion.app_config_manager as module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from models.model import AppMode
+from models.model import App, AppMode, AppModelConfig
+
+
+def _app() -> App:
+    return App(
+        id="app1",
+        tenant_id="tenant",
+        name="Completion app",
+        description="",
+        mode=AppMode.COMPLETION,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _config() -> AppModelConfig:
+    return AppModelConfig(app_id="app1")
 
 
 class TestCompletionAppConfigManager:
     def test_get_app_config_with_override(self, mocker: MockerFixture):
-        app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION.value)
-        app_model_config = MagicMock(id="cfg1")
-        app_model_config.to_dict.return_value = {"model": {"provider": "x"}}
+        app_model = _app()
+        app_model_config = _config()
 
         override_config = {"model": {"provider": "override"}}
 
@@ -39,10 +54,14 @@ class TestCompletionAppConfigManager:
         assert result.app_mode == AppMode.COMPLETION
 
     def test_get_app_config_without_override_uses_model_config(self, mocker: MockerFixture):
-        app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION)
-        app_model_config = MagicMock(id="cfg1")
-        app_model_config.to_dict.return_value = {"model": {"provider": "x"}}
+        app_model = _app()
+        app_model_config = _config()
         annotation_reply = {"enabled": False}
+        to_dict = mocker.patch.object(
+            AppModelConfig,
+            "to_dict",
+            return_value={"model": {"provider": "x"}},
+        )
 
         mocker.patch.object(module.ModelConfigManager, "convert", return_value="model")
         mocker.patch.object(module.PromptTemplateConfigManager, "convert", return_value="prompt")
@@ -60,9 +79,9 @@ class TestCompletionAppConfigManager:
 
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
         assert result.app_model_config_dict == {"model": {"provider": "x"}}
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
-    def test_config_validate_filters_related_keys(self, mocker: MockerFixture):
+    def test_config_validate_filters_related_keys(self, mocker: MockerFixture, unbound_session: Session):
         config = {
             "model": {"provider": "x"},
             "variables": ["v"],
@@ -116,7 +135,7 @@ class TestCompletionAppConfigManager:
             return_value=(config, ["moderation"]),
         )
 
-        filtered = CompletionAppConfigManager.config_validate("tenant", config, MagicMock())
+        filtered = CompletionAppConfigManager.config_validate("tenant", config, unbound_session)
 
         assert "extra" not in filtered
         assert set(filtered.keys()) == {

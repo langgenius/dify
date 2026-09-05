@@ -5,16 +5,18 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 
+import core.app.apps.advanced_chat.app_generator as app_generator_module
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.ops.ops_trace_manager import TraceQueueManager
+from models import Account, Workflow
 from models.enums import ConversationFromSource
-from models.model import AppMode, Conversation
+from models.model import App, AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -45,6 +47,39 @@ def _make_generate_entity(app_config: WorkflowUIBasedAppConfig) -> AdvancedChatA
         extras={},
         workflow_run_id="workflow-run-id",
     )
+
+
+def _app() -> App:
+    return App(
+        id="app-id",
+        tenant_id="tenant-id",
+        name="Advanced chat app",
+        description="",
+        mode=AppMode.ADVANCED_CHAT,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _workflow() -> Workflow:
+    return Workflow.new(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        type="chat",
+        version=Workflow.VERSION_DRAFT,
+        graph='{"nodes": [], "edges": []}',
+        features="{}",
+        created_by="user-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+
+
+def _account() -> Account:
+    account = Account(name="User", email="user@example.com")
+    account.id = "user-id"
+    return account
 
 
 def test_init_generate_records_sets_conversation_metadata(sqlite_session: Session):
@@ -107,17 +142,11 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
     sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
 ):
     app_config = _make_app_config()
-    workflow = SimpleNamespace(
-        features_dict={},
-        tenant_id="tenant-id",
-        app_id="app-id",
-        id="workflow-id",
-    )
-    app_model = SimpleNamespace(id="app-id", tenant_id="tenant-id")
-    user = SimpleNamespace(id="user-id", session_id="session-id")
+    workflow = _workflow()
+    app_model = _app()
+    user = _account()
 
     def raise_conversation_not_exists(**_kwargs):
         raise ConversationNotExistsError()
@@ -134,11 +163,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
         lambda **_kwargs: app_config,
     )
-    db_session = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.db",
-        SimpleNamespace(engine=sqlite_engine, session=db_session),
-    )
+    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_engine))
     trace_manager = object.__new__(TraceQueueManager)
     monkeypatch.setattr(
         "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
@@ -179,7 +204,6 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     application_generate_entity = captured["application_generate_entity"]
     assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
     assert application_generate_entity.conversation_id is None
-    db_session.remove()
 
 
 def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.MonkeyPatch):
