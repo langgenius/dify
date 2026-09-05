@@ -86,8 +86,12 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
 
 
 def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding(
+    monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    monkeypatch.setattr(
+        "clients.agent_backend.factory.create_agent_backend_run_client", lambda **_kwargs: FakeAgentBackendRunClient()
+    )
     node, _, payload = _workflow_tool_node()
     source = WorkflowToolSource(
         app_id=payload.source_app_id,
