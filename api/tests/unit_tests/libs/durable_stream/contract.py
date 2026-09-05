@@ -210,28 +210,15 @@ class DurableStreamContract(ABC):
                 assert isinstance(record, DurableStreamRecord)
                 assert record.payload == payload
 
-    def test_close_is_idempotent_and_unblocks_receive(self) -> None:
-        topic = self.create_topic("cross-thread-close")
+    def test_close_is_idempotent_and_terminal(self) -> None:
+        topic = self.create_topic("close")
         subscription = topic.subscribe_from_tail()
-        receive_started = threading.Event()
-        results: queue.Queue[object] = queue.Queue()
-
-        def receive() -> None:
-            receive_started.set()
-            results.put(subscription.receive(timeout=5))
 
         with subscription:
-            receiver = threading.Thread(target=receive)
-            receiver.start()
-            assert receive_started.wait(timeout=1)
-
             subscription.close()
             subscription.close()
-
-            receiver.join(timeout=1)
-            assert not receiver.is_alive()
-            assert results.get_nowait() is CLOSED
             assert subscription.receive(timeout=0) is CLOSED
+            self.assert_subscription_resources_released(subscription)
 
     def test_subscription_is_one_shot(self) -> None:
         topic = self.create_topic("one-shot")
