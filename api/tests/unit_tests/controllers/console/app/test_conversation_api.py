@@ -162,6 +162,16 @@ def test_get_conversation_missing_raises_not_found(sqlite_session: Session) -> N
         conversation_module._get_conversation(session, _make_account(), _app(), "missing")
 
 
+def test_get_conversation_soft_deleted_raises_not_found(sqlite_session: Session) -> None:
+    conversation = _conversation()
+    conversation.is_deleted = True
+    sqlite_session.add(conversation)
+    sqlite_session.flush()
+    session = sqlite_session
+    with pytest.raises(NotFound):
+        conversation_module._get_conversation(session, _make_account(), _app(), "c1")
+
+
 def test_conversation_response_source_uses_caller_session(sqlite_session: Session) -> None:
     account = _make_account()
     end_user = EndUser(
