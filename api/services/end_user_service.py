@@ -93,7 +93,7 @@ class EndUserService:
                     tenant_id=tenant_id,
                     app_id=app_id,
                     type=type,
-                    is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+                    _is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
                     session_id=user_id,
                     external_user_id=user_id,
                 )
@@ -153,6 +153,8 @@ class EndUserService:
 
             found_app_ids: set[str] = set()
             for eu in existing_end_users:
+                if eu.app_id is None:
+                    continue
                 # If duplicates exist due to weak DB constraints, prefer the first
                 if eu.app_id not in result:
                     result[eu.app_id] = eu
@@ -170,7 +172,7 @@ class EndUserService:
                             tenant_id=tenant_id,
                             app_id=app_id,
                             type=type,
-                            is_anonymous=is_anonymous,
+                            _is_anonymous=is_anonymous,
                             session_id=user_id,
                             external_user_id=user_id,
                         )
@@ -179,6 +181,8 @@ class EndUserService:
                 session.add_all(new_end_users)
 
                 for eu in new_end_users:
+                    if eu.app_id is None:
+                        continue
                     result[eu.app_id] = eu
 
         return result

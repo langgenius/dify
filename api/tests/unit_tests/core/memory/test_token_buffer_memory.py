@@ -108,7 +108,7 @@ def _make_model_instance() -> MagicMock:
 
 
 def _make_message(answer: str = "hello", answer_tokens: int = 5) -> Message:
-    return Message(
+    message = Message(
         id=str(uuid4()),
         app_id=str(uuid4()),
         conversation_id=str(uuid4()),
@@ -122,8 +122,9 @@ def _make_message(answer: str = "hello", answer_tokens: int = 5) -> Message:
         currency="USD",
         from_source=ConversationFromSource.API,
         workflow_run_id=str(uuid4()),
-        created_at=datetime.now(UTC).replace(tzinfo=None),
     )
+    message.created_at = datetime.now(UTC).replace(tzinfo=None)
+    return message
 
 
 def _make_message_file() -> MessageFile:
@@ -178,8 +179,8 @@ def _persist_message(
         currency="USD",
         from_source=ConversationFromSource.API,
         workflow_run_id=workflow_run_id,
-        created_at=created_at or datetime.now(UTC).replace(tzinfo=None),
     )
+    message.created_at = created_at or datetime.now(UTC).replace(tzinfo=None)
     database.session.add(message)
     database.session.commit()
     return message

@@ -95,7 +95,7 @@ def _persist_conversation_message(
             model_id=None,
             mode=AppMode.CHAT,
             name="Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
@@ -111,7 +111,7 @@ def _persist_conversation_message(
     message = Message(
         app_id=app_id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_tokens=0,
@@ -129,9 +129,9 @@ def _persist_conversation_message(
         from_end_user_id=None,
         from_account_id="00000000-0000-0000-0000-000000000021",
         app_mode=AppMode.CHAT,
-        created_at=created_at,
     )
     message.id = message_id
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return conversation, message
@@ -224,7 +224,12 @@ def _app_detail_obj(**overrides) -> App:
     overrides.pop("bound_agent_id", None)
     data.update(overrides)
     data["icon_type"] = IconType(data["icon_type"])
-    return App(**data)
+    created_at = data.pop("created_at")
+    updated_at = data.pop("updated_at")
+    app = App(**data)
+    app.created_at = created_at
+    app.updated_at = updated_at
+    return app
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:
@@ -932,7 +937,9 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
 
     def fake_create_api_key(self, resource_id: str, tenant_id: str, *, session: object):
         captured["create_key"] = {"session": session, "resource_id": resource_id, "tenant_id": tenant_id}
-        return ApiToken(id=api_key_id, type="app", token="app-test-token", last_used_at=None, created_at=None)
+        api_token = ApiToken(id=api_key_id, type="app", token="app-test-token", last_used_at=None)
+        api_token.created_at = None  # type: ignore[assignment]
+        return api_token
 
     def fake_delete_api_key(
         self,

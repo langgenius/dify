@@ -108,7 +108,7 @@ class TestSavedMessageService:
             name=fake.name(),
             type=EndUserType.BROWSER,
             session_id=fake.uuid4(),
-            is_anonymous=False,
+            _is_anonymous=False,
         )
 
         db_session_with_containers.add(end_user)
@@ -142,7 +142,7 @@ class TestSavedMessageService:
             from_end_user_id=user.id if not is_account else None,
             from_account_id=user.id if is_account else None,
             name=fake.sentence(nb_words=3),
-            inputs={},
+            _inputs={},
             status="normal",
             mode="chat",
         )
@@ -157,7 +157,7 @@ class TestSavedMessageService:
             from_source=from_source,
             from_end_user_id=user.id if not is_account else None,
             from_account_id=user.id if is_account else None,
-            inputs={},
+            _inputs={},
             query=fake.sentence(nb_words=5),
             message=fake.text(max_nb_chars=100),
             answer=fake.text(max_nb_chars=200),

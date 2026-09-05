@@ -52,7 +52,7 @@ def _conversation(*, conversation_id: str = "conversation-1", app_id: str = "app
         app_id=app_id,
         mode=AppMode.AGENT_CHAT,
         name="Debug conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id="end-user-1",
     )
@@ -66,11 +66,11 @@ def _message(
     created_at: datetime | None = None,
 ) -> Message:
     timestamp = created_at or naive_utc_now()
-    return Message(
+    message = Message(
         id=message_id,
         app_id=app_id,
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         answer="hi",
@@ -85,9 +85,10 @@ def _message(
         message_tokens=3,
         answer_tokens=4,
         provider_response_latency=1.25,
-        created_at=timestamp,
-        updated_at=timestamp,
     )
+    message.created_at = timestamp
+    message.updated_at = timestamp
+    return message
 
 
 def _feedback(
