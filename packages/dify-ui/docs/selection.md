@@ -37,6 +37,15 @@ Import the complete family from its single public subpath:
 import { Radio, RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 ```
 
+## Read-only and disabled selection
+
+Follow the [`Select`] and [`Autocomplete`] contracts: `readOnly` locks the value while allowing
+popup browsing; `disabled` makes the control unavailable.
+
+Dify UI triggers show a decorative lock alongside their popup indicator when read-only.
+Disabled appearance takes precedence when both states apply. `AutocompleteClear` is hidden while
+read-only. Keep these state indicators in Dify UI rather than duplicating them in consumers.
+
 ## Typed values
 
 Do not widen domain values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`,

@@ -7,7 +7,7 @@ describe('form-input-item sections', () => {
   it('should render a loading multi-select label', () => {
     renderWorkflowComponent(
       <MultiSelectField
-        disabled={false}
+        readOnly={false}
         isLoading
         items={[{ name: 'Alpha', value: 'alpha' }]}
         onChange={vi.fn()}
@@ -37,7 +37,7 @@ describe('form-input-item sections', () => {
 
     renderWorkflowComponent(
       <MultiSelectField
-        disabled={false}
+        readOnly={false}
         items={[
           { name: 'Alpha', value: 'alpha', icon: '/alpha.svg' },
           { name: 'Beta', value: 'beta' },

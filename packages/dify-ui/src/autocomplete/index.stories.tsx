@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   Autocomplete,
   AutocompleteClear,
@@ -960,6 +961,7 @@ export const DisabledAndReadOnly: Story = {
         defaultValue="feature"
         mode="list"
         disabled
+        readOnly
       >
         <AutocompleteInputGroup>
           <AutocompleteInput aria-label="Disabled tag autocomplete" />
@@ -976,28 +978,69 @@ export const DisabledAndReadOnly: Story = {
           </AutocompletePositioner>
         </AutocompletePortal>
       </Autocomplete>
-      <Autocomplete
-        items={promptCompletions}
-        itemToStringValue={getSuggestionLabel}
-        defaultValue="summarize this conversation"
-        mode="both"
-        readOnly
-      >
-        <AutocompleteInputGroup>
-          <AutocompleteInput aria-label="Read-only prompt autocomplete" />
-          <AutocompleteClear />
-          <AutocompleteTrigger />
-        </AutocompleteInputGroup>
-        <AutocompletePortal>
-          <AutocompletePositioner>
-            <AutocompletePopup>
-              <AutocompleteList<Suggestion>>
-                {(item) => <SuggestionItem key={item.value} item={item} />}
-              </AutocompleteList>
-            </AutocompletePopup>
-          </AutocompletePositioner>
-        </AutocompletePortal>
-      </Autocomplete>
+      {(['small', 'medium', 'large'] as const).map((size) => (
+        <Autocomplete
+          key={size}
+          items={promptCompletions}
+          itemToStringValue={getSuggestionLabel}
+          defaultValue="summarize this"
+          mode="both"
+          readOnly
+        >
+          <AutocompleteInputGroup size={size}>
+            <AutocompleteInput size={size} aria-label={`Read-only ${size} prompt autocomplete`} />
+            <AutocompleteClear size={size} aria-label={`Clear read-only ${size} prompt`} />
+            <AutocompleteTrigger
+              size={size}
+              aria-label={`Browse read-only ${size} prompt suggestions`}
+            />
+          </AutocompleteInputGroup>
+          <AutocompletePortal>
+            <AutocompletePositioner>
+              <AutocompletePopup>
+                <AutocompleteList<Suggestion>>
+                  {(item) => <SuggestionItem key={item.value} item={item} />}
+                </AutocompleteList>
+              </AutocompletePopup>
+            </AutocompletePositioner>
+          </AutocompletePortal>
+        </Autocomplete>
+      ))}
     </div>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const input = canvas.getByRole('combobox', { name: 'Read-only medium prompt autocomplete' })
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(canvas.getByRole('combobox', { name: 'Disabled tag autocomplete' })).toBeDisabled()
+    await expect(input).toHaveAttribute('readonly')
+    await expect(
+      canvas.queryByRole('button', { name: 'Clear read-only medium prompt' }),
+    ).not.toBeInTheDocument()
+
+    const trigger = canvas.getByRole('button', {
+      name: 'Browse read-only medium prompt suggestions',
+    })
+    await expect(trigger).toBeVisible()
+    await userEvent.click(trigger)
+    const list = await body.findByRole('listbox')
+    await expect(list).toHaveAttribute('aria-readonly', 'true')
+    await expect(input).toHaveValue('summarize this')
+
+    await userEvent.keyboard('{ArrowDown}')
+    const firstHighlightedId = input.getAttribute('aria-activedescendant')
+    await expect(firstHighlightedId).toBeTruthy()
+    await expect(input).toHaveValue('summarize this')
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(input).not.toHaveAttribute('aria-activedescendant', firstHighlightedId)
+    await expect(input).toHaveValue('summarize this')
+    await userEvent.keyboard('{Enter}')
+    await expect(input).toHaveValue('summarize this')
+    await userEvent.click(
+      within(list).getByRole('option', { name: 'summarize this dataset with citations' }),
+    )
+    await expect(input).toHaveValue('summarize this')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('listbox')).not.toBeInTheDocument())
+    await waitFor(() => expect(input).toHaveFocus())
+  },
 }

@@ -62,11 +62,10 @@ type SelectGroupProps = BaseSelect.Group.Props
 
 const selectTriggerVariants = cva(
   [
-    'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
+    'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
     'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
     'data-disabled:data-placeholder:text-components-input-text-disabled',
   ],
@@ -94,7 +93,11 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
   return (
     <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
       <span className="min-w-0 grow truncate">{children}</span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
+      <span
+        className="me-1 i-ri-lock-line hidden size-4 shrink-0 text-text-tertiary group-[[data-readonly]:not([data-disabled])]/select-trigger:block"
+        aria-hidden="true"
+      />
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>

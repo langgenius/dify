@@ -166,7 +166,6 @@ const autocompleteControlVariants = cva(
     'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
-    'group-data-readonly/autocomplete:hidden',
     'motion-reduce:transition-none',
   ],
   {
@@ -200,9 +199,17 @@ function AutocompleteTrigger({
         props['aria-label'] ??
         (props['aria-labelledby'] ? undefined : 'Open autocomplete suggestions')
       }
-      className={cn(autocompleteControlVariants({ size }), className)}
+      className={cn(
+        autocompleteControlVariants({ size }),
+        'group/autocomplete-trigger [&[data-readonly]:not([data-disabled])]:w-auto [&[data-readonly]:not([data-disabled])]:gap-1 [&[data-readonly]:not([data-disabled])]:px-1',
+        className,
+      )}
       {...props}
     >
+      <span
+        className="i-ri-lock-line hidden size-4 shrink-0 group-[[data-readonly]:not([data-disabled])]/autocomplete-trigger:block"
+        aria-hidden="true"
+      />
       {children ?? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
     </BaseAutocomplete.Trigger>
   )
@@ -226,6 +233,7 @@ function AutocompleteClear({
       }
       className={cn(
         autocompleteControlVariants({ size }),
+        'group-data-readonly/autocomplete:hidden',
         'data-ending-style:opacity-0 data-starting-style:opacity-0',
         className,
       )}

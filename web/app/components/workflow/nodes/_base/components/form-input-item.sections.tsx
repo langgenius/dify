@@ -19,7 +19,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 type MultiSelectFieldProps = {
-  disabled: boolean
+  readOnly: boolean
   isLoading?: boolean
   items: SelectItem[]
   onChange: (value: string[]) => void
@@ -36,7 +36,7 @@ const LoadingIndicator = () => (
 )
 
 export const MultiSelectField: FC<MultiSelectFieldProps> = ({
-  disabled,
+  readOnly,
   isLoading = false,
   items,
   onChange,
@@ -60,7 +60,13 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   }
 
   return (
-    <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
+    <Select
+      multiple
+      value={value}
+      onValueChange={onChange}
+      readOnly={readOnly}
+      disabled={isLoading}
+    >
       <div className="min-w-0 grow">
         <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
           <span className={cn('flex min-w-0 items-center', textClassName)}>
