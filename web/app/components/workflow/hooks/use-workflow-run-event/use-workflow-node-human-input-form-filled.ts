@@ -14,14 +14,18 @@ export const useWorkflowNodeHumanInputFormFilled = () => {
       const newWorkflowRunningData = produce(workflowRunningData!, (draft) => {
         if (draft.humanInputFormDataList?.length) {
           const currentFormIndex = draft.humanInputFormDataList.findIndex(
-            (item) => item.node_id === data.node_id,
+            (item) => item.form_id === data.form_id,
           )
-          draft.humanInputFormDataList.splice(currentFormIndex, 1)
+          if (currentFormIndex > -1) draft.humanInputFormDataList.splice(currentFormIndex, 1)
         }
         if (!draft.humanInputFilledFormDataList) {
           draft.humanInputFilledFormDataList = [data]
         } else {
-          draft.humanInputFilledFormDataList.push(data)
+          const existing = draft.humanInputFilledFormDataList.find(
+            (form) => form.form_id === data.form_id,
+          )
+          if (existing) Object.assign(existing, data)
+          else draft.humanInputFilledFormDataList.push(data)
         }
       })
       setWorkflowRunningData(newWorkflowRunningData)

@@ -12,6 +12,8 @@ from core.app.file_access import DatabaseFileAccessController
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.node_runtime import resolve_dify_run_context
+from core.workflow.nodes.human_input.boundary import human_input_container_selector
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -183,8 +185,7 @@ class WorkflowToolContainerHandler:
         if (is_direct_workflow_tool_child or source_frame_id == frame.frame_id) and (
             listener := self._event_listeners.get(frame.frame_id)
         ) is not None:
-            # Persistence sees source node IDs/containers before presentation remaps
-            # Human Input to the calling Tool and suppresses child events.
+            # Persist source node identities independently of child event visibility.
             persisted_event = event.model_copy(deep=True)
             persisted_event.node_run_result.process_data = {
                 key: value
@@ -198,7 +199,9 @@ class WorkflowToolContainerHandler:
             # Graphon increments immediately after container preparation; only the outer Tool failure belongs here.
             frame.state.graph_execution.exceptions_count -= 1
         if isinstance(event, NodeRunPauseRequestedEvent) and isinstance(event.reason, HitlRequired):
-            event.reason = event.reason.model_copy(update={"node_id": frame.container_id})
+            # Keep source identity in Graphon; persist form ownership for Dify's response boundary.
+            form_id = default_session_binding.resolve_form_id_from_session_id(session_id=event.reason.session_id)
+            self._root_runtime_state().variable_pool.add(human_input_container_selector(form_id), frame.container_id)
         # Preserve source ownership in the engine's derived retry/exception events.
         event.node_run_result.process_data = {
             **event.node_run_result.process_data,
@@ -282,20 +285,25 @@ class WorkflowToolContainerHandler:
         root_node_id = get_default_root_node_id(graph_config)
 
         if variable_pool is None:
-            variable_pool = self._build_variable_pool(
-                parent_frame=parent_frame,
-                source=source,
-                root_node_id=root_node_id,
-                payload=payload,
-                run_context=run_context,
-            )
+            # Container requests run on the dispatcher, outside the workers'
+            # captured context. Restore file ownership and retrieval grants here.
+            with parent_frame.state.execution_context:
+                variable_pool = self._build_variable_pool(
+                    parent_frame=parent_frame,
+                    source=source,
+                    root_node_id=root_node_id,
+                    payload=payload,
+                    run_context=run_context,
+                )
         state = self._build_runtime_state(
             parent_frame=parent_frame,
             variable_pool=variable_pool,
             runtime_data=runtime_data,
         )
         source_run_context = dict(parent_node.run_context)
-        source_run_context[DIFY_RUN_CONTEXT_KEY] = run_context.model_copy(update={"app_id": source.app_id})
+        source_run_context[DIFY_RUN_CONTEXT_KEY] = run_context.model_copy(
+            update={"app_id": source.app_id, "workflow_tool_invocation_id": run_state.invocation_id}
+        )
         graph_init_context = DifyGraphInitContext(
             workflow_id=source.workflow_id,
             graph_config=graph_config,

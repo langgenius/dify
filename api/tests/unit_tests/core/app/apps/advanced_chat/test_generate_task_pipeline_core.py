@@ -635,7 +635,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._workflow_response_converter.human_input_form_timeout_to_stream_response = lambda **kwargs: "timeout"
 
         filled_event = QueueHumanInputFormFilledEvent(
-            node_execution_id="exec",
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
@@ -644,6 +644,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             action_text="action",
         )
         timeout_event = QueueHumanInputFormTimeoutEvent(
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",

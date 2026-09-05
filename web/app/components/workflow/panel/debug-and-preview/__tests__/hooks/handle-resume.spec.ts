@@ -117,6 +117,67 @@ describe('useChat – handleResume', () => {
     return hook
   }
 
+  it('keeps same-Tool forms independent when resuming', async () => {
+    const { result } = await setupResumeWithTree()
+    const first = {
+      form_id: 'first',
+      node_id: 'tool',
+      node_title: 'Tool',
+      form_content: 'First approval',
+      inputs: [],
+      actions: [],
+      form_token: 'first-token',
+      display_in_ui: true,
+      resolved_default_values: {},
+      expiration_time: 100,
+    }
+    const second = {
+      ...first,
+      form_id: 'second',
+      form_content: 'Second approval',
+      form_token: 'second-token',
+    }
+    act(() => {
+      capturedResumeOptions.onHumanInputRequired({ data: first })
+      capturedResumeOptions.onHumanInputRequired({ data: second })
+      capturedResumeOptions.onHumanInputRequired({ data: { ...second, form_token: 'refreshed' } })
+    })
+    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
+      first,
+      { ...second, form_token: 'refreshed' },
+    ])
+    act(() => {
+      capturedResumeOptions.onHumanInputFormTimeout({ data: { ...second, expiration_time: 200 } })
+    })
+    expect(
+      result.current.chatList[1]!.humanInputFormDataList?.map((form) => form.expiration_time),
+    ).toEqual([100, 200])
+    const filled = {
+      form_id: 'second',
+      node_id: 'tool',
+      node_title: 'Tool',
+      rendered_content: 'Approved',
+      action_id: 'approve',
+      action_text: 'Approve',
+    }
+    act(() => {
+      capturedResumeOptions.onHumanInputFormFilled({ data: filled })
+      capturedResumeOptions.onHumanInputFormFilled({
+        data: { ...filled, rendered_content: 'Replayed approval' },
+      })
+      capturedResumeOptions.onHumanInputFormTimeout({ data: { ...second, expiration_time: 300 } })
+    })
+    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([first])
+    expect(result.current.chatList[1]!.humanInputFilledFormDataList).toEqual([
+      {
+        ...filled,
+        rendered_content: 'Replayed approval',
+        form_content: 'Second approval',
+        inputs: [],
+      },
+    ])
+  })
+
   it('should call sseGet with the correct URL', () => {
     const { result } = renderHook(() => useChat({}))
 
@@ -767,7 +828,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
@@ -780,13 +841,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-2' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-2' },
         })
       })
 
@@ -795,7 +856,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human-2', form_token: 'rt-3' },
+          data: { form_id: 'form-rn-human-2', node_id: 'rn-human-2', form_token: 'rt-3' },
         })
       })
 
@@ -821,7 +882,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
@@ -837,13 +898,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { a: 1 } },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', submitted_data: { a: 1 } },
         })
       })
 
@@ -857,7 +918,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { b: 2 } },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', submitted_data: { b: 2 } },
         })
       })
 
@@ -872,13 +933,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormTimeout({
-          data: { node_id: 'rn-human', expiration_time: '2025-06-01' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', expiration_time: '2025-06-01' },
         })
       })
 
@@ -985,7 +1046,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputRequired({
-        data: { node_id: 'hn-bare', form_token: 'ft-bare' },
+        data: { form_id: 'form-hn-bare', node_id: 'hn-bare', form_token: 'ft-bare' },
       })
     })
 
@@ -998,7 +1059,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputFormFilled({
-        data: { node_id: 'hn-bare', submitted_data: { x: 1 } },
+        data: { form_id: 'form-hn-bare', node_id: 'hn-bare', submitted_data: { x: 1 } },
       })
     })
 
@@ -1145,7 +1206,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputRequired({
-        data: { node_id: 'hn-with-trace', form_token: 'ft-tr' },
+        data: { form_id: 'form-hn-with-trace', node_id: 'hn-with-trace', form_token: 'ft-tr' },
       })
     })
 

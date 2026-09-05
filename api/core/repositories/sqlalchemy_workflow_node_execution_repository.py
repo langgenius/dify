@@ -18,7 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.workflow.node_execution_process_data import preserve_workflow_agent_identity
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -403,7 +403,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
-                merged_process_data = preserve_workflow_agent_binding_id(
+                merged_process_data = preserve_workflow_agent_identity(
                     existing.process_data_dict,
                     db_model.process_data_dict,
                 )
@@ -466,7 +466,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        process_data = preserve_workflow_agent_identity(db_model.process_data_dict, domain_model.process_data)
         if process_data is not None:
             result = self._truncate_and_upload(
                 process_data,
@@ -474,7 +474,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                truncated_process_data = preserve_workflow_agent_binding_id(
+                truncated_process_data = preserve_workflow_agent_identity(
                     process_data,
                     result.truncated_value,
                 )

@@ -105,6 +105,14 @@ class DifyHITLCallback:
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created.id))
 
         status = self._normalize_status(form.status)
+        if status == HumanInputFormStatus.WAITING.value and not form.submitted:
+            if self._is_past_global_deadline(form.created_at):
+                msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
+                raise AssertionError(msg)
+            if self._is_past_node_deadline(form.expiration_time):
+                form = self._form_repository.mark_timeout(ctx.node_id, form_id=form.id)
+                status = self._normalize_status(form.status)
+
         if status == HumanInputFormStatus.TIMEOUT.value:
             return Expired(
                 selected_handle=self._TIMEOUT_HANDLE,
@@ -120,18 +128,6 @@ class DifyHITLCallback:
             raise AssertionError(msg)
 
         if not form.submitted:
-            if status == HumanInputFormStatus.WAITING.value and self._is_past_global_deadline(form.created_at):
-                msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
-                raise AssertionError(msg)
-            if self._is_past_node_deadline(form.expiration_time):
-                return Expired(
-                    selected_handle=self._TIMEOUT_HANDLE,
-                    outputs=self._build_special_outputs(
-                        action_id="",
-                        action_value="",
-                        rendered_content=form.rendered_content,
-                    ),
-                )
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
 
         selected_action_id = form.selected_action_id

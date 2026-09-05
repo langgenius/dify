@@ -12,26 +12,26 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.session_store import StoredWorkflowAgentSession
 from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
+    GraphRunPausedEvent,
     GraphRunSucceededEvent,
-    NodeRunPauseRequestedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
 from graphon.engine_events.base import NodeEvent
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowType
+from graphon.runtime import RuntimeState
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeBindingResolver, FakeSessionStore
 from tests.unit_tests.core.workflow.test_workflow_tool_container import _outer_graph, _workflow_tool_node
-from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
 def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_them() -> None:
@@ -191,40 +191,119 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
     assert not any(isinstance(event, NodeEvent) and event.node_id == "source-agent" for event in events)
 
 
-def test_workflow_tool_agent_ask_human_creates_form_owned_by_outer_app(
+def test_workflow_tool_agent_ask_human_preserves_invocation_identity_after_runtime_restore(
     monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    store = FakeSessionStore()
-    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
     monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", FakeBindingResolver)
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.WorkflowAgentWorkspaceStore", lambda: store)
-    monkeypatch.setattr("clients.agent_backend.factory.create_agent_backend_run_client", lambda **_kwargs: client)
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
     )
-    node, _, _ = _workflow_tool_node()
-    node.runtime_state.variable_pool.add(("sys", "workflow_run_id"), "outer-run")
-    node.runtime_state.variable_pool.add(("previous-node", "text"), "Previous result")
-    factory = DifyNodeFactory(
-        init_params=build_test_graph_init_params(workflow_id="source-workflow", app_id="source-app"),
-        runtime_state=node.runtime_state,
-        human_input_run_context=build_test_run_context(app_id="outer-app"),
+    source_repository = MagicMock(spec=WorkflowToolSourceRepository)
+    source_repository.get_source.return_value = WorkflowToolSource(
+        app_id="source-app",
+        workflow_id="source-workflow",
+        graph_config={
+            "nodes": [
+                {
+                    "id": "previous-node",
+                    "data": {
+                        "type": "start",
+                        "title": "Start",
+                        "variables": [{"variable": "text", "type": "text-input", "label": "Text", "required": True}],
+                    },
+                },
+                {
+                    "id": "source-agent",
+                    "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
+                },
+            ],
+            "edges": [{"id": "source-edge", "source": "previous-node", "target": "source-agent"}],
+        },
+        features_dict={},
+        environment_variables=[],
+        workflow_kind="standard",
     )
-    agent = factory.create_node(
-        {
-            "id": "source-agent",
-            "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
-        }
-    )
-    assert isinstance(agent, DifyAgentNode)
-    agent.bind_execution_id("agent-execution")
+    handler_factory = partial(WorkflowToolContainerHandler, source_repository=source_repository)
+    invocation_ids: set[str] = set()
+    owner_scope_keys: set[str] = set()
+    for run_index in range(2):
+        store = FakeSessionStore()
+        client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+        monkeypatch.setattr(
+            "core.workflow.nodes.agent_v2.session_store.WorkflowAgentWorkspaceStore", MagicMock(return_value=store)
+        )
+        monkeypatch.setattr(
+            "clients.agent_backend.factory.create_agent_backend_run_client", MagicMock(return_value=client)
+        )
+        node, runtime, payload = _workflow_tool_node()
+        runtime.build_workflow_tool_container_payload.return_value = payload.model_copy(
+            update={"inputs": {"text": "Previous result"}}
+        )
+        workflow_run_id = f"outer-run-{run_index}"
+        node.runtime_state.variable_pool.add(("sys", "workflow_run_id"), workflow_run_id)
+        events = list(
+            Engine(
+                graph=_outer_graph(node),
+                runtime_state=node.runtime_state,
+                command_channel=InMemoryChannel(),
+                workers=1,
+                container_handler_factories=(handler_factory,),
+            ).run()
+        )
 
-    events = list(agent.run())
+        paused = events[-1]
+        assert isinstance(paused, GraphRunPausedEvent)
+        assert isinstance(paused.reasons[0], HitlRequired)
+        assert paused.reasons[0].node_id == "source-agent"
+        (container_run,) = node.runtime_state.container_runs()
+        scope, binding_id, snapshot, form_id, tool_call_id = store.saved[0]
+        assert scope.workflow_tool_invocation_id == container_run.invocation_id
+        assert (scope.app_id, scope.workflow_id, scope.workspace_owner.owner_id) == (
+            "source-app",
+            "source-workflow",
+            workflow_run_id,
+        )
+        invocation_ids.add(container_run.invocation_id)
+        owner_scope_keys.add(scope.workspace_owner.owner_scope_key)
+        with sqlite_session_factory() as session:
+            form = session.scalars(
+                select(HumanInputForm).where(HumanInputForm.workflow_run_id == workflow_run_id)
+            ).one()
+            assert (form.id, form.app_id, form.node_id) == (form_id, "outer-app", "source-agent")
 
-    assert isinstance(events[-1], NodeRunPauseRequestedEvent)
-    with sqlite_session_factory() as session:
-        form = session.scalars(select(HumanInputForm)).one()
-        assert (form.app_id, form.workflow_run_id, form.node_id) == ("outer-app", "outer-run", "source-agent")
-        assert store.saved[0][3] == form.id
-    assert store.resolved_scopes[0].app_id == "source-app"
-    assert store.resolved_scopes[0].workflow_id == "source-workflow"
+        store.loaded_session = StoredWorkflowAgentSession(
+            scope=scope,
+            binding_id=binding_id,
+            workspace_id=store.workspace_id,
+            backend_binding_ref=store.backend_binding_ref,
+            session_snapshot=snapshot,
+            pending_form_id=form_id,
+            pending_tool_call_id=tool_call_id,
+        )
+        restored_state = RuntimeState.from_snapshot(node.runtime_state.dumps())
+        restored_node, _, _ = _workflow_tool_node(restored_state)
+        restored_events = list(
+            Engine(
+                graph=_outer_graph(restored_node),
+                runtime_state=restored_state,
+                command_channel=InMemoryChannel(),
+                workers=1,
+                container_handler_factories=(handler_factory,),
+            ).run()
+        )
+
+        assert isinstance(restored_events[-1], GraphRunPausedEvent)
+        assert len(store.resolved_scopes) == 2
+        assert store.resolved_scopes[-1].workspace_owner == scope.workspace_owner
+        assert store.existing_scope_lookups[-1]["workflow_tool_invocation_id"] == container_run.invocation_id
+        (restored_run,) = restored_state.container_runs()
+        assert restored_run.invocation_id == container_run.invocation_id
+        with sqlite_session_factory() as session:
+            form = session.scalars(
+                select(HumanInputForm).where(HumanInputForm.workflow_run_id == workflow_run_id)
+            ).one()
+            assert form.id == form_id
+        assert len(store.saved) == 1
+
+    assert len(invocation_ids) == 2
+    assert len(owner_scope_keys) == 2

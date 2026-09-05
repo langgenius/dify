@@ -381,7 +381,10 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
+    runtime_state = RuntimeState(workflow_id="wf", variable_pool=VariablePool(), start_at=0.0)
+    runner._prepare_single_node_execution = MagicMock(
+        return_value=("graph", runtime_state.variable_pool, runtime_state)
+    )
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
 

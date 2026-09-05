@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
 from pydantic import ValidationError
@@ -43,13 +43,19 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons, resolve_human_input_node_id
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import (
+    SystemVariableKey,
     build_bootstrap_variables,
     default_system_variables,
     get_node_creation_preload_selectors,
+    get_system_text,
     inject_default_system_variable_mappings,
     preload_node_creation_variables,
 )
@@ -68,8 +74,6 @@ from graphon.engine_events import (
     NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
-    NodeRunHumanInputFormFilledEvent,
-    NodeRunHumanInputFormTimeoutEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -92,6 +96,7 @@ from graphon.graph import Graph
 from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from graphon.variables.factory import build_segment
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -460,6 +465,94 @@ class WorkflowBasedAppRunner:
             case _:
                 raise ValueError(f"Unknown workflow container: {container_id}")
 
+    def _iter_workflow_events(self, workflow_entry: WorkflowEntry) -> Generator[EngineEvent, None, None]:
+        # Engine.run clears pause reasons during resume. Form completion belongs
+        # to this response boundary, including forms inside hidden Tool frames.
+        reasons = tuple(workflow_entry.graph_engine.runtime_state.graph_execution.pause_reasons)
+        published_form_ids: set[str] = set()
+        for event in workflow_entry.run():
+            if isinstance(
+                event,
+                GraphRunPausedEvent
+                | GraphRunSucceededEvent
+                | GraphRunPartialSucceededEvent
+                | GraphRunFailedEvent
+                | GraphRunAbortedEvent,
+            ):
+                # Another form may complete while this resumed attempt runs.
+                # Flush it before the terminal event closes the response stream.
+                self._publish_human_input_results(workflow_entry, reasons, published_form_ids)
+            yield event
+            if isinstance(event, GraphRunStartedEvent):
+                self._publish_human_input_results(workflow_entry, reasons, published_form_ids)
+
+    def _publish_human_input_results(
+        self, workflow_entry: WorkflowEntry, reasons: Sequence[object], published_form_ids: set[str]
+    ) -> None:
+        pending_forms = {
+            default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id): reason
+            for reason in reasons
+            if isinstance(reason, HitlRequired)
+        }
+        if not pending_forms:
+            return
+
+        engine = workflow_entry.graph_engine
+        variable_pool = engine.runtime_state.variable_pool
+        context = resolve_dify_run_context(engine.graph.root_node.run_context)
+        run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+        repository = HumanInputFormSubmissionRepository()
+        for form_id, reason in pending_forms.items():
+            if form_id in published_form_ids:
+                continue
+            form = repository.get_by_form_id(form_id)
+            if form is None:
+                raise ValueError(f"Human input form not found: {form_id}")
+            if not run_id or (form.tenant_id, form.app_id, form.workflow_run_id) != (
+                context.tenant_id,
+                self._app_id,
+                run_id,
+            ):
+                raise ValueError(f"Human input form does not belong to this workflow run: {form_id}")
+            node_id = resolve_human_input_node_id(node_id=reason.node_id, form_id=form_id, variable_pool=variable_pool)
+            node_title = reason.node_title or form.definition.node_title or form.node_id
+            if form.status == HumanInputFormStatus.TIMEOUT:
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        expiration_time=form.expiration_time,
+                    )
+                )
+                published_form_ids.add(form_id)
+            elif form.status == HumanInputFormStatus.SUBMITTED:
+                action = next(
+                    (item for item in form.definition.user_actions if item.id == form.selected_action_id), None
+                )
+                if action is None:
+                    raise ValueError(f"Submitted human input form has no matching action: {form_id}")
+                submitted_data = {name: build_segment(value) for name, value in (form.submitted_data or {}).items()}
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        rendered_content=DifyHITLCallback.render_form_content_with_outputs(
+                            form.rendered_content,
+                            submitted_data,
+                            [item.output_variable_name for item in form.definition.inputs],
+                            form.definition.inputs,
+                        ),
+                        action_id=action.id,
+                        action_text=action.title,
+                        submitted_data=submitted_data,
+                    )
+                )
+                published_form_ids.add(form_id)
+
     def _handle_event(self, workflow_entry: WorkflowEntry, event: EngineEvent):
         """
         Handle event
@@ -493,13 +586,15 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.runtime_state
-                paused_nodes = list(
-                    dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
-                )
                 enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
                     form_repository=HumanInputFormSubmissionRepository(),
                     variable_pool=runtime_state.variable_pool,
+                )
+                paused_nodes = list(
+                    dict.fromkeys(
+                        reason.node_id for reason in enriched_reasons if isinstance(reason, HumanInputRequired)
+                    )
                 )
                 self._enqueue_human_input_notifications(enriched_reasons)
                 self._publish_event(
@@ -507,28 +602,6 @@ class WorkflowBasedAppRunner:
                         reasons=enriched_reasons,
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
-                    )
-                )
-            case NodeRunHumanInputFormFilledEvent():
-                self._publish_event(
-                    QueueHumanInputFormFilledEvent(
-                        node_execution_id=event.id,
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        rendered_content=event.rendered_content,
-                        action_id=event.action_id,
-                        action_text=event.action_text,
-                        submitted_data=event.submitted_data,
-                    )
-                )
-            case NodeRunHumanInputFormTimeoutEvent():
-                self._publish_event(
-                    QueueHumanInputFormTimeoutEvent(
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        expiration_time=event.expiration_time,
                     )
                 )
             case NodeRunRetryEvent():
