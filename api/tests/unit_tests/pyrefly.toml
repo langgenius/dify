@@ -136,7 +136,7 @@ project-excludes = [
   "controllers/console/workspace/test_snippets.py",
   "controllers/console/workspace/test_tool_providers.py",
   "controllers/console/workspace/test_workspace.py",
-  "controllers/files/test_image_preview.py",
+  "controllers/files/test_upload_file_delivery.py",
   "controllers/files/test_tool_files.py",
   "controllers/files/test_upload.py",
   "controllers/inner_api/app/test_dsl.py",
