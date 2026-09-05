@@ -18,6 +18,7 @@ from core.repositories.human_input_repository import (
 )
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -496,6 +497,9 @@ class _TestFormRepository:
         self.create_params.append(params)
         self.form = _TestForm(params.form_id)
         return self.form
+
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        raise AssertionError(f"Unexpected timeout in container scenario: node_id={node_id}, form_id={form_id}")
 
 
 def _container_handler(
@@ -1006,7 +1010,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     assert len(paused.reasons) == 1
     reason = paused.reasons[0]
     assert isinstance(reason, HitlRequired)
-    assert reason.node_id == "tool"
+    assert reason.node_id == "source-human"
     assert reason.node_title == "Approval"
     assert all(
         not isinstance(event, NodeEvent) or event.node_id not in {"source-start", "source-human"}
@@ -1023,6 +1027,14 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     assert human_input_app_ids == ["outer-app"]
 
     restored_state = RuntimeState.from_snapshot(initial_state.dumps())
+    assert (
+        resolve_human_input_node_id(
+            node_id=reason.node_id,
+            form_id=reason.session_id,
+            variable_pool=restored_state.variable_pool,
+        )
+        == "tool"
+    )
     restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
     restored_graph = _outer_graph(restored_node)
     restored_owner_factory = object.__new__(DifyNodeFactory)

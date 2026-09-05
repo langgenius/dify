@@ -427,7 +427,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_run_index=1,
         )
         filled_event = QueueHumanInputFormFilledEvent(
-            node_execution_id="exec",
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
@@ -436,6 +436,7 @@ class TestWorkflowGenerateTaskPipeline:
             action_text="action",
         )
         timeout_event = QueueHumanInputFormTimeoutEvent(
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",

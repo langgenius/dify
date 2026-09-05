@@ -103,6 +103,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    workflow_tool_invocation_id: str | None = None
 
     @field_validator("created_by", mode="before")
     @classmethod
