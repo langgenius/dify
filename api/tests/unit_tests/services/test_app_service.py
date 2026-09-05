@@ -302,6 +302,35 @@ def test_status_toggle_skips_signal_when_row_already_at_target(method, column: s
     session.commit.assert_called_once()
 
 
+class _NoLogin:
+    @property
+    def id(self) -> str:
+        raise AttributeError("'NoneType' object has no attribute 'id'")
+
+
+@pytest.mark.parametrize(
+    ("method", "column"),
+    [
+        (AppService.update_app_site_status, "enable_site"),
+        (AppService.update_app_api_status, "enable_api"),
+    ],
+)
+def test_status_toggle_no_change_never_reads_current_user(method, column: str) -> None:
+    """The no-change path must not touch current_user at all.
+
+    The container suite calls the service with no login context; an earlier
+    shape stamped updated_by unconditionally and crashed there.
+    """
+    app = cast(App, SimpleNamespace(mode=AppMode.CHAT, id="app-1", **{column: True}))
+    session = MagicMock()
+    session.scalar.return_value = True  # the row is already at the target state
+
+    with patch("services.app_service.current_user", _NoLogin()):
+        method(AppService(), app, True, session=session)
+
+    session.execute.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "update_status",
     [

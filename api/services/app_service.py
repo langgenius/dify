@@ -981,6 +981,15 @@ class AppService:
         snapshot happened to be read first. Returns True when the row changed,
         so callers fire `app_was_updated` only on a real transition.
         """
+        # Re-read the row inside the transaction instead of trusting the
+        # caller's possibly-stale object: an unchanged toggle exits without
+        # touching current_user (the container suite calls this with no login
+        # context), and the conditional UPDATE still guards a race between
+        # this read and the write.
+        current = session.scalar(select(column).where(App.id == app.id))
+        if current == value:
+            setattr(app, column.key, value)
+            return False
         assert current_user is not None
         now = naive_utc_now()
         stmt = (
