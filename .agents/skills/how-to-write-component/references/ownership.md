@@ -24,12 +24,15 @@ Read this document when adding, moving, splitting, or refactoring React componen
 
 ## Boundaries
 
+- Prefer reusing or extending the component that already owns an interaction over rebuilding that behavior in a parallel component.
 - State-heavy wizards, drawers, modals, and secondary workflows can form a small vertical surface with an entrypoint, optional feature-local state, and shallow owners matching real visual regions.
 - The entrypoint owns route integration, provider wiring, placement, and open-state coordination. A content or session owner keeps state scoped to that mounted surface.
 - Judge hook lifetime by the component that declares the hook and the primitive's mount contract, not only by where its rendered controls appear in JSX.
 - Separate hidden dialogs, dropdowns, and popovers into small local owners when their content obscures the parent flow.
 - Keep cohesive forms, menu bodies, and one-off helpers local unless they have their own state, reuse, or semantic boundary.
+- Split React component files over 300 lines when they mix responsibilities that can form focused colocated owners. Preserve cohesive owners rather than splitting by line count alone.
 - Avoid wrapper components and wrapper DOM that only rename props, pass children through, or hide the real primitive. A wrapper must own behavior, validation, state, accessibility, layout, or library integration.
+- Keep feature workflows out of shared components: do not encode one feature through many boolean props or import its copy, routes, and API contracts into a generic component. Do not pass pre-rendered fragments merely to avoid assigning the behavior to its owner.
 - Loading states for page sections, cards, lists, tables, forms, and drawers should use skeletons scoped to the loaded content. Reserve spinners for small inline busy indicators.
 
 ## Components And Types
@@ -37,6 +40,7 @@ Read this document when adding, moving, splitting, or refactoring React componen
 - Choose component declaration and export forms from the actual component contract, framework requirements, and enforced package rules. Existing style is context, not authority; do not rewrite unaffected code solely to normalize `FC`, `function`, arrow-function, named-export, or default-export forms.
 - Type simple one-off props inline. Name a `Props` type when it is reused, exported, complex, or materially clearer.
 - Use API-generated or API-returned types at component boundaries. Keep one-off UI refinements and conversions beside their owner.
+- Name props and converted data after their domain/API role, preserving traceability to the original contract.
 - Preserve domain value types for selections. Do not widen enums, unions, booleans, numbers, objects, or nullable values to `string` before a real boundary requires it.
 - Avoid generic `common.tsx` buckets and aliases that only rename another type. Name files, values, and public types after their domain role.
 - Put fallback and invariant checks in the lowest component that already renders that state. Do not extract helpers whose only purpose is hiding missing display data.

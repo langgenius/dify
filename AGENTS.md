@@ -1,15 +1,9 @@
 # AGENTS.md
 
-Dify is an open-source platform for building LLM applications, agentic workflows, and RAG pipelines. This monorepo contains the backend API (`api/`), frontend application (`web/`), deployment assets (`docker/`), standalone agent backend (`dify-agent/`), CLI (`cli/`), and end-to-end suite (`e2e/`). Follow the nearest scoped `AGENTS.md` for the files being changed.
+Dify is an open-source platform for building LLM applications, agentic workflows, and RAG pipelines. This monorepo contains the backend API (`api/`), frontend application (`web/`), deployment assets (`docker/`), standalone agent backend (`dify-agent/`), CLI (`cli/`), and end-to-end suite (`e2e/`). Follow the nearest scoped `AGENTS.md` for the files being changed. Apply its guidance within the user's requested scope; explicit user instructions take precedence over workflow defaults.
 
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.
 - Backend integration tests are CI-only and are not expected to run locally.
 - Keep `docker/.env.example` limited to variables required for a default Docker Compose deployment to start. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.
-
-## Frontend Workflow
-
-- For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
-
-[Truncated Text Disclosure]: web/docs/truncated-text-disclosure.md

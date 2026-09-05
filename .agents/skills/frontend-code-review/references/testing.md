@@ -1,6 +1,6 @@
 # Testing Review Rules
 
-`web/docs/test.md` is the canonical frontend testing policy. Use this file only to translate that policy into review findings.
+Use `web/docs/test.md` for tests owned by `web/` and `packages/dify-ui/docs/testing.md` for tests owned by Dify UI. These owners define their test boundaries, environments, and checks; this reference only adds review questions.
 
 ## Request Missing Tests When Risk Justifies Them
 

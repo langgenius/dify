@@ -19,10 +19,6 @@ First, install the dependencies:
 pnpm install
 ```
 
-> [!NOTE]
-> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`.
-> Install dependencies and run the commands below from the repository root.
-
 Then, configure the environment variables.
 Create `web/.env.local` and copy the contents from `web/.env.example`.
 Modify the values of these environment variables according to your requirements:
@@ -97,25 +93,14 @@ Then follow the [Lint Documentation] to lint the code.
 
 ## Test
 
-We use [Vitest] and [React Testing Library] for Unit Testing.
-
-**📖 Frontend Testing Guide**: See the [Frontend Testing Guide] for the canonical testing policy and workflow.
-
-> [!IMPORTANT]
-> As we are using Vite+, the `vitest` command is not available.
-> Please make sure to run tests with `vp` commands.
-> For example, use `vp test` instead of `vitest`.
-
-Run test:
+We use [Vitest] and [React Testing Library] through Vite+. Run unit tests in `happy-dom` with:
 
 ```bash
 cd web
 vp test run --project unit
 ```
 
-The standard unit command runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands. Always select a project explicitly: bare `vp test` runs every registered project, including Browser Mode.
-
-If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
+Select a project explicitly; bare `vp test` also runs Browser Mode. Use `vp` instead of the standalone `vitest` command. The [Frontend Testing Guide] owns test policy, Browser Mode admission, and diagnostic commands.
 
 ## Documentation
 

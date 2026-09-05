@@ -4,18 +4,14 @@ Accessibility findings are first-class review findings. Treat broken keyboard ac
 
 ## Review Evidence
 
-Before finalizing UI or accessibility findings, fetch the latest Web Interface Guidelines as a required baseline:
-
-```text
-https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
-```
-
-Do not treat that document as the complete accessibility rule set. Combine it with:
+Use the sources relevant to the changed contract:
 
 - `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, and the relevant primitive implementation when code uses `@langgenius/dify-ui/*`.
 - Base UI docs and local `.d.ts` contracts when primitive semantics, focus target, labels, or popup reachability are unclear.
 - MDN or relevant WAI-ARIA/browser standards when behavior, compatibility, or deprecation status matters.
 - The current feature's product semantics, because an accessible primitive can still be used in an inaccessible workflow.
+
+Consult current official documentation or standards when these sources leave a behavior unresolved. The [Web Interface Guidelines] are an optional broader UI reference, not a required fetch for each review.
 
 ## Semantic HTML
 
@@ -127,3 +123,4 @@ Flag:
 - Hardcoded dates, times, numbers, or currency formats instead of `Intl.*`.
 
 [Accessible names and descriptions]: ../../../../packages/dify-ui/docs/accessible-names-and-descriptions.md
+[Web Interface Guidelines]: https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md

@@ -4,7 +4,7 @@ Vite+ provides the primary static check through `vp check`, which combines Oxfmt
 
 ## Check
 
-Run the complete repository check from the root:
+Run the complete repository check from the root before committing or pushing:
 
 ```sh
 pnpm check
@@ -17,6 +17,8 @@ pnpm check:fix
 ```
 
 CI and local development use the same root `vite.config.ts` configuration.
+
+Reuse successful checks for the same final changes. Repeat or expand checks only when subsequent edits, failures, or unresolved concerns require it.
 
 To narrow formatting and linting, pass paths directly to Vite+. Type checking remains repository-wide:
 
@@ -65,18 +67,12 @@ Always review automatic fixes before committing. JS plugins are allowed to provi
 
 ### Type-aware Linting
 
-The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the TypeScript 7 native compiler.
+The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the repository's `@typescript/native` compiler.
 
 The web package still runs its existing TSSLint rule separately:
 
 ```sh
 pnpm --dir web lint:tss
-```
-
-Run the complete static check before committing or pushing:
-
-```sh
-pnpm check
 ```
 
 ### Bulk Suppressions
@@ -111,15 +107,3 @@ Suppression comments belong to exactly one linter. Use `oxlint-disable` for code
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.
-
-## Type Checking
-
-You should be able to see suggestions from TypeScript in your editor for all open files.
-
-Type checking is part of the repository check:
-
-```sh
-pnpm check
-```
-
-Type checking is powered by the repository's `@typescript/native` dependency.
