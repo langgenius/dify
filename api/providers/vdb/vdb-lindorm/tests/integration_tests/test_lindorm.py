@@ -57,6 +57,6 @@ class TestLindormVectorStoreUGC(AbstractVectorTest):
         assert ids[0] == self.example_doc_id
 
 
-def test_lindorm_vector_ugc(setup_mock_redis):
+def test_lindorm_vector_ugc(setup_real_redis):
     TestLindormVectorStore().run_all_tests()
     TestLindormVectorStoreUGC().run_all_tests()

@@ -48,6 +48,6 @@ class AnalyticdbVectorTest(AbstractVectorTest):
         return super().run_all_tests()
 
 
-def test_chroma_vector(setup_mock_redis):
+def test_chroma_vector(setup_real_redis):
     AnalyticdbVectorTest("api").run_all_tests()
     AnalyticdbVectorTest("sql").run_all_tests()

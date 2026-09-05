@@ -108,5 +108,5 @@ class QdrantVectorTest(AbstractVectorTest):
         self.delete_vector()
 
 
-def test_qdrant_vector(setup_mock_redis):
+def test_qdrant_vector(setup_real_redis):
     QdrantVectorTest().run_all_tests()

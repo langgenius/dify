@@ -32,5 +32,5 @@ class MilvusVectorTest(AbstractVectorTest):
         assert len(ids) == 1
 
 
-def test_milvus_vector(setup_mock_redis):
+def test_milvus_vector(setup_real_redis):
     MilvusVectorTest().run_all_tests()

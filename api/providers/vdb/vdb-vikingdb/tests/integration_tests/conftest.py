@@ -1,6 +1,5 @@
 import os
 from typing import Union
-from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -20,7 +19,14 @@ from volcengine.viking_db import (
 from core.rag.datasource.vdb.field import Field as vdb_Field
 
 
-class MockVikingDBClass:
+class InMemoryVikingTransport:
+    """Minimal service transport used by real VikingDB domain objects."""
+
+    def get_exception(self, *args, **kwargs):
+        return '{"data": {"primary_key": "test_id"}}'
+
+
+class InMemoryVikingService:
     def __init__(
         self,
         host="api-vikingdb.volces.com",
@@ -32,8 +38,7 @@ class MockVikingDBClass:
         socket_timeout=30,
         proxy=None,
     ):
-        self._viking_db_service = MagicMock()
-        self._viking_db_service.get_exception = MagicMock(return_value='{"data": {"primary_key": "test_id"}}')
+        self._viking_db_service = InMemoryVikingTransport()
 
     def get_collection(self, collection_name) -> Collection:
         return Collection(
@@ -196,18 +201,18 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_vikingdb_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(VikingDBService, "__init__", MockVikingDBClass.__init__)
-        monkeypatch.setattr(VikingDBService, "get_collection", MockVikingDBClass.get_collection)
-        monkeypatch.setattr(VikingDBService, "create_collection", MockVikingDBClass.create_collection)
-        monkeypatch.setattr(VikingDBService, "drop_collection", MockVikingDBClass.drop_collection)
-        monkeypatch.setattr(VikingDBService, "get_index", MockVikingDBClass.get_index)
-        monkeypatch.setattr(VikingDBService, "create_index", MockVikingDBClass.create_index)
-        monkeypatch.setattr(VikingDBService, "drop_index", MockVikingDBClass.drop_index)
-        monkeypatch.setattr(Collection, "upsert_data", MockVikingDBClass.upsert_data)
-        monkeypatch.setattr(Collection, "fetch_data", MockVikingDBClass.fetch_data)
-        monkeypatch.setattr(Collection, "delete_data", MockVikingDBClass.delete_data)
-        monkeypatch.setattr(Index, "search_by_vector", MockVikingDBClass.search_by_vector)
-        monkeypatch.setattr(Index, "search", MockVikingDBClass.search)
+        monkeypatch.setattr(VikingDBService, "__init__", InMemoryVikingService.__init__)
+        monkeypatch.setattr(VikingDBService, "get_collection", InMemoryVikingService.get_collection)
+        monkeypatch.setattr(VikingDBService, "create_collection", InMemoryVikingService.create_collection)
+        monkeypatch.setattr(VikingDBService, "drop_collection", InMemoryVikingService.drop_collection)
+        monkeypatch.setattr(VikingDBService, "get_index", InMemoryVikingService.get_index)
+        monkeypatch.setattr(VikingDBService, "create_index", InMemoryVikingService.create_index)
+        monkeypatch.setattr(VikingDBService, "drop_index", InMemoryVikingService.drop_index)
+        monkeypatch.setattr(Collection, "upsert_data", InMemoryVikingService.upsert_data)
+        monkeypatch.setattr(Collection, "fetch_data", InMemoryVikingService.fetch_data)
+        monkeypatch.setattr(Collection, "delete_data", InMemoryVikingService.delete_data)
+        monkeypatch.setattr(Index, "search_by_vector", InMemoryVikingService.search_by_vector)
+        monkeypatch.setattr(Index, "search", InMemoryVikingService.search)
 
     yield
 
