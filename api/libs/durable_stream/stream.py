@@ -36,6 +36,7 @@ class DurableStreamSubscription(
 ):
     """An independently positioned, one-shot subscription to one durable stream topic.
 
+    A subscription is owned by one execution context and is not thread-safe.
     The starting boundary is fixed when the topic creates the subscription.
     Entering the context acquires resources but must not recalculate that boundary.
     """
@@ -60,9 +61,8 @@ class DurableStreamSubscription(
     def close(self) -> None:
         """Close the subscription and release its resources.
 
-        This method is idempotent and must not raise. It may be called from
-        another thread and must unblock a receive call that is waiting for a
-        record. The interrupted receive call returns CLOSED.
+        This method is idempotent and must not raise. All subsequent receive
+        calls return CLOSED.
         """
         ...
 
