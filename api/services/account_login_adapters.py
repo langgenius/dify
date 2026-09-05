@@ -447,7 +447,7 @@ class SQLAlchemyConsoleAuthProvisioningGateway(AccountProvisioningGateway, Works
         ).data
         for role in roles:
             if role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner":
-                return str(role.id)
+                return role.id
         raise ValueError(f"Builtin RBAC owner role not found in tenant {tenant_id}")
 
 

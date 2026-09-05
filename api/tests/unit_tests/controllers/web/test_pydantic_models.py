@@ -258,7 +258,7 @@ from controllers.web.remote_files import RemoteFileUploadPayload
 class TestRemoteFileUploadPayload:
     def test_valid_url(self) -> None:
         p = RemoteFileUploadPayload(url="https://example.com/file.pdf")
-        assert str(p.url) == "https://example.com/file.pdf"
+        assert p.url == "https://example.com/file.pdf"
 
     def test_url_syntax_is_validated_by_remote_file_service(self) -> None:
         payload = RemoteFileUploadPayload(url="not-a-url")

@@ -142,7 +142,7 @@ def handle(sender: Message, **kwargs):
         "created_by": get_credit_usage_created_by(app_mode),
     }
     credit_deduction_context: _CreditDeductionContext = {
-        "request_id": str(message.id) if message.id else None,
+        "request_id": message.id or None,
         "metadata": credit_deduction_metadata,
     }
     agent_gateway_metered = (
