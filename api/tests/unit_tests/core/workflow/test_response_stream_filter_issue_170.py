@@ -1,4 +1,4 @@
-"""Integration coverage for Dify's ResponseStreamFilter boundary behavior."""
+"""Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
 
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
