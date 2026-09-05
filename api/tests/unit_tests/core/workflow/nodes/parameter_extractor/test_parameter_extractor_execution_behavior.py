@@ -1,3 +1,5 @@
+"""Unit coverage for parameter extraction with the plugin-model boundary replaced."""
+
 import os
 import time
 import uuid
@@ -16,10 +18,10 @@ from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from graphon.runtime import GraphRuntimeState, VariablePool
-from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
+from tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
-pytest_plugins = ("tests.integration_tests.model_runtime.__mock.plugin_daemon",)
+pytest_plugins = ("tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.plugin_daemon",)
 
 
 def get_mocked_fetch_memory(memory_text: str):
