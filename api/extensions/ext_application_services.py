@@ -178,6 +178,7 @@ from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
@@ -256,6 +257,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    tool_file_downloads: ToolFileDownloadService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -641,6 +643,7 @@ def build_application_services(
         ),
         file_grants=_build_file_grant_service(database_client=database_client),
         files=file_service,
+        tool_file_downloads=ToolFileDownloadService(tool_files=ToolFileManager()),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,

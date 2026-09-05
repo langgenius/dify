@@ -6,12 +6,14 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.files import files_ns
-from core.tools.signature import verify_tool_file_signature
-from core.tools.tool_file_manager import ToolFileManager
+from extensions.ext_application_services import application_services
+from services.tool_file_download_service import (
+    ToolFileDownloadAccessDeniedError,
+    ToolFileDownloadNotFoundError,
+)
 
 
 class ToolFileQuery(BaseModel):
@@ -32,10 +34,7 @@ class ToolFileApi(Resource):
         params={
             "file_id": "Tool file identifier",
             "extension": "Expected file extension",
-            "timestamp": "Unix timestamp used in the signature",
-            "nonce": "Random string used in the signature",
-            "sign": "HMAC signature verifying the request",
-            "as_attachment": "Whether to download the file as an attachment",
+            **query_params_from_model(ToolFileQuery),
         }
     )
     @files_ns.doc(
@@ -43,52 +42,38 @@ class ToolFileApi(Resource):
             200: "Tool file stream returned successfully",
             403: "Forbidden - invalid signature",
             404: "File not found",
-            415: "Unsupported file type",
         }
     )
-    def get(self, file_id: UUID, extension: str):
-        file_id_str = str(file_id)
-
-        args = ToolFileQuery.model_validate(request.args.to_dict())
-        if not verify_tool_file_signature(
-            file_id=file_id_str, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign
-        ):
-            raise Forbidden("Invalid request.")
-
+    def get(self, file_id: UUID, extension: str) -> Response:
+        args = ToolFileQuery.model_validate(request.args.to_dict(flat=True))
         try:
-            tool_file_manager = ToolFileManager()
-            stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
-                file_id_str,
+            download = application_services().tool_file_downloads.get_signed_file(
+                file_id=str(file_id),
+                timestamp=args.timestamp,
+                nonce=args.nonce,
+                sign=args.sign,
             )
-
-            if not stream or not tool_file:
-                raise NotFound("file is not found")
-
-        except NotFound:
-            raise
-
-        except Exception as e:
-            raise UnsupportedFileTypeError() from e
-
-        mime_type = tool_file.mime_type
-        filename = tool_file.filename
+        except ToolFileDownloadAccessDeniedError as error:
+            raise Forbidden("Invalid request.") from error
+        except ToolFileDownloadNotFoundError as error:
+            raise NotFound("file is not found") from error
 
         response = Response(
-            stream,
-            mimetype=mime_type,
+            download.content,
+            mimetype=download.mime_type,
             direct_passthrough=True,
             headers={},
         )
-        if tool_file.size > 0:
-            response.headers["Content-Length"] = str(tool_file.size)
-        if args.as_attachment and filename:
-            encoded_filename = quote(filename)
+        if download.size > 0:
+            response.headers["Content-Length"] = str(download.size)
+        if args.as_attachment and download.filename:
+            encoded_filename = quote(download.filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,
-            mime_type=mime_type,
-            filename=filename,
+            mime_type=download.mime_type,
+            filename=download.filename,
             extension=extension,
         )
 
