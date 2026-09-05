@@ -80,6 +80,14 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
             }),
           )
           .catch(noop),
+        queryClient
+          .query(
+            serverConsoleQuery.features.get.queryOptions({
+              context,
+              retry: false,
+            }),
+          )
+          .catch(noop),
       ])
     } catch (error) {
       await handleProfileError(error)
